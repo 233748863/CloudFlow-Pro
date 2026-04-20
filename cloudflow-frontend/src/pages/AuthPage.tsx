@@ -1,14 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Eye,
-  EyeOff,
-  Loader2,
-  Lock,
-  LogIn,
-  Mail,
-  UserPlus,
-  Users,
-} from 'lucide-react';
+import { Eye, EyeOff, Loader2, Lock, LogIn, Mail, ShieldAlert, UserPlus, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
@@ -149,6 +140,7 @@ export const AuthPage: React.FC = () => {
         password: '',
         confirmPassword: '',
       }));
+
       toast.success('注册成功，请登录');
       switchMode('login');
     } catch (error: any) {
@@ -168,228 +160,281 @@ export const AuthPage: React.FC = () => {
   };
 
   const isLogin = mode === 'login';
+  const currentError = isLogin ? loginError : registerError;
+  const currentYear = new Date().getFullYear();
 
   return (
     <>
       <div className="cf-auth-page">
-        <div className="cf-auth-grid" />
-        <div className="cf-auth-glow cf-auth-glow--top" />
-        <div className="cf-auth-glow cf-auth-glow--bottom" />
+        <div className="cf-auth-bg" />
+        <div className="cf-auth-decor">
+          <div className="cf-auth-orb cf-auth-orb--top" />
+          <div className="cf-auth-orb cf-auth-orb--bottom" />
+          <div className="cf-auth-orb cf-auth-orb--center" />
+          <div className="cf-auth-grid" />
+        </div>
 
-        <div className="cf-auth-content">
+        <div className="cf-auth-container">
           <div className="cf-auth-brand">
             <div className="cf-auth-brand__logo">
-              <img src="/icon.svg" alt="CloudFlow Pro" />
+              <img src="/icon.svg" alt="CloudFlow Pro" className="cf-auth-brand__image" />
             </div>
             <h1 className="cf-auth-brand__title">CloudFlow Pro</h1>
-            <p className="cf-auth-brand__subtitle">企业协同办公入口</p>
+            <p className="cf-auth-brand__subtitle">企业协同办公统一入口</p>
           </div>
 
           <div className="cf-auth-card">
-            <div className="cf-auth-card__head">
-              <h2>{isLogin ? '登录系统' : '创建账号'}</h2>
-              <p>{isLogin ? '输入账号和密码继续使用' : '填写基础信息完成注册'}</p>
+            <div className="cf-auth-card__section">
+              <div className="cf-auth-card__header">
+                <h2 className="cf-auth-card__title">{isLogin ? '欢迎回来' : '创建账号'}</h2>
+                <p className="cf-auth-card__description">
+                  {isLogin ? '登录以继续进入 CloudFlow 桌面工作台' : '注册后开始使用 CloudFlow 桌面工作台'}
+                </p>
+              </div>
+
+              {isLogin ? (
+                <form onSubmit={handleLoginSubmit} className="cf-auth-form">
+                  <div>
+                    <label htmlFor="auth-login-username" className="cf-auth-label">
+                      账号
+                    </label>
+                    <div className="cf-auth-input-wrap">
+                      <div className="cf-auth-input-icon">
+                        <Users size={18} />
+                      </div>
+                      <input
+                        id="auth-login-username"
+                        value={loginForm.username}
+                        onChange={(event) =>
+                          setLoginForm((prev) => ({ ...prev, username: event.target.value }))
+                        }
+                        type="text"
+                        autoComplete="username"
+                        required
+                        placeholder="请输入账号"
+                        className="cf-auth-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="auth-login-password" className="cf-auth-label">
+                      密码
+                    </label>
+                    <div className="cf-auth-input-wrap">
+                      <div className="cf-auth-input-icon">
+                        <Lock size={18} />
+                      </div>
+                      <input
+                        id="auth-login-password"
+                        value={loginForm.password}
+                        onChange={(event) =>
+                          setLoginForm((prev) => ({ ...prev, password: event.target.value }))
+                        }
+                        type={showLoginPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
+                        required
+                        placeholder="请输入密码"
+                        className="cf-auth-input cf-auth-input--password"
+                      />
+                      <button
+                        type="button"
+                        className="cf-auth-input-toggle"
+                        onClick={() => setShowLoginPassword((prev) => !prev)}
+                        aria-label={showLoginPassword ? '隐藏密码' : '显示密码'}
+                      >
+                        {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {currentError ? (
+                    <div className="cf-auth-error">
+                      <ShieldAlert size={18} className="cf-auth-error__icon" />
+                      <p>{currentError}</p>
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="submit"
+                    disabled={pendingAction === 'login'}
+                    className="cf-auth-submit"
+                  >
+                    {pendingAction === 'login' ? (
+                      <>
+                        <Loader2 size={16} className="cf-auth-spin" />
+                        正在登录
+                      </>
+                    ) : (
+                      <>
+                        <LogIn size={16} />
+                        登录
+                      </>
+                    )}
+                  </button>
+                </form>
+              ) : (
+                <form onSubmit={handleRegisterSubmit} className="cf-auth-form">
+                  <div>
+                    <label htmlFor="auth-register-username" className="cf-auth-label">
+                      用户名
+                    </label>
+                    <div className="cf-auth-input-wrap">
+                      <div className="cf-auth-input-icon">
+                        <Users size={18} />
+                      </div>
+                      <input
+                        id="auth-register-username"
+                        value={registerForm.username}
+                        onChange={(event) =>
+                          setRegisterForm((prev) => ({ ...prev, username: event.target.value }))
+                        }
+                        type="text"
+                        autoComplete="username"
+                        required
+                        placeholder="请输入用户名"
+                        className="cf-auth-input"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="auth-register-password" className="cf-auth-label">
+                      密码
+                    </label>
+                    <div className="cf-auth-input-wrap">
+                      <div className="cf-auth-input-icon">
+                        <Lock size={18} />
+                      </div>
+                      <input
+                        id="auth-register-password"
+                        value={registerForm.password}
+                        onChange={(event) =>
+                          setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
+                        }
+                        type={showRegisterPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        required
+                        placeholder="请输入密码"
+                        className="cf-auth-input cf-auth-input--password"
+                      />
+                      <button
+                        type="button"
+                        className="cf-auth-input-toggle"
+                        onClick={() => setShowRegisterPassword((prev) => !prev)}
+                        aria-label={showRegisterPassword ? '隐藏密码' : '显示密码'}
+                      >
+                        {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                    <p className="cf-auth-hint">至少 6 个字符</p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="auth-register-confirm" className="cf-auth-label">
+                      确认密码
+                    </label>
+                    <div className="cf-auth-input-wrap">
+                      <div className="cf-auth-input-icon">
+                        <Lock size={18} />
+                      </div>
+                      <input
+                        id="auth-register-confirm"
+                        value={registerForm.confirmPassword}
+                        onChange={(event) =>
+                          setRegisterForm((prev) => ({
+                            ...prev,
+                            confirmPassword: event.target.value,
+                          }))
+                        }
+                        type={showRegisterConfirmPassword ? 'text' : 'password'}
+                        autoComplete="new-password"
+                        required
+                        placeholder="请再次输入密码"
+                        className="cf-auth-input cf-auth-input--password"
+                      />
+                      <button
+                        type="button"
+                        className="cf-auth-input-toggle"
+                        onClick={() => setShowRegisterConfirmPassword((prev) => !prev)}
+                        aria-label={showRegisterConfirmPassword ? '隐藏确认密码' : '显示确认密码'}
+                      >
+                        {showRegisterConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="auth-register-email" className="cf-auth-label">
+                      邮箱
+                      <span className="cf-auth-label__optional">（可选）</span>
+                    </label>
+                    <div className="cf-auth-input-wrap">
+                      <div className="cf-auth-input-icon">
+                        <Mail size={18} />
+                      </div>
+                      <input
+                        id="auth-register-email"
+                        value={registerForm.email}
+                        onChange={(event) =>
+                          setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
+                        }
+                        type="email"
+                        autoComplete="email"
+                        placeholder="请输入邮箱（可选）"
+                        className="cf-auth-input"
+                      />
+                    </div>
+                  </div>
+
+                  {currentError ? (
+                    <div className="cf-auth-error">
+                      <ShieldAlert size={18} className="cf-auth-error__icon" />
+                      <p>{currentError}</p>
+                    </div>
+                  ) : null}
+
+                  <button
+                    type="submit"
+                    disabled={pendingAction === 'register'}
+                    className="cf-auth-submit"
+                  >
+                    {pendingAction === 'register' ? (
+                      <>
+                        <Loader2 size={16} className="cf-auth-spin" />
+                        正在创建
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={16} />
+                        创建账号
+                      </>
+                    )}
+                  </button>
+                </form>
+              )}
             </div>
-
-            {isLogin ? (
-              <form className="cf-auth-form" onSubmit={handleLoginSubmit}>
-                <label className="cf-auth-field">
-                  <span className="cf-auth-field__label">账号</span>
-                  <div className="cf-auth-field__input">
-                    <Users size={18} className="cf-auth-field__icon" />
-                    <input
-                      type="text"
-                      value={loginForm.username}
-                      onChange={(event) =>
-                        setLoginForm((prev) => ({ ...prev, username: event.target.value }))
-                      }
-                      placeholder="请输入账号"
-                      autoComplete="username"
-                      required
-                    />
-                  </div>
-                </label>
-
-                <label className="cf-auth-field">
-                  <span className="cf-auth-field__label">密码</span>
-                  <div className="cf-auth-field__input">
-                    <Lock size={18} className="cf-auth-field__icon" />
-                    <input
-                      type={showLoginPassword ? 'text' : 'password'}
-                      value={loginForm.password}
-                      onChange={(event) =>
-                        setLoginForm((prev) => ({ ...prev, password: event.target.value }))
-                      }
-                      placeholder="请输入密码"
-                      autoComplete="current-password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="cf-auth-field__action"
-                      onClick={() => setShowLoginPassword((prev) => !prev)}
-                      aria-label={showLoginPassword ? '隐藏密码' : '显示密码'}
-                    >
-                      {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </label>
-
-                {loginError ? <div className="cf-auth-feedback">{loginError}</div> : null}
-
-                <button
-                  type="submit"
-                  className="cf-auth-submit"
-                  disabled={pendingAction === 'login'}
-                >
-                  {pendingAction === 'login' ? (
-                    <>
-                      <Loader2 size={18} className="cf-auth-spin" />
-                      正在登录
-                    </>
-                  ) : (
-                    <>
-                      <LogIn size={18} />
-                      登录
-                    </>
-                  )}
-                </button>
-              </form>
-            ) : (
-              <form className="cf-auth-form" onSubmit={handleRegisterSubmit}>
-                <label className="cf-auth-field">
-                  <span className="cf-auth-field__label">用户名</span>
-                  <div className="cf-auth-field__input">
-                    <Users size={18} className="cf-auth-field__icon" />
-                    <input
-                      type="text"
-                      value={registerForm.username}
-                      onChange={(event) =>
-                        setRegisterForm((prev) => ({ ...prev, username: event.target.value }))
-                      }
-                      placeholder="请输入用户名"
-                      autoComplete="username"
-                      required
-                    />
-                  </div>
-                </label>
-
-                <label className="cf-auth-field">
-                  <span className="cf-auth-field__label">密码</span>
-                  <div className="cf-auth-field__input">
-                    <Lock size={18} className="cf-auth-field__icon" />
-                    <input
-                      type={showRegisterPassword ? 'text' : 'password'}
-                      value={registerForm.password}
-                      onChange={(event) =>
-                        setRegisterForm((prev) => ({ ...prev, password: event.target.value }))
-                      }
-                      placeholder="请输入密码"
-                      autoComplete="new-password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="cf-auth-field__action"
-                      onClick={() => setShowRegisterPassword((prev) => !prev)}
-                      aria-label={showRegisterPassword ? '隐藏密码' : '显示密码'}
-                    >
-                      {showRegisterPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                </label>
-
-                <label className="cf-auth-field">
-                  <span className="cf-auth-field__label">确认密码</span>
-                  <div className="cf-auth-field__input">
-                    <Lock size={18} className="cf-auth-field__icon" />
-                    <input
-                      type={showRegisterConfirmPassword ? 'text' : 'password'}
-                      value={registerForm.confirmPassword}
-                      onChange={(event) =>
-                        setRegisterForm((prev) => ({
-                          ...prev,
-                          confirmPassword: event.target.value,
-                        }))
-                      }
-                      placeholder="请再次输入密码"
-                      autoComplete="new-password"
-                      required
-                    />
-                    <button
-                      type="button"
-                      className="cf-auth-field__action"
-                      onClick={() => setShowRegisterConfirmPassword((prev) => !prev)}
-                      aria-label={showRegisterConfirmPassword ? '隐藏确认密码' : '显示确认密码'}
-                    >
-                      {showRegisterConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-                  <span className="cf-auth-field__hint">至少 6 个字符</span>
-                </label>
-
-                <label className="cf-auth-field">
-                  <span className="cf-auth-field__label">
-                    邮箱 <em>(可选)</em>
-                  </span>
-                  <div className="cf-auth-field__input">
-                    <Mail size={18} className="cf-auth-field__icon" />
-                    <input
-                      type="email"
-                      value={registerForm.email}
-                      onChange={(event) =>
-                        setRegisterForm((prev) => ({ ...prev, email: event.target.value }))
-                      }
-                      placeholder="请输入邮箱（可选）"
-                      autoComplete="email"
-                    />
-                  </div>
-                </label>
-
-                {registerError ? <div className="cf-auth-feedback">{registerError}</div> : null}
-
-                <button
-                  type="submit"
-                  className="cf-auth-submit"
-                  disabled={pendingAction === 'register'}
-                >
-                  {pendingAction === 'register' ? (
-                    <>
-                      <Loader2 size={18} className="cf-auth-spin" />
-                      正在创建
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus size={18} />
-                      创建账号
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
           </div>
 
-          <div className="cf-auth-bottom-link">
+          <div className="cf-auth-footer">
             {isLogin ? (
-              <>
+              <p>
                 还没有账号？
-                <button type="button" onClick={() => switchMode('register')}>
-                  注册
+                <button type="button" onClick={() => switchMode('register')} className="cf-auth-footer__link">
+                  立即注册
                 </button>
-              </>
+              </p>
             ) : (
-              <>
+              <p>
                 已有账号？
-                <button type="button" onClick={() => switchMode('login')}>
-                  登录
+                <button type="button" onClick={() => switchMode('login')} className="cf-auth-footer__link">
+                  返回登录
                 </button>
-              </>
+              </p>
             )}
           </div>
 
-          <div className="cf-auth-copyright">
-            © 2026 CloudFlow Pro. All rights reserved.
-          </div>
+          <div className="cf-auth-copyright">© {currentYear} CloudFlow Pro. All rights reserved.</div>
         </div>
       </div>
 

@@ -78,7 +78,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       type="button"
       disabled={disabled}
       className={cn(
-        'cf-glass-input flex h-11 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm text-slate-700 transition-all hover:border-slate-300 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50',
+        'cf-glass-input flex h-11 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm text-slate-700 transition-all hover:border-slate-300 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50 dark:text-slate-200 dark:hover:border-slate-600 dark:ring-offset-slate-950',
         !hasExplicitWidth && 'w-full',
         open && 'border-cyan-500 ring-2 ring-cyan-500/20',
         className,
@@ -93,7 +93,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
         size={16}
         className={cn(
           'ml-2 shrink-0 text-slate-400 transition-transform duration-200',
-          open && 'rotate-180 text-cyan-600',
+          open && 'rotate-180 text-cyan-600 dark:text-cyan-300',
         )}
       />
     </button>
@@ -107,7 +107,12 @@ export const SelectValue = ({ placeholder }: { placeholder?: string }) => {
   const displayValue = hasValue ? (labels[value as string] ?? value) : placeholder;
 
   return (
-    <span className={cn('min-w-0 flex-1 truncate', hasValue ? 'text-slate-900' : 'text-slate-400')}>
+    <span
+      className={cn(
+        'min-w-0 flex-1 truncate',
+        hasValue ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500',
+      )}
+    >
       {displayValue}
     </span>
   );
@@ -120,6 +125,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
     <div
       className={cn(
         'absolute top-full z-[130] mt-1.5 w-full min-w-[12rem] overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-[0_18px_36px_rgba(15,23,42,0.12)]',
+        'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
         open ? 'max-h-64 overflow-y-auto' : 'invisible pointer-events-none h-0 overflow-hidden border-0 p-0 m-0',
         className,
       )}
@@ -143,8 +149,8 @@ export const SelectItem: React.FC<{ children: React.ReactNode; value: string; cl
       className={cn(
         'relative flex w-full cursor-pointer items-center rounded-lg py-2.5 pl-8 pr-3 text-sm transition-colors',
         isSelected
-          ? 'bg-cyan-50 text-cyan-700 font-medium'
-          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',
+          ? 'bg-cyan-50 text-cyan-700 font-medium dark:bg-cyan-950/50 dark:text-cyan-200'
+          : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white',
         className,
       )}
       onClick={() => {
@@ -154,7 +160,7 @@ export const SelectItem: React.FC<{ children: React.ReactNode; value: string; cl
     >
       {isSelected ? (
         <span className="absolute left-2.5 flex h-4 w-4 items-center justify-center">
-          <Check size={14} className="text-cyan-600" />
+          <Check size={14} className="text-cyan-600 dark:text-cyan-300" />
         </span>
       ) : null}
       {children}

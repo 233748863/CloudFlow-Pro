@@ -37,6 +37,46 @@ interface ProcessOption {
 const getPercent = (numerator: number, denominator: number) =>
   denominator > 0 ? ((numerator / denominator) * 100).toFixed(1) : '0.0';
 
+const cardClassName =
+  'rounded-[28px] border border-slate-200 bg-white/95 p-5 shadow-sm shadow-slate-200/60 transition-all duration-200 dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none';
+const softPanelClassName =
+  'rounded-3xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm shadow-slate-200/50 dark:border-slate-800 dark:bg-slate-900/70 dark:shadow-none';
+const infoBlockClassName =
+  'rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70';
+
+const ProgressMetric = ({
+  title,
+  icon,
+  value,
+  ratioText,
+  progress,
+  progressClassName,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  value: string;
+  ratioText: string;
+  progress: number;
+  progressClassName: string;
+}) => (
+  <div className={cardClassName}>
+    <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
+      {icon}
+      {title}
+    </div>
+    <div className="mt-4 flex items-end justify-between gap-3">
+      <div className="text-3xl font-bold tracking-tight text-slate-950 dark:text-slate-100">{value}</div>
+      <div className="text-sm text-slate-400 dark:text-slate-500">{ratioText}</div>
+    </div>
+    <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
+      <div
+        className={`h-full rounded-full transition-all duration-500 ${progressClassName}`}
+        style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
+      />
+    </div>
+  </div>
+);
+
 export const DeployStatistics: React.FC = () => {
   const [processes, setProcesses] = useState<ProcessOption[]>([]);
   const [selectedProcess, setSelectedProcess] = useState('');
@@ -99,19 +139,24 @@ export const DeployStatistics: React.FC = () => {
     const latestVersion = stats?.latestVersion || 0;
     const successRate = Number(getPercent(successCount, totalDeploys));
     const rollbackRate = Number(getPercent(rollbackCount, totalDeploys));
+    const coverageRate = Number(getPercent(snapshotCount, latestVersion || 0));
 
     let healthLabel = '待观察';
-    let healthTone = 'text-amber-600';
+    let healthTone = 'text-amber-600 dark:text-amber-300';
+    let healthSummary = '发布数据还在积累，建议继续观察成功率与回滚率。';
 
     if (successRate >= 90 && rollbackRate < 10) {
       healthLabel = '优秀';
-      healthTone = 'text-emerald-600';
+      healthTone = 'text-emerald-600 dark:text-emerald-300';
+      healthSummary = '发布成功率稳定且回滚占比低，可以维持当前准入标准。';
     } else if (successRate >= 70) {
       healthLabel = '良好';
-      healthTone = 'text-sky-600';
+      healthTone = 'text-sky-600 dark:text-sky-300';
+      healthSummary = '整体表现可控，但仍建议继续监控回滚原因与快照覆盖率。';
     } else if (totalDeploys > 0) {
       healthLabel = '需改进';
-      healthTone = 'text-rose-600';
+      healthTone = 'text-rose-600 dark:text-rose-300';
+      healthSummary = '成功率偏低或回滚偏高，建议优先收紧发布前校验与审批。';
     }
 
     return {
@@ -122,8 +167,10 @@ export const DeployStatistics: React.FC = () => {
       latestVersion,
       successRate,
       rollbackRate,
+      coverageRate,
       healthLabel,
       healthTone,
+      healthSummary,
     };
   }, [stats]);
 
@@ -155,35 +202,54 @@ export const DeployStatistics: React.FC = () => {
         title="统计范围"
         description="选择流程后查看该流程的发布成功率、回滚情况和版本沉淀情况。"
         eyebrow="Analytics Scope"
-        headerAside={
+        headerAside={(
           <Button variant="outline" size="sm" onClick={loadStatistics}>
             <RefreshCw className="h-4 w-4" />
             刷新
           </Button>
-        }
+        )}
+        bodyClassName="space-y-5"
       >
-        <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-end">
-          <div>
-            <label className="mb-2 block text-sm font-semibold text-slate-700">选择流程</label>
-            <Select value={selectedProcess} onValueChange={setSelectedProcess}>
-              <SelectTrigger>
-                <SelectValue placeholder="请选择流程" />
-              </SelectTrigger>
-              <SelectContent>
-                {processes.map((item) => (
-                  <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
-                    {item.processName || item.processKey || String(item.definitionId)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className={softPanelClassName}>
+            <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)] lg:items-end">
+              <div>
+                <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">选择流程</label>
+                <Select value={selectedProcess} onValueChange={setSelectedProcess}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="请选择流程" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {processes.map((item) => (
+                      <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
+                        {item.processName || item.processKey || String(item.definitionId)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                发布统计页已经统一到工作台比例，指标卡、进度条和建议卡全部使用同一套明暗主题语法。
+              </div>
+            </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-500 shadow-sm">
-            当前统计对象：
-            <span className="ml-2 font-semibold text-slate-700">
-              {selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '未选择流程'}
-            </span>
+          <div className={softPanelClassName}>
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前统计对象</div>
+            <div className="mt-3 space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  流程
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '未选择流程'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                统计区只负责结果表达，不再保留旧页面里零散的颜色、比例和局部信息块。
+              </div>
+            </div>
           </div>
         </div>
       </WorkspaceSectionCard>
@@ -209,25 +275,25 @@ export const DeployStatistics: React.FC = () => {
               label="总发布次数"
               value={derived.totalDeploys}
               hint="当前流程累计部署次数"
-              aside={<Package className="h-[18px] w-[18px] text-cyan-700" />}
+              aside={<Package className="h-[18px] w-[18px] text-cyan-700 dark:text-cyan-300" />}
             />
             <WorkspaceMetricCard
               label="成功发布"
               value={derived.successCount}
               hint={`成功率 ${derived.successRate.toFixed(1)}%`}
-              aside={<CheckCircle className="h-[18px] w-[18px] text-emerald-500" />}
+              aside={<CheckCircle className="h-[18px] w-[18px] text-emerald-500 dark:text-emerald-300" />}
             />
             <WorkspaceMetricCard
               label="回滚次数"
               value={derived.rollbackCount}
               hint={`回滚率 ${derived.rollbackRate.toFixed(1)}%`}
-              aside={<RotateCcw className="h-[18px] w-[18px] text-amber-500" />}
+              aside={<RotateCcw className="h-[18px] w-[18px] text-amber-500 dark:text-amber-300" />}
             />
             <WorkspaceMetricCard
               label="当前版本"
               value={derived.latestVersion > 0 ? `v${derived.latestVersion}` : '暂无'}
               hint={`已沉淀 ${derived.snapshotCount} 个快照`}
-              aside={<GitBranch className="h-[18px] w-[18px] text-sky-500" />}
+              aside={<GitBranch className="h-[18px] w-[18px] text-sky-500 dark:text-sky-300" />}
             />
           </div>
 
@@ -239,54 +305,33 @@ export const DeployStatistics: React.FC = () => {
               bodyClassName="space-y-5"
             >
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <TrendingUp className="h-4 w-4 text-emerald-500" />
-                    发布成功率
-                  </div>
-                  <div className="mt-4 flex items-end justify-between gap-3">
-                    <div className="text-3xl font-bold tracking-tight text-slate-900">
-                      {derived.successRate.toFixed(1)}%
-                    </div>
-                    <div className="text-sm text-slate-400">{derived.successCount} / {derived.totalDeploys || 0}</div>
-                  </div>
-                  <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                      style={{ width: `${derived.successRate}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                  <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                    <RotateCcw className="h-4 w-4 text-amber-500" />
-                    回滚占比
-                  </div>
-                  <div className="mt-4 flex items-end justify-between gap-3">
-                    <div className="text-3xl font-bold tracking-tight text-slate-900">
-                      {derived.rollbackRate.toFixed(1)}%
-                    </div>
-                    <div className="text-sm text-slate-400">{derived.rollbackCount} / {derived.totalDeploys || 0}</div>
-                  </div>
-                  <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
-                    <div
-                      className="h-full rounded-full bg-amber-500 transition-all duration-500"
-                      style={{ width: `${derived.rollbackRate}%` }}
-                    />
-                  </div>
-                </div>
+                <ProgressMetric
+                  title="发布成功率"
+                  icon={<TrendingUp className="h-4 w-4 text-emerald-500 dark:text-emerald-300" />}
+                  value={`${derived.successRate.toFixed(1)}%`}
+                  ratioText={`${derived.successCount} / ${derived.totalDeploys || 0}`}
+                  progress={derived.successRate}
+                  progressClassName="bg-gradient-to-r from-emerald-500 to-teal-500"
+                />
+                <ProgressMetric
+                  title="回滚占比"
+                  icon={<RotateCcw className="h-4 w-4 text-amber-500 dark:text-amber-300" />}
+                  value={`${derived.rollbackRate.toFixed(1)}%`}
+                  ratioText={`${derived.rollbackCount} / ${derived.totalDeploys || 0}`}
+                  progress={derived.rollbackRate}
+                  progressClassName="bg-gradient-to-r from-amber-400 to-orange-500"
+                />
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm ring-1 ring-slate-200/70">
-                <div className="flex items-center justify-between gap-4">
+              <div className={cardClassName}>
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm font-semibold text-slate-700">发布健康度</div>
-                    <div className="mt-1 text-xs text-slate-400">综合成功率与回滚率得出的当前健康等级</div>
+                    <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">发布健康度</div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      {derived.healthSummary}
+                    </div>
                   </div>
-                  <div className={`text-3xl font-bold tracking-tight ${derived.healthTone}`}>
-                    {derived.healthLabel}
-                  </div>
+                  <div className={`text-3xl font-bold tracking-tight ${derived.healthTone}`}>{derived.healthLabel}</div>
                 </div>
               </div>
             </WorkspaceSectionCard>
@@ -297,29 +342,33 @@ export const DeployStatistics: React.FC = () => {
               eyebrow="Version Signal"
               bodyClassName="space-y-4"
             >
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-5 py-5 shadow-sm ring-1 ring-cyan-200/70">
-                <div className="text-sm font-semibold text-slate-700">当前版本</div>
-                <div className="mt-3 text-4xl font-bold tracking-tight text-cyan-700">
+              <div className="rounded-[28px] border border-cyan-200 bg-cyan-50 px-5 py-5 shadow-sm shadow-cyan-100/60 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:shadow-none">
+                <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">当前版本</div>
+                <div className="mt-3 text-4xl font-bold tracking-tight text-cyan-700 dark:text-cyan-200">
                   {derived.latestVersion > 0 ? `v${derived.latestVersion}` : '--'}
                 </div>
-                <div className="mt-2 text-sm text-slate-500">已生成 {derived.snapshotCount} 个版本快照</div>
+                <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                  已生成 {derived.snapshotCount} 个版本快照
+                </div>
               </div>
 
               <div className="grid gap-3 md:grid-cols-2">
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-                  <div className="text-xs text-slate-400">平均发布密度</div>
-                  <div className="mt-1 font-semibold text-slate-900">
+                <div className={infoBlockClassName}>
+                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    平均发布密度
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {derived.latestVersion > 0
                       ? `${(derived.totalDeploys / Math.max(derived.latestVersion, 1)).toFixed(1)} 次 / 版本`
                       : '暂无数据'}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600">
-                  <div className="text-xs text-slate-400">快照覆盖率</div>
-                  <div className="mt-1 font-semibold text-slate-900">
-                    {derived.latestVersion > 0
-                      ? `${getPercent(derived.snapshotCount, derived.latestVersion)}%`
-                      : '暂无数据'}
+                <div className={infoBlockClassName}>
+                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    快照覆盖率
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {derived.latestVersion > 0 ? `${derived.coverageRate.toFixed(1)}%` : '暂无数据'}
                   </div>
                 </div>
               </div>
@@ -333,12 +382,11 @@ export const DeployStatistics: React.FC = () => {
             bodyClassName="space-y-3"
           >
             {suggestions.map((item, index) => (
-              <div
-                key={`${item}-${index}`}
-                className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 text-sm text-slate-600 shadow-sm"
-              >
-                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-700" />
-                <span>{item}</span>
+              <div key={`${item}-${index}`} className={cardClassName}>
+                <div className="flex items-start gap-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-cyan-700 dark:text-cyan-300" />
+                  <span>{item}</span>
+                </div>
               </div>
             ))}
           </WorkspaceSectionCard>

@@ -1,6 +1,13 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import {
+  Button,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui';
 
 interface PaginationProps {
   total: number;
@@ -61,10 +68,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   const fromItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
   const toItem = Math.min(page * pageSize, total);
 
-  const visiblePages = useMemo(
-    () => buildVisiblePages(page, totalPages),
-    [page, totalPages],
-  );
+  const visiblePages = useMemo(() => buildVisiblePages(page, totalPages), [page, totalPages]);
 
   const goToPage = (nextPage: number) => {
     if (nextPage >= 1 && nextPage <= totalPages && nextPage !== page) {
@@ -77,18 +81,19 @@ export const Pagination: React.FC<PaginationProps> = ({
     if (Number.isNaN(parsed)) {
       return;
     }
+
     const nextPage = Math.min(Math.max(parsed, 1), totalPages);
     setJumpPage('');
     goToPage(nextPage);
   };
 
   return (
-    <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6">
+    <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 dark:border-slate-800 dark:bg-slate-950/88">
       <div className="flex flex-1 items-center justify-between sm:hidden">
         <Button variant="outline" onClick={() => goToPage(page - 1)} disabled={page === 1}>
           上一页
         </Button>
-        <span className="text-sm text-slate-600">
+        <span className="text-sm text-slate-600 dark:text-slate-300">
           第 {page} / {totalPages} 页
         </span>
         <Button variant="outline" onClick={() => goToPage(page + 1)} disabled={page === totalPages}>
@@ -98,15 +103,15 @@ export const Pagination: React.FC<PaginationProps> = ({
 
       <div className="hidden w-full items-center justify-between gap-6 sm:flex">
         <div className="flex flex-wrap items-center gap-4">
-          <p className="text-sm text-slate-600">
-            显示第 <span className="font-medium text-slate-900">{fromItem}</span> 到{' '}
-            <span className="font-medium text-slate-900">{toItem}</span> 条，共{' '}
-            <span className="font-medium text-slate-900">{total}</span> 条
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            显示第 <span className="font-medium text-slate-900 dark:text-slate-100">{fromItem}</span>{' '}
+            到 <span className="font-medium text-slate-900 dark:text-slate-100">{toItem}</span>{' '}
+            条，共 <span className="font-medium text-slate-900 dark:text-slate-100">{total}</span> 条
           </p>
 
           {showPageSizeSelector ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">每页</span>
+              <span className="text-sm text-slate-600 dark:text-slate-300">每页</span>
               <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(Number(value))}>
                 <SelectTrigger className="h-9 w-20 rounded-lg">
                   <SelectValue />
@@ -124,13 +129,13 @@ export const Pagination: React.FC<PaginationProps> = ({
 
           {showJump ? (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-slate-600">跳至</span>
+              <span className="text-sm text-slate-600 dark:text-slate-300">跳至</span>
               <input
                 value={jumpPage}
                 type="number"
                 min={1}
                 max={totalPages}
-                className="h-9 w-20 rounded-lg border border-slate-200 px-3 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
+                className="h-9 w-20 rounded-lg border border-slate-200 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:placeholder:text-slate-500"
                 placeholder="页码"
                 onChange={(event) => setJumpPage(event.target.value)}
                 onKeyUp={(event) => {
@@ -165,7 +170,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               return (
                 <span
                   key={key}
-                  className="inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 bg-white px-3 text-sm text-slate-500"
+                  className="inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 bg-white px-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
                 >
                   {pageItem}
                 </span>
@@ -180,8 +185,8 @@ export const Pagination: React.FC<PaginationProps> = ({
                 className={[
                   'inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 px-3 text-sm font-medium transition-colors',
                   active
-                    ? 'relative z-10 border-cyan-500 bg-cyan-50 text-cyan-600'
-                    : 'bg-white text-slate-700 hover:bg-slate-50',
+                    ? 'relative z-10 border-cyan-500 bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-200'
+                    : 'bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900',
                 ].join(' ')}
                 aria-current={active ? 'page' : undefined}
               >

@@ -83,7 +83,7 @@ export const DynamicFormViewer = ({
   onChange?: (id: string, value: any) => void;
 }) => {
   if (!formDef || !formDef.fields || formDef.fields.length === 0) {
-    return <div className="py-4 text-center text-sm text-slate-400">暂无表单字段</div>;
+    return <div className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">暂无表单字段</div>;
   }
 
   return (
@@ -95,7 +95,7 @@ export const DynamicFormViewer = ({
 
         return (
           <div key={field.id} className={field.type === 'TEXTAREA' ? 'col-span-2' : ''}>
-            <label className="mb-1 block text-xs font-bold text-slate-500">
+            <label className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">
               {field.label}
               {allowEdit && field.required ? <span className="text-red-500"> *</span> : null}
             </label>
@@ -151,8 +151,8 @@ export const DynamicFormViewer = ({
                 />
               )
             ) : (
-              <div className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
-                {isEmpty ? <span className="italic text-slate-400">未填写</span> : displayValue}
+              <div className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-100">
+                {isEmpty ? <span className="italic text-slate-400 dark:text-slate-500">未填写</span> : displayValue}
               </div>
             )}
           </div>

@@ -31,7 +31,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   const table = (
     <div className="overflow-x-auto">
       <table className="min-w-[1100px] w-full">
-        <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur">
+        <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-950/95">
           <tr>
             <TableHead className="w-[34%] px-4 py-3 text-left">标题</TableHead>
             <TableHead className="px-4 py-3 text-left">类型</TableHead>
@@ -41,23 +41,23 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
             <TableActionHead className="w-[220px] px-4 py-3">操作</TableActionHead>
           </tr>
         </TableHeader>
-        <tbody className="divide-y divide-slate-100">
+        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
           {announcements.map((item) => {
             const typeMeta = getAnnouncementTypeMeta(item.type);
             const statusMeta = getAnnouncementStatusMeta(item.status);
             const priorityMeta = getAnnouncementPriorityMeta(item.priority);
 
             return (
-              <tr key={item.announcementId} className="hover:bg-cyan-50/40">
+              <tr key={item.announcementId} className="hover:bg-cyan-50/40 dark:hover:bg-cyan-950/20">
                 <td className="w-[34%] px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                      {item.isTop === 1 ? <Pin size={14} className="text-amber-600" /> : null}
-                      <span className="truncate font-medium text-slate-900">{item.title}</span>
+                      {item.isTop === 1 ? <Pin size={14} className="text-amber-600 dark:text-amber-300" /> : null}
+                      <span className="truncate font-medium text-slate-900 dark:text-slate-100">{item.title}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span>#{item.announcementId}</span>
-                      <span className="text-slate-300">·</span>
+                      <span className="text-slate-300 dark:text-slate-700">·</span>
                       <span>{item.createTime ? new Date(item.createTime).toLocaleString() : '-'}</span>
                     </div>
                   </div>
@@ -93,7 +93,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                     {priorityMeta.label}
                   </span>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
+                <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                   {item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
@@ -149,7 +149,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/88 dark:ring-slate-800/70">
       {table}
     </div>
   );

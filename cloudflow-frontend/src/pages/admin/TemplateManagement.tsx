@@ -6,6 +6,7 @@ import {
   Plus,
   Save,
   Search,
+  ShieldOff,
   Trash2,
   X,
 } from "lucide-react";
@@ -15,17 +16,22 @@ import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
 import {
   Button,
   Input,
-  PermissionGuard,
+  Table,
+  TableBody,
+  TableCell,
   TableActionHead,
   TableHead,
   TableHeader,
+  TableRow,
   Textarea,
 } from "@/components/ui";
 import { TableRowActions } from "@/components/ui/table-row-actions";
+import { ConfirmDialog } from "@/components/common";
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
   WorkspacePageContent,
+  WorkspaceStatusPage,
 } from "@/components/workspace/WorkspacePrimitives";
 import {
   WorkspaceDialogShell,
@@ -35,6 +41,7 @@ import {
   WorkspaceResultCard,
   WorkspaceWorkbenchCard,
 } from "@/components/workspace/WorkspacePanels";
+import { cn } from "@/utils/cn";
 
 type TemplateStatus = "active" | "inactive";
 type StatusFilter = "all" | "active" | "inactive";
@@ -88,7 +95,19 @@ interface CategoryFormState {
   orderNum: number;
 }
 
+type DeleteTarget =
+  | { type: "template"; id: string; name: string }
+  | { type: "category"; id: string; name: string };
+
 const PAGE_SIZE = 10;
+const nativeSelectClassName =
+  "h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:border-slate-600";
+const fieldLabelClassName =
+  "mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200";
+const chipClassName =
+  "rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300";
+const infoPanelClassName =
+  "rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70";
 const DEFAULT_TEMPLATE_DEFINITION = {
   nodes: [
     { id: "start", type: "START", title: "开始" },
@@ -154,14 +173,6 @@ const formatDateCN = (date: Date) => {
 export const TemplateManagement = () => {
   const { isAdmin, canManageTemplates } = useWorkflowPermission();
 
-  if (!isAdmin || !canManageTemplates) {
-    return (
-      <PermissionGuard permissions={[]} roles={[]} hidden={false}>
-        <div />
-      </PermissionGuard>
-    );
-  }
-
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [categories, setCategories] = useState<CategoryNode[]>([]);
   const [loading, setLoading] = useState(false);
@@ -183,6 +194,7 @@ export const TemplateManagement = () => {
   );
   const [categoryForm, setCategoryForm] =
     useState<CategoryFormState>(createCategoryForm);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget | null>(null);
 
   const flatCategories = useMemo(
     () => flattenCategoryTree(categories),
@@ -361,10 +373,10 @@ export const TemplateManagement = () => {
   };
 
   const deleteTemplate = async (id: string) => {
-    if (!window.confirm("确定要删除此模板吗？此操作不可恢复。")) return;
     try {
       await request.delete(`/workflow/templates/${id}`);
       toast.success("模板删除成功");
+      setDeleteTarget(null);
       await Promise.all([loadTemplates(), loadCategories()]);
     } catch (error) {
       console.error("删除模板失败:", error);
@@ -404,16 +416,33 @@ export const TemplateManagement = () => {
   };
 
   const deleteCategory = async (category: CategoryNode) => {
-    if (!window.confirm(`确定要删除分类“${category.name}”吗？`)) return;
     try {
       await request.delete(`/workflow/templates/categories/${category.id}`);
       toast.success("分类删除成功");
       if (selectedCategory === category.id) setSelectedCategory("");
+      setDeleteTarget(null);
       await Promise.all([loadCategories(), loadTemplates()]);
     } catch (error) {
       console.error("删除分类失败:", error);
       toast.error("删除分类失败");
     }
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteTarget) return;
+
+    if (deleteTarget.type === "template") {
+      await deleteTemplate(deleteTarget.id);
+      return;
+    }
+
+    const category = flatCategories.find((item) => item.id === deleteTarget.id);
+    if (!category) {
+      toast.error("分类不存在或已被删除");
+      setDeleteTarget(null);
+      return;
+    }
+    await deleteCategory(category);
   };
 
   const activeTemplateCount = templates.filter(
@@ -440,18 +469,29 @@ export const TemplateManagement = () => {
     { label: "使用次数", value: `${totalUsageCount} 次` },
   ];
 
+  if (!isAdmin || !canManageTemplates) {
+    return (
+      <WorkspaceStatusPage
+        icon={<ShieldOff size={28} className="text-amber-500" />}
+        title="当前账号没有模板管理权限"
+        description="模板管理仅对具备治理权限的账号开放。你可以先返回模板库或流程管理页继续查看内容。"
+        iconWrapClassName="bg-amber-50 text-amber-500 dark:bg-amber-950/30 dark:text-amber-300"
+      />
+    );
+  }
+
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
                 <FolderPlus className="h-3.5 w-3.5" />
                 {todayLabel}
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {timeLabel}
               </span>
             </div>
@@ -477,27 +517,27 @@ export const TemplateManagement = () => {
               label="模板总量"
               value={total}
               hint="接口返回的模板总记录数"
-              aside={<Plus className="h-[18px] w-[18px] text-cyan-600" />}
+              aside={<Plus className="h-[18px] w-[18px] text-cyan-600 dark:text-cyan-300" />}
             />
             <WorkspaceMetricCard
               label="当前页"
               value={templates.length}
               hint="当前分页已加载模板数"
-              aside={<Search className="h-[18px] w-[18px] text-sky-500" />}
+              aside={<Search className="h-[18px] w-[18px] text-sky-500 dark:text-sky-300" />}
             />
             <WorkspaceMetricCard
               label="分类数"
               value={flatCategories.length}
               hint="分类树中的可用分类节点数"
               aside={
-                <FolderOpen className="h-[18px] w-[18px] text-amber-500" />
+                <FolderOpen className="h-[18px] w-[18px] text-amber-500 dark:text-amber-300" />
               }
             />
             <WorkspaceMetricCard
               label="启用模板"
               value={activeTemplateCount}
               hint={`累计使用 ${totalUsageCount} 次`}
-              aside={<Save className="h-[18px] w-[18px] text-emerald-500" />}
+              aside={<Save className="h-[18px] w-[18px] text-emerald-500 dark:text-emerald-300" />}
             />
           </div>
         </WorkspaceHeroCard>
@@ -507,13 +547,22 @@ export const TemplateManagement = () => {
           total={total}
           hasActiveFilters={hasActiveFilters}
           overviewItems={overviewItems}
+          headerBadges={
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <span className={chipClassName}>
+                {hasActiveFilters ? "已启用筛选" : "默认视图"}
+              </span>
+              <span className={chipClassName}>分类 {flatCategories.length} 个</span>
+              <span className={chipClassName}>启用模板 {activeTemplateCount} 个</span>
+            </div>
+          }
           quickFilterAside={
             hasActiveFilters ? (
               <Button variant="outline" size="sm" onClick={clearFilters}>
                 清空筛选
               </Button>
             ) : (
-              <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
+              <span className={chipClassName}>
                 当前显示默认视图
               </span>
             )
@@ -521,7 +570,7 @@ export const TemplateManagement = () => {
           filterBar={
             <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_220px]">
               <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
                   type="text"
                   placeholder="搜索模板名称"
@@ -539,7 +588,7 @@ export const TemplateManagement = () => {
                   setSelectedCategory(event.target.value);
                   setCurrentPage(1);
                 }}
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+                className={nativeSelectClassName}
               >
                 <option value="">全部分类</option>
                 {flatCategories.map((item) => (
@@ -555,7 +604,7 @@ export const TemplateManagement = () => {
                   setStatusFilter(event.target.value as StatusFilter);
                   setCurrentPage(1);
                 }}
-                className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+                className={nativeSelectClassName}
               >
                 <option value="all">全部状态</option>
                 <option value="active">仅启用</option>
@@ -570,7 +619,7 @@ export const TemplateManagement = () => {
           title="分类管理"
           description="分类树与模板归属关系统一在同一工作台中维护。"
         >
-          <div className="overflow-x-auto">
+          <div className="space-y-4 px-4 py-4">
             {flatCategories.length === 0 ? (
               <WorkspaceInlineState
                 icon={<FolderPlus size={22} />}
@@ -579,39 +628,55 @@ export const TemplateManagement = () => {
                 className="py-10"
               />
             ) : (
-              <table className="w-full min-w-[760px]">
-                <TableHeader>
-                  <tr>
-                    <TableHead>分类名称</TableHead>
-                    <TableHead>描述</TableHead>
-                    <TableHead>模板数</TableHead>
-                    <TableHead>排序</TableHead>
-                    <TableActionHead className="w-48">操作</TableActionHead>
-                  </tr>
-                </TableHeader>
-                <tbody className="divide-y divide-slate-100">
+              <>
+                <div className={infoPanelClassName}>
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-2">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        分类树概况
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className={chipClassName}>共 {flatCategories.length} 个分类节点</span>
+                        <span className={chipClassName}>当前筛选 {selectedCategory ? "已指定分类" : "全部分类"}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Table className="min-w-[760px]">
+                  <TableHeader>
+                    <tr>
+                      <TableHead>分类名称</TableHead>
+                      <TableHead>描述</TableHead>
+                      <TableHead>模板数</TableHead>
+                      <TableHead>排序</TableHead>
+                      <TableActionHead className="w-48">操作</TableActionHead>
+                    </tr>
+                  </TableHeader>
+                  <TableBody>
                   {flatCategories.map((category) => (
-                    <tr
+                    <TableRow
                       key={category.id}
-                      className="border-b border-slate-100 transition-colors hover:bg-slate-50"
                     >
-                      <td className="px-4 py-3 text-sm text-slate-700">
+                      <TableCell className="py-3 text-sm">
                         <span
                           style={{ paddingLeft: `${category.depth * 16}px` }}
+                          className="inline-flex items-center gap-2 text-slate-700 dark:text-slate-200"
                         >
+                          <FolderOpen className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                           {category.name}
                         </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-500">
+                      </TableCell>
+                      <TableCell className="py-3 text-sm text-slate-500 dark:text-slate-400">
                         {category.description || "-"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      </TableCell>
+                      <TableCell className="py-3 text-sm text-slate-600 dark:text-slate-300">
                         {category.templateCount ?? 0}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      </TableCell>
+                      <TableCell className="py-3 text-sm text-slate-600 dark:text-slate-300">
                         {category.orderNum ?? 0}
-                      </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                      </TableCell>
+                      <TableCell className="py-3 whitespace-nowrap text-right">
                         <TableRowActions
                           align="end"
                           actions={[
@@ -624,16 +689,22 @@ export const TemplateManagement = () => {
                             {
                               label: "删除",
                               icon: <Trash2 className="h-4 w-4" />,
-                              onClick: () => deleteCategory(category),
+                              onClick: () =>
+                                setDeleteTarget({
+                                  type: "category",
+                                  id: category.id,
+                                  name: category.name,
+                                }),
                               tone: "danger",
                             },
                           ]}
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                  </TableBody>
+                </Table>
+              </>
             )}
           </div>
         </WorkspaceResultCard>
@@ -656,7 +727,7 @@ export const TemplateManagement = () => {
             />
           }
         >
-          <div className="overflow-x-auto">
+          <div className="space-y-4 px-4 py-4">
             {loading ? (
               <WorkspaceInlineState
                 type="loading"
@@ -671,7 +742,24 @@ export const TemplateManagement = () => {
                 className="py-12"
               />
             ) : (
-              <table className="w-full min-w-[980px]">
+              <>
+                <div className={infoPanelClassName}>
+                  <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="space-y-2">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        模板结果概况
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className={chipClassName}>共 {total} 个模板</span>
+                        <span className={chipClassName}>当前页 {templates.length} 个</span>
+                        <span className={chipClassName}>启用 {activeTemplateCount} 个</span>
+                        <span className={chipClassName}>累计使用 {totalUsageCount} 次</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <Table className="min-w-[980px]">
                 <TableHeader>
                   <tr>
                     <TableHead>模板名称</TableHead>
@@ -682,53 +770,57 @@ export const TemplateManagement = () => {
                     <TableActionHead className="w-52">操作</TableActionHead>
                   </tr>
                 </TableHeader>
-                <tbody className="divide-y divide-slate-100">
+                <TableBody>
                   {templates.map((template) => (
-                    <tr
+                    <TableRow
                       key={template.id}
-                      className="border-b border-slate-100 transition-colors hover:bg-slate-50"
                     >
-                      <td className="px-4 py-4">
+                      <TableCell className="py-4">
                         <div>
-                          <div className="font-medium text-slate-900">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">
                             {template.name}
                           </div>
-                          <div className="mt-1 text-sm text-slate-500">
+                          <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                             {template.description || "-"}
                           </div>
                         </div>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600">
+                      </TableCell>
+                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
                         {template.categoryName || "-"}
-                      </td>
-                      <td className="px-4 py-4">
+                      </TableCell>
+                      <TableCell className="py-4">
                         <div className="flex flex-wrap gap-1">
                           {template.tags?.slice(0, 3).map((tag) => (
                             <span
                               key={tag}
-                              className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600"
+                              className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                             >
                               {tag}
                             </span>
                           ))}
                           {(template.tags?.length || 0) > 3 ? (
-                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500">
+                            <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-500 dark:bg-slate-900 dark:text-slate-400">
                               +{(template.tags?.length || 0) - 3}
                             </span>
                           ) : null}
                         </div>
-                      </td>
-                      <td className="px-4 py-4 text-sm text-slate-600">
+                      </TableCell>
+                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
                         {template.usageCount ?? 0}
-                      </td>
-                      <td className="px-4 py-4">
+                      </TableCell>
+                      <TableCell className="py-4">
                         <span
-                          className={`rounded-full px-2.5 py-1 text-xs font-medium ${template.status === "active" ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100" : "bg-slate-100 text-slate-600 ring-1 ring-slate-200/80"}`}
+                          className={cn(
+                            "rounded-full px-2.5 py-1 text-xs font-medium",
+                            template.status === "active"
+                              ? "border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200"
+                              : "border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300",
+                          )}
                         >
                           {template.status === "active" ? "启用" : "禁用"}
                         </span>
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-right">
+                      </TableCell>
+                      <TableCell className="py-4 whitespace-nowrap text-right">
                         <TableRowActions
                           align="end"
                           actions={[
@@ -741,16 +833,22 @@ export const TemplateManagement = () => {
                             {
                               label: "删除",
                               icon: <Trash2 className="h-4 w-4" />,
-                              onClick: () => deleteTemplate(template.id),
+                              onClick: () =>
+                                setDeleteTarget({
+                                  type: "template",
+                                  id: template.id,
+                                  name: template.name,
+                                }),
                               tone: "danger",
                             },
                           ]}
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
+              </>
             )}
           </div>
         </WorkspaceResultCard>
@@ -761,11 +859,12 @@ export const TemplateManagement = () => {
             description="统一维护模板名称、分类、标签与流程定义。"
             onClose={closeTemplateModal}
             maxWidthClassName="max-w-4xl"
+            headerAside={<span className={chipClassName}>{editingTemplate ? "模板编辑" : "模板新建"}</span>}
           >
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className={fieldLabelClassName}>
                     模板名称 <span className="text-red-500">*</span>
                   </label>
                   <Input
@@ -780,7 +879,7 @@ export const TemplateManagement = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className={fieldLabelClassName}>
                     分类 <span className="text-red-500">*</span>
                   </label>
                   <select
@@ -791,7 +890,7 @@ export const TemplateManagement = () => {
                         categoryId: event.target.value,
                       }))
                     }
-                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+                    className={nativeSelectClassName}
                   >
                     <option value="">请选择分类</option>
                     {flatCategories.map((item) => (
@@ -804,7 +903,7 @@ export const TemplateManagement = () => {
                 </div>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={fieldLabelClassName}>
                   模板描述
                 </label>
                 <Textarea
@@ -819,8 +918,8 @@ export const TemplateManagement = () => {
                   placeholder="请输入模板描述"
                 />
               </div>
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+              <div className={infoPanelClassName}>
+                <label className={fieldLabelClassName}>
                   标签 <span className="text-red-500">*</span>
                 </label>
                 <div className="mb-2 flex gap-2">
@@ -843,10 +942,14 @@ export const TemplateManagement = () => {
                   {templateForm.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700"
+                      className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200"
                     >
                       {tag}
-                      <button type="button" onClick={() => removeTag(tag)}>
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="text-cyan-700 dark:text-cyan-200"
+                      >
                         <X className="h-3 w-3" />
                       </button>
                     </span>
@@ -854,7 +957,7 @@ export const TemplateManagement = () => {
                 </div>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={fieldLabelClassName}>
                   流程定义（JSON） <span className="text-red-500">*</span>
                 </label>
                 <Textarea
@@ -871,7 +974,7 @@ export const TemplateManagement = () => {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className={fieldLabelClassName}>
                     预览图 URL
                   </label>
                   <Input
@@ -886,7 +989,7 @@ export const TemplateManagement = () => {
                   />
                 </div>
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                  <label className={fieldLabelClassName}>
                     状态
                   </label>
                   <select
@@ -897,7 +1000,7 @@ export const TemplateManagement = () => {
                         status: event.target.value as TemplateStatus,
                       }))
                     }
-                    className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+                    className={nativeSelectClassName}
                   >
                     <option value="active">启用</option>
                     <option value="inactive">禁用</option>
@@ -923,10 +1026,11 @@ export const TemplateManagement = () => {
             description="维护模板分类的层级、名称和排序。"
             onClose={closeCategoryModal}
             maxWidthClassName="max-w-2xl"
+            headerAside={<span className={chipClassName}>{editingCategory ? "分类编辑" : "分类新建"}</span>}
           >
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={fieldLabelClassName}>
                   父分类
                 </label>
                 <select
@@ -937,7 +1041,7 @@ export const TemplateManagement = () => {
                       parentId: event.target.value,
                     }))
                   }
-                  className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
+                  className={nativeSelectClassName}
                 >
                   <option value="">无（顶级分类）</option>
                   {selectableParentCategories.map((item) => (
@@ -949,7 +1053,7 @@ export const TemplateManagement = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={fieldLabelClassName}>
                   分类名称 <span className="text-red-500">*</span>
                 </label>
                 <Input
@@ -964,7 +1068,7 @@ export const TemplateManagement = () => {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={fieldLabelClassName}>
                   分类描述
                 </label>
                 <Textarea
@@ -980,7 +1084,7 @@ export const TemplateManagement = () => {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
+                <label className={fieldLabelClassName}>
                   排序号
                 </label>
                 <Input
@@ -1003,6 +1107,21 @@ export const TemplateManagement = () => {
             </div>
           </WorkspaceDialogShell>
         ) : null}
+
+        <ConfirmDialog
+          open={Boolean(deleteTarget)}
+          title={deleteTarget?.type === "template" ? "确认删除模板" : "确认删除分类"}
+          message={
+            deleteTarget?.type === "template"
+              ? `确定要删除模板“${deleteTarget.name}”吗？此操作不可恢复。`
+              : `确定要删除分类“${deleteTarget?.name || ""}”吗？`
+          }
+          confirmText="确认删除"
+          cancelText="取消"
+          danger={true}
+          onCancel={() => setDeleteTarget(null)}
+          onConfirm={() => void confirmDelete()}
+        />
       </WorkspacePageContent>
     </div>
   );

@@ -16,13 +16,17 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, Card } from '@/components/ui';
+import { Button } from '@/components/ui';
 import {
   WorkspaceBackdrop,
   WorkspaceHeroMetricsSection,
+  WorkspaceInlineState,
+  WorkspaceMetricCard,
   WorkspacePageContent,
+  WorkspaceResultCard,
+  WorkspaceSectionCard,
   WorkspaceStatusPage,
-  workspaceGlassSurfaceClassName
+  WorkspaceWorkbenchCard,
 } from '@/components/workspace';
 import {
   ImportResult,
@@ -31,6 +35,7 @@ import {
   validateImportFile
 } from '../../services/api/workflow';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
+import { cn } from '@/utils/cn';
 
 type FileStatus =
   | 'pending'
@@ -93,6 +98,53 @@ const conflictStrategyMeta = {
     detail: '适合明确以导入文件为准的修复或迁移场景，建议先确认目标流程。'
   }
 } as const;
+
+const strategyKeys = ['skip', 'rename', 'overwrite'] as const;
+
+const panelClassName =
+  'rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78';
+const subtlePanelClassName =
+  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
+const surfaceChipClassName =
+  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+
+interface ConflictStrategySelectorProps {
+  value: 'overwrite' | 'rename' | 'skip';
+  disabled?: boolean;
+  compact?: boolean;
+  onChange: (strategy: 'overwrite' | 'rename' | 'skip') => void;
+}
+
+const ConflictStrategySelector: React.FC<ConflictStrategySelectorProps> = ({
+  value,
+  disabled = false,
+  compact = false,
+  onChange,
+}) => (
+  <div className="inline-flex flex-wrap items-center gap-1 rounded-2xl border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
+    {strategyKeys.map((strategy) => {
+      const active = value === strategy;
+      return (
+        <Button
+          key={strategy}
+          type="button"
+          variant={active ? 'soft' : 'ghost'}
+          size="sm"
+          disabled={disabled}
+          onClick={() => onChange(strategy)}
+          className={cn(
+            compact ? 'h-8 rounded-xl px-3 text-xs' : 'h-9 rounded-xl px-4 text-xs',
+            active
+              ? 'border-cyan-200 bg-cyan-50 text-cyan-700 shadow-none dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200'
+              : 'text-slate-500 hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-100',
+          )}
+        >
+          {conflictStrategyMeta[strategy].label}
+        </Button>
+      );
+    })}
+  </div>
+);
 
 /**
  * 解析后端批量导入汇总消息：
@@ -462,6 +514,45 @@ export const WorkflowImport: React.FC = () => {
     ]
   );
 
+  const workbenchOverviewItems = useMemo(
+    () => [
+      {
+        label: '导入模式',
+        value: canImportBatch ? '批量导入' : '单文件导入',
+      },
+      {
+        label: '冲突策略',
+        value: currentStrategyMeta.label,
+      },
+      {
+        label: '队列状态',
+        value: hasQueuedFiles ? `${stats.valid} 可导入 / ${waitingCount} 待校验` : '等待加入文件',
+      },
+      {
+        label: '处理结果',
+        value: importSummary
+          ? `成功 ${importSummary.success} / 失败 ${importSummary.failed}`
+          : completedCount > 0
+            ? `已处理 ${completedCount} 个`
+            : '尚未开始',
+      },
+    ],
+    [
+      canImportBatch,
+      completedCount,
+      currentStrategyMeta.label,
+      hasQueuedFiles,
+      importSummary,
+      stats.valid,
+      waitingCount,
+    ],
+  );
+
+  const importProgressPercent =
+    importing && importProgress.total > 0
+      ? Math.min(100, Math.round((importProgress.current / importProgress.total) * 100))
+      : 0;
+
   if (!canImport) {
     return (
       <WorkspaceStatusPage
@@ -486,12 +577,12 @@ export const WorkflowImport: React.FC = () => {
       <WorkspacePageContent>
         <WorkspaceHeroMetricsSection
           badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
                 <Download size={14} />
                 Workflow Admin
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {canImportBatch ? '支持批量导入' : '当前为单文件导入'}
               </span>
             </div>
@@ -514,208 +605,271 @@ export const WorkflowImport: React.FC = () => {
           metrics={heroMetrics}
         />
 
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-          <Card className={`${workspaceGlassSurfaceClassName} p-4 sm:p-5`}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">导入设置</div>
-                  <h3 className="mt-2 text-lg font-semibold text-slate-900">全局冲突策略</h3>
-                  <p className="mt-1 text-sm text-slate-500">当导入流程名称已存在时，统一决定保留、重命名还是覆盖。</p>
-                </div>
-                <span className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                  当前策略：{currentStrategyMeta.label}
-                </span>
-              </div>
-
-              <div className="inline-flex flex-wrap gap-1 rounded-xl bg-slate-100 p-1">
-                <button
-                  type="button"
-                  onClick={() => setGlobalConflictStrategy('skip')}
-                  className={`rounded-lg px-4 py-2 text-xs font-medium transition ${
-                    globalConflictStrategy === 'skip' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  跳过
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGlobalConflictStrategy('rename')}
-                  className={`rounded-lg px-4 py-2 text-xs font-medium transition ${
-                    globalConflictStrategy === 'rename' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  重命名
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGlobalConflictStrategy('overwrite')}
-                  className={`rounded-lg px-4 py-2 text-xs font-medium transition ${
-                    globalConflictStrategy === 'overwrite' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-900'
-                  }`}
-                >
-                  覆盖
-                </button>
-              </div>
-
-              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-sm text-cyan-700">
-                <div className="flex items-start gap-3">
-                    <div className="rounded-xl border border-cyan-200 bg-white p-2 text-cyan-600">
-                    <Info size={16} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-medium text-slate-900">{currentStrategyMeta.description}</div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500">{currentStrategyMeta.detail}</div>
-                  </div>
-                </div>
-              </div>
-
-              {!canImportBatch && (
-                <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700">
-                  当前账号仅支持单文件导入，不支持批量导入。
-                </div>
-              )}
+        <WorkspaceWorkbenchCard
+          eyebrow="导入控制"
+          title="导入工作台"
+          total={stats.total}
+          hasActiveFilters={hasQueuedFiles || Boolean(importSummary)}
+          overviewItems={workbenchOverviewItems}
+          headerBadges={(
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <span className={surfaceChipClassName}>
+                {canImportBatch ? '批量导入已开启' : '单文件导入模式'}
+              </span>
+              <span className={surfaceChipClassName}>
+                {hasQueuedFiles ? `当前队列 ${stats.total} 个` : '导入队列为空'}
+              </span>
+              <span className={surfaceChipClassName}>
+                {importing ? `导入中 ${importProgress.current}/${importProgress.total}` : '等待执行'}
+              </span>
             </div>
-          </Card>
+          )}
+          quickFilterAside={hasQueuedFiles ? (
+            <Button variant="outline" size="sm" onClick={clearAll} disabled={importing}>
+              清空队列
+            </Button>
+          ) : (
+            <span className={surfaceChipClassName}>拖拽或选择 JSON 文件后开始导入</span>
+          )}
+          filterBar={(
+            <div className="grid gap-3 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+              <div className={panelClassName}>
+                <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                        导入设置
+                      </div>
+                      <h3 className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        全局冲突策略
+                      </h3>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        当导入流程名称已存在时，统一决定保留、重命名还是覆盖。
+                      </p>
+                    </div>
+                    <span className={surfaceChipClassName}>当前策略：{currentStrategyMeta.label}</span>
+                  </div>
 
-          <Card
-            className={`${workspaceGlassSurfaceClassName} border-2 border-dashed p-5 sm:p-6 transition-all ${
-              isDragging ? 'border-slate-300 bg-slate-50' : 'border-slate-200 bg-white'
-            }`}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-          >
-            <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-              <div className={`rounded-full border p-4 ${isDragging ? 'border-slate-300 bg-white text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-400'}`}>
-                <Upload size={32} />
+                  <ConflictStrategySelector
+                    value={globalConflictStrategy}
+                    onChange={setGlobalConflictStrategy}
+                  />
+
+                  <div className="rounded-2xl border border-cyan-200 bg-cyan-50/80 p-4 text-sm text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
+                    <div className="flex items-start gap-3">
+                      <div className="rounded-xl border border-cyan-200 bg-white p-2 text-cyan-600 dark:border-cyan-900/70 dark:bg-slate-950 dark:text-cyan-200">
+                        <Info size={16} />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                          {currentStrategyMeta.description}
+                        </div>
+                        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                          {currentStrategyMeta.detail}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {!canImportBatch ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                      当前账号仅支持单文件导入，不支持批量导入。
+                    </div>
+                  ) : null}
+                </div>
               </div>
 
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">上传文件</div>
-                <p className="mt-2 text-base font-semibold text-slate-900">拖拽文件到此处，或点击选择文件</p>
-                <p className="mt-2 text-sm text-slate-500">
-                  支持 JSON 格式流程定义文件
-                  {canImportBatch ? '，可同时选择多个文件' : '，当前账号仅可选择单个文件'}
-                </p>
-              </div>
+              <div
+                className={cn(
+                  'rounded-2xl border-2 border-dashed p-5 transition-all sm:p-6',
+                  isDragging
+                    ? 'border-cyan-300 bg-cyan-50/80 dark:border-cyan-800 dark:bg-cyan-950/30'
+                    : 'border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-950/78',
+                )}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
+                <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
+                  <div
+                    className={cn(
+                      'rounded-full border p-4',
+                      isDragging
+                        ? 'border-cyan-300 bg-white text-cyan-700 dark:border-cyan-800 dark:bg-slate-950 dark:text-cyan-200'
+                        : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
+                    )}
+                  >
+                    <Upload size={32} />
+                  </div>
 
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept=".json,application/json"
-                multiple={canImportBatch}
-                onChange={(event) => {
-                  handleFileSelect(event.target.files);
-                  event.currentTarget.value = '';
-                }}
-              />
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                      上传文件
+                    </div>
+                    <p className="mt-2 text-base font-semibold text-slate-900 dark:text-slate-100">
+                      拖拽文件到此处，或点击选择文件
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                      支持 JSON 格式流程定义文件
+                      {canImportBatch ? '，可同时选择多个文件' : '，当前账号仅可选择单个文件'}
+                    </p>
+                  </div>
 
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                <Button size="lg" onClick={() => fileInputRef.current?.click()}>
-                  <Upload size={16} className="mr-2" />
-                  选择文件
-                </Button>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                  {hasQueuedFiles ? `当前已加入 ${stats.total} 个文件` : '等待首次导入'}
-                </span>
-              </div>
-            </div>
-          </Card>
-        </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".json,application/json"
+                    multiple={canImportBatch}
+                    onChange={(event) => {
+                      handleFileSelect(event.target.files);
+                      event.currentTarget.value = '';
+                    }}
+                  />
 
-        {files.length > 0 && (
-          <Card className={workspaceGlassSurfaceClassName}>
-            <div className="border-b border-slate-100 bg-slate-50 px-4 py-4 sm:px-5">
-              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">导入队列</div>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-slate-600">
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                      共 {stats.total} 个文件
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <Button size="lg" onClick={() => fileInputRef.current?.click()}>
+                      <Upload size={16} className="mr-2" />
+                      选择文件
+                    </Button>
+                    <span className={surfaceChipClassName}>
+                      {hasQueuedFiles ? `当前已加入 ${stats.total} 个文件` : '等待首次导入'}
                     </span>
-                    {stats.valid > 0 && (
-                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-600">
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-center gap-2">
+                    <span className={surfaceChipClassName}>支持格式：JSON</span>
+                    <span className={surfaceChipClassName}>
+                      {canImportBatch ? '允许多文件拖拽上传' : '当前仅保留单文件上传'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        />
+
+        <WorkspaceResultCard
+          total={stats.total}
+          title="导入队列"
+          description="逐个校验和导入文件，统一追踪每个文件的状态、告警和冲突策略。"
+        >
+          <div className="space-y-4 px-4 py-4">
+            <div className={panelClassName}>
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0 space-y-3">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    本轮队列概况
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className={surfaceChipClassName}>共 {stats.total} 个文件</span>
+                    {stats.valid > 0 ? (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-[11px] font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
                         {stats.valid} 个有效
                       </span>
-                    )}
-                    {stats.invalid > 0 && (
-                      <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-medium text-rose-600">
+                    ) : null}
+                    {stats.invalid > 0 ? (
+                      <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-medium text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
                         {stats.invalid} 个无效
                       </span>
-                    )}
-                    {stats.success > 0 && (
-                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[11px] font-medium text-cyan-600">
+                    ) : null}
+                    {stats.success > 0 ? (
+                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[11px] font-medium text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
                         {stats.success} 个成功
                       </span>
-                    )}
-                    {stats.failed > 0 && (
-                      <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-medium text-orange-600">
+                    ) : null}
+                    {stats.failed > 0 ? (
+                      <span className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-[11px] font-medium text-orange-600 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200">
                         {stats.failed} 个失败
                       </span>
-                    )}
-                    {stats.partial > 0 && (
-                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-600">
+                    ) : null}
+                    {stats.partial > 0 ? (
+                      <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-600 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
                         {stats.partial} 个部分成功
                       </span>
-                    )}
+                    ) : null}
+                    {stats.skipped > 0 ? (
+                      <span className="rounded-full border border-yellow-200 bg-yellow-50 px-3 py-1.5 text-[11px] font-medium text-yellow-700 dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-200">
+                        {stats.skipped} 个跳过
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
+                    队列会保留每个文件的校验结果、导入告警和单文件冲突策略。失败项可以调整策略后继续重试。
                   </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {stats.failed > 0 && !importing && (
+                  {stats.failed > 0 && !importing ? (
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={retryFailed}
-                      className="border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700"
+                      className="border-orange-200 bg-orange-50 text-orange-600 hover:border-orange-300 hover:bg-orange-100 hover:text-orange-700 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200 dark:hover:border-orange-800 dark:hover:bg-orange-950/50"
                     >
                       重试失败
                     </Button>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={clearAll}
-                    disabled={importing}
-                  >
+                  ) : null}
+                  <Button variant="outline" size="sm" onClick={clearAll} disabled={importing}>
                     清空列表
                   </Button>
                 </div>
               </div>
             </div>
 
-            <div className="max-h-96 divide-y divide-slate-100 overflow-y-auto">
-              {files.map((fileWithStatus) => (
-                <FileItem
-                  key={fileWithStatus.id}
-                  fileWithStatus={fileWithStatus}
-                  disabled={importing}
-                  onRemove={() => removeFile(fileWithStatus.id)}
-                  onUpdateStrategy={(strategy) => updateConflictStrategy(fileWithStatus.id, strategy)}
-                />
-              ))}
-            </div>
+            {files.length > 0 ? (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/95 dark:border-slate-800 dark:bg-slate-950/78">
+                <div className="max-h-[34rem] divide-y divide-slate-100 overflow-y-auto dark:divide-slate-800">
+                  {files.map((fileWithStatus) => (
+                    <FileItem
+                      key={fileWithStatus.id}
+                      fileWithStatus={fileWithStatus}
+                      disabled={importing}
+                      onRemove={() => removeFile(fileWithStatus.id)}
+                      onUpdateStrategy={(strategy) => updateConflictStrategy(fileWithStatus.id, strategy)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <WorkspaceInlineState
+                icon={<Upload size={20} className="text-cyan-600 dark:text-cyan-200" />}
+                title="导入队列为空"
+                description="选择或拖拽流程 JSON 文件后，这里会显示每个文件的校验结果、导入状态和冲突策略。"
+                type="info"
+              />
+            )}
 
-            <div className="border-t border-slate-100 bg-white px-4 py-4 sm:px-5">
+            <div className={panelClassName}>
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-slate-500">
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    导入执行
+                  </div>
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {importing
+                      ? `正在导入 ${importProgress.current}/${importProgress.total}，按顺序执行可避免冲突策略竞争。`
+                      : stats.valid > 0
+                        ? `已有 ${stats.valid} 个文件通过校验，可直接开始导入。`
+                        : '先完成文件校验，再执行导入。'}
+                  </div>
                   {importing ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 size={16} className="animate-spin text-slate-500" />
-                      正在导入 {importProgress.current}/{importProgress.total}...
-                    </span>
-                  ) : (
-                    <span>{stats.valid > 0 ? `已有 ${stats.valid} 个文件通过校验，可直接开始导入。` : '先完成文件校验，再执行导入。'}</span>
-                  )}
+                    <div className="mt-3 space-y-2">
+                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <Loader2 size={14} className="animate-spin" />
+                        当前进度 {importProgressPercent}%
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
+                        <div
+                          className="h-2 rounded-full bg-gradient-to-r from-cyan-500 to-teal-500 transition-all duration-300"
+                          style={{ width: `${importProgressPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
 
-                <Button
-                  size="lg"
-                  onClick={handleImport}
-                  disabled={importing || stats.valid === 0}
-                >
+                <Button size="lg" onClick={handleImport} disabled={importing || stats.valid === 0}>
                   {importing ? (
                     <>
                       <Loader2 size={16} className="mr-2 animate-spin" />
@@ -730,51 +884,54 @@ export const WorkflowImport: React.FC = () => {
                 </Button>
               </div>
             </div>
-          </Card>
-        )}
+          </div>
+        </WorkspaceResultCard>
 
-        {importSummary && (
-          <Card className={`${workspaceGlassSurfaceClassName} p-5 sm:p-6`}>
-            <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">导入结果</div>
-                  <h3 className="mt-2 flex items-center gap-2 text-lg font-semibold text-slate-900">
-                    <CheckCircle2 size={20} className="text-emerald-500" />
-                    导入完成
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-500">统一回看本轮导入结果，便于继续处理失败项或重复导入。</p>
-                </div>
-                <span className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                  本轮共处理 {importSummary.total} 个文件
-                </span>
-              </div>
-
-              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 text-center shadow-sm">
-                  <div className="text-2xl font-bold text-slate-900">{importSummary.total}</div>
-                  <div className="mt-1 text-xs text-slate-500">总计</div>
-                </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-center shadow-sm">
-                  <div className="text-2xl font-bold text-emerald-600">{importSummary.success}</div>
-                  <div className="mt-1 text-xs text-emerald-600">成功</div>
-                </div>
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-center shadow-sm">
-                  <div className="text-2xl font-bold text-amber-600">{importSummary.partial}</div>
-                  <div className="mt-1 text-xs text-amber-600">部分成功</div>
-                </div>
-                <div className="rounded-2xl border border-orange-200 bg-orange-50 p-4 text-center shadow-sm">
-                  <div className="text-2xl font-bold text-orange-600">{importSummary.failed}</div>
-                  <div className="mt-1 text-xs text-orange-600">失败</div>
-                </div>
-                <div className="rounded-2xl border border-cyan-200 bg-cyan-50 p-4 text-center shadow-sm">
-                  <div className="text-2xl font-bold text-cyan-600">{importSummary.skipped}</div>
-                  <div className="mt-1 text-xs text-cyan-600">跳过</div>
-                </div>
-              </div>
+        {importSummary ? (
+          <WorkspaceSectionCard
+            eyebrow="结果复盘"
+            title="导入结果摘要"
+            description="统一回看本轮导入结果，便于继续处理失败项、冲突项或重复导入。"
+            headerAside={<span className={surfaceChipClassName}>本轮共处理 {importSummary.total} 个文件</span>}
+          >
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              <WorkspaceMetricCard
+                label="总计"
+                value={importSummary.total}
+                hint="进入本轮导入流程的文件总数"
+                aside={<FileText size={18} className="text-slate-500 dark:text-slate-300" />}
+              />
+              <WorkspaceMetricCard
+                label="成功"
+                value={importSummary.success}
+                hint="已成功写入并完成导入"
+                aside={<CheckCircle2 size={18} className="text-emerald-500 dark:text-emerald-300" />}
+                className="border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/70 dark:bg-emerald-950/30"
+              />
+              <WorkspaceMetricCard
+                label="部分成功"
+                value={importSummary.partial}
+                hint="批量文件中存在部分成功记录"
+                aside={<AlertTriangle size={18} className="text-amber-500 dark:text-amber-300" />}
+                className="border-amber-200 bg-amber-50/80 dark:border-amber-900/70 dark:bg-amber-950/30"
+              />
+              <WorkspaceMetricCard
+                label="失败"
+                value={importSummary.failed}
+                hint="需要调整文件或策略后重试"
+                aside={<FileX size={18} className="text-orange-500 dark:text-orange-300" />}
+                className="border-orange-200 bg-orange-50/80 dark:border-orange-900/70 dark:bg-orange-950/30"
+              />
+              <WorkspaceMetricCard
+                label="跳过"
+                value={importSummary.skipped}
+                hint="按当前冲突策略保留原流程"
+                aside={<FileWarning size={18} className="text-yellow-600 dark:text-yellow-300" />}
+                className="border-yellow-200 bg-yellow-50/80 dark:border-yellow-900/70 dark:bg-yellow-950/30"
+              />
             </div>
-          </Card>
-        )}
+          </WorkspaceSectionCard>
+        ) : null}
       </WorkspacePageContent>
     </div>
   );
@@ -801,14 +958,26 @@ const FileItem: React.FC<FileItemProps> = ({
   };
 
   const statusBadgeClass = (() => {
-    if (status === 'valid') return 'bg-green-100 text-green-600';
-    if (status === 'invalid') return 'bg-red-100 text-red-600';
-    if (status === 'success') return 'bg-cyan-50 text-cyan-600';
-    if (status === 'partial') return 'bg-amber-100 text-amber-700';
-    if (status === 'failed') return 'bg-orange-100 text-orange-600';
-    if (status === 'skipped') return 'bg-yellow-100 text-yellow-600';
-    return 'bg-slate-100 text-slate-600';
+    if (status === 'valid') return 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200';
+    if (status === 'invalid') return 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
+    if (status === 'success') return 'border border-cyan-200 bg-cyan-50 text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200';
+    if (status === 'partial') return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
+    if (status === 'failed') return 'border border-orange-200 bg-orange-50 text-orange-600 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200';
+    if (status === 'skipped') return 'border border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-200';
+    return 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300';
   })();
+
+  const statusIconWrapClass = (() => {
+    if (status === 'valid') return 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200';
+    if (status === 'invalid') return 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
+    if (status === 'success') return 'border border-cyan-200 bg-cyan-50 text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200';
+    if (status === 'partial') return 'border border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
+    if (status === 'failed') return 'border border-orange-200 bg-orange-50 text-orange-600 dark:border-orange-900/70 dark:bg-orange-950/30 dark:text-orange-200';
+    if (status === 'skipped') return 'border border-yellow-200 bg-yellow-50 text-yellow-700 dark:border-yellow-900/70 dark:bg-yellow-950/30 dark:text-yellow-200';
+    return 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400';
+  })();
+
+  const canAdjustStrategy = ['valid', 'failed', 'partial', 'skipped'].includes(status);
 
   const StatusIcon = () => {
     if (status === 'validating') return <Loader2 size={16} className="animate-spin text-cyan-600" />;
@@ -823,133 +992,148 @@ const FileItem: React.FC<FileItemProps> = ({
   };
 
   return (
-    <div className="p-4 hover:bg-slate-50 transition-colors">
+    <div className="p-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60">
       <div className="flex items-start gap-3">
-        <div className="mt-1">
+        <div className={cn('mt-1 flex h-9 w-9 items-center justify-center rounded-xl', statusIconWrapClass)}>
           <StatusIcon />
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-sm font-medium text-slate-800 truncate">{file.name}</span>
-            <span className={`text-xs px-2 py-0.5 rounded ${statusBadgeClass}`}>{statusTextMap[status]}</span>
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {file.name}
+                </span>
+                <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', statusBadgeClass)}>
+                  {statusTextMap[status]}
+                </span>
+              </div>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <span className={surfaceChipClassName}>{(file.size / 1024).toFixed(2)} KB</span>
+                {validation?.workflowName ? (
+                  <span className={surfaceChipClassName}>流程：{validation.workflowName}</span>
+                ) : null}
+                {validation?.version ? (
+                  <span className={surfaceChipClassName}>版本：v{validation.version}</span>
+                ) : null}
+              </div>
+            </div>
+
+            {!disabled && status !== 'importing' ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onRemove}
+                className="mt-1 text-slate-400 hover:bg-transparent hover:text-red-500 dark:text-slate-500 dark:hover:text-red-300"
+                title="移除"
+              >
+                <X size={16} />
+              </Button>
+            ) : null}
           </div>
 
-          <div className="text-xs text-slate-500 mb-2">{(file.size / 1024).toFixed(2)} KB</div>
-
           {validation && (
-            <div className="space-y-1 mb-2">
-              {validation.workflowName && (
-                <div className="text-xs text-slate-600">
-                  流程名称: <span className="font-medium">{validation.workflowName}</span>
-                  {validation.version ? ` (v${validation.version})` : ''}
+            <div className="space-y-2">
+              {validation.errors?.length ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs leading-6 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
+                  <div className="mb-1 font-medium">校验错误</div>
+                  <div className="space-y-1">
+                    {validation.errors.map((error, index) => (
+                      <div key={`${error}-${index}`} className="flex items-start gap-1.5">
+                        <AlertCircle size={12} className="mt-1 flex-shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              )}
+              ) : null}
 
-              {validation.errors?.map((error, index) => (
-                <div key={`${error}-${index}`} className="flex items-start gap-1 text-xs text-red-600">
-                  <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-                  <span>{error}</span>
+              {validation.warnings?.length ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs leading-6 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                  <div className="mb-1 font-medium">校验警告</div>
+                  <div className="space-y-1">
+                    {validation.warnings.map((warning, index) => (
+                      <div key={`${warning}-${index}`} className="flex items-start gap-1.5">
+                        <AlertTriangle size={12} className="mt-1 flex-shrink-0" />
+                        <span>{warning}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              ) : null}
 
-              {validation.warnings?.map((warning, index) => (
-                <div key={`${warning}-${index}`} className="flex items-start gap-1 text-xs text-yellow-600">
-                  <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
-                  <span>{warning}</span>
+              {!!validation.unsupportedNodeTypes?.length ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs leading-6 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
+                  不支持的节点类型：{validation.unsupportedNodeTypes.join(', ')}
                 </div>
-              ))}
-
-              {!!validation.unsupportedNodeTypes?.length && (
-                <div className="text-xs text-red-600">
-                  不支持的节点类型: {validation.unsupportedNodeTypes.join(', ')}
-                </div>
-              )}
+              ) : null}
             </div>
           )}
 
           {importResult && (
-            <div className="space-y-1 mb-2">
+            <div className="space-y-2">
               {importResult.message && (
                 <div
-                  className={`text-xs ${
-                    importResult.action === 'failed' ? 'text-red-600' : 'text-slate-600'
-                  }`}
+                  className={cn(
+                    'rounded-2xl border px-4 py-3 text-xs leading-6',
+                    importResult.action === 'failed'
+                      ? 'border-rose-200 bg-rose-50/80 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200'
+                      : 'border-slate-200 bg-slate-50/90 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300',
+                  )}
                 >
                   {importResult.message}
                 </div>
               )}
-              {importResult.errors?.map((error, index) => (
-                <div key={`${error}-${index}`} className="flex items-start gap-1 text-xs text-red-600">
-                  <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-                  <span>{error}</span>
+              {importResult.errors?.length ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-3 text-xs leading-6 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200">
+                  <div className="mb-1 font-medium">导入错误</div>
+                  <div className="space-y-1">
+                    {importResult.errors.map((error, index) => (
+                      <div key={`${error}-${index}`} className="flex items-start gap-1.5">
+                        <AlertCircle size={12} className="mt-1 flex-shrink-0" />
+                        <span>{error}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
-              {importResult.warnings?.map((warning, index) => (
-                <div key={`${warning}-${index}`} className="flex items-start gap-1 text-xs text-yellow-600">
-                  <AlertTriangle size={12} className="mt-0.5 flex-shrink-0" />
-                  <span>{warning}</span>
+              ) : null}
+              {importResult.warnings?.length ? (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50/80 px-4 py-3 text-xs leading-6 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                  <div className="mb-1 font-medium">导入警告</div>
+                  <div className="space-y-1">
+                    {importResult.warnings.map((warning, index) => (
+                      <div key={`${warning}-${index}`} className="flex items-start gap-1.5">
+                        <AlertTriangle size={12} className="mt-1 flex-shrink-0" />
+                        <span>{warning}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              ))}
+              ) : null}
             </div>
           )}
 
-          {status === 'valid' && (
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-xs text-slate-500">冲突策略:</span>
-              <div className="inline-flex gap-1 rounded-lg bg-slate-100 p-1">
-                <button
-                  type="button"
-                  onClick={() => onUpdateStrategy('skip')}
-                  disabled={disabled}
-                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                    conflictStrategy === 'skip'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-900'
-                  } disabled:opacity-50`}
-                >
-                  跳过
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onUpdateStrategy('rename')}
-                  disabled={disabled}
-                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                    conflictStrategy === 'rename'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-900'
-                  } disabled:opacity-50`}
-                >
-                  重命名
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onUpdateStrategy('overwrite')}
-                  disabled={disabled}
-                  className={`rounded-md px-2 py-1 text-xs font-medium transition ${
-                    conflictStrategy === 'overwrite'
-                      ? 'bg-white text-slate-900 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-900'
-                  } disabled:opacity-50`}
-                >
-                  覆盖
-                </button>
+          {canAdjustStrategy ? (
+            <div className={subtlePanelClassName}>
+              <div className="mb-2 flex flex-wrap items-center gap-2">
+                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  冲突策略
+                </div>
+                <span className={surfaceChipClassName}>
+                  当前：{conflictStrategyMeta[conflictStrategy || 'skip'].label}
+                </span>
               </div>
+              <ConflictStrategySelector
+                value={conflictStrategy || 'skip'}
+                compact
+                disabled={disabled}
+                onChange={onUpdateStrategy}
+              />
             </div>
-          )}
+          ) : null}
         </div>
-
-        {!disabled && status !== 'importing' && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onRemove}
-            className="text-slate-400 hover:text-red-500 hover:bg-transparent mt-1"
-            title="移除"
-          >
-            <X size={16} />
-          </Button>
-        )}
       </div>
     </div>
   );

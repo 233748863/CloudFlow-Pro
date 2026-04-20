@@ -1,7 +1,6 @@
 import React from 'react';
-import { FileText } from 'lucide-react';
-import { Button } from '@/components/ui';
-import { EmptyState, LoadingSpinner } from '@/components/common';
+import { ArrowRight, FileText } from 'lucide-react';
+import { Button, EmptyState, LoadingSpinner } from '@/components/ui';
 
 interface UserDashboardRecentApplicationsProps {
   applications: any[];
@@ -14,11 +13,15 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
   loading,
   onViewAll,
 }) => (
-  <div className="card">
-    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
-      <h2 className="text-lg font-semibold text-slate-900">最近申请</h2>
+  <section className="card overflow-hidden">
+    <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">最近申请</h2>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">我最近发起的业务流程</p>
+      </div>
       <span className="badge badge-gray">Top 5</span>
     </div>
+
     <div className="p-6">
       {loading ? (
         <div className="flex items-center justify-center py-12">
@@ -37,26 +40,29 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
               key={String(item.id || item.processInstanceId || item.businessKey)}
               type="button"
               onClick={onViewAll}
-              className="flex w-full items-center justify-between rounded-xl bg-slate-50 p-4 text-left transition-colors hover:bg-slate-100"
+              className="group flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left transition-all hover:border-sky-200 hover:bg-white dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-sky-900 dark:hover:bg-slate-900"
             >
               <div className="flex min-w-0 items-center gap-4">
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-100 text-sky-600">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-200">
                   <FileText size={18} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-medium text-slate-900">
+                  <p className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                     {item.title || item.processDefinitionName || '流程申请'}
                   </p>
-                  <p className="truncate text-xs text-slate-500">
+                  <p className="truncate text-xs text-slate-500 dark:text-slate-400">
                     {item.reason || item.currentNodeName || '查看当前流程状态'}
                   </p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="text-xs font-medium text-slate-400">
+              <div className="ml-4 text-right">
+                <p className="text-xs font-medium text-slate-400 dark:text-slate-500">
                   {item.createdTime || ''}
                 </p>
-                <p className="mt-1 text-xs text-sky-600">查看详情</p>
+                <p className="mt-1 inline-flex items-center gap-1 text-xs font-medium text-sky-700 dark:text-sky-200">
+                  查看详情
+                  <ArrowRight size={12} className="transition-transform group-hover:translate-x-0.5" />
+                </p>
               </div>
             </button>
           ))}
@@ -68,5 +74,5 @@ export const UserDashboardRecentApplications: React.FC<UserDashboardRecentApplic
         </div>
       )}
     </div>
-  </div>
+  </section>
 );

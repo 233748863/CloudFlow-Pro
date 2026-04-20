@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { Button } from '@/components/ui';
-import { BaseDialog, EmptyState, LoadingSpinner } from '@/components/common';
+import { BaseDialog } from '@/components/common';
+import { Button, EmptyState, LoadingSpinner } from '@/components/ui';
 import { FormRenderer } from '@/components/FormRenderer';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
 
@@ -30,7 +30,7 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
 
   if (workflow.formId && boundForm) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px]">
         <FormRenderer formDef={boundForm} onCancel={onClose} onSubmit={onSubmit} />
       </div>
     );
@@ -81,7 +81,7 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
           description={
             boundFormError
               ? `无法加载绑定表单：${boundFormError}`
-              : '流程绑定的表单可能已被删除或当前账号无权访问，请联系管理员检查流程配置。'
+              : '流程绑定的表单可能已被删除，或当前账号暂无访问权限，请联系管理员检查流程配置。'
           }
           className="py-8"
         />
@@ -107,7 +107,7 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
       <EmptyState
         icon={<AlertTriangle className="h-10 w-10 text-amber-500" />}
         title="未绑定表单"
-        description="该流程尚未配置输入表单，暂时无法自动发起。"
+        description="该流程尚未配置输入表单，当前无法直接发起。"
         className="py-8"
       />
     </BaseDialog>

@@ -1,7 +1,7 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @layer utilities {
-  /* 隐藏滚动条但保留滚动能力 */
   .hide-scrollbar::-webkit-scrollbar {
     display: none;
   }
@@ -10,9 +10,12 @@
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .animate-fade-in {
+    animation: cfFadeIn 0.32s ease-out;
+  }
 }
 
-/* 全局滚动条样式，默认隐藏，仅在 hover/focus 时显示 */
 *::-webkit-scrollbar {
   width: 8px;
   height: 8px;
@@ -30,32 +33,50 @@
 
 *:hover::-webkit-scrollbar-thumb,
 *:focus-within::-webkit-scrollbar-thumb {
-  background-color: rgba(148, 163, 184, 0.55);
+  background-color: rgba(148, 163, 184, 0.5);
 }
 
-*:hover::-webkit-scrollbar-thumb:hover,
-*:focus-within::-webkit-scrollbar-thumb:hover {
-  background-color: rgba(100, 116, 139, 0.82);
-}
-
-* {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
+html.dark *:hover::-webkit-scrollbar-thumb,
+html.dark *:focus-within::-webkit-scrollbar-thumb {
+  background-color: rgba(100, 116, 139, 0.55);
 }
 
 @layer base {
   :root {
-    --cf-accent: #14b8a6;
-    --cf-accent-strong: #0f9f91;
-    --cf-accent-soft: #ecfdf5;
-    --cf-surface-strong: rgba(255, 255, 255, 0.96);
-    --cf-surface: rgba(255, 255, 255, 0.9);
+    --cf-primary-50: #f0fdfa;
+    --cf-primary-100: #ccfbf1;
+    --cf-primary-200: #99f6e4;
+    --cf-primary-300: #5eead4;
+    --cf-primary-400: #2dd4bf;
+    --cf-primary-500: #14b8a6;
+    --cf-primary-600: #0d9488;
+    --cf-primary-700: #0f766e;
+
+    --cf-bg: #f8fafc;
+    --cf-surface: rgba(255, 255, 255, 0.92);
+    --cf-surface-strong: rgba(255, 255, 255, 0.98);
     --cf-surface-muted: rgba(248, 250, 252, 0.86);
-    --cf-border: rgba(226, 232, 240, 0.95);
+    --cf-border: rgba(226, 232, 240, 0.92);
+    --cf-border-strong: rgba(203, 213, 225, 0.92);
     --cf-text: #0f172a;
     --cf-text-muted: #64748b;
     --cf-shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
-    --cf-shadow-md: 0 8px 32px rgba(15, 23, 42, 0.08);
+    --cf-shadow-md: 0 18px 36px rgba(15, 23, 42, 0.08);
+    --cf-shadow-lg: 0 24px 48px rgba(15, 23, 42, 0.12);
+  }
+
+  html.dark {
+    --cf-bg: #020617;
+    --cf-surface: rgba(15, 23, 42, 0.88);
+    --cf-surface-strong: rgba(15, 23, 42, 0.96);
+    --cf-surface-muted: rgba(15, 23, 42, 0.72);
+    --cf-border: rgba(51, 65, 85, 0.82);
+    --cf-border-strong: rgba(71, 85, 105, 0.9);
+    --cf-text: #e2e8f0;
+    --cf-text-muted: #94a3b8;
+    --cf-shadow-sm: 0 1px 3px rgba(2, 6, 23, 0.2), 0 1px 2px rgba(2, 6, 23, 0.26);
+    --cf-shadow-md: 0 18px 36px rgba(2, 6, 23, 0.4);
+    --cf-shadow-lg: 0 24px 48px rgba(2, 6, 23, 0.5);
   }
 
   html,
@@ -65,6 +86,7 @@
   }
 
   html {
+    scroll-behavior: smooth;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
@@ -72,22 +94,29 @@
 
   body {
     position: relative;
+    min-height: 100vh;
     font-family:
       system-ui,
       -apple-system,
       BlinkMacSystemFont,
       "Segoe UI",
-      Roboto,
-      "Helvetica Neue",
-      Arial,
       "PingFang SC",
       "Hiragino Sans GB",
       "Microsoft YaHei",
       sans-serif;
-    scroll-behavior: smooth;
     color: var(--cf-text);
-    background: #f8fafc;
-    min-height: 100vh;
+    background:
+      radial-gradient(circle at top left, rgba(20, 184, 166, 0.05), transparent 30%),
+      linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(241, 245, 249, 0.94) 100%);
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  html.dark body {
+    background:
+      radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 28%),
+      linear-gradient(180deg, rgba(2, 6, 23, 1) 0%, rgba(2, 6, 23, 0.98) 100%);
   }
 
   button,
@@ -100,18 +129,12 @@
   input,
   select,
   textarea {
-    accent-color: #14b8a6;
-  }
-
-  input:not([type="radio"]):not([type="checkbox"]):not([type="hidden"]):not([type="file"]):not([class*="border-none"]):not([class*="bg-transparent"]):hover,
-  select:hover,
-  textarea:hover {
-    border-color: #cbd5e1;
+    accent-color: var(--cf-primary-500);
   }
 
   option:checked,
   option:hover {
-    background-color: #14b8a6 !important;
+    background-color: var(--cf-primary-500) !important;
     color: white !important;
   }
 
@@ -119,26 +142,6 @@
   select:focus,
   textarea:focus {
     outline: none;
-    border-color: #14b8a6;
-  }
-
-  input:not([class*="ring"]):focus,
-  select:not([class*="ring"]):focus,
-  textarea:not([class*="ring"]):focus {
-    box-shadow: 0 0 0 2px rgba(20, 184, 166, 0.22);
-  }
-
-  input[type="checkbox"]:hover,
-  input[type="radio"]:hover {
-    cursor: pointer;
-    filter: brightness(0.95);
-    box-shadow: 0 0 0 2px rgba(204, 251, 241, 0.95);
-  }
-
-  input[type="checkbox"]:focus,
-  input[type="radio"]:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(153, 246, 228, 0.95);
   }
 
   ::selection {
@@ -174,29 +177,36 @@
   }
 
   .cf-glass-panel-soft {
-    border: 1px solid rgba(255, 255, 255, 0.74);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(248, 250, 252, 0.7));
+    border: 1px solid color-mix(in srgb, var(--cf-border) 78%, white 22%);
+    background: linear-gradient(180deg, var(--cf-surface), var(--cf-surface-muted));
     box-shadow: var(--cf-shadow-sm);
     backdrop-filter: blur(16px);
   }
 
   .cf-glass-input {
-    border: 1px solid rgb(226 232 240 / 0.95);
-    background: rgb(255 255 255 / 0.98);
+    border: 1px solid var(--cf-border);
+    background: var(--cf-surface-strong);
     box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-    color: rgb(15 23 42);
+    color: var(--cf-text);
   }
 
   .card {
-    border: 1px solid rgb(226 232 240 / 0.9);
-    background: white;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-surface-strong);
     border-radius: 1rem;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
-    transition: box-shadow 0.2s ease;
+    box-shadow: var(--cf-shadow-sm);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      background-color 0.2s ease;
+  }
+
+  .card:hover {
+    box-shadow: var(--cf-shadow-md);
   }
 
   .card-header {
-    border-bottom: 1px solid rgb(241 245 249);
+    border-bottom: 1px solid color-mix(in srgb, var(--cf-border) 78%, transparent 22%);
     padding: 1rem 1.5rem;
   }
 
@@ -205,7 +215,7 @@
   }
 
   .card-footer {
-    border-top: 1px solid rgb(241 245 249);
+    border-top: 1px solid color-mix(in srgb, var(--cf-border) 78%, transparent 22%);
     padding: 1rem 1.5rem;
   }
 
@@ -220,34 +230,54 @@
   }
 
   .badge-gray {
-    background: rgb(241 245 249);
+    background: rgb(241 245 249 / 0.9);
     color: rgb(71 85 105);
   }
 
+  html.dark .badge-gray {
+    background: rgb(30 41 59 / 0.9);
+    color: rgb(148 163 184);
+  }
+
   .badge-primary {
-    background: rgb(204 251 241);
+    background: rgb(204 251 241 / 0.9);
     color: rgb(13 148 136);
   }
 
+  html.dark .badge-primary {
+    background: rgb(8 145 178 / 0.18);
+    color: rgb(165 243 252);
+  }
+
   .badge-success {
-    background: rgb(220 252 231);
+    background: rgb(220 252 231 / 0.92);
     color: rgb(22 163 74);
   }
 
+  html.dark .badge-success {
+    background: rgb(20 83 45 / 0.9);
+    color: rgb(134 239 172);
+  }
+
   .badge-warning {
-    background: rgb(254 243 199);
+    background: rgb(254 243 199 / 0.92);
     color: rgb(217 119 6);
+  }
+
+  html.dark .badge-warning {
+    background: rgb(120 53 15 / 0.92);
+    color: rgb(253 224 71);
   }
 
   .stat-card {
     display: flex;
     align-items: flex-start;
     gap: 1rem;
-    border: 1px solid rgb(226 232 240 / 0.9);
-    background: white;
+    border: 1px solid var(--cf-border);
+    background: var(--cf-surface-strong);
     border-radius: 1rem;
     padding: 1.25rem;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+    box-shadow: var(--cf-shadow-sm);
   }
 
   .stat-icon {
@@ -261,40 +291,65 @@
   }
 
   .stat-icon-primary {
-    background: rgb(204 251 241);
+    background: rgb(204 251 241 / 0.94);
     color: rgb(13 148 136);
   }
 
   .stat-icon-success {
-    background: rgb(220 252 231);
+    background: rgb(220 252 231 / 0.94);
     color: rgb(22 163 74);
   }
 
   .stat-icon-warning {
-    background: rgb(254 243 199);
+    background: rgb(254 243 199 / 0.94);
     color: rgb(217 119 6);
   }
 
   .stat-icon-danger {
-    background: rgb(254 226 226);
+    background: rgb(254 226 226 / 0.94);
     color: rgb(220 38 38);
   }
 
   .stat-icon-gray {
-    background: rgb(241 245 249);
+    background: rgb(241 245 249 / 0.94);
     color: rgb(71 85 105);
+  }
+
+  html.dark .stat-icon-primary {
+    background: rgb(8 145 178 / 0.18);
+    color: rgb(165 243 252);
+  }
+
+  html.dark .stat-icon-success {
+    background: rgb(20 83 45 / 0.88);
+    color: rgb(134 239 172);
+  }
+
+  html.dark .stat-icon-warning {
+    background: rgb(120 53 15 / 0.88);
+    color: rgb(253 224 71);
+  }
+
+  html.dark .stat-icon-danger {
+    background: rgb(127 29 29 / 0.88);
+    color: rgb(252 165 165);
+  }
+
+  html.dark .stat-icon-gray {
+    background: rgb(30 41 59 / 0.9);
+    color: rgb(148 163 184);
   }
 
   .stat-value {
     font-size: 1.5rem;
     font-weight: 700;
     line-height: 1.2;
-    color: rgb(15 23 42);
+    color: var(--cf-text);
   }
 
   .stat-label {
     font-size: 0.875rem;
-    color: rgb(100 116 139);
+    color: var(--cf-text-muted);
   }
 
   .stat-trend {
@@ -334,14 +389,14 @@
     margin-bottom: 0.25rem;
     font-size: 1.125rem;
     font-weight: 500;
-    color: rgb(15 23 42);
+    color: var(--cf-text);
   }
 
   .empty-state-description {
     max-width: 24rem;
     font-size: 0.875rem;
     line-height: 1.6;
-    color: rgb(100 116 139);
+    color: var(--cf-text-muted);
   }
 
   .spinner {
@@ -349,6 +404,98 @@
     border: 2px solid currentColor;
     border-top-color: transparent;
     animation: cfSpin 0.8s linear infinite;
+  }
+
+  .workflow-studio-shell {
+    background:
+      radial-gradient(circle at top, rgb(236 254 255 / 0.92), transparent 32%),
+      linear-gradient(180deg, rgb(248 250 252 / 0.96), rgb(241 245 249 / 0.96));
+  }
+
+  html.dark .workflow-studio-shell {
+    background:
+      radial-gradient(circle at top, rgb(8 145 178 / 0.12), transparent 28%),
+      linear-gradient(180deg, rgb(2 6 23 / 0.98), rgb(15 23 42 / 0.96));
+  }
+
+  .workflow-node-card {
+    backdrop-filter: blur(16px);
+  }
+
+  html.dark .workflow-node-card {
+    box-shadow:
+      0 18px 40px rgba(2, 6, 23, 0.42),
+      inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  }
+
+  html.dark .workflow-studio-grid {
+    background: radial-gradient(rgba(51, 65, 85, 0.7) 1px, transparent 1px) !important;
+  }
+
+  html.dark .workflow-studio-toolbar {
+    box-shadow:
+      inset 0 -1px 0 rgba(30, 41, 59, 0.9),
+      0 10px 30px rgba(2, 6, 23, 0.24);
+  }
+
+  html.dark .workflow-studio-panel .text-slate-400,
+  html.dark .workflow-settings-modal .text-slate-400 {
+    color: rgb(100 116 139) !important;
+  }
+
+  html.dark .workflow-studio-panel .text-slate-500,
+  html.dark .workflow-settings-modal .text-slate-500 {
+    color: rgb(148 163 184) !important;
+  }
+
+  html.dark .workflow-studio-panel .text-slate-600,
+  html.dark .workflow-settings-modal .text-slate-600 {
+    color: rgb(203 213 225) !important;
+  }
+
+  html.dark .workflow-studio-panel .text-slate-700,
+  html.dark .workflow-settings-modal .text-slate-700 {
+    color: rgb(226 232 240) !important;
+  }
+
+  html.dark .workflow-studio-panel .text-slate-800,
+  html.dark .workflow-settings-modal .text-slate-800 {
+    color: rgb(248 250 252) !important;
+  }
+
+  html.dark .workflow-studio-panel .border-slate-100,
+  html.dark .workflow-studio-panel .border-slate-200,
+  html.dark .workflow-studio-panel .border-slate-300,
+  html.dark .workflow-settings-modal .border-slate-100,
+  html.dark .workflow-settings-modal .border-slate-200,
+  html.dark .workflow-settings-modal .border-slate-300 {
+    border-color: rgba(51, 65, 85, 0.9) !important;
+  }
+
+  html.dark .workflow-studio-panel .bg-white,
+  html.dark .workflow-settings-modal .bg-white {
+    background-color: rgba(2, 6, 23, 0.88) !important;
+  }
+
+  html.dark .workflow-studio-panel .bg-slate-50,
+  html.dark .workflow-settings-modal .bg-slate-50 {
+    background-color: rgba(15, 23, 42, 0.82) !important;
+  }
+
+  html.dark .workflow-settings-modal .bg-slate-100 {
+    background-color: rgba(15, 23, 42, 0.92) !important;
+  }
+
+  html.dark .workflow-studio-panel .bg-slate-50\/80,
+  html.dark .workflow-studio-panel .bg-slate-50\/70,
+  html.dark .workflow-settings-modal .bg-slate-50\/80,
+  html.dark .workflow-settings-modal .bg-slate-50\/70 {
+    background-color: rgba(15, 23, 42, 0.78) !important;
+  }
+
+  html.dark .workflow-studio-panel .bg-slate-100,
+  html.dark .workflow-studio-panel .bg-slate-100\/80 {
+    background-color: rgba(15, 23, 42, 0.92) !important;
   }
 }
 
@@ -362,27 +509,15 @@
   }
 }
 
-@keyframes fadeIn {
+@keyframes cfFadeIn {
   from {
     opacity: 0;
-    will-change: opacity;
+    transform: translateY(6px);
   }
 
   to {
     opacity: 1;
-  }
-}
-
-@keyframes zoomIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95);
-    will-change: transform, opacity;
-  }
-
-  to {
-    opacity: 1;
-    transform: scale(1);
+    transform: translateY(0);
   }
 }
 

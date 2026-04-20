@@ -21,7 +21,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
   height,
   animation = 'pulse',
 }) => {
-  const baseClasses = 'bg-slate-200/60';
+  const baseClasses = 'bg-slate-200/60 dark:bg-slate-800/70';
   
   const variantClasses = {
     text: 'rounded-md',
@@ -31,7 +31,7 @@ export const Skeleton: React.FC<SkeletonProps> = ({
 
   const animationClasses = {
     pulse: 'animate-pulse',
-    wave: 'animate-shimmer bg-gradient-to-r from-slate-200/60 via-slate-100/60 to-slate-200/60 bg-[length:200%_100%]',
+    wave: 'animate-shimmer bg-gradient-to-r from-slate-200/60 via-slate-100/60 to-slate-200/60 bg-[length:200%_100%] dark:from-slate-800/70 dark:via-slate-700/60 dark:to-slate-800/70',
     none: '',
   };
 
@@ -78,7 +78,7 @@ export const SkeletonText: React.FC<{ lines?: number; className?: string }> = ({
  */
 export const SkeletonCard: React.FC<{ className?: string }> = ({ className }) => {
   return (
-    <div className={cn('p-4 border border-slate-200 rounded-lg space-y-3', className)}>
+    <div className={cn('space-y-3 rounded-lg border border-slate-200 p-4 dark:border-slate-800', className)}>
       <Skeleton height={20} width="60%" />
       <SkeletonText lines={2} />
       <div className="flex gap-2">
@@ -100,7 +100,7 @@ export const SkeletonTable: React.FC<{ rows?: number; columns?: number; classNam
   return (
     <div className={cn('space-y-2', className)}>
       {/* 表头 */}
-      <div className="flex gap-4 pb-2 border-b border-slate-200">
+      <div className="flex gap-4 border-b border-slate-200 pb-2 dark:border-slate-800">
         {Array.from({ length: columns }).map((_, i) => (
           <Skeleton key={i} height={20} className="flex-1" />
         ))}

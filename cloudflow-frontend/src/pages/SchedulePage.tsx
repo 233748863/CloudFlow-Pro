@@ -127,22 +127,22 @@ const EVENT_TYPE_META: Record<
   MEETING: {
     label: '会议',
     color: '#06b6d4',
-    badgeClass: 'bg-cyan-500/10 text-cyan-700 ring-1 ring-cyan-200',
-    softClass: 'bg-cyan-50 text-cyan-700',
+    badgeClass: 'bg-cyan-500/10 text-cyan-700 ring-1 ring-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-900',
+    softClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
     hint: '适合评审、同步和客户沟通等需要明确地点或固定时段的安排。',
   },
   WORK: {
     label: '工作',
     color: '#10b981',
-    badgeClass: 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-200',
-    softClass: 'bg-emerald-50 text-emerald-700',
+    badgeClass: 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900',
+    softClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200',
     hint: '适合项目推进、交付节点和需要整块时间推进的任务。',
   },
   PERSONAL: {
     label: '个人',
     color: '#f59e0b',
-    badgeClass: 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-200',
-    softClass: 'bg-amber-50 text-amber-700',
+    badgeClass: 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900',
+    softClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200',
     hint: '适合个人安排、生活提醒和不需要额外资源绑定的事项。',
   },
 };
@@ -391,7 +391,7 @@ const getEventTimingMeta = (event: ScheduleEventLike, referenceDate: Date): Even
     return {
       label: '时间异常',
       hint: '请检查开始时间和结束时间',
-      badgeClass: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200',
+      badgeClass: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-800',
     };
   }
 
@@ -399,7 +399,7 @@ const getEventTimingMeta = (event: ScheduleEventLike, referenceDate: Date): Even
     return {
       label: '已结束',
       hint: `结束于 ${start.toDateString() === end.toDateString() ? timeFormatter.format(end) : monthDayFormatter.format(end)}`,
-      badgeClass: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200',
+      badgeClass: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-300 dark:ring-slate-800',
     };
   }
 
@@ -408,14 +408,14 @@ const getEventTimingMeta = (event: ScheduleEventLike, referenceDate: Date): Even
       return {
         label: '全天进行中',
         hint: '当前日期整天占用',
-        badgeClass: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+        badgeClass: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900',
       };
     }
 
     return {
       label: '进行中',
       hint: `截至 ${timeFormatter.format(end)}`,
-      badgeClass: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+      badgeClass: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900',
     };
   }
 
@@ -429,14 +429,14 @@ const getEventTimingMeta = (event: ScheduleEventLike, referenceDate: Date): Even
     return {
       label: '即将开始',
       hint: startHint,
-      badgeClass: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+      badgeClass: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-200 dark:ring-sky-900',
     };
   }
 
   return {
     label: '待开始',
     hint: startHint,
-    badgeClass: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+    badgeClass: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-200 dark:ring-sky-900',
   };
 };
 
@@ -455,8 +455,8 @@ const SectionHeader = ({
 }) => (
   <div className="flex items-start justify-between gap-4">
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{eyebrow}</div>
-      <div className="mt-1 text-base font-semibold tracking-tight text-slate-900">{title}</div>
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">{eyebrow}</div>
+      <div className="mt-1 text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</div>
     </div>
     <div className="flex items-center gap-2">
       {aside}
@@ -464,7 +464,7 @@ const SectionHeader = ({
         <button
           type="button"
           onClick={onAction}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-cyan-600"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-cyan-600 dark:text-slate-500 dark:hover:text-cyan-200"
         >
           {actionLabel}
           <ChevronRight size={14} />
@@ -487,19 +487,19 @@ const AsidePanel = ({
   meta?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <Card className="rounded-2xl border-slate-200 bg-white p-3.5">
+  <Card className="rounded-2xl border-slate-200 bg-white p-3.5 dark:border-slate-800 dark:bg-slate-950/88">
     <SectionHeader
       eyebrow={eyebrow}
       title={title}
       aside={
         count ? (
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             {count}
           </span>
         ) : undefined
       }
     />
-    {meta ? <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-slate-500">{meta}</div> : null}
+    {meta ? <div className="mt-2.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">{meta}</div> : null}
     <div className="mt-2.5 space-y-2">{children}</div>
   </Card>
 );
@@ -520,19 +520,19 @@ const AsideEventButton = ({
     <button
       type="button"
       onClick={onOpen}
-      className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left transition hover:border-cyan-200 hover:bg-slate-50"
+      className="flex w-full items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-left transition hover:border-cyan-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-900 dark:hover:bg-slate-900/70"
     >
       <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: meta.color }} />
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-3">
-          <div className="truncate text-sm font-semibold text-slate-900">
+          <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
             {event.extendedProps.originalTitle}
           </div>
-          <div className="shrink-0 text-[11px] font-medium text-slate-400">
+          <div className="shrink-0 text-[11px] font-medium text-slate-400 dark:text-slate-500">
             {event.allDay ? '全天' : timeFormatter.format(getSafeDate(event.extendedProps.startTime) ?? now)}
           </div>
         </div>
-        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400">
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[11px] text-slate-400 dark:text-slate-500">
           <span className={`rounded-full px-2 py-1 font-semibold ${meta.badgeClass}`}>{meta.label}</span>
           <span className={`rounded-full px-2 py-1 font-semibold ${statusMeta.badgeClass}`}>{statusMeta.label}</span>
         </div>
@@ -558,17 +558,17 @@ const DrawerSection = ({
 }) => (
   <section
     className={cn(
-      'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm',
+      'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
       className,
     )}
   >
-    <div className="border-b border-slate-200 px-4 py-3.5">
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+    <div className="border-b border-slate-200 px-4 py-3.5 dark:border-slate-800">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
         {eyebrow}
       </div>
-      <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900">{title}</div>
+      <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">{title}</div>
       {description ? (
-        <div className="mt-1 text-xs leading-5 text-slate-500">{description}</div>
+        <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
       ) : null}
     </div>
     <div className={cn('px-4 py-4', bodyClassName)}>{children}</div>
@@ -1026,15 +1026,15 @@ export const SchedulePage = () => {
       <WorkspacePageContent>
         <WorkspaceHeroMetricsSection
           badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                 <Calendar size={14} />
                 {shortDateFormatter.format(now)}
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {currentViewLabel}
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {calendarWindowLabel || '当前时间窗口'}
               </span>
             </div>
@@ -1071,10 +1071,10 @@ export const SchedulePage = () => {
               overviewItems={tableOverviewItems}
               headerBadges={
                 <>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                     {tableHasActiveFilters ? '已应用筛选' : '默认视图'}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                     共 {tableTotal} 条
                   </span>
                 </>
@@ -1087,18 +1087,18 @@ export const SchedulePage = () => {
               ]}
               activeQuickFilter={tableFilters.type}
               onQuickFilterChange={handleTableTypeChange}
-              quickFilterAside={
-                tableHasActiveFilters ? (
-                  <Button variant="outline" size="sm" onClick={handleResetTableFilters}>
-                    <RotateCcw size={14} className="mr-2" />
-                    清空所有条件
-                  </Button>
-                ) : (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
-                    {calendarTitle || '当前视图'} | {calendarWindowLabel || currentViewLabel}
-                  </span>
-                )
-              }
+                quickFilterAside={
+                  tableHasActiveFilters ? (
+                    <Button variant="outline" size="sm" onClick={handleResetTableFilters}>
+                      <RotateCcw size={14} className="mr-2" />
+                      清空所有条件
+                    </Button>
+                  ) : (
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+                      {calendarTitle || '当前视图'} | {calendarWindowLabel || currentViewLabel}
+                    </span>
+                  )
+                }
               filterBar={
                 <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
                   <div className="relative">
@@ -1175,23 +1175,23 @@ export const SchedulePage = () => {
             >
               <div className="space-y-3.5 px-3.5 py-3.5">
                 {tableHasActiveFilters ? (
-                  <div className="flex flex-col gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3.5 py-2.5 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex flex-col gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3.5 py-2.5 xl:flex-row xl:items-center xl:justify-between dark:border-cyan-900 dark:bg-cyan-950/20">
                     <div className="flex flex-wrap items-center gap-2">
                       {activeFilterSummaries.map(item => (
                         <span
                           key={item}
-                          className="rounded-full border border-cyan-100 bg-white px-2.5 py-1 text-xs font-medium text-cyan-700"
+                          className="rounded-full border border-cyan-100 bg-white px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200"
                         >
                           {item}
                         </span>
                       ))}
                     </div>
-                    <div className="text-xs font-medium text-slate-500">
+                    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
                       第 {tablePageStart} - {tablePageEnd} 条 / 共 {tableTotal} 条
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-500">
+                  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
                     <span>{calendarTitle || '当前视图'}</span>
                     <span>
                       {tableTotal > 0
@@ -1203,8 +1203,8 @@ export const SchedulePage = () => {
 
                 <div className="overflow-x-auto">
                   <Table className="min-w-[1120px]">
-                    <TableHeader className="sticky top-0 z-10 bg-white">
-                      <TableRow className="border-slate-100 bg-transparent hover:bg-transparent">
+                    <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                      <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                         <TableHead>日程主题</TableHead>
                         <TableHead>节奏状态</TableHead>
                         <TableHead>时间安排</TableHead>
@@ -1214,7 +1214,7 @@ export const SchedulePage = () => {
                         <TableActionHead className="w-56 text-right">当前操作</TableActionHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody className="divide-y divide-slate-100">
+                    <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                       {isLoadingEvents ? (
                         <WorkspaceTableStateRow colSpan={7} type="loading" title="正在同步日程列表..." />
                       ) : tablePageEvents.length === 0 ? (
@@ -1237,7 +1237,7 @@ export const SchedulePage = () => {
                           const startDate = getSafeDate(event.extendedProps.startTime);
 
                           return (
-                            <TableRow key={event.id} className="transition hover:bg-slate-50">
+                            <TableRow key={event.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
                               <TableCell className="py-4">
                                 <div className="flex items-start gap-3">
                                   <span
@@ -1246,7 +1246,7 @@ export const SchedulePage = () => {
                                   />
                                   <div className="min-w-0">
                                     <div className="flex flex-wrap items-center gap-2">
-                                      <div className="text-sm font-semibold text-slate-900">
+                                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                                         {event.extendedProps.originalTitle}
                                       </div>
                                       <span
@@ -1255,13 +1255,13 @@ export const SchedulePage = () => {
                                         {meta.label}
                                       </span>
                                     </div>
-                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-400 dark:text-slate-500">
                                       <span>
                                         {event.allDay
                                           ? '全天模式'
                                           : `${timeFormatter.format(startDate ?? now)} 开始`}
                                       </span>
-                                      <span className="h-1 w-1 rounded-full bg-slate-300" />
+                                      <span className="h-1 w-1 rounded-full bg-slate-300 dark:bg-slate-700" />
                                       <span>{statusMeta.hint}</span>
                                     </div>
                                   </div>
@@ -1274,14 +1274,14 @@ export const SchedulePage = () => {
                                   >
                                     {statusMeta.label}
                                   </span>
-                                  <span className="text-[11px] text-slate-400">{statusMeta.hint}</span>
+                                  <span className="text-[11px] text-slate-400 dark:text-slate-500">{statusMeta.hint}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="py-4 text-sm text-slate-600">
-                                <div className="font-medium text-slate-700">{formatEventSlot(event)}</div>
+                              <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
+                                <div className="font-medium text-slate-700 dark:text-slate-200">{formatEventSlot(event)}</div>
                               </TableCell>
                               <TableCell className="py-4">
-                                <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm">
+                                <div className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                                   {getDurationLabel(
                                     event.extendedProps.startTime,
                                     event.extendedProps.endTime,
@@ -1290,12 +1290,12 @@ export const SchedulePage = () => {
                                 </div>
                               </TableCell>
                               <TableCell className="py-4">
-                                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
-                                    <MapPin size={14} className="text-slate-400" />
+                                <div className="inline-flex items-center gap-1.5 rounded-full border border-slate-200/80 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                                    <MapPin size={14} className="text-slate-400 dark:text-slate-500" />
                                     <span>{getEventLocationLabel(event)}</span>
                                 </div>
                               </TableCell>
-                              <TableCell className="max-w-[18rem] py-4 text-sm text-slate-600">
+                              <TableCell className="max-w-[18rem] py-4 text-sm text-slate-600 dark:text-slate-300">
                                 <div className="line-clamp-2 leading-6">
                                   {description === '暂无补充说明' ? '-' : description}
                                 </div>
@@ -1349,14 +1349,14 @@ export const SchedulePage = () => {
                     </span>
                   ))}
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
                     {calendarTitle || currentViewLabel}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium text-slate-500">
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
                     {calendarWindowLabel || currentViewLabel}
                   </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-400">
+                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
                     {calendarToolbarSummary}
                   </span>
                 </div>
@@ -1385,8 +1385,94 @@ export const SchedulePage = () => {
             </div>
 
             <div className="schedule-calendar relative h-[720px] md:h-[760px] xl:h-[820px]">
-              <style>{`.schedule-calendar .fc { height: 100%; color: #0f172a; }.schedule-calendar .fc-header-toolbar { display: none !important; }.schedule-calendar .fc-scrollgrid, .schedule-calendar .fc-theme-standard .fc-scrollgrid { border-radius: 24px; overflow: hidden; border: 1px solid rgba(226, 232, 240, 0.95); background: radial-gradient(circle at top right, rgba(207, 250, 254, 0.88), transparent 35%), radial-gradient(circle at top left, rgba(220, 252, 231, 0.5), transparent 30%), linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%); }.schedule-calendar .fc-daygrid-day-frame { min-height: 118px; background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.84) 100%); }.schedule-calendar .fc-day-today .fc-daygrid-day-frame, .schedule-calendar .fc-day-today .fc-timegrid-col-frame { background: radial-gradient(circle at top, rgba(207, 250, 254, 0.9), transparent 52%), linear-gradient(180deg, rgba(240, 253, 250, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%); }.schedule-calendar .fc-daygrid-day-number { margin: 0.45rem 0.55rem 0 0; border-radius: 999px; padding: 0.2rem 0.55rem; font-size: 0.82rem; font-weight: 700; color: #334155; }.schedule-calendar .fc-day-today .fc-daygrid-day-number { background: #0891b2; color: #fff; box-shadow: 0 8px 16px rgba(8, 145, 178, 0.28); }.schedule-calendar .fc-day-other .fc-daygrid-day-number { color: #94a3b8; }.schedule-calendar .fc-event { cursor: pointer; border: none !important; border-radius: 14px !important; box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.65); }.schedule-calendar .fc-event-main { padding: 0 !important; }`}</style>
-              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-50"><div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm">正在同步日程...</div></div>}
+              <style>{`
+                .schedule-calendar .fc { height: 100%; color: #0f172a; }
+                .dark .schedule-calendar .fc { color: #e2e8f0; }
+                .schedule-calendar .fc-header-toolbar { display: none !important; }
+                .schedule-calendar .fc-scrollgrid,
+                .schedule-calendar .fc-theme-standard .fc-scrollgrid {
+                  border-radius: 24px;
+                  overflow: hidden;
+                  border: 1px solid rgba(226, 232, 240, 0.95);
+                  background:
+                    radial-gradient(circle at top right, rgba(207, 250, 254, 0.88), transparent 35%),
+                    radial-gradient(circle at top left, rgba(220, 252, 231, 0.5), transparent 30%),
+                    linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 252, 0.96) 100%);
+                }
+                .dark .schedule-calendar .fc-scrollgrid,
+                .dark .schedule-calendar .fc-theme-standard .fc-scrollgrid {
+                  border-color: rgba(30, 41, 59, 0.96);
+                  background:
+                    radial-gradient(circle at top right, rgba(8, 145, 178, 0.22), transparent 35%),
+                    radial-gradient(circle at top left, rgba(16, 185, 129, 0.16), transparent 30%),
+                    linear-gradient(180deg, rgba(2, 6, 23, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
+                }
+                .schedule-calendar .fc-daygrid-day-frame {
+                  min-height: 118px;
+                  background: linear-gradient(180deg, rgba(255, 255, 255, 0.96) 0%, rgba(248, 250, 252, 0.84) 100%);
+                }
+                .dark .schedule-calendar .fc-daygrid-day-frame {
+                  background: linear-gradient(180deg, rgba(2, 6, 23, 0.96) 0%, rgba(15, 23, 42, 0.88) 100%);
+                }
+                .schedule-calendar .fc-day-today .fc-daygrid-day-frame,
+                .schedule-calendar .fc-day-today .fc-timegrid-col-frame {
+                  background:
+                    radial-gradient(circle at top, rgba(207, 250, 254, 0.9), transparent 52%),
+                    linear-gradient(180deg, rgba(240, 253, 250, 0.96) 0%, rgba(255, 255, 255, 0.92) 100%);
+                }
+                .dark .schedule-calendar .fc-day-today .fc-daygrid-day-frame,
+                .dark .schedule-calendar .fc-day-today .fc-timegrid-col-frame {
+                  background:
+                    radial-gradient(circle at top, rgba(8, 145, 178, 0.24), transparent 52%),
+                    linear-gradient(180deg, rgba(15, 23, 42, 0.96) 0%, rgba(2, 6, 23, 0.94) 100%);
+                }
+                .schedule-calendar .fc-daygrid-day-number,
+                .schedule-calendar .fc-col-header-cell-cushion {
+                  margin: 0.45rem 0.55rem 0 0;
+                  border-radius: 999px;
+                  padding: 0.2rem 0.55rem;
+                  font-size: 0.82rem;
+                  font-weight: 700;
+                  color: #334155;
+                }
+                .dark .schedule-calendar .fc-daygrid-day-number,
+                .dark .schedule-calendar .fc-col-header-cell-cushion {
+                  color: #cbd5e1;
+                }
+                .schedule-calendar .fc-day-today .fc-daygrid-day-number {
+                  background: #0891b2;
+                  color: #fff;
+                  box-shadow: 0 8px 16px rgba(8, 145, 178, 0.28);
+                }
+                .schedule-calendar .fc-day-other .fc-daygrid-day-number {
+                  color: #94a3b8;
+                }
+                .dark .schedule-calendar .fc-day-other .fc-daygrid-day-number {
+                  color: #64748b;
+                }
+                .schedule-calendar .fc-timegrid-slot,
+                .schedule-calendar .fc-daygrid-day,
+                .schedule-calendar .fc-col-header-cell {
+                  border-color: rgba(226, 232, 240, 0.95);
+                }
+                .dark .schedule-calendar .fc-timegrid-slot,
+                .dark .schedule-calendar .fc-daygrid-day,
+                .dark .schedule-calendar .fc-col-header-cell {
+                  border-color: rgba(30, 41, 59, 0.95);
+                }
+                .schedule-calendar .fc-event {
+                  cursor: pointer;
+                  border: none !important;
+                  border-radius: 14px !important;
+                  box-shadow: 0 10px 24px -16px rgba(15, 23, 42, 0.65);
+                }
+                .schedule-calendar .fc-event-main { padding: 0 !important; }
+                .dark .schedule-calendar .fc-timegrid-axis,
+                .dark .schedule-calendar .fc-timegrid-slot-label-cushion {
+                  color: #94a3b8;
+                }
+              `}</style>
+              {isLoadingEvents && <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-slate-50 dark:bg-slate-950/80"><div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">正在同步日程...</div></div>}
               <FullCalendar
                 ref={calendarRef}
                 plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
@@ -1423,9 +1509,9 @@ export const SchedulePage = () => {
               count={`${todayEvents.length} 项`}
               meta={
                 <>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">全天 {todayAllDayCount}</span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">进行中 {todayOngoingCount}</span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">会议 {todayMeetingCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">全天 {todayAllDayCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">进行中 {todayOngoingCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">会议 {todayMeetingCount}</span>
                 </>
               }
             >
@@ -1449,8 +1535,8 @@ export const SchedulePage = () => {
               count={`${nextStartingEvents.length} 项`}
               meta={
                 <>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">24 小时内 {next24HourEventsCount}</span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">全天 {nextAllDayCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">24 小时内 {next24HourEventsCount}</span>
+                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">全天 {nextAllDayCount}</span>
                 </>
               }
             >
@@ -1470,14 +1556,14 @@ export const SchedulePage = () => {
 
             <AsidePanel eyebrow="类型拆分" title="日程类型">
               {typeBreakdownItems.map(item => (
-                <div key={item.type} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5">
+                <div key={item.type} className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 dark:border-slate-800 dark:bg-slate-950">
                   <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: EVENT_TYPE_META[item.type].color }} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-sm font-semibold text-slate-900">{EVENT_TYPE_META[item.type].label}</span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{EVENT_TYPE_META[item.type].label}</span>
                       <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${EVENT_TYPE_META[item.type].badgeClass}`}>{item.count}</span>
                     </div>
-                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
                       <div
                         className="h-full rounded-full"
                         style={{
@@ -1495,20 +1581,20 @@ export const SchedulePage = () => {
       </WorkspacePageContent>
       {isCreateDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-slate-900/32" onClick={closeCreateDrawer} />
+          <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-[3px]" onClick={closeCreateDrawer} />
           <div className="absolute inset-y-0 right-0 flex max-w-full">
             <div className="relative w-screen max-w-[420px]">
-              <div className="flex h-full flex-col bg-white shadow-[0_30px_60px_rgba(15,23,42,0.16)]">
-                <div className="border-b border-slate-100 px-5 py-5">
+              <div className="flex h-full flex-col bg-white shadow-[0_30px_60px_rgba(15,23,42,0.16)] dark:bg-slate-950 dark:shadow-[0_34px_68px_rgba(2,6,23,0.6)]">
+                <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                         <Plus size={14} />
                         新建日程
                       </div>
-                      <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">创建新的日程安排</h3>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                      <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">创建新的日程安排</h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
                           {selectionSummary}
                         </span>
                         <span className={`rounded-full px-2.5 py-1 font-semibold ${EVENT_TYPE_META[form.type || 'PERSONAL'].badgeClass}`}>
@@ -1520,18 +1606,18 @@ export const SchedulePage = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 space-y-5 overflow-y-auto bg-white px-6 py-6">
+                <div className="flex-1 space-y-5 overflow-y-auto bg-white px-6 py-6 dark:bg-slate-950">
                   <DrawerSection
                     eyebrow="安排概览"
                     title="先确认这次安排"
-                    className="border-slate-200 bg-slate-50"
+                    className="border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/70"
                     bodyClassName="space-y-3"
                   >
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">
                         当前时间
                       </div>
-                      <div className="mt-1.5 text-sm font-semibold text-slate-900">
+                      <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
                         {draftSchedulePreview}
                       </div>
                     </div>
@@ -1542,11 +1628,11 @@ export const SchedulePage = () => {
                       >
                         {EVENT_TYPE_META[form.type || 'PERSONAL'].label}
                       </span>
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                         {form.isAllDay ? '全天事项' : '时段安排'}
                       </span>
                       {form.type === 'MEETING' ? (
-                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500">
+                        <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                           {draftMeetingRoomLabel || '未绑定会议室'}
                         </span>
                       ) : null}
@@ -1559,7 +1645,7 @@ export const SchedulePage = () => {
                     bodyClassName="space-y-5"
                   >
                     <div className="space-y-2">
-                      <Label className="text-sm font-semibold text-slate-700">日程主题</Label>
+                      <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">日程主题</Label>
                       <Input
                         type="text"
                         placeholder="例如：项目评审、客户回访、个人学习"
@@ -1571,7 +1657,7 @@ export const SchedulePage = () => {
 
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                       <div className="space-y-2">
-                        <Label className="text-sm font-semibold text-slate-700">日程类型</Label>
+                        <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">日程类型</Label>
                         <Select value={form.type || 'PERSONAL'} onValueChange={handleFormTypeChange}>
                           <SelectTrigger className="h-12 rounded-xl">
                             <SelectValue placeholder="请选择日程类型" />
@@ -1586,7 +1672,7 @@ export const SchedulePage = () => {
 
                       {form.type === 'MEETING' ? (
                         <div className="space-y-2">
-                          <Label className="text-sm font-semibold text-slate-700">会议室 / 地点</Label>
+                          <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">会议室 / 地点</Label>
                           <Select
                             value={form.roomId || 'NONE'}
                             onValueChange={value =>
@@ -1608,16 +1694,16 @@ export const SchedulePage = () => {
                               ))}
                             </SelectContent>
                           </Select>
-                          <div className="text-xs text-slate-500">
+                          <div className="text-xs text-slate-500 dark:text-slate-400">
                             {meetingRooms.length > 0
                               ? `可选 ${meetingRooms.length} 间会议室`
                               : '当前没有可选会议室'}
                           </div>
                         </div>
                       ) : (
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                          <div className="text-sm font-semibold text-slate-700">地点绑定</div>
-                          <div className="mt-1.5 text-xs text-slate-500">
+                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                          <div className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点绑定</div>
+                          <div className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                             非会议事项无需绑定
                           </div>
                         </div>
@@ -1646,9 +1732,9 @@ export const SchedulePage = () => {
                     </label>
 
                     {form.isAllDay ? (
-                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5">
+                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-900 dark:bg-amber-950/20">
                         <div className="space-y-2">
-                          <Label className="text-sm font-semibold text-slate-700">开始日期</Label>
+                          <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">开始日期</Label>
                           <DatePicker
                             type="date"
                             value={form.startTime ? toLocalDateString(form.startTime) : ''}
@@ -1661,7 +1747,7 @@ export const SchedulePage = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-sm font-semibold text-slate-700">结束日期</Label>
+                          <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">结束日期</Label>
                           <DatePicker
                             type="date"
                             value={form.endTime ? toLocalDateString(form.endTime) : ''}
@@ -1673,14 +1759,14 @@ export const SchedulePage = () => {
                             }
                           />
                         </div>
-                        <div className="text-xs text-amber-700">
+                        <div className="text-xs text-amber-700 dark:text-amber-200">
                           如需精确到小时，关闭全天事项后重新选择时间。
                         </div>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                      <div className="grid grid-cols-1 gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-5 dark:border-slate-800 dark:bg-slate-900/70">
                         <div className="space-y-2">
-                          <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                          <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                             <Clock3 size={14} className="text-cyan-500" />
                             开始时间
                           </Label>
@@ -1696,7 +1782,7 @@ export const SchedulePage = () => {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                          <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                             <Clock3 size={14} className="text-cyan-500" />
                             结束时间
                           </Label>
@@ -1720,7 +1806,7 @@ export const SchedulePage = () => {
                     title="补充说明"
                   >
                     <div className="space-y-2">
-                      <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                      <Label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
                         <FileText size={14} />
                         备注说明
                       </Label>
@@ -1734,7 +1820,7 @@ export const SchedulePage = () => {
                   </DrawerSection>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 border-t border-slate-100 px-6 py-5">
+                <div className="grid grid-cols-2 gap-3 border-t border-slate-100 px-6 py-5 dark:border-slate-800">
                   <Button variant="outline" size="xl" onClick={closeCreateDrawer}>取消</Button>
                   <Button size="xl" onClick={handleSubmit} disabled={isSubmitting}>{isSubmitting ? '正在创建...' : '创建日程'}</Button>
                 </div>
@@ -1746,11 +1832,11 @@ export const SchedulePage = () => {
 
       {selectedEvent && (
         <div className="fixed inset-0 z-50 overflow-hidden">
-          <div className="absolute inset-0 bg-slate-900/32" onClick={() => setSelectedEvent(null)} />
+          <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-[3px]" onClick={() => setSelectedEvent(null)} />
           <div className="absolute inset-y-0 right-0 flex max-w-full">
             <div className="relative w-screen max-w-[400px]">
-              <div className="flex h-full flex-col bg-white shadow-[0_30px_60px_rgba(15,23,42,0.16)]">
-                <div className="border-b border-slate-100 px-5 py-5">
+              <div className="flex h-full flex-col bg-white shadow-[0_30px_60px_rgba(15,23,42,0.16)] dark:bg-slate-950 dark:shadow-[0_34px_68px_rgba(2,6,23,0.6)]">
+                <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
                   <div className="flex items-start justify-between gap-4">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -1761,12 +1847,12 @@ export const SchedulePage = () => {
                           </span>
                         ) : null}
                       </div>
-                      <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">{selectedEvent.title}</h3>
-                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                      <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{selectedEvent.title}</h3>
+                      <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
                           {formatEventSlot(selectedEvent)}
                         </span>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
                           {getDurationLabel(selectedEvent.startTime, selectedEvent.endTime, selectedEvent.allDay)}
                         </span>
                       </div>
@@ -1775,26 +1861,26 @@ export const SchedulePage = () => {
                   </div>
                 </div>
 
-                <div className="flex-1 space-y-5 overflow-y-auto bg-white px-6 py-6">
+                <div className="flex-1 space-y-5 overflow-y-auto bg-white px-6 py-6 dark:bg-slate-950">
                   <DrawerSection
                     eyebrow="时间概览"
                     title="当前安排状态"
-                    className="border-slate-200 bg-slate-50"
+                    className="border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/70"
                     bodyClassName="grid gap-3 sm:grid-cols-2"
                   >
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">
                         时间范围
                       </div>
-                      <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
+                      <div className="mt-2 text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100">
                         {formatEventSlot(selectedEvent)}
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-500">
                         预计占用
                       </div>
-                      <div className="mt-2 text-sm font-semibold leading-6 text-slate-900">
+                      <div className="mt-2 text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100">
                         {getDurationLabel(selectedEvent.startTime, selectedEvent.endTime, selectedEvent.allDay)}
                       </div>
                     </div>
@@ -1805,12 +1891,12 @@ export const SchedulePage = () => {
                     title="关键信息"
                     bodyClassName="space-y-3"
                   >
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-                        <MapPin size={14} className="text-slate-500" />
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                      <div className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-300">
+                        <MapPin size={14} className="text-slate-500 dark:text-slate-400" />
                         会议室 / 地点
                       </div>
-                      <div className="mt-2 text-sm leading-6 text-slate-600">
+                      <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
                         {getLocationLabel(selectedEvent.type, selectedEvent.roomName)}
                       </div>
                     </div>
@@ -1820,13 +1906,13 @@ export const SchedulePage = () => {
                     eyebrow="备注信息"
                     title="补充说明"
                   >
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600">
+                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
                       {selectedEvent.description?.trim() || '暂无补充备注'}
                     </div>
                   </DrawerSection>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3 border-t border-slate-100 px-6 py-5">
+                <div className="grid grid-cols-2 gap-3 border-t border-slate-100 px-6 py-5 dark:border-slate-800">
                   <Button variant="outline" size="xl" onClick={() => setSelectedEvent(null)}>关闭</Button>
                   <Button variant="destructive" size="xl" onClick={handleDeleteSelectedEvent} disabled={isDeleting}><Trash2 size={16} className="mr-2" />{isDeleting ? '正在删除...' : '删除日程'}</Button>
                 </div>

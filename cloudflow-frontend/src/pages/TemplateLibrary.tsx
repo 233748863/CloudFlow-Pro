@@ -171,13 +171,17 @@ const EMPTY_GRAPH = { nodes: [], edges: [] } as {
 };
 
 const FILTER_CHIP_CLASS_NAME =
-  "inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700";
+  "inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200";
+const SURFACE_CHIP_CLASS_NAME =
+  "rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300";
 const PANEL_STAT_LABEL_CLASS_NAME =
-  "text-xs font-bold uppercase tracking-[0.14em] text-slate-400";
+  "text-xs font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500";
 const PREVIEW_META_LABEL_CLASS_NAME =
-  "text-[10px] font-bold uppercase tracking-wider text-slate-400";
+  "text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500";
 const PREVIEW_SECTION_HEADER_CLASS_NAME =
-  "border-b border-slate-100 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500";
+  "border-b border-slate-100 px-5 py-3 text-[11px] font-bold uppercase tracking-[0.14em] text-slate-500 dark:border-slate-800 dark:text-slate-400";
+const PREVIEW_CARD_CLASS_NAME =
+  "rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78";
 
 const NODE_TYPE_LABELS: Record<string, string> = {
   START: "开始",
@@ -579,15 +583,15 @@ export const TemplateLibrary: React.FC = () => {
             className={cn(
               "h-9 w-full justify-start text-left text-sm font-medium",
               active
-                ? "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
-                : "text-slate-600 hover:bg-slate-100",
+                ? "bg-cyan-50 text-cyan-700 hover:bg-cyan-100 dark:bg-cyan-950/30 dark:text-cyan-200 dark:hover:bg-cyan-950/50"
+                : "text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900",
             )}
             style={{ paddingLeft: `${level * 16 + 12}px` }}
           >
-            <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
+            <FolderOpen className="mr-2 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
             <span className="flex-1 truncate">{node.name}</span>
             {Number(node.templateCount || 0) > 0 ? (
-              <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500">
+              <span className="ml-2 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-500 dark:bg-slate-800 dark:text-slate-400">
                 {node.templateCount}
               </span>
             ) : null}
@@ -606,26 +610,26 @@ export const TemplateLibrary: React.FC = () => {
     return (
       <div
         key={template.id}
-        className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+        className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/78 dark:hover:border-slate-700 dark:hover:bg-slate-900/80"
       >
         <div className="flex-1 p-5">
           <div className="mb-3 flex items-start justify-between gap-4">
-            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500">
-              <Layers3 className="mr-1.5 h-3.5 w-3.5 text-slate-400" />
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+              <Layers3 className="mr-1.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
               {template.categoryName || TEXT.uncategorized}
             </div>
             {template.isSystem ? (
-              <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 ring-1 ring-emerald-100">
+              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
                 {TEXT.systemTemplate}
               </span>
             ) : null}
           </div>
 
           <div>
-            <h3 className="line-clamp-1 text-lg font-bold tracking-tight text-slate-800">
+            <h3 className="line-clamp-1 text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">
               {template.name}
             </h3>
-            <p className="mt-2 min-h-[40px] line-clamp-2 text-sm leading-relaxed text-slate-500">
+            <p className="mt-2 min-h-[40px] line-clamp-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
               {template.description || TEXT.noDescription}
             </p>
           </div>
@@ -637,7 +641,7 @@ export const TemplateLibrary: React.FC = () => {
                   {metric.label}
                 </div>
                 <div
-                  className="truncate text-sm font-medium text-slate-700"
+                  className="truncate text-sm font-medium text-slate-700 dark:text-slate-200"
                   title={metric.value}
                 >
                   {metric.value}
@@ -647,10 +651,10 @@ export const TemplateLibrary: React.FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4">
+        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
           <div className="flex flex-col">
-            <span className="text-xs text-slate-400">{TEXT.templateUsage}</span>
-            <span className="text-sm font-bold text-slate-700">
+            <span className="text-xs text-slate-400 dark:text-slate-500">{TEXT.templateUsage}</span>
+            <span className="text-sm font-bold text-slate-700 dark:text-slate-100">
               {template.usageCount || 0}
             </span>
           </div>
@@ -685,39 +689,39 @@ export const TemplateLibrary: React.FC = () => {
     return (
       <div
         key={template.id}
-        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/78 dark:hover:border-slate-700 dark:hover:bg-slate-900/80"
       >
         <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center">
           <div className="min-w-0 flex-1">
             <div className="mb-2 flex items-center gap-3">
-              <h3 className="truncate text-lg font-bold text-slate-800">
+              <h3 className="truncate text-lg font-bold text-slate-800 dark:text-slate-100">
                 {template.name}
               </h3>
               {template.isSystem ? (
-                <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 ring-1 ring-emerald-100">
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
                   {TEXT.systemTemplate}
                 </span>
               ) : null}
             </div>
-            <p className="mb-3 text-sm text-slate-500">
+            <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
               {template.description || TEXT.noDescription}
             </p>
 
-            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
               <div className="flex items-center gap-1.5">
-                <Layers3 className="h-4 w-4 text-slate-400" />
+                <Layers3 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
                 {template.categoryName || TEXT.uncategorized}
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-400">{TEXT.templateUsage}:</span>
+                <span className="text-slate-400 dark:text-slate-500">{TEXT.templateUsage}:</span>
                 <span className="font-medium">{template.usageCount || 0}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-400">{TEXT.nodeCount}:</span>
+                <span className="text-slate-400 dark:text-slate-500">{TEXT.nodeCount}:</span>
                 <span className="font-medium">{graph.nodes.length}</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="text-slate-400">{TEXT.edgeCount}:</span>
+                <span className="text-slate-400 dark:text-slate-500">{TEXT.edgeCount}:</span>
                 <span className="font-medium">{graph.edges.length}</span>
               </div>
               {tags.length > 0 ? (
@@ -725,7 +729,7 @@ export const TemplateLibrary: React.FC = () => {
                   {tags.map((tag) => (
                     <span
                       key={tag}
-                      className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500"
+                      className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400"
                     >
                       {tag}
                     </span>
@@ -735,7 +739,7 @@ export const TemplateLibrary: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-3 border-t border-slate-200 pt-4 lg:flex-col lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 xl:flex-row">
+          <div className="flex shrink-0 items-center gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 lg:flex-col lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 xl:flex-row">
             <Button variant="outline" onClick={() => handlePreview(template)}>
               <Eye className="mr-2 h-4 w-4" />
               {TEXT.preview}
@@ -777,12 +781,12 @@ export const TemplateLibrary: React.FC = () => {
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
                 <Workflow className="h-3.5 w-3.5" />
                 {todayLabel}
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {timeLabel}
               </span>
             </div>
@@ -826,21 +830,21 @@ export const TemplateLibrary: React.FC = () => {
               label={TEXT.currentResults}
               value={total}
               hint="当前分页接口返回的模板总量"
-              aside={<Layers3 className="h-[18px] w-[18px] text-cyan-600" />}
+              aside={<Layers3 className="h-[18px] w-[18px] text-cyan-600 dark:text-cyan-300" />}
             />
             <WorkspaceMetricCard
               label={TEXT.categoryCount}
               value={categoryCount}
               hint="按业务分类收拢模板入口"
               aside={
-                <FolderOpen className="h-[18px] w-[18px] text-amber-500" />
+                <FolderOpen className="h-[18px] w-[18px] text-amber-500 dark:text-amber-300" />
               }
             />
             <WorkspaceMetricCard
               label={TEXT.activeFilters}
               value={activeFilterCount}
               hint="搜索词、分类与标签共同生效"
-              aside={<Sparkles className="h-[18px] w-[18px] text-sky-500" />}
+              aside={<Sparkles className="h-[18px] w-[18px] text-sky-500 dark:text-sky-300" />}
             />
             <WorkspaceMetricCard
               label={TEXT.currentView}
@@ -862,6 +866,19 @@ export const TemplateLibrary: React.FC = () => {
           total={total}
           hasActiveFilters={hasActiveFilters}
           overviewItems={overviewItems}
+          headerBadges={
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <span className={SURFACE_CHIP_CLASS_NAME}>
+                {hasActiveFilters ? `已启用 ${activeFilterCount} 项筛选` : "默认视图"}
+              </span>
+              <span className={SURFACE_CHIP_CLASS_NAME}>
+                分类 {selectedCategoryName}
+              </span>
+              <span className={SURFACE_CHIP_CLASS_NAME}>
+                当前视图 {viewModeLabel}
+              </span>
+            </div>
+          }
           quickFilterAside={
             hasActiveFilters ? (
               <Button variant="outline" size="sm" onClick={clearFilters}>
@@ -869,7 +886,7 @@ export const TemplateLibrary: React.FC = () => {
                 {TEXT.clearFilters}
               </Button>
             ) : (
-              <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
+              <span className={SURFACE_CHIP_CLASS_NAME}>
                 当前显示默认视图
               </span>
             )
@@ -878,7 +895,7 @@ export const TemplateLibrary: React.FC = () => {
             <div className="space-y-4">
               <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <Input
                     value={searchTerm}
                     onChange={(event) => {
@@ -890,15 +907,15 @@ export const TemplateLibrary: React.FC = () => {
                   />
                 </div>
                 <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-nowrap">
-                  <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
+                  <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950">
                     <button
                       type="button"
                       onClick={() => setViewMode("grid")}
                       className={cn(
                         "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
                         viewMode === "grid"
-                          ? "bg-slate-50 text-cyan-700 shadow-sm"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700",
+                          ? "bg-slate-50 text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-200"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100",
                       )}
                     >
                       <Grid className="h-4 w-4" />
@@ -909,8 +926,8 @@ export const TemplateLibrary: React.FC = () => {
                       className={cn(
                         "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
                         viewMode === "list"
-                          ? "bg-slate-50 text-cyan-700 shadow-sm"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700",
+                          ? "bg-slate-50 text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-200"
+                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100",
                       )}
                     >
                       <List className="h-4 w-4" />
@@ -920,7 +937,7 @@ export const TemplateLibrary: React.FC = () => {
               </div>
 
               {hasActiveFilters ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3">
+                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
                   <div className={PANEL_STAT_LABEL_CLASS_NAME}>
                     {TEXT.filterSummary}
                   </div>
@@ -992,17 +1009,17 @@ export const TemplateLibrary: React.FC = () => {
                   }}
                   className={cn(
                     "w-full justify-start text-sm",
-                    !selectedCategory ? "font-medium" : "text-slate-600",
+                    !selectedCategory ? "font-medium" : "text-slate-600 dark:text-slate-300",
                   )}
                 >
-                  <Layers3 className="mr-2 h-4 w-4 shrink-0 text-slate-400" />
+                  <Layers3 className="mr-2 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
                   <span className="flex-1 text-left">{TEXT.allTemplates}</span>
-                  <span className="ml-2 text-xs text-slate-400">{total}</span>
+                  <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">{total}</span>
                 </Button>
                 {categories.length > 0 ? (
                   renderCategoryTree(categories)
                 ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
                     {TEXT.noCategoryDesc}
                   </div>
                 )}
@@ -1102,37 +1119,37 @@ export const TemplateLibrary: React.FC = () => {
         <Dialog open={showPreview} onOpenChange={handlePreviewOpenChange}>
           <DialogContent
             disableDefaultMaxWidth
-            className="flex h-[min(92vh,860px)] w-[min(96vw,1220px)] max-h-[92vh] max-w-none flex-col overflow-hidden gap-0 p-0 sm:max-w-[min(96vw,1220px)]"
+            className="flex h-[min(92vh,860px)] w-[min(96vw,1220px)] max-h-[92vh] max-w-none flex-col overflow-hidden gap-0 p-0 sm:max-w-[min(96vw,1220px)] dark:border-slate-800 dark:bg-slate-950"
           >
             {previewTemplate ? (
               <>
-                <DialogHeader className="shrink-0 border-b border-slate-200 bg-white px-6 py-5 pr-14 lg:px-6">
+                <DialogHeader className="shrink-0 border-b border-slate-200 bg-white px-6 py-5 pr-14 dark:border-slate-800 dark:bg-slate-950 lg:px-6">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
-                      <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                        <Workflow className="h-5 w-5 text-cyan-600" />
+                      <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                        <Workflow className="h-5 w-5 text-cyan-600 dark:text-cyan-300" />
                         {previewTemplate.name}
                       </DialogTitle>
-                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
+                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
                         {TEXT.previewTitleSuffix}
                       </span>
                       {previewTemplate.isSystem ? (
-                        <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600">
+                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
                           {TEXT.systemTemplate}
                         </span>
                       ) : null}
                     </div>
-                    <DialogDescription className="max-w-4xl text-sm leading-6 text-slate-500">
+                    <DialogDescription className="max-w-4xl text-sm leading-6 text-slate-500 dark:text-slate-400">
                       {previewTemplate.description || TEXT.noDescription}
                     </DialogDescription>
                   </div>
                 </DialogHeader>
 
-                <div className="flex-1 overflow-hidden bg-slate-50">
+                <div className="flex-1 overflow-hidden bg-slate-50 dark:bg-slate-900/60">
                   <div className="h-full overflow-y-auto p-6">
                     <div className="space-y-6">
                       {previewTemplate.previewImage ? (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/78">
                           <img
                             src={previewTemplate.previewImage}
                             alt={`${previewTemplate.name} preview`}
@@ -1143,11 +1160,11 @@ export const TemplateLibrary: React.FC = () => {
 
                       <section className="space-y-5">
                         <div>
-                          <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                            <Sparkles className="h-4 w-4 text-cyan-600" />
+                          <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+                            <Sparkles className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
                             {TEXT.previewOverview}
                           </div>
-                          <div className="mt-1 text-sm leading-6 text-slate-500">
+                          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
                             {TEXT.previewStructureDesc}
                           </div>
                         </div>
@@ -1156,13 +1173,13 @@ export const TemplateLibrary: React.FC = () => {
                           {previewOverviewStats.map((item) => (
                             <div
                               key={item.label}
-                              className="rounded-2xl border border-slate-200 bg-white px-5 py-4"
+                              className={PREVIEW_CARD_CLASS_NAME}
                             >
                               <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                                 {item.label}
                               </div>
                               <div
-                                className="mt-2 truncate text-2xl font-bold text-slate-800"
+                                className="mt-2 truncate text-2xl font-bold text-slate-800 dark:text-slate-100"
                                 title={item.value}
                               >
                                 {item.value}
@@ -1172,17 +1189,17 @@ export const TemplateLibrary: React.FC = () => {
                         </div>
 
                         <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,0.95fr)]">
-                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                          <div className={PREVIEW_CARD_CLASS_NAME}>
                             <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                               {TEXT.templateInfo}
                             </div>
-                            <p className="mt-2 text-sm leading-6 text-slate-500">
+                            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
                               {previewTemplate.description ||
                                 TEXT.noDescription}
                             </p>
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                          <div className={PREVIEW_CARD_CLASS_NAME}>
                             <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                               {TEXT.tags}
                             </div>
@@ -1191,20 +1208,20 @@ export const TemplateLibrary: React.FC = () => {
                                 {previewTags.map((tag) => (
                                   <span
                                     key={tag}
-                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600"
+                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                   >
                                     {tag}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <div className="mt-2 text-sm text-slate-400">
+                              <div className="mt-2 text-sm text-slate-400 dark:text-slate-500">
                                 -
                               </div>
                             )}
                           </div>
 
-                          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                          <div className={PREVIEW_CARD_CLASS_NAME}>
                             <div className={PREVIEW_META_LABEL_CLASS_NAME}>
                               {TEXT.nodeTypes}
                             </div>
@@ -1213,14 +1230,14 @@ export const TemplateLibrary: React.FC = () => {
                                 {previewNodeTypes.map((type) => (
                                   <span
                                     key={type}
-                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500"
+                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
                                   >
                                     {type}
                                   </span>
                                 ))}
                               </div>
                             ) : (
-                              <div className="mt-2 text-sm text-slate-400">
+                              <div className="mt-2 text-sm text-slate-400 dark:text-slate-500">
                                 -
                               </div>
                             )}
@@ -1230,29 +1247,29 @@ export const TemplateLibrary: React.FC = () => {
 
                       <section className="space-y-4 px-1">
                         <div>
-                          <div className="text-lg font-bold text-slate-900">
+                          <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
                             {TEXT.previewStructure}
                           </div>
-                          <div className="mt-1 text-sm leading-6 text-slate-500">
+                          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
                             {TEXT.previewStructureDesc}
                           </div>
                         </div>
 
                         {previewGraph.nodes.length > 0 ? (
-                          <div className="rounded-2xl bg-slate-100 p-5 lg:p-5">
-                            <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
+                          <div className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-900 lg:p-5">
+                            <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent dark:scrollbar-thumb-slate-700">
                               {previewGraph.nodes
                                 .slice(0, 8)
                                 .map((node, index) => (
                                   <React.Fragment key={node.id}>
-                                    <div className="min-w-[220px] rounded-2xl border border-slate-200 bg-white px-5 py-4">
+                                    <div className="min-w-[220px] rounded-2xl border border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950/78">
                                       <div
                                         className={`${PREVIEW_META_LABEL_CLASS_NAME} mb-2`}
                                       >
                                         {formatNodeType(node.type)}
                                       </div>
                                       <div
-                                        className="truncate text-lg font-bold text-slate-800"
+                                        className="truncate text-lg font-bold text-slate-800 dark:text-slate-100"
                                         title={node.name}
                                       >
                                         {node.name}
@@ -1263,23 +1280,23 @@ export const TemplateLibrary: React.FC = () => {
                                       previewGraph.nodes.length - 1,
                                       7,
                                     ) ? (
-                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300">
+                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-600">
                                         <ArrowRight className="h-4 w-4" />
                                       </div>
                                     ) : null}
                                   </React.Fragment>
                                 ))}
                               {previewGraph.nodes.length > 8 ? (
-                                <div className="flex h-[76px] min-w-[76px] items-center justify-center rounded-2xl bg-white text-base font-semibold text-slate-400 ring-1 ring-dashed ring-slate-200">
+                                <div className="flex h-[76px] min-w-[76px] items-center justify-center rounded-2xl bg-white text-base font-semibold text-slate-400 ring-1 ring-dashed ring-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:ring-slate-700">
                                   +{previewGraph.nodes.length - 8}
                                 </div>
                               ) : null}
                             </div>
                           </div>
                         ) : (
-                          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center">
-                            <Workflow className="mx-auto mb-4 h-12 w-12 text-slate-200" />
-                            <p className="text-sm leading-6 text-slate-500">
+                          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-950/78">
+                            <Workflow className="mx-auto mb-4 h-12 w-12 text-slate-200 dark:text-slate-700" />
+                            <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
                               {TEXT.invalidDefinition}
                             </p>
                           </div>
@@ -1287,26 +1304,26 @@ export const TemplateLibrary: React.FC = () => {
                       </section>
 
                       <div className="grid gap-5 xl:grid-cols-2">
-                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/78">
                           <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
                             {TEXT.nodeList}
                           </div>
-                          <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
+                          <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
                             {previewGraph.nodes.length === 0 ? (
-                              <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400">
+                              <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400 dark:text-slate-500">
                                 {TEXT.invalidDefinition}
                               </div>
                             ) : (
-                              <div className="divide-y divide-slate-100">
+                              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {previewGraph.nodes.map((node) => (
                                   <div
                                     key={node.id}
-                                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50"
+                                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
                                   >
-                                    <span className="truncate text-sm font-semibold text-slate-800">
+                                    <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
                                       {node.name}
                                     </span>
-                                    <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                    <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
                                       {formatNodeType(node.type)}
                                     </span>
                                   </div>
@@ -1316,33 +1333,33 @@ export const TemplateLibrary: React.FC = () => {
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/78">
                           <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
                             {TEXT.edgeList}
                           </div>
-                          <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200">
+                          <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
                             {previewGraph.edges.length === 0 ? (
-                              <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400">
+                              <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400 dark:text-slate-500">
                                 {TEXT.edgeNotFound}
                               </div>
                             ) : (
-                              <div className="divide-y divide-slate-100">
+                              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                                 {previewGraph.edges.map((edge, index) => (
                                   <div
                                     key={`${edge.source}-${edge.target}-${index}`}
-                                    className="px-4 py-3 transition-colors hover:bg-slate-50"
+                                    className="px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
                                   >
-                                    <div className="flex items-center gap-2 text-sm text-slate-700">
+                                    <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
                                       <span className="min-w-0 flex-1 truncate font-semibold">
                                         {edge.source}
                                       </span>
-                                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300" />
+                                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
                                       <span className="min-w-0 flex-1 truncate font-semibold">
                                         {edge.target}
                                       </span>
                                     </div>
                                     {edge.condition ? (
-                                      <div className="mt-2 text-xs leading-5 text-slate-500">
+                                      <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
                                         {edge.condition}
                                       </div>
                                     ) : null}
@@ -1357,7 +1374,7 @@ export const TemplateLibrary: React.FC = () => {
                   </div>
                 </div>
 
-                <DialogFooter className="gap-3 border-t border-slate-200 bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-end">
+                <DialogFooter className="gap-3 border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-end">
                   <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
                     <Button
                       variant="outline"
@@ -1389,10 +1406,11 @@ export const TemplateLibrary: React.FC = () => {
             description={TEXT.createWorkflowDesc}
             onClose={() => handleCreateModalOpenChange(false)}
             maxWidthClassName="max-w-2xl"
+            headerAside={<span className={SURFACE_CHIP_CLASS_NAME}>{TEXT.useTemplateTitle}</span>}
           >
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="workflow-name">{`${TEXT.workflowName} *`}</Label>
+                <Label htmlFor="workflow-name" className="text-slate-700 dark:text-slate-200">{`${TEXT.workflowName} *`}</Label>
                 <Input
                   id="workflow-name"
                   value={workflowName}
@@ -1401,7 +1419,7 @@ export const TemplateLibrary: React.FC = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="workflow-description">
+                <Label htmlFor="workflow-description" className="text-slate-700 dark:text-slate-200">
                   {TEXT.workflowDescriptionLabel}
                 </Label>
                 <Textarea

@@ -6,8 +6,9 @@ import {
   ClipboardCheck,
   FileText,
   MailOpen,
+  ScanSearch,
+  TimerReset,
 } from 'lucide-react';
-import { StatCard } from '@/components/common';
 
 export interface UserDashboardStatsData {
   pendingCount: number;
@@ -16,6 +17,12 @@ export interface UserDashboardStatsData {
   doneCount: number;
   unreadAnnouncementCount: number;
   scheduleCount: number;
+  completionRate: number;
+  focusCount: number;
+  todayTodoCount: number;
+  weekTodoCount: number;
+  monthTodoCount: number;
+  avgDurationMinutes: number;
 }
 
 interface UserDashboardStatsProps {
@@ -25,60 +32,106 @@ interface UserDashboardStatsProps {
 export const UserDashboardStats: React.FC<UserDashboardStatsProps> = ({ stats }) => {
   const cards = [
     {
-      title: '待办审批',
-      value: stats.pendingCount.toLocaleString(),
-      icon: <ClipboardCheck size={20} />,
-      iconVariant: 'primary' as const,
-      meta: '需要优先处理',
+      label: '待办审批',
+      value: stats.pendingCount,
+      meta: `今日新增 ${stats.todayTodoCount}`,
+      icon: <ClipboardCheck size={18} />,
+      wrapClassName:
+        'rounded-lg bg-cyan-100 p-2 dark:bg-cyan-950/30',
+      iconClassName: 'text-cyan-700 dark:text-cyan-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
     },
     {
-      title: '我的申请',
-      value: stats.myAppsCount.toLocaleString(),
-      icon: <FileText size={20} />,
-      iconVariant: 'gray' as const,
-      meta: '已发起流程',
+      label: '我的申请',
+      value: stats.myAppsCount,
+      meta: '累计发起流程',
+      icon: <FileText size={18} />,
+      wrapClassName:
+        'rounded-lg bg-emerald-100 p-2 dark:bg-emerald-950/30',
+      iconClassName: 'text-emerald-700 dark:text-emerald-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
     },
     {
-      title: '抄送我的',
-      value: stats.copyCount.toLocaleString(),
-      icon: <MailOpen size={20} />,
-      iconVariant: 'warning' as const,
-      meta: '待查看消息',
+      label: '待查看抄送',
+      value: stats.copyCount,
+      meta: '需要确认的协同消息',
+      icon: <MailOpen size={18} />,
+      wrapClassName:
+        'rounded-lg bg-amber-100 p-2 dark:bg-amber-950/30',
+      iconClassName: 'text-amber-700 dark:text-amber-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
     },
     {
-      title: '已完成',
-      value: stats.doneCount.toLocaleString(),
-      icon: <CheckCircle2 size={20} />,
-      iconVariant: 'success' as const,
-      meta: '近期处理结果',
+      label: '已完成',
+      value: stats.doneCount,
+      meta: `平均耗时 ${stats.avgDurationMinutes} 分钟`,
+      icon: <CheckCircle2 size={18} />,
+      wrapClassName:
+        'rounded-lg bg-teal-100 p-2 dark:bg-teal-950/30',
+      iconClassName: 'text-teal-700 dark:text-teal-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
     },
     {
-      title: '未读公告',
-      value: stats.unreadAnnouncementCount.toLocaleString(),
-      icon: <Bell size={20} />,
-      iconVariant: 'warning' as const,
-      meta: '需要关注提醒',
+      label: '未读公告',
+      value: stats.unreadAnnouncementCount,
+      meta: '需要及时查看的制度与通知',
+      icon: <Bell size={18} />,
+      wrapClassName:
+        'rounded-lg bg-orange-100 p-2 dark:bg-orange-950/30',
+      iconClassName: 'text-orange-700 dark:text-orange-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
     },
     {
-      title: '今日日程',
-      value: stats.scheduleCount.toLocaleString(),
-      icon: <CalendarDays size={20} />,
-      iconVariant: 'gray' as const,
-      meta: '今日安排数量',
+      label: '今日日程',
+      value: stats.scheduleCount,
+      meta: '会议与个人安排总数',
+      icon: <CalendarDays size={18} />,
+      wrapClassName:
+        'rounded-lg bg-slate-200 p-2 dark:bg-slate-800',
+      iconClassName: 'text-slate-700 dark:text-slate-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
+    },
+    {
+      label: '处理完成率',
+      value: `${stats.completionRate.toFixed(1)}%`,
+      meta: `本周待办 ${stats.weekTodoCount}`,
+      icon: <TimerReset size={18} />,
+      wrapClassName:
+        'rounded-lg bg-sky-100 p-2 dark:bg-sky-950/30',
+      iconClassName: 'text-sky-700 dark:text-sky-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
+    },
+    {
+      label: '待关注事项',
+      value: stats.focusCount,
+      meta: `本月待办 ${stats.monthTodoCount}`,
+      icon: <ScanSearch size={18} />,
+      wrapClassName:
+        'rounded-lg bg-rose-100 p-2 dark:bg-rose-950/30',
+      iconClassName: 'text-rose-700 dark:text-rose-200',
+      valueClassName: 'text-slate-900 dark:text-slate-100',
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
       {cards.map((card) => (
-        <StatCard
-          key={card.title}
-          title={card.title}
-          value={card.value}
-          icon={card.icon}
-          iconVariant={card.iconVariant}
-          meta={card.meta}
-        />
+        <div key={card.label} className="card p-4">
+          <div className="flex items-center gap-3">
+            <div className={card.wrapClassName}>
+              <span className={card.iconClassName}>{card.icon}</span>
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {card.label}
+              </p>
+              <p className={`text-xl font-bold ${card.valueClassName}`}>
+                {typeof card.value === 'number' ? card.value.toLocaleString() : card.value}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">{card.meta}</p>
+            </div>
+          </div>
+        </div>
       ))}
     </div>
   );

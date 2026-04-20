@@ -44,10 +44,16 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     )}
   >
     <div className="flex items-start gap-3">
-      <div className={danger ? 'rounded-full bg-red-50 p-2 text-red-600' : 'rounded-full bg-amber-50 p-2 text-amber-600'}>
+      <div
+        className={
+          danger
+            ? 'rounded-full bg-red-50 p-2 text-red-600 dark:bg-red-950/40 dark:text-red-300'
+            : 'rounded-full bg-amber-50 p-2 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300'
+        }
+      >
         <AlertTriangle size={18} />
       </div>
-      <p className="pt-1 text-sm leading-6 text-slate-600">{message}</p>
+      <p className="pt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{message}</p>
     </div>
   </BaseDialog>
 );

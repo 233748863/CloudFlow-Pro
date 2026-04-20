@@ -25,6 +25,8 @@ import { Input } from './ui/input';
 import { DatePicker } from './ui/date-picker';
 import { Switch } from './ui/switch';
 import { Textarea } from './ui/textarea';
+import { Button } from './ui/button';
+import { cn } from '@/utils/cn';
 
 interface Props {
   onSave: (form: FormDefinition) => Promise<void> | void;
@@ -38,6 +40,29 @@ const FIELD_TYPES: { type: FormFieldType; label: string; icon: any }[] = [
   { type: 'DATE', label: '日期时间', icon: Calendar },
   { type: 'SELECT', label: '下拉选项', icon: List },
 ];
+
+const FIELD_TYPE_STYLES: Record<FormFieldType, { tone: string; badge: string }> = {
+  TEXT: {
+    tone: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200',
+    badge: 'border-cyan-200 dark:border-cyan-900/70',
+  },
+  TEXTAREA: {
+    tone: 'bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-200',
+    badge: 'border-teal-200 dark:border-teal-900/70',
+  },
+  NUMBER: {
+    tone: 'bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-200',
+    badge: 'border-amber-200 dark:border-amber-900/70',
+  },
+  DATE: {
+    tone: 'bg-sky-50 text-sky-700 dark:bg-sky-950/40 dark:text-sky-200',
+    badge: 'border-sky-200 dark:border-sky-900/70',
+  },
+  SELECT: {
+    tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200',
+    badge: 'border-emerald-200 dark:border-emerald-900/70',
+  },
+};
 
 // 可排序字段组件
 interface SortableFieldProps {
@@ -62,15 +87,20 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
     transition,
     opacity: isDragging ? 0.5 : 1,
   };
+  const fieldStyle = FIELD_TYPE_STYLES[field.type];
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-cyan-200 hover:shadow-md"
+      className="group relative rounded-[28px] border border-slate-200 bg-white/95 p-6 shadow-sm shadow-slate-200/60 transition-all hover:border-cyan-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none dark:hover:border-cyan-800"
     >
-      <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-        <button onClick={() => onRemove(field.id)} className="text-slate-400 hover:text-red-500">
+      <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          type="button"
+          onClick={() => onRemove(field.id)}
+          className="rounded-full p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-300"
+        >
           <Trash2 size={16} />
         </button>
       </div>
@@ -79,21 +109,35 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
         <div
           {...attributes}
           {...listeners}
-          className="mt-2 cursor-grab text-slate-300 transition-colors hover:text-cyan-500 active:cursor-grabbing"
+          className="mt-2 cursor-grab text-slate-300 transition-colors hover:text-cyan-500 active:cursor-grabbing dark:text-slate-600 dark:hover:text-cyan-300"
         >
           <GripVertical size={20} />
         </div>
         <div className="flex-1 space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={cn(
+                'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-semibold',
+                fieldStyle.tone,
+                fieldStyle.badge,
+              )}
+            >
+              {React.createElement(FIELD_TYPES.find((item) => item.type === field.type)?.icon || Type, { size: 12 })}
+              {FIELD_TYPES.find((item) => item.type === field.type)?.label || field.type}
+            </span>
+            <span className="text-[11px] text-slate-400 dark:text-slate-500">字段 {index + 1}</span>
+          </div>
+
           {/* Label Editor */}
-          <input
+          <Input
             value={field.label}
             onChange={(e) => onUpdate(field.id, { label: e.target.value })}
-            className="block w-full text-sm font-bold text-slate-700 border-none p-0 focus:ring-0 bg-transparent placeholder-slate-300"
+            className="border-none bg-transparent px-0 text-sm font-bold text-slate-700 shadow-none placeholder:text-slate-300 focus-visible:ring-0 dark:text-slate-100"
             placeholder="字段标题"
           />
 
           {/* Preview Area */}
-          <div className="pointer-events-none opacity-60">
+          <div className="pointer-events-none rounded-2xl border border-slate-200 bg-slate-50/70 p-3 opacity-75 dark:border-slate-800 dark:bg-slate-900/70">
             {field.type === 'TEXT' && (
               <Input placeholder="输入框预览" disabled />
             )}
@@ -122,13 +166,14 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           {field.type === 'SELECT' && (
             <div className="text-xs space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-slate-500">选项列表:</span>
+                <span className="text-slate-500 dark:text-slate-400">选项列表:</span>
                 <button
+                  type="button"
                   onClick={() => {
                     const newOptions = [...(field.options || []), `选项${(field.options?.length || 0) + 1}`];
                     onUpdate(field.id, { options: newOptions });
                   }}
-                  className="flex items-center gap-1 text-cyan-600 transition hover:text-cyan-700"
+                  className="flex items-center gap-1 text-cyan-600 transition hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
                 >
                   <Plus size={12} /> 添加选项
                 </button>
@@ -136,23 +181,24 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
               <div className="space-y-1">
                 {(field.options || []).map((option, idx) => (
                   <div key={idx} className="flex items-center gap-2">
-                    <input
+                    <Input
                       value={option}
                       onChange={(e) => {
                         const newOptions = [...(field.options || [])];
                         newOptions[idx] = e.target.value;
                         onUpdate(field.id, { options: newOptions });
                       }}
-                      className="flex-1 border border-slate-200 rounded px-2 py-1"
+                      className="flex-1 h-8 rounded-lg px-2 py-1 text-xs"
                       placeholder={`选项 ${idx + 1}`}
                     />
                     {(field.options?.length || 0) > 1 && (
                       <button
+                        type="button"
                         onClick={() => {
                           const newOptions = (field.options || []).filter((_, i) => i !== idx);
                           onUpdate(field.id, { options: newOptions });
                         }}
-                        className="text-slate-400 hover:text-red-500"
+                        className="rounded p-1 text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-950/40 dark:hover:text-red-300"
                       >
                         <X size={14} />
                       </button>
@@ -165,34 +211,34 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
 
           {/* Validation Editor */}
           {(field.type === 'TEXT' || field.type === 'NUMBER') && (
-            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2">
+            <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-100 pt-2 dark:border-slate-800">
               <div>
-                <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
+                <div className="mb-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                   <Code size={12} /> 正则表达式
                 </div>
-                <input
+                <Input
                   value={field.regex || ''}
                   onChange={(e) => onUpdate(field.id, { regex: e.target.value })}
-                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs font-mono"
+                  className="h-8 rounded-lg px-2 py-1 text-xs font-mono"
                   placeholder="^1[3-9]\d{9}$"
                 />
               </div>
               <div>
-                <div className="flex items-center gap-1 text-xs text-slate-500 mb-1">
+                <div className="mb-1 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
                   <AlertCircle size={12} /> 错误提示
                 </div>
-                <input
+                <Input
                   value={field.errorMsg || ''}
                   onChange={(e) => onUpdate(field.id, { errorMsg: e.target.value })}
-                  className="w-full border border-slate-200 rounded px-2 py-1 text-xs"
+                  className="h-8 rounded-lg px-2 py-1 text-xs"
                   placeholder="格式不正确"
                 />
               </div>
             </div>
           )}
 
-                    <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
-            <label htmlFor={`req-${field.id}`} className="text-xs font-medium text-slate-600">
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/80">
+            <label htmlFor={`req-${field.id}`} className="text-xs font-medium text-slate-600 dark:text-slate-300">
               必填项
             </label>
             <Switch
@@ -248,30 +294,33 @@ const FormPreview: React.FC<{
   };
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center justify-between border-b border-slate-100 bg-cyan-50 px-5 py-4">
+    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-cyan-50/80 px-5 py-4 dark:border-slate-800 dark:bg-cyan-950/30">
         <div>
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            <Eye size={18} className="text-cyan-600" />
+          <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100">
+            <Eye size={18} className="text-cyan-600 dark:text-cyan-200" />
             预览: {formName}
           </h3>
-          <p className="text-xs text-slate-500 mt-1">模拟用户填写体验，提交不会保存数据</p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">模拟用户填写体验，提交不会保存数据</p>
         </div>
-        <button onClick={onCancel} className="text-slate-400 hover:text-slate-600">
+        <button type="button" onClick={onCancel} className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/80 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200">
           <X size={20} />
         </button>
       </div>
       <div className="max-h-[55vh] space-y-6 overflow-y-auto px-5 py-5">
         {fields.map(field => (
           <div key={field.id} className="space-y-1">
-            <label className="block text-sm font-bold text-slate-700">
+            <label className="block text-sm font-bold text-slate-700 dark:text-slate-100">
               {field.label} {field.required && <span className="text-red-500">*</span>}
             </label>
             {field.type === 'TEXTAREA' ? (
-              <textarea
-                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:border-cyan-500 focus:ring-cyan-500/20 outline-none transition-all ${
-                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
-                }`}
+              <Textarea
+                className={cn(
+                  'w-full rounded-lg px-3 py-2.5',
+                  errors[field.id]
+                    ? 'border-red-300 bg-red-50 dark:border-red-900/70 dark:bg-red-950/30'
+                    : 'border-slate-300 dark:border-slate-700'
+                )}
                 rows={3}
                 placeholder={`请输入${field.label}`}
                 value={formData[field.id] || ''}
@@ -289,34 +338,34 @@ const FormPreview: React.FC<{
                 </SelectContent>
               </Select>
             ) : (
-              <input
+              <Input
                 type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
-                className={`w-full p-2.5 border rounded-lg focus:ring-2 focus:border-cyan-500 focus:ring-cyan-500/20 outline-none transition-all ${
-                  errors[field.id] ? 'border-red-300 bg-red-50' : 'border-slate-300'
-                }`}
+                className={cn(
+                  'w-full rounded-lg px-3 py-2.5',
+                  errors[field.id]
+                    ? 'border-red-300 bg-red-50 dark:border-red-900/70 dark:bg-red-950/30'
+                    : 'border-slate-300 dark:border-slate-700'
+                )}
                 placeholder={`请输入${field.label}`}
                 value={formData[field.id] || ''}
                 onChange={e => handleChange(field.id, e.target.value)}
               />
             )}
             {errors[field.id] && (
-              <p className="text-xs text-red-500 flex items-center gap-1">
+              <p className="flex items-center gap-1 text-xs text-red-500 dark:text-red-300">
                 <AlertCircle size={10} /> {errors[field.id]}
               </p>
             )}
           </div>
         ))}
       </div>
-      <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
-        <button onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900 text-sm font-medium">
+      <div className="flex justify-end gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
+        <Button variant="outline" onClick={onCancel}>
           返回设计
-        </button>
-        <button
-          onClick={handleSubmit}
-          className="px-6 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm font-medium shadow-md shadow-cyan-100 flex items-center gap-2"
-        >
+        </Button>
+        <Button onClick={handleSubmit} className="gap-2">
           <Save size={16} /> 模拟提交
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -431,97 +480,98 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   };
 
   return (
-    <div className="flex h-full gap-6">
+    <div className="form-studio-shell flex h-full gap-6">
       {/* Toolbox */}
-      <div className="w-64 bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col">
-        <h3 className="text-sm font-bold text-slate-700 mb-4 uppercase tracking-wider">组件库</h3>
+      <div className="flex w-72 flex-col rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
+        <div className="mb-4">
+          <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-700 dark:text-slate-200">组件库</h3>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">拖出统一字段原语，快速构建表单结构并保持与流程设计器同一套视觉密度。</p>
+        </div>
         <div className="grid grid-cols-1 gap-2">
           {FIELD_TYPES.map(t => (
             <button
+              type="button"
               key={t.type}
               onClick={() => addField(t.type)}
-              className="flex items-center gap-3 px-4 py-3 bg-slate-50 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-200 rounded-lg transition-all text-sm text-slate-600 font-medium text-left"
+              className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm font-medium text-slate-600 transition-all hover:border-cyan-200 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/40"
             >
-              <t.icon size={16} className="text-cyan-500" />
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-white shadow-sm dark:bg-slate-950/90">
+                <t.icon size={16} className="text-cyan-500 dark:text-cyan-300" />
+              </div>
               {t.label}
             </button>
           ))}
         </div>
-        <div className="mt-auto pt-4 border-t border-slate-100">
-          <p className="text-xs text-slate-400">点击组件添加到画布。支持正则校验与后端自动生成 JSON Schema。</p>
+        <div className="mt-auto border-t border-slate-100 pt-4 dark:border-slate-800">
+          <p className="text-xs leading-6 text-slate-400 dark:text-slate-500">点击组件添加到画布。支持字段排序、正则校验、模拟填写预览和后端 JSON Schema 生成。</p>
         </div>
       </div>
 
       {/* Canvas */}
-      <div className="flex flex-1 flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/80 p-4">
-          <input 
+      <div className="flex flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
+        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+          <Input 
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
-            className="text-lg font-bold bg-transparent border-none focus:ring-0 text-slate-800 placeholder-slate-400"
+            className="w-[20rem] border-none bg-transparent text-lg font-bold text-slate-800 shadow-none focus-visible:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
             placeholder="请输入表单名称"
           />
           <div className="flex items-center gap-2">
-            <button
+            <Button
+              variant={previewing ? 'soft' : 'outline'}
               onClick={() => {
                 setPreviewing(!previewing);
                 setPreviewData(null);
               }}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                previewing
-                  ? 'bg-amber-100 text-amber-700 hover:bg-amber-200'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
             >
               {previewing ? <EyeOff size={16} /> : <Eye size={16} />}
               {previewing ? '退出预览' : '预览填写'}
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 bg-cyan-600 text-white rounded-lg text-sm font-medium hover:bg-cyan-700 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="gap-2"
             >
               <Save size={16} /> {saving ? '保存中...' : '保存表单'}
-            </button>
+            </Button>
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto bg-slate-50/20 p-5">
+        <div className="flex-1 overflow-y-auto bg-slate-50/20 p-5 dark:bg-slate-950/60">
           {previewing ? (
             /* 预览模式：模拟真实表单填写 */
-            <div className="max-w-2xl mx-auto">
+            <div className="mx-auto max-w-2xl">
               {previewData ? (
                 /* 提交成功后展示数据 */
-                <div className="bg-white rounded-xl border border-green-200 shadow-sm overflow-hidden">
-                  <div className="px-6 py-4 bg-green-50 border-b border-green-100">
-                    <h3 className="font-bold text-green-800 flex items-center gap-2">
+                <div className="overflow-hidden rounded-[28px] border border-green-200 bg-white/95 shadow-sm shadow-green-100/70 dark:border-green-900/70 dark:bg-slate-950/88 dark:shadow-none">
+                  <div className="border-b border-green-100 bg-green-50 px-6 py-4 dark:border-green-900/60 dark:bg-green-950/30">
+                    <h3 className="flex items-center gap-2 font-bold text-green-800 dark:text-green-200">
                       ✅ 模拟提交成功
                     </h3>
-                    <p className="text-xs text-green-600 mt-1">以下是表单提交的数据（仅预览，未实际提交）</p>
+                    <p className="mt-1 text-xs text-green-600 dark:text-green-300">以下是表单提交的数据（仅预览，未实际提交）</p>
                   </div>
                   <div className="p-6">
-                    <pre className="bg-slate-50 rounded-lg p-4 text-sm text-slate-700 overflow-auto max-h-80 font-mono">
+                    <pre className="max-h-80 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-4 font-mono text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                       {JSON.stringify(previewData, null, 2)}
                     </pre>
                     <div className="mt-4 flex gap-2">
-                      <button
+                      <Button
                         onClick={() => setPreviewData(null)}
-                        className="px-4 py-2 bg-cyan-600 text-white rounded-lg text-sm hover:bg-cyan-700"
                       >
                         重新填写
-                      </button>
-                      <button
+                      </Button>
+                      <Button
+                        variant="outline"
                         onClick={() => { setPreviewing(false); setPreviewData(null); }}
-                        className="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm hover:bg-slate-200"
                       >
                         返回设计
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
               ) : fields.length === 0 ? (
-                <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-xl">
-                  <p className="text-slate-400">没有字段可预览，请先添加组件</p>
+                <div className="rounded-[28px] border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
+                  <p className="text-slate-400 dark:text-slate-500">没有字段可预览，请先添加组件</p>
                 </div>
               ) : (
                 /* 表单填写预览 */
@@ -538,10 +588,10 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
             </div>
           ) : (
             /* 设计模式 */
-            <div className="max-w-2xl mx-auto space-y-4">
+            <div className="mx-auto max-w-2xl space-y-4">
               {fields.length === 0 && (
-                <div className="text-center py-20 border-2 border-dashed border-slate-200 rounded-xl">
-                  <p className="text-slate-400">画布空空如也，请从左侧添加组件</p>
+                <div className="rounded-[28px] border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
+                  <p className="text-slate-400 dark:text-slate-500">画布空空如也，请从左侧添加组件</p>
                 </div>
               )}
 

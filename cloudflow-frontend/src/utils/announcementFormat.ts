@@ -21,9 +21,8 @@ function parseAnnouncementDate(value: AnnouncementDateInput) {
 }
 
 /**
- * 公告时间兼容层：
- * 按源码的“相对时间 + 详细时间”模式输出，
- * 但直接落到本项目可复用的 React 工具函数。
+ * 公告时间展示兼容层：
+ * 输出“相对时间”或“相对时间 + 详细时间”的统一格式。
  */
 export function formatAnnouncementRelativeTime(value: AnnouncementDateInput) {
   const date = parseAnnouncementDate(value);

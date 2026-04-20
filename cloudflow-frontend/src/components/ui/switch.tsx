@@ -27,14 +27,14 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
           relative inline-flex h-6 w-11 items-center rounded-full border border-transparent
           transition-colors focus:outline-none focus-visible:ring-2
           focus-visible:ring-cyan-500/30 focus-visible:ring-offset-2
-          ${checked ? 'bg-cyan-600' : 'bg-slate-200'}
+          ${checked ? 'bg-cyan-600 dark:bg-cyan-500' : 'bg-slate-200 dark:bg-slate-700'}
           ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}
           ${className}
         `}
       >
         <span
           className={`
-            inline-block h-4 w-4 transform rounded-full bg-white shadow-sm
+            inline-block h-4 w-4 transform rounded-full bg-white shadow-sm dark:bg-slate-100
             transition-transform
             ${checked ? 'translate-x-6' : 'translate-x-1'}
           `}

@@ -55,25 +55,20 @@ export const WorkspaceHeroMetricsSection: React.FC<WorkspaceHeroMetricsSectionPr
           {metrics.map((item) => (
             <div
               key={String(item.label)}
-              className={cn(
-                'stat-card rounded-2xl border border-slate-200 bg-white',
-              )}
+              className="stat-card rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88"
             >
               {item.icon ? (
-                <div
-                  className={cn(
-                    'stat-icon stat-icon-gray shrink-0',
-                    item.iconWrapClassName,
-                  )}
-                >
+                <div className={cn('stat-icon stat-icon-gray shrink-0', item.iconWrapClassName)}>
                   {item.icon}
                 </div>
               ) : null}
               <div className="min-w-0 flex-1">
                 <div className="stat-label truncate">{item.label}</div>
-                <div className={cn('stat-value mt-1 truncate', item.valueClassName)}>{item.value}</div>
+                <div className={cn('stat-value mt-1 truncate', item.valueClassName)}>
+                  {item.value}
+                </div>
                 {item.hint ? (
-                  <div className={cn('mt-1 text-xs leading-5 text-slate-500', item.hintClassName)}>
+                  <div className={cn('mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400', item.hintClassName)}>
                     {item.hint}
                   </div>
                 ) : null}

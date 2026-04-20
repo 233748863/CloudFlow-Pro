@@ -61,7 +61,7 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, icon, color, trend })
       hint={trend}
       valueClassName={color}
       aside={
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
           {icon}
         </div>
       }
@@ -84,11 +84,11 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, type }) => {
   
   const levelColor = isTimeout
     ? (timeoutAlert.timeoutLevel === 'CRITICAL'
-        ? 'text-red-600'
+        ? 'text-red-600 dark:text-red-300'
         : timeoutAlert.timeoutLevel === 'WARNING'
-          ? 'text-yellow-600'
-          : 'text-cyan-600')
-    : (anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' ? 'text-red-600' : 'text-yellow-600');
+          ? 'text-yellow-600 dark:text-yellow-300'
+          : 'text-cyan-600 dark:text-cyan-300')
+    : (anomalyAlert.severity === 'CRITICAL' || anomalyAlert.severity === 'HIGH' ? 'text-red-600 dark:text-red-300' : 'text-yellow-600 dark:text-yellow-300');
   
   const levelIcon = isTimeout
     ? (timeoutAlert.timeoutLevel === 'CRITICAL' ? '\uD83D\uDD34' : timeoutAlert.timeoutLevel === 'WARNING' ? '\uD83D\uDFE1' : '\uD83D\uDD35')
@@ -100,23 +100,23 @@ const AlertItem: React.FC<AlertItemProps> = ({ alert, type }) => {
     : (anomalyAlert.alertTime || anomalyAlert.createTime);
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-transparent p-3 transition hover:border-slate-200 hover:bg-slate-50">
+    <div className="flex items-start gap-3 rounded-xl border border-transparent p-3 transition hover:border-slate-200 hover:bg-slate-50 dark:hover:border-slate-800 dark:hover:bg-slate-900/70">
       <span className="text-xl">{levelIcon}</span>
       <div className="flex-1 min-w-0">
         <p className={`font-medium ${levelColor}`}>
           {isTimeout ? '超时告警' : '异常告警'}
         </p>
-        <p className="text-sm text-gray-900 truncate">
+        <p className="truncate text-sm text-slate-900 dark:text-slate-100">
           {isTimeout ? timeoutAlert.targetName : anomalyAlert.processName}
         </p>
-        <p className="text-xs text-gray-500">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           {isTimeout 
             ? `已超时 ${Math.max(1, Math.ceil(timeoutAlert.timeoutDuration / (1000 * 60 * 60)))} 小时`
             : alertDescription
           }
         </p>
       </div>
-      <span className="text-xs text-gray-400">
+      <span className="text-xs text-slate-400 dark:text-slate-500">
         {new Date(alertDisplayTime).toLocaleTimeString('zh-CN', { 
           hour: '2-digit', 
           minute: '2-digit' 
@@ -209,7 +209,7 @@ const WorkflowMonitor: React.FC = () => {
       <WorkspacePageContent className="space-y-6">
         <WorkspaceHeroCard
           badge={
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600">
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
               <Activity size={14} className="text-cyan-600" />
               流程运行洞察
             </div>
@@ -218,13 +218,13 @@ const WorkflowMonitor: React.FC = () => {
           description="实时查看流程执行、告警变化和整体性能趋势。"
           actions={
             <div className="flex flex-wrap items-center gap-3">
-              <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 shadow-sm">
+              <label className="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 <input
                   type="checkbox"
                   id="autoRefresh"
                   checked={autoRefresh}
                   onChange={(e) => setAutoRefresh(e.target.checked)}
-                  className="rounded border-slate-300 accent-cyan-600"
+                  className="rounded border-slate-300 accent-cyan-600 dark:border-slate-700 dark:bg-slate-900"
                 />
                 自动刷新（30秒）
               </label>
@@ -239,7 +239,7 @@ const WorkflowMonitor: React.FC = () => {
             </div>
           }
         >
-          <div className="pt-1 text-xs text-slate-400">
+          <div className="pt-1 text-xs text-slate-400 dark:text-slate-500">
             最后更新：{lastUpdate.toLocaleTimeString('zh-CN')}
           </div>
         </WorkspaceHeroCard>
@@ -274,39 +274,39 @@ const WorkflowMonitor: React.FC = () => {
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <WorkspaceSectionCard title="当前状态" headerAside={<Activity className="h-5 w-5 text-slate-300" />}>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-500">运行中流程</span>
-                <span className="text-lg font-semibold text-cyan-600">{overview?.runningCount || 0}</span>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <span className="text-sm text-slate-500 dark:text-slate-400">运行中流程</span>
+                <span className="text-lg font-semibold text-cyan-600 dark:text-cyan-300">{overview?.runningCount || 0}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-500">待办任务</span>
-                <span className="text-lg font-semibold text-orange-600">{overview?.pendingTaskCount || 0}</span>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <span className="text-sm text-slate-500 dark:text-slate-400">待办任务</span>
+                <span className="text-lg font-semibold text-orange-600 dark:text-orange-300">{overview?.pendingTaskCount || 0}</span>
               </div>
             </div>
           </WorkspaceSectionCard>
 
           <WorkspaceSectionCard title="告警统计" headerAside={<AlertTriangle className="h-5 w-5 text-slate-300" />}>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-500">严重告警</span>
-                <span className="text-lg font-semibold text-rose-600">{overview?.criticalAlertCount || 0}</span>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <span className="text-sm text-slate-500 dark:text-slate-400">严重告警</span>
+                <span className="text-lg font-semibold text-rose-600 dark:text-rose-300">{overview?.criticalAlertCount || 0}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-500">警告提醒</span>
-                <span className="text-lg font-semibold text-amber-600">{overview?.warningAlertCount || 0}</span>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <span className="text-sm text-slate-500 dark:text-slate-400">警告提醒</span>
+                <span className="text-lg font-semibold text-amber-600 dark:text-amber-300">{overview?.warningAlertCount || 0}</span>
               </div>
             </div>
           </WorkspaceSectionCard>
 
           <WorkspaceSectionCard title="性能指标" headerAside={<TrendingUp className="h-5 w-5 text-slate-300" />}>
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-500">平均完成时间</span>
-                <span className="text-lg font-semibold text-violet-600">{formatDuration(overview?.avgCompletionTimeMs || 0)}</span>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <span className="text-sm text-slate-500 dark:text-slate-400">平均完成时间</span>
+                <span className="text-lg font-semibold text-violet-600 dark:text-violet-300">{formatDuration(overview?.avgCompletionTimeMs || 0)}</span>
               </div>
-              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <span className="text-sm text-slate-500">成功率</span>
-                <span className="text-lg font-semibold text-emerald-600">{(overview?.successRate || 0).toFixed(1)}%</span>
+              <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <span className="text-sm text-slate-500 dark:text-slate-400">成功率</span>
+                <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-300">{(overview?.successRate || 0).toFixed(1)}%</span>
               </div>
             </div>
           </WorkspaceSectionCard>
@@ -317,9 +317,9 @@ const WorkflowMonitor: React.FC = () => {
           description="快速查看每日启动、完成、超时和异常变化。"
           headerAside={<TrendingUp className="h-5 w-5 text-slate-300" />}
         >
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
-            <table className="min-w-full divide-y divide-slate-100">
-              <TableHeader className="bg-slate-50">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+            <table className="min-w-full divide-y divide-slate-100 dark:divide-slate-800">
+              <TableHeader className="bg-slate-50 dark:bg-slate-900/70">
                 <tr>
                   <TableHead className="px-4 py-2 text-left">日期</TableHead>
                   <TableHead className="px-4 py-2 text-right">启动</TableHead>
@@ -328,14 +328,14 @@ const WorkflowMonitor: React.FC = () => {
                   <TableHead className="px-4 py-2 text-right">异常</TableHead>
                 </tr>
               </TableHeader>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {trend.map((item, index) => (
-                  <tr key={index} className="transition hover:bg-slate-50">
-                    <td className="px-4 py-2 text-sm text-slate-900">{item.date}</td>
-                    <td className="px-4 py-2 text-right text-sm font-medium text-cyan-600">{item.started}</td>
-                    <td className="px-4 py-2 text-right text-sm font-medium text-emerald-600">{item.completed}</td>
-                    <td className="px-4 py-2 text-right text-sm font-medium text-amber-600">{item.timeout}</td>
-                    <td className="px-4 py-2 text-right text-sm font-medium text-rose-600">{item.anomaly}</td>
+                  <tr key={index} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
+                    <td className="px-4 py-2 text-sm text-slate-900 dark:text-slate-100">{item.date}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-cyan-600 dark:text-cyan-300">{item.started}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-emerald-600 dark:text-emerald-300">{item.completed}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-amber-600 dark:text-amber-300">{item.timeout}</td>
+                    <td className="px-4 py-2 text-right text-sm font-medium text-rose-600 dark:text-rose-300">{item.anomaly}</td>
                   </tr>
                 ))}
               </tbody>

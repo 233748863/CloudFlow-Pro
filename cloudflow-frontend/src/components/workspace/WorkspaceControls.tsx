@@ -34,7 +34,7 @@ export const WorkspaceControlGroup: React.FC<WorkspaceControlGroupProps> = ({
 }) => (
   <div
     className={cn(
-      'inline-flex h-10 items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm',
+      'inline-flex h-10 items-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
       className,
     )}
   >
@@ -43,7 +43,7 @@ export const WorkspaceControlGroup: React.FC<WorkspaceControlGroupProps> = ({
 );
 
 export const WorkspaceControlDivider: React.FC<{ className?: string }> = ({ className }) => (
-  <div className={cn('h-6 w-px bg-slate-200', className)} />
+  <div className={cn('h-6 w-px bg-slate-200 dark:bg-slate-800', className)} />
 );
 
 export const WorkspaceIconButton: React.FC<WorkspaceIconButtonProps> = ({
@@ -63,8 +63,8 @@ export const WorkspaceIconButton: React.FC<WorkspaceIconButtonProps> = ({
     className={cn(
       'h-10 w-10 text-slate-500 shadow-none hover:text-cyan-700',
       variant === 'outline'
-        ? 'border border-slate-200 bg-white hover:border-cyan-100 hover:bg-cyan-50'
-        : 'border-0 bg-transparent hover:bg-cyan-50',
+        ? 'border border-slate-200 bg-white hover:border-cyan-100 hover:bg-cyan-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-cyan-950 dark:hover:bg-cyan-950/30'
+        : 'border-0 bg-transparent hover:bg-cyan-50 dark:text-slate-300 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200',
       shape === 'circle' ? 'rounded-full' : 'rounded-none',
       className,
     )}
@@ -84,6 +84,7 @@ export function WorkspaceSegmentedControl<T extends string>({
     <div
       className={cn(
         'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-slate-100 p-1',
+        'dark:border-slate-800 dark:bg-slate-900/80',
         className,
       )}
     >
@@ -99,8 +100,8 @@ export function WorkspaceSegmentedControl<T extends string>({
             className={cn(
               'flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition',
               active
-                ? 'bg-white text-cyan-700 shadow-sm'
-                : 'text-slate-500 hover:text-slate-700',
+                ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
+                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100',
               item.disabled && 'cursor-not-allowed opacity-50',
             )}
           >

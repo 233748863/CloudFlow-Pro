@@ -28,8 +28,8 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
   onMarkAsRead,
   headerBadges,
   extraInfo,
-  footerReadText = '你已阅读该公告',
-  footerUnreadText = '打开后会自动标记为已读',
+  footerReadText = '你已阅读该公告。',
+  footerUnreadText = '打开后会自动标记为已读。',
   titleBadgeLabel = '公告',
   zIndexClassName = 'z-[110]',
   maxWidthClassName = 'max-w-[780px]',
@@ -69,39 +69,41 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
     >
       <div
         className={cn(
-          'cf-announcement-modal-panel w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80',
+          'cf-announcement-modal-panel w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80 dark:shadow-[0_22px_44px_rgba(2,6,23,0.56)]',
           maxWidthClassName,
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="border-b border-slate-100 bg-white px-5 pb-4 pt-5">
+        <div className="border-b border-slate-100 bg-white px-5 pb-4 pt-5 dark:border-slate-800 dark:bg-slate-950">
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
                   <Bell size={18} />
                 </div>
-                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">
+                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
                   {titleBadgeLabel}
                 </span>
                 {headerBadges}
                 {!announcement.isRead ? (
-                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700">
+                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
                     未读
                   </span>
                 ) : null}
               </div>
 
-              <h2 className="text-xl font-semibold leading-tight text-slate-900">
+              <h2 className="text-xl font-semibold leading-tight text-slate-900 dark:text-slate-100">
                 {announcement.title}
               </h2>
 
-              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1">
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1 dark:border-slate-800 dark:bg-slate-900">
                   <Clock3 size={13} />
-                  {formatAnnouncementRelativeWithDateTime(announcement.publishTime || announcement.createTime)}
+                  {formatAnnouncementRelativeWithDateTime(
+                    announcement.publishTime || announcement.createTime,
+                  )}
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1">
+                <span className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-1 dark:border-slate-800 dark:bg-slate-900">
                   <Eye size={13} />
                   {announcement.isRead ? '已读' : '未读'}
                 </span>
@@ -114,7 +116,7 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
           </div>
         </div>
 
-        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-white px-5 py-5">
+        <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-white px-5 py-5 dark:bg-slate-950">
           <div className="relative">
             <div className="absolute bottom-0 left-0 top-0 w-0.5 rounded-full bg-cyan-500" />
             <div className="pl-5">
@@ -123,9 +125,9 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
           </div>
         </div>
 
-        <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-4">
+        <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
               {announcement.isRead ? footerReadText : footerUnreadText}
             </div>
             <div className="flex items-center gap-3">

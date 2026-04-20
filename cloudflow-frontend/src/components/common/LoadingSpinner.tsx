@@ -19,7 +19,7 @@ export const LoadingSpinner: React.FC<LoadingSpinnerProps> = ({
   className,
 }) => (
   <div
-    className={cn('spinner text-cyan-500', sizeClassMap[size], className)}
+    className={cn('spinner text-cyan-500 dark:text-cyan-300', sizeClassMap[size], className)}
     aria-hidden="true"
   />
 );

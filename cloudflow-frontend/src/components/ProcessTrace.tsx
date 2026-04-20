@@ -61,9 +61,9 @@ const NodeIcon = ({ type, title, status }: { type: string, title: string, status
 
   const baseClasses = "w-8 h-8 rounded-full flex items-center justify-center z-10 transition-all duration-500";
   const statusClasses = {
-    finished: "bg-emerald-100 text-emerald-600 ring-2 ring-emerald-500",
-    active: "bg-cyan-50 text-cyan-700 ring-2 ring-cyan-400 animate-pulse",
-    pending: "bg-slate-100 text-slate-400 ring-2 ring-slate-200"
+    finished: "bg-emerald-100 text-emerald-600 ring-2 ring-emerald-500 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-700",
+    active: "bg-cyan-50 text-cyan-700 ring-2 ring-cyan-400 animate-pulse dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-700",
+    pending: "bg-slate-100 text-slate-400 ring-2 ring-slate-200 dark:bg-slate-900 dark:text-slate-500 dark:ring-slate-700"
   };
 
   return (
@@ -76,13 +76,13 @@ const NodeIcon = ({ type, title, status }: { type: string, title: string, status
 // 操作动作的中文映射和颜色
 const getActionStyle = (action: string) => {
   const map: Record<string, { label: string; color: string; bgColor: string }> = {
-    'APPROVE': { label: '同意', color: 'text-emerald-700', bgColor: 'bg-emerald-50' },
-    'REJECT': { label: '拒绝', color: 'text-red-700', bgColor: 'bg-red-50' },
-    'DELEGATE': { label: '转办', color: 'text-purple-700', bgColor: 'bg-purple-50' },
-    'RETURN': { label: '驳回', color: 'text-amber-700', bgColor: 'bg-amber-50' },
-    'START': { label: '发起', color: 'text-cyan-700', bgColor: 'bg-cyan-50' },
-    'SUBMIT': { label: '提交', color: 'text-cyan-700', bgColor: 'bg-cyan-50' },
-    'COMPLETE': { label: '完成', color: 'text-emerald-700', bgColor: 'bg-emerald-50' },
+    'APPROVE': { label: '同意', color: 'text-emerald-700 dark:text-emerald-200', bgColor: 'bg-emerald-50 dark:bg-emerald-950/30' },
+    'REJECT': { label: '拒绝', color: 'text-red-700 dark:text-red-200', bgColor: 'bg-red-50 dark:bg-red-950/30' },
+    'DELEGATE': { label: '转办', color: 'text-purple-700 dark:text-purple-200', bgColor: 'bg-purple-50 dark:bg-purple-950/30' },
+    'RETURN': { label: '驳回', color: 'text-amber-700 dark:text-amber-200', bgColor: 'bg-amber-50 dark:bg-amber-950/30' },
+    'START': { label: '发起', color: 'text-cyan-700 dark:text-cyan-200', bgColor: 'bg-cyan-50 dark:bg-cyan-950/30' },
+    'SUBMIT': { label: '提交', color: 'text-cyan-700 dark:text-cyan-200', bgColor: 'bg-cyan-50 dark:bg-cyan-950/30' },
+    'COMPLETE': { label: '完成', color: 'text-emerald-700 dark:text-emerald-200', bgColor: 'bg-emerald-50 dark:bg-emerald-950/30' },
   };
   // 尝试匹配，支持中文动作名
   if (action.includes('同意') || action.includes('通过')) return map['APPROVE'];
@@ -90,7 +90,7 @@ const getActionStyle = (action: string) => {
   if (action.includes('转办') || action.includes('委托')) return map['DELEGATE'];
   if (action.includes('驳回') || action.includes('退回')) return map['RETURN'];
   if (action.includes('发起') || action.includes('提交')) return map['START'];
-  return map[action] || { label: action, color: 'text-slate-700', bgColor: 'bg-slate-50' };
+  return map[action] || { label: action, color: 'text-slate-700 dark:text-slate-200', bgColor: 'bg-slate-50 dark:bg-slate-900' };
 };
 
 // 格式化时间
@@ -271,19 +271,22 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
         <div className="relative flex flex-col items-center group">
           <NodeIcon type={nodeType} title={nodeTitle} status={status} />
           
-          <div className={`mt-2 px-3 py-1.5 rounded-lg border text-xs font-medium max-w-[140px] text-center transition-colors
+          <div className={`mt-2 max-w-[140px] rounded-lg border px-3 py-1.5 text-center text-xs font-medium transition-colors
              ${status === 'active' ? 'bg-cyan-50 border-cyan-200 text-cyan-700 shadow-sm' : 
                status === 'finished' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 
                'bg-white border-slate-200 text-slate-500'}
+             ${status === 'active' ? 'dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200' : 
+               status === 'finished' ? 'dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200' : 
+               'dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400'}
           `}>
             {nodeTitle}
             {nodeHistory && (
-              <div className="text-[9px] mt-0.5 opacity-75">
+              <div className="mt-0.5 text-[9px] opacity-75">
                 {nodeHistory.operatorName} · {getActionStyle(nodeHistory.action).label}
               </div>
             )}
             {nodeActive && (
-              <div className="text-[9px] mt-0.5 text-cyan-500">
+              <div className="mt-0.5 text-[9px] text-cyan-500 dark:text-cyan-300">
                 待: {nodeActive.assigneeName || '待认领'}
               </div>
             )}
@@ -295,7 +298,7 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
                   e.stopPropagation();
                   void handleUrge(nodeActive.taskId!, nodeTitle);
                 }}
-                className="absolute -right-8 top-0 bg-amber-100 text-amber-600 p-1 rounded-full hover:bg-amber-200 transition-colors"
+                className="absolute -right-8 top-0 rounded-full bg-amber-100 p-1 text-amber-600 transition-colors hover:bg-amber-200 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:bg-amber-950/60"
                 title="催办"
               >
                   <BellRing size={12}/>
@@ -305,12 +308,12 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
 
         {branchNodeIds.length > 0 && (
            <div className="flex flex-col items-center mt-4 w-full">
-              <div className="h-4 w-0.5 bg-slate-300 mb-2"></div>
+              <div className="mb-2 h-4 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
               <div className="flex justify-center items-start gap-8 relative">
-                 <div className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 mx-auto" style={{ width: `calc(100% - 4rem)` }}></div>
+                 <div className="absolute top-0 left-0 right-0 mx-auto h-0.5 bg-slate-300 dark:bg-slate-700" style={{ width: `calc(100% - 4rem)` }}></div>
                  {branchNodeIds.map((branchId, idx) => (
                     <div key={`${branchId}-${idx}`} className="flex flex-col items-center pt-4 relative">
-                       <div className="absolute top-0 w-0.5 h-4 bg-slate-300"></div>
+                       <div className="absolute top-0 h-4 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
                        {renderNode(branchId, nextVisited)}
                     </div>
                  ))}
@@ -320,8 +323,8 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
 
         {nextNodeId && (
            <div className="flex flex-col items-center">
-             <div className={`h-8 w-0.5 ${trace.finished.includes(nodeId) ? 'bg-emerald-300' : 'bg-slate-300'}`}></div>
-             <ArrowDown size={14} className={`${trace.finished.includes(nodeId) ? 'text-emerald-300' : 'text-slate-300'} -mt-1`} />
+             <div className={`h-8 w-0.5 ${trace.finished.includes(nodeId) ? 'bg-emerald-300 dark:bg-emerald-700' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+             <ArrowDown size={14} className={`${trace.finished.includes(nodeId) ? 'text-emerald-300 dark:text-emerald-700' : 'text-slate-300 dark:text-slate-700'} -mt-1`} />
              <div className="h-4 w-0.5 bg-transparent"></div>
              {renderNode(nextNodeId, nextVisited)}
            </div>
@@ -352,32 +355,32 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
             <div key={`hist-${idx}`} className="flex gap-3 relative">
               {/* 时间线竖线 */}
               <div className="flex flex-col items-center flex-shrink-0 w-8">
-                <div className="w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-emerald-100 z-10 mt-1.5" />
+                <div className="z-10 mt-1.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-emerald-100 dark:ring-emerald-950/40" />
                 {(idx < historyItems.length - 1 || activeItems.length > 0) && (
-                  <div className="w-0.5 flex-1 bg-emerald-200 min-h-[40px]" />
+                  <div className="min-h-[40px] w-0.5 flex-1 bg-emerald-200 dark:bg-emerald-900/50" />
                 )}
               </div>
               
               {/* 内容 */}
               <div className="flex-1 pb-4">
-                <div className={isGlass ? 'rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm' : ''}>
+                <div className={isGlass ? 'rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88' : ''}>
                   <div className="mb-1 flex items-center gap-2">
-                    <span className="text-sm font-semibold text-slate-800">{item.nodeName}</span>
+                    <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{item.nodeName}</span>
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${actionStyle.bgColor} ${actionStyle.color}`}>
                       {actionStyle.label}
                     </span>
                   </div>
-                  <div className="space-y-0.5 text-xs text-slate-500">
+                  <div className="space-y-0.5 text-xs text-slate-500 dark:text-slate-400">
                     <div className="flex items-center gap-2">
                       <User size={11} className="text-cyan-500" />
                       <span>{item.operatorName || '系统'}</span>
-                      <span className="text-slate-300">·</span>
+                      <span className="text-slate-300 dark:text-slate-700">·</span>
                       <span>{formatTime(item.completeTime || item.createTime)}</span>
                     </div>
                     {item.comment && (
                       <div className="mt-1 flex items-start gap-2">
-                        <MessageSquare size={11} className="mt-0.5 flex-shrink-0 text-slate-400" />
-                          <span className={`rounded px-2 py-1 text-[11px] leading-relaxed ${isGlass ? 'border border-slate-200 bg-slate-50 text-slate-600' : 'bg-slate-50 text-slate-600'}`}>
+                        <MessageSquare size={11} className="mt-0.5 flex-shrink-0 text-slate-400 dark:text-slate-500" />
+                          <span className={`rounded px-2 py-1 text-[11px] leading-relaxed ${isGlass ? 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300' : 'bg-slate-50 text-slate-600 dark:bg-slate-900 dark:text-slate-300'}`}>
                           {item.comment}
                         </span>
                       </div>
@@ -385,7 +388,7 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
                     {item.duration && (
                       <div className="flex items-center gap-2">
                         <Clock size={11} className="text-cyan-500" />
-                        <span className="text-slate-400">耗时 {item.duration}</span>
+                        <span className="text-slate-400 dark:text-slate-500">耗时 {item.duration}</span>
                       </div>
                     )}
                   </div>
@@ -399,26 +402,26 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
         {activeItems.map((item, idx) => (
           <div key={`active-${idx}`} className="flex gap-3 relative">
             <div className="flex flex-col items-center flex-shrink-0 w-8">
-              <div className="w-3 h-3 rounded-full bg-cyan-500 ring-2 ring-cyan-100 z-10 mt-1.5 animate-pulse" />
+              <div className="z-10 mt-1.5 h-3 w-3 animate-pulse rounded-full bg-cyan-500 ring-2 ring-cyan-100 dark:ring-cyan-950/40" />
               {idx < activeItems.length - 1 && (
-                <div className="w-0.5 flex-1 bg-slate-200 min-h-[40px]" />
+                <div className="min-h-[40px] w-0.5 flex-1 bg-slate-200 dark:bg-slate-800" />
               )}
             </div>
             
             <div className="flex-1 pb-4">
-              <div className={isGlass ? 'rounded-2xl border border-cyan-200 bg-cyan-50 px-3.5 py-3 shadow-sm' : ''}>
+              <div className={isGlass ? 'rounded-2xl border border-cyan-200 bg-cyan-50 px-3.5 py-3 shadow-sm dark:border-cyan-900 dark:bg-cyan-950/20' : ''}>
                 <div className="mb-1 flex items-center gap-2">
-                  <span className="text-sm font-semibold text-cyan-700">{item.nodeName}</span>
-                  <span className="animate-pulse rounded-full border border-cyan-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-cyan-700">
+                  <span className="text-sm font-semibold text-cyan-700 dark:text-cyan-200">{item.nodeName}</span>
+                  <span className="animate-pulse rounded-full border border-cyan-200 bg-white px-1.5 py-0.5 text-[10px] font-medium text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200">
                     处理中
                   </span>
                 </div>
-                <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                   <User size={11} className="text-cyan-500" />
                   <span>待处理: {item.assigneeName || (item.assigneeId ? String(item.assigneeId) : '待认领')}</span>
                   {item.createTime && (
                     <>
-                      <span className="text-slate-300">·</span>
+                      <span className="text-slate-300 dark:text-slate-700">·</span>
                       <span>到达: {formatTime(item.createTime)}</span>
                     </>
                   )}
@@ -433,23 +436,23 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
 
   if (loading) {
     return (
-      <div className={`flex flex-col items-center justify-center gap-3 p-10 ${isGlass ? 'rounded-2xl border border-slate-200 bg-white shadow-sm' : ''}`}>
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-cyan-600"></div>
-        <p className="text-sm text-slate-500">加载流程轨迹中...</p>
+      <div className={`flex flex-col items-center justify-center gap-3 p-10 ${isGlass ? 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88' : ''}`}>
+        <div className="h-8 w-8 animate-spin rounded-full border-b-2 border-cyan-600 dark:border-cyan-300"></div>
+        <p className="text-sm text-slate-500 dark:text-slate-400">加载流程轨迹中...</p>
       </div>
     );
   }
   
   if (error) {
     return (
-      <div className={`flex flex-col items-center gap-3 p-10 text-center ${isGlass ? 'rounded-2xl border border-slate-200 bg-white shadow-sm' : ''}`}>
+      <div className={`flex flex-col items-center gap-3 p-10 text-center ${isGlass ? 'rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88' : ''}`}>
         <AlertCircle className="text-red-500" size={32} />
         <p className="text-red-500 font-medium">{error}</p>
         <button 
           onClick={() => {
             void fetchData();
           }} 
-          className="mt-2 px-4 py-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors text-sm"
+          className="mt-2 rounded-lg bg-red-100 px-4 py-2 text-sm text-red-600 transition-colors hover:bg-red-200 dark:bg-red-950/30 dark:text-red-200 dark:hover:bg-red-950/50"
         >
           重新加载
         </button>
@@ -460,19 +463,19 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
   return (
     <div className="space-y-4">
       {/* 审批记录时间线 - 默认展示 */}
-      <div className={isGlass ? 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm' : 'rounded-xl bg-white p-4'}>
-        <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">审批记录</h4>
+      <div className={isGlass ? 'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88' : 'rounded-xl bg-white p-4 dark:bg-slate-950/88'}>
+        <h4 className="mb-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">审批记录</h4>
         {renderTimeline()}
       </div>
 
       {/* 流程图 - 可折叠 */}
       {graphModel && rootNodeId && (
-        <div className={isGlass ? 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm' : 'overflow-hidden rounded-xl border border-slate-100'}>
+        <div className={isGlass ? 'overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88' : 'overflow-hidden rounded-xl border border-slate-100 dark:border-slate-800 dark:bg-slate-950/88'}>
           <button
             onClick={() => setDiagramExpanded(!diagramExpanded)}
             className={isGlass
-              ? 'w-full flex items-center justify-between px-4 py-3 bg-slate-50 hover:bg-white transition-colors text-xs font-medium text-slate-500'
-              : 'w-full flex items-center justify-between px-4 py-2.5 bg-slate-50 hover:bg-slate-100 transition-colors text-xs font-medium text-slate-500'}
+              ? 'flex w-full items-center justify-between bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 transition-colors hover:bg-white dark:bg-slate-900/70 dark:text-slate-400 dark:hover:bg-slate-950'
+              : 'flex w-full items-center justify-between bg-slate-50 px-4 py-2.5 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 dark:bg-slate-900/70 dark:text-slate-400 dark:hover:bg-slate-950'}
           >
             <span className="flex items-center gap-1.5">
               <GitMerge size={13} />
@@ -482,8 +485,8 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
           </button>
           {diagramExpanded && (
             <div className={isGlass
-              ? 'flex max-h-[400px] justify-center overflow-auto bg-slate-50/80 p-5'
-              : 'flex max-h-[400px] justify-center overflow-auto bg-slate-50 p-6'}>
+              ? 'flex max-h-[400px] justify-center overflow-auto bg-slate-50/80 p-5 dark:bg-slate-900/70'
+              : 'flex max-h-[400px] justify-center overflow-auto bg-slate-50 p-6 dark:bg-slate-900/70'}>
               {renderNode(rootNodeId)}
             </div>
           )}

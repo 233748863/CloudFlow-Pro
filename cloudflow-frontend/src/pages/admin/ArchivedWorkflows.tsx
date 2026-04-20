@@ -11,8 +11,9 @@ import {
   FileText,
   ArrowLeft,
   Filter,
-  X,
   Loader2,
+  ShieldOff,
+  RefreshCw,
 } from "lucide-react";
 import {
   getArchivedWorkflows,
@@ -22,7 +23,7 @@ import {
 } from "../../services/api/workflow";
 import { toast } from "sonner";
 import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
-import { Button, DatePicker, Input, PermissionGuard } from "@/components/ui";
+import { Button, DatePicker, Input } from "@/components/ui";
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
@@ -36,6 +37,27 @@ import {
   WorkspaceResultCard,
   WorkspaceWorkbenchCard,
 } from "@/components/workspace/WorkspacePanels";
+import { cn } from "@/utils/cn";
+
+const elevatedPanelClassName =
+  "rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78";
+const infoPanelClassName =
+  "rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70";
+const chipClassName =
+  "rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300";
+
+const getRestoreStatusMeta = (canRestore: boolean) =>
+  canRestore
+    ? {
+        label: "可恢复",
+        className:
+          "border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200",
+      }
+    : {
+        label: "不可恢复",
+        className:
+          "border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200",
+      };
 
 /**
  * 归档流程数据接口
@@ -66,15 +88,6 @@ export const ArchivedWorkflows: React.FC = () => {
     canBatchRestore,
     canPermanentDelete,
   } = useWorkflowPermission();
-
-  // 如果不是管理员，显示无权限提示
-  if (!isAdmin || !canAccessArchiveManagement) {
-    return (
-      <PermissionGuard permissions={[]} roles={[]} hidden={false}>
-        <div />
-      </PermissionGuard>
-    );
-  }
 
   // 归档流程列表
   const [workflows, setWorkflows] = useState<ArchivedWorkflow[]>([]);
@@ -177,22 +190,28 @@ export const ArchivedWorkflows: React.FC = () => {
    * 全选/取消全选
    */
   const handleSelectAll = () => {
-    if (selectedIds.length === workflows.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(workflows.map((w) => w.workflowId));
+    if (visibleWorkflowIds.length === 0) {
+      return;
     }
+
+    setSelectedIds((prev) => {
+      if (allSelected) {
+        return prev.filter((id) => !visibleWorkflowIds.includes(id));
+      }
+
+      return Array.from(new Set([...prev, ...visibleWorkflowIds]));
+    });
   };
 
   /**
    * 选择单个流程
    */
   const handleSelectOne = (workflowId: string) => {
-    if (selectedIds.includes(workflowId)) {
-      setSelectedIds(selectedIds.filter((id) => id !== workflowId));
-    } else {
-      setSelectedIds([...selectedIds, workflowId]);
-    }
+    setSelectedIds((prev) =>
+      prev.includes(workflowId)
+        ? prev.filter((id) => id !== workflowId)
+        : [...prev, workflowId],
+    );
   };
 
   /**
@@ -289,15 +308,26 @@ export const ArchivedWorkflows: React.FC = () => {
   const restorableCount = workflows.filter(
     (workflow) => workflow.canRestore,
   ).length;
+  const visibleWorkflowIds = workflows.map((workflow) => workflow.workflowId);
+  const selectedVisibleCount = visibleWorkflowIds.filter((id) =>
+    selectedIds.includes(id),
+  ).length;
+  const allSelected =
+    visibleWorkflowIds.length > 0 &&
+    selectedVisibleCount === visibleWorkflowIds.length;
   const selectedCount = selectedIds.length;
+  const selectedWorkflows = workflows.filter((workflow) =>
+    selectedIds.includes(workflow.workflowId),
+  );
+  const selectedRestorableCount = selectedWorkflows.filter(
+    (workflow) => workflow.canRestore,
+  ).length;
   const now = new Date();
   const todayLabel = `${now.getMonth() + 1}/${now.getDate()}`;
   const timeLabel = now.toLocaleTimeString("zh-CN", {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const allSelected =
-    workflows.length > 0 && selectedIds.length === workflows.length;
   const overviewItems = [
     { label: "当前结果", value: `${workflows.length} 条` },
     { label: "可恢复", value: `${restorableCount} 条` },
@@ -311,18 +341,36 @@ export const ArchivedWorkflows: React.FC = () => {
     { label: "批量选择", value: `${selectedCount} 条` },
   ];
 
+  if (!isAdmin || !canAccessArchiveManagement) {
+    return (
+      <WorkspaceStatusPage
+        icon={<ShieldOff size={28} className="text-amber-500" />}
+        title="当前账号没有归档管理权限"
+        description="归档流程管理仅对具备治理权限的账号开放。你可以先返回流程管理页继续查看和维护流程。"
+        actions={
+          <Button size="lg" onClick={() => navigate("/workflow/management")}>
+            <ArrowLeft size={16} className="mr-2" />
+            返回流程管理
+          </Button>
+        }
+        iconWrapClassName="bg-amber-50 text-amber-500 dark:bg-amber-950/30 dark:text-amber-300"
+        panelClassName="py-14"
+      />
+    );
+  }
+
   return (
     <div className="relative min-h-screen pb-6">
       <WorkspaceBackdrop />
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
                 <FileText size={14} />
                 {todayLabel}
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {timeLabel}
               </span>
             </div>
@@ -344,7 +392,7 @@ export const ArchivedWorkflows: React.FC = () => {
                 onClick={() => void loadArchivedWorkflows()}
                 className="gap-2"
               >
-                <Loader2
+                <RefreshCw
                   className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
                 />
                 刷新
@@ -358,13 +406,13 @@ export const ArchivedWorkflows: React.FC = () => {
               label="归档总量"
               value={total}
               hint="接口返回的归档流程总记录数"
-              aside={<FileText className="h-[18px] w-[18px] text-cyan-600" />}
+              aside={<FileText className="h-[18px] w-[18px] text-cyan-600 dark:text-cyan-300" />}
             />
             <WorkspaceMetricCard
               label="当前页"
               value={workflows.length}
               hint={`可恢复 ${restorableCount} 条`}
-              aside={<RotateCcw className="h-[18px] w-[18px] text-sky-500" />}
+              aside={<RotateCcw className="h-[18px] w-[18px] text-sky-500 dark:text-sky-300" />}
             />
             <WorkspaceMetricCard
               label="批量选择"
@@ -382,7 +430,7 @@ export const ArchivedWorkflows: React.FC = () => {
                   ? "已应用关键词或日期区间"
                   : "当前展示全部归档流程"
               }
-              aside={<Filter className="h-[18px] w-[18px] text-amber-500" />}
+              aside={<Filter className="h-[18px] w-[18px] text-amber-500 dark:text-amber-300" />}
             />
           </div>
         </WorkspaceHeroCard>
@@ -392,13 +440,22 @@ export const ArchivedWorkflows: React.FC = () => {
           total={total}
           hasActiveFilters={hasActiveFilters}
           overviewItems={overviewItems}
+          headerBadges={
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <span className={chipClassName}>
+                {hasActiveFilters ? "已启用筛选" : "默认视图"}
+              </span>
+              <span className={chipClassName}>可恢复 {restorableCount} 条</span>
+              <span className={chipClassName}>已选择 {selectedCount} 条</span>
+            </div>
+          }
           quickFilterAside={
             hasActiveFilters ? (
               <Button variant="outline" size="sm" onClick={clearFilters}>
                 清空筛选
               </Button>
             ) : (
-              <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
+              <span className={chipClassName}>
                 当前显示全部归档流程
               </span>
             )
@@ -407,7 +464,7 @@ export const ArchivedWorkflows: React.FC = () => {
             <div className="space-y-4">
               <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
                 <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                   <Input
                     value={searchTerm}
                     onChange={(event) => handleSearch(event.target.value)}
@@ -434,16 +491,16 @@ export const ArchivedWorkflows: React.FC = () => {
                   onClick={() => void loadArchivedWorkflows()}
                   className="gap-2"
                 >
-                  <Loader2
+                  <RefreshCw
                     className={`h-4 w-4 ${loading ? "animate-spin" : ""}`}
                   />
                   重新加载
                 </Button>
               </div>
               {showFilters ? (
-                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2">
+                <div className="grid gap-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 md:grid-cols-2 dark:border-slate-800 dark:bg-slate-900/70">
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
                       归档开始日期
                     </label>
                     <DatePicker
@@ -458,7 +515,7 @@ export const ArchivedWorkflows: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                    <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
                       归档结束日期
                     </label>
                     <DatePicker
@@ -503,18 +560,29 @@ export const ArchivedWorkflows: React.FC = () => {
         >
           <div className="space-y-4 px-4 py-4">
             {selectedIds.length > 0 ? (
-              <div className="flex flex-col gap-3 rounded-2xl border border-cyan-200 bg-cyan-50 p-4 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex items-center gap-2 text-cyan-700">
-                  <CheckCircle2 size={18} />
-                  <span className="font-medium">
-                    已选中 {selectedIds.length} 个流程
-                  </span>
+              <div className="flex flex-col gap-4 rounded-2xl border border-cyan-200 bg-cyan-50/80 p-4 shadow-sm xl:flex-row xl:items-start xl:justify-between dark:border-cyan-900/70 dark:bg-cyan-950/30">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2 text-cyan-700 dark:text-cyan-200">
+                    <CheckCircle2 size={18} />
+                    <span className="font-medium">
+                      已选中 {selectedIds.length} 个流程
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className={chipClassName}>
+                      当前页已选 {selectedVisibleCount} / {workflows.length}
+                    </span>
+                    <span className={chipClassName}>
+                      可恢复 {selectedRestorableCount} 条
+                    </span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
                     onClick={() => void handleRestore(selectedIds)}
                     disabled={restoring || !canBatchRestore}
-                    className="bg-green-500 text-white hover:bg-green-600 [background-image:none]"
+                    variant="soft"
+                    className="border-emerald-200 bg-emerald-50 text-emerald-700 shadow-none hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/50"
                   >
                     <RotateCcw size={16} />
                     批量恢复
@@ -522,7 +590,8 @@ export const ArchivedWorkflows: React.FC = () => {
                   <Button
                     onClick={() => showDeleteDialog(selectedIds)}
                     disabled={deleting || !canPermanentDelete}
-                    className="bg-red-500 text-white hover:bg-red-600 [background-image:none]"
+                    variant="outline"
+                    className="border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:border-rose-800 dark:hover:bg-rose-950/50"
                   >
                     <Trash2 size={16} />
                     批量删除
@@ -542,104 +611,162 @@ export const ArchivedWorkflows: React.FC = () => {
               />
             ) : workflows.length === 0 ? (
               <WorkspaceInlineState
-                icon={<FileText size={28} />}
+                icon={<FileText size={28} className="text-cyan-600 dark:text-cyan-200" />}
                 title="暂无归档流程"
                 description="可以调整筛选条件，或等待新的流程归档记录出现。"
                 className="py-12"
               />
             ) : (
               <>
-                <div className="flex items-center gap-4 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 shadow-sm">
-                  <input
-                    type="checkbox"
-                    checked={allSelected}
-                    onChange={handleSelectAll}
-                    className="h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500"
-                  />
-                  <span>
-                    共 <span className="font-bold text-slate-800">{total}</span>{" "}
-                    个归档流程
-                  </span>
+                <div className={elevatedPanelClassName}>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 space-y-3">
+                      <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                        <CheckCircle2 size={18} className="text-cyan-600 dark:text-cyan-200" />
+                        <span className="font-medium">当前结果概况</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          onClick={handleSelectAll}
+                          className="h-9 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-cyan-600 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
+                        >
+                          {allSelected
+                            ? "取消全选当前页"
+                            : `全选当前页 (${selectedVisibleCount}/${workflows.length})`}
+                        </Button>
+                        <span className={chipClassName}>总计 {total} 条</span>
+                        <span className={chipClassName}>当前页 {workflows.length} 条</span>
+                        <span className={chipClassName}>可恢复 {restorableCount} 条</span>
+                      </div>
+                      <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        归档流程支持恢复和永久删除两类治理动作。删除为不可逆操作，建议先在这里确认归档原因和恢复资格。
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={chipClassName}>
+                        第 {currentPage} / {totalPages} 页
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="space-y-3">
-                  {workflows.map((workflow) => (
-                    <div
-                      key={workflow.id}
-                      className={`rounded-2xl border p-4 transition-colors ${selectedIds.includes(workflow.workflowId) ? "border-cyan-200 bg-cyan-50" : "border-slate-200 bg-white hover:bg-slate-50"}`}
-                    >
-                      <div className="flex items-start gap-4">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.includes(workflow.workflowId)}
-                          onChange={() => handleSelectOne(workflow.workflowId)}
-                          className="mt-1 h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500"
-                        />
-                        <div className="min-w-0 flex-1">
-                          <div className="mb-2 flex flex-wrap items-center gap-2">
-                            <h3 className="truncate text-base font-semibold text-slate-800">
-                              {workflow.workflowName}
-                            </h3>
-                            {!workflow.canRestore ? (
-                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
-                                不可恢复
-                              </span>
-                            ) : null}
+                  {workflows.map((workflow) => {
+                    const selected = selectedIds.includes(workflow.workflowId);
+                    const restoreMeta = getRestoreStatusMeta(workflow.canRestore);
+
+                    return (
+                      <div
+                        key={workflow.id}
+                        className={cn(
+                          "rounded-2xl border p-4 transition-all shadow-sm",
+                          selected
+                            ? "border-cyan-200 bg-cyan-50/80 dark:border-cyan-900/70 dark:bg-cyan-950/30"
+                            : "border-slate-200 bg-white/95 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/78 dark:hover:border-slate-700 dark:hover:bg-slate-900/60",
+                        )}
+                      >
+                        <div className="flex items-start gap-4">
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => handleSelectOne(workflow.workflowId)}
+                            className="mt-1 h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-500 dark:border-slate-700 dark:bg-slate-950"
+                          />
+                          <div className="min-w-0 flex-1 space-y-4">
+                            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                              <div className="min-w-0">
+                                <div className="mb-2 flex flex-wrap items-center gap-2">
+                                  <h3 className="truncate text-base font-semibold text-slate-900 dark:text-slate-100">
+                                    {workflow.workflowName}
+                                  </h3>
+                                  <span
+                                    className={cn(
+                                      "rounded-full px-2.5 py-1 text-xs font-medium",
+                                      restoreMeta.className,
+                                    )}
+                                  >
+                                    {restoreMeta.label}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                  <span className={chipClassName}>
+                                    归档于 {formatDateTime(workflow.archivedAt)}
+                                  </span>
+                                  <span className={chipClassName}>
+                                    操作人 {workflow.archivedByName || workflow.archivedBy}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex shrink-0 flex-wrap items-center gap-2">
+                                <Button
+                                  onClick={() =>
+                                    void handleRestore([workflow.workflowId])
+                                  }
+                                  disabled={
+                                    !workflow.canRestore ||
+                                    restoring ||
+                                    !canBatchRestore
+                                  }
+                                  variant="soft"
+                                  className="border-emerald-200 bg-emerald-50 text-emerald-700 shadow-none hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/50"
+                                >
+                                  <RotateCcw size={14} />
+                                  恢复
+                                </Button>
+                                <Button
+                                  onClick={() =>
+                                    showDeleteDialog([workflow.workflowId])
+                                  }
+                                  disabled={deleting || !canPermanentDelete}
+                                  variant="outline"
+                                  className="border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:border-rose-800 dark:hover:bg-rose-950/50"
+                                >
+                                  <Trash2 size={14} />
+                                  删除
+                                </Button>
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 xl:grid-cols-2">
+                              <div className={infoPanelClassName}>
+                                <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                  <Calendar size={14} />
+                                  归档信息
+                                </div>
+                                <div className="space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                                  <div className="flex items-center gap-2">
+                                    <Calendar size={14} className="text-slate-400 dark:text-slate-500" />
+                                    <span>归档时间：{formatDateTime(workflow.archivedAt)}</span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <User size={14} className="text-slate-400 dark:text-slate-500" />
+                                    <span>操作人：{workflow.archivedByName || workflow.archivedBy}</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className={infoPanelClassName}>
+                                <div className="mb-2 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                  <FileText size={14} />
+                                  归档原因
+                                </div>
+                                <div
+                                  className="text-sm leading-6 text-slate-600 dark:text-slate-300"
+                                  title={workflow.archiveReason}
+                                >
+                                  {workflow.archiveReason || "未填写归档原因"}
+                                </div>
+                              </div>
+                            </div>
                           </div>
-                          <div className="grid gap-3 text-sm text-slate-600 xl:grid-cols-3">
-                            <div className="flex items-center gap-2">
-                              <Calendar size={14} className="text-slate-400" />
-                              <span>
-                                归档时间：{formatDateTime(workflow.archivedAt)}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <User size={14} className="text-slate-400" />
-                              <span>
-                                操作人：
-                                {workflow.archivedByName || workflow.archivedBy}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <FileText size={14} className="text-slate-400" />
-                              <span
-                                className="truncate"
-                                title={workflow.archiveReason}
-                              >
-                                原因：{workflow.archiveReason}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex shrink-0 flex-wrap items-center gap-2">
-                          <Button
-                            onClick={() =>
-                              void handleRestore([workflow.workflowId])
-                            }
-                            disabled={
-                              !workflow.canRestore ||
-                              restoring ||
-                              !canBatchRestore
-                            }
-                            className="bg-green-500 text-white hover:bg-green-600 [background-image:none]"
-                          >
-                            <RotateCcw size={14} />
-                            恢复
-                          </Button>
-                          <Button
-                            onClick={() =>
-                              showDeleteDialog([workflow.workflowId])
-                            }
-                            disabled={deleting || !canPermanentDelete}
-                            className="bg-red-500 text-white hover:bg-red-600 [background-image:none]"
-                          >
-                            <Trash2 size={14} />
-                            删除
-                          </Button>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -651,6 +778,7 @@ export const ArchivedWorkflows: React.FC = () => {
           <WorkspaceDialogShell
             title="确认永久删除"
             description={`即将永久删除 ${deleteTarget.length} 个归档流程，请再次确认。`}
+            headerAside={<span className={chipClassName}>{deleteTarget.length} 个流程</span>}
             onClose={() => {
               if (deleting) return;
               setShowDeleteConfirm(false);
@@ -659,29 +787,38 @@ export const ArchivedWorkflows: React.FC = () => {
             maxWidthClassName="max-w-md"
           >
             <div className="space-y-5">
-              <WorkspaceInlineState
-                type="info"
-                icon={<AlertTriangle size={18} className="text-red-500" />}
-                title="此操作不可恢复"
-                description="永久删除会清空流程的版本历史和关联记录。请确认这些归档流程已不再需要保留。"
-                className="py-10"
-              />
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/80 px-4 py-4 text-sm dark:border-rose-900/70 dark:bg-rose-950/30">
+                <div className="flex items-start gap-3">
+                  <div className="rounded-xl border border-rose-200 bg-white p-2 text-rose-600 dark:border-rose-900/70 dark:bg-slate-950 dark:text-rose-200">
+                    <AlertTriangle size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">
+                      此操作不可恢复
+                    </div>
+                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                      永久删除会清空流程的版本历史和关联记录。请确认这些归档流程已不再需要保留。
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <div className="flex justify-end gap-3">
-                <button
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setShowDeleteConfirm(false);
                     setDeleteTarget([]);
                   }}
                   disabled={deleting}
-                  className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:opacity-50"
                 >
                   取消
-                </button>
-                <button
+                </Button>
+                <Button
                   onClick={handlePermanentDelete}
                   disabled={deleting}
-                  className="inline-flex items-center gap-2 rounded-2xl bg-red-500 px-4 py-2 text-sm font-medium text-white shadow-[0_12px_24px_rgba(239,68,68,0.24)] transition hover:bg-red-600 disabled:opacity-50"
+                  variant="outline"
+                  className="border-rose-200 bg-rose-50 text-rose-700 hover:border-rose-300 hover:bg-rose-100 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200 dark:hover:border-rose-800 dark:hover:bg-rose-950/50"
                 >
                   {deleting ? (
                     <>
@@ -694,7 +831,7 @@ export const ArchivedWorkflows: React.FC = () => {
                       确认删除
                     </>
                   )}
-                </button>
+                </Button>
               </div>
             </div>
           </WorkspaceDialogShell>

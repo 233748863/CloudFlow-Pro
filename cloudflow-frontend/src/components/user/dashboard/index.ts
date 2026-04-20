@@ -1,8 +1,11 @@
-export { UserDashboardAnnouncements } from './UserDashboardAnnouncements';
-export { UserDashboardPendingTasks } from './UserDashboardPendingTasks';
+export { UserDashboardCharts } from './UserDashboardCharts';
+export type {
+  UserDashboardDistributionItem,
+  UserDashboardTrendPoint,
+} from './UserDashboardCharts';
 export { UserDashboardQuickActions } from './UserDashboardQuickActions';
-export { UserDashboardRecentApplications } from './UserDashboardRecentApplications';
-export { UserDashboardSchedules } from './UserDashboardSchedules';
-export { UserDashboardStats } from './UserDashboardStats';
 export type { UserDashboardQuickAction } from './UserDashboardQuickActions';
+export { UserDashboardRecentUsage } from './UserDashboardRecentUsage';
+export type { UserDashboardRecentUsageItem } from './UserDashboardRecentUsage';
+export { UserDashboardStats } from './UserDashboardStats';
 export type { UserDashboardStatsData } from './UserDashboardStats';

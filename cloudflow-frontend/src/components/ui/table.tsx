@@ -24,6 +24,7 @@ const TableHeader = React.forwardRef<
     ref={ref}
     className={cn(
       'border-b border-slate-200 bg-slate-50 [&_tr]:border-b [&_tr]:border-slate-200',
+      'dark:border-slate-800 dark:bg-slate-900/70 dark:[&_tr]:border-slate-800',
       className,
     )}
     {...props}
@@ -53,6 +54,7 @@ const TableFooter = React.forwardRef<
     ref={ref}
     className={cn(
       'border-t border-slate-200 bg-slate-50 font-medium [&>tr]:last:border-b-0',
+      'dark:border-slate-800 dark:bg-slate-900/70',
       className,
     )}
     {...props}
@@ -68,7 +70,7 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-b border-slate-100 transition-colors hover:bg-slate-50 data-[state=selected]:bg-cyan-50/40',
+      'border-b border-slate-100 transition-colors hover:bg-slate-50 data-[state=selected]:bg-cyan-50/40 dark:border-slate-800 dark:hover:bg-slate-900/80 dark:data-[state=selected]:bg-cyan-950/30',
       className,
     )}
     {...props}
@@ -84,7 +86,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'px-4 py-3 text-left align-middle text-[11px] font-semibold uppercase tracking-[0.14em] whitespace-nowrap text-slate-400 [&:has([role=checkbox])]:pr-0',
+      'px-4 py-3 text-left align-middle text-[11px] font-semibold uppercase tracking-[0.14em] whitespace-nowrap text-slate-400 dark:text-slate-500 [&:has([role=checkbox])]:pr-0',
       className,
     )}
     {...props}
@@ -112,7 +114,7 @@ const TableCell = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-4 align-middle text-slate-700 [&:has([role=checkbox])]:pr-0', className)}
+    className={cn('p-4 align-middle text-slate-700 dark:text-slate-200 [&:has([role=checkbox])]:pr-0', className)}
     {...props}
   />
 ));
@@ -125,7 +127,7 @@ const TableCaption = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn('mt-4 text-sm text-slate-500', className)}
+    className={cn('mt-4 text-sm text-slate-500 dark:text-slate-400', className)}
     {...props}
   />
 ));

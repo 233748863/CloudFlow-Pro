@@ -17,7 +17,7 @@ export const normalizeWorkflowTags = (rawTags: unknown): string[] => {
       return parsed.filter((item): item is string => typeof item === 'string');
     }
   } catch {
-    // 兼容后端逗号拼接标签的旧数据。
+    // 兼容后端历史上使用逗号拼接标签的旧数据。
   }
 
   return rawTags

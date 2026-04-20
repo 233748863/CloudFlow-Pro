@@ -43,7 +43,11 @@ export const StatCard: React.FC<StatCardProps> = ({
       <div className="mt-1">
         <p className={cn('stat-value truncate', valueClassName)}>{value}</p>
       </div>
-      {meta ? <div className={cn('mt-1 text-xs text-slate-500', metaClassName)}>{meta}</div> : null}
+      {meta ? (
+        <div className={cn('mt-1 text-xs text-slate-500 dark:text-slate-400', metaClassName)}>
+          {meta}
+        </div>
+      ) : null}
     </div>
   </div>
 );

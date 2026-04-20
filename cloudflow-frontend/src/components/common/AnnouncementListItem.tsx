@@ -21,7 +21,9 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
 }) => {
   const unread = !announcement.isRead;
   const priorityMeta = getAnnouncementPriorityMeta(announcement.priority);
-  const timeText = formatAnnouncementRelativeTime(announcement.publishTime || announcement.createTime);
+  const timeText = formatAnnouncementRelativeTime(
+    announcement.publishTime || announcement.createTime,
+  );
 
   if (variant === 'compact') {
     return (
@@ -29,8 +31,10 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         type="button"
         onClick={onClick}
         className={cn(
-          `group relative flex min-h-[72px] w-full items-center gap-4 border-b border-slate-100 px-5 py-4 text-left transition-colors ${
-            unread ? 'bg-cyan-50 hover:bg-cyan-100' : 'bg-white hover:bg-slate-50'
+          `group relative flex min-h-[72px] w-full items-center gap-4 border-b border-slate-100 px-5 py-4 text-left transition-colors dark:border-slate-800 ${
+            unread
+              ? 'bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/30'
+              : 'bg-white hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900'
           }`,
           className,
         )}
@@ -39,10 +43,10 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
 
         <div
           className={cn(
-              'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border',
-              unread
-                ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
-                : 'border-slate-200 bg-slate-50 text-slate-400',
+            'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border',
+            unread
+              ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
+              : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
           )}
         >
           {unread ? <Bell size={16} /> : <CheckCircle2 size={16} />}
@@ -51,17 +55,19 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-sm font-medium text-slate-900">{announcement.title}</h3>
+              <h3 className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                {announcement.title}
+              </h3>
               {unread ? (
-                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
+                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
                   未读
                 </span>
               ) : null}
             </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
               <time>{timeText}</time>
               {announcement.isTop === 1 ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
                   <Pin size={10} />
                   置顶
                 </span>
@@ -69,7 +75,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
             </div>
           </div>
 
-          <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500" />
+          <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
         </div>
       </button>
     );
@@ -82,8 +88,8 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       className={cn(
         `group relative flex w-full items-start gap-4 overflow-hidden rounded-2xl border px-4 py-4 text-left transition-colors ${
           unread
-            ? 'border-cyan-200 bg-white shadow-sm hover:border-cyan-300 hover:bg-cyan-50/70'
-            : 'border-slate-200 bg-white shadow-sm hover:bg-slate-50'
+            ? 'border-cyan-200 bg-white shadow-sm hover:border-cyan-300 hover:bg-cyan-50/70 dark:border-cyan-900 dark:bg-slate-950 dark:hover:bg-cyan-950/20'
+            : 'border-slate-200 bg-white shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900'
         }`,
         className,
       )}
@@ -94,8 +100,8 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         className={cn(
           'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border',
           unread
-            ? 'border-cyan-200 bg-cyan-50 text-cyan-700'
-            : 'border-slate-200 bg-slate-50 text-slate-400',
+            ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
+            : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
         )}
       >
         {unread ? <Bell size={18} /> : <CheckCircle2 size={18} />}
@@ -104,7 +110,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
           {announcement.isTop === 1 ? (
-            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700">
+            <span className="inline-flex items-center gap-1 rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
               <Pin size={10} />
               置顶
             </span>
@@ -113,23 +119,32 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
             {priorityMeta.label}
           </span>
           {unread ? (
-            <span className="rounded-lg border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700">
+            <span className="rounded-lg border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
               未读
             </span>
           ) : null}
-          <span className="ml-auto shrink-0 text-xs text-slate-400">{timeText}</span>
+          <span className="ml-auto shrink-0 text-xs text-slate-400 dark:text-slate-500">
+            {timeText}
+          </span>
         </div>
 
-        <h3 className={cn('mt-3 line-clamp-1 text-base', unread ? 'font-semibold text-slate-900' : 'font-medium text-slate-700')}>
+        <h3
+          className={cn(
+            'mt-3 line-clamp-1 text-base',
+            unread
+              ? 'font-semibold text-slate-900 dark:text-slate-100'
+              : 'font-medium text-slate-700 dark:text-slate-200',
+          )}
+        >
           {announcement.title}
         </h3>
 
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
           {getAnnouncementExcerpt(announcement.content, 110)}
         </p>
       </div>
 
-      <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500" />
+      <ChevronRight className="mt-1 h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
     </button>
   );
 };

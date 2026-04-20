@@ -5,7 +5,7 @@ import { TableCell, TableRow } from '@/components/ui/table';
 import { EmptyState, LoadingSpinner } from '@/components/common';
 
 export const WorkspaceBackdrop: React.FC = () => (
-  <div className="pointer-events-none fixed inset-0 z-[-1] bg-slate-50" />
+  <div className="pointer-events-none fixed inset-0 z-[-1] bg-slate-50 dark:bg-slate-950" />
 );
 
 export const WorkspacePageContent: React.FC<{
@@ -28,16 +28,16 @@ export const WorkspaceSectionHeader = ({
 }) => (
   <div className="flex items-start justify-between gap-4">
     <div>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
         {eyebrow}
       </div>
-      <div className="mt-2 text-lg font-semibold tracking-tight text-slate-950">{title}</div>
+      <div className="mt-2 text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">{title}</div>
     </div>
     {actionLabel && onAction ? (
       <button
         type="button"
         onClick={onAction}
-        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-cyan-700"
+        className="inline-flex items-center gap-1 text-xs font-semibold text-slate-400 transition hover:text-cyan-700 dark:text-slate-500 dark:hover:text-cyan-300"
       >
         {actionLabel}
         <ChevronRight size={14} />
@@ -61,8 +61,8 @@ export const WorkspaceEmptyPanel = ({
     className={cn(
       'rounded-2xl',
       variant === 'glass'
-        ? 'border border-slate-200 bg-white shadow-sm'
-        : 'border border-dashed border-slate-200 bg-slate-50',
+        ? 'border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88'
+        : 'border border-dashed border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900/60',
     )}
   >
     <EmptyState icon={icon} title={title} description={description} className="px-6 py-12" />
@@ -88,15 +88,15 @@ export const WorkspaceStatusPanel = ({
     <div className="flex flex-col items-center justify-center">
       <div
         className={cn(
-          'mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-400',
+          'mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-slate-100 text-slate-400 dark:bg-slate-900 dark:text-slate-500',
           iconWrapClassName,
         )}
       >
         {icon}
       </div>
-      <div className="text-lg font-semibold tracking-tight text-slate-950">{title}</div>
+      <div className="text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">{title}</div>
       {description ? (
-        <div className="mt-3 max-w-md text-sm leading-6 text-slate-500">{description}</div>
+        <div className="mt-3 max-w-md text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
       ) : null}
       {actions ? (
         <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5">{actions}</div>
@@ -154,7 +154,7 @@ export const WorkspaceInlineState = ({
     return (
       <div
         className={cn(
-          'rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-slate-500 shadow-sm',
+          'rounded-2xl border border-slate-200 bg-white px-4 py-8 text-center text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
           className,
         )}
       >
@@ -162,7 +162,7 @@ export const WorkspaceInlineState = ({
           {icon || <LoadingSpinner size="sm" />}
           <span>{title}</span>
         </div>
-        {description ? <div className="mt-2 text-xs leading-6 text-slate-400">{description}</div> : null}
+        {description ? <div className="mt-2 text-xs leading-6 text-slate-400 dark:text-slate-500">{description}</div> : null}
       </div>
     );
   }
@@ -198,13 +198,13 @@ export const WorkspaceTableStateRow = ({
   rowClassName?: string;
   cellClassName?: string;
 }) => (
-  <TableRow className={cn('border-slate-200 hover:bg-transparent', rowClassName)}>
+  <TableRow className={cn('border-slate-200 hover:bg-transparent dark:border-slate-800', rowClassName)}>
     <TableCell
       colSpan={colSpan}
       className={cn(type === 'loading' ? 'px-4 py-16' : 'px-4 py-6', cellClassName)}
     >
       {type === 'loading' ? (
-        <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
+        <div className="flex items-center justify-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           {icon || <LoadingSpinner size="sm" />}
           {title}
         </div>

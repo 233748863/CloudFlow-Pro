@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { FolderOpen, FormInput, GitMerge, Layers3 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
@@ -14,8 +15,8 @@ import {
 } from '@/components/workflow/catalog';
 import {
   getFormDefinition,
-  getProcessDefinitions,
   getFormDefinitions,
+  getProcessDefinitions,
   startProcess,
 } from '@/services/api/workflow';
 import { parseWorkflowGraphDefinition } from '@/utils/workflowGraph';
@@ -23,6 +24,7 @@ import {
   WORKFLOW_CATEGORY_OPTIONS,
   normalizeWorkflowCategory,
 } from '@/utils/workflowCategory';
+import { WorkspaceHeroMetricsSection, WorkspacePageContent } from '@/components/workspace';
 
 const parseWorkflowGraph = (
   rawModelJson: unknown,
@@ -63,9 +65,7 @@ export const Workplace = () => {
         const response = await getProcessDefinitions({ status: 'PUBLISHED', latestOnly: false });
         if (Array.isArray(response)) {
           const publishedOnly = response.some((item: any) => !!item?.status)
-            ? response.filter(
-                (item: any) => String(item?.status || '').toUpperCase() === 'PUBLISHED',
-              )
+            ? response.filter((item: any) => String(item?.status || '').toUpperCase() === 'PUBLISHED')
             : response;
 
           const latestPublishedMap = new Map<string, any>();
@@ -86,9 +86,7 @@ export const Workplace = () => {
               (item: any) =>
                 typeof item?.definitionId === 'string' && item.definitionId.trim() !== '',
             )
-            .filter(
-              (item: any) => typeof item?.processKey === 'string' && item.processKey.trim() !== '',
-            )
+            .filter((item: any) => typeof item?.processKey === 'string' && item.processKey.trim() !== '')
             .map((item: any): WorkflowDefinition | null => {
               const workflowName = item.processName || item.processKey || '未命名流程';
               try {
@@ -116,7 +114,7 @@ export const Workplace = () => {
 
           setWorkflows(mapped);
           if (invalidModelCount > 0) {
-            toast.warning(`有 ${invalidModelCount} 条流程模型异常，已跳过加载`);
+            toast.warning(`有 ${invalidModelCount} 条流程模型异常，已自动跳过`);
           }
         } else {
           setWorkflows([]);
@@ -193,17 +191,19 @@ export const Workplace = () => {
     };
   }, [isFormOpen, savedForms, targetWorkflow?.formId]);
 
-  const filteredWorkflows = useMemo(() => {
-    return workflows.filter((workflow) => {
-      const matchesSearch = workflow.name.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesCategory = !selectedCategory || workflow.category === selectedCategory;
-      const workflowTags = normalizeWorkflowTags(workflow.tags);
-      const matchesTags =
-        selectedTags.length === 0 || selectedTags.some((tag) => workflowTags.includes(tag));
+  const filteredWorkflows = useMemo(
+    () =>
+      workflows.filter((workflow) => {
+        const matchesSearch = workflow.name.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesCategory = !selectedCategory || workflow.category === selectedCategory;
+        const workflowTags = normalizeWorkflowTags(workflow.tags);
+        const matchesTags =
+          selectedTags.length === 0 || selectedTags.some((tag) => workflowTags.includes(tag));
 
-      return matchesSearch && matchesCategory && matchesTags;
-    });
-  }, [searchTerm, selectedCategory, selectedTags, workflows]);
+        return matchesSearch && matchesCategory && matchesTags;
+      }),
+    [searchTerm, selectedCategory, selectedTags, workflows],
+  );
 
   const allTags = useMemo(
     () => Array.from(new Set(workflows.flatMap((workflow) => normalizeWorkflowTags(workflow.tags)))),
@@ -253,7 +253,7 @@ export const Workplace = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <WorkspacePageContent className="space-y-6">
       <WorkflowLaunchDialog
         open={isFormOpen}
         workflow={targetWorkflow}
@@ -262,6 +262,60 @@ export const Workplace = () => {
         boundFormError={boundFormError}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleStartProcess}
+      />
+
+      <WorkspaceHeroMetricsSection
+        badge={<span className="badge badge-primary">流程目录</span>}
+        title="选择要发起的流程"
+        description="把高频流程入口、分类过滤、标签检索和表单准备统一放到一个目录页里，降低流程发起成本。"
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => navigate('/workflow/design')}
+              className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-white"
+            >
+              进入设计页
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/templates')}
+              className="inline-flex h-10 items-center rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-4 text-sm font-medium text-white shadow-[0_12px_24px_rgba(13,148,136,0.22)] transition hover:from-cyan-500 hover:to-teal-500"
+            >
+              浏览模板
+            </button>
+          </>
+        }
+        metrics={[
+          {
+            label: '已发布流程',
+            value: workflows.length.toLocaleString(),
+            hint: '按流程 key 收敛到最新可用版本',
+            icon: <GitMerge size={18} />,
+            iconWrapClassName: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
+          },
+          {
+            label: '当前结果',
+            value: filteredWorkflows.length.toLocaleString(),
+            hint: hasActiveFilters ? '已应用搜索、分类或标签' : '当前显示全部流程',
+            icon: <Layers3 size={18} />,
+            iconWrapClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200',
+          },
+          {
+            label: '已绑表单',
+            value: boundFormCount.toLocaleString(),
+            hint: '支持直接进入表单发起',
+            icon: <FormInput size={18} />,
+            iconWrapClassName: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200',
+          },
+          {
+            label: '流程分类',
+            value: categoryCount.toLocaleString(),
+            hint: '用于目录归类与快速定位',
+            icon: <FolderOpen size={18} />,
+            iconWrapClassName: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
+          },
+        ]}
       />
 
       <WorkflowCatalogStats
@@ -299,7 +353,7 @@ export const Workplace = () => {
         loading={loading}
         onStart={handleStartClick}
       />
-    </div>
+    </WorkspacePageContent>
   );
 };
 

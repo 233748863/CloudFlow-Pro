@@ -189,8 +189,8 @@ export const FormDesign = () => {
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-              <FileSpreadsheet className="h-3.5 w-3.5 text-cyan-600" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
+              <FileSpreadsheet className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-200" />
               Form Workspace
             </span>
           }
@@ -208,25 +208,25 @@ export const FormDesign = () => {
               label="表单总数"
               value={forms.length}
               hint="当前系统中可编辑的表单数量"
-              aside={<FileSpreadsheet className="h-[18px] w-[18px] text-cyan-600" />}
+              aside={<FileSpreadsheet className="h-[18px] w-[18px] text-cyan-600 dark:text-cyan-200" />}
             />
             <WorkspaceMetricCard
               label="当前表单"
               value={selectedForm.name}
               hint="右侧设计器当前编辑对象"
-              aside={<Sparkles className="h-[18px] w-[18px] text-sky-500" />}
+              aside={<Sparkles className="h-[18px] w-[18px] text-sky-500 dark:text-sky-200" />}
             />
             <WorkspaceMetricCard
               label="字段数量"
               value={selectedForm.fields.length}
               hint="用于判断表单复杂度"
-              aside={<GitMerge className="h-[18px] w-[18px] text-amber-500" />}
+              aside={<GitMerge className="h-[18px] w-[18px] text-amber-500 dark:text-amber-200" />}
             />
             <WorkspaceMetricCard
               label="保存策略"
               value="自动 + 手动"
               hint="支持自动保存和显式保存"
-              aside={<Rocket className="h-[18px] w-[18px] text-emerald-500" />}
+              aside={<Rocket className="h-[18px] w-[18px] text-emerald-500 dark:text-emerald-200" />}
             />
           </div>
         </WorkspaceHeroCard>
@@ -256,20 +256,20 @@ export const FormDesign = () => {
                       onClick={() => setSelectedForm(form)}
                       className={`w-full rounded-2xl px-4 py-3 text-left transition ${
                         active
-                          ? 'border border-cyan-100 bg-cyan-50 text-cyan-700 shadow-sm'
-                          : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50'
+                          ? 'border border-cyan-100 bg-cyan-50 text-cyan-700 shadow-sm dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200'
+                          : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-200 dark:hover:bg-slate-900/80'
                       }`}
                     >
                       <div className="truncate text-sm font-semibold">{form.name}</div>
-                      <div className="mt-1 text-xs text-slate-500">{form.fields.length} 个字段</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{form.fields.length} 个字段</div>
                     </button>
                   );
                 })
               )}
             </div>
 
-            <div className="space-y-2 border-t border-slate-200 pt-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">下一步</div>
+            <div className="space-y-2 border-t border-slate-200 pt-4 dark:border-slate-800">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">下一步</div>
               <Button
                 variant="outline"
                 className="w-full justify-between"

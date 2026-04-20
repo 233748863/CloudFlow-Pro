@@ -215,117 +215,249 @@ const NODE_VISUAL: Record<
   [NodeType.START]: {
     icon: PlayCircle,
     color: "bg-emerald-500",
-    bg: "bg-emerald-50/80",
-    iconBg: "bg-emerald-100",
-    iconColor: "text-emerald-600",
-    border: "border-emerald-200",
-    hoverBorder: "hover:border-emerald-400",
+    bg: "bg-emerald-50/80 dark:bg-emerald-950/30",
+    iconBg: "bg-emerald-100 dark:bg-emerald-950/60",
+    iconColor: "text-emerald-600 dark:text-emerald-200",
+    border: "border-emerald-200 dark:border-emerald-900/70",
+    hoverBorder: "hover:border-emerald-400 dark:hover:border-emerald-700",
     label: "开始",
   },
   [NodeType.APPROVAL]: {
     icon: UserCheck,
     color: "bg-cyan-500",
-    bg: "bg-white",
-    iconBg: "bg-cyan-50",
-    iconColor: "text-cyan-700",
-    border: "border-cyan-200",
-    hoverBorder: "hover:border-cyan-300",
+    bg: "bg-white dark:bg-slate-950/88",
+    iconBg: "bg-cyan-50 dark:bg-cyan-950/50",
+    iconColor: "text-cyan-700 dark:text-cyan-200",
+    border: "border-cyan-200 dark:border-cyan-900/70",
+    hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-700",
     label: "审批",
   },
   [NodeType.CONDITION]: {
     icon: GitBranch,
     color: "bg-amber-500",
-    bg: "bg-amber-50/80",
-    iconBg: "bg-amber-100",
-    iconColor: "text-amber-600",
-    border: "border-amber-200",
-    hoverBorder: "hover:border-amber-400",
+    bg: "bg-amber-50/80 dark:bg-amber-950/30",
+    iconBg: "bg-amber-100 dark:bg-amber-950/60",
+    iconColor: "text-amber-600 dark:text-amber-200",
+    border: "border-amber-200 dark:border-amber-900/70",
+    hoverBorder: "hover:border-amber-400 dark:hover:border-amber-700",
     label: "条件",
   },
   [NodeType.PARALLEL]: {
     icon: Layers,
-    color: "bg-violet-500",
-    bg: "bg-violet-50/80",
-    iconBg: "bg-violet-100",
-    iconColor: "text-violet-600",
-    border: "border-violet-200",
-    hoverBorder: "hover:border-violet-400",
+    color: "bg-sky-500",
+    bg: "bg-sky-50/80 dark:bg-sky-950/30",
+    iconBg: "bg-sky-100 dark:bg-sky-950/60",
+    iconColor: "text-sky-600 dark:text-sky-200",
+    border: "border-sky-200 dark:border-sky-900/70",
+    hoverBorder: "hover:border-sky-400 dark:hover:border-sky-700",
     label: "并行",
   },
   [NodeType.END]: {
     icon: Flag,
     color: "bg-slate-700",
-    bg: "bg-slate-50",
-    iconBg: "bg-slate-200",
-    iconColor: "text-slate-600",
-    border: "border-slate-300",
-    hoverBorder: "hover:border-slate-500",
+    bg: "bg-slate-50 dark:bg-slate-950/88",
+    iconBg: "bg-slate-200 dark:bg-slate-900",
+    iconColor: "text-slate-600 dark:text-slate-200",
+    border: "border-slate-300 dark:border-slate-700",
+    hoverBorder: "hover:border-slate-500 dark:hover:border-slate-600",
     label: "完成",
   },
   [NodeType.NOTIFICATION]: {
     icon: Bell,
     color: "bg-cyan-500",
-    bg: "bg-cyan-50",
-    iconBg: "bg-cyan-50",
-    iconColor: "text-cyan-700",
-    border: "border-cyan-200",
-    hoverBorder: "hover:border-cyan-300",
+    bg: "bg-cyan-50 dark:bg-cyan-950/30",
+    iconBg: "bg-cyan-50 dark:bg-cyan-950/50",
+    iconColor: "text-cyan-700 dark:text-cyan-200",
+    border: "border-cyan-200 dark:border-cyan-900/70",
+    hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-700",
     label: "通知",
   },
   [NodeType.SCRIPT]: {
     icon: Code,
     color: "bg-green-500",
-    bg: "bg-green-50/80",
-    iconBg: "bg-green-100",
-    iconColor: "text-green-600",
-    border: "border-green-200",
-    hoverBorder: "hover:border-green-400",
+    bg: "bg-green-50/80 dark:bg-green-950/30",
+    iconBg: "bg-green-100 dark:bg-green-950/60",
+    iconColor: "text-green-600 dark:text-green-200",
+    border: "border-green-200 dark:border-green-900/70",
+    hoverBorder: "hover:border-green-400 dark:hover:border-green-700",
     label: "脚本",
   },
   [NodeType.TIMER]: {
     icon: Clock,
     color: "bg-orange-500",
-    bg: "bg-orange-50/80",
-    iconBg: "bg-orange-100",
-    iconColor: "text-orange-600",
-    border: "border-orange-200",
-    hoverBorder: "hover:border-orange-400",
+    bg: "bg-orange-50/80 dark:bg-orange-950/30",
+    iconBg: "bg-orange-100 dark:bg-orange-950/60",
+    iconColor: "text-orange-600 dark:text-orange-200",
+    border: "border-orange-200 dark:border-orange-900/70",
+    hoverBorder: "hover:border-orange-400 dark:hover:border-orange-700",
     label: "定时",
   },
   [NodeType.SUBPROCESS]: {
     icon: Workflow,
-    color: "bg-purple-500",
-    bg: "bg-purple-50/80",
-    iconBg: "bg-purple-100",
-    iconColor: "text-purple-600",
-    border: "border-purple-200",
-    hoverBorder: "hover:border-purple-400",
+    color: "bg-teal-500",
+    bg: "bg-teal-50/80 dark:bg-teal-950/30",
+    iconBg: "bg-teal-100 dark:bg-teal-950/60",
+    iconColor: "text-teal-600 dark:text-teal-200",
+    border: "border-teal-200 dark:border-teal-900/70",
+    hoverBorder: "hover:border-teal-400 dark:hover:border-teal-700",
     label: "子流程",
   },
   [NodeType.MANUAL]: {
     icon: ClipboardCheck,
     color: "bg-cyan-500",
-    bg: "bg-cyan-50/80",
-    iconBg: "bg-cyan-100",
-    iconColor: "text-cyan-600",
-    border: "border-cyan-200",
-    hoverBorder: "hover:border-cyan-400",
+    bg: "bg-cyan-50/80 dark:bg-cyan-950/30",
+    iconBg: "bg-cyan-100 dark:bg-cyan-950/60",
+    iconColor: "text-cyan-600 dark:text-cyan-200",
+    border: "border-cyan-200 dark:border-cyan-900/70",
+    hoverBorder: "hover:border-cyan-400 dark:hover:border-cyan-700",
     label: "人工",
   },
   [NodeType.COPY]: {
     icon: Send,
     color: "bg-cyan-600",
-    bg: "bg-cyan-50",
-    iconBg: "bg-cyan-100",
-    iconColor: "text-cyan-700",
-    border: "border-cyan-200",
-    hoverBorder: "hover:border-cyan-400",
+    bg: "bg-cyan-50 dark:bg-cyan-950/30",
+    iconBg: "bg-cyan-100 dark:bg-cyan-950/60",
+    iconColor: "text-cyan-700 dark:text-cyan-200",
+    border: "border-cyan-200 dark:border-cyan-900/70",
+    hoverBorder: "hover:border-cyan-400 dark:hover:border-cyan-700",
     label: "抄送",
   },
 };
 
 const getNodeVisual = (type: string) =>
   NODE_VISUAL[type] || NODE_VISUAL[NodeType.APPROVAL];
+
+const studioSidePanelClassName =
+  "fixed right-0 top-0 z-50 flex h-full w-[26rem] flex-col border-l border-slate-200 bg-white/96 shadow-[0_24px_48px_rgba(15,23,42,0.14)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/96 dark:shadow-[0_24px_48px_rgba(2,6,23,0.48)] animate-in slide-in-from-right duration-300 ease-out";
+
+interface QuickAddOption {
+  type: NodeType;
+  icon: React.FC<{ size?: number; className?: string }>;
+  label: string;
+  desc: string;
+  color: string;
+  bg: string;
+  border: string;
+  preview: string;
+  isBranch?: boolean;
+}
+
+const buildQuickAddOptions = (
+  canAddBranch: boolean,
+  includeEnd: boolean,
+): QuickAddOption[] => {
+  const items: QuickAddOption[] = [
+    {
+      type: NodeType.APPROVAL,
+      icon: UserCheck,
+      label: "审批节点",
+      desc: "需要审批人处理",
+      color: "text-cyan-600 dark:text-cyan-200",
+      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
+      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
+      preview: "bg-cyan-50 dark:bg-cyan-950/50",
+    },
+    {
+      type: NodeType.PARALLEL,
+      icon: Layers,
+      label: "会签节点",
+      desc: "多人同时审批",
+      color: "text-sky-600 dark:text-sky-200",
+      bg: "hover:bg-sky-50 dark:hover:bg-sky-950/40",
+      border: "hover:border-sky-200 dark:hover:border-sky-800",
+      preview: "bg-sky-50 dark:bg-sky-950/50",
+    },
+    {
+      type: NodeType.NOTIFICATION,
+      icon: Bell,
+      label: "通知节点",
+      desc: "发送通知消息",
+      color: "text-cyan-600 dark:text-cyan-200",
+      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
+      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
+      preview: "bg-cyan-50 dark:bg-cyan-950/50",
+    },
+    {
+      type: NodeType.SCRIPT,
+      icon: Code,
+      label: "脚本节点",
+      desc: "执行自动化脚本",
+      color: "text-emerald-600 dark:text-emerald-200",
+      bg: "hover:bg-emerald-50 dark:hover:bg-emerald-950/40",
+      border: "hover:border-emerald-200 dark:hover:border-emerald-800",
+      preview: "bg-emerald-50 dark:bg-emerald-950/50",
+    },
+    {
+      type: NodeType.TIMER,
+      icon: Clock,
+      label: "定时节点",
+      desc: "延迟或定时触发",
+      color: "text-orange-500 dark:text-orange-200",
+      bg: "hover:bg-orange-50 dark:hover:bg-orange-950/40",
+      border: "hover:border-orange-200 dark:hover:border-orange-800",
+      preview: "bg-orange-50 dark:bg-orange-950/50",
+    },
+    {
+      type: NodeType.SUBPROCESS,
+      icon: Workflow,
+      label: "子流程节点",
+      desc: "调用其他流程",
+      color: "text-teal-600 dark:text-teal-200",
+      bg: "hover:bg-teal-50 dark:hover:bg-teal-950/40",
+      border: "hover:border-teal-200 dark:hover:border-teal-800",
+      preview: "bg-teal-50 dark:bg-teal-950/50",
+    },
+    {
+      type: NodeType.MANUAL,
+      icon: ClipboardCheck,
+      label: "人工任务",
+      desc: "需要人工处理",
+      color: "text-cyan-600 dark:text-cyan-200",
+      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
+      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
+      preview: "bg-cyan-50 dark:bg-cyan-950/50",
+    },
+    {
+      type: NodeType.COPY,
+      icon: Send,
+      label: "抄送节点",
+      desc: "发送流程副本",
+      color: "text-cyan-700 dark:text-cyan-200",
+      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
+      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
+      preview: "bg-cyan-50 dark:bg-cyan-950/50",
+    },
+  ];
+
+  if (canAddBranch) {
+    items.push({
+      type: NodeType.CONDITION,
+      icon: GitBranch,
+      label: "条件分支",
+      desc: "根据条件分流",
+      color: "text-amber-500 dark:text-amber-200",
+      bg: "hover:bg-amber-50 dark:hover:bg-amber-950/40",
+      border: "hover:border-amber-200 dark:hover:border-amber-800",
+      preview: "bg-amber-50 dark:bg-amber-950/50",
+      isBranch: true,
+    });
+  }
+
+  if (includeEnd) {
+    items.push({
+      type: NodeType.END,
+      icon: Flag,
+      label: "结束节点",
+      desc: "流程终点",
+      color: "text-slate-500 dark:text-slate-300",
+      bg: "hover:bg-slate-50 dark:hover:bg-slate-900/80",
+      border: "hover:border-slate-200 dark:hover:border-slate-700",
+      preview: "bg-slate-100 dark:bg-slate-900",
+    });
+  }
+
+  return items;
+};
 
 // ==================== 模板入口迁移说明 ====================
 
@@ -424,7 +556,7 @@ const LazyTextarea = ({ value, onChange, className, ...props }: any) => {
   return (
     <textarea
       {...props}
-      className={className}
+      className={`min-h-[96px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:placeholder:text-slate-500 ${className || ""}`}
       value={val || ""}
       onChange={(e: any) => setVal(e.target.value)}
       onBlur={() => onChange(val)}
@@ -571,11 +703,11 @@ const ApproverValueSelector = ({
     );
     return (
       <div>
-        <span className="text-xs text-slate-400 mb-1 block">
+        <span className="mb-1 block text-xs text-slate-400 dark:text-slate-500">
           选择角色{multiple ? "（可多选）" : ""}
         </span>
         {loading ? (
-          <div className="text-xs text-slate-400 py-2 text-center">
+          <div className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
             加载中...
           </div>
         ) : (
@@ -588,9 +720,9 @@ const ApproverValueSelector = ({
                 onChange={(e) => setSearchText(e.target.value)}
               />
             )}
-            <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
+            <div className="max-h-[200px] overflow-y-auto rounded-xl border border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80">
               {filtered.length === 0 ? (
-                <div className="text-xs text-slate-400 py-3 text-center">
+                <div className="py-3 text-center text-xs text-slate-400 dark:text-slate-500">
                   暂无角色数据
                 </div>
               ) : (
@@ -600,25 +732,25 @@ const ApproverValueSelector = ({
                     <div
                       key={r.roleId}
                       onClick={() => toggleValue(r.roleKey)}
-                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
-                        isSelected
-                          ? "bg-cyan-50 text-cyan-700"
-                          : "hover:bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <div
-                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                        className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-xs transition-colors ${
                           isSelected
-                            ? "bg-cyan-500 border-cyan-500"
-                            : "border-slate-300"
+                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200"
+                            : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/80"
                         }`}
                       >
+                        <div
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                            isSelected
+                              ? "bg-cyan-500 border-cyan-500"
+                              : "border-slate-300 dark:border-slate-700"
+                          }`}
+                        >
                         {isSelected && (
                           <span className="text-white text-[10px]">✓</span>
                         )}
                       </div>
                       <span className="font-medium">{r.roleName}</span>
-                      <span className="text-slate-400 ml-auto">
+                      <span className="ml-auto text-slate-400 dark:text-slate-500">
                         {r.roleKey}
                       </span>
                     </div>
@@ -633,7 +765,7 @@ const ApproverValueSelector = ({
                   return (
                     <span
                       key={v}
-                      className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] text-cyan-700"
+                      className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200"
                     >
                       {role?.roleName || v}
                       <button
@@ -665,11 +797,11 @@ const ApproverValueSelector = ({
     );
     return (
       <div>
-        <span className="text-xs text-slate-400 mb-1 block">
+        <span className="mb-1 block text-xs text-slate-400 dark:text-slate-500">
           选择人员{multiple ? "（可多选）" : ""}
         </span>
         {loading ? (
-          <div className="text-xs text-slate-400 py-2 text-center">
+          <div className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
             加载中...
           </div>
         ) : (
@@ -680,9 +812,9 @@ const ApproverValueSelector = ({
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
             />
-            <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
+            <div className="max-h-[200px] overflow-y-auto rounded-xl border border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80">
               {filtered.length === 0 ? (
-                <div className="text-xs text-slate-400 py-3 text-center">
+                <div className="py-3 text-center text-xs text-slate-400 dark:text-slate-500">
                   暂无人员数据
                 </div>
               ) : (
@@ -693,19 +825,19 @@ const ApproverValueSelector = ({
                     <div
                       key={u.userId}
                       onClick={() => toggleValue(uid)}
-                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
-                        isSelected
-                          ? "bg-cyan-50 text-cyan-700"
-                          : "hover:bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <div
-                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                        className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-xs transition-colors ${
                           isSelected
-                            ? "bg-cyan-500 border-cyan-500"
-                            : "border-slate-300"
+                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200"
+                            : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/80"
                         }`}
                       >
+                        <div
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                            isSelected
+                              ? "bg-cyan-500 border-cyan-500"
+                              : "border-slate-300 dark:border-slate-700"
+                          }`}
+                        >
                         {isSelected && (
                           <span className="text-white text-[10px]">✓</span>
                         )}
@@ -713,7 +845,7 @@ const ApproverValueSelector = ({
                       <span className="font-medium">
                         {u.nickName || u.userName}
                       </span>
-                      <span className="text-slate-400 ml-auto">
+                      <span className="ml-auto text-slate-400 dark:text-slate-500">
                         {u.userName}
                       </span>
                     </div>
@@ -728,7 +860,7 @@ const ApproverValueSelector = ({
                   return (
                     <span
                       key={v}
-                      className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] text-cyan-700"
+                      className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200"
                     >
                       {user?.nickName || user?.userName || v}
                       <button
@@ -757,11 +889,11 @@ const ApproverValueSelector = ({
     );
     return (
       <div>
-        <span className="text-xs text-slate-400 mb-1 block">
+        <span className="mb-1 block text-xs text-slate-400 dark:text-slate-500">
           选择部门{multiple ? "（可多选）" : ""}
         </span>
         {loading ? (
-          <div className="text-xs text-slate-400 py-2 text-center">
+          <div className="py-2 text-center text-xs text-slate-400 dark:text-slate-500">
             加载中...
           </div>
         ) : (
@@ -774,9 +906,9 @@ const ApproverValueSelector = ({
                 onChange={(e) => setSearchText(e.target.value)}
               />
             )}
-            <div className="max-h-[200px] overflow-y-auto border border-slate-200 rounded-lg">
+            <div className="max-h-[200px] overflow-y-auto rounded-xl border border-slate-200 bg-white/90 dark:border-slate-800 dark:bg-slate-950/80">
               {filtered.length === 0 ? (
-                <div className="text-xs text-slate-400 py-3 text-center">
+                <div className="py-3 text-center text-xs text-slate-400 dark:text-slate-500">
                   暂无部门数据
                 </div>
               ) : (
@@ -787,19 +919,19 @@ const ApproverValueSelector = ({
                     <div
                       key={d.deptId}
                       onClick={() => toggleValue(did)}
-                      className={`flex items-center gap-2 px-3 py-2 cursor-pointer text-xs transition-colors ${
-                        isSelected
-                          ? "bg-cyan-50 text-cyan-700"
-                          : "hover:bg-slate-50 text-slate-600"
-                      }`}
-                    >
-                      <div
-                        className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${
+                        className={`flex cursor-pointer items-center gap-2 px-3 py-2 text-xs transition-colors ${
                           isSelected
-                            ? "bg-cyan-500 border-cyan-500"
-                            : "border-slate-300"
+                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200"
+                            : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/80"
                         }`}
                       >
+                        <div
+                          className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border ${
+                            isSelected
+                              ? "bg-cyan-500 border-cyan-500"
+                              : "border-slate-300 dark:border-slate-700"
+                          }`}
+                        >
                         {isSelected && (
                           <span className="text-white text-[10px]">✓</span>
                         )}
@@ -817,7 +949,7 @@ const ApproverValueSelector = ({
                   return (
                     <span
                       key={v}
-                      className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] text-cyan-700"
+                      className="inline-flex items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200"
                     >
                       {dept?.deptName || v}
                       <button
@@ -894,39 +1026,39 @@ const PropertyPanel = ({
       : "EXCLUSIVE";
 
   return (
-    <div className="fixed right-0 top-0 z-50 flex h-full w-96 flex-col border-l border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in slide-in-from-right duration-300 ease-out">
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+    <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
         <div className="flex items-center gap-3">
           <div
-            className={`w-10 h-10 rounded-xl flex items-center justify-center ${visual.iconBg} shadow-sm`}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-sm ${visual.iconBg}`}
           >
             <PIcon size={20} className={visual.iconColor} />
           </div>
           <div>
-            <h3 className="font-bold text-slate-800 text-base">节点设置</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">节点设置</h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               配置 {NODE_TYPE_LABELS[node.type] || node.type} 的属性
             </p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700"
+          className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
         >
           <X size={18} />
         </button>
       </div>
-      <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
-        <div className="flex justify-between items-center mb-6 bg-slate-50 p-3 rounded-xl border border-slate-100">
+      <div className="custom-scrollbar flex-1 overflow-y-auto p-5">
+        <div className="mb-6 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/90 p-3 dark:border-slate-800 dark:bg-slate-900/70">
           <span
-            className={`px-3 py-1 rounded-full text-xs font-semibold ${visual.iconBg} ${visual.iconColor}`}
+            className={`rounded-full px-3 py-1 text-xs font-semibold ${visual.iconBg} ${visual.iconColor}`}
           >
             {NODE_TYPE_LABELS[node.type] || node.type}
           </span>
           {node.type !== NodeType.START && node.type !== NodeType.END && (
             <button
               onClick={() => onDelete(node.id)}
-              className="text-red-500 hover:bg-red-50 hover:text-red-600 px-3 py-1.5 rounded-lg transition-colors text-xs font-medium flex items-center gap-1"
+              className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"
               title="删除节点"
             >
               <Trash2 size={14} /> 删除节点
@@ -2031,10 +2163,10 @@ const ConnectorDropZone = ({
   if (!isDraggingGlobal) {
     return (
       <div className="flex flex-col items-center">
-        <div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
+        <div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400 dark:bg-slate-700 dark:group-hover/node:bg-slate-500"></div>
         <ArrowDown
           size={14}
-          className="text-slate-300 -mt-1 mb-1 transition-colors duration-300 group-hover/node:text-slate-400"
+          className="-mb-1 -mt-1 text-slate-300 transition-colors duration-300 group-hover/node:text-slate-400 dark:text-slate-700 dark:group-hover/node:text-slate-500"
         />
       </div>
     );
@@ -2059,13 +2191,13 @@ const ConnectorDropZone = ({
   return (
     <div className="flex flex-col items-center relative py-1">
       <div
-        className={`h-12 w-0.5 transition-all ${isOver ? "bg-cyan-500" : "bg-slate-300"}`}
+        className={`h-12 w-0.5 transition-all ${isOver ? "bg-cyan-500" : "bg-slate-300 dark:bg-slate-700"}`}
       ></div>
       <div
-        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-10 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all cursor-pointer z-20 ${
+        className={`workflow-studio-dropzone absolute left-1/2 top-1/2 z-20 flex h-10 w-40 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center gap-1.5 rounded-xl border-2 border-dashed transition-all ${
           isOver
-            ? "border-cyan-400 bg-cyan-50 shadow-[0_12px_28px_rgba(34,211,238,0.14)]"
-            : "border-slate-300 bg-white hover:border-cyan-300 hover:bg-cyan-50"
+            ? "border-cyan-400 bg-cyan-50 shadow-[0_12px_28px_rgba(34,211,238,0.14)] dark:bg-cyan-950/40"
+            : "border-slate-300 bg-white hover:border-cyan-300 hover:bg-cyan-50 dark:border-slate-700 dark:bg-slate-950/92 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/30"
         }`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -2083,17 +2215,17 @@ const ConnectorDropZone = ({
       >
         <Move
           size={14}
-          className={isOver ? "text-cyan-500" : "text-slate-400"}
+          className={isOver ? "text-cyan-500 dark:text-cyan-200" : "text-slate-400 dark:text-slate-500"}
         />
         <span
-          className={`text-xs font-medium ${isOver ? "text-cyan-700" : "text-slate-400"}`}
+          className={`text-xs font-medium ${isOver ? "text-cyan-700 dark:text-cyan-200" : "text-slate-400 dark:text-slate-500"}`}
         >
           {isOver ? "松开放置" : "拖入空位"}
         </span>
       </div>
       <ArrowDown
         size={14}
-        className={`-mt-1 mb-1 ${isOver ? "text-cyan-500" : "text-slate-300"}`}
+        className={`-mb-1 -mt-1 ${isOver ? "text-cyan-500 dark:text-cyan-200" : "text-slate-300 dark:text-slate-700"}`}
       />
     </div>
   );
@@ -2205,13 +2337,13 @@ const FlowNode = ({
 
         {/* 节点卡片 */}
         <div
-          className={`w-64 ${visual.bg} rounded-xl shadow-md border-2 transition-all duration-300 cursor-pointer relative z-10 ${
+          className={`workflow-node-card relative z-10 w-64 cursor-pointer rounded-[22px] border-2 shadow-md transition-all duration-300 ${visual.bg} ${
             isDragging
               ? "opacity-40 scale-95 border-slate-300 rotate-1"
               : isInvalid
-                ? `border-red-500 ring-4 ring-red-100/50 shadow-[0_16px_30px_rgba(244,63,94,0.12)] bg-red-50/50`
+                ? `border-red-500 bg-red-50/50 ring-4 ring-red-100/50 shadow-[0_16px_30px_rgba(244,63,94,0.12)] dark:bg-red-950/30 dark:ring-red-950/40`
                 : isSelected
-                  ? `border-cyan-500 ring-4 ring-cyan-100 ring-offset-2 shadow-[0_16px_30px_rgba(8,145,178,0.1)] ${visual.bg}`
+                  ? `border-cyan-500 ring-4 ring-cyan-100 ring-offset-2 shadow-[0_16px_30px_rgba(8,145,178,0.1)] dark:ring-cyan-950/40 dark:ring-offset-slate-950 ${visual.bg}`
                   : `${visual.border} ${visual.hoverBorder} hover:shadow-[0_12px_24px_rgba(15,23,42,0.08)]`
           } active:scale-95 active:shadow-sm`}
           onClick={(e) => {
@@ -2239,17 +2371,17 @@ const FlowNode = ({
           <div className={`h-1.5 rounded-t-xl w-full ${visual.color}`}></div>
           <div className="p-3">
             {/* 图标 + 标题 */}
-            <div className="flex items-center gap-2.5 mb-2">
+            <div className="mb-2 flex items-center gap-2.5">
               <div
-                className={`w-8 h-8 rounded-lg flex items-center justify-center ${visual.iconBg} shrink-0`}
+                className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${visual.iconBg}`}
               >
                 <NIcon size={16} className={visual.iconColor} />
               </div>
               <div className="min-w-0 flex-1">
-                <div className="text-sm font-semibold text-slate-700 truncate">
+                <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-100">
                   {displayNode.title}
                 </div>
-                <div className="text-[10px] text-slate-400">
+                <div className="text-[10px] text-slate-400 dark:text-slate-500">
                   {displayNode.type === NodeType.PARALLEL
                     ? branchCount > 0 && displayNode.branchStrategy
                       ? BRANCH_STRATEGY_LABELS[displayNode.branchStrategy] ||
@@ -2281,7 +2413,7 @@ const FlowNode = ({
               <div className="mt-1.5 space-y-1.5">
                 {/* 会签类型标签 */}
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-violet-100 text-violet-700">
+                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-200">
                     {displayNode.signType === "ANY"
                       ? "或签"
                       : displayNode.signType === "PERCENT"
@@ -2301,15 +2433,15 @@ const FlowNode = ({
                 </div>
                 {/* 参与人展示 */}
                 {displayNode.approverValue && (
-                  <div className="text-[10px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1 border border-slate-100">
-                    <span className="text-slate-400">
+                  <div className="rounded-lg border border-slate-100 bg-slate-50 px-2 py-1 text-[10px] text-slate-500 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
+                    <span className="text-slate-400 dark:text-slate-500">
                       {displayNode.approverType === "ROLE"
                         ? "参与角色: "
                         : displayNode.approverType === "USER"
                           ? "参与人员: "
                           : "参与人: "}
                     </span>
-                    <span className="font-medium text-slate-600">
+                    <span className="font-medium text-slate-600 dark:text-slate-200">
                       {(() => {
                         const displayText =
                           displayNode.props?.approverLabel ||
@@ -2326,7 +2458,7 @@ const FlowNode = ({
                 )}
                 {/* 未配置审批人提示 */}
                 {!displayNode.approverValue && (
-                  <div className="text-[10px] text-amber-600 bg-amber-50 rounded-lg px-2 py-1 border border-amber-100 flex items-center gap-1">
+                  <div className="flex items-center gap-1 rounded-lg border border-amber-100 bg-amber-50 px-2 py-1 text-[10px] text-amber-600 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200">
                     ⚠ 请在右侧面板配置审批人
                   </div>
                 )}
@@ -2343,7 +2475,7 @@ const FlowNode = ({
                       displayNode.approverType}
                   </span>
                   {displayNode.approverValue && (
-                    <span className="text-[10px] text-slate-500 truncate max-w-[140px]">
+                    <span className="max-w-[140px] truncate text-[10px] text-slate-500 dark:text-slate-400">
                       {displayNode.props?.approverLabel ||
                         displayNode.approverValue}
                     </span>
@@ -2352,7 +2484,7 @@ const FlowNode = ({
               )}
             {/* 条件标签 */}
             {displayNode.condition && (
-              <div className="mt-1.5 text-[10px] bg-amber-50 text-amber-700 px-2 py-1 rounded-lg truncate font-mono border border-amber-100">
+              <div className="mt-1.5 truncate rounded-lg border border-amber-100 bg-amber-50 px-2 py-1 font-mono text-[10px] text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200">
                 条件: {displayNode.condition}
               </div>
             )}
@@ -2392,7 +2524,7 @@ const FlowNode = ({
               </button>
               {showQuickAdd && (
                 <div
-                  className="absolute bottom-10 left-1/2 z-[100] min-w-[200px] -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 animate-in fade-in slide-in-from-bottom-2 duration-200"
+                  className="workflow-quick-add-menu absolute bottom-10 left-1/2 z-[100] min-w-[220px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white/96 p-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 backdrop-blur dark:border-slate-800 dark:bg-slate-950/96 dark:ring-slate-800 animate-in fade-in slide-in-from-bottom-2 duration-200"
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();
@@ -2408,103 +2540,16 @@ const FlowNode = ({
                   }}
                   style={{ pointerEvents: "auto" }}
                 >
-                  <div className="text-xs text-slate-600 px-2 py-1 font-semibold mb-1 flex items-center gap-1.5">
-                    <Sparkles size={12} className="text-cyan-500" />
+                  <div className="mb-1 flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <Sparkles size={12} className="text-cyan-500 dark:text-cyan-300" />
                     选择节点类型
                   </div>
-                  {[
-                    {
-                      type: NodeType.APPROVAL,
-                      icon: UserCheck,
-                      label: "审批节点",
-                      desc: "需要审批人处理",
-                      color: "text-cyan-500",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    {
-                      type: NodeType.PARALLEL,
-                      icon: Layers,
-                      label: "会签节点",
-                      desc: "多人同时审批",
-                      color: "text-violet-500",
-                      bg: "hover:bg-violet-50",
-                      border: "hover:border-violet-200",
-                    },
-                    {
-                      type: NodeType.NOTIFICATION,
-                      icon: Bell,
-                      label: "通知节点",
-                      desc: "发送通知消息",
-                      color: "text-cyan-500",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    {
-                      type: NodeType.SCRIPT,
-                      icon: Code,
-                      label: "脚本节点",
-                      desc: "执行自动化脚本",
-                      color: "text-green-500",
-                      bg: "hover:bg-green-50",
-                      border: "hover:border-green-200",
-                    },
-                    {
-                      type: NodeType.TIMER,
-                      icon: Clock,
-                      label: "定时节点",
-                      desc: "延迟或定时触发",
-                      color: "text-orange-500",
-                      bg: "hover:bg-orange-50",
-                      border: "hover:border-orange-200",
-                    },
-                    {
-                      type: NodeType.SUBPROCESS,
-                      icon: Workflow,
-                      label: "子流程节点",
-                      desc: "调用其他流程",
-                      color: "text-purple-500",
-                      bg: "hover:bg-purple-50",
-                      border: "hover:border-purple-200",
-                    },
-                    {
-                      type: NodeType.MANUAL,
-                      icon: ClipboardCheck,
-                      label: "人工任务",
-                      desc: "需要人工处理",
-                      color: "text-cyan-500",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    {
-                      type: NodeType.COPY,
-                      icon: Send,
-                      label: "抄送节点",
-                      desc: "发送流程副本",
-                      color: "text-cyan-700",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    ...(canAddBranch
-                      ? [
-                          {
-                            type: NodeType.CONDITION as any,
-                            icon: GitBranch,
-                            label: "条件分支",
-                            desc: "根据条件分流",
-                            color: "text-amber-500",
-                            bg: "hover:bg-amber-50",
-                            border: "hover:border-amber-200",
-                            isBranch: true,
-                          },
-                        ]
-                      : []),
-                  ].map((item) => {
+                  {buildQuickAddOptions(canAddBranch, false).map((item) => {
                     const ItemIcon = item.icon;
                     return (
                       <button
                         key={item.type}
-                        className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left border-2 border-transparent ${item.bg} ${item.border} transition-all mb-1.5`}
+                        className={`mb-1.5 flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-all ${item.bg} ${item.border}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           if ("isBranch" in item && item.isBranch) {
@@ -2515,16 +2560,14 @@ const FlowNode = ({
                           actions.setActiveQuickAddId(null);
                         }}
                       >
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.bg.replace("hover:", "")} shrink-0 mt-0.5`}
-                        >
+                        <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.preview}`}>
                           <ItemIcon size={16} className={item.color} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-slate-700">
+                          <div className="text-sm font-medium text-slate-700 dark:text-slate-100">
                             {item.label}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">
+                          <div className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
                             {item.desc}
                           </div>
                         </div>
@@ -2570,7 +2613,7 @@ const FlowNode = ({
               </button>
               {showQuickAdd && (
                 <div
-                  className="absolute top-10 left-1/2 z-[100] min-w-[200px] -translate-x-1/2 rounded-xl border border-slate-200 bg-white p-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 animate-in fade-in slide-in-from-top-2 duration-200"
+                  className="workflow-quick-add-menu absolute left-1/2 top-10 z-[100] min-w-[220px] -translate-x-1/2 rounded-2xl border border-slate-200 bg-white/96 p-3 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 backdrop-blur dark:border-slate-800 dark:bg-slate-950/96 dark:ring-slate-800 animate-in fade-in slide-in-from-top-2 duration-200"
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();
@@ -2586,112 +2629,16 @@ const FlowNode = ({
                   }}
                   style={{ pointerEvents: "auto" }}
                 >
-                  <div className="text-xs text-slate-600 px-2 py-1 font-semibold mb-1 flex items-center gap-1.5">
-                    <Sparkles size={12} className="text-cyan-500" />
+                  <div className="mb-1 flex items-center gap-1.5 px-2 py-1 text-xs font-semibold text-slate-600 dark:text-slate-300">
+                    <Sparkles size={12} className="text-cyan-500 dark:text-cyan-300" />
                     选择节点类型
                   </div>
-                  {[
-                    {
-                      type: NodeType.APPROVAL,
-                      icon: UserCheck,
-                      label: "审批节点",
-                      desc: "需要审批人处理",
-                      color: "text-cyan-500",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    {
-                      type: NodeType.PARALLEL,
-                      icon: Layers,
-                      label: "会签节点",
-                      desc: "多人同时审批",
-                      color: "text-violet-500",
-                      bg: "hover:bg-violet-50",
-                      border: "hover:border-violet-200",
-                    },
-                    {
-                      type: NodeType.NOTIFICATION,
-                      icon: Bell,
-                      label: "通知节点",
-                      desc: "发送通知消息",
-                      color: "text-cyan-500",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    {
-                      type: NodeType.SCRIPT,
-                      icon: Code,
-                      label: "脚本节点",
-                      desc: "执行自动化脚本",
-                      color: "text-green-500",
-                      bg: "hover:bg-green-50",
-                      border: "hover:border-green-200",
-                    },
-                    {
-                      type: NodeType.TIMER,
-                      icon: Clock,
-                      label: "定时节点",
-                      desc: "延迟或定时触发",
-                      color: "text-orange-500",
-                      bg: "hover:bg-orange-50",
-                      border: "hover:border-orange-200",
-                    },
-                    {
-                      type: NodeType.SUBPROCESS,
-                      icon: Workflow,
-                      label: "子流程节点",
-                      desc: "调用其他流程",
-                      color: "text-purple-500",
-                      bg: "hover:bg-purple-50",
-                      border: "hover:border-purple-200",
-                    },
-                    {
-                      type: NodeType.MANUAL,
-                      icon: ClipboardCheck,
-                      label: "人工任务",
-                      desc: "需要人工处理",
-                      color: "text-cyan-500",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    {
-                      type: NodeType.COPY,
-                      icon: Send,
-                      label: "抄送节点",
-                      desc: "发送流程副本",
-                      color: "text-cyan-700",
-                      bg: "hover:bg-cyan-50",
-                      border: "hover:border-cyan-200",
-                    },
-                    ...(canAddBranch
-                      ? [
-                          {
-                            type: NodeType.CONDITION as any,
-                            icon: GitBranch,
-                            label: "条件分支",
-                            desc: "根据条件分流",
-                            color: "text-amber-500",
-                            bg: "hover:bg-amber-50",
-                            border: "hover:border-amber-200",
-                            isBranch: true,
-                          },
-                        ]
-                      : []),
-                    {
-                      type: NodeType.END as any,
-                      icon: Flag,
-                      label: "结束节点",
-                      desc: "流程终点",
-                      color: "text-slate-500",
-                      bg: "hover:bg-slate-50",
-                      border: "hover:border-slate-200",
-                    },
-                  ].map((item) => {
+                  {buildQuickAddOptions(canAddBranch, true).map((item) => {
                     const ItemIcon = item.icon;
                     return (
                       <button
                         key={item.type}
-                        className={`w-full flex items-start gap-3 px-3 py-2.5 rounded-lg text-left border-2 border-transparent ${item.bg} ${item.border} transition-all mb-1.5`}
+                        className={`mb-1.5 flex w-full items-start gap-3 rounded-xl border border-transparent px-3 py-2.5 text-left transition-all ${item.bg} ${item.border}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           if ("isBranch" in item && item.isBranch) {
@@ -2702,16 +2649,14 @@ const FlowNode = ({
                           actions.setActiveQuickAddId(null);
                         }}
                       >
-                        <div
-                          className={`w-8 h-8 rounded-lg flex items-center justify-center ${item.bg.replace("hover:", "")} shrink-0 mt-0.5`}
-                        >
+                        <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${item.preview}`}>
                           <ItemIcon size={16} className={item.color} />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-slate-700">
+                          <div className="text-sm font-medium text-slate-700 dark:text-slate-100">
                             {item.label}
                           </div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">
+                          <div className="mt-0.5 text-[10px] text-slate-400 dark:text-slate-500">
                             {item.desc}
                           </div>
                         </div>
@@ -3175,27 +3120,27 @@ const GlobalPropertyPanel = ({
   if (!open) return null;
 
   return (
-    <div className="fixed right-0 top-0 z-50 flex h-full w-96 flex-col border-l border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in slide-in-from-right duration-300 ease-out">
-      <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-5 py-4">
+    <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 shadow-sm">
-            <Settings size={20} className="text-cyan-600" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 shadow-sm dark:bg-cyan-950/50">
+            <Settings size={20} className="text-cyan-600 dark:text-cyan-200" />
           </div>
           <div>
-            <h3 className="font-bold text-slate-800 text-base">全局属性</h3>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <h3 className="text-base font-bold text-slate-800 dark:text-slate-100">全局属性</h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
               配置流程的全局属性和元数据
             </p>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600"
+          className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
         >
           <X size={18} />
         </button>
       </div>
-      <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
+      <div className="custom-scrollbar flex-1 overflow-y-auto p-5">
         <div className="space-y-5">
           <div className="space-y-3">
             <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
@@ -3357,48 +3302,48 @@ const WorkflowToolbar = ({
   saving: boolean;
 }) => {
   return (
-    <div className="flex items-center justify-between px-6 py-3 border-b border-slate-200 bg-white shadow-sm shrink-0 h-16 z-20 relative">
+    <div className="workflow-studio-toolbar relative z-20 flex h-16 shrink-0 items-center justify-between border-b border-slate-200 bg-white/92 px-5 py-3 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/92">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2 group">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50 transition-colors group-hover:bg-cyan-100">
-            <GitMerge size={18} className="text-cyan-700" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-cyan-50 transition-colors group-hover:bg-cyan-100 dark:bg-cyan-950/40 dark:group-hover:bg-cyan-950/60">
+            <GitMerge size={18} className="text-cyan-700 dark:text-cyan-200" />
           </div>
           <Input
-            className="text-base font-bold !border-none !ring-0 !shadow-none p-1 w-64 bg-transparent hover:bg-slate-50 focus:bg-white rounded transition-colors"
+            className="w-64 rounded-lg bg-transparent p-1 text-base font-bold !border-none !ring-0 !shadow-none transition-colors hover:bg-slate-50 focus:bg-white dark:text-slate-100 dark:hover:bg-slate-900 dark:focus:bg-slate-900"
             value={workflowName}
             onChange={(e) => onNameChange(e.target.value)}
             placeholder="未命名流程"
           />
         </div>
-        <div className="flex items-center gap-2 text-xs text-slate-500">
-          <span className="font-mono bg-slate-100 text-slate-500 px-2 py-1 rounded border border-slate-200">
+        <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+          <span className="rounded border border-slate-200 bg-slate-100 px-2 py-1 font-mono text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
             KEY
           </span>
           <Input
-            className="text-xs font-mono !border-none !ring-0 !shadow-none p-1 w-40 bg-transparent hover:bg-slate-50 focus:bg-white rounded transition-colors"
+            className="w-40 rounded-lg bg-transparent p-1 text-xs font-mono !border-none !ring-0 !shadow-none transition-colors hover:bg-slate-50 focus:bg-white dark:text-slate-100 dark:hover:bg-slate-900 dark:focus:bg-slate-900"
             value={workflowKey}
             onChange={(e) => onKeyChange(e.target.value)}
             placeholder="process_key"
           />
         </div>
       </div>
-      <div className="flex items-center gap-2 flex-nowrap shrink-0 min-w-0 overflow-x-auto">
+      <div className="flex min-w-0 shrink-0 flex-nowrap items-center gap-2 overflow-x-auto">
         <Button
           variant="outline"
           size="sm"
           onClick={onOpenSettings}
-          className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-600 hover:border-cyan-200 gap-2 shrink-0"
+          className="h-8 shrink-0 gap-2 whitespace-nowrap px-3 text-xs font-semibold text-slate-600 hover:border-cyan-200 hover:bg-slate-50 hover:text-cyan-600 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
         >
-          <FileText size={14} className="text-cyan-600" />
+          <FileText size={14} className="text-cyan-600 dark:text-cyan-200" />
           流程设置
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={onOpenGlobalConfig}
-          className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-700 hover:border-cyan-200 gap-2 shrink-0"
+          className="h-8 shrink-0 gap-2 whitespace-nowrap px-3 text-xs font-semibold text-slate-600 hover:border-cyan-200 hover:bg-slate-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
         >
-          <Settings size={14} className="text-cyan-600" />
+          <Settings size={14} className="text-cyan-600 dark:text-cyan-200" />
           全局属性
         </Button>
         {/* 版本历史按钮 - 仅在流程已保存时显示 */}
@@ -3409,10 +3354,10 @@ const WorkflowToolbar = ({
               variant="outline"
               size="sm"
               onClick={onViewVersionHistory}
-              className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-700 hover:border-cyan-200 gap-2 shrink-0"
+              className="h-8 shrink-0 gap-2 whitespace-nowrap px-3 text-xs font-semibold text-slate-600 hover:border-cyan-200 hover:bg-slate-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
               title="查看版本历史"
             >
-              <Clock size={14} className="text-cyan-600" />
+              <Clock size={14} className="text-cyan-600 dark:text-cyan-200" />
               版本历史
             </Button>
           )}
@@ -3422,21 +3367,21 @@ const WorkflowToolbar = ({
             variant="outline"
             size="sm"
             onClick={onExport}
-            className="h-8 px-3 text-xs font-semibold whitespace-nowrap text-slate-600 hover:bg-slate-50 hover:text-cyan-700 hover:border-cyan-200 gap-2 shrink-0"
+            className="h-8 shrink-0 gap-2 whitespace-nowrap px-3 text-xs font-semibold text-slate-600 hover:border-cyan-200 hover:bg-slate-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
             title="导出流程"
           >
-            <FileDown size={14} className="text-cyan-600" />
+            <FileDown size={14} className="text-cyan-600 dark:text-cyan-200" />
             导出
           </Button>
         )}
-        <div className="w-px h-6 bg-slate-200 mx-1 shrink-0"></div>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1 border border-slate-200 shrink-0">
+        <div className="mx-1 h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-800"></div>
+        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-100 p-1 dark:border-slate-800 dark:bg-slate-900">
           <Button
             variant="ghost"
             size="icon"
             onClick={onUndo}
             disabled={!canUndo}
-            className={`h-8 w-8 p-0 rounded-md ${!canUndo ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900"}`}
+            className={`h-8 w-8 rounded-md p-0 ${!canUndo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"}`}
             title="撤销 (Ctrl+Z)"
           >
             <Undo2 size={16} />
@@ -3446,22 +3391,22 @@ const WorkflowToolbar = ({
             size="icon"
             onClick={onRedo}
             disabled={!canRedo}
-            className={`h-8 w-8 p-0 rounded-md ${!canRedo ? "text-slate-300 cursor-not-allowed" : "text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900"}`}
+            className={`h-8 w-8 rounded-md p-0 ${!canRedo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-white hover:shadow-sm hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"}`}
             title="重做 (Ctrl+Y)"
           >
             <Redo2 size={16} />
           </Button>
         </div>
-        <div className="w-px h-6 bg-slate-200 mx-1 shrink-0"></div>
+        <div className="mx-1 h-6 w-px shrink-0 bg-slate-200 dark:bg-slate-800"></div>
         <Button
           variant="outline"
           size="sm"
           onClick={onSave}
           disabled={saving}
-          className="h-9 px-4 text-sm font-medium whitespace-nowrap text-slate-700 border-slate-300 hover:bg-slate-50 hover:border-slate-400 gap-2 shrink-0"
+          className="h-9 shrink-0 gap-2 whitespace-nowrap border-slate-300 px-4 text-sm font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
         >
           {saving ? (
-            <div className="w-4 h-4 border-2 border-slate-700 border-t-transparent rounded-full animate-spin"></div>
+            <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-transparent dark:border-slate-200 dark:border-t-transparent"></div>
           ) : (
             <Save size={16} />
           )}
@@ -3471,7 +3416,7 @@ const WorkflowToolbar = ({
           size="sm"
           onClick={onDeploy}
           disabled={saving}
-          className="h-9 px-4 text-sm font-semibold whitespace-nowrap text-white bg-cyan-600 hover:bg-cyan-700 hover:shadow-md gap-2 disabled:opacity-70 shadow-sm shrink-0"
+          className="h-9 shrink-0 gap-2 whitespace-nowrap bg-cyan-600 px-4 text-sm font-semibold text-white shadow-sm hover:bg-cyan-700 hover:shadow-md disabled:opacity-70"
         >
           {saving ? (
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -4479,7 +4424,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
   return (
     <FlowNodeActionsContext.Provider value={flowNodeActions}>
-      <div className="h-full flex flex-col bg-slate-100 overflow-hidden relative">
+      <div className="workflow-studio-shell relative flex h-full flex-col overflow-hidden bg-slate-100/90 dark:bg-slate-950/90">
         <WorkflowToolbar
           workflowName={workflowName}
           workflowKey={workflowKey}
@@ -4505,7 +4450,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         {/* 画布 */}
         <div
           ref={canvasRef}
-          className={`flex-1 overflow-hidden p-10 flex justify-center relative transition-all duration-300 ease-out bg-slate-50 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-96" : ""}`}
+          className={`workflow-studio-canvas relative flex flex-1 justify-center overflow-hidden bg-slate-50 p-10 transition-all duration-300 ease-out dark:bg-slate-950 ${isPanning ? "cursor-grabbing" : "cursor-default"} ${selectedGraphNode ? "mr-[26rem]" : ""}`}
           onPointerDown={(e) => {
             // 在空白处左键 或 中键 按下启动漫游 (pan)
             if (
@@ -4537,7 +4482,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         >
           {/* 动态网格背景，随漫游移动 */}
           <div
-            className="absolute inset-0 pointer-events-none"
+            className="absolute inset-0 pointer-events-none workflow-studio-grid"
             style={{
               background: "radial-gradient(#e5e7eb 1px, transparent 1px)",
               backgroundSize: "20px 20px",
@@ -4546,28 +4491,28 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           />
 
           {/* 缩放控件 */}
-          <div className="absolute bottom-4 right-4 z-20 flex items-center gap-1 bg-white rounded-lg shadow-md border border-slate-200 p-1">
+          <div className="workflow-studio-zoom absolute bottom-4 right-4 z-20 flex items-center gap-1 rounded-lg border border-slate-200 bg-white/92 p-1 shadow-md backdrop-blur dark:border-slate-800 dark:bg-slate-950/92">
             <button
               onClick={handleZoomOut}
-              className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
+              className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
               title="缩小"
             >
               <ZoomOut size={16} />
             </button>
-            <span className="text-xs text-slate-500 min-w-[40px] text-center font-mono">
+            <span className="min-w-[40px] text-center font-mono text-xs text-slate-500 dark:text-slate-400">
               {Math.round(zoom * 100)}%
             </span>
             <button
               onClick={handleZoomIn}
-              className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
+              className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
               title="放大"
             >
               <ZoomIn size={16} />
             </button>
-            <div className="w-px h-4 bg-slate-200 mx-0.5" />
+            <div className="mx-0.5 h-4 w-px bg-slate-200 dark:bg-slate-800" />
             <button
               onClick={handleZoomReset}
-              className="p-1.5 hover:bg-slate-100 rounded text-slate-600"
+              className="rounded p-1.5 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-900"
               title="重置缩放"
             >
               <Maximize2 size={16} />
@@ -4576,7 +4521,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
           {/* 拖拽全局提示 */}
           {isDraggingGlobal && (
-            <div className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-xs text-white shadow-[0_14px_28px_rgba(8,145,178,0.18)]">
+            <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-xs text-white shadow-[0_14px_28px_rgba(8,145,178,0.18)]">
               <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
             </div>
           )}

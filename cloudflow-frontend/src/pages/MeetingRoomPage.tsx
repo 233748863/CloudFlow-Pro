@@ -109,9 +109,9 @@ function getRoomRealtimeStatus(room: MeetingRoom, bookings: SysScheduleEvent[]):
 }
 
 const roomStatusConfig: Record<RoomRealtimeStatus, { bg: string; text: string; label: string; icon: 'check' | 'clock' | 'x' }> = {
-  'available': { bg: 'bg-emerald-100 text-emerald-700', text: 'text-emerald-700', label: '空闲', icon: 'check' },
-  'in-use': { bg: 'bg-amber-100 text-amber-700', text: 'text-amber-700', label: '使用中', icon: 'clock' },
-  'maintenance': { bg: 'bg-red-100 text-red-700', text: 'text-red-700', label: '维护中', icon: 'x' },
+  'available': { bg: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200', text: 'text-emerald-700 dark:text-emerald-200', label: '空闲', icon: 'check' },
+  'in-use': { bg: 'bg-amber-100 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200', text: 'text-amber-700 dark:text-amber-200', label: '使用中', icon: 'clock' },
+  'maintenance': { bg: 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-200', text: 'text-red-700 dark:text-red-200', label: '维护中', icon: 'x' },
 };
 
 // ==================== 组织架构树选择器 ====================
@@ -198,12 +198,12 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
     return (
       <div key={node.deptId}>
         <div
-          className="group flex cursor-pointer items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-slate-50"
+          className="group flex cursor-pointer items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-900/70"
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
         >
           <button
             onClick={() => toggleExpand(node.deptId)}
-            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 shrink-0"
+            className="w-5 h-5 flex items-center justify-center text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300 shrink-0"
           >
             {hasChildren ? (
               isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />
@@ -215,18 +215,18 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
               allSelected
                 ? 'border-cyan-500 bg-cyan-500'
                 : partialSelected
-                  ? 'border-cyan-300 bg-cyan-50'
-                  : 'border-slate-300 hover:border-cyan-300'
+                  ? 'border-cyan-300 bg-cyan-50 dark:border-cyan-800 dark:bg-cyan-950/30'
+                  : 'border-slate-300 hover:border-cyan-300 dark:border-slate-700 dark:hover:border-cyan-800'
             }`}
           >
             {allSelected && <CheckCircle2 size={10} className="text-white" />}
             {partialSelected && !allSelected && <div className="h-0.5 w-2 rounded bg-cyan-500" />}
           </button>
-          <Building2 size={14} className="text-amber-500 shrink-0 ml-1" />
-          <span className="text-sm font-medium text-slate-700 flex-1 truncate" onClick={() => toggleExpand(node.deptId)}>
+          <Building2 size={14} className="text-amber-500 dark:text-amber-300 shrink-0 ml-1" />
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-200 flex-1 truncate" onClick={() => toggleExpand(node.deptId)}>
             {node.deptName}
           </span>
-          <span className="text-xs text-slate-400 shrink-0">{userCount}人</span>
+          <span className="text-xs text-slate-400 dark:text-slate-500 shrink-0">{userCount}人</span>
         </div>
         {isExpanded && (
           <div>
@@ -234,21 +234,21 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
             {filteredUsers.map(user => (
               <div
                 key={user.id}
-                className="flex cursor-pointer items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-slate-50"
+                className="flex cursor-pointer items-center gap-1 rounded-xl px-2 py-1.5 hover:bg-slate-50 dark:hover:bg-slate-900/70"
                 style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
                 onClick={() => toggleUser(user.id)}
               >
                 <span className="w-5" />
                 <button
                   className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                    selectedIds.includes(user.id) ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 hover:border-cyan-300'
+                    selectedIds.includes(user.id) ? 'border-cyan-500 bg-cyan-500' : 'border-slate-300 hover:border-cyan-300 dark:border-slate-700 dark:hover:border-cyan-800'
                   }`}
                 >
                   {selectedIds.includes(user.id) && <CheckCircle2 size={10} className="text-white" />}
                 </button>
-                <User size={14} className="text-slate-400 shrink-0 ml-1" />
-                <span className="text-sm text-slate-600 truncate">{user.name}</span>
-                {user.email && <span className="text-xs text-slate-400 ml-1 truncate hidden sm:inline">{user.email}</span>}
+                <User size={14} className="text-slate-400 dark:text-slate-500 shrink-0 ml-1" />
+                <span className="text-sm text-slate-600 dark:text-slate-300 truncate">{user.name}</span>
+                {user.email && <span className="text-xs text-slate-400 dark:text-slate-500 ml-1 truncate hidden sm:inline">{user.email}</span>}
               </div>
             ))}
           </div>
@@ -269,28 +269,28 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
   const selectedUsers = getSelectedUserNames(deptTree);
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
       {selectedUsers.length > 0 && (
-        <div className="border-b border-slate-100 bg-slate-50 p-3">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">已选成员</div>
+        <div className="border-b border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">已选成员</div>
           <div className="flex flex-wrap gap-1">
             {selectedUsers.slice(0, 10).map(u => (
-              <span key={u.id} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600">
+              <span key={u.id} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 {u.name}
-                <button onClick={(e) => { e.stopPropagation(); toggleUser(u.id); }} className="text-slate-300 hover:text-slate-500">
+                <button onClick={(e) => { e.stopPropagation(); toggleUser(u.id); }} className="text-slate-300 hover:text-slate-500 dark:text-slate-600 dark:hover:text-slate-300">
                   <X size={10} />
                 </button>
               </span>
             ))}
             {selectedUsers.length > 10 && (
-              <span className="text-xs text-slate-400 px-1 py-0.5">+{selectedUsers.length - 10}人</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500 px-1 py-0.5">+{selectedUsers.length - 10}人</span>
             )}
           </div>
         </div>
       )}
-      <div className="border-b border-slate-100 bg-slate-50 p-3">
+      <div className="border-b border-slate-100 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
           <Input
             type="text"
             className="h-11 rounded-xl pl-9 text-sm"
@@ -307,8 +307,8 @@ const OrgTreePicker: React.FC<OrgTreePickerProps> = ({ deptTree, selectedIds, on
           deptTree.map(node => renderDeptNode(node, 0))
         )}
       </div>
-      <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500">
-        已选择 <span className="font-medium text-slate-700">{selectedUsers.length}</span> 人
+      <div className="border-t border-slate-100 bg-slate-50 px-4 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
+        已选择 <span className="font-medium text-slate-700 dark:text-slate-200">{selectedUsers.length}</span> 人
       </div>
     </div>
   );
@@ -371,31 +371,31 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
   };
 
   const statusStyles: Record<string, { bg: string; text: string }> = {
-    ongoing: { bg: 'bg-emerald-50', text: 'text-emerald-600' },
-    ended: { bg: 'bg-slate-50', text: 'text-slate-400' },
-    upcoming: { bg: 'bg-sky-50', text: 'text-sky-700' },
+    ongoing: { bg: 'bg-emerald-50 dark:bg-emerald-950/20', text: 'text-emerald-600 dark:text-emerald-200' },
+    ended: { bg: 'bg-slate-50 dark:bg-slate-900/70', text: 'text-slate-400 dark:text-slate-500' },
+    upcoming: { bg: 'bg-sky-50 dark:bg-sky-950/20', text: 'text-sky-700 dark:text-sky-200' },
   };
 
   return (
     <div className="space-y-2">
       <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1 text-xs font-medium text-slate-500"><Calendar size={10} /> 今日预订</div>
-        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600">{bookings.length} 条</span>
+        <div className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400"><Calendar size={10} /> 今日预订</div>
+        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{bookings.length} 条</span>
       </div>
       {bookings.slice(0, 3).map((b, i) => {
         const status = getBookingStatus(b);
         const style = statusStyles[status];
         return (
-          <div key={i} className={`flex items-center gap-2 rounded-xl border border-white px-2.5 py-2 text-xs ${style.bg}`}>
-            <Clock size={10} className={`${status === 'ongoing' ? 'text-emerald-500' : status === 'ended' ? 'text-slate-400' : 'text-sky-500'} shrink-0`} />
+          <div key={i} className={`flex items-center gap-2 rounded-xl border border-white px-2.5 py-2 text-xs dark:border-slate-800 ${style.bg}`}>
+            <Clock size={10} className={`${status === 'ongoing' ? 'text-emerald-500 dark:text-emerald-300' : status === 'ended' ? 'text-slate-400 dark:text-slate-500' : 'text-sky-500 dark:text-sky-300'} shrink-0`} />
             <span className={`${style.text} whitespace-nowrap font-medium`}>{fmt(b.startTime)}-{fmt(b.endTime)}</span>
-            <span className={`${status === 'ended' ? 'text-slate-400 line-through' : 'text-slate-600'} truncate`}>{b.title}</span>
-            {status === 'ongoing' && <span className="text-emerald-600 text-[10px] font-bold shrink-0">进行中</span>}
-            {status === 'ended' && <span className="text-slate-400 text-[10px] shrink-0">已结束</span>}
+            <span className={`${status === 'ended' ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'} truncate`}>{b.title}</span>
+            {status === 'ongoing' && <span className="text-emerald-600 dark:text-emerald-200 text-[10px] font-bold shrink-0">进行中</span>}
+            {status === 'ended' && <span className="text-slate-400 dark:text-slate-500 text-[10px] shrink-0">已结束</span>}
           </div>
         );
       })}
-      {bookings.length > 3 && <div className="text-xs text-slate-400 pl-5">还有 {bookings.length - 3} 条预订...</div>}
+      {bookings.length > 3 && <div className="text-xs text-slate-400 dark:text-slate-500 pl-5">还有 {bookings.length - 3} 条预订...</div>}
     </div>
   );
 };
@@ -566,34 +566,34 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
-        <div className="border-b border-slate-100 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
+      <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]">
+        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                 <CalendarDays size={14} />
                 周排期
               </div>
-              <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">{room.name}</h3>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">{room.location}</span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">容纳 {room.capacity} 人</span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">拖动可连续选时段</span>
+              <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{room.name}</h3>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">{room.location}</span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">容纳 {room.capacity} 人</span>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">拖动可连续选时段</span>
               </div>
             </div>
             <WorkspaceIconButton icon={<X size={18} />} label="关闭会议室配置" shape="circle" onClick={onClose} />
           </div>
         </div>
 
-        <div className="border-b border-slate-100 px-5 py-4">
+        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <WorkspaceControlGroup>
               <WorkspaceIconButton icon={<ChevronLeft size={18} />} label="上一周" onClick={goToPrevWeek} />
               <WorkspaceControlDivider />
               <WorkspaceIconButton icon={<ChevronRight size={18} />} label="下一周" onClick={goToNextWeek} />
             </WorkspaceControlGroup>
-            <div className="text-sm font-semibold text-slate-700">
+            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
               {currentWeekStart.getFullYear()}年{currentWeekStart.getMonth() + 1}月
             </div>
             <Button variant="outline" size="lg" onClick={goToToday}>
@@ -602,13 +602,13 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
           </div>
         </div>
 
-        <div className="border-b border-slate-100 px-6 py-3">
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-emerald-200 bg-emerald-50"></span> 空闲可选</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-red-200 bg-red-100"></span> 已预订</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-slate-200 bg-slate-50"></span> 已过期</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-sky-300 bg-sky-100"></span> 拖动选中</span>
-            <span className="ml-auto text-slate-400">按住鼠标拖动可快速选择连续时间段</span>
+        <div className="border-b border-slate-100 px-6 py-3 dark:border-slate-800">
+          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30"></span> 空闲可选</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-red-200 bg-red-100 dark:border-red-900 dark:bg-red-950/30"></span> 已预订</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"></span> 已过期</span>
+            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-sky-300 bg-sky-100 dark:border-sky-900 dark:bg-sky-950/30"></span> 拖动选中</span>
+            <span className="ml-auto text-slate-400 dark:text-slate-500">按住鼠标拖动可快速选择连续时间段</span>
           </div>
         </div>
 
@@ -618,16 +618,16 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
           ) : (
             <div className="min-w-[800px]">
               <div className="grid grid-cols-8 gap-2 mb-2">
-                <div className="text-xs font-medium text-slate-500 text-center">时间</div>
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-400 text-center">时间</div>
                 {weekDays.map((day, i) => (
-                  <div key={i} className={`rounded-lg py-2 text-center text-xs font-medium ${isToday(day) ? 'bg-slate-100 text-slate-700' : 'text-slate-600'}`}>
+                  <div key={i} className={`rounded-lg py-2 text-center text-xs font-medium ${isToday(day) ? 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200' : 'text-slate-600 dark:text-slate-300'}`}>
                     {formatDate(day)}
                   </div>
                 ))}
               </div>
               {timeSlots.map(hour => (
                 <div key={hour} className="grid grid-cols-8 gap-2 mb-1">
-                  <div className="text-xs text-slate-500 text-center py-2">
+                  <div className="text-xs text-slate-500 dark:text-slate-400 text-center py-2">
                     {hour.toString().padStart(2, '0')}:00
                   </div>
                   {weekDays.map((day, i) => {
@@ -648,12 +648,12 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
                         onMouseUp={handleMouseUp}
                         className={`text-xs py-2 px-1 rounded-lg text-center select-none transition-colors ${
                           bookedEvent
-                            ? 'bg-red-100 text-red-700 cursor-not-allowed'
+                            ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-200 cursor-not-allowed'
                             : isPast
-                              ? 'bg-slate-50 text-slate-300 cursor-not-allowed'
+                              ? 'bg-slate-50 text-slate-300 dark:bg-slate-900 dark:text-slate-600 cursor-not-allowed'
                               : inDragRange
-                                ? 'bg-sky-100 text-sky-700 ring-2 ring-sky-300'
-                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 cursor-pointer'
+                                ? 'bg-sky-100 text-sky-700 ring-2 ring-sky-300 dark:bg-sky-950/30 dark:text-sky-200 dark:ring-sky-900'
+                                : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 dark:bg-emerald-950/20 dark:text-emerald-200 dark:hover:bg-emerald-950/40 cursor-pointer'
                         }`}
                         title={
                           bookedEvent
@@ -713,46 +713,46 @@ const RoomFormModal: React.FC<{
   const isEdit = room && room.roomId;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in fade-in zoom-in duration-200">
-        <div className="border-b border-slate-100 px-5 py-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
+      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)] animate-in fade-in zoom-in duration-200">
+        <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                 <Settings size={14} />
                 会议室配置
               </div>
-              <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">{isEdit ? '编辑会议室' : '新增会议室'}</h3>
-              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">{isEdit ? '修改现有信息' : '录入新会议室'}</span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">保持预订信息一致</span>
+              <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{isEdit ? '编辑会议室' : '新增会议室'}</h3>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">{isEdit ? '修改现有信息' : '录入新会议室'}</span>
+                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">保持预订信息一致</span>
               </div>
             </div>
             <WorkspaceIconButton icon={<X size={18} />} label="关闭周排期" shape="circle" onClick={onClose} />
           </div>
         </div>
-        <div className="space-y-4 bg-white p-5">
+        <div className="space-y-4 bg-white p-5 dark:bg-slate-950">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">会议室名称 <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">会议室名称 <span className="text-red-500">*</span></label>
             <Input className="h-12 rounded-xl" type="text" value={form.name || ''} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="例如：大会议室A" />
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">位置 <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">位置 <span className="text-red-500">*</span></label>
               <Input className="h-12 rounded-xl" type="text" value={form.location || ''} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="例如：3楼东侧" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">容纳人数 <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">容纳人数 <span className="text-red-500">*</span></label>
               <Input className="h-12 rounded-xl" type="number" min={1} value={form.capacity || ''} onChange={e => setForm({ ...form, capacity: parseInt(e.target.value) || 0 })} placeholder="例如：50" />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">设备配置</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">设备配置</label>
             <Input className="h-12 rounded-xl" type="text" value={equipmentInput} onChange={e => setEquipmentInput(e.target.value)} placeholder="多个设备用逗号分隔，例如：投影仪, 白板, 音响" />
-            <p className="mt-1 text-xs text-slate-400">多个设备用逗号分隔</p>
+            <p className="mt-1 text-xs text-slate-400 dark:text-slate-500">多个设备用逗号分隔</p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">状态</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">状态</label>
             <Select value={form.status || '1'} onValueChange={v => setForm({...form, status: v as '0' | '1'})}>
               <SelectTrigger className="h-12 rounded-xl">
                 <SelectValue placeholder="请选择" />
@@ -764,7 +764,7 @@ const RoomFormModal: React.FC<{
             </Select>
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
           <Button variant="outline" size="lg" onClick={onClose}>
             取消
           </Button>
@@ -783,19 +783,19 @@ const DeleteConfirmModal: React.FC<{
 }> = ({ visible, roomName, onClose, onConfirm }) => {
   if (!visible) return null;
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in fade-in zoom-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
+      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)] animate-in fade-in zoom-in duration-200">
         <div className="px-6 py-5">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-600">
               <Trash2 size={14} />
               删除确认
             </div>
-            <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900">确认删除</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600">确定要删除会议室 <span className="font-semibold text-red-600">「{roomName}」</span> 吗？此操作不可撤销。</p>
+            <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">确认删除</h3>
+            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">确定要删除会议室 <span className="font-semibold text-red-600 dark:text-red-300">「{roomName}」</span> 吗？此操作不可撤销。</p>
           </div>
         </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4">
+        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
           <Button variant="outline" size="lg" onClick={onClose}>
             取消
           </Button>
@@ -1052,11 +1052,11 @@ export const MeetingRoomPage = () => {
     const end = new Date(booking.endTime);
     
     if (now < start) {
-      return <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200">待开始</span>;
+      return <span className="rounded-full bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700 ring-1 ring-sky-200 dark:bg-sky-950/30 dark:text-sky-200 dark:ring-sky-900">待开始</span>;
     } else if (now >= start && now <= end) {
-      return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">进行中</span>;
+      return <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900">进行中</span>;
     } else {
-      return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200">已结束</span>;
+      return <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 ring-1 ring-slate-200 dark:bg-slate-900 dark:text-slate-400 dark:ring-slate-800">已结束</span>;
     }
   };
 
@@ -1107,32 +1107,32 @@ export const MeetingRoomPage = () => {
       label: '会议室总量',
       value: `${rooms.length} 间`,
       hint: activeTab === 'rooms' ? `${filteredRooms.length} 间当前可见` : `${activeTabCount} 项当前视图`,
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-500',
+      valueClassName: 'text-slate-950 dark:text-slate-100',
+      hintClassName: 'text-slate-500 dark:text-slate-400',
       icon: <Monitor size={17} />,
     },
     {
       label: '空闲会议室',
       value: `${availableCount} 间`,
       hint: `${rooms.length} 间总量`,
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
+      valueClassName: 'text-slate-950 dark:text-slate-100',
+      hintClassName: 'text-slate-600 dark:text-slate-400',
       icon: <CheckCircle2 size={17} />,
     },
     {
       label: '使用中',
       value: `${inUseCount} 间`,
       hint: maintenanceCount > 0 ? `${maintenanceCount} 间维护` : '当前无维护中会议室',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
+      valueClassName: 'text-slate-950 dark:text-slate-100',
+      hintClassName: 'text-slate-600 dark:text-slate-400',
       icon: <Clock size={17} />,
     },
     {
       label: '今日预订',
       value: `${todayBookingCount} 条`,
       hint: totalCapacity > 0 ? `${totalCapacity} 席资源容量` : '等待会议室资源数据',
-      valueClassName: 'text-slate-950',
-      hintClassName: 'text-slate-600',
+      valueClassName: 'text-slate-950 dark:text-slate-100',
+      hintClassName: 'text-slate-600 dark:text-slate-400',
       icon: <CalendarDays size={17} />,
     },
   ];
@@ -1149,13 +1149,13 @@ export const MeetingRoomPage = () => {
       <WorkspacePageContent>
         <WorkspaceHeroMetricsSection
           badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
+            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                 <Calendar size={14} />
                 {dateLabel}
               </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{activeTabTitle}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{timeLabel}</span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{activeTabTitle}</span>
             </div>
           )}
           title="会议室协同"
@@ -1191,7 +1191,7 @@ export const MeetingRoomPage = () => {
           title={activeTabTitle}
           headerAside={(
             <div className="flex flex-wrap items-center gap-3 lg:justify-end">
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500">
+              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                 共 {activeTabCount} 项
               </span>
               <WorkspaceSegmentedControl
@@ -1214,15 +1214,15 @@ export const MeetingRoomPage = () => {
 
             {activeTab === 'rooms' && (
               <>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5">
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">当前 {filteredRooms.length} 间</span>
-                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">{statusFilterLabel}</span>
-                    <span className={`rounded-full border px-2.5 py-1 ${manageMode ? 'border-slate-300 bg-white text-slate-700 shadow-sm' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">当前 {filteredRooms.length} 间</span>
+                    <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">{statusFilterLabel}</span>
+                    <span className={`rounded-full border px-2.5 py-1 ${manageMode ? 'border-slate-300 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200' : 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400'}`}>
                       {manageMode ? '管理模式' : '预订模式'}
                     </span>
                     {searchQuery ? (
-                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600">
+                      <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                         关键词: {searchQuery}
                       </span>
                     ) : null}
@@ -1286,22 +1286,22 @@ export const MeetingRoomPage = () => {
                       const StatusIcon = realtimeStatus === 'available' ? CheckCircle2 : realtimeStatus === 'in-use' ? Clock : XCircle;
                       const equipmentList = parseEquipment(room.equipment);
                       return (
-                        <Card key={room.roomId} className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md">
-                          <div className="border-b border-slate-100 bg-slate-50 px-4 py-3.5">
+                        <Card key={room.roomId} className="overflow-hidden rounded-2xl border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/88 dark:hover:bg-slate-950">
+                          <div className="border-b border-slate-100 bg-slate-50 px-4 py-3.5 dark:border-slate-800 dark:bg-slate-900/70">
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-start gap-3">
-                                <div className="rounded-xl bg-white p-2.5 text-slate-600 shadow-sm ring-1 ring-slate-200">
+                                <div className="rounded-xl bg-white p-2.5 text-slate-600 shadow-sm ring-1 ring-slate-200 dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800">
                                   <Monitor size={18} />
                                 </div>
                                 <div className="min-w-0">
-                                  <h3 className="text-base font-semibold tracking-tight text-slate-900">{room.name}</h3>
-                                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                      <MapPin size={12} className="text-slate-400" />
+                                  <h3 className="text-base font-semibold tracking-tight text-slate-900 dark:text-slate-100">{room.name}</h3>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
+                                      <MapPin size={12} className="text-slate-400 dark:text-slate-500" />
                                       {room.location}
                                     </span>
-                                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                      <Users size={12} className="text-slate-400" />
+                                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
+                                      <Users size={12} className="text-slate-400 dark:text-slate-500" />
                                       {room.capacity} 人
                                     </span>
                                   </div>
@@ -1317,16 +1317,16 @@ export const MeetingRoomPage = () => {
                           <div className="p-4">
                             <div className="flex flex-wrap gap-2">
                               {equipmentList.map((eq: string, i: number) => (
-                                <span key={i} className="rounded-full border border-slate-100 bg-slate-50 px-2.5 py-1 text-xs text-slate-600">{eq}</span>
+                                <span key={i} className="rounded-full border border-slate-100 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">{eq}</span>
                               ))}
                               {equipmentList.length === 0 && (
-                                <span className="rounded-full border border-dashed border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-400">
+                                <span className="rounded-full border border-dashed border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
                                   未录入设备
                                 </span>
                               )}
                             </div>
 
-                            <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                            <div className="mt-3.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/70">
                               <RoomBookings key={`${room.roomId}-${refreshKey}`} roomId={room.roomId.toString()} onBookingsLoaded={handleBookingsLoaded} />
                             </div>
 
@@ -1349,7 +1349,7 @@ export const MeetingRoomPage = () => {
                                   size="lg"
                                   onClick={() => setWeekCalendarRoom(room)}
                                   disabled={realtimeStatus === 'maintenance'}
-                                  className="text-slate-600"
+                                  className="text-slate-600 dark:text-slate-200"
                                   title="周日历"
                                 >
                                   <CalendarDays size={16} className="mr-2" />
@@ -1381,14 +1381,14 @@ export const MeetingRoomPage = () => {
 
             {activeTab === 'my-bookings' && (
               <div className="space-y-4">
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1">共 {myBookings.length} 条</span>
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">{bookingFilterLabel}</span>
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 dark:border-slate-800 dark:bg-slate-900">共 {myBookings.length} 条</span>
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{bookingFilterLabel}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Filter size={16} className="text-slate-500" />
+                      <Filter size={16} className="text-slate-500 dark:text-slate-400" />
                       <Select value={bookingsFilter} onValueChange={v => setBookingsFilter(v as 'all' | 'upcoming' | 'past')}>
                         <SelectTrigger className="h-12 max-w-[220px] rounded-2xl">
                           <SelectValue placeholder="请选择" />
@@ -1418,29 +1418,29 @@ export const MeetingRoomPage = () => {
                       const canCancel = start > now;
 
                       return (
-                        <Card key={booking.eventId} className="rounded-2xl border-slate-200 bg-white p-4 shadow-sm">
+                        <Card key={booking.eventId} className="rounded-2xl border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                             <div className="min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
-                                <h3 className="text-base font-semibold text-slate-900">{booking.title}</h3>
+                                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{booking.title}</h3>
                                 {getBookingStatusBadge(booking)}
                               </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">
+                              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
                                   <Clock size={13} />
                                   {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
                                 </span>
-                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                  <Monitor size={13} className="text-slate-400" />
+                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
+                                  <Monitor size={13} className="text-slate-400 dark:text-slate-500" />
                                   {room?.name || `会议室 ${booking.roomId}`}
                                 </span>
-                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                                  <MapPin size={13} className="text-slate-400" />
+                                <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
+                                  <MapPin size={13} className="text-slate-400 dark:text-slate-500" />
                                   {room?.location || '未设置位置'}
                                 </span>
                               </div>
                               {booking.description ? (
-                                <p className="mt-3 text-sm leading-6 text-slate-600">{booking.description}</p>
+                                <p className="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">{booking.description}</p>
                               ) : null}
                             </div>
                             <div className="shrink-0">
@@ -1449,7 +1449,7 @@ export const MeetingRoomPage = () => {
                                   取消预订
                                 </Button>
                               ) : (
-                                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
                                   记录已归档
                                 </span>
                               )}
@@ -1474,32 +1474,32 @@ export const MeetingRoomPage = () => {
                   />
                 ) : (
                   <div className="grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
-                    <Card className="rounded-2xl border-slate-200 bg-slate-50 p-5 shadow-sm">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">资源总览</div>
-                      <div className="mt-2 text-lg font-semibold tracking-tight text-slate-900">{topStatRoom?.roomName || '等待统计数据'}</div>
+                    <Card className="rounded-2xl border-slate-200 bg-slate-50 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500 dark:text-slate-400">资源总览</div>
+                      <div className="mt-2 text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">{topStatRoom?.roomName || '等待统计数据'}</div>
                       <div className="mt-4 space-y-2">
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">累计预订</div>
-                          <div className="mt-1.5 text-sm font-semibold text-slate-900">{totalStatBookings} 次</div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">累计预订</div>
+                          <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{totalStatBookings} 次</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">使用时长</div>
-                          <div className="mt-1.5 text-sm font-semibold text-slate-900">{formatMinutes(totalStatMinutes)}</div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">使用时长</div>
+                          <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{formatMinutes(totalStatMinutes)}</div>
                         </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">平均利用率</div>
-                          <div className="mt-1.5 text-sm font-semibold text-slate-900">{averageUtilization}%</div>
+                        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">平均利用率</div>
+                          <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{averageUtilization}%</div>
                         </div>
                       </div>
                     </Card>
 
-                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4">
+                    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
                         <div>
-                          <div className="text-sm font-semibold text-slate-900">会议室利用率</div>
-                          <div className="mt-1 text-xs text-slate-500">按预订次数、使用时长与使用天数汇总</div>
+                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">会议室利用率</div>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">按预订次数、使用时长与使用天数汇总</div>
                         </div>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
                           共 {stats.length} 间
                         </span>
                       </div>
@@ -1514,30 +1514,30 @@ export const MeetingRoomPage = () => {
                               <TableHead className="px-6 py-3 text-left">利用率</TableHead>
                             </tr>
                           </TableHeader>
-                          <tbody className="divide-y divide-slate-200">
+                          <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                             {stats.map((stat, index) => {
                               const utilizationRate = getUtilizationRate(stat);
 
                               return (
-                                <tr key={index} className="hover:bg-slate-50">
+                                <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-900/70">
                                   <td className="whitespace-nowrap px-6 py-4">
                                     <div className="flex items-center">
-                                      <Monitor size={16} className="mr-2 text-slate-400" />
-                                      <span className="text-sm font-medium text-slate-800">{stat.roomName}</span>
+                                      <Monitor size={16} className="mr-2 text-slate-400 dark:text-slate-500" />
+                                      <span className="text-sm font-medium text-slate-800 dark:text-slate-100">{stat.roomName}</span>
                                     </div>
                                   </td>
-                                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{stat.bookingCount} 次</td>
-                                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{formatMinutes(stat.totalMinutes)}</td>
-                                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600">{stat.usedDays} 天</td>
+                                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{stat.bookingCount} 次</td>
+                                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{formatMinutes(stat.totalMinutes)}</td>
+                                  <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{stat.usedDays} 天</td>
                                   <td className="whitespace-nowrap px-6 py-4">
                                     <div className="flex items-center gap-2">
-                                      <div className="h-2 max-w-[100px] flex-1 rounded-full bg-slate-100">
+                                      <div className="h-2 max-w-[100px] flex-1 rounded-full bg-slate-100 dark:bg-slate-900">
                                         <div
-                                          className="h-2 rounded-full bg-slate-400"
+                                          className="h-2 rounded-full bg-slate-400 dark:bg-slate-500"
                                           style={{ width: `${Math.min(parseFloat(utilizationRate), 100)}%` }}
                                         />
                                       </div>
-                                      <span className="text-sm font-medium text-slate-700">{utilizationRate}%</span>
+                                      <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{utilizationRate}%</span>
                                     </div>
                                   </td>
                                 </tr>
@@ -1556,27 +1556,27 @@ export const MeetingRoomPage = () => {
 
       {/* 预订弹窗 */}
       {selectedRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-in fade-in zoom-in duration-200">
-            <div className="border-b border-slate-100 px-5 py-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
+      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)] animate-in fade-in zoom-in duration-200">
+            <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                     <CalendarDays size={14} />
                     预订会议室
                   </div>
-                  <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900">{selectedRoom.name}</h3>
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500">
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">{selectedRoom.location}</span>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1">容纳 {selectedRoom.capacity} 人</span>
+                  <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{selectedRoom.name}</h3>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">{selectedRoom.location}</span>
+                    <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">容纳 {selectedRoom.capacity} 人</span>
                   </div>
                 </div>
                 <WorkspaceIconButton icon={<X size={18} />} label="关闭会议室预订" shape="circle" onClick={() => setSelectedRoom(null)} />
               </div>
             </div>
-            <div className="flex-1 space-y-5 overflow-y-auto bg-white p-5">
+            <div className="flex-1 space-y-5 overflow-y-auto bg-white p-5 dark:bg-slate-950">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">会议主题 <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">会议主题 <span className="text-red-500">*</span></label>
                 <Input
                   className="h-12 rounded-xl"
                   type="text"
@@ -1587,7 +1587,7 @@ export const MeetingRoomPage = () => {
               </div>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">日期 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">日期 <span className="text-red-500">*</span></label>
                   <DatePicker
                     type="date"
                     value={bookingForm.date}
@@ -1595,7 +1595,7 @@ export const MeetingRoomPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">开始时间 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">开始时间 <span className="text-red-500">*</span></label>
                   <DatePicker
                     type="time"
                     value={bookingForm.startTime}
@@ -1603,7 +1603,7 @@ export const MeetingRoomPage = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">结束时间 <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">结束时间 <span className="text-red-500">*</span></label>
                   <DatePicker
                     type="time"
                     value={bookingForm.endTime}
@@ -1612,7 +1612,7 @@ export const MeetingRoomPage = () => {
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">会议描述</label>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">会议描述</label>
                 <Textarea
                   className="h-20 rounded-2xl"
                   rows={3}
@@ -1622,13 +1622,13 @@ export const MeetingRoomPage = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-1">
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 flex items-center gap-1">
                   <UserPlus size={14} />参会人员
                 </label>
                 <OrgTreePicker deptTree={deptTree} selectedIds={selectedAttendees} onChange={setSelectedAttendees} />
               </div>
             </div>
-            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4">
+            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
               <Button variant="outline" size="lg" onClick={() => setSelectedRoom(null)}>
                 取消
               </Button>

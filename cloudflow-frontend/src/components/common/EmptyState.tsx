@@ -21,7 +21,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   className,
 }) => (
   <div className={cn('empty-state', className)}>
-    <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100">
+    <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-900">
       {icon || <Inbox className="empty-state-icon h-10 w-10" />}
     </div>
     <h3 className="empty-state-title">{title}</h3>

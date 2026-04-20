@@ -1,10 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import { X, UserPlus, UserMinus, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, Search, UserMinus, UserPlus } from 'lucide-react';
+import { toast } from 'sonner';
+import { BaseDialog } from '@/components/common';
+import { Button, Input, Textarea } from '@/components/ui';
+import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { cn } from '@/utils/cn';
 import { getUserList } from '../services/api/auth';
 import { addSignature, reductionSignature } from '../services/api/workflow';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { User } from '../types';
-import { toast } from 'sonner';
 
 interface SignatureModalProps {
   isOpen: boolean;
@@ -15,17 +19,13 @@ interface SignatureModalProps {
   currentUser: User;
 }
 
-/**
- * 加签/减签模态框组件
- * 用于会签节点动态增加或减少审批人
- */
 export const SignatureModal: React.FC<SignatureModalProps> = ({
   isOpen,
   onClose,
   onSuccess,
   taskId,
   mode,
-  currentUser
+  currentUser,
 }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUserIds, setSelectedUserIds] = useState<number[]>([]);
@@ -33,21 +33,21 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
 
-  // 加载用户列表
   useEffect(() => {
     if (isOpen && users.length === 0) {
-      getUserList().then(res => {
-        if (Array.isArray(res)) {
-          setUsers(res.map(mapBackendUserToFrontend));
-        }
-      }).catch(err => {
-        console.error('加载用户列表失败:', err);
-        toast.error('加载用户列表失败');
-      });
+      getUserList()
+        .then((res) => {
+          if (Array.isArray(res)) {
+            setUsers(res.map(mapBackendUserToFrontend));
+          }
+        })
+        .catch((error) => {
+          console.error('加载用户列表失败:', error);
+          toast.error('加载用户列表失败');
+        });
     }
   }, [isOpen, users.length]);
 
-  // 重置状态
   useEffect(() => {
     if (isOpen) {
       setSelectedUserIds([]);
@@ -56,7 +56,35 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  const filteredUsers = useMemo(
+    () =>
+      users.filter((user) => {
+        if (mode === 'add' && user.id === currentUser.id) {
+          return false;
+        }
+
+        if (!searchKeyword) {
+          return true;
+        }
+
+        const keyword = searchKeyword.toLowerCase();
+        return (
+          user.name.toLowerCase().includes(keyword) ||
+          Boolean(user.username && user.username.toLowerCase().includes(keyword))
+        );
+      }),
+    [currentUser.id, mode, searchKeyword, users],
+  );
+
+  if (!isOpen) {
+    return null;
+  }
+
+  const toggleUser = (userId: number) => {
+    setSelectedUserIds((previous) =>
+      previous.includes(userId) ? previous.filter((id) => id !== userId) : [...previous, userId],
+    );
+  };
 
   const handleSubmit = async () => {
     if (selectedUserIds.length === 0) {
@@ -79,196 +107,199 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
       }
       onSuccess();
       onClose();
-    } catch (err) {
-      console.error(`${mode === 'add' ? '加签' : '减签'}失败:`, err);
-      toast.error(err instanceof Error ? err.message : `${mode === 'add' ? '加签' : '减签'}失败`);
+    } catch (error) {
+      console.error(`${mode === 'add' ? '加签' : '减签'}失败:`, error);
+      toast.error(error instanceof Error ? error.message : `${mode === 'add' ? '加签' : '减签'}失败`);
     } finally {
       setSubmitting(false);
     }
   };
 
-  const toggleUser = (userId: number) => {
-    setSelectedUserIds(prev => 
-      prev.includes(userId) 
-        ? prev.filter(id => id !== userId)
-        : [...prev, userId]
-    );
-  };
-
-  // 过滤用户列表
-  const filteredUsers = users.filter(u => {
-    // 加签时排除当前用户
-    if (mode === 'add' && u.id === currentUser.id) return false;
-    // 搜索过滤
-    if (searchKeyword) {
-      const keyword = searchKeyword.toLowerCase();
-      return u.name.toLowerCase().includes(keyword) || 
-             (u.username && u.username.toLowerCase().includes(keyword));
-    }
-    return true;
-  });
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4 animate-fade-in">
-      <div className="flex max-h-[80vh] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
-        {/* 标题栏 */}
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-          <h3 className="font-bold text-slate-800 flex items-center gap-2">
-            {mode === 'add' ? (
-              <>
-                <UserPlus size={18} className="text-cyan-700" />
-                加签
-              </>
-            ) : (
-              <>
-                <UserMinus size={18} className="text-amber-600" />
-                减签
-              </>
+    <BaseDialog
+      open={isOpen}
+      onClose={onClose}
+      maxWidthClassName="max-w-3xl"
+      panelClassName="max-h-[88vh] flex flex-col"
+      bodyClassName="!p-0 flex-1 overflow-hidden"
+      title={
+        <div className="flex items-center gap-2">
+          <span
+            className={cn(
+              'flex h-9 w-9 items-center justify-center rounded-xl border',
+              mode === 'add'
+                ? 'border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
+                : 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
             )}
-          </h3>
-          <button onClick={onClose} disabled={submitting} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 disabled:opacity-50">
-            <X size={20} />
-          </button>
+          >
+            {mode === 'add' ? <UserPlus size={18} /> : <UserMinus size={18} />}
+          </span>
+          {mode === 'add' ? '加签' : '减签'}
         </div>
+      }
+      description={
+        mode === 'add'
+          ? '在会签节点中新增审批人，新的审批人会参与当前任务投票。'
+          : '减少会签节点的审批人，已投票人员通常不可被减签。'
+      }
+    >
+      <div className="flex h-full flex-col">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          <div className="space-y-4">
+            <div
+              className={cn(
+                'rounded-[24px] border px-4 py-4',
+                mode === 'add'
+                  ? 'border-cyan-200 bg-cyan-50/80 dark:border-cyan-900 dark:bg-cyan-950/20'
+                  : 'border-amber-200 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/20',
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <AlertTriangle
+                  size={18}
+                  className={cn(
+                    'mt-0.5 shrink-0',
+                    mode === 'add'
+                      ? 'text-cyan-700 dark:text-cyan-200'
+                      : 'text-amber-700 dark:text-amber-200',
+                  )}
+                />
+                <div className="space-y-1 text-sm">
+                  <div
+                    className={cn(
+                      'font-medium',
+                      mode === 'add'
+                        ? 'text-cyan-700 dark:text-cyan-200'
+                        : 'text-amber-700 dark:text-amber-200',
+                    )}
+                  >
+                    {mode === 'add' ? '加签说明' : '减签说明'}
+                  </div>
+                  <div className="text-xs leading-6 text-slate-600 dark:text-slate-300">
+                    {mode === 'add'
+                      ? '仅支持会签节点，且只有当前任务处理人可以执行加签。'
+                      : '仅支持会签节点，任务处理人或管理员可减签，至少保留 1 名审批人。'}
+                  </div>
+                </div>
+              </div>
+            </div>
 
-        {/* 内容区域 */}
-        <div className="flex-1 space-y-4 overflow-y-auto p-5">
-          {/* 提示信息 */}
-          <div className={`text-sm p-3 rounded-lg border ${
-            mode === 'add' 
-              ? 'border-cyan-200 bg-cyan-50 text-cyan-700' 
-              : 'text-amber-700 bg-amber-50 border-amber-200'
-          }`}>
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={16} className="flex-shrink-0 mt-0.5" />
-              <div>
-                {mode === 'add' ? (
-                  <>
-                    <p className="font-medium mb-1">加签说明：</p>
-                    <ul className="text-xs space-y-0.5 list-disc list-inside">
-                      <li>仅支持会签节点</li>
-                      <li>只有任务处理人可以加签</li>
-                      <li>新增的审批人将参与会签投票</li>
-                    </ul>
-                  </>
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">选择人员</div>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                支持按姓名或账号搜索可选审批人。
+              </div>
+
+              <div className="mt-4 relative">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
+                <Input
+                  value={searchKeyword}
+                  onChange={(event) => setSearchKeyword(event.target.value)}
+                  placeholder="搜索用户姓名或账号..."
+                  className="pl-10"
+                />
+              </div>
+
+              <div className="mt-4 max-h-72 overflow-y-auto">
+                {filteredUsers.length === 0 ? (
+                  <WorkspaceInlineState
+                    type="info"
+                    title={searchKeyword ? '未找到匹配用户' : '暂无可选用户'}
+                    className="py-10"
+                  />
                 ) : (
-                  <>
-                    <p className="font-medium mb-1">减签说明：</p>
-                    <ul className="text-xs space-y-0.5 list-disc list-inside">
-                      <li>仅支持会签节点</li>
-                      <li>任务处理人或管理员可以减签</li>
-                      <li>不能减签自己</li>
-                      <li>已投票的人员不可减签</li>
-                      <li>至少保留1人</li>
-                    </ul>
-                  </>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {filteredUsers.map((user) => {
+                      const active = selectedUserIds.includes(Number(user.id));
+                      return (
+                        <button
+                          key={user.id}
+                          type="button"
+                          onClick={() => toggleUser(Number(user.id))}
+                          className={cn(
+                            'flex items-center gap-3 rounded-[20px] border px-4 py-3 text-left transition',
+                            active
+                              ? 'border-cyan-300 bg-cyan-50 shadow-sm dark:border-cyan-800 dark:bg-cyan-950/30'
+                              : 'border-slate-200 bg-slate-50 hover:border-cyan-200 hover:bg-white dark:border-slate-800 dark:bg-slate-900/70 dark:hover:border-cyan-900 dark:hover:bg-slate-950',
+                          )}
+                        >
+                          {user.avatar ? (
+                            <img src={user.avatar} alt={user.name} className="h-10 w-10 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-sm font-semibold text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                              {user.name?.slice(0, 1) || 'U'}
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div
+                              className={cn(
+                                'truncate font-medium',
+                                active
+                                  ? 'text-cyan-700 dark:text-cyan-200'
+                                  : 'text-slate-900 dark:text-slate-100',
+                              )}
+                            >
+                              {user.name}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              {user.username ? `@${user.username}` : user.email || '暂无账号信息'}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             </div>
-          </div>
 
-          {/* 搜索框 */}
-          <div>
-            <input
-              type="text"
-              placeholder="搜索用户姓名或账号..."
-              value={searchKeyword}
-              onChange={e => setSearchKeyword(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
-            />
-          </div>
-
-          {/* 用户列表 */}
-          <div className="space-y-2 max-h-64 overflow-y-auto">
-            {filteredUsers.length === 0 ? (
-              <div className="text-center text-slate-400 py-8 text-sm">
-                {searchKeyword ? '未找到匹配的用户' : '暂无可选用户'}
-              </div>
-            ) : (
-              filteredUsers.map(u => (
-                <div
-                  key={u.id}
-                  onClick={() => toggleUser(Number(u.id))}
-                  className={`p-3 border rounded-lg cursor-pointer transition-all flex items-center gap-3 ${
-                    selectedUserIds.includes(Number(u.id))
-                      ? 'border-cyan-300 bg-cyan-50 shadow-sm'
-                      : 'border-slate-200 hover:border-cyan-200 hover:bg-slate-50'
-                  }`}
-                >
-                  <img 
-                    src={u.avatar} 
-                    className="w-8 h-8 rounded-full flex-shrink-0" 
-                    alt={u.name}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className={`font-medium truncate ${
-                      selectedUserIds.includes(Number(u.id)) ? 'text-cyan-700' : 'text-slate-700'
-                    }`}>
-                      {u.name}
-                    </div>
-                    {u.username && (
-                      <div className="text-xs text-slate-400 truncate">
-                        @{u.username}
-                      </div>
-                    )}
+            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">操作说明</div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    该说明会写入审批记录，建议明确说明原因和目标。
                   </div>
-                  {selectedUserIds.includes(Number(u.id)) && (
-                    <div className="flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-cyan-600">
-                      <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  )}
                 </div>
-              ))
-            )}
-          </div>
+                {selectedUserIds.length > 0 ? (
+                  <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+                    已选择 {selectedUserIds.length} 人
+                  </span>
+                ) : null}
+              </div>
 
-          {/* 已选择提示 */}
-          {selectedUserIds.length > 0 && (
-            <div className="text-sm text-slate-600 bg-slate-50 p-2 rounded">
-              已选择 <span className="font-bold text-cyan-700">{selectedUserIds.length}</span> 人
+              <div className="mt-4">
+                <Textarea
+                  rows={4}
+                  placeholder={`请填写${mode === 'add' ? '加签' : '减签'}原因...`}
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  disabled={submitting}
+                />
+              </div>
             </div>
-          )}
-
-          {/* 说明输入框 */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              {mode === 'add' ? '加签' : '减签'}说明 <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              className="w-full rounded-xl border border-slate-200 p-3 text-sm focus:border-cyan-400 focus:ring-2 focus:ring-cyan-200"
-              placeholder={`请填写${mode === 'add' ? '加签' : '减签'}原因（必填）...`}
-              rows={3}
-              value={comment}
-              onChange={e => setComment(e.target.value)}
-              disabled={submitting}
-            />
           </div>
         </div>
 
-        {/* 底部按钮 */}
-        <div className="px-6 py-4 border-t border-slate-100 flex justify-end gap-2 bg-slate-50">
-          <button
-            onClick={onClose}
-            disabled={submitting}
-            className="px-4 py-2 text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={submitting || selectedUserIds.length === 0 || !comment.trim()}
-            className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed ${
-              mode === 'add'
-                ? 'bg-cyan-600 hover:bg-cyan-700'
-                : 'bg-amber-600 hover:bg-amber-700'
-            }`}
-          >
-            {submitting ? '处理中...' : `确认${mode === 'add' ? '加签' : '减签'}`}
-          </button>
+        <div className="border-t border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="outline" onClick={onClose} disabled={submitting}>
+              取消
+            </Button>
+            <Button
+              onClick={() => void handleSubmit()}
+              disabled={submitting || selectedUserIds.length === 0 || !comment.trim()}
+            >
+              {submitting ? '处理中...' : `确认${mode === 'add' ? '加签' : '减签'}`}
+            </Button>
+          </div>
         </div>
       </div>
-    </div>
+    </BaseDialog>
   );
 };
+
+export default SignatureModal;

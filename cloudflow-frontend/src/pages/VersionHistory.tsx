@@ -89,33 +89,46 @@ interface PendingRollbackPayload {
   reason: string;
 }
 
+const surfaceChipClassName =
+  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+const elevatedPanelClassName =
+  'rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78';
+const subtlePanelClassName =
+  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
+
 const changeTypeMap: Record<string, { label: string; className: string }> = {
   major: {
     label: '重大变更',
-    className: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100',
+    className:
+      'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200',
   },
   minor: {
     label: '功能迭代',
-    className: 'bg-sky-50 text-sky-600 ring-1 ring-sky-100',
+    className:
+      'border border-sky-200 bg-sky-50 text-sky-600 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200',
   },
   patch: {
     label: '细节修复',
-    className: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100',
+    className:
+      'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
   },
 };
 
 const toneMap = {
   added: {
-    titleClassName: 'text-emerald-600',
-    cardClassName: 'border-emerald-100 bg-emerald-50/80',
+    titleClassName: 'text-emerald-600 dark:text-emerald-200',
+    cardClassName:
+      'border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/70 dark:bg-emerald-950/30',
   },
   removed: {
-    titleClassName: 'text-rose-600',
-    cardClassName: 'border-rose-100 bg-rose-50/80',
+    titleClassName: 'text-rose-600 dark:text-rose-200',
+    cardClassName:
+      'border-rose-200 bg-rose-50/80 dark:border-rose-900/70 dark:bg-rose-950/30',
   },
   modified: {
-    titleClassName: 'text-sky-600',
-    cardClassName: 'border-sky-100 bg-sky-50/70',
+    titleClassName: 'text-sky-600 dark:text-sky-200',
+    cardClassName:
+      'border-sky-200 bg-sky-50/70 dark:border-sky-900/70 dark:bg-sky-950/30',
   },
 };
 
@@ -181,7 +194,7 @@ const CompareNodeSection = ({
         <div className={cn('text-sm font-semibold', toneMeta.titleClassName)}>
           {title} ({items.length})
         </div>
-        <div className="mt-1 text-xs text-slate-400">{description}</div>
+        <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{description}</div>
       </div>
 
       <div className={cn('grid gap-3', showChanges ? 'grid-cols-1' : 'md:grid-cols-2')}>
@@ -191,8 +204,8 @@ const CompareNodeSection = ({
             className={cn('rounded-2xl border p-4', toneMeta.cardClassName)}
           >
             <div className="flex flex-wrap items-center gap-2">
-              <div className="text-sm font-semibold text-slate-900">{node.nodeName}</div>
-              <span className="text-xs text-slate-400">类型：{node.nodeType || '未知'}</span>
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{node.nodeName}</div>
+              <span className="text-xs text-slate-400 dark:text-slate-500">类型：{node.nodeType || '未知'}</span>
             </div>
 
             {showChanges ? (
@@ -201,9 +214,9 @@ const CompareNodeSection = ({
                   {node.changes.map((change, index) => (
                     <div
                       key={`${node.nodeId}-${change.path}-${index}`}
-                      className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs text-slate-500 shadow-sm"
+                      className="rounded-xl border border-slate-200 bg-white px-3 py-3 text-xs text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
                     >
-                      <div className="font-semibold text-slate-700">{change.path}</div>
+                      <div className="font-semibold text-slate-700 dark:text-slate-100">{change.path}</div>
                       <div className="mt-1">
                         {formatValue(change.oldValue)}
                         {' -> '}
@@ -213,7 +226,7 @@ const CompareNodeSection = ({
                   ))}
                 </div>
               ) : (
-                <div className="mt-3 text-xs text-slate-400">未返回属性差异明细。</div>
+                <div className="mt-3 text-xs text-slate-400 dark:text-slate-500">未返回属性差异明细。</div>
               )
             ) : null}
           </div>
@@ -237,15 +250,15 @@ const CompareEdgeSection = ({
   return (
     <section className="space-y-3">
       <div>
-        <div className="text-sm font-semibold text-slate-700">连线变化</div>
-        <div className="mt-1 text-xs text-slate-400">节点之间的流转关系改动会汇总在这个区域。</div>
+        <div className="text-sm font-semibold text-slate-700 dark:text-slate-100">连线变化</div>
+        <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">节点之间的流转关系改动会汇总在这个区域。</div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
         {addedEdges.map((edge, index) => (
           <div
             key={`added-${edge.sourceId}-${edge.targetId}-${index}`}
-            className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-slate-600"
+            className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-slate-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-slate-300"
           >
             新增连线：{edge.sourceId}
             {' -> '}
@@ -255,7 +268,7 @@ const CompareEdgeSection = ({
         {removedEdges.map((edge, index) => (
           <div
             key={`removed-${edge.sourceId}-${edge.targetId}-${index}`}
-            className="rounded-2xl border border-rose-100 bg-rose-50 p-4 text-sm text-slate-600"
+            className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-slate-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-slate-300"
           >
             删除连线：{edge.sourceId}
             {' -> '}
@@ -474,7 +487,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
   if (!hasViewPermission) {
     return (
       <WorkspaceStatusPage
-        icon={<AlertTriangle size={28} />}
+        icon={<AlertTriangle size={28} className="text-amber-500" />}
         title="没有权限查看版本历史"
         description="当前流程的版本历史仅对流程创建者和管理员开放。"
         actions={
@@ -485,6 +498,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             </Button>
           ) : null
         }
+        iconWrapClassName="bg-amber-50 text-amber-500 dark:bg-amber-950/30 dark:text-amber-300"
       />
     );
   }
@@ -495,8 +509,8 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-              <History className="h-3.5 w-3.5 text-cyan-600" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+              <History className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
               Version Workspace
             </span>
           }
@@ -541,25 +555,25 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               label="版本总数"
               value={versions.length}
               hint="当前流程已沉淀的全部历史版本"
-              aside={<GitBranch className="h-[18px] w-[18px] text-cyan-600" />}
+              aside={<GitBranch className="h-[18px] w-[18px] text-cyan-600 dark:text-cyan-300" />}
             />
             <WorkspaceMetricCard
               label="已选对比"
               value={`${selectedVersions.length} / 2`}
               hint="最多勾选两个版本进入差异对比"
-              aside={<ArrowRightLeft className="h-[18px] w-[18px] text-sky-500" />}
+              aside={<ArrowRightLeft className="h-[18px] w-[18px] text-sky-500 dark:text-sky-300" />}
             />
             <WorkspaceMetricCard
               label="当前版本"
               value={currentVersion ? `v${currentVersion.versionNumber}` : '未生成'}
               hint={currentVersion ? formatDateTime(currentVersion.createdAt) : '暂无可用版本'}
-              aside={<History className="h-[18px] w-[18px] text-amber-500" />}
+              aside={<History className="h-[18px] w-[18px] text-amber-500 dark:text-amber-300" />}
             />
             <WorkspaceMetricCard
               label="回滚权限"
               value={canRollbackCurrentWorkflow ? '可执行回滚' : '仅查看历史'}
               hint={canRollbackCurrentWorkflow ? '旧版本支持一键回滚' : '当前账户暂不支持回滚'}
-              aside={<RotateCcw className="h-[18px] w-[18px] text-emerald-500" />}
+              aside={<RotateCcw className="h-[18px] w-[18px] text-emerald-500 dark:text-emerald-300" />}
             />
           </div>
         </WorkspaceHeroCard>
@@ -587,36 +601,50 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               value: selectedVersions.length > 0 ? `已选择 ${selectedVersions.length} 个版本` : '待选择对比版本',
             },
           ]}
+          headerBadges={
+            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <span className={surfaceChipClassName}>
+                {selectedVersions.length > 0 ? `已选择 ${selectedVersions.length} 个版本` : '默认视图'}
+              </span>
+              <span className={surfaceChipClassName}>
+                当前版本 {currentVersion ? `v${currentVersion.versionNumber}` : '未生成'}
+              </span>
+              <span className={surfaceChipClassName}>
+                回滚版本 {versions.filter((item) => item.isRollback).length} 个
+              </span>
+            </div>
+          }
+          quickFilterAside={
+            selectedVersions.length > 0 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelectedVersions([])}
+                className="rounded-xl"
+              >
+                清空选择
+              </Button>
+            ) : (
+              <span className={surfaceChipClassName}>
+                当前版本默认位于列表顶部，可直接与任一历史版本做差异对比
+              </span>
+            )
+          }
           filterBar={
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
+                <span className={surfaceChipClassName}>
                   按版本勾选，最多两项
                 </span>
                 {selectedVersionList.map((version) => (
                   <span
                     key={version.id}
-                    className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-[11px] font-medium text-cyan-700"
+                    className="rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-[11px] font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200"
                   >
                     v{version.versionNumber}
                   </span>
                 ))}
               </div>
-
-              {selectedVersions.length > 0 ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSelectedVersions([])}
-                  className="rounded-xl"
-                >
-                  清空选择
-                </Button>
-              ) : (
-                <div className="text-xs text-slate-400">
-                  当前版本默认位于列表顶部，可直接与任一历史版本做差异对比。
-                </div>
-              )}
             </div>
           }
         />
@@ -624,7 +652,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         <WorkspaceResultCard
           total={versions.length}
           title="版本列表"
-          description="使用统一轻玻璃工作台展示版本说明、操作者、更新时间以及回滚入口。"
+          description="使用统一详情/时间线语法展示版本说明、操作者、更新时间以及回滚入口。"
         >
           <div className="space-y-4 p-4">
             {loading ? (
@@ -642,100 +670,156 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                 className="py-16"
               />
             ) : (
-              versions.map((version, index) => {
-                const isSelected = selectedVersions.includes(version.id);
-                const changeType = getChangeTypeMeta(version.changeType);
+              <>
+                <div className={elevatedPanelClassName}>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div className="min-w-0 space-y-3">
+                      <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
+                        <History className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
+                        <span className="font-medium">版本时间线概览</span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <span className={surfaceChipClassName}>总计 {versions.length} 个版本</span>
+                        <span className={surfaceChipClassName}>
+                          可回滚 {versions.length > 1 ? versions.length - 1 : 0} 个
+                        </span>
+                        <span className={surfaceChipClassName}>
+                          已选对比 {selectedVersions.length} / 2
+                        </span>
+                      </div>
+                      <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        版本按时间倒序排列，顶部始终是当前版本。勾选两个版本后可以直接进入差异对比，旧版本也支持从这里发起回滚。
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={surfaceChipClassName}>
+                        最近更新 {currentVersion ? formatDateTime(currentVersion.createdAt) : '暂无记录'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                return (
-                  <div
-                    key={version.id}
-                    className={cn(
-                      'rounded-2xl border px-5 py-5 transition',
-                      isSelected
-                        ? 'border-cyan-200 bg-cyan-50/70 shadow-sm'
-                        : 'border-slate-200 bg-white shadow-sm',
-                    )}
-                  >
-                    <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                      <div className="flex min-w-0 flex-1 gap-4">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleVersionSelection(version.id)}
-                          className="mt-1 h-4 w-4 rounded border-slate-300 accent-cyan-600"
-                          aria-label={`选择版本 v${version.versionNumber}`}
+                <div className="space-y-3">
+                  {versions.map((version, index) => {
+                    const isSelected = selectedVersions.includes(version.id);
+                    const changeType = getChangeTypeMeta(version.changeType);
+
+                    return (
+                      <div
+                        key={version.id}
+                        className={cn(
+                          'relative overflow-hidden rounded-2xl border px-5 py-5 shadow-sm transition-all',
+                          isSelected
+                            ? 'border-cyan-200 bg-cyan-50/70 dark:border-cyan-900/70 dark:bg-cyan-950/30'
+                            : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/78',
+                        )}
+                      >
+                        <div
+                          className={cn(
+                            'absolute inset-y-0 left-0 w-1',
+                            index === 0
+                              ? 'bg-gradient-to-b from-emerald-400 to-cyan-500 dark:from-emerald-500 dark:to-cyan-400'
+                              : version.isRollback
+                                ? 'bg-gradient-to-b from-amber-400 to-orange-400 dark:from-amber-500 dark:to-orange-500'
+                                : 'bg-slate-200 dark:bg-slate-800',
+                          )}
                         />
+                        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                          <div className="flex min-w-0 flex-1 gap-4">
+                            <div className="flex flex-col items-center self-stretch">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => toggleVersionSelection(version.id)}
+                                className="mt-1 h-4 w-4 rounded border-slate-300 accent-cyan-600 dark:border-slate-700 dark:bg-slate-950"
+                                aria-label={`选择版本 v${version.versionNumber}`}
+                              />
+                              {index !== versions.length - 1 ? (
+                                <span className="mt-3 w-px flex-1 bg-slate-200 dark:bg-slate-800" />
+                              ) : null}
+                            </div>
 
-                        <div className="min-w-0 flex-1 space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-lg font-semibold tracking-tight text-slate-900">
-                              v{version.versionNumber}
-                            </span>
-                            {index === 0 ? (
-                              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 ring-1 ring-emerald-100">
-                                当前版本
-                              </span>
-                            ) : null}
-                            {version.isRollback ? (
-                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-600 ring-1 ring-amber-100">
-                                <RotateCcw className="h-3.5 w-3.5" />
-                                回滚版本
-                              </span>
-                            ) : null}
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-[11px] font-semibold shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]',
-                                changeType.className,
-                              )}
+                            <div className="min-w-0 flex-1 space-y-4">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                                  v{version.versionNumber}
+                                </span>
+                                {index === 0 ? (
+                                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                                    当前版本
+                                  </span>
+                                ) : null}
+                                {version.isRollback ? (
+                                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-600 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                                    <RotateCcw className="h-3.5 w-3.5" />
+                                    回滚版本
+                                  </span>
+                                ) : null}
+                                <span
+                                  className={cn(
+                                    'rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                    changeType.className,
+                                  )}
+                                >
+                                  {changeType.label}
+                                </span>
+                              </div>
+
+                              <div className={subtlePanelClassName}>
+                                <div className="mb-2 text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                  版本说明
+                                </div>
+                                <div className="text-sm leading-7 text-slate-600 dark:text-slate-300">
+                                  {version.changeLog || '暂无版本说明'}
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className={surfaceChipClassName}>
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Clock3 className="h-3.5 w-3.5" />
+                                    {formatDateTime(version.createdAt)}
+                                  </span>
+                                </span>
+                                <span className={surfaceChipClassName}>
+                                  操作人：{version.createdByName || version.createdBy || '未知'}
+                                </span>
+                                {version.rollbackFromVersion ? (
+                                  <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-[11px] font-medium text-amber-600 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+                                    来源版本：v{version.rollbackFromVersion}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex shrink-0 flex-wrap items-center gap-2">
+                            <Button
+                              type="button"
+                              variant={isSelected ? 'soft' : 'outline'}
+                              onClick={() => toggleVersionSelection(version.id)}
+                              className="rounded-xl"
                             >
-                              {changeType.label}
-                            </span>
-                          </div>
-
-                          <div className="text-sm leading-7 text-slate-600">
-                            {version.changeLog || '暂无版本说明'}
-                          </div>
-
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
-                            <span className="inline-flex items-center gap-1.5">
-                              <Clock3 className="h-3.5 w-3.5" />
-                              {formatDateTime(version.createdAt)}
-                            </span>
-                            <span>操作人：{version.createdByName || version.createdBy || '未知'}</span>
-                            {version.rollbackFromVersion ? (
-                              <span className="text-amber-500">
-                                来源版本：v{version.rollbackFromVersion}
-                              </span>
+                              {isSelected ? '取消选择' : '加入对比'}
+                            </Button>
+                            {index !== 0 && canRollbackCurrentWorkflow ? (
+                              <Button
+                                type="button"
+                                variant="destructive"
+                                onClick={() => handleOpenRollback(version)}
+                                className="rounded-xl"
+                              >
+                                <RotateCcw className="h-4 w-4" />
+                                回滚到此版本
+                              </Button>
                             ) : null}
                           </div>
                         </div>
                       </div>
-
-                      <div className="flex shrink-0 flex-wrap items-center gap-2">
-                        <Button
-                          type="button"
-                          variant={isSelected ? 'soft' : 'outline'}
-                          onClick={() => toggleVersionSelection(version.id)}
-                          className="rounded-xl"
-                        >
-                          {isSelected ? '取消选择' : '加入对比'}
-                        </Button>
-                        {index !== 0 && canRollbackCurrentWorkflow ? (
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => handleOpenRollback(version)}
-                            className="rounded-xl"
-                          >
-                            <RotateCcw className="h-4 w-4" />
-                            回滚到此版本
-                          </Button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+                    );
+                  })}
+                </div>
+              </>
             )}
           </div>
         </WorkspaceResultCard>
@@ -746,9 +830,57 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           description="查看两个版本之间的节点、连线以及属性差异。"
           onClose={() => setShowCompareModal(false)}
           maxWidthClassName="max-w-5xl"
+          headerAside={<span className={surfaceChipClassName}>结构差异面板</span>}
           bodyClassName="max-h-[80vh] overflow-y-auto"
         >
           <div className="space-y-6">
+            <div className={elevatedPanelClassName}>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+                <div className={subtlePanelClassName}>
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    对比范围
+                  </div>
+                  <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                    v{comparison.fromVersion}
+                    {' -> '}
+                    v{comparison.toVersion}
+                  </div>
+                </div>
+                <div className={subtlePanelClassName}>
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    新增节点
+                  </div>
+                  <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                    {comparison.addedNodes?.length || 0}
+                  </div>
+                </div>
+                <div className={subtlePanelClassName}>
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    删除节点
+                  </div>
+                  <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                    {comparison.removedNodes?.length || 0}
+                  </div>
+                </div>
+                <div className={subtlePanelClassName}>
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    修改节点
+                  </div>
+                  <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                    {comparison.modifiedNodes?.length || 0}
+                  </div>
+                </div>
+                <div className={subtlePanelClassName}>
+                  <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    连线变化
+                  </div>
+                  <div className="mt-1.5 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                    {(comparison.addedEdges?.length || 0) + (comparison.removedEdges?.length || 0)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             {hasDiff ? (
               <>
                 <CompareNodeSection
@@ -803,12 +935,23 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
           description={`准备回滚到版本 v${rollbackVersion.versionNumber}，请补充回滚原因。`}
           onClose={() => setShowRollbackModal(false)}
           maxWidthClassName="max-w-2xl"
+          headerAside={<span className={surfaceChipClassName}>目标版本 v{rollbackVersion.versionNumber}</span>}
         >
           <div className="space-y-5">
-            <div className="rounded-2xl border border-amber-100 bg-amber-50/80 p-5">
+            <div className={elevatedPanelClassName}>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={surfaceChipClassName}>目标版本 v{rollbackVersion.versionNumber}</span>
+                <span className={surfaceChipClassName}>{formatDateTime(rollbackVersion.createdAt)}</span>
+                <span className={surfaceChipClassName}>
+                  操作人：{rollbackVersion.createdByName || rollbackVersion.createdBy || '未知'}
+                </span>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-amber-200 bg-amber-50/80 p-5 dark:border-amber-900/70 dark:bg-amber-950/30">
               <div className="flex items-start gap-3">
-                <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500" />
-                <div className="space-y-1 text-sm text-amber-800">
+                <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-500 dark:text-amber-300" />
+                <div className="space-y-1 text-sm text-amber-800 dark:text-amber-200">
                   <div className="font-semibold">回滚会覆盖当前流程定义</div>
                   <div>
                     系统将恢复到 v{rollbackVersion.versionNumber}，当前版本之后的流程变更将不再作为最新配置。
@@ -818,18 +961,18 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
             </div>
 
             {hasRunningInstances ? (
-              <div className="rounded-2xl border border-rose-100 bg-rose-50/80 p-5">
+              <div className="rounded-2xl border border-rose-200 bg-rose-50/80 p-5 dark:border-rose-900/70 dark:bg-rose-950/30">
                 <div className="flex items-start gap-3">
-                  <AlertTriangle className="mt-0.5 h-5 w-5 text-rose-500" />
-                  <div className="space-y-2 text-sm text-rose-700">
+                  <AlertTriangle className="mt-0.5 h-5 w-5 text-rose-500 dark:text-rose-300" />
+                  <div className="space-y-2 text-sm text-rose-700 dark:text-rose-200">
                     <div className="font-semibold">检测到运行中的流程实例</div>
                     <div>如果确认业务允许，可以勾选强制回滚；否则建议等待实例执行完成后再操作。</div>
-                    <label className="inline-flex items-center gap-2 text-sm text-rose-700">
+                    <label className="inline-flex items-center gap-2 text-sm text-rose-700 dark:text-rose-200">
                       <input
                         type="checkbox"
                         checked={forceRollback}
                         onChange={(event) => setForceRollback(event.target.checked)}
-                        className="h-4 w-4 rounded border-rose-200 accent-rose-500"
+                        className="h-4 w-4 rounded border-rose-200 accent-rose-500 dark:border-rose-900/70 dark:bg-slate-950"
                       />
                       强制回滚，即使当前仍有运行中的实例
                     </label>
@@ -838,8 +981,8 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               </div>
             ) : null}
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <label className="mb-2 block text-sm font-semibold text-slate-700">
+            <div className={subtlePanelClassName}>
+              <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
                 回滚原因 <span className="text-rose-500">*</span>
               </label>
               <Textarea

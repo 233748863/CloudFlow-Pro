@@ -16,28 +16,39 @@ interface UserDashboardQuickActionsProps {
 export const UserDashboardQuickActions: React.FC<UserDashboardQuickActionsProps> = ({
   actions,
 }) => (
-  <div className="card">
-    <div className="card-header">
-      <h2 className="text-lg font-semibold text-slate-900">快捷入口</h2>
+  <section className="card overflow-hidden">
+    <div className="border-b border-slate-100 px-6 py-4 dark:border-slate-800">
+      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+        快捷入口
+      </h2>
     </div>
+
     <div className="space-y-3 p-4">
       {actions.map((action) => (
         <button
           key={action.label}
           type="button"
           onClick={action.onClick}
-          className="group flex w-full items-center gap-4 rounded-xl bg-slate-50 p-4 text-left transition-all duration-200 hover:bg-slate-100"
+          className="group flex w-full items-center gap-4 rounded-xl bg-slate-50 p-4 text-left transition-colors hover:bg-slate-100 dark:bg-slate-900/70 dark:hover:bg-slate-900"
         >
-          <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl ${action.toneClassName}`}>
+          <div
+            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${action.toneClassName}`}
+          >
             {action.icon}
           </div>
+
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-slate-900">{action.label}</p>
-            <p className="text-xs text-slate-500">{action.description}</p>
+            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              {action.label}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
+              {action.description}
+            </p>
           </div>
-          <ArrowRight className="h-4 w-4 text-slate-400 transition-colors group-hover:text-cyan-500" />
+
+          <ArrowRight className="h-4 w-4 text-slate-400 transition-transform group-hover:translate-x-0.5 dark:text-slate-500" />
         </button>
       ))}
     </div>
-  </div>
+  </section>
 );

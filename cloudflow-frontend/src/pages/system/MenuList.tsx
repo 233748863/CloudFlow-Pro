@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -6,160 +6,266 @@ import {
   File,
   Folder,
   Layout,
-  LayoutTemplate,
   Plus,
+  RefreshCw,
   Search,
   Trash2,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { BaseDialog, ConfirmDialog } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
-  Card,
   Input,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Table,
   TableActionHead,
+  TableBody,
+  TableCell,
   TableHead,
   TableHeader,
+  TableRow,
 } from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
-import {
-  WorkspaceBackdrop,
-  WorkspaceDialogShell,
-  WorkspaceHeroMetricsSection,
-  WorkspacePageContent,
-  WorkspaceResultCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-  workspaceGlassSurfaceClassName,
-} from '@/components/workspace';
-import { toast } from 'sonner';
-import { addMenu, deleteMenu, getMenuList, updateMenu } from '../../services/api/auth';
+import { addMenu, deleteMenu, getMenuList, updateMenu, type SysMenu } from '../../services/api/auth';
+import { cn } from '@/utils/cn';
 
-type MenuNode = {
+type MenuNode = SysMenu & {
   menuId: number;
   parentId: number;
   menuType: 'M' | 'C' | 'F';
   menuName: string;
   orderNum: number;
-  path?: string;
-  component?: string;
-  perms?: string;
-  icon?: string;
   status: string;
   children?: MenuNode[];
 };
 
-const buildTree = (items: MenuNode[], parentId: number = 0): MenuNode[] => {
-  return items
+type MenuFormData = {
+  parentId: number;
+  menuType: 'M' | 'C' | 'F';
+  menuName: string;
+  orderNum: number;
+  path: string;
+  component: string;
+  perms: string;
+  icon: string;
+  status: string;
+};
+
+const DEFAULT_FORM_DATA: MenuFormData = {
+  parentId: 0,
+  menuType: 'M',
+  menuName: '',
+  orderNum: 0,
+  path: '',
+  component: '',
+  perms: '',
+  icon: '',
+  status: '0',
+};
+
+const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+
+const menuTypeMeta: Record<
+  MenuNode['menuType'],
+  { label: string; icon: React.ReactNode; className: string }
+> = {
+  M: {
+    label: '目录',
+    icon: <Folder size={14} />,
+    className:
+      'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200',
+  },
+  C: {
+    label: '菜单',
+    icon: <Layout size={14} />,
+    className:
+      'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
+  },
+  F: {
+    label: '按钮',
+    icon: <File size={14} />,
+    className:
+      'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300',
+  },
+};
+
+const getMenuStatusBadgeClassName = (status: string) =>
+  status === '0'
+    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
+    : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
+
+const RowActionButton: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  tone?: 'neutral' | 'danger' | 'info';
+}> = ({ label, icon, onClick, tone = 'neutral' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
+      tone === 'danger'
+        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
+        : tone === 'info'
+          ? 'text-slate-400 hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-500 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200'
+          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+    )}
+    title={label}
+    aria-label={label}
+  >
+    {icon}
+  </button>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+    </TableCell>
+  </TableRow>
+);
+
+const buildTree = (items: MenuNode[], parentId = 0): MenuNode[] =>
+  items
     .filter((item) => item.parentId === parentId)
     .map((item) => ({
       ...item,
       children: buildTree(items, item.menuId),
     }))
-    .sort((a, b) => a.orderNum - b.orderNum);
-};
+    .sort((left, right) => left.orderNum - right.orderNum);
 
-const flattenMenuOptions = (nodes: MenuNode[], level = 0): Array<{ item: MenuNode; level: number }> => {
+const flattenMenuOptions = (
+  nodes: MenuNode[],
+  level = 0,
+): Array<{ item: MenuNode; level: number }> => {
   const result: Array<{ item: MenuNode; level: number }> = [];
-  for (const node of nodes) {
+
+  nodes.forEach((node) => {
     result.push({ item: node, level });
     if (node.children?.length) {
       result.push(...flattenMenuOptions(node.children, level + 1));
     }
-  }
+  });
+
   return result;
 };
 
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+const filterMenuTree = (nodes: MenuNode[], keyword: string): MenuNode[] => {
+  const normalized = keyword.trim().toLowerCase();
+  if (!normalized) return nodes;
+
+  return nodes
+    .map((node) => {
+      const children = node.children ? filterMenuTree(node.children, normalized) : [];
+      const matched = [node.menuName, node.path, node.component, node.perms, node.icon]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(normalized));
+
+      if (matched || children.length > 0) {
+        return { ...node, children };
+      }
+
+      return null;
+    })
+    .filter((item): item is MenuNode => Boolean(item));
 };
 
-const menuTypeMeta: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
-  M: {
-    label: '目录',
-    className: 'border border-cyan-200 bg-cyan-50 text-cyan-700',
-    icon: <Folder size={14} />,
-  },
-  C: {
-    label: '菜单',
-    className: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100',
-    icon: <Layout size={14} />,
-  },
-  F: {
-    label: '按钮',
-    className: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/80',
-    icon: <File size={14} />,
-  },
+const collectDescendantIds = (node?: MenuNode | null): Set<number> => {
+  const ids = new Set<number>();
+
+  const walk = (current?: MenuNode) => {
+    current?.children?.forEach((child) => {
+      ids.add(child.menuId);
+      walk(child);
+    });
+  };
+
+  walk(node || undefined);
+  return ids;
 };
 
 export const MenuList = () => {
   const [menus, setMenus] = useState<MenuNode[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
+  const [searchInput, setSearchInput] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMenu, setEditingMenu] = useState<MenuNode | null>(null);
-  const [formData, setFormData] = useState({
-    parentId: 0,
-    menuType: 'M',
-    menuName: '',
-    orderNum: 0,
-    path: '',
-    component: '',
-    perms: '',
-    icon: '',
-    status: '0',
-  });
+  const [pendingDeleteMenu, setPendingDeleteMenu] = useState<MenuNode | null>(null);
+  const [formData, setFormData] = useState<MenuFormData>(DEFAULT_FORM_DATA);
 
-  React.useEffect(() => {
-    void fetchMenus();
-  }, []);
+  const normalizeMenuListResponse = (response: any): MenuNode[] => {
+    const list = Array.isArray(response)
+      ? response
+      : Array.isArray(response?.rows)
+        ? response.rows
+        : Array.isArray(response?.records)
+          ? response.records
+          : [];
+
+    return list.map((item: any) => ({
+      ...item,
+      menuId: Number(item.menuId),
+      parentId: Number(item.parentId || 0),
+      menuType: (item.menuType || 'M') as 'M' | 'C' | 'F',
+      menuName: String(item.menuName || ''),
+      orderNum: Number(item.orderNum || 0),
+      status: String(item.status || '0'),
+    }));
+  };
 
   const fetchMenus = async () => {
     setLoading(true);
+    setError(null);
+
     try {
       const response = await getMenuList();
-      if (Array.isArray(response)) {
-        const tree = buildTree(response, 0);
-        setMenus(tree);
-        setExpandedKeys(response.filter((item) => item.parentId === 0).map((item) => item.menuId));
-      } else {
-        setMenus([]);
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('加载菜单失败');
+      const normalized = normalizeMenuListResponse(response);
+      const tree = buildTree(normalized, 0);
+
+      setMenus(tree);
+      setExpandedKeys(
+        normalized.filter((item) => item.parentId === 0).map((item) => item.menuId),
+      );
+    } catch (fetchError) {
+      console.error(fetchError);
+      const message = '加载菜单失败，请稍后重试。';
+      setError(message);
+      setMenus([]);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    void fetchMenus();
+  }, []);
+
   const flatOptions = useMemo(() => flattenMenuOptions(menus), [menus]);
-
-  const filterMenuTree = (nodes: MenuNode[], keyword: string): MenuNode[] => {
-    const lowerKeyword = keyword.trim().toLowerCase();
-    if (!lowerKeyword) return nodes;
-
-    return nodes
-      .map((node) => {
-        const children = node.children ? filterMenuTree(node.children, lowerKeyword) : [];
-        const matched = [node.menuName, node.path, node.component, node.perms]
-          .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(lowerKeyword));
-
-        if (matched || children.length > 0) {
-          return { ...node, children } as MenuNode;
-        }
-        return null;
-      })
-      .filter((item): item is MenuNode => Boolean(item));
-  };
-
   const filteredMenus = useMemo(() => filterMenuTree(menus, searchTerm), [menus, searchTerm]);
+  const visibleTotal = useMemo(() => flattenMenuOptions(filteredMenus).length, [filteredMenus]);
 
   const menuCounts = useMemo(() => {
     const flat = flatOptions.map((option) => option.item);
@@ -168,11 +274,42 @@ export const MenuList = () => {
       dir: flat.filter((item) => item.menuType === 'M').length,
       page: flat.filter((item) => item.menuType === 'C').length,
       button: flat.filter((item) => item.menuType === 'F').length,
+      active: flat.filter((item) => item.status === '0').length,
     };
   }, [flatOptions]);
 
-  const toggleExpand = (id: number) => {
-    setExpandedKeys((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  const editingDescendants = useMemo(() => collectDescendantIds(editingMenu), [editingMenu]);
+  const availableParents = useMemo(
+    () =>
+      flatOptions.filter(({ item }) => {
+        if (item.menuType === 'F') {
+          return false;
+        }
+
+        if (!editingMenu) {
+          return true;
+        }
+
+        return item.menuId !== editingMenu.menuId && !editingDescendants.has(item.menuId);
+      }),
+    [editingDescendants, editingMenu, flatOptions],
+  );
+
+  const hasActiveFilters = Boolean(searchTerm.trim());
+  const isEdit = Boolean(editingMenu);
+
+  const handleRefresh = () => {
+    void fetchMenus();
+  };
+
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSearchTerm(searchInput.trim());
+  };
+
+  const clearFilters = () => {
+    setSearchInput('');
+    setSearchTerm('');
   };
 
   const handleOpenModal = (menu?: MenuNode, parentId?: number) => {
@@ -187,23 +324,23 @@ export const MenuList = () => {
         component: menu.component || '',
         perms: menu.perms || '',
         icon: menu.icon || '',
-        status: menu.status,
+        status: menu.status || '0',
       });
     } else {
       setEditingMenu(null);
       setFormData({
+        ...DEFAULT_FORM_DATA,
         parentId: parentId || 0,
-        menuType: 'M',
-        menuName: '',
-        orderNum: 0,
-        path: '',
-        component: '',
-        perms: '',
-        icon: '',
-        status: '0',
       });
     }
+
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingMenu(null);
+    setFormData(DEFAULT_FORM_DATA);
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -215,381 +352,488 @@ export const MenuList = () => {
     }
 
     try {
-      if (editingMenu) {
-        await updateMenu({ ...formData, menuId: editingMenu.menuId });
+      const payload: SysMenu = {
+        ...formData,
+        menuName: formData.menuName.trim(),
+        orderNum: Number(formData.orderNum || 0),
+        path: formData.path.trim(),
+        component: formData.component.trim(),
+        perms: formData.perms.trim(),
+        icon: formData.icon.trim(),
+      };
+
+      if (editingMenu?.menuId) {
+        await updateMenu({ ...payload, menuId: editingMenu.menuId });
         toast.success('菜单更新成功');
       } else {
-        await addMenu(formData);
+        await addMenu(payload);
         toast.success('菜单创建成功');
       }
-      setIsModalOpen(false);
+
+      handleCloseModal();
       await fetchMenus();
-    } catch (error) {
-      console.error(error);
+    } catch (submitError) {
+      console.error(submitError);
       toast.error('保存菜单失败');
     }
   };
 
-  const handleDelete = async (menuId: number) => {
-    if (!window.confirm('确认删除该菜单吗？')) {
+  const handleDelete = async () => {
+    if (!pendingDeleteMenu) {
       return;
     }
 
     try {
-      await deleteMenu(menuId);
+      await deleteMenu(pendingDeleteMenu.menuId);
       toast.success('菜单删除成功');
+      setPendingDeleteMenu(null);
       await fetchMenus();
-    } catch (error) {
-      console.error(error);
+    } catch (deleteError) {
+      console.error(deleteError);
       toast.error('删除失败，请确认该菜单下没有子节点');
     }
   };
 
-  const renderRows = (nodes: MenuNode[], level: number = 0): React.ReactNode => {
-    return nodes.map((node) => {
-      const meta = menuTypeMeta[node.menuType] || menuTypeMeta.M;
+  const toggleExpand = (id: number) => {
+    setExpandedKeys((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
+    );
+  };
+
+  const renderRows = (nodes: MenuNode[], level = 0): React.ReactNode =>
+    nodes.map((node) => {
+      const meta = menuTypeMeta[node.menuType];
       const expanded = expandedKeys.includes(node.menuId);
-      const showChildren = expanded && node.children && node.children.length > 0;
+      const hasChildren = Boolean(node.children?.length);
+      const showChildren = hasChildren && (hasActiveFilters || expanded);
 
       return (
         <React.Fragment key={node.menuId}>
-          <tr className="border-b border-slate-100 transition-colors hover:bg-slate-50">
-            <td className="px-4 py-3 text-sm text-slate-900">
-              <div className="flex items-center" style={{ paddingLeft: `${level * 22}px` }}>
-                {node.children && node.children.length > 0 ? (
+          <TableRow>
+            <TableCell>
+              <div className="flex items-start" style={{ paddingLeft: `${level * 22}px` }}>
+                {hasChildren ? (
                   <button
                     type="button"
                     onClick={() => toggleExpand(node.menuId)}
-                    className="mr-2 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                    className="mr-2 mt-0.5 rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+                    aria-label={showChildren ? '折叠菜单' : '展开菜单'}
                   >
-                    {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                    {showChildren ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
                   </button>
                 ) : (
                   <span className="mr-2 inline-block w-6" />
                 )}
-                <span className="truncate font-medium">{node.menuName}</span>
+
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {node.menuName}
+                  </div>
+                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+                    {node.path ? (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 dark:border-slate-800 dark:bg-slate-900/70">
+                        路由 {node.path}
+                      </span>
+                    ) : null}
+                    {node.component ? (
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 dark:border-slate-800 dark:bg-slate-900/70">
+                        组件 {node.component}
+                      </span>
+                    ) : null}
+                    {!node.path && !node.component ? <span>未配置路由元数据</span> : null}
+                  </div>
+                </div>
               </div>
-            </td>
-            <td className="px-4 py-3 text-sm text-slate-500">{node.icon || '-'}</td>
-            <td className="px-4 py-3 text-sm text-slate-600">{node.orderNum}</td>
-            <td className="px-4 py-3 text-sm text-slate-600">{node.perms || '-'}</td>
-            <td className="px-4 py-3 text-sm text-slate-600">{node.component || '-'}</td>
-            <td className="px-4 py-3">
-              <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${meta.className}`}>
+            </TableCell>
+
+            <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+              {node.icon ? (
+                <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-900">
+                  {node.icon}
+                </span>
+              ) : (
+                '-'
+              )}
+            </TableCell>
+
+            <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+              {node.orderNum}
+            </TableCell>
+
+            <TableCell>
+              {node.perms ? (
+                <code className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                  {node.perms}
+                </code>
+              ) : (
+                <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+              )}
+            </TableCell>
+
+            <TableCell>
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium',
+                  meta.className,
+                )}
+              >
                 {meta.icon}
                 {meta.label}
               </span>
-            </td>
-            <td className="px-4 py-3 text-right">
-              <TableRowActions
-                align="end"
-                actions={[
-                  {
-                    label: '编辑',
-                    icon: <Edit size={14} />,
-                    onClick: () => handleOpenModal(node),
-                    tone: 'primary',
-                  },
-                  {
-                    label: '新增',
-                    icon: <Plus size={14} />,
-                    onClick: () => handleOpenModal(undefined, node.menuId),
-                    tone: 'info',
-                  },
-                  {
-                    label: '删除',
-                    icon: <Trash2 size={14} />,
-                    onClick: () => handleDelete(node.menuId),
-                    tone: 'danger',
-                  },
-                ]}
-              />
-            </td>
-          </tr>
-          {showChildren ? renderRows(node.children!, level + 1) : null}
+            </TableCell>
+
+            <TableCell>
+              <span
+                className={cn(
+                  'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                  getMenuStatusBadgeClassName(node.status),
+                )}
+              >
+                {node.status === '0' ? '正常' : '停用'}
+              </span>
+            </TableCell>
+
+            <TableCell>
+              <div className="flex items-center justify-end gap-1">
+                <RowActionButton
+                  label="编辑菜单"
+                  icon={<Edit size={15} />}
+                  onClick={() => handleOpenModal(node)}
+                />
+                {node.menuType !== 'F' ? (
+                  <RowActionButton
+                    label="新增子节点"
+                    icon={<Plus size={15} />}
+                    onClick={() => handleOpenModal(undefined, node.menuId)}
+                    tone="info"
+                  />
+                ) : null}
+                <RowActionButton
+                  label="删除菜单"
+                  icon={<Trash2 size={15} />}
+                  onClick={() => setPendingDeleteMenu(node)}
+                  tone="danger"
+                />
+              </div>
+            </TableCell>
+          </TableRow>
+          {showChildren ? renderRows(node.children || [], level + 1) : null}
         </React.Fragment>
       );
     });
-  };
-
-  const todayLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const overviewItems = [
-    { label: '当前结果', value: `${searchTerm ? flattenMenuOptions(filteredMenus).length : menuCounts.total} 个节点` },
-    { label: '目录', value: `${menuCounts.dir} 个` },
-    { label: '菜单页', value: `${menuCounts.page} 个` },
-    { label: '按钮', value: `${menuCounts.button} 个` },
-  ];
-  const heroMetrics = [
-    {
-      label: '节点总数',
-      value: `${menuCounts.total}`,
-      hint: '包含目录、菜单和按钮',
-      icon: <LayoutTemplate size={17} />,
-    },
-    {
-      label: '目录',
-      value: `${menuCounts.dir}`,
-      hint: '用于组织导航结构',
-      icon: <Folder size={17} />,
-    },
-    {
-      label: '菜单页',
-      value: `${menuCounts.page}`,
-      hint: '可映射前端路由页面',
-      icon: <Layout size={17} />,
-    },
-    {
-      label: '按钮',
-      value: `${menuCounts.button}`,
-      hint: '通常作为细粒度权限点',
-      icon: <File size={17} />,
-    },
-  ];
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
-                <LayoutTemplate size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
-            </div>
-          )}
-          title="菜单管理"
-          description="把树状菜单配置页也拉到统一工作台体系，目录、菜单页和按钮在同一视觉语言下维护。"
-          actions={(
-            <Button size="lg" onClick={() => handleOpenModal()}>
-              <Plus size={15} />
-              新增菜单
-            </Button>
-          )}
-          contentClassName="p-4 sm:p-5"
-          metrics={heroMetrics}
-        />
-
-        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
-          <div className="flex flex-col gap-3">
-            <WorkspaceWorkbenchCard
-              title="菜单树"
-              total={searchTerm ? flattenMenuOptions(filteredMenus).length : menuCounts.total}
-              hasActiveFilters={Boolean(searchTerm.trim())}
-              overviewItems={overviewItems}
-              headerBadges={(
-                <div className="flex flex-wrap gap-2">
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                    支持树形展开与增量维护
-                  </span>
-                </div>
-              )}
-              quickFilterAside={searchTerm ? (
-                <Button variant="outline" size="sm" onClick={() => setSearchTerm('')}>
-                  清空搜索
-                </Button>
-              ) : (
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
-                  当前显示完整菜单树
-                </span>
-              )}
-              filterBar={(
-                <div className="relative">
-                  <Input
-                    value={searchTerm}
-                    onChange={(event) => setSearchTerm(event.target.value)}
-                    placeholder="按名称、路由、组件或权限字符搜索"
-                    className="pl-10"
-                  />
-                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                </div>
-              )}
-            />
-
-            <WorkspaceResultCard
-              total={searchTerm ? flattenMenuOptions(filteredMenus).length : menuCounts.total}
-              description="树状结构和表单配置统一到同一页面骨架，避免系统页和业务页观感割裂。"
+    <>
+      <TablePageLayout
+        className="gap-4"
+        filters={
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <form
+              onSubmit={handleSearch}
+              className="flex flex-1 flex-wrap items-center gap-3"
             >
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[980px]">
-                  <TableHeader>
-                    <tr>
-                      <TableHead className="w-[320px]">菜单名称</TableHead>
-                      <TableHead>图标</TableHead>
-                      <TableHead>排序</TableHead>
-                      <TableHead>权限标识</TableHead>
-                      <TableHead>组件路径</TableHead>
-                      <TableHead>类型</TableHead>
-                      <TableActionHead className="w-60">操作</TableActionHead>
-                    </tr>
-                  </TableHeader>
-                  <tbody className="divide-y divide-slate-100">
-                    {loading ? (
-                      <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载菜单数据..." />
-                    ) : filteredMenus.length === 0 ? (
-                      <WorkspaceTableStateRow colSpan={7} title="暂无菜单数据" description="可以先新增目录或菜单页，再逐步补充路由和权限标识。" />
-                    ) : (
-                      renderRows(filteredMenus)
-                    )}
-                  </tbody>
-                </table>
+              <div className="relative w-full sm:w-72">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                />
+                <Input
+                  value={searchInput}
+                  onChange={(event) => setSearchInput(event.target.value)}
+                  placeholder="搜索名称、路由、组件或权限字符"
+                  className="h-10 pl-10"
+                />
               </div>
-            </WorkspaceResultCard>
-          </div>
-        </Card>
 
-        {isModalOpen ? (
-          <WorkspaceDialogShell
-            title={editingMenu ? '编辑菜单' : '新增菜单'}
-            description="按统一的配置顺序填写层级、类型、名称和路由元数据。"
-            onClose={() => setIsModalOpen(false)}
-            maxWidthClassName="max-w-4xl"
-          >
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">结构信息</div>
-                  <div className="mt-1 text-sm text-slate-500">先确定菜单挂载位置、节点类型与展示顺序，再补充路由相关配置。</div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">上级菜单</label>
-                    <Select
-                      value={String(formData.parentId)}
-                      onValueChange={(value) => setFormData({ ...formData, parentId: parseInt(value, 10) || 0 })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="主目录" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">主目录</SelectItem>
-                        {flatOptions
-                          .filter(({ item }) => item.menuType !== 'F' && item.menuId !== editingMenu?.menuId)
-                          .map(({ item, level }) => (
-                            <SelectItem key={item.menuId} value={String(item.menuId)}>
-                              {'　'.repeat(level)}
-                              {item.menuName}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">菜单类型</label>
-                    <Select
-                      value={formData.menuType}
-                      onValueChange={(value) => setFormData({ ...formData, menuType: value as 'M' | 'C' | 'F' })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择类型" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="M">目录</SelectItem>
-                        <SelectItem value="C">菜单</SelectItem>
-                        <SelectItem value="F">按钮</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">
-                      菜单名称 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={formData.menuName}
-                      onChange={(event) => setFormData({ ...formData, menuName: event.target.value })}
-                    />
-                  </div>
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">显示排序</label>
-                    <Input
-                      type="number"
-                      value={formData.orderNum}
-                      onChange={(event) => setFormData({ ...formData, orderNum: parseInt(event.target.value, 10) || 0 })}
-                    />
-                  </div>
-                </div>
-              </section>
+              <Button type="submit" size="sm">
+                查询
+              </Button>
 
-              <section className="rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">路由与权限</div>
-                  <div className="mt-1 text-sm text-slate-500">目录、菜单和按钮会根据类型展示不同配置项，避免无关字段干扰录入。</div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  {formData.menuType !== 'F' ? (
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">图标</label>
-                      <Input
-                        value={formData.icon}
-                        onChange={(event) => setFormData({ ...formData, icon: event.target.value })}
-                        placeholder="Lucide 图标名"
-                      />
-                    </div>
-                  ) : null}
-                  {formData.menuType !== 'F' ? (
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">路由地址</label>
-                      <Input
-                        value={formData.path}
-                        onChange={(event) => setFormData({ ...formData, path: event.target.value })}
-                        placeholder="如：system/users"
-                      />
-                    </div>
-                  ) : null}
-                  {formData.menuType === 'C' ? (
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">组件路径</label>
-                      <Input
-                        value={formData.component}
-                        onChange={(event) => setFormData({ ...formData, component: event.target.value })}
-                        placeholder="如：system/UserList"
-                      />
-                    </div>
-                  ) : null}
-                  {formData.menuType !== 'M' ? (
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-700">权限字符</label>
-                      <Input
-                        value={formData.perms}
-                        onChange={(event) => setFormData({ ...formData, perms: event.target.value })}
-                        placeholder="如：system:user:list"
-                      />
-                    </div>
-                  ) : null}
-                  <div>
-                    <label className="mb-1.5 block text-sm font-medium text-slate-700">状态</label>
-                    <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择状态" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">正常</SelectItem>
-                        <SelectItem value="1">停用</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </section>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
-                  取消
+              {hasActiveFilters ? (
+                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                  清空
                 </Button>
-                <Button type="submit">{editingMenu ? '保存修改' : '立即创建'}</Button>
-              </div>
+              ) : null}
             </form>
-          </WorkspaceDialogShell>
-        ) : null}
-      </WorkspacePageContent>
-    </div>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={() => handleOpenModal()}>
+                <Plus size={15} />
+                新增菜单
+              </Button>
+            </div>
+          </div>
+        }
+        table={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  菜单树
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  轻量树表格骨架，保留层级展开、搜索保留祖先链和子节点增量创建。
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  共 {menuCounts.total} 个
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  当前结果 {visibleTotal} 个
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  目录 {menuCounts.dir}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  菜单 {menuCounts.page}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  按钮 {menuCounts.button}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  启用 {menuCounts.active}
+                </span>
+              </div>
+            </div>
+
+            <Table className="min-w-[1080px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[360px]">菜单名称</TableHead>
+                  <TableHead>图标</TableHead>
+                  <TableHead>排序</TableHead>
+                  <TableHead>权限标识</TableHead>
+                  <TableHead>类型</TableHead>
+                  <TableHead>状态</TableHead>
+                  <TableActionHead className="w-36">操作</TableActionHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableStateRow colSpan={7} title="正在加载菜单数据..." loading />
+                ) : error ? (
+                  <TableStateRow colSpan={7} title="菜单数据加载失败" description={error} />
+                ) : filteredMenus.length === 0 ? (
+                  <TableStateRow
+                    colSpan={7}
+                    title="暂无菜单数据"
+                    description="可以先创建目录或菜单页，再逐步补充路由与权限信息。"
+                  />
+                ) : (
+                  renderRows(filteredMenus)
+                )}
+              </TableBody>
+            </Table>
+          </>
+        }
+      />
+
+      <BaseDialog
+        open={isModalOpen}
+        title={isEdit ? '编辑菜单' : '新增菜单'}
+        description="按轻量配置顺序维护层级、类型、名称、路由与权限信息。"
+        onClose={handleCloseModal}
+        maxWidthClassName="max-w-4xl"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={handleCloseModal}>
+              取消
+            </Button>
+            <Button onClick={() => void 0} type="submit" form="menu-form">
+              {isEdit ? '保存修改' : '创建菜单'}
+            </Button>
+          </div>
+        }
+      >
+        <form id="menu-form" onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className={fieldLabelClassName}>上级菜单</label>
+              <Select
+                value={String(formData.parentId)}
+                onValueChange={(value) =>
+                  setFormData((current) => ({
+                    ...current,
+                    parentId: Number.parseInt(value, 10) || 0,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="主目录" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">主目录</SelectItem>
+                  {availableParents.map(({ item, level }) => (
+                    <SelectItem key={item.menuId} value={String(item.menuId)}>
+                      {'　'.repeat(level)}
+                      {item.menuName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>菜单类型</label>
+              <Select
+                value={formData.menuType}
+                onValueChange={(value) =>
+                  setFormData((current) => ({
+                    ...current,
+                    menuType: value as 'M' | 'C' | 'F',
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="M">目录</SelectItem>
+                  <SelectItem value="C">菜单</SelectItem>
+                  <SelectItem value="F">按钮</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>
+                菜单名称 <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={formData.menuName}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    menuName: event.target.value,
+                  }))
+                }
+                placeholder="请输入菜单名称"
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>显示排序</label>
+              <Input
+                type="number"
+                value={String(formData.orderNum)}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    orderNum: Number.parseInt(event.target.value, 10) || 0,
+                  }))
+                }
+                placeholder="请输入排序值"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            {formData.menuType !== 'F' ? (
+              <div>
+                <label className={fieldLabelClassName}>路由地址</label>
+                <Input
+                  value={formData.path}
+                  onChange={(event) =>
+                    setFormData((current) => ({
+                      ...current,
+                      path: event.target.value,
+                    }))
+                  }
+                  placeholder={formData.menuType === 'M' ? '例如：/system' : '例如：menu'}
+                />
+              </div>
+            ) : null}
+
+            {formData.menuType === 'C' ? (
+              <div>
+                <label className={fieldLabelClassName}>组件路径</label>
+                <Input
+                  value={formData.component}
+                  onChange={(event) =>
+                    setFormData((current) => ({
+                      ...current,
+                      component: event.target.value,
+                    }))
+                  }
+                  placeholder="例如：system/MenuList"
+                />
+              </div>
+            ) : null}
+
+            <div>
+              <label className={fieldLabelClassName}>权限标识</label>
+              <Input
+                value={formData.perms}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    perms: event.target.value,
+                  }))
+                }
+                placeholder="例如：system:menu:list"
+                className="font-mono"
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>图标标识</label>
+              <Input
+                value={formData.icon}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    icon: event.target.value,
+                  }))
+                }
+                placeholder="例如：system"
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>状态</label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData((current) => ({
+                    ...current,
+                    status: value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">正常</SelectItem>
+                  <SelectItem value="1">停用</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </form>
+      </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteMenu)}
+        title="删除菜单"
+        message={
+          pendingDeleteMenu
+            ? `确定删除菜单“${pendingDeleteMenu.menuName}”吗？如果该菜单下仍有子节点，删除会失败。`
+            : ''
+        }
+        confirmText="确认删除"
+        cancelText="取消"
+        danger
+        onCancel={() => setPendingDeleteMenu(null)}
+        onConfirm={() => void handleDelete()}
+      />
+    </>
   );
 };
 

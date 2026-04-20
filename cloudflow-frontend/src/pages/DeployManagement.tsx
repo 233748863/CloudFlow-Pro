@@ -82,7 +82,7 @@ export const DeployManagement: React.FC = () => {
       <WorkspacePageContent>
         <WorkspaceHeroCard
           badge={
-            <span className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600 border border-slate-200 shadow-sm">
+            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-600 shadow-sm dark:border-slate-800 dark:bg-slate-950/90 dark:text-cyan-200">
               <Settings className="h-3.5 w-3.5" />
               Deploy Workspace
             </span>
@@ -137,8 +137,8 @@ export const DeployManagement: React.FC = () => {
           onQuickFilterChange={(value) => setActiveTab(value as DeployTabKey)}
           filterBar={
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-              <div className="text-sm font-medium text-slate-600">{activeTabMeta.title}</div>
-              <div className="text-xs text-slate-400">{activeTabMeta.description}</div>
+              <div className="text-sm font-medium text-slate-600 dark:text-slate-300">{activeTabMeta.title}</div>
+              <div className="text-xs text-slate-400 dark:text-slate-500">{activeTabMeta.description}</div>
             </div>
           }
         />

@@ -1,37 +1,57 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown, LogOut, ShieldCheck } from 'lucide-react';
-import { AnnouncementHub } from '../components/common';
-import { useAuth } from '../context/AuthContext';
-import { useWebSocket } from '../hooks/useWebSocket';
-import { getRouters, MenuItem as ApiMenuItem } from '../services/api/menu';
-import { getIcon } from '../utils/iconMapper';
-import { TenantSwitcher } from '../components/TenantSwitcher';
-import { HeaderAnnouncementBell } from '../components/header/HeaderAnnouncementBell';
-import { HeaderUserMenu } from '../components/header/HeaderUserMenu';
+import {
+  ChevronDown,
+  PanelLeftClose,
+  PanelLeftOpen,
+  ShieldCheck,
+} from 'lucide-react';
+import { AnnouncementHub } from '@/components/common';
+import { HeaderAnnouncementBell } from '@/components/header/HeaderAnnouncementBell';
+import { HeaderUserMenu } from '@/components/header/HeaderUserMenu';
+import { ThemeModeSwitcher } from '@/components/ui';
+import { TenantSwitcher } from '@/components/TenantSwitcher';
+import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
+import { useWebSocket } from '@/hooks/useWebSocket';
+import { getRouters, type MenuItem as ApiMenuItem } from '@/services/api/menu';
+import { getIcon } from '@/utils/iconMapper';
+import { cn } from '@/utils/cn';
 
-interface MenuItem {
+interface MenuTreeItem {
   id: string;
   label: string;
   icon: React.ElementType;
   path?: string;
-  children?: MenuItem[];
+  children?: MenuTreeItem[];
+}
+
+const SIDEBAR_STORAGE_KEY = 'cf-sidebar-collapsed';
+
+function readStoredSidebarState(): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1';
 }
 
 export const MainLayout = () => {
-  const { user, logout } = useAuth();
-  useWebSocket();
-
+  const { user, loading, logout } = useAuth();
+  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
 
-  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
-  const [menuTree, setMenuTree] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  useWebSocket();
 
-  const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuItem[] => {
-    return apiMenus
+  const [expandedGroups, setExpandedGroups] = useState<string[]>([]);
+  const [menuTree, setMenuTree] = useState<MenuTreeItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => readStoredSidebarState());
+
+  const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuTreeItem[] =>
+    apiMenus
       .filter((menu) => menu.menuType === 'M' && menu.visible === '0')
       .map((group) => ({
         id: group.path,
@@ -47,7 +67,14 @@ export const MainLayout = () => {
               path: child.path,
             })) || [],
       }));
-  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? '1' : '0');
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     const loadMenus = async () => {
@@ -58,23 +85,30 @@ export const MainLayout = () => {
         console.error('加载菜单失败:', error);
         setMenuTree([]);
       } finally {
-        setLoading(false);
+        setMenuLoading(false);
       }
     };
 
     if (user) {
       void loadMenus();
+      return;
     }
+
+    setMenuLoading(false);
   }, [user]);
 
   useEffect(() => {
+    if (sidebarCollapsed) {
+      return;
+    }
+
     for (const group of menuTree) {
       const match = group.children?.find((child) => {
         if (child.path === '/') {
           return location.pathname === '/';
         }
 
-        return child.path && location.pathname.startsWith(child.path);
+        return child.path && (location.pathname === child.path || location.pathname.startsWith(`${child.path}/`));
       });
 
       if (match && !expandedGroups.includes(group.id)) {
@@ -82,14 +116,14 @@ export const MainLayout = () => {
         break;
       }
     }
-  }, [expandedGroups, location.pathname, menuTree]);
+  }, [expandedGroups, location.pathname, menuTree, sidebarCollapsed]);
 
   useLayoutEffect(() => {
     if (!mainScrollRef.current) {
       return;
     }
 
-    // 路由切换后重置主体滚动位置，避免内容顶到 sticky 标题下面。
+    // 路由切换后重置主内容滚动位置，保证 sticky header 下的首屏一致。
     const resetScrollPosition = () => {
       window.scrollTo(0, 0);
       document.documentElement.scrollTop = 0;
@@ -112,13 +146,16 @@ export const MainLayout = () => {
     };
   }, [location.pathname, location.search]);
 
-  const toggleGroup = (groupId: string) => {
-    setExpandedGroups((prev) =>
-      prev.includes(groupId)
-        ? prev.filter((id) => id !== groupId)
-        : [...prev, groupId],
-    );
-  };
+  const flatItems = useMemo(
+    () =>
+      menuTree.flatMap((group) =>
+        (group.children || []).map((child) => ({
+          ...child,
+          groupLabel: group.label,
+        })),
+      ),
+    [menuTree],
+  );
 
   const isActive = (path?: string) => {
     if (!path) {
@@ -136,11 +173,17 @@ export const MainLayout = () => {
     for (const group of menuTree) {
       const child = group.children?.find((item) => isActive(item.path));
       if (child) {
-        return { group: group.label, item: child.label };
+        return {
+          group: group.label,
+          item: child.label,
+        };
       }
     }
 
-    return { group: '工作台', item: '仪表盘' };
+    return {
+      group: '工作台',
+      item: '仪表盘',
+    };
   }, [menuTree, location.pathname]);
 
   const pageDescription = useMemo(() => {
@@ -151,142 +194,229 @@ export const MainLayout = () => {
     return 'CloudFlow Workspace';
   }, [activeLabel.group, activeLabel.item]);
 
-  if (!user) {
-    return null;
-  }
+  const toggleGroup = (groupId: string) => {
+    setExpandedGroups((prev) =>
+      prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId],
+    );
+  };
 
-  if (loading) {
+  if (loading || menuLoading) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-gray-50 px-4">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-[0_12px_30px_rgba(20,184,166,0.16)]">
-          <img src="/icon.svg" alt="CloudFlow Pro" className="h-10 w-10 object-contain" />
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
+        <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-[0_18px_36px_rgba(2,6,23,0.42)]">
+          <img src="/icon.svg" alt="CloudFlow Pro" className="h-12 w-12 object-contain" />
         </div>
-        <div className="text-sm font-medium text-gray-500">正在加载系统资源...</div>
+        <div className="space-y-1 text-center">
+          <p className="text-sm font-medium">正在加载工作区资源…</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">主题、菜单与用户状态同步中</p>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="relative h-screen overflow-hidden bg-gray-50 text-gray-900">
-      <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(at_40%_20%,rgba(20,184,166,0.12)_0px,transparent_50%),radial-gradient(at_80%_0%,rgba(6,182,212,0.08)_0px,transparent_50%),radial-gradient(at_0%_50%,rgba(20,184,166,0.08)_0px,transparent_50%)]" />
+  if (!user) {
+    return null;
+  }
 
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-gray-200 bg-white">
-        <div className="flex h-16 items-center gap-3 border-b border-gray-100 px-6">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-[0_0_20px_rgba(20,184,166,0.18)]">
-            <img src="/icon.svg" alt="CloudFlow Pro" className="h-full w-full object-contain" />
+  return (
+    <div className="relative min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(at_40%_20%,rgba(20,184,166,0.12)_0px,transparent_48%),radial-gradient(at_80%_0%,rgba(6,182,212,0.08)_0px,transparent_50%),radial-gradient(at_0%_55%,rgba(20,184,166,0.08)_0px,transparent_48%)] dark:opacity-50" />
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.025)_1px,transparent_1px)] bg-[size:72px_72px] opacity-70 dark:opacity-20" />
+      </div>
+
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200/80 bg-white/86 backdrop-blur-xl transition-[width] duration-300 dark:border-slate-800 dark:bg-slate-950/90',
+          sidebarCollapsed ? 'w-[88px]' : 'w-72',
+        )}
+      >
+        <div
+          className={cn(
+            'flex h-16 items-center border-b border-slate-100 px-4 dark:border-slate-800',
+            sidebarCollapsed ? 'justify-center' : 'gap-3',
+          )}
+        >
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-100 bg-white shadow-[0_0_20px_rgba(20,184,166,0.18)] dark:border-cyan-950/40 dark:bg-slate-900 dark:shadow-[0_0_20px_rgba(6,182,212,0.12)]">
+            <img src="/icon.svg" alt="CloudFlow Pro" className="h-8 w-8 object-contain" />
           </div>
-          <div className="min-w-0 flex-1 whitespace-nowrap">
-            <span className="block truncate text-[17px] font-bold tracking-[-0.01em] text-gray-900">
-              CloudFlow Pro
-            </span>
-            <span className="mt-0.5 block truncate text-[11px] text-gray-400">Workspace</span>
-          </div>
+
+          {sidebarCollapsed ? null : (
+            <div className="min-w-0 flex-1">
+              <span className="block truncate text-[17px] font-bold tracking-[-0.01em] text-slate-900 dark:text-white">
+                CloudFlow Pro
+              </span>
+              <span className="mt-0.5 block truncate text-[11px] text-slate-400 dark:text-slate-500">
+                Desktop Workspace
+              </span>
+            </div>
+          )}
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-3 py-4">
-          <div className="mb-6">
-            {menuTree.map((group) => {
-              const expanded = expandedGroups.includes(group.id);
-              const groupActive = Boolean(group.children?.some((child) => isActive(child.path)));
-              const parentButtonActive = groupActive && !expanded;
-
-              return (
-                <div key={group.id} className="mb-1">
+        <nav className="hide-scrollbar flex-1 overflow-y-auto px-3 py-4">
+          {sidebarCollapsed ? (
+            <div className="space-y-1">
+              {flatItems.map((item) => {
+                const active = isActive(item.path);
+                return (
                   <button
+                    key={item.id}
                     type="button"
-                    onClick={() => toggleGroup(group.id)}
-                    className={`flex w-full items-center gap-3 overflow-hidden rounded-xl py-2.5 pl-[1.0625rem] pr-[0.875rem] text-sm font-medium transition-all duration-200 ${
-                      parentButtonActive
-                        ? 'bg-teal-50 text-teal-600 hover:bg-teal-100'
-                        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                    }`}
+                    title={`${item.groupLabel} / ${item.label}`}
+                    onClick={() => item.path && navigate(item.path)}
+                    className={cn(
+                      'flex h-11 w-full items-center justify-center rounded-xl border transition-colors',
+                      active
+                        ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/40 dark:text-cyan-200'
+                        : 'border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white',
+                    )}
                   >
-                    <group.icon size={20} className="shrink-0" />
-                    <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
-                      <span className="truncate">{group.label}</span>
-                      <ChevronDown
-                        size={16}
-                        className={`shrink-0 transition-transform duration-200 ${
-                          expanded ? 'rotate-180' : ''
-                        }`}
-                      />
-                    </span>
+                    <item.icon size={18} />
                   </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {menuTree.map((group) => {
+                const expanded = expandedGroups.includes(group.id);
+                const groupActive = Boolean(group.children?.some((child) => isActive(child.path)));
+                const parentButtonActive = groupActive && !expanded;
 
-                  {!expanded ? null : (
-                    <div className="mb-1 ml-4 mt-1 border-l border-gray-200 pl-2">
-                      {group.children?.map((child) => (
-                        <button
-                          key={child.id}
-                          type="button"
-                          onClick={() => child.path && navigate(child.path)}
-                          className={`mb-0.5 flex w-full items-center gap-3 overflow-hidden rounded-xl py-1.5 pl-[1.0625rem] pr-[0.875rem] text-left text-sm font-medium transition-all duration-200 ${
-                            isActive(child.path)
-                              ? 'bg-teal-50 text-teal-600 hover:bg-teal-100'
-                              : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                          }`}
-                        >
-                          <child.icon size={16} className="shrink-0" />
-                          <span className="truncate">{child.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                return (
+                  <div key={group.id}>
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.id)}
+                      className={cn(
+                        'flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200',
+                        parentButtonActive
+                          ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white',
+                      )}
+                    >
+                      <group.icon size={18} className="shrink-0" />
+                      <span className="flex min-w-0 flex-1 items-center justify-between gap-2">
+                        <span className="truncate">{group.label}</span>
+                        <ChevronDown
+                          size={16}
+                          className={cn(
+                            'shrink-0 transition-transform duration-200',
+                            expanded ? 'rotate-180' : '',
+                          )}
+                        />
+                      </span>
+                    </button>
+
+                    {expanded ? (
+                      <div className="ml-4 mt-2 space-y-1 border-l border-slate-200 pl-3 dark:border-slate-800">
+                        {group.children?.map((child) => (
+                          <button
+                            key={child.id}
+                            type="button"
+                            onClick={() => child.path && navigate(child.path)}
+                            className={cn(
+                              'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium transition-all duration-200',
+                              isActive(child.path)
+                                ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200'
+                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white',
+                            )}
+                          >
+                            <child.icon size={16} className="shrink-0" />
+                            <span className="truncate">{child.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </nav>
 
-        <div className="mt-auto border-t border-gray-100 p-3">
-          <button
-            type="button"
-            onClick={logout}
-            className="flex w-full items-center gap-3 overflow-hidden rounded-xl py-2.5 pl-[1.0625rem] pr-[0.875rem] text-sm font-medium text-gray-600 transition-all duration-200 hover:bg-red-50 hover:text-red-600"
-          >
-            <LogOut size={20} className="shrink-0" />
-            <span className="truncate">退出登录</span>
-          </button>
+        <div className="mt-auto border-t border-slate-100 p-3 dark:border-slate-800">
+          <div className={cn('space-y-2', sidebarCollapsed && 'flex flex-col items-center')}>
+            <ThemeModeSwitcher
+              compact={sidebarCollapsed}
+              className={cn(!sidebarCollapsed && 'w-full justify-start')}
+            />
+
+            <button
+              type="button"
+              onClick={() => setSidebarCollapsed((prev) => !prev)}
+              title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
+              className={cn(
+                'flex items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-white',
+                sidebarCollapsed ? 'h-10 w-10 justify-center' : 'h-10 w-full justify-start gap-2 px-4',
+              )}
+            >
+              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              {sidebarCollapsed ? null : <span>收起侧栏</span>}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => void logout()}
+              title="退出登录"
+              className={cn(
+                'flex items-center rounded-xl text-sm font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/30 dark:hover:text-red-300',
+                sidebarCollapsed ? 'h-10 w-10 justify-center' : 'h-10 w-full justify-start gap-2 px-4',
+              )}
+            >
+              <span className="text-base">⤴</span>
+              {sidebarCollapsed ? null : <span>退出登录</span>}
+            </button>
+          </div>
         </div>
       </aside>
 
-      <div className="relative flex h-screen pl-64">
-        <div className="flex min-h-0 flex-1 flex-col">
-          <header className="sticky top-0 z-30 shrink-0 border-b border-gray-200/50 bg-white/80 backdrop-blur-xl">
-            <div className="flex h-16 items-center justify-between px-4 md:px-6">
-              <div className="flex items-center gap-4">
-                <div className="hidden lg:block">
-                  <h1 className="text-lg font-semibold text-gray-900">{activeLabel.item}</h1>
-                  <p className="text-xs text-gray-500">{pageDescription}</p>
-                </div>
+      <div
+        className={cn(
+          'relative flex min-h-screen flex-col transition-[padding] duration-300',
+          sidebarCollapsed ? 'pl-[88px]' : 'pl-72',
+        )}
+      >
+        <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/72 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/78">
+          <div className="flex h-16 items-center justify-between px-4 md:px-6">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                <span>{activeLabel.group}</span>
+                <span>·</span>
+                <span>{resolvedTheme === 'dark' ? 'Dark' : 'Light'}</span>
+              </div>
+              <h1 className="mt-1 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+                {activeLabel.item}
+              </h1>
+              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
+                {pageDescription}
+              </p>
+            </div>
+
+            <div className="ml-4 flex shrink-0 items-center gap-2.5 md:gap-3">
+              <div className="hidden items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-sm font-medium text-emerald-700 xl:flex dark:border-emerald-950/40 dark:bg-emerald-950/20 dark:text-emerald-300">
+                <ShieldCheck size={14} />
+                <span>CloudFlow Desktop</span>
               </div>
 
-              <div className="flex items-center gap-2.5 md:gap-3">
-                <div className="hidden items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 xl:flex">
-                  <ShieldCheck size={14} className="text-emerald-500" />
-                  <span>开发环境</span>
-                </div>
-
-                <TenantSwitcher />
-                <HeaderAnnouncementBell />
-                <HeaderUserMenu />
-              </div>
+              <TenantSwitcher />
+              <HeaderAnnouncementBell />
+              <HeaderUserMenu />
             </div>
-          </header>
+          </div>
+        </header>
 
-          <main
-            ref={mainScrollRef}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain scroll-pt-20 p-4 md:p-6 lg:p-8"
-          >
-            <div className="min-h-full animate-fade-in">
-              <Outlet />
-            </div>
-          </main>
-        </div>
+        <main
+          ref={mainScrollRef}
+          className="hide-scrollbar min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 lg:p-8"
+        >
+          <div className="animate-fade-in">
+            <Outlet />
+          </div>
+        </main>
       </div>
 
       <AnnouncementHub enabled={Boolean(user)} />
     </div>
   );
 };
-

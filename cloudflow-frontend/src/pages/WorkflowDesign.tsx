@@ -20,7 +20,16 @@ import {
   createDefaultWorkflowGraph,
   parseWorkflowGraphDefinition,
 } from '../utils/workflowGraph';
-import { WorkspaceBackdrop, WorkspaceStatusPanel } from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceBackdrop,
+  WorkspacePageContent,
+  WorkspaceStatusPanel,
+} from '@/components/workspace/WorkspacePrimitives';
+import {
+  WorkspaceHeroCard,
+  WorkspaceMetricCard,
+  WorkspaceSectionCard,
+} from '@/components/workspace/WorkspacePanels';
 
 type WorkflowDesignContextPayload = {
   forms: FormDefinition[];
@@ -258,7 +267,7 @@ export const WorkflowDesign = () => {
   const skipNextUrlSyncRef = useRef(false);
 
   const renderStatusShell = (panel: React.ReactNode) => (
-    <div className="relative h-[calc(100vh-140px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70">
+    <div className="relative h-[calc(100vh-240px)] overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_24px_48px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/92 dark:shadow-[0_24px_48px_rgba(2,6,23,0.38)] dark:ring-slate-800">
       <WorkspaceBackdrop />
       <div className="relative z-10 flex h-full items-center justify-center p-5">
         <div className="w-full max-w-2xl">{panel}</div>
@@ -540,16 +549,78 @@ export const WorkflowDesign = () => {
     );
   }
 
+  const isNewWorkflow = workflow.id.startsWith('new_');
+  const studioTitle = isNewWorkflow ? '新建流程设计' : workflow.name || '流程设计';
+  const studioDescription = isNewWorkflow
+    ? '当前处于空白设计模式，优先收口画布、节点和右侧属性面板的统一设计语法。'
+    : '流程设计器已接入统一工作台壳层，这一轮继续收口工具栏、画布、节点和侧边配置面板。';
+
   return (
-    <div className="h-[calc(100vh-140px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70">
-      <WorkflowBuilder
-        workflow={workflow}
-        onChange={handleWorkflowChange}
-        onSave={handleSaveWorkflow}
-        availableForms={savedForms}
-        availableRoles={availableRoles}
-        availableUsers={availableUsers}
-      />
+    <div className="relative min-h-screen pb-6">
+      <WorkspaceBackdrop />
+      <WorkspacePageContent className="space-y-4">
+        <WorkspaceHeroCard
+          badge={(
+            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-cyan-700 shadow-sm dark:border-slate-800 dark:bg-slate-950/90 dark:text-cyan-200">
+              <GitMerge size={14} />
+              Workflow Studio
+            </div>
+          )}
+          title={studioTitle}
+          description={studioDescription}
+          actions={(
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" onClick={loadData}>
+                刷新设计器
+              </Button>
+              <Button variant="soft" onClick={() => navigate('/workflow/create')}>
+                返回流程目录
+              </Button>
+            </div>
+          )}
+        >
+          <div className="mt-6 grid gap-4 xl:grid-cols-4">
+            <WorkspaceMetricCard
+              label="设计模式"
+              value={isNewWorkflow ? '空白创建' : '编辑已有流程'}
+              hint={requestedWorkflowId ? `流程 ID：${requestedWorkflowId}` : '当前为新建模式'}
+            />
+            <WorkspaceMetricCard
+              label="关联表单"
+              value={savedForms.length}
+              hint="设计器已加载的表单资源数"
+            />
+            <WorkspaceMetricCard
+              label="审批资源"
+              value={`${availableRoles.length} 角色 / ${availableUsers.length} 人`}
+              hint="用于审批人和发起权限配置"
+            />
+            <WorkspaceMetricCard
+              label="当前 Key"
+              value={workflow.key || '未设置'}
+              hint="保存和发布时使用的流程标识"
+            />
+          </div>
+        </WorkspaceHeroCard>
+
+        <WorkspaceSectionCard
+          title="流程设计工作台"
+          description="统一收口设计器工具栏、节点画布、连接线拖拽区和右侧属性面板，避免继续保留旧的局部视觉体系。"
+          eyebrow="Design Canvas"
+          bodyClassName="space-y-4"
+        >
+          <div className="min-h-[calc(100vh-340px)] overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_24px_48px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/92 dark:shadow-[0_24px_48px_rgba(2,6,23,0.38)] dark:ring-slate-800">
+            <WorkflowBuilder
+              workflow={workflow}
+              onChange={handleWorkflowChange}
+              onSave={handleSaveWorkflow}
+              availableForms={savedForms}
+              availableRoles={availableRoles}
+              availableUsers={availableUsers}
+            />
+          </div>
+        </WorkspaceSectionCard>
+      </WorkspacePageContent>
     </div>
   );
 };

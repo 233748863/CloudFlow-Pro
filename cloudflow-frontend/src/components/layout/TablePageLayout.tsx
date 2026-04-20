@@ -39,7 +39,7 @@ export const TablePageLayout: React.FC<TablePageLayoutProps> = ({
       <div className={cn('flex min-h-0 flex-1 flex-col', isMobile ? 'min-h-fit flex-none' : '')}>
         <div
           className={cn(
-            'flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm',
+            'flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
             isMobile ? 'h-auto overflow-visible border-none bg-transparent shadow-none' : '',
           )}
         >

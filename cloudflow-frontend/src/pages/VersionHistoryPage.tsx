@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import request from '@/services/api/request';
+import { Button } from '@/components/ui';
 import { WorkspaceStatusPage } from '@/components/workspace/WorkspacePrimitives';
 import { VersionHistory } from './VersionHistory';
 
@@ -41,18 +42,20 @@ export const VersionHistoryPage: React.FC = () => {
   if (!workflowId) {
     return (
       <WorkspaceStatusPage
-        icon={<AlertTriangle size={28} />}
+        icon={<AlertTriangle size={28} className="text-amber-500" />}
         title="无效的流程 ID"
         description="未能从当前地址中识别流程编号，请返回流程详情页后重试。"
         actions={
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => navigate(-1)}
-            className="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 shadow-sm transition hover:bg-slate-50"
+            className="rounded-xl"
           >
             返回上一页
-          </button>
+          </Button>
         }
+        iconWrapClassName="bg-amber-50 text-amber-500 dark:bg-amber-950/30 dark:text-amber-300"
       />
     );
   }
