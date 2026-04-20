@@ -328,7 +328,7 @@ const getNodeVisual = (type: string) =>
   NODE_VISUAL[type] || NODE_VISUAL[NodeType.APPROVAL];
 
 const studioSidePanelClassName =
-  "fixed right-0 top-0 z-50 flex h-full w-[26rem] flex-col border-l border-slate-200 bg-white/96 shadow-[0_24px_48px_rgba(15,23,42,0.14)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/96 dark:shadow-[0_24px_48px_rgba(2,6,23,0.48)] animate-in slide-in-from-right duration-300 ease-out";
+  "fixed right-0 top-0 z-50 flex h-full w-[25rem] flex-col border-l border-slate-200 bg-white/98 shadow-[0_22px_44px_rgba(15,23,42,0.14)] backdrop-blur dark:border-slate-800 dark:bg-slate-950/98 dark:shadow-[0_24px_48px_rgba(2,6,23,0.48)] animate-in slide-in-from-right duration-300 ease-out";
 
 interface QuickAddOption {
   type: NodeType;
@@ -1027,10 +1027,10 @@ const PropertyPanel = ({
 
   return (
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/75">
         <div className="flex items-center gap-3">
           <div
-            className={`flex h-10 w-10 items-center justify-center rounded-xl shadow-sm ${visual.iconBg}`}
+            className={`flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 shadow-sm dark:border-slate-800 ${visual.iconBg}`}
           >
             <PIcon size={20} className={visual.iconColor} />
           </div>
@@ -1049,7 +1049,7 @@ const PropertyPanel = ({
         </button>
       </div>
       <div className="custom-scrollbar flex-1 overflow-y-auto p-5">
-        <div className="mb-6 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/90 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+        <div className="mb-6 flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/90 p-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 dark:shadow-none">
           <span
             className={`rounded-full px-3 py-1 text-xs font-semibold ${visual.iconBg} ${visual.iconColor}`}
           >
@@ -1058,7 +1058,7 @@ const PropertyPanel = ({
           {node.type !== NodeType.START && node.type !== NodeType.END && (
             <button
               onClick={() => onDelete(node.id)}
-              className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"
+              className="flex items-center gap-1 rounded-xl px-3 py-1.5 text-xs font-medium text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"
               title="删除节点"
             >
               <Trash2 size={14} /> 删除节点
@@ -2337,7 +2337,7 @@ const FlowNode = ({
 
         {/* 节点卡片 */}
         <div
-          className={`workflow-node-card relative z-10 w-64 cursor-pointer rounded-[22px] border-2 shadow-md transition-all duration-300 ${visual.bg} ${
+          className={`workflow-node-card relative z-10 w-64 cursor-pointer rounded-2xl border shadow-sm transition-all duration-300 ${visual.bg} ${
             isDragging
               ? "opacity-40 scale-95 border-slate-300 rotate-1"
               : isInvalid
@@ -3121,9 +3121,9 @@ const GlobalPropertyPanel = ({
 
   return (
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
-      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/90 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/75">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-50 shadow-sm dark:bg-cyan-950/50">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 shadow-sm dark:border-cyan-900/70 dark:bg-cyan-950/50">
             <Settings size={20} className="text-cyan-600 dark:text-cyan-200" />
           </div>
           <div>
@@ -3135,7 +3135,7 @@ const GlobalPropertyPanel = ({
         </div>
         <button
           onClick={onClose}
-          className="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+          className="rounded-xl border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
         >
           <X size={18} />
         </button>

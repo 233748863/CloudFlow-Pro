@@ -93,7 +93,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
     <div
       ref={setNodeRef}
       style={style}
-      className="group relative rounded-[28px] border border-slate-200 bg-white/95 p-6 shadow-sm shadow-slate-200/60 transition-all hover:border-cyan-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none dark:hover:border-cyan-800"
+      className="group relative rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-cyan-200 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none dark:hover:border-cyan-800"
     >
       <div className="absolute right-4 top-4 flex gap-2 opacity-0 transition-opacity group-hover:opacity-100">
         <button
@@ -137,7 +137,7 @@ const SortableField: React.FC<SortableFieldProps> = ({ field, index, onRemove, o
           />
 
           {/* Preview Area */}
-          <div className="pointer-events-none rounded-2xl border border-slate-200 bg-slate-50/70 p-3 opacity-75 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="pointer-events-none rounded-xl border border-slate-200 bg-slate-50/90 p-3 opacity-75 dark:border-slate-800 dark:bg-slate-900/70">
             {field.type === 'TEXT' && (
               <Input placeholder="输入框预览" disabled />
             )}
@@ -294,7 +294,7 @@ const FormPreview: React.FC<{
   };
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
       <div className="flex items-center justify-between border-b border-slate-200 bg-cyan-50/80 px-5 py-4 dark:border-slate-800 dark:bg-cyan-950/30">
         <div>
           <h3 className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-100">
@@ -543,7 +543,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
             <div className="mx-auto max-w-2xl">
               {previewData ? (
                 /* 提交成功后展示数据 */
-                <div className="overflow-hidden rounded-[28px] border border-green-200 bg-white/95 shadow-sm shadow-green-100/70 dark:border-green-900/70 dark:bg-slate-950/88 dark:shadow-none">
+                <div className="overflow-hidden rounded-2xl border border-green-200 bg-white shadow-sm shadow-green-100/70 dark:border-green-900/70 dark:bg-slate-950/88 dark:shadow-none">
                   <div className="border-b border-green-100 bg-green-50 px-6 py-4 dark:border-green-900/60 dark:bg-green-950/30">
                     <h3 className="flex items-center gap-2 font-bold text-green-800 dark:text-green-200">
                       ✅ 模拟提交成功
@@ -570,7 +570,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
                   </div>
                 </div>
               ) : fields.length === 0 ? (
-                <div className="rounded-[28px] border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
+                <div className="rounded-2xl border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
                   <p className="text-slate-400 dark:text-slate-500">没有字段可预览，请先添加组件</p>
                 </div>
               ) : (
@@ -590,7 +590,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
             /* 设计模式 */
             <div className="mx-auto max-w-2xl space-y-4">
               {fields.length === 0 && (
-                <div className="rounded-[28px] border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
+                <div className="rounded-2xl border-2 border-dashed border-slate-200 py-20 text-center dark:border-slate-800">
                   <p className="text-slate-400 dark:text-slate-500">画布空空如也，请从左侧添加组件</p>
                 </div>
               )}
