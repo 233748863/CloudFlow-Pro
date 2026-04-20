@@ -37,11 +37,6 @@ import {
   TableRow,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import {
-  WorkspaceInlineState,
-  WorkspaceSectionCard,
-  WorkspaceTableStateRow,
-} from '@/components/workspace';
 import { addDept, deleteDept, getDeptTree, getUserList, updateDept, updateUser, deleteUser } from '../services/api/auth';
 import { cn } from '@/utils/cn';
 
@@ -261,6 +256,65 @@ const DepartmentSelect: React.FC<{
     </div>
   );
 };
+
+const SectionCard: React.FC<{
+  title: string;
+  description?: string;
+  eyebrow?: string;
+  headerAside?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, description, eyebrow, headerAside, children }) => (
+  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+      <div>
+        {eyebrow ? (
+          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            {eyebrow}
+          </div>
+        ) : null}
+        <div className={cn('text-sm font-semibold text-slate-900 dark:text-slate-100', eyebrow ? 'mt-1' : '')}>
+          {title}
+        </div>
+        {description ? (
+          <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+      {headerAside ? <div className="flex items-center gap-2">{headerAside}</div> : null}
+    </div>
+    <div className="p-4">{children}</div>
+  </section>
+);
+
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  loading?: boolean;
+  className?: string;
+}> = ({ title, description, icon, loading = false, className }) => (
+  <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
+    {loading ? <Loader2 className="mb-3 h-4 w-4 animate-spin text-slate-400 dark:text-slate-500" /> : icon ? <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div> : null}
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <InlineState title={title} description={description} loading={loading} className="py-0" />
+    </TableCell>
+  </TableRow>
+);
 
 const DeptFormDialog: React.FC<{
   open: boolean;
@@ -880,7 +934,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
-      <WorkspaceSectionCard
+      <SectionCard
         eyebrow="Departments"
         title="部门树"
         description="统一浏览部门层级、负责人和状态，并在同一入口完成新增、编辑和删除动作。"
@@ -936,22 +990,16 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
 
           <div className={cn(subtlePanelClassName, 'max-h-[72vh] overflow-y-auto')}>
             {deptLoading ? (
-              <WorkspaceInlineState
-                type="loading"
-                icon={<Loader2 className="h-4 w-4 animate-spin" />}
-                title="正在加载部门树..."
-                className="py-12"
-              />
+              <InlineState title="正在加载部门树..." loading className="py-12" />
             ) : deptError ? (
-              <WorkspaceInlineState
-                type="info"
+              <InlineState
                 icon={<Building2 className="h-5 w-5" />}
                 title="部门树加载失败"
                 description={deptError}
                 className="py-12"
               />
             ) : filteredDeptTree.length === 0 ? (
-              <WorkspaceInlineState
+              <InlineState
                 icon={<Building2 className="h-5 w-5" />}
                 title="暂无匹配部门"
                 description={deptSearch ? '请调整部门搜索条件后重试。' : '当前还没有部门数据。'}
@@ -983,9 +1031,9 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             )}
           </div>
         </div>
-      </WorkspaceSectionCard>
+      </SectionCard>
 
-      <WorkspaceSectionCard
+      <SectionCard
         eyebrow="Members"
         title={selectedDept ? `${selectedDept.deptName} 成员` : '全部成员'}
         description="右侧统一查看成员信息、归属部门和组织调整动作，保持树结构与成员列表在同一工作区联动。"
@@ -1045,19 +1093,11 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             </TableHeader>
             <TableBody>
               {userLoading ? (
-                <WorkspaceTableStateRow
-                  colSpan={8}
-                  type="loading"
-                  title="正在加载成员列表..."
-                />
+                <TableStateRow colSpan={8} title="正在加载成员列表..." loading />
               ) : userError ? (
-                <WorkspaceTableStateRow
-                  colSpan={8}
-                  title="成员列表加载失败"
-                  description={userError}
-                />
+                <TableStateRow colSpan={8} title="成员列表加载失败" description={userError} />
               ) : filteredUsers.length === 0 ? (
-                <WorkspaceTableStateRow
+                <TableStateRow
                   colSpan={8}
                   title="暂无成员数据"
                   description={userSearch ? '请调整成员搜索条件后重试。' : selectedDept ? '当前部门暂无成员。' : '当前没有可展示的成员数据。'}
@@ -1131,7 +1171,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             </TableBody>
           </Table>
         </div>
-      </WorkspaceSectionCard>
+      </SectionCard>
 
       <DeptFormDialog
         open={deptFormOpen}
