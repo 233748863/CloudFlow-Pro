@@ -2064,7 +2064,7 @@ const ConnectorDropZone = ({
       <div
         className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-40 h-10 rounded-xl border-2 border-dashed flex items-center justify-center gap-1.5 transition-all cursor-pointer z-20 ${
           isOver
-            ? "border-cyan-400 bg-cyan-50 scale-110 shadow-lg shadow-cyan-100"
+            ? "border-cyan-400 bg-cyan-50 scale-110 shadow-[0_12px_28px_rgba(34,211,238,0.18)]"
             : "border-slate-300 bg-white hover:border-cyan-300 hover:bg-cyan-50"
         }`}
         onDragOver={(e) => {
@@ -2209,10 +2209,10 @@ const FlowNode = ({
             isDragging
               ? "opacity-40 scale-95 border-slate-300 rotate-1"
               : isInvalid
-                ? `border-red-500 ring-4 ring-red-100/50 shadow-xl scale-[1.02] bg-red-50/50`
+                ? `border-red-500 ring-4 ring-red-100/50 shadow-[0_18px_36px_rgba(244,63,94,0.16)] scale-[1.02] bg-red-50/50`
                 : isSelected
-                  ? `border-cyan-500 ring-4 ring-cyan-100 ring-offset-2 shadow-xl scale-[1.02] ${visual.bg}`
-                  : `${visual.border} ${visual.hoverBorder} hover:shadow-xl hover:-translate-y-1 hover:scale-[1.01]`
+                  ? `border-cyan-500 ring-4 ring-cyan-100 ring-offset-2 shadow-[0_18px_36px_rgba(8,145,178,0.14)] scale-[1.02] ${visual.bg}`
+                  : `${visual.border} ${visual.hoverBorder} hover:shadow-[0_18px_36px_rgba(15,23,42,0.12)] hover:-translate-y-1 hover:scale-[1.01]`
           } active:scale-95 active:shadow-sm`}
           onClick={(e) => {
             e.stopPropagation();
@@ -2383,8 +2383,8 @@ const FlowNode = ({
                 }
                 className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                   showQuickAdd
-                    ? "bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-lg"
-                    : "bg-cyan-600 text-white hover:scale-110 hover:rotate-90 hover:shadow-lg active:scale-95"
+                    ? "bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-[0_14px_28px_rgba(244,63,94,0.22)]"
+                    : "bg-cyan-600 text-white hover:scale-110 hover:rotate-90 hover:shadow-[0_14px_28px_rgba(8,145,178,0.18)] active:scale-95"
                 }`}
                 title={showQuickAdd ? "关闭菜单" : "在此之前添加节点"}
               >
@@ -2561,8 +2561,8 @@ const FlowNode = ({
                 }
                 className={`w-8 h-8 rounded-full flex items-center justify-center shadow-md transition-all duration-300 ${
                   showQuickAdd
-                    ? "bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-lg"
-                    : "bg-cyan-600 text-white hover:scale-110 hover:rotate-90 hover:shadow-lg active:scale-95"
+                    ? "bg-gradient-to-r from-red-500 to-rose-600 text-white rotate-45 scale-110 shadow-[0_14px_28px_rgba(244,63,94,0.22)]"
+                    : "bg-cyan-600 text-white hover:scale-110 hover:rotate-90 hover:shadow-[0_14px_28px_rgba(8,145,178,0.18)] active:scale-95"
                 }`}
                 title={showQuickAdd ? "关闭菜单" : "添加节点"}
               >
@@ -2767,7 +2767,7 @@ const FlowNode = ({
 
                 {/* 分支入口小标签 */}
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-10">
-                  <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap shadow-lg border-2 border-white flex items-center gap-1">
+                  <div className="bg-gradient-to-r from-amber-400 to-amber-500 text-white px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap shadow-sm border-2 border-white flex items-center gap-1">
                     <GitBranch size={10} />
                     分支 {index + 1}
                   </div>
@@ -4576,7 +4576,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
           {/* 拖拽全局提示 */}
           {isDraggingGlobal && (
-            <div className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-xs text-white shadow-lg">
+            <div className="absolute top-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full bg-cyan-600 px-4 py-2 text-xs text-white shadow-[0_14px_28px_rgba(8,145,178,0.18)]">
               <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
             </div>
           )}

@@ -496,7 +496,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
         <WorkspaceHeroCard
           badge={
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-              <History className="h-3.5 w-3.5 text-teal-600" />
+              <History className="h-3.5 w-3.5 text-cyan-600" />
               Version Workspace
             </span>
           }
@@ -541,7 +541,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               label="版本总数"
               value={versions.length}
               hint="当前流程已沉淀的全部历史版本"
-              aside={<GitBranch className="h-[18px] w-[18px] text-teal-600" />}
+              aside={<GitBranch className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="已选对比"
@@ -596,7 +596,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                 {selectedVersionList.map((version) => (
                   <span
                     key={version.id}
-                    className="rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-[11px] font-medium text-teal-700"
+                    className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-[11px] font-medium text-cyan-700"
                   >
                     v{version.versionNumber}
                   </span>
@@ -652,7 +652,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                     className={cn(
                       'rounded-2xl border px-5 py-5 transition',
                       isSelected
-                        ? 'border-teal-200 bg-teal-50/70 shadow-sm'
+                        ? 'border-cyan-200 bg-cyan-50/70 shadow-sm'
                         : 'border-slate-200 bg-white shadow-sm',
                     )}
                   >
@@ -662,7 +662,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => toggleVersionSelection(version.id)}
-                          className="mt-1 h-4 w-4 rounded border-slate-300 accent-teal-600"
+                          className="mt-1 h-4 w-4 rounded border-slate-300 accent-cyan-600"
                           aria-label={`选择版本 v${version.versionNumber}`}
                         />
 

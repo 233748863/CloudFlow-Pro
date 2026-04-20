@@ -476,7 +476,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
           label: '当前视图任务',
           value: visibleTotalCount,
           hint: '已纳入当前页面视图的全部任务',
-          toneClass: 'bg-teal-50 text-teal-700',
+          toneClass: 'bg-cyan-50 text-cyan-700',
           icon: <LayoutList size={18} />,
         },
         {
@@ -506,7 +506,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
           label: '申请总量',
           value: total,
           hint: '符合当前查询条件的全部申请',
-          toneClass: 'bg-teal-50 text-teal-700',
+          toneClass: 'bg-cyan-50 text-cyan-700',
           icon: <LayoutList size={18} />,
         },
         {
@@ -577,7 +577,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
             <WorkspaceHeroCard
                 badge={(
                     <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                        <span className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-teal-700">
+                        <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-cyan-700">
                             <Calendar size={14} />
                             {todayLabel}
                         </span>
@@ -591,18 +591,18 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     <div className="flex flex-wrap gap-3">
                         {type === 'pending' ? (
                             <div className="inline-flex h-12 items-center rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-                                <button type="button" onClick={() => setViewMode('list')} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${viewMode === 'list' ? 'bg-slate-50 text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                <button type="button" onClick={() => setViewMode('list')} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${viewMode === 'list' ? 'bg-slate-50 text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                                     <LayoutList size={16} className="mr-2 inline" />
                                     列表
                                 </button>
-                                <button type="button" onClick={() => setViewMode('board')} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${viewMode === 'board' ? 'bg-slate-50 text-teal-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                                <button type="button" onClick={() => setViewMode('board')} className={`rounded-lg px-4 py-2 text-sm font-semibold transition ${viewMode === 'board' ? 'bg-slate-50 text-cyan-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                                     <Kanban size={16} className="mr-2 inline" />
                                     看板
                                 </button>
                             </div>
                         ) : null}
                         <Button variant="outline" onClick={handleRefresh} disabled={refreshing} className="h-12 rounded-xl px-6">
-                            <RefreshCw size={16} className={`mr-2 text-teal-600 ${refreshing ? 'animate-spin' : ''}`} />
+                            <RefreshCw size={16} className={`mr-2 text-cyan-600 ${refreshing ? 'animate-spin' : ''}`} />
                             刷新
                         </Button>
                     </div>
@@ -651,7 +651,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         {type === 'pending' ? currentTypeLabel : `第 ${pageNum} / ${totalPages} 页`}
                     </div>
                 )}
-                className="rounded-[32px]"
+                className="rounded-2xl"
                 bodyClassName="space-y-5"
             >
         
@@ -674,7 +674,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                         {todoSearchInput && todoSearchInput !== todoKeyword && (
                             <button
                                 onClick={handleTodoSearch}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-teal-600 hover:text-teal-700"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-cyan-600 hover:text-cyan-700"
                             >
                                 搜索
                             </button>
@@ -747,7 +747,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                     <div className="flex gap-1 bg-slate-100 p-1 rounded-lg w-fit">
                         {([
                             { key: 'ALL', label: '全部', color: '' },
-                            { key: 'RUNNING', label: '进行中', color: 'text-teal-600' },
+                            { key: 'RUNNING', label: '进行中', color: 'text-cyan-600' },
                             { key: 'COMPLETED', label: '已完成', color: 'text-emerald-600' },
                             { key: 'REJECTED', label: '已拒绝', color: 'text-red-600' },
                             { key: 'REVOKED', label: '已撤回', color: 'text-amber-600' },
@@ -858,11 +858,11 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-3 mt-6">协作待办 ({filteredUnifiedTasks.filter(t=>t.type==='WORK').length})</h3>
                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                      {filteredUnifiedTasks.filter(t=>t.type==='WORK').map(t => (
-                                         <div key={t.id} className="bg-white border border-slate-200 p-5 rounded-xl hover:shadow-lg transition-all">
+                                         <div key={t.id} className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:border-cyan-200 hover:bg-cyan-50/30">
                                              <div className="flex justify-between items-start mb-2">
                                                  <h4 className="font-bold text-slate-800">{t.title}</h4>
                                                  <span className={`text-xs px-2 py-1 rounded font-medium 
-                                                     ${t.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : 'bg-teal-50 text-teal-700'}`}>
+                                                     ${t.status === 'DONE' ? 'bg-emerald-50 text-emerald-600' : 'bg-cyan-50 text-cyan-700'}`}>
                                                      {t.statusLabel}
                                                  </span>
                                              </div>
@@ -920,7 +920,7 @@ export const TaskListPage = ({ type }: { type: 'pending' | 'applications' }) => 
                                 onClick={() => setPageNum(page)}
                                 className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${
                                     page === pageNum
-                                        ? 'bg-teal-600 text-white shadow'
+                                        ? 'bg-cyan-600 text-white shadow-sm'
                                         : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                             >

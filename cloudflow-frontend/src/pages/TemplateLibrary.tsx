@@ -171,7 +171,7 @@ const EMPTY_GRAPH = { nodes: [], edges: [] } as {
 };
 
 const FILTER_CHIP_CLASS_NAME =
-  "inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition-colors hover:border-teal-200 hover:bg-teal-50 hover:text-teal-700";
+  "inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700";
 const PANEL_STAT_LABEL_CLASS_NAME =
   "text-xs font-bold uppercase tracking-[0.14em] text-slate-400";
 const PREVIEW_META_LABEL_CLASS_NAME =
@@ -579,7 +579,7 @@ export const TemplateLibrary: React.FC = () => {
             className={cn(
               "h-9 w-full justify-start text-left text-sm font-medium",
               active
-                ? "bg-teal-50 text-teal-700 hover:bg-teal-100"
+                ? "bg-cyan-50 text-cyan-700 hover:bg-cyan-100"
                 : "text-slate-600 hover:bg-slate-100",
             )}
             style={{ paddingLeft: `${level * 16 + 12}px` }}
@@ -778,7 +778,7 @@ export const TemplateLibrary: React.FC = () => {
         <WorkspaceHeroCard
           badge={
             <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-100 bg-teal-50 px-2.5 py-1 text-teal-700">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700">
                 <Workflow className="h-3.5 w-3.5" />
                 {todayLabel}
               </span>
@@ -826,7 +826,7 @@ export const TemplateLibrary: React.FC = () => {
               label={TEXT.currentResults}
               value={total}
               hint="当前分页接口返回的模板总量"
-              aside={<Layers3 className="h-[18px] w-[18px] text-teal-600" />}
+              aside={<Layers3 className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label={TEXT.categoryCount}
@@ -897,7 +897,7 @@ export const TemplateLibrary: React.FC = () => {
                       className={cn(
                         "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
                         viewMode === "grid"
-                          ? "bg-slate-50 text-teal-700 shadow-sm"
+                          ? "bg-slate-50 text-cyan-700 shadow-sm"
                           : "text-slate-600 hover:bg-slate-50 hover:text-slate-700",
                       )}
                     >
@@ -909,7 +909,7 @@ export const TemplateLibrary: React.FC = () => {
                       className={cn(
                         "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
                         viewMode === "list"
-                          ? "bg-slate-50 text-teal-700 shadow-sm"
+                          ? "bg-slate-50 text-cyan-700 shadow-sm"
                           : "text-slate-600 hover:bg-slate-50 hover:text-slate-700",
                       )}
                     >
@@ -1110,10 +1110,10 @@ export const TemplateLibrary: React.FC = () => {
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-3">
                       <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-slate-900">
-                        <Workflow className="h-5 w-5 text-teal-600" />
+                        <Workflow className="h-5 w-5 text-cyan-600" />
                         {previewTemplate.name}
                       </DialogTitle>
-                      <span className="rounded-full border border-teal-100 bg-teal-50 px-3 py-1 text-xs font-medium text-teal-700">
+                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700">
                         {TEXT.previewTitleSuffix}
                       </span>
                       {previewTemplate.isSystem ? (
@@ -1144,7 +1144,7 @@ export const TemplateLibrary: React.FC = () => {
                       <section className="space-y-5">
                         <div>
                           <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
-                            <Sparkles className="h-4 w-4 text-teal-600" />
+                            <Sparkles className="h-4 w-4 text-cyan-600" />
                             {TEXT.previewOverview}
                           </div>
                           <div className="mt-1 text-sm leading-6 text-slate-500">

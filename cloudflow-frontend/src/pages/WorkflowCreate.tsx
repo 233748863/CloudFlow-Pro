@@ -62,7 +62,7 @@ export const WorkflowCreate: React.FC = () => {
         <WorkspaceHeroCard
           badge={
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-              <Workflow className="h-3.5 w-3.5 text-teal-600" />
+              <Workflow className="h-3.5 w-3.5 text-cyan-600" />
               Flow Entry
             </span>
           }
@@ -74,7 +74,7 @@ export const WorkflowCreate: React.FC = () => {
               label="创建方式"
               value={creationOptions.length}
               hint="空白创建与模板创建双入口"
-              aside={<Workflow className="h-[18px] w-[18px] text-teal-600" />}
+              aside={<Workflow className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="空白设计"
@@ -126,7 +126,7 @@ export const WorkflowCreate: React.FC = () => {
                   <div className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
                     {option.bulletPoints.map((item) => (
                       <div key={item} className="flex items-center gap-3 text-sm text-slate-600">
-                        <div className="h-2.5 w-2.5 rounded-full bg-teal-500/70" />
+                        <div className="h-2.5 w-2.5 rounded-full bg-cyan-500/70" />
                         <span>{item}</span>
                       </div>
                     ))}
@@ -186,9 +186,9 @@ export const WorkflowCreate: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-teal-100 bg-teal-50/70 px-4 py-4">
+            <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-4">
               <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
-                <Workflow className="h-4 w-4 text-teal-600" />
+                <Workflow className="h-4 w-4 text-cyan-600" />
                 当前建议
               </div>
               <p className="mt-2 text-sm leading-6 text-slate-500">

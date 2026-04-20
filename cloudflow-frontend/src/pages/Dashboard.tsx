@@ -192,7 +192,7 @@ export const Dashboard = () => {
         description: '进入流程发起页',
         icon: <PlayCircle size={20} />,
         onClick: () => navigate('/workplace'),
-        toneClassName: 'bg-teal-100 text-teal-600',
+        toneClassName: 'bg-cyan-100 text-cyan-600',
       },
       {
         label: '我的日程',

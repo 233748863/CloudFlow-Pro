@@ -37,7 +37,7 @@ const candidateStatusTone: Record<string, string> = {
   NEW: 'bg-slate-100 text-slate-700',
   SCREENING: 'bg-cyan-50 text-cyan-700',
   INTERVIEW: 'bg-amber-50 text-amber-700',
-  OFFER: 'bg-teal-50 text-teal-700',
+  OFFER: 'bg-cyan-50 text-cyan-700',
   HIRED: 'bg-emerald-50 text-emerald-700',
   REJECTED: 'bg-rose-50 text-rose-700',
 };

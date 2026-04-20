@@ -51,7 +51,7 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
                 className={`rounded-xl border p-4 text-left transition-colors ${
                   isRead
                     ? 'border-slate-200 bg-slate-50 hover:bg-slate-100'
-                    : 'border-teal-200 bg-teal-50/60 hover:bg-teal-50'
+                    : 'border-cyan-200 bg-cyan-50/60 hover:bg-cyan-50'
                 }`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -76,4 +76,3 @@ export const UserDashboardAnnouncements: React.FC<UserDashboardAnnouncementsProp
     </div>
   </div>
 );
-

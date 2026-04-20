@@ -190,7 +190,7 @@ export const FormDesign = () => {
         <WorkspaceHeroCard
           badge={
             <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-              <FileSpreadsheet className="h-3.5 w-3.5 text-teal-600" />
+              <FileSpreadsheet className="h-3.5 w-3.5 text-cyan-600" />
               Form Workspace
             </span>
           }
@@ -208,7 +208,7 @@ export const FormDesign = () => {
               label="表单总数"
               value={forms.length}
               hint="当前系统中可编辑的表单数量"
-              aside={<FileSpreadsheet className="h-[18px] w-[18px] text-teal-600" />}
+              aside={<FileSpreadsheet className="h-[18px] w-[18px] text-cyan-600" />}
             />
             <WorkspaceMetricCard
               label="当前表单"
@@ -256,7 +256,7 @@ export const FormDesign = () => {
                       onClick={() => setSelectedForm(form)}
                       className={`w-full rounded-2xl px-4 py-3 text-left transition ${
                         active
-                          ? 'border border-teal-100 bg-teal-50 text-teal-700 shadow-sm'
+                          ? 'border border-cyan-100 bg-cyan-50 text-cyan-700 shadow-sm'
                           : 'border border-slate-200 bg-white text-slate-700 shadow-sm hover:bg-slate-50'
                       }`}
                     >

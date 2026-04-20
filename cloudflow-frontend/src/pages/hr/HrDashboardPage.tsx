@@ -17,7 +17,7 @@ const normalizeRows = <T,>(data: any): T[] => {
 
 const statusPill = (text: string, tone: 'teal' | 'emerald' | 'slate' | 'amber' = 'slate') => {
   const toneClass = {
-    teal: 'bg-teal-50 text-teal-700 border-teal-100',
+    teal: 'bg-cyan-50 text-cyan-700 border-cyan-100',
     emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
     slate: 'bg-slate-100 text-slate-700 border-slate-200',
     amber: 'bg-amber-50 text-amber-700 border-amber-100',
@@ -253,7 +253,7 @@ export const HrDashboardPage: React.FC = () => {
             aside={(
               <div className={`rounded-xl p-3 ${
                 metric.tone === 'teal'
-                  ? 'bg-teal-50 text-teal-600'
+                  ? 'bg-cyan-50 text-cyan-600'
                   : metric.tone === 'amber'
                     ? 'bg-amber-50 text-amber-500'
                     : metric.tone === 'emerald'

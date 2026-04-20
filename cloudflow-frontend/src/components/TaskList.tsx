@@ -130,10 +130,10 @@ export const TaskList: React.FC<TaskListProps> = ({ tasks, onTaskClick, showReca
         <div 
           key={task.id}
           onClick={() => onTaskClick?.(task)}
-          className={`bg-white border rounded-xl p-5 hover:shadow-lg transition-all duration-300 cursor-pointer group relative overflow-hidden ${
+          className={`bg-white border rounded-xl p-5 shadow-sm transition-all duration-300 cursor-pointer group relative overflow-hidden ${
             isOverdue(task) 
               ? 'border-red-300 hover:border-red-400 ring-1 ring-red-100' 
-              : 'border-slate-200 hover:border-cyan-200'
+              : 'border-slate-200 hover:border-cyan-200 hover:bg-cyan-50/20'
           }`}
         >
           <div className="absolute top-0 right-0 w-16 h-16 bg-slate-50 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>

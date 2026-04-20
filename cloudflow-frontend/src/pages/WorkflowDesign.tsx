@@ -482,7 +482,7 @@ export const WorkflowDesign = () => {
   if (loading) {
     return renderStatusShell(
       <WorkspaceStatusPanel
-        icon={<Loader2 size={28} className="animate-spin text-teal-600" />}
+        icon={<Loader2 size={28} className="animate-spin text-cyan-600" />}
         title="正在加载流程设计器..."
         description="正在准备流程定义、表单列表和审批基础数据，请稍候。"
         className="py-14"

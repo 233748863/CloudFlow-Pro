@@ -78,9 +78,9 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       type="button"
       disabled={disabled}
       className={cn(
-        'cf-glass-input flex h-11 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm text-slate-700 transition-all hover:border-slate-300 focus:border-teal-500 focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50',
+        'cf-glass-input flex h-11 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm text-slate-700 transition-all hover:border-slate-300 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50',
         !hasExplicitWidth && 'w-full',
-        open && 'border-teal-500 ring-2 ring-teal-500/20',
+        open && 'border-cyan-500 ring-2 ring-cyan-500/20',
         className,
       )}
       onClick={() => {
@@ -93,7 +93,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
         size={16}
         className={cn(
           'ml-2 shrink-0 text-slate-400 transition-transform duration-200',
-          open && 'rotate-180 text-teal-600',
+          open && 'rotate-180 text-cyan-600',
         )}
       />
     </button>
@@ -143,7 +143,7 @@ export const SelectItem: React.FC<{ children: React.ReactNode; value: string; cl
       className={cn(
         'relative flex w-full cursor-pointer items-center rounded-lg py-2.5 pl-8 pr-3 text-sm transition-colors',
         isSelected
-          ? 'bg-teal-50 text-teal-700 font-medium'
+          ? 'bg-cyan-50 text-cyan-700 font-medium'
           : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900',
         className,
       )}
@@ -154,7 +154,7 @@ export const SelectItem: React.FC<{ children: React.ReactNode; value: string; cl
     >
       {isSelected ? (
         <span className="absolute left-2.5 flex h-4 w-4 items-center justify-center">
-          <Check size={14} className="text-teal-600" />
+          <Check size={14} className="text-cyan-600" />
         </span>
       ) : null}
       {children}

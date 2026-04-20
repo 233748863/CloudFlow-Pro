@@ -438,7 +438,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
                       isTop: event.target.checked ? 1 : 0,
                     })
                   }
-                  className="h-4 w-4 rounded border-slate-300 text-teal-500 focus:ring-teal-400"
+                  className="h-4 w-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
                 />
                 <label className="ml-2 text-sm text-slate-700">设为置顶</label>
               </div>

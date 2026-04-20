@@ -113,7 +113,7 @@ const TreeSelect: React.FC<{
       </button>
 
       {open ? (
-        <div className="absolute z-[140] mt-1 max-h-56 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-xl">
+        <div className="absolute z-[140] mt-1 max-h-56 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70">
           {flat.map(({ dept, level }) => (
             <button
               key={dept.deptId}

@@ -191,7 +191,7 @@ const AttendanceCheckIn: React.FC = () => {
     return {
       title: '下班签退时段',
       hint: `当前已过下班时间 ${rule.checkOutTime}，请确认是否需要签退`,
-      tone: 'bg-teal-50 text-teal-700',
+      tone: 'bg-cyan-50 text-cyan-700',
     };
   }, [currentTime, rule, ruleLoading]);
 
@@ -213,8 +213,8 @@ const AttendanceCheckIn: React.FC = () => {
       value: rule?.checkInTime || '--:--',
       desc: '今日签到基准时间',
       icon: <Clock3 size={20} />,
-      iconClass: 'bg-teal-50 text-teal-700',
-      ringClass: 'ring-teal-100',
+      iconClass: 'bg-cyan-50 text-cyan-700',
+      ringClass: 'ring-cyan-100',
     },
     {
       label: '下班时间',
@@ -252,7 +252,7 @@ const AttendanceCheckIn: React.FC = () => {
             <div className="relative p-6 sm:p-7">
               <div className="relative">
                 <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-                  <span className="inline-flex items-center gap-2 rounded-full border border-teal-100 bg-teal-50 px-3 py-1.5 text-teal-700">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1.5 text-cyan-700">
                     <Calendar size={14} />
                     {dateLabel}
                   </span>
@@ -280,7 +280,7 @@ const AttendanceCheckIn: React.FC = () => {
                       <ArrowRight size={16} className="ml-2" />
                     </Button>
                     <Button variant="outline" className="h-12 rounded-xl px-6" onClick={getLocation} disabled={loading || selfServiceLocked}>
-                      <RefreshCw size={16} className={`mr-2 text-teal-600 ${loading ? 'animate-spin' : ''}`} />
+                      <RefreshCw size={16} className={`mr-2 text-cyan-600 ${loading ? 'animate-spin' : ''}`} />
                       重新定位
                     </Button>
                   </div>
@@ -383,7 +383,7 @@ const AttendanceCheckIn: React.FC = () => {
                 <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">实时打卡时钟</div>
                 <div className="mt-4 text-6xl font-bold tracking-[0.1em] text-slate-900">{secondLabel}</div>
                 <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-white px-4 py-2 text-sm text-slate-600 ring-1 ring-slate-200">
-                  <Clock3 size={14} className="text-teal-600" />
+                  <Clock3 size={14} className="text-cyan-600" />
                   上班：{rule?.checkInTime || '--:--'}
                   <span className="mx-1 text-slate-300">|</span>
                   下班：{rule?.checkOutTime || '--:--'}
@@ -434,7 +434,7 @@ const AttendanceCheckIn: React.FC = () => {
                 )}
 
                 <Button variant="outline" onClick={getLocation} disabled={loading || selfServiceLocked} className="h-11 w-full rounded-xl">
-                  <RefreshCw size={16} className={`mr-2 text-teal-600 ${loading ? 'animate-spin' : ''}`} />
+                  <RefreshCw size={16} className={`mr-2 text-cyan-600 ${loading ? 'animate-spin' : ''}`} />
                   {loading ? '定位中...' : '重新获取定位'}
                 </Button>
               </div>
@@ -463,7 +463,7 @@ const AttendanceCheckIn: React.FC = () => {
               <SectionHeader eyebrow="打卡说明" title="规则提示" />
               <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-6 text-slate-500">
                 <div className="flex items-center gap-2 font-semibold text-slate-700">
-                  <ShieldCheck size={16} className="text-teal-600" />
+                  <ShieldCheck size={16} className="text-cyan-600" />
                   Web 端打卡说明
                 </div>
                 <div className="mt-2">浏览器端目前通过地理定位辅助校验；Wi-Fi 信息在 Web 环境下无法读取，因此不会参与校验。</div>

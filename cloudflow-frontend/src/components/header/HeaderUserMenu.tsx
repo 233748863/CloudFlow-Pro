@@ -111,22 +111,22 @@ export const HeaderUserMenu: React.FC = () => {
       </button>
 
       <div
-        className={`absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-gray-200 bg-white py-1 shadow-lg transition-all duration-150 ${
+        className={`absolute right-0 z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-xl border border-slate-200 bg-white py-1 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 transition-all duration-150 ${
           dropdownOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
         }`}
       >
-        <div className="border-b border-gray-100 px-4 py-3">
-          <div className="text-sm font-medium text-gray-900">{displayName}</div>
-          <div className="text-xs text-gray-500">{user.email || user.username || '-'}</div>
+        <div className="border-b border-slate-100 px-4 py-3">
+          <div className="text-sm font-medium text-slate-900">{displayName}</div>
+          <div className="text-xs text-slate-500">{user.email || user.username || '-'}</div>
         </div>
 
         <div className="py-1">
           <button
             type="button"
             onClick={() => handleNavigate('/profile')}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
           >
             <User size={16} />
             个人资料
@@ -135,7 +135,7 @@ export const HeaderUserMenu: React.FC = () => {
           <button
             type="button"
             onClick={() => handleNavigate('/office/announcement')}
-            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100"
+            className="flex w-full items-center gap-2 px-4 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50"
           >
             <Bell size={16} />
             公告中心
@@ -143,27 +143,27 @@ export const HeaderUserMenu: React.FC = () => {
         </div>
 
         {user.email || user.phone ? (
-          <div className="border-t border-gray-100 px-4 py-2.5">
+          <div className="border-t border-slate-100 px-4 py-2.5">
             {user.email ? (
-              <div className="flex items-start gap-2 text-xs text-gray-500">
+              <div className="flex items-start gap-2 text-xs text-slate-500">
                 <Mail size={14} className="mt-0.5 shrink-0" />
                 <div>
                   <div>邮箱 Email:</div>
-                  <div className="font-medium text-gray-700">{user.email}</div>
+                  <div className="font-medium text-slate-700">{user.email}</div>
                 </div>
               </div>
             ) : null}
 
             {user.phone ? (
               <div
-                className={`flex items-start gap-2 text-xs text-gray-500 ${
+                className={`flex items-start gap-2 text-xs text-slate-500 ${
                   user.email ? 'mt-2' : ''
                 }`}
               >
                 <Phone size={14} className="mt-0.5 shrink-0" />
                 <div>
                   <div>电话 Phone:</div>
-                  <div className="font-medium text-gray-700">{user.phone}</div>
+                  <div className="font-medium text-slate-700">{user.phone}</div>
                 </div>
               </div>
             ) : null}

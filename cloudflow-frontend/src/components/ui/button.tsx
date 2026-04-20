@@ -38,7 +38,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         break;
       case 'link':
         variantStyles =
-          'rounded-none px-0 text-teal-600 shadow-none underline-offset-4 hover:underline';
+          'rounded-none px-0 text-cyan-600 shadow-none underline-offset-4 hover:underline';
         break;
       case 'secondary':
         variantStyles =

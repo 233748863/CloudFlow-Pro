@@ -556,7 +556,7 @@ export const ArchivedWorkflows: React.FC = () => {
                     type="checkbox"
                     checked={allSelected}
                     onChange={handleSelectAll}
-                    className="h-4 w-4 rounded text-teal-600 focus:ring-teal-500"
+                    className="h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500"
                   />
                   <span>
                     共 <span className="font-bold text-slate-800">{total}</span>{" "}
@@ -575,7 +575,7 @@ export const ArchivedWorkflows: React.FC = () => {
                           type="checkbox"
                           checked={selectedIds.includes(workflow.workflowId)}
                           onChange={() => handleSelectOne(workflow.workflowId)}
-                          className="mt-1 h-4 w-4 rounded text-teal-600 focus:ring-teal-500"
+                          className="mt-1 h-4 w-4 rounded text-cyan-600 focus:ring-cyan-500"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="mb-2 flex flex-wrap items-center gap-2">

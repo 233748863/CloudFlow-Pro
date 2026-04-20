@@ -309,7 +309,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                     {/* 版本信息 */}
                     <div className="flex-1">
                       <div className="flex items-center space-x-2 mb-2">
-                        <GitBranch size={16} className="text-gray-400" />
+                        <GitBranch size={16} className="text-slate-400" />
                         <span className="font-semibold">{version.versionNumber}</span>
                         <span className={`px-2 py-0.5 text-xs rounded ${changeType.color}`}>
                           {changeType.text}
@@ -321,9 +321,9 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                         )}
                       </div>
 
-                      <p className="text-sm text-gray-600 mb-2">{version.changeLog}</p>
+                      <p className="mb-2 text-sm text-slate-600">{version.changeLog}</p>
 
-                      <div className="flex items-center space-x-4 text-xs text-gray-500">
+                      <div className="flex items-center space-x-4 text-xs text-slate-500">
                         <span className="flex items-center">
                           <Clock size={12} className="mr-1" />
                           {new Date(version.createdAt).toLocaleString('zh-CN')}
@@ -337,7 +337,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => {/* 查看详情 */}}
-                      className="p-2 text-gray-400 hover:text-gray-600"
+                      className="p-2 text-slate-400 hover:text-slate-600"
                       title="查看详情"
                     >
                       <Eye size={16} />
@@ -361,38 +361,38 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
       {/* 回滚对话框 */}
       {showRollbackModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-            <div className="px-6 py-4 border-b">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-[2px]">
+          <div className="mx-4 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80">
+            <div className="border-b border-slate-100 px-5 py-4">
               <h3 className="text-lg font-semibold">版本回滚</h3>
             </div>
-            <div className="px-6 py-4">
-              <p className="text-sm text-gray-600 mb-4">
+            <div className="px-5 py-5">
+              <p className="mb-4 text-sm text-slate-600">
                 确定要回滚到版本 <strong>{rollbackVersion?.versionNumber}</strong> 吗？
               </p>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   回滚原因 <span className="text-red-500">*</span>
                 </label>
                 <textarea
                   value={rollbackReason}
                   onChange={(e) => setRollbackReason(e.target.value)}
                   placeholder="请输入回滚原因"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-sm focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
                   rows={3}
                 />
               </div>
             </div>
-            <div className="px-6 py-4 border-t flex justify-end space-x-3">
+            <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
               <button
                 onClick={() => setShowRollbackModal(false)}
-                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
               >
                 取消
               </button>
               <button
                 onClick={handleRollback}
-                className="px-4 py-2 bg-cyan-600 text-white rounded hover:bg-cyan-700"
+                className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-700"
               >
                 确认回滚
               </button>
@@ -422,19 +422,19 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
       {/* 版本对比模态框（简化版，实际应该更详细） */}
       {showCompareModal && comparison && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full mx-4 max-h-[80vh] overflow-auto">
-            <div className="px-6 py-4 border-b flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-[2px]">
+          <div className="mx-4 max-h-[80vh] w-full max-w-4xl overflow-auto rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80">
+            <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <h3 className="text-lg font-semibold">版本对比</h3>
               <button
                 onClick={() => setShowCompareModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="px-6 py-4">
-              <p className="text-sm text-gray-600">
+            <div className="px-5 py-5">
+              <p className="text-sm text-slate-600">
                 对比结果：{comparison.addedNodes?.length || 0} 个新增节点，
                 {comparison.removedNodes?.length || 0} 个删除节点，
                 {comparison.modifiedNodes?.length || 0} 个修改节点

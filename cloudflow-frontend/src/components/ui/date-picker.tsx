@@ -219,9 +219,9 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
               className={`
                 h-8 rounded-lg text-[11px] font-medium transition-all
                 ${isSelected
-                  ? 'bg-teal-600 text-white font-semibold shadow-sm shadow-teal-500/20'
+                  ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
                   : isToday
-                    ? 'bg-teal-50 text-teal-700 font-semibold ring-1 ring-teal-100'
+                    ? 'bg-cyan-50 text-cyan-700 font-semibold ring-1 ring-cyan-100'
                     : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
                 }
               `}
@@ -341,7 +341,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
               className={`
                 w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
                 ${i === hour
-                  ? 'bg-teal-600 text-white font-semibold shadow-sm shadow-teal-500/20'
+                  ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }
               `}
@@ -367,7 +367,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
               className={`
                 w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
                 ${i === minute
-                  ? 'bg-teal-600 text-white font-semibold shadow-sm shadow-teal-500/20'
+                  ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
                 }
               `}
@@ -597,21 +597,21 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           disabled={disabled}
           onClick={() => !disabled && setOpen(!open)}
           className={cn(
-            'group flex h-11 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-700 shadow-sm transition-all hover:border-slate-300 focus-visible:border-teal-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-500/20 focus-visible:ring-offset-1 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:shadow-none',
-            open && 'border-teal-500 ring-2 ring-teal-500/20 shadow-md',
+            'group flex h-11 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-700 shadow-sm transition-all hover:border-slate-300 focus-visible:border-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:ring-offset-1 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:shadow-none',
+            open && 'border-cyan-500 ring-2 ring-cyan-500/20 shadow-sm',
             className,
           )}
         >
           {type !== 'time' && (
             <Calendar
               size={14}
-              className={`shrink-0 ${open ? 'text-teal-600' : 'text-slate-400 group-hover:text-slate-600'}`}
+              className={`shrink-0 ${open ? 'text-cyan-600' : 'text-slate-400 group-hover:text-slate-600'}`}
             />
           )}
           {type === 'time' && (
             <Clock
               size={14}
-              className={`shrink-0 ${open ? 'text-teal-600' : 'text-slate-400 group-hover:text-slate-600'}`}
+              className={`shrink-0 ${open ? 'text-cyan-600' : 'text-slate-400 group-hover:text-slate-600'}`}
             />
           )}
 
@@ -722,7 +722,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                   <button
                     type="button"
                     onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
-                    className="rounded-lg bg-teal-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-teal-700"
+                    className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-cyan-700"
                   >
                     确定
                   </button>

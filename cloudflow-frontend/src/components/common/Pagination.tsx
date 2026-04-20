@@ -130,7 +130,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                 type="number"
                 min={1}
                 max={totalPages}
-                className="h-9 w-20 rounded-lg border border-slate-200 px-3 text-sm text-slate-900 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20"
+                className="h-9 w-20 rounded-lg border border-slate-200 px-3 text-sm text-slate-900 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20"
                 placeholder="页码"
                 onChange={(event) => setJumpPage(event.target.value)}
                 onKeyUp={(event) => {
@@ -180,7 +180,7 @@ export const Pagination: React.FC<PaginationProps> = ({
                 className={[
                   'inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 px-3 text-sm font-medium transition-colors',
                   active
-                    ? 'relative z-10 border-teal-500 bg-teal-50 text-teal-600'
+                    ? 'relative z-10 border-cyan-500 bg-cyan-50 text-cyan-600'
                     : 'bg-white text-slate-700 hover:bg-slate-50',
                 ].join(' ')}
                 aria-current={active ? 'page' : undefined}

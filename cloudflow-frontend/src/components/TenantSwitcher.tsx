@@ -148,19 +148,19 @@ export const TenantSwitcher: React.FC = () => {
       </button>
 
       <div
-        className={`absolute right-0 top-full z-50 mt-1 w-40 origin-top-right overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg transition-all duration-150 ${
+        className={`absolute right-0 top-full z-50 mt-1 w-40 origin-top-right overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 transition-all duration-150 ${
           isOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
         }`}
       >
         {loading ? (
-          <div className="flex items-center justify-center gap-2 px-3 py-3 text-sm text-gray-500">
+          <div className="flex items-center justify-center gap-2 px-3 py-3 text-sm text-slate-500">
             <Loader2 size={14} className="animate-spin" />
             <span>正在加载</span>
           </div>
         ) : tenants.length === 0 ? (
-          <div className="px-3 py-3 text-center text-sm text-gray-500">暂无租户</div>
+          <div className="px-3 py-3 text-center text-sm text-slate-500">暂无租户</div>
         ) : (
           <div className="py-1">
             {tenants.map((tenant) => {
@@ -174,16 +174,16 @@ export const TenantSwitcher: React.FC = () => {
                   onClick={() => void handleSwitchTenant(tenant.tenantId)}
                   disabled={switching}
                   title={tenantLabel}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 transition-colors hover:bg-gray-100 ${
-                    active ? 'bg-teal-50 text-teal-600' : ''
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 ${
+                    active ? 'bg-cyan-50 text-cyan-600' : ''
                   } ${switching ? 'cursor-not-allowed opacity-70' : ''}`}
                 >
                   <Building2
                     size={15}
-                    className={`shrink-0 ${active ? 'text-teal-500' : 'text-gray-400'}`}
+                    className={`shrink-0 ${active ? 'text-cyan-500' : 'text-slate-400'}`}
                   />
                   <span className="flex-1 truncate text-left">{tenantLabel}</span>
-                  {active ? <Check size={14} className="shrink-0 text-teal-500" /> : null}
+                  {active ? <Check size={14} className="shrink-0 text-cyan-500" /> : null}
                 </button>
               );
             })}

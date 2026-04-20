@@ -74,8 +74,8 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
               onClick={() => onCategoryChange(option.value)}
               className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                 active
-                  ? 'bg-teal-500 text-white shadow-sm shadow-teal-500/20'
-                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-teal-600'
+                  ? 'bg-cyan-500 text-white shadow-sm shadow-cyan-500/20'
+                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-cyan-600'
               }`}
             >
               {option.label}
@@ -96,8 +96,8 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
                 onClick={() => onTagToggle(tag)}
                 className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
                   active
-                    ? 'bg-teal-500 text-white shadow-sm shadow-teal-500/20'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-teal-600'
+                    ? 'bg-cyan-500 text-white shadow-sm shadow-cyan-500/20'
+                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-cyan-600'
                 }`}
               >
                 {tag}
