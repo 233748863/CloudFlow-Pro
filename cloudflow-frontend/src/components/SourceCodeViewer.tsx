@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
-import { Braces, Code, Copy, Database, FileCode2, GitBranch, Loader2, Sparkles, Workflow } from 'lucide-react';
+import { Braces, Copy, Database, FileCode2, GitBranch, Loader2, Sparkles, Workflow } from 'lucide-react';
 import { toast } from 'sonner';
 import { BACKEND_SOURCE } from '../backend_data';
 import { generateBackendArtifacts } from '../services/geminiService';
 import { WorkflowDefinition } from '../types';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui';
-import { WorkspaceInlineState } from '@/components/workspace';
 import { cn } from '@/utils/cn';
 
 type ArtifactTab = 'java' | 'sql';
@@ -35,8 +34,6 @@ const artifactMeta: Record<
 
 const surfaceChipClassName =
   'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-const subtlePanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
 
 const getLineCount = (value: string) => (value ? value.split('\n').length : 0);
 
@@ -45,6 +42,46 @@ const formatTimeLabel = (date: Date) =>
     hour: '2-digit',
     minute: '2-digit',
   });
+
+const PanelCard: React.FC<{
+  title: string;
+  description?: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, description, aside, children }) => (
+  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+      <div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+      {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
+    </div>
+    {children}
+  </section>
+);
+
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  loading?: boolean;
+  className?: string;
+}> = ({ title, description, icon, loading = false, className }) => (
+  <div className={cn('flex flex-col items-center justify-center px-6 py-16 text-center', className)}>
+    {loading ? <Loader2 className="mb-3 h-4 w-4 animate-spin text-slate-400 dark:text-slate-500" /> : icon ? <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div> : null}
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+        {description}
+      </div>
+    ) : null}
+  </div>
+);
 
 const CodePreviewPanel = ({
   code,
@@ -57,21 +94,20 @@ const CodePreviewPanel = ({
 
   if (!code.trim()) {
     return (
-      <WorkspaceInlineState
+      <InlineState
         icon={meta.icon}
         title="暂无代码内容"
         description="当前产物还没有可展示的代码内容，请重新选择流程或再次触发生成。"
-        className="py-16"
       />
     );
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            <span className="flex h-8 w-8 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+            <span className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
               {meta.icon}
             </span>
             <span className="truncate">{meta.label}</span>
@@ -82,7 +118,7 @@ const CodePreviewPanel = ({
       </div>
 
       <div className="bg-slate-950 p-3 sm:p-4">
-        <div className="overflow-auto rounded-[24px] border border-slate-800 bg-slate-950 px-4 py-4 shadow-inner shadow-black/30 sm:px-5 sm:py-5">
+        <div className="overflow-auto rounded-2xl border border-slate-800 bg-slate-950 px-4 py-4 shadow-inner shadow-black/30 sm:px-5 sm:py-5">
           <pre className="min-h-[30rem] whitespace-pre font-mono text-[13px] leading-6 text-slate-100">
             <code className={cn('block min-w-max', meta.accentClassName)}>{code}</code>
           </pre>
@@ -149,19 +185,10 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
   return (
     <div className="space-y-4">
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-        <section className={subtlePanelClassName}>
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="min-w-0 space-y-2">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-                Source Generator
-              </div>
-              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">后端产物预览</div>
-              <div className="max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                保留默认蓝本作为兜底展示，同时允许基于当前已发布流程重新生成 Java 审批引擎与 SQL
-                初始化脚本，便于联调阶段快速核对流程模型和产物映射。
-              </div>
-            </div>
-
+        <PanelCard
+          title="后端产物预览"
+          description="保留默认蓝本作为兜底展示，同时允许基于当前已发布流程重新生成 Java 审批引擎与 SQL 初始化脚本。"
+          aside={
             <div className="flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={handleCopyCurrent}>
                 <Copy size={14} />
@@ -172,20 +199,24 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
                 {generatedCode.loading ? 'AI 生成中' : '重新生成'}
               </Button>
             </div>
-          </div>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          }
+        >
+          <div className="grid gap-3 px-4 py-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
               <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
                 流程 Key
               </div>
-              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{workflow.key}</div>
+              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {workflow.key}
+              </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
               <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
                 版本
               </div>
-              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">v{workflow.version}</div>
+              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                v{workflow.version}
+              </div>
             </div>
             <div className="rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
               <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
@@ -199,22 +230,21 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
               <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
                 结果来源
               </div>
-              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">{resultSourceLabel}</div>
+              <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {resultSourceLabel}
+              </div>
             </div>
           </div>
-        </section>
+        </PanelCard>
 
-        <aside className={subtlePanelClassName}>
-          <div className="space-y-3">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-              Sync Rules
-            </div>
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">统一产物说明</div>
-            <div className="space-y-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-              <div>当前页面只读取“已发布”的流程定义，避免设计稿版本和生成产物脱节。</div>
-              <div>Java 与 SQL 使用同一轮流程模型生成，便于对齐流程节点、表单绑定和运行态表结构。</div>
-              <div>默认蓝本会一直保留，AI 结果失败时不会清空现有预览。</div>
-            </div>
+        <PanelCard
+          title="统一产物说明"
+          description="保证生成结果和当前流程定义保持同一轮契约。"
+        >
+          <div className="space-y-3 px-4 py-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            <div>当前页面只读取“已发布”的流程定义，避免流程版本和生成产物脱节。</div>
+            <div>Java 与 SQL 使用同一轮流程模型生成，便于对齐流程节点、表单绑定和运行态表结构。</div>
+            <div>默认蓝本会一直保留，AI 结果失败时不会清空现有预览。</div>
             <div className="flex flex-wrap gap-2 pt-1">
               <span className={surfaceChipClassName}>表单绑定：{workflow.formId || '未绑定'}</span>
               <span className={surfaceChipClassName}>
@@ -222,10 +252,10 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
               </span>
             </div>
           </div>
-        </aside>
+        </PanelCard>
       </div>
 
-      <div className="overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
         <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as ArtifactTab)} className="w-full">
           <div className="flex flex-col gap-3 border-b border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/60">
             <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -266,12 +296,11 @@ export const SourceCodeViewer = ({ workflow }: { workflow: WorkflowDefinition })
           <div className="p-4">
             {generatedCode.loading ? (
               <div className="mb-4">
-                <WorkspaceInlineState
-                  type="loading"
-                  icon={<Loader2 className="h-4 w-4 animate-spin" />}
+                <InlineState
                   title="正在生成最新代码产物..."
                   description="系统会保留当前预览内容，生成完成后自动替换为最新结果。"
-                  className="py-6"
+                  loading
+                  className="rounded-2xl border border-slate-200 bg-slate-50/90 py-6 dark:border-slate-800 dark:bg-slate-900/70"
                 />
               </div>
             ) : null}
