@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, FileText, GitMerge, Layers, Loader2, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, GitMerge, Loader2 } from 'lucide-react';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
 import { Button } from '@/components/ui';
@@ -31,48 +31,6 @@ let workflowDesignContextCache: WorkflowDesignContextPayload | null = null;
 let workflowDesignContextPromise: Promise<WorkflowDesignContextPayload> | null = null;
 const processDefinitionPromiseCache = new Map<string, Promise<any | null>>();
 let processDefinitionsListPromise: Promise<any[]> | null = null;
-
-const PanelCard: React.FC<{
-  title: string;
-  description?: string;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ title, description, aside, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-      <div>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? (
-          <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-            {description}
-          </div>
-        ) : null}
-      </div>
-      {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
-    </div>
-    {children}
-  </section>
-);
-
-const SummaryCard: React.FC<{
-  label: string;
-  value: number | string;
-  hint: string;
-  icon: React.ReactNode;
-}> = ({ label, value, hint, icon }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex items-center justify-between gap-3">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-        {icon}
-      </div>
-      <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-        {label}
-      </div>
-    </div>
-    <div className="mt-4 text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
-    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div>
-  </div>
-);
 
 const StatusPanel: React.FC<{
   icon: React.ReactNode;
@@ -598,97 +556,39 @@ export const WorkflowDesign = () => {
     : '流程设计器已接入统一工作台壳层，这一轮继续收口工具栏、画布、节点和侧边配置面板。';
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-4">
-        <SummaryCard
-          label="设计模式"
-          value={isNewWorkflow ? '空白创建' : '编辑已有流程'}
-          hint={requestedWorkflowId ? `流程 ID：${requestedWorkflowId}` : '当前为新建模式'}
-          icon={<GitMerge className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="关联表单"
-          value={savedForms.length}
-          hint="设计器已加载的表单资源数"
-          icon={<FileText className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="审批资源"
-          value={`${availableRoles.length} / ${availableUsers.length}`}
-          hint="角色数量 / 用户数量"
-          icon={<ShieldCheck className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="当前 Key"
-          value={workflow.key || '未设置'}
-          hint="保存和发布时使用的流程标识"
-          icon={<Layers className="h-[18px] w-[18px]" />}
-        />
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+            Workflow Studio
+          </div>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            {studioTitle}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {studioDescription}
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" onClick={loadData}>
+            刷新设计器
+          </Button>
+          <Button variant="soft" onClick={() => navigate('/workflow/create')}>
+            返回流程目录
+          </Button>
+        </div>
       </div>
 
-      <PanelCard
-        title={studioTitle}
-        description={studioDescription}
-        aside={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" onClick={loadData}>
-              刷新设计器
-            </Button>
-            <Button variant="soft" onClick={() => navigate('/workflow/create')}>
-              返回流程目录
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-4 px-4 py-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-                流程设计页本轮继续向参考源码的设计工作台靠拢，页面壳层只负责承载设计器，不再额外挂一层独立的 Hero 视觉体系。工具栏、画布、节点和右侧配置区会共用同一套轻量比例和明暗主题规则。
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前设计上下文</div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  流程名称
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {workflow.name || '未命名流程'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  流程 ID
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {isNewWorkflow ? '未保存' : workflow.id}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  审批资源
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {availableRoles.length} 个角色 / {availableUsers.length} 位用户
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="min-h-[calc(100vh-360px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/92">
-            <WorkflowBuilder
-              workflow={workflow}
-              onChange={handleWorkflowChange}
-              onSave={handleSaveWorkflow}
-              availableForms={savedForms}
-              availableRoles={availableRoles}
-              availableUsers={availableUsers}
-            />
-          </div>
-        </div>
-      </PanelCard>
+      <div className="min-h-[calc(100vh-250px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/92">
+        <WorkflowBuilder
+          workflow={workflow}
+          onChange={handleWorkflowChange}
+          onSave={handleSaveWorkflow}
+          availableForms={savedForms}
+          availableRoles={availableRoles}
+          availableUsers={availableUsers}
+        />
+      </div>
     </div>
   );
 };
