@@ -140,7 +140,7 @@ const DetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = ({ lo
         </div>
 
         {log.logType === '9' && log.exception ? (
-          <div className="rounded-3xl border border-rose-100 bg-rose-50 p-4">
+          <div className="rounded-2xl border border-rose-100 bg-rose-50 p-4">
             <div className="text-sm font-semibold text-rose-600">异常信息</div>
             <div className="mt-3 break-all text-sm leading-7 text-rose-700">{log.exception}</div>
           </div>

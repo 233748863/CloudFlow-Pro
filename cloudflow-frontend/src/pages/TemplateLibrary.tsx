@@ -1132,7 +1132,7 @@ export const TemplateLibrary: React.FC = () => {
                   <div className="h-full overflow-y-auto p-6">
                     <div className="space-y-6">
                       {previewTemplate.previewImage ? (
-                        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                           <img
                             src={previewTemplate.previewImage}
                             alt={`${previewTemplate.name} preview`}
@@ -1239,7 +1239,7 @@ export const TemplateLibrary: React.FC = () => {
                         </div>
 
                         {previewGraph.nodes.length > 0 ? (
-                          <div className="rounded-3xl bg-slate-100 p-5 lg:p-6">
+                          <div className="rounded-2xl bg-slate-100 p-5 lg:p-5">
                             <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent">
                               {previewGraph.nodes
                                 .slice(0, 8)
@@ -1277,7 +1277,7 @@ export const TemplateLibrary: React.FC = () => {
                             </div>
                           </div>
                         ) : (
-                          <div className="rounded-3xl border border-dashed border-slate-200 bg-white px-6 py-16 text-center">
+                          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center">
                             <Workflow className="mx-auto mb-4 h-12 w-12 text-slate-200" />
                             <p className="text-sm leading-6 text-slate-500">
                               {TEXT.invalidDefinition}
@@ -1287,7 +1287,7 @@ export const TemplateLibrary: React.FC = () => {
                       </section>
 
                       <div className="grid gap-5 xl:grid-cols-2">
-                        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                           <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
                             {TEXT.nodeList}
                           </div>
@@ -1316,7 +1316,7 @@ export const TemplateLibrary: React.FC = () => {
                           </div>
                         </section>
 
-                        <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white">
+                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
                           <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
                             {TEXT.edgeList}
                           </div>

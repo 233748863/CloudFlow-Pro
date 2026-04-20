@@ -286,7 +286,7 @@ export const DeployWindowManagement: React.FC = () => {
               <div
                 key={window.id}
                 className={cn(
-                  'rounded-3xl border px-5 py-5 shadow-sm',
+                  'rounded-2xl border px-5 py-5 shadow-sm ring-1 ring-slate-200/70',
                   window.isEnabled
                     ? 'border-slate-200 bg-white'
                     : 'border-slate-200 bg-slate-50 opacity-90',

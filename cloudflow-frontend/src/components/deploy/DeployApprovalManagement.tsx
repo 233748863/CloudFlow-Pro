@@ -273,7 +273,7 @@ export const DeployApprovalManagement: React.FC = () => {
                 return (
                   <div
                     key={approval.id}
-                    className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm"
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm ring-1 ring-slate-200/70"
                   >
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="min-w-0 flex-1 space-y-3">

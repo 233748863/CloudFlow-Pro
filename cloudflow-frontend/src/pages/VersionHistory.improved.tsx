@@ -78,7 +78,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
   if (!hasViewPermission) {
     return (
       <div className="p-6">
-        <div className="flex flex-col items-center justify-center p-8 text-center">
+        <div className="flex flex-col items-center justify-center p-6 text-center">
           <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3">
             <AlertTriangle className="text-slate-400" size={24} />
           </div>

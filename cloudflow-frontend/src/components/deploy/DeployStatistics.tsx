@@ -278,7 +278,7 @@ export const DeployStatistics: React.FC = () => {
                 </div>
               </div>
 
-              <div className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm ring-1 ring-slate-200/70">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-sm font-semibold text-slate-700">发布健康度</div>
@@ -297,7 +297,7 @@ export const DeployStatistics: React.FC = () => {
               eyebrow="Version Signal"
               bodyClassName="space-y-4"
             >
-              <div className="rounded-3xl border border-cyan-200 bg-cyan-50 px-5 py-5 shadow-sm">
+              <div className="rounded-2xl border border-cyan-200 bg-cyan-50 px-5 py-5 shadow-sm ring-1 ring-cyan-200/70">
                 <div className="text-sm font-semibold text-slate-700">当前版本</div>
                 <div className="mt-3 text-4xl font-bold tracking-tight text-cyan-700">
                   {derived.latestVersion > 0 ? `v${derived.latestVersion}` : '--'}

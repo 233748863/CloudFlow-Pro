@@ -363,7 +363,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 {versions.map((version) => (
                   <div
                     key={version.id}
-                    className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm"
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm ring-1 ring-slate-200/70"
                   >
                     <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                       <div className="min-w-0 flex-1 space-y-3">
@@ -419,7 +419,7 @@ export const VersionRollbackManagement: React.FC = () => {
                 return (
                   <div
                     key={record.id}
-                    className="rounded-3xl border border-slate-200 bg-white px-5 py-5 shadow-sm"
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-5 shadow-sm ring-1 ring-slate-200/70"
                   >
                     <div className="space-y-3">
                       <div className="flex flex-wrap items-center gap-2">
@@ -442,21 +442,21 @@ export const VersionRollbackManagement: React.FC = () => {
                       </div>
 
                       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
                           <div className="text-xs text-slate-400">回滚时间</div>
                           <div className="mt-1 font-medium">{record.rollbackTime}</div>
                         </div>
-                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
                           <div className="text-xs text-slate-400">操作人</div>
                           <div className="mt-1 font-medium">{record.rollbackBy}</div>
                         </div>
-                        <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
+                        <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
                           <div className="text-xs text-slate-400">原始部署 ID</div>
                           <div className="mt-1 font-medium">{record.originalDeployId}</div>
                         </div>
                       </div>
 
-                      <div className="rounded-2xl bg-white/78 px-4 py-3 text-sm text-slate-600 border border-slate-200">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-sm text-slate-600">
                         <div className="text-xs text-slate-400">回滚原因</div>
                         <div className="mt-1">{record.rollbackReason}</div>
                       </div>
@@ -608,7 +608,7 @@ export const VersionRollbackManagement: React.FC = () => {
             ) : null}
 
             {!rollbackModal.impact?.allowDeploy ? (
-              <div className="rounded-3xl border border-rose-100 bg-rose-50 px-5 py-4">
+              <div className="rounded-2xl border border-rose-100 bg-rose-50 px-5 py-4">
                 <div className="flex items-start gap-3">
                   <AlertTriangle className="mt-0.5 h-5 w-5 text-rose-500" />
                   <div className="space-y-2 text-sm text-rose-700">

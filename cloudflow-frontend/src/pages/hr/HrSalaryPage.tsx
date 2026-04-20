@@ -8055,7 +8055,7 @@ export const HrSalaryPage: React.FC = () => {
       <div className="relative min-h-screen pb-6">
         <WorkspaceBackdrop />
         <WorkspacePageContent className="space-y-6">
-          <Card className="rounded-3xl border-slate-200 bg-white p-8 shadow-sm">
+          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
           <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div>
               <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
@@ -8092,7 +8092,7 @@ export const HrSalaryPage: React.FC = () => {
 
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {metrics.map(metric => (
-            <Card key={metric.label} className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+            <Card key={metric.label} className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
               <div className="flex items-start justify-between">
                 <div>
                   <div className="text-sm font-medium text-slate-500">{metric.label}</div>
@@ -8116,7 +8116,7 @@ export const HrSalaryPage: React.FC = () => {
 
           <TabsContent value="employees" className="space-y-6">
             <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-              <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+              <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
                 <div className="mb-4">
                   <h2 className="text-lg font-semibold text-slate-900">在岗薪资档案</h2>
                   <p className="mt-1 text-sm text-slate-500">当前只拉生效中的员工薪资，方便直接联调调薪与现薪详情。</p>
@@ -8273,7 +8273,7 @@ export const HrSalaryPage: React.FC = () => {
               </Card>
 
               <div className="space-y-6">
-                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+                <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">员工薪资详情</h2>
@@ -8301,7 +8301,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   {!currentEmployeeRecord && !employeeSalaryDetailLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                       先分配一条员工薪资，或从左侧选择一条现有记录。
                     </div>
                   )}
@@ -8444,7 +8444,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
                 </Card>
 
-                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+                <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">薪资档案历史</h2>
@@ -8477,7 +8477,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   {!currentEmployeeRecord && !employeeSalaryHistoryLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看薪资档案历史。
                     </div>
                   )}
@@ -8576,7 +8576,7 @@ export const HrSalaryPage: React.FC = () => {
                   )}
                 </Card>
 
-                <Card className="rounded-3xl border-slate-200 bg-white p-6 shadow-sm">
+                <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
                   <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <h2 className="text-lg font-semibold text-slate-900">到手收入测算</h2>
@@ -8610,7 +8610,7 @@ export const HrSalaryPage: React.FC = () => {
                   </div>
 
                   {!currentEmployeeRecord && !employeeCompensationLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看五险一金和个税测算结果。
                     </div>
                   )}
@@ -8953,7 +8953,7 @@ export const HrSalaryPage: React.FC = () => {
                 >
 
                   {!currentEmployeeRecord && !employeeInsuranceListLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看社保台账。
                     </div>
                   )}
@@ -9187,7 +9187,7 @@ export const HrSalaryPage: React.FC = () => {
                 >
 
                   {!currentEmployeeRecord && !employeeAdjustmentHistoryLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                       先从左侧选择一名员工，再查看调薪历史。
                     </div>
                   )}
@@ -9667,7 +9667,7 @@ export const HrSalaryPage: React.FC = () => {
                 >
 
                   {!adjustmentDetail && !adjustmentDetailLoading && (
-                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-16 text-center text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
                       从左侧选择一条调薪申请，或先发起新的调薪。
                     </div>
                   )}
