@@ -16,7 +16,7 @@ import {
   Upload,
   Plus
 } from 'lucide-react';
-import { Button, Input, TableHead, TableHeader, TableActionHead, Textarea } from '@/components/ui';
+import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableHead, TableHeader, TableActionHead, Textarea } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { WorkspaceBackdrop, WorkspacePageContent, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
 import {
@@ -753,10 +753,19 @@ export const ProcessManagement = () => {
                   <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
                   <Input className="pl-10" placeholder="搜索流程名称" value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} />
                 </div>
-                <select value={selectedCategory} onChange={(event) => setSelectedCategory(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300">
-                  <option value="">全部分类</option>
-                  {WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
-                </select>
+                <Select value={selectedCategory || '__ALL__'} onValueChange={(value) => setSelectedCategory(value === '__ALL__' ? '' : value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="全部分类" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__ALL__">全部分类</SelectItem>
+                    {WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-3">
                 <div className="flex flex-wrap items-start gap-2">
@@ -844,7 +853,19 @@ export const ProcessManagement = () => {
               {batchEditType === 'category' ? (
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-slate-700">目标分类 <span className="text-red-500">*</span></label>
-                  <select value={batchCategory} onChange={(event) => setBatchCategory(event.target.value)} className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"><option value="">请选择分类</option>{WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}</select>
+                  <Select value={batchCategory || '__EMPTY__'} onValueChange={(value) => setBatchCategory(value === '__EMPTY__' ? '' : value)}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="请选择分类" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__EMPTY__">请选择分类</SelectItem>
+                      {WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => (
+                        <SelectItem key={value} value={value}>
+                          {label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               ) : (
                 <div className="space-y-4">
