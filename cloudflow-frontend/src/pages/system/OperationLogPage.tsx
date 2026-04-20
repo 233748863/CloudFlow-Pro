@@ -8,17 +8,6 @@ import {
   Trash2,
   TriangleAlert,
 } from 'lucide-react';
-import {
-  Button,
-  Input,
-  Table,
-  TableActionHead,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui';
 import { toast } from 'sonner';
 import {
   getSysLogPage,
@@ -29,20 +18,25 @@ import {
   SysLogQuery,
   LogTrendItem,
 } from '@/services/api/log';
-import { TableRowActions } from '@/components/ui/table-row-actions';
-import { ConfirmDialog } from '@/components/common';
+import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
-  WorkspaceBackdrop,
-  WorkspaceDialogShell,
-  WorkspaceHeroMetricsSection,
-  WorkspaceInlineState,
-  WorkspacePageContent,
-  WorkspacePaginationBar,
-  WorkspaceResultCard,
-  WorkspaceSectionCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace';
+  Button,
+  Input,
+  LoadingSpinner,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Table,
+  TableActionHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui';
 import { cn } from '@/utils/cn';
 
 type OperationLogFilters = {
@@ -52,25 +46,62 @@ type OperationLogFilters = {
   endTime: string;
 };
 
-const surfaceChipClassName =
-  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-const subtlePanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-const detailPanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
-};
-
 const getLogTypeBadgeClassName = (logType: string) =>
   logType === '0'
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
     : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
 
+const RowActionButton: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  tone?: 'neutral' | 'danger';
+}> = ({ label, icon, onClick, tone = 'neutral' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={[
+      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
+      tone === 'danger'
+        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
+        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+    ].join(' ')}
+    title={label}
+    aria-label={label}
+  >
+    {icon}
+  </button>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+    </TableCell>
+  </TableRow>
+);
+
 const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
-  if (!data.length) return null;
+  if (!data.length) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        暂无趋势数据
+      </div>
+    );
+  }
 
   const width = 900;
   const height = 220;
@@ -81,11 +112,11 @@ const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
   const yStep = Math.max(1, Math.ceil(maxVal / 5));
   const yMax = yStep * 5;
 
-  const toX = (i: number) => padding.left + (i / Math.max(data.length - 1, 1)) * chartW;
-  const toY = (v: number) => padding.top + chartH - (v / yMax) * chartH;
+  const toX = (index: number) => padding.left + (index / Math.max(data.length - 1, 1)) * chartW;
+  const toY = (value: number) => padding.top + chartH - (value / yMax) * chartH;
 
   const linePath = (key: 'success' | 'fail') =>
-    data.map((item, i) => `${i === 0 ? 'M' : 'L'}${toX(i)},${toY(item[key])}`).join(' ');
+    data.map((item, index) => `${index === 0 ? 'M' : 'L'}${toX(index)},${toY(item[key])}`).join(' ');
 
   const areaPath = (key: 'success' | 'fail') =>
     `${linePath(key)} L${toX(data.length - 1)},${toY(0)} L${toX(0)},${toY(0)} Z`;
@@ -108,13 +139,13 @@ const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
         </span>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/78">
+      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white p-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
         <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full min-w-[760px]">
-          {Array.from({ length: 6 }, (_, i) => {
-            const val = yStep * i;
-            const y = toY(val);
+          {Array.from({ length: 6 }, (_, index) => {
+            const value = yStep * index;
+            const y = toY(value);
             return (
-              <g key={i}>
+              <g key={index}>
                 <line
                   x1={padding.left}
                   y1={y}
@@ -132,7 +163,7 @@ const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
                   fill="currentColor"
                   className="text-slate-400 dark:text-slate-500"
                 >
-                  {val}
+                  {value}
                 </text>
               </g>
             );
@@ -145,11 +176,11 @@ const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
           <path d={linePath('fail')} fill="none" stroke="#94a3b8" strokeWidth={2} />
 
           {xLabels.map((item) => {
-            const i = data.indexOf(item);
+            const index = data.indexOf(item);
             return (
               <text
                 key={item.date}
-                x={toX(i)}
+                x={toX(index)}
                 y={height - 6}
                 textAnchor="middle"
                 fontSize={10}
@@ -166,57 +197,125 @@ const TrendChart: React.FC<{ data: LogTrendItem[] }> = ({ data }) => {
   );
 };
 
-const DetailModal: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
+const TrendDialog: React.FC<{
+  open: boolean;
+  onClose: () => void;
+  data: LogTrendItem[];
+  loading: boolean;
+  onRefresh: () => void;
+}> = ({ open, onClose, data, loading, onRefresh }) => {
+  const trendSuccess = data.reduce((sum, item) => sum + item.success, 0);
+  const trendFail = data.reduce((sum, item) => sum + item.fail, 0);
+
+  return (
+    <BaseDialog
+      open={open}
+      title="近 30 天操作趋势"
+      description="保留趋势能力，但不再占用标准列表页主骨架。"
+      onClose={onClose}
+      maxWidthClassName="max-w-5xl"
+      footer={
+        <div className="flex justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-700 dark:bg-slate-950">
+              成功 {trendSuccess}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-700 dark:bg-slate-950">
+              失败 {trendFail}
+            </span>
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose}>
+              关闭
+            </Button>
+            <Button variant="outline" onClick={onRefresh} disabled={loading}>
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+              刷新趋势
+            </Button>
+          </div>
+        </div>
+      }
+    >
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <LoadingSpinner size="lg" />
+        </div>
+      ) : (
+        <TrendChart data={data} />
+      )}
+    </BaseDialog>
+  );
+};
+
+const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
   log,
   onClose,
 }) => {
-  if (!log) return null;
-
-  const items = [
-    { label: '请求时间', value: log.createTime },
-    { label: '操作人', value: log.createBy },
-    { label: '请求地址', value: log.requestUri },
-    { label: 'IP 地址', value: log.remoteAddr },
-    { label: '请求方法', value: log.method },
-    { label: '客户端', value: log.serviceId },
-    { label: '执行耗时', value: log.time ? `${log.time} ms` : '-' },
-    { label: '浏览器', value: log.userAgent },
-    { label: '请求参数', value: log.params },
-  ];
+  const items = log
+    ? [
+        { label: '请求时间', value: log.createTime },
+        { label: '操作人', value: log.createBy },
+        { label: '请求地址', value: log.requestUri },
+        { label: 'IP 地址', value: log.remoteAddr },
+        { label: '请求方法', value: log.method },
+        { label: '客户端', value: log.serviceId },
+        { label: '执行耗时', value: log.time ? `${log.time} ms` : '-' },
+        { label: '浏览器', value: log.userAgent },
+        { label: '请求参数', value: log.params },
+      ]
+    : [];
 
   return (
-    <WorkspaceDialogShell
+    <BaseDialog
+      open={Boolean(log)}
       title="操作日志详情"
       description="查看该条操作日志的技术参数、请求信息与异常内容。"
       onClose={onClose}
       maxWidthClassName="max-w-4xl"
-      headerAside={(
-        <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', getLogTypeBadgeClassName(log.logType))}>
-          {log.logType === '0' ? '正常' : '错误'}
-        </span>
-      )}
-      bodyClassName="space-y-6"
+      headerAside={
+        log ? (
+          <span
+            className={cn(
+              'rounded-full px-2.5 py-1 text-xs font-medium',
+              getLogTypeBadgeClassName(log.logType),
+            )}
+          >
+            {log.logType === '0' ? '正常' : '错误'}
+          </span>
+        ) : null
+      }
     >
-      <div className="grid gap-4 md:grid-cols-2">
-        {items.map((item) => (
-          <div key={item.label} className={detailPanelClassName}>
-            <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{item.label}</div>
-            <div className="mt-2 break-all text-sm font-medium text-slate-900 dark:text-slate-100">
-              {item.value || '-'}
-            </div>
+      {log ? (
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            {items.map((item) => (
+              <div
+                key={item.label}
+                className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70"
+              >
+                <div className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                  {item.label}
+                </div>
+                <div className="mt-2 break-all text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {item.value || '-'}
+                </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
 
-      {log.logType === '9' && log.exception ? (
-        <div className="rounded-2xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm dark:border-rose-900/70 dark:bg-rose-950/30">
-          <div className="text-sm font-semibold text-rose-600 dark:text-rose-200">异常信息</div>
-          <div className="mt-3 break-all text-sm leading-7 text-rose-700 dark:text-rose-100">
-            {log.exception}
-          </div>
+          {log.logType === '9' && log.exception ? (
+            <div className="rounded-2xl border border-rose-200 bg-rose-50/90 p-4 shadow-sm dark:border-rose-900/70 dark:bg-rose-950/30">
+              <div className="text-sm font-semibold text-rose-600 dark:text-rose-200">
+                异常信息
+              </div>
+              <div className="mt-3 break-all text-sm leading-7 text-rose-700 dark:text-rose-100">
+                {log.exception}
+              </div>
+            </div>
+          ) : null}
         </div>
       ) : null}
-    </WorkspaceDialogShell>
+    </BaseDialog>
   );
 };
 
@@ -234,6 +333,7 @@ export const OperationLogPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [trendLoading, setTrendLoading] = useState(false);
   const [trendData, setTrendData] = useState<LogTrendItem[]>([]);
+  const [trendOpen, setTrendOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [detailLog, setDetailLog] = useState<SysLog | null>(null);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<number[]>([]);
@@ -246,8 +346,8 @@ export const OperationLogPage: React.FC = () => {
       setRecords(response.records || []);
       setTotal(response.total || 0);
       setSelectedIds([]);
-    } catch (err) {
-      console.error(err);
+    } catch (fetchError) {
+      console.error(fetchError);
       const message = '加载操作日志失败，请稍后重试';
       setError(message);
       toast.error(message);
@@ -263,8 +363,8 @@ export const OperationLogPage: React.FC = () => {
     try {
       const response = await getSysLogTrend();
       setTrendData(response || []);
-    } catch (err) {
-      console.error(err);
+    } catch (fetchError) {
+      console.error(fetchError);
       setTrendData([]);
     } finally {
       setTrendLoading(false);
@@ -279,9 +379,10 @@ export const OperationLogPage: React.FC = () => {
     void loadTrend();
   }, [loadTrend]);
 
-  const applySearch = () => {
-    setQuery((prev) => ({
-      ...prev,
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    setQuery((current) => ({
+      ...current,
       pageNum: 1,
       title: filters.titleKeyword.trim() || undefined,
       logType: filters.logType || undefined,
@@ -291,23 +392,13 @@ export const OperationLogPage: React.FC = () => {
   };
 
   const handleReset = () => {
-    const nextFilters = {
+    setFilters({
       titleKeyword: '',
       logType: '',
       startTime: '',
       endTime: '',
-    };
-    setFilters(nextFilters);
+    });
     setQuery({ pageNum: 1, pageSize: 10 });
-  };
-
-  const handleQuickFilterChange = (value: string) => {
-    setFilters((prev) => ({ ...prev, logType: value }));
-    setQuery((prev) => ({
-      ...prev,
-      pageNum: 1,
-      logType: value || undefined,
-    }));
   };
 
   const handleRefreshList = () => {
@@ -330,8 +421,8 @@ export const OperationLogPage: React.FC = () => {
     try {
       const log = await getSysLogDetail(id);
       setDetailLog(log);
-    } catch (err) {
-      console.error(err);
+    } catch (fetchError) {
+      console.error(fetchError);
       toast.error('加载日志详情失败');
     }
   };
@@ -345,8 +436,8 @@ export const OperationLogPage: React.FC = () => {
       toast.success('删除成功');
       setPendingDeleteIds([]);
       await Promise.all([loadData(), loadTrend()]);
-    } catch (err) {
-      console.error(err);
+    } catch (deleteError) {
+      console.error(deleteError);
       toast.error('删除日志失败');
     }
   };
@@ -363,13 +454,11 @@ export const OperationLogPage: React.FC = () => {
   };
 
   const toggleOne = (id: number) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
+    setSelectedIds((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id],
     );
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / (query.pageSize || 10)));
-  const currentPage = query.pageNum || 1;
   const successCount = records.filter((item) => item.logType === '0').length;
   const errorCount = records.filter((item) => item.logType === '9').length;
   const totalTime = records.reduce((sum, item) => sum + Number(item.time || 0), 0);
@@ -379,246 +468,148 @@ export const OperationLogPage: React.FC = () => {
   const hasActiveFilters = Boolean(
     query.title || query.logType || query.startTime || query.endTime,
   );
-  const todayLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const currentTypeLabel =
-    filters.logType === '0' ? '正常' : filters.logType === '9' ? '错误' : '全部';
-
-  const overviewItems = [
-    { label: '当前结果', value: `${records.length} 条` },
-    { label: '正常日志', value: `${successCount} 条` },
-    { label: '错误日志', value: `${errorCount} 条` },
-    { label: '已勾选', value: `${selectedIds.length} 条` },
-  ];
-
-  const heroMetrics = [
-    {
-      label: '30天成功',
-      value: `${trendSuccess}`,
-      hint: '趋势周期内的成功请求总数',
-      icon: <Activity size={17} />,
-    },
-    {
-      label: '30天失败',
-      value: `${trendFail}`,
-      hint: '趋势周期内的失败请求总数',
-      icon: <TriangleAlert size={17} />,
-    },
-    {
-      label: '当前页日志',
-      value: `${records.length}`,
-      hint: '当前分页下实际加载数量',
-      icon: <Search size={17} />,
-    },
-    {
-      label: '平均耗时',
-      value: `${averageTime} ms`,
-      hint: '当前页执行耗时均值',
-      icon: <RefreshCw size={17} />,
-    },
-  ];
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                <Activity size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {timeLabel}
-              </span>
-            </div>
-          )}
-          title="操作日志"
-          description="把趋势图、筛选、批量操作和详情查看统一收口到同一套工作台结构中，避免日志页与业务页完全割裂。"
-          actions={(
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="lg" onClick={handleRefreshList} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新列表
-              </Button>
-              <Button variant="outline" size="lg" onClick={handleRefreshTrend} disabled={trendLoading}>
-                <RefreshCw size={15} className={cn(trendLoading && 'animate-spin')} />
-                刷新趋势
-              </Button>
-            </div>
-          )}
-          contentClassName="p-4 sm:p-5"
-          metrics={heroMetrics}
-        >
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-              System 日志工作台
-            </span>
-            <span className={surfaceChipClassName}>当前类型：{currentTypeLabel}</span>
-            <span className={surfaceChipClassName}>关键词：{query.title || '未设置'}</span>
-            <span className={surfaceChipClassName}>已勾选 {selectedIds.length} 条</span>
-          </div>
-        </WorkspaceHeroMetricsSection>
-
-        <WorkspaceSectionCard
-          eyebrow="趋势概览"
-          title="近 30 天操作趋势"
-          description="趋势图和当前筛选区分开维护，避免日志页把统计层和治理层挤在同一块里。"
-          headerAside={(
-            <div className="flex flex-wrap gap-2">
-              <span className={surfaceChipClassName}>成功 {trendSuccess} 条</span>
-              <span className={surfaceChipClassName}>失败 {trendFail} 条</span>
-            </div>
-          )}
-        >
-          {trendLoading ? (
-            <WorkspaceInlineState type="loading" title="正在加载趋势图..." className="py-12" />
-          ) : trendData.length === 0 ? (
-            <WorkspaceInlineState
-              type="info"
-              icon={<Activity size={22} className="text-cyan-600 dark:text-cyan-300" />}
-              title="暂无趋势数据"
-              description="后续新的操作日志写入后，这里会展示近 30 天的成功/失败走势。"
-            />
-          ) : (
-            <TrendChart data={trendData} />
-          )}
-        </WorkspaceSectionCard>
-
-        <WorkspaceWorkbenchCard
-          eyebrow="日志筛选"
-          title="日志工作台"
-          total={total}
-          hasActiveFilters={hasActiveFilters}
-          overviewItems={overviewItems}
-          headerBadges={(
-            <div className="flex flex-wrap gap-2">
-              <span className={surfaceChipClassName}>支持批量删除与详情查看</span>
-              <span className={surfaceChipClassName}>当前页耗时 {totalTime} ms</span>
-            </div>
-          )}
-          quickFilters={[
-            { label: '全部', value: '' },
-            { label: '正常', value: '0' },
-            { label: '错误', value: '9' },
-          ]}
-          activeQuickFilter={filters.logType}
-          onQuickFilterChange={handleQuickFilterChange}
-          quickFilterAside={(
-            <div className="flex flex-wrap items-center gap-2">
-              {hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={handleReset}>
-                  <RotateCcw size={14} />
-                  重置条件
-                </Button>
-              ) : (
-                <span className={surfaceChipClassName}>当前显示默认视图</span>
-              )}
-            </div>
-          )}
-          filterBar={(
-            <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+    <>
+      <TablePageLayout
+        className="gap-4"
+        filters={
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <form
+              onSubmit={handleSearch}
+              className="flex flex-1 flex-wrap items-center gap-3"
+            >
+              <div className="relative w-full sm:w-60">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                />
                 <Input
                   value={filters.titleKeyword}
                   onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, titleKeyword: event.target.value }))
+                    setFilters((current) => ({ ...current, titleKeyword: event.target.value }))
                   }
                   placeholder="按操作标题搜索"
-                  className="pl-10"
+                  className="h-10 pl-10"
                 />
               </div>
-              <Input
-                type="date"
-                className="h-11 rounded-2xl"
-                value={filters.startTime}
-                onChange={(event) =>
-                  setFilters((prev) => ({ ...prev, startTime: event.target.value }))
-                }
-              />
-              <Input
-                type="date"
-                className="h-11 rounded-2xl"
-                value={filters.endTime}
-                onChange={(event) =>
-                  setFilters((prev) => ({ ...prev, endTime: event.target.value }))
-                }
-              />
-              <Button type="button" onClick={applySearch}>
-                <Search size={15} />
-                查询日志
+
+              <div className="w-full sm:w-36">
+                <Select
+                  value={filters.logType}
+                  onValueChange={(value) =>
+                    setFilters((current) => ({ ...current, logType: value }))
+                  }
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="全部类型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">全部类型</SelectItem>
+                    <SelectItem value="0">正常</SelectItem>
+                    <SelectItem value="9">错误</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-40">
+                <Input
+                  type="date"
+                  value={filters.startTime}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, startTime: event.target.value }))
+                  }
+                  className="h-10"
+                />
+              </div>
+
+              <div className="w-full sm:w-40">
+                <Input
+                  type="date"
+                  value={filters.endTime}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, endTime: event.target.value }))
+                  }
+                  className="h-10"
+                />
+              </div>
+
+              <Button type="submit" size="sm">
+                查询
+              </Button>
+
+              {hasActiveFilters ? (
+                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                  <RotateCcw size={14} />
+                  重置
+                </Button>
+              ) : null}
+            </form>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefreshList} disabled={loading}>
+                <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+                刷新
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setTrendOpen(true)}>
+                <Activity size={15} />
+                查看趋势
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBatchDelete}
+                disabled={!selectedIds.length}
+              >
+                <Trash2 size={15} />
+                删除选中
               </Button>
             </div>
-          )}
-        />
-
-        <WorkspaceResultCard
-          total={total}
-          title="当前日志"
-          description="趋势、筛选、批量操作和详情查看全部统一到工作台页面结构中。"
-          footer={(
-            <WorkspacePaginationBar
-              total={total}
-              pageNum={currentPage}
-              totalPages={totalPages}
-              onPrev={() =>
-                setQuery((prev) => ({
-                  ...prev,
-                  pageNum: Math.max(1, (prev.pageNum || 1) - 1),
-                }))
-              }
-              onNext={() =>
-                setQuery((prev) => ({
-                  ...prev,
-                  pageNum: Math.min(totalPages, (prev.pageNum || 1) + 1),
-                }))
-              }
-              prevDisabled={currentPage <= 1}
-              nextDisabled={currentPage >= totalPages}
-            />
-          )}
-        >
-          <div className="space-y-4 px-4 py-4">
-            {!loading && !error && records.length > 0 ? (
-              <div className={subtlePanelClassName}>
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">日志结果概况</div>
-                    <div className="flex flex-wrap gap-2">
-                      <span className={surfaceChipClassName}>当前页 {records.length} 条</span>
-                      <span className={surfaceChipClassName}>正常 {successCount} 条</span>
-                      <span className={surfaceChipClassName}>错误 {errorCount} 条</span>
-                      <span className={surfaceChipClassName}>已勾选 {selectedIds.length} 条</span>
-                    </div>
-                    <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      批量治理和详情查看都在这一层完成，避免日志页再出现传统后台那种散乱工具条和孤立详情弹窗。
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Button
-                      variant="destructive"
-                      size="sm"
-                      onClick={handleBatchDelete}
-                      disabled={!selectedIds.length}
-                    >
-                      <Trash2 size={14} />
-                      删除选中
-                    </Button>
-                  </div>
+          </div>
+        }
+        table={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  操作日志
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  按源码后台列表页骨架重组，趋势功能保留为轻量入口，主页面只保留筛选、列表、分页和详情。
                 </div>
               </div>
-            ) : null}
 
-            <Table className="min-w-[1220px]">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  共 {total} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  当前页 {records.length} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  正常 {successCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  错误 {errorCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  平均耗时 {averageTime} ms
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  30 天成功 {trendSuccess}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  30 天失败 {trendFail}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  已勾选 {selectedIds.length} 条
+                </span>
+              </div>
+            </div>
+
+            <Table className="min-w-[1180px]">
               <TableHeader>
-                <tr>
+                <TableRow>
                   <TableHead className="w-10">
                     <input
                       type="checkbox"
@@ -634,27 +625,23 @@ export const OperationLogPage: React.FC = () => {
                   <TableHead>请求方法</TableHead>
                   <TableHead>耗时</TableHead>
                   <TableHead>请求时间</TableHead>
-                  <TableHead className="w-28">操作人</TableHead>
-                  <TableActionHead className="w-44">操作</TableActionHead>
-                </tr>
+                  <TableHead>操作人</TableHead>
+                  <TableActionHead className="w-24">操作</TableActionHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <WorkspaceTableStateRow colSpan={10} type="loading" title="正在加载操作日志..." />
+                  <TableStateRow colSpan={10} title="正在加载操作日志..." loading />
                 ) : error ? (
-                  <WorkspaceTableStateRow
-                    colSpan={10}
-                    title="操作日志加载失败"
-                    description={error}
-                  />
+                  <TableStateRow colSpan={10} title="操作日志加载失败" description={error} />
                 ) : records.length === 0 ? (
-                  <WorkspaceTableStateRow
+                  <TableStateRow
                     colSpan={10}
                     title="暂无操作日志"
                     description="可以调整筛选条件，或等待新的业务操作写入日志。"
                   />
                 ) : (
-                  records.map((log, idx) => (
+                  records.map((log, index) => (
                     <TableRow key={log.logId}>
                       <TableCell className="py-4">
                         <input
@@ -665,19 +652,30 @@ export const OperationLogPage: React.FC = () => {
                         />
                       </TableCell>
                       <TableCell className="py-4 text-slate-400 dark:text-slate-500">
-                        {((query.pageNum || 1) - 1) * (query.pageSize || 10) + idx + 1}
+                        {((query.pageNum || 1) - 1) * (query.pageSize || 10) + index + 1}
                       </TableCell>
                       <TableCell className="py-4">
-                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', getLogTypeBadgeClassName(log.logType))}>
+                        <span
+                          className={cn(
+                            'rounded-full px-2.5 py-1 text-xs font-medium',
+                            getLogTypeBadgeClassName(log.logType),
+                          )}
+                        >
                           {log.logType === '0' ? '正常' : '错误'}
                         </span>
                       </TableCell>
                       <TableCell className="py-4">
                         <div className="max-w-[280px]">
-                          <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100" title={log.title}>
+                          <div
+                            className="truncate text-sm font-medium text-slate-900 dark:text-slate-100"
+                            title={log.title}
+                          >
                             {log.title}
                           </div>
-                          <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400" title={log.requestUri || ''}>
+                          <div
+                            className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400"
+                            title={log.requestUri || ''}
+                          >
                             {log.requestUri || '未记录请求地址'}
                           </div>
                         </div>
@@ -697,53 +695,72 @@ export const OperationLogPage: React.FC = () => {
                       <TableCell className="py-4 whitespace-nowrap text-slate-700 dark:text-slate-200">
                         {log.createBy || '-'}
                       </TableCell>
-                      <TableCell className="py-4 whitespace-nowrap text-right">
-                        <TableRowActions
-                          align="end"
-                          wrap={false}
-                          className="whitespace-nowrap"
-                          actions={[
-                            {
-                              label: '详情',
-                              icon: <Eye size={14} />,
-                              onClick: () => void handleViewDetail(log.logId),
-                              tone: 'info',
-                            },
-                            {
-                              label: '删除',
-                              icon: <Trash2 size={14} />,
-                              onClick: () => setPendingDeleteIds([log.logId]),
-                              tone: 'danger',
-                            },
-                          ]}
-                        />
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <RowActionButton
+                            label="查看详情"
+                            icon={<Eye size={15} />}
+                            onClick={() => void handleViewDetail(log.logId)}
+                          />
+                          <RowActionButton
+                            label="删除日志"
+                            icon={<Trash2 size={15} />}
+                            onClick={() => setPendingDeleteIds([log.logId])}
+                            tone="danger"
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
-          </div>
-        </WorkspaceResultCard>
+          </>
+        }
+        pagination={
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={query.pageNum || 1}
+              pageSize={query.pageSize || 10}
+              onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
+              onPageSizeChange={(pageSize) =>
+                setQuery((current) => ({
+                  ...current,
+                  pageNum: 1,
+                  pageSize,
+                }))
+              }
+            />
+          ) : null
+        }
+      />
 
-        <DetailModal log={detailLog} onClose={() => setDetailLog(null)} />
+      <TrendDialog
+        open={trendOpen}
+        onClose={() => setTrendOpen(false)}
+        data={trendData}
+        loading={trendLoading}
+        onRefresh={handleRefreshTrend}
+      />
 
-        <ConfirmDialog
-          open={pendingDeleteIds.length > 0}
-          title="确认删除操作日志"
-          message={
-            pendingDeleteIds.length > 1
-              ? `确定删除选中的 ${pendingDeleteIds.length} 条操作日志吗？此操作不可恢复。`
-              : '确定删除这条操作日志吗？此操作不可恢复。'
-          }
-          confirmText="确认删除"
-          cancelText="取消"
-          danger={true}
-          onCancel={() => setPendingDeleteIds([])}
-          onConfirm={() => void confirmDelete()}
-        />
-      </WorkspacePageContent>
-    </div>
+      <DetailDialog log={detailLog} onClose={() => setDetailLog(null)} />
+
+      <ConfirmDialog
+        open={pendingDeleteIds.length > 0}
+        title="确认删除操作日志"
+        message={
+          pendingDeleteIds.length > 1
+            ? `确定删除选中的 ${pendingDeleteIds.length} 条操作日志吗？此操作不可恢复。`
+            : '确定删除这条操作日志吗？此操作不可恢复。'
+        }
+        confirmText="确认删除"
+        cancelText="取消"
+        danger={true}
+        onCancel={() => setPendingDeleteIds([])}
+        onConfirm={() => void confirmDelete()}
+      />
+    </>
   );
 };
 
