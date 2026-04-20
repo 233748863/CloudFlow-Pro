@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Building2,
   CheckCircle2,
@@ -13,9 +13,13 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
@@ -29,18 +33,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
-import { ConfirmDialog } from '@/components/common';
-import {
-  WorkspaceBackdrop,
-  WorkspaceDialogShell,
-  WorkspaceHeroMetricsSection,
-  WorkspacePageContent,
-  WorkspaceResultCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace';
-import { toast } from 'sonner';
 import {
   addRole,
   deleteRole,
@@ -50,7 +42,6 @@ import {
   updateRole,
 } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
-import { useMount } from '../../hooks/useMount';
 import { cn } from '@/utils/cn';
 
 type TreeNode = {
@@ -61,17 +52,50 @@ type TreeNode = {
   children?: TreeNode[];
 };
 
+type RoleRecord = {
+  roleId: number;
+  roleName: string;
+  roleKey: string;
+  roleSort: number;
+  status: string;
+  menuIds?: number[] | string;
+  dsType?: number | string;
+  dsScope?: string | number[];
+  tenantId?: number;
+};
+
+type RoleFilters = {
+  roleName: string;
+  roleKey: string;
+};
+
+type RoleQuery = {
+  pageNum: number;
+  pageSize: number;
+  roleName: string;
+  roleKey: string;
+};
+
 const DEFAULT_TENANT_VALUE = '__DEFAULT_TENANT__';
-const surfaceChipClassName =
-  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-const subtlePanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-const sectionPanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-const nestedPanelClassName =
-  'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78';
-const fieldLabelClassName =
-  'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+
+const dsTypeMap: Record<number, string> = {
+  0: '全部数据',
+  1: '自定义数据',
+  2: '本部门及下级',
+  3: '本部门数据',
+  4: '仅本人数据',
+};
+
+const getRoleStatusClassName = (status: string) =>
+  status === '0'
+    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
+    : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
+
+const getDsTypeClassName = (dsType: number) =>
+  dsType === 1
+    ? 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200'
+    : 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
 
 const buildTree = (items: TreeNode[], parentId = 0): TreeNode[] =>
   items
@@ -80,7 +104,7 @@ const buildTree = (items: TreeNode[], parentId = 0): TreeNode[] =>
       ...item,
       children: buildTree(items, item.menuId),
     }))
-    .sort((a, b) => a.orderNum - b.orderNum);
+    .sort((left, right) => left.orderNum - right.orderNum);
 
 const parseIds = (value?: string): number[] => {
   if (!value) return [];
@@ -92,9 +116,7 @@ const parseIds = (value?: string): number[] => {
 
 const normalizeNumberList = (value: unknown): number[] => {
   if (Array.isArray(value)) {
-    return value
-      .map((item) => Number(item))
-      .filter((item) => !Number.isNaN(item));
+    return value.map((item) => Number(item)).filter((item) => !Number.isNaN(item));
   }
 
   if (typeof value === 'string') {
@@ -116,42 +138,119 @@ const normalizeScopeValue = (value: unknown): string => {
   return '';
 };
 
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+const RowActionButton: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  tone?: 'neutral' | 'danger';
+}> = ({ label, icon, onClick, tone = 'neutral' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
+      tone === 'danger'
+        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
+        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+    )}
+    title={label}
+    aria-label={label}
+  >
+    {icon}
+  </button>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+    </TableCell>
+  </TableRow>
+);
+
+const TreeCheckboxList: React.FC<{
+  nodes: TreeNode[];
+  expandedKeys: number[];
+  onToggleExpand: (id: number) => void;
+  isChecked: (id: number) => boolean;
+  onToggleCheck: (id: number) => void;
+}> = ({ nodes, expandedKeys, onToggleExpand, isChecked, onToggleCheck }) => {
+  const renderNodes = (items: TreeNode[]) =>
+    items.map((node) => {
+      const checked = isChecked(node.menuId);
+      const expanded = expandedKeys.includes(node.menuId);
+
+      return (
+        <div key={node.menuId} className="ml-3">
+          <div
+            className={cn(
+              'flex items-center gap-2 rounded-xl px-2 py-1.5 transition',
+              checked && 'bg-slate-50 dark:bg-slate-900/70',
+            )}
+          >
+            {node.children && node.children.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => onToggleExpand(node.menuId)}
+                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+              >
+                {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </button>
+            ) : (
+              <span className="w-6" />
+            )}
+
+            <input
+              type="checkbox"
+              checked={checked}
+              onChange={() => onToggleCheck(node.menuId)}
+              className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+            />
+            <span className="text-sm text-slate-700 dark:text-slate-200">{node.menuName}</span>
+          </div>
+          {expanded && node.children?.length ? renderNodes(node.children) : null}
+        </div>
+      );
+    });
+
+  return <>{renderNodes(nodes)}</>;
 };
-
-const dsTypeMap: Record<number, string> = {
-  0: '全部数据',
-  1: '自定义数据',
-  2: '本部门及下级',
-  3: '本部门数据',
-  4: '仅本人数据',
-};
-
-const getRoleStatusClassName = (status: string) =>
-  status === '0'
-    ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
-    : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
-
-const getDsTypeClassName = (dsType: number) =>
-  dsType === 1
-    ? 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200'
-    : 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
 
 export const RoleList = () => {
-  const [roles, setRoles] = useState<any[]>([]);
+  const [roles, setRoles] = useState<RoleRecord[]>([]);
+  const [total, setTotal] = useState(0);
   const [menuTree, setMenuTree] = useState<TreeNode[]>([]);
   const [flatMenus, setFlatMenus] = useState<TreeNode[]>([]);
   const [deptTree, setDeptTree] = useState<TreeNode[]>([]);
   const [tenants, setTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchInput, setSearchInput] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<RoleFilters>({
+    roleName: '',
+    roleKey: '',
+  });
+  const [query, setQuery] = useState<RoleQuery>({
+    pageNum: 1,
+    pageSize: 10,
+    roleName: '',
+    roleKey: '',
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<any>(null);
-  const [pendingDeleteRole, setPendingDeleteRole] = useState<any>(null);
+  const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
+  const [pendingDeleteRole, setPendingDeleteRole] = useState<RoleRecord | null>(null);
   const [formData, setFormData] = useState({
     roleName: '',
     roleKey: '',
@@ -165,23 +264,44 @@ export const RoleList = () => {
   const [expandedKeys, setExpandedKeys] = useState<number[]>([]);
   const [expandedDeptKeys, setExpandedDeptKeys] = useState<number[]>([]);
 
-  useMount(() => {
-    void fetchRoles();
-    void fetchMenus();
-    void fetchDepts();
-    void fetchTenants();
-  });
+  const normalizePagedResponse = <T,>(response: any): { rows: T[]; total: number } => {
+    if (Array.isArray(response)) {
+      return { rows: response as T[], total: response.length };
+    }
 
-  const fetchRoles = async () => {
+    const rows = Array.isArray(response?.rows)
+      ? response.rows
+      : Array.isArray(response?.records)
+        ? response.records
+        : [];
+
+    return {
+      rows,
+      total: typeof response?.total === 'number' ? response.total : rows.length,
+    };
+  };
+
+  const fetchRoles = async (nextQuery: RoleQuery = query) => {
     setLoading(true);
     setError(null);
+
     try {
-      const response: any = await getRoleList();
-      setRoles(Array.isArray(response) ? response : response?.rows || response?.records || []);
-    } catch (err) {
-      console.error(err);
-      const message = '加载角色失败，请稍后重试';
+      const response = await getRoleList({
+        pageNum: nextQuery.pageNum,
+        pageSize: nextQuery.pageSize,
+        roleName: nextQuery.roleName || undefined,
+        roleKey: nextQuery.roleKey || undefined,
+      });
+
+      const normalized = normalizePagedResponse<RoleRecord>(response);
+      setRoles(normalized.rows);
+      setTotal(normalized.total);
+    } catch (fetchError) {
+      console.error(fetchError);
+      const message = '加载角色失败，请稍后重试。';
       setError(message);
+      setRoles([]);
+      setTotal(0);
       toast.error(message);
     } finally {
       setLoading(false);
@@ -190,13 +310,21 @@ export const RoleList = () => {
 
   const fetchMenus = async () => {
     try {
-      const response: any = await getMenuList();
-      const nextMenus = Array.isArray(response) ? response : response?.rows || response?.records || [];
-      setFlatMenus(nextMenus);
-      setMenuTree(buildTree(nextMenus, 0));
-      setExpandedKeys(nextMenus.filter((item: TreeNode) => item.parentId === 0).map((item: TreeNode) => item.menuId));
-    } catch (err) {
-      console.error(err);
+      const response = await getMenuList();
+      const normalized = normalizePagedResponse<any>(response).rows.map((item) => ({
+        menuId: Number(item.menuId),
+        parentId: Number(item.parentId || 0),
+        menuName: String(item.menuName || ''),
+        orderNum: Number(item.orderNum || 0),
+      }));
+
+      setFlatMenus(normalized);
+      setMenuTree(buildTree(normalized, 0));
+      setExpandedKeys(
+        normalized.filter((item) => item.parentId === 0).map((item) => item.menuId),
+      );
+    } catch (fetchError) {
+      console.error(fetchError);
       toast.error('加载菜单失败');
     }
   };
@@ -204,31 +332,60 @@ export const RoleList = () => {
   const fetchDepts = async () => {
     try {
       const response: any = await getDeptTree();
-      const nextDepts = Array.isArray(response) ? response : [];
-      const normalized: TreeNode[] = nextDepts.map((item: any) => ({
-        ...item,
-        menuId: item.deptId,
-        parentId: item.parentId || 0,
-        menuName: item.deptName,
-        orderNum: item.orderNum || 0,
+      const list = Array.isArray(response) ? response : [];
+      const normalized: TreeNode[] = list.map((item: any) => ({
+        menuId: Number(item.deptId),
+        parentId: Number(item.parentId || 0),
+        menuName: String(item.deptName || ''),
+        orderNum: Number(item.orderNum || 0),
       }));
+
       setDeptTree(buildTree(normalized, 0));
-      setExpandedDeptKeys(normalized.filter((item) => item.parentId === 0).map((item) => item.menuId));
-    } catch (err) {
-      console.error(err);
+      setExpandedDeptKeys(
+        normalized.filter((item) => item.parentId === 0).map((item) => item.menuId),
+      );
+    } catch (fetchError) {
+      console.error(fetchError);
       toast.error('加载部门失败');
     }
   };
 
   const fetchTenants = async () => {
     try {
-      const response: any = await getTenantList();
-      setTenants(Array.isArray(response) ? response : response?.rows || response?.records || []);
-    } catch (err) {
-      console.error(err);
+      const response = await getTenantList({ pageNum: 1, pageSize: 200 });
+      const normalized = normalizePagedResponse<any>(response);
+      setTenants(normalized.rows);
+    } catch (fetchError) {
+      console.error(fetchError);
       toast.error('加载租户失败');
     }
   };
+
+  useEffect(() => {
+    void fetchRoles();
+  }, [query]);
+
+  useEffect(() => {
+    void fetchMenus();
+    void fetchDepts();
+    void fetchTenants();
+  }, []);
+
+  const activeCount = useMemo(() => roles.filter((role) => role.status === '0').length, [roles]);
+  const customScopeCount = useMemo(
+    () => roles.filter((role) => Number(role.dsType) === 1).length,
+    [roles],
+  );
+  const tenantCoverage = useMemo(
+    () => new Set(roles.map((role) => role.tenantId).filter(Boolean)).size,
+    [roles],
+  );
+  const hasActiveFilters = Boolean(query.roleName || query.roleKey);
+  const isEdit = Boolean(editingRole);
+  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+  const selectedDeptCount = parseIds(formData.dsScope).length;
+
+  const availableParents = flatMenus;
 
   const handleRefresh = () => {
     void fetchRoles();
@@ -239,29 +396,25 @@ export const RoleList = () => {
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    setSearchTerm(searchInput.trim());
+    setQuery((current) => ({
+      ...current,
+      pageNum: 1,
+      roleName: filters.roleName.trim(),
+      roleKey: filters.roleKey.trim(),
+    }));
   };
 
   const clearFilters = () => {
-    setSearchInput('');
-    setSearchTerm('');
+    setFilters({ roleName: '', roleKey: '' });
+    setQuery((current) => ({
+      ...current,
+      pageNum: 1,
+      roleName: '',
+      roleKey: '',
+    }));
   };
 
-  const filteredRoles = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
-    if (!keyword) return roles;
-    return roles.filter((role) =>
-      [role.roleName, role.roleKey]
-        .filter(Boolean)
-        .some((field) => String(field).toLowerCase().includes(keyword)),
-    );
-  }, [roles, searchTerm]);
-
-  const activeCount = filteredRoles.filter((role) => role.status === '0').length;
-  const customScopeCount = filteredRoles.filter((role) => Number(role.dsType) === 1).length;
-  const tenantCoverage = new Set(filteredRoles.map((role) => role.tenantId).filter(Boolean)).size;
-
-  const handleOpenModal = (role?: any) => {
+  const handleOpenModal = (role?: RoleRecord) => {
     if (role) {
       setEditingRole(role);
       setFormData({
@@ -287,7 +440,23 @@ export const RoleList = () => {
         tenantId: undefined,
       });
     }
+
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingRole(null);
+    setFormData({
+      roleName: '',
+      roleKey: '',
+      roleSort: 0,
+      status: '0',
+      menuIds: [],
+      dsType: 1,
+      dsScope: '',
+      tenantId: undefined,
+    });
   };
 
   const collectChildIds = (id: number): number[] => {
@@ -300,15 +469,14 @@ export const RoleList = () => {
   };
 
   const toggleMenuCheck = (menuId: number) => {
-    const isChecked = formData.menuIds.includes(menuId);
+    const checked = formData.menuIds.includes(menuId);
     const relatedIds = [menuId, ...collectChildIds(menuId)];
 
-    // 统一做父子联动，减少菜单授权时的重复点选。
-    setFormData((prev) => ({
-      ...prev,
-      menuIds: isChecked
-        ? prev.menuIds.filter((id) => !relatedIds.includes(id))
-        : Array.from(new Set([...prev.menuIds, ...relatedIds])),
+    setFormData((current) => ({
+      ...current,
+      menuIds: checked
+        ? current.menuIds.filter((id) => !relatedIds.includes(id))
+        : Array.from(new Set([...current.menuIds, ...relatedIds])),
     }));
   };
 
@@ -318,92 +486,10 @@ export const RoleList = () => {
       ? currentIds.filter((id) => id !== deptId)
       : [...currentIds, deptId];
 
-    setFormData((prev) => ({ ...prev, dsScope: nextIds.join(',') }));
-  };
-
-  const toggleExpand = (id: number) => {
-    setExpandedKeys((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
-  };
-
-  const toggleDeptExpand = (id: number) => {
-    setExpandedDeptKeys((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
-  };
-
-  const renderTreeNodes = (nodes: TreeNode[]) =>
-    nodes.map((node) => {
-      const checked = formData.menuIds.includes(node.menuId);
-
-      return (
-        <div key={node.menuId} className="ml-3">
-          <div
-            className={cn(
-              'flex items-center gap-2 rounded-xl px-2 py-1.5 transition',
-              checked && 'bg-slate-50 dark:bg-slate-900/70',
-            )}
-          >
-            {node.children && node.children.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => toggleExpand(node.menuId)}
-                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-              >
-                {expandedKeys.includes(node.menuId) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-            ) : (
-              <span className="w-6" />
-            )}
-
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={() => toggleMenuCheck(node.menuId)}
-              className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
-            />
-            <span className="text-sm text-slate-700 dark:text-slate-200">{node.menuName}</span>
-          </div>
-          {expandedKeys.includes(node.menuId) && node.children?.length ? renderTreeNodes(node.children) : null}
-        </div>
-      );
-    });
-
-  const renderDeptTreeNodes = (nodes: TreeNode[]) => {
-    const selectedIds = parseIds(formData.dsScope);
-
-    return nodes.map((node) => {
-      const checked = selectedIds.includes(node.menuId);
-
-      return (
-        <div key={node.menuId} className="ml-3">
-          <div
-            className={cn(
-              'flex items-center gap-2 rounded-xl px-2 py-1.5 transition',
-              checked && 'bg-slate-50 dark:bg-slate-900/70',
-            )}
-          >
-            {node.children && node.children.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => toggleDeptExpand(node.menuId)}
-                className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-              >
-                {expandedDeptKeys.includes(node.menuId) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-              </button>
-            ) : (
-              <span className="w-6" />
-            )}
-
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={() => toggleDeptCheck(node.menuId)}
-              className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
-            />
-            <span className="text-sm text-slate-700 dark:text-slate-200">{node.menuName}</span>
-          </div>
-          {expandedDeptKeys.includes(node.menuId) && node.children?.length ? renderDeptTreeNodes(node.children) : null}
-        </div>
-      );
-    });
+    setFormData((current) => ({
+      ...current,
+      dsScope: nextIds.join(','),
+    }));
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -415,17 +501,24 @@ export const RoleList = () => {
     }
 
     try {
-      if (editingRole) {
-        await updateRole({ ...formData, roleId: editingRole.roleId });
+      const payload = {
+        ...formData,
+        roleName: formData.roleName.trim(),
+        roleKey: formData.roleKey.trim(),
+      };
+
+      if (editingRole?.roleId) {
+        await updateRole({ ...payload, roleId: editingRole.roleId });
         toast.success('角色更新成功');
       } else {
-        await addRole(formData);
+        await addRole(payload);
         toast.success('角色创建成功');
       }
-      setIsModalOpen(false);
+
+      handleCloseModal();
       await fetchRoles();
-    } catch (err) {
-      console.error(err);
+    } catch (submitError) {
+      console.error(submitError);
       toast.error('保存角色失败');
     }
   };
@@ -438,175 +531,123 @@ export const RoleList = () => {
     try {
       await deleteRole([pendingDeleteRole.roleId]);
       toast.success('角色删除成功');
+
+      const nextPage = roles.length === 1 && query.pageNum > 1 ? query.pageNum - 1 : query.pageNum;
+
       setPendingDeleteRole(null);
-      await fetchRoles();
-    } catch (err) {
-      console.error(err);
+      setQuery((current) => ({
+        ...current,
+        pageNum: nextPage,
+      }));
+
+      if (nextPage === query.pageNum) {
+        await fetchRoles();
+      }
+    } catch (deleteError) {
+      console.error(deleteError);
       toast.error('删除角色失败');
     }
   };
 
-  const todayLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const hasActiveFilters = Boolean(searchTerm.trim());
-  const currentSearchLabel = searchTerm.trim() || '未设置';
-  const selectedDeptCount = parseIds(formData.dsScope).length;
-
-  const overviewItems = [
-    { label: '当前结果', value: `${filteredRoles.length} 个角色` },
-    { label: '正常状态', value: `${activeCount} 个` },
-    { label: '自定义范围', value: `${customScopeCount} 个` },
-    { label: '搜索关键词', value: currentSearchLabel },
-  ];
-  const heroMetrics = [
-    {
-      label: '角色总数',
-      value: `${filteredRoles.length}`,
-      hint: '当前视图下可见角色数量',
-      icon: <Shield size={17} />,
-    },
-    {
-      label: '正常角色',
-      value: `${activeCount}`,
-      hint: '状态为正常，可用于授权',
-      icon: <CheckCircle2 size={17} />,
-    },
-    {
-      label: '菜单资源',
-      value: `${flatMenus.length}`,
-      hint: '角色可分配的菜单与按钮总量',
-      icon: <FolderTree size={17} />,
-    },
-    {
-      label: '租户覆盖',
-      value: `${tenantCoverage}`,
-      hint: `自定义范围 ${customScopeCount} 个`,
-      icon: <Users size={17} />,
-    },
-  ];
+  const tenantNameById = (tenantId?: number) =>
+    tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <>
+      <TablePageLayout
+        className="gap-4"
+        filters={
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <form
+              onSubmit={handleSearch}
+              className="flex flex-1 flex-wrap items-center gap-3"
+            >
+              <div className="relative w-full sm:w-56">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                />
+                <Input
+                  value={filters.roleName}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, roleName: event.target.value }))
+                  }
+                  placeholder="搜索角色名称"
+                  className="h-10 pl-10"
+                />
+              </div>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                <Shield size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {timeLabel}
-              </span>
-            </div>
-          )}
-          title="角色管理"
-          description="把系统管理页统一回到业务工作台结构，角色配置、数据范围和菜单授权不再停留在传统后台式的零散表单。"
-          actions={(
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="lg" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新数据
+              <div className="w-full sm:w-56">
+                <Input
+                  value={filters.roleKey}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, roleKey: event.target.value }))
+                  }
+                  placeholder="权限字符"
+                  className="h-10 font-mono"
+                />
+              </div>
+
+              <Button type="submit" size="sm">
+                查询
               </Button>
-              <Button size="lg" onClick={() => handleOpenModal()}>
+
+              {hasActiveFilters ? (
+                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                  重置
+                </Button>
+              ) : null}
+            </form>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={() => handleOpenModal()}>
                 <Plus size={15} />
                 新增角色
               </Button>
             </div>
-          )}
-          contentClassName="p-4 sm:p-5"
-          metrics={heroMetrics}
-        >
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-              System 角色工作台
-            </span>
-            <span className={surfaceChipClassName}>菜单节点 {flatMenus.length} 个</span>
-            <span className={surfaceChipClassName}>租户 {tenants.length} 个</span>
-            <span className={surfaceChipClassName}>关键词：{currentSearchLabel}</span>
           </div>
-        </WorkspaceHeroMetricsSection>
-
-        <WorkspaceWorkbenchCard
-          eyebrow="角色筛选"
-          title="角色工作台"
-          total={filteredRoles.length}
-          hasActiveFilters={hasActiveFilters}
-          overviewItems={overviewItems}
-          headerBadges={(
-            <div className="flex flex-wrap gap-2">
-              <span className={surfaceChipClassName}>菜单节点 {flatMenus.length} 个</span>
-              <span className={surfaceChipClassName}>租户 {tenants.length} 个</span>
-              <span className={surfaceChipClassName}>{hasActiveFilters ? '筛选结果' : '默认视图'}</span>
-            </div>
-          )}
-          quickFilterAside={(
-            <div className="flex flex-wrap items-center gap-2">
-              {hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={clearFilters}>
-                  清空筛选
-                </Button>
-              ) : (
-                <span className={surfaceChipClassName}>当前未应用搜索条件</span>
-              )}
-            </div>
-          )}
-          filterBar={(
-            <form onSubmit={handleSearch} className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input
-                  value={searchInput}
-                  onChange={(event) => setSearchInput(event.target.value)}
-                  placeholder="按角色名称或权限字符搜索"
-                  className="pl-10"
-                />
-              </div>
-              <Button type="submit" className="xl:min-w-[120px]">
-                <Search size={15} />
-                搜索角色
-              </Button>
-              <Button type="button" variant="outline" className="xl:min-w-[120px]" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-            </form>
-          )}
-        />
-
-        <WorkspaceResultCard
-          total={filteredRoles.length}
-          title="当前角色"
-          description="角色信息、数据范围和状态统一收口展示，操作反馈与业务申请页一致。"
-        >
-          <div className="space-y-4 px-4 py-4">
-            {!loading && !error && filteredRoles.length > 0 ? (
-              <div className={subtlePanelClassName}>
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">角色结果概况</div>
-                    <div className="flex flex-wrap gap-2">
-                      <span className={surfaceChipClassName}>当前页 {filteredRoles.length} 个</span>
-                      <span className={surfaceChipClassName}>正常 {activeCount} 个</span>
-                      <span className={surfaceChipClassName}>自定义范围 {customScopeCount} 个</span>
-                      <span className={surfaceChipClassName}>租户覆盖 {tenantCoverage} 个</span>
-                    </div>
-                    <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      列表、状态标签、菜单授权树和数据范围树使用同一套层级与色彩规则，避免 System 页面继续分裂成第三套视觉语言。
-                    </div>
-                  </div>
+        }
+        table={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  角色列表
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  轻量后台列表骨架，保留角色菜单树、部门树和租户归属配置能力。
                 </div>
               </div>
-            ) : null}
+
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  共 {total} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  当前页 {roles.length} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  正常 {activeCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  自定义范围 {customScopeCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  菜单节点 {flatMenus.length}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  租户覆盖 {tenantCoverage}
+                </span>
+              </div>
+            </div>
 
             <Table className="min-w-[980px]">
               <TableHeader>
-                <tr>
+                <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>角色名称</TableHead>
                   <TableHead>权限字符</TableHead>
@@ -614,277 +655,327 @@ export const RoleList = () => {
                   <TableHead>排序</TableHead>
                   <TableHead>数据范围</TableHead>
                   <TableHead>状态</TableHead>
-                  <TableActionHead className="w-52">操作</TableActionHead>
-                </tr>
+                  <TableActionHead className="w-28">操作</TableActionHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载角色数据..." />
+                  <TableStateRow colSpan={8} title="正在加载角色数据..." loading />
                 ) : error ? (
-                  <WorkspaceTableStateRow
-                    colSpan={8}
-                    title="角色数据加载失败"
-                    description={error}
-                  />
-                ) : filteredRoles.length === 0 ? (
-                  <WorkspaceTableStateRow
+                  <TableStateRow colSpan={8} title="角色数据加载失败" description={error} />
+                ) : roles.length === 0 ? (
+                  <TableStateRow
                     colSpan={8}
                     title="暂无角色数据"
-                    description="可以先新建角色，再配置菜单和数据范围。"
+                    description="可以先创建角色，再配置菜单和数据范围。"
                   />
                 ) : (
-                  filteredRoles.map((role) => (
+                  roles.map((role) => (
                     <TableRow key={role.roleId}>
-                      <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">{role.roleId}</TableCell>
-                      <TableCell className="py-4">
+                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                        {role.roleId}
+                      </TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-3">
                           <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
                             <Shield size={16} />
                           </div>
                           <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{role.roleName}</div>
+                            <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {role.roleName}
+                            </div>
                             <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
                               菜单授权 {normalizeNumberList(role.menuIds).length} 项
                             </div>
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 font-mono text-xs text-slate-500 dark:text-slate-400">
+                      <TableCell className="font-mono text-xs text-slate-500 dark:text-slate-400">
                         {role.roleKey}
                       </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
+                      <TableCell className="text-sm text-slate-600 dark:text-slate-300">
                         <div className="inline-flex items-center gap-2">
                           <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
-                          <span>{tenants.find((tenant) => tenant.tenantId === role.tenantId)?.tenantName || '默认租户'}</span>
+                          <span>{tenantNameById(role.tenantId)}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">{role.roleSort}</TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', getDsTypeClassName(Number(role.dsType)))}>
+                      <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                        {role.roleSort}
+                      </TableCell>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                            getDsTypeClassName(Number(role.dsType)),
+                          )}
+                        >
                           {dsTypeMap[Number(role.dsType)] || '未设置'}
                         </span>
                       </TableCell>
-                      <TableCell className="py-4">
-                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', getRoleStatusClassName(role.status))}>
+                      <TableCell>
+                        <span
+                          className={cn(
+                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                            getRoleStatusClassName(role.status),
+                          )}
+                        >
                           {role.status === '0' ? '正常' : '停用'}
                         </span>
                       </TableCell>
-                      <TableCell className="py-4 text-right whitespace-nowrap">
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            {
-                              label: '编辑',
-                              icon: <Edit size={14} />,
-                              onClick: () => handleOpenModal(role),
-                              tone: 'primary',
-                            },
-                            {
-                              label: '删除',
-                              icon: <Trash2 size={14} />,
-                              onClick: () => setPendingDeleteRole(role),
-                              tone: 'danger',
-                            },
-                          ]}
-                        />
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <RowActionButton
+                            label="编辑角色"
+                            icon={<Edit size={15} />}
+                            onClick={() => handleOpenModal(role)}
+                          />
+                          <RowActionButton
+                            label="删除角色"
+                            icon={<Trash2 size={15} />}
+                            onClick={() => setPendingDeleteRole(role)}
+                            tone="danger"
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
+          </>
+        }
+        pagination={
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={query.pageNum}
+              pageSize={query.pageSize}
+              onPageChange={(pageNum) =>
+                setQuery((current) => ({ ...current, pageNum }))
+              }
+              onPageSizeChange={(pageSize) =>
+                setQuery((current) => ({
+                  ...current,
+                  pageNum: 1,
+                  pageSize,
+                }))
+              }
+            />
+          ) : null
+        }
+      />
+
+      <BaseDialog
+        open={isModalOpen}
+        title={isEdit ? '编辑角色' : '新增角色'}
+        description="维护角色基础信息、状态、数据范围、菜单授权和租户归属。"
+        onClose={handleCloseModal}
+        maxWidthClassName="max-w-5xl"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={handleCloseModal}>
+              取消
+            </Button>
+            <Button onClick={() => void 0} type="submit" form="role-form">
+              {isEdit ? '保存修改' : '创建角色'}
+            </Button>
           </div>
-        </WorkspaceResultCard>
+        }
+      >
+        <form id="role-form" onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className={fieldLabelClassName}>
+                角色名称 <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={formData.roleName}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, roleName: event.target.value }))
+                }
+                placeholder="例如：系统管理员"
+              />
+            </div>
 
-        {isModalOpen ? (
-          <WorkspaceDialogShell
-            title={editingRole ? '编辑角色' : '新增角色'}
-            description="把角色基础信息、数据范围和资源授权拆成分段表单，方便集中维护。"
-            onClose={() => setIsModalOpen(false)}
-            maxWidthClassName="max-w-5xl"
-            headerAside={(
-              <div className="flex flex-wrap gap-2">
-                <span className={surfaceChipClassName}>{editingRole ? '编辑模式' : '新增模式'}</span>
-                <span className={surfaceChipClassName}>已选菜单 {formData.menuIds.length} 项</span>
-                <span className={surfaceChipClassName}>已选部门 {selectedDeptCount} 个</span>
+            <div>
+              <label className={fieldLabelClassName}>
+                权限字符 <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={formData.roleKey}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, roleKey: event.target.value }))
+                }
+                placeholder="例如：ADMIN"
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>显示排序</label>
+              <Input
+                type="number"
+                value={String(formData.roleSort)}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    roleSort: Number.parseInt(event.target.value, 10) || 0,
+                  }))
+                }
+                placeholder="请输入排序值"
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>所属租户</label>
+              <Select
+                value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
+                onValueChange={(value) =>
+                  setFormData((current) => ({
+                    ...current,
+                    tenantId: value === DEFAULT_TENANT_VALUE ? undefined : Number(value),
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择租户" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_TENANT_VALUE}>默认租户</SelectItem>
+                  {tenants.map((tenant) => (
+                    <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
+                      {tenant.tenantName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className={fieldLabelClassName}>状态</label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData((current) => ({ ...current, status: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">正常</SelectItem>
+                  <SelectItem value="1">停用</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>数据权限范围</label>
+              <Select
+                value={String(formData.dsType)}
+                onValueChange={(value) => {
+                  const nextType = Number.parseInt(value, 10);
+                  setFormData((current) => ({
+                    ...current,
+                    dsType: nextType,
+                    dsScope: nextType === 1 ? current.dsScope : '',
+                  }));
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择数据范围" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">全部数据权限</SelectItem>
+                  <SelectItem value="1">自定义数据权限</SelectItem>
+                  <SelectItem value="2">本部门及下级</SelectItem>
+                  <SelectItem value="3">本部门数据</SelectItem>
+                  <SelectItem value="4">仅本人数据</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {formData.dsType === 1 ? (
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className={fieldLabelClassName}>自定义部门范围</label>
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  已选部门 {selectedDeptCount} 个
+                </span>
               </div>
-            )}
-            bodyClassName="space-y-6"
-          >
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <section className={sectionPanelClassName}>
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">基础信息</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    先确认角色名称、权限字符、排序与租户归属，再继续配置范围和菜单授权。
+              <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+                {deptTree.length > 0 ? (
+                  <TreeCheckboxList
+                    nodes={deptTree}
+                    expandedKeys={expandedDeptKeys}
+                    onToggleExpand={(id) =>
+                      setExpandedDeptKeys((current) =>
+                        current.includes(id)
+                          ? current.filter((item) => item !== id)
+                          : [...current, id],
+                      )
+                    }
+                    isChecked={(id) => parseIds(formData.dsScope).includes(id)}
+                    onToggleCheck={toggleDeptCheck}
+                  />
+                ) : (
+                  <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                    暂无部门数据
                   </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <label className={fieldLabelClassName}>
-                      角色名称 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={formData.roleName}
-                      onChange={(event) => setFormData({ ...formData, roleName: event.target.value })}
-                      placeholder="如：系统管理员"
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>
-                      权限字符 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={formData.roleKey}
-                      onChange={(event) => setFormData({ ...formData, roleKey: event.target.value })}
-                      placeholder="如：ADMIN"
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>显示排序</label>
-                    <Input
-                      type="number"
-                      value={formData.roleSort}
-                      onChange={(event) =>
-                        setFormData({ ...formData, roleSort: Number.parseInt(event.target.value, 10) || 0 })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>所属租户</label>
-                    <Select
-                      value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
-                      onValueChange={(value) =>
-                        setFormData({
-                          ...formData,
-                          tenantId: value === DEFAULT_TENANT_VALUE ? undefined : Number(value),
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择租户" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={DEFAULT_TENANT_VALUE}>默认租户</SelectItem>
-                        {tenants.map((tenant) => (
-                          <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
-                            {tenant.tenantName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </section>
-
-              <section className={sectionPanelClassName}>
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">状态与数据范围</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    角色状态决定是否可被分配，自定义数据范围可进一步限定角色查看的数据集合。
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className={fieldLabelClassName}>状态</label>
-                    <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择状态" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">正常</SelectItem>
-                        <SelectItem value="1">停用</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>数据权限范围</label>
-                    <Select
-                      value={String(formData.dsType)}
-                      onValueChange={(value) => {
-                        const nextType = Number.parseInt(value, 10);
-                        setFormData((prev) => ({
-                          ...prev,
-                          dsType: nextType,
-                          dsScope: nextType === 1 ? prev.dsScope : '',
-                        }));
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择数据范围" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="0">全部数据权限</SelectItem>
-                        <SelectItem value="1">自定义数据权限</SelectItem>
-                        <SelectItem value="2">本部门及下级</SelectItem>
-                        <SelectItem value="3">本部门数据</SelectItem>
-                        <SelectItem value="4">仅本人数据</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <span className={surfaceChipClassName}>当前选择：{dsTypeMap[formData.dsType] || '未设置'}</span>
-                  {formData.dsType === 1 ? <span className={surfaceChipClassName}>已选部门 {selectedDeptCount} 个</span> : null}
-                </div>
-
-                {formData.dsType === 1 ? (
-                  <div className="mt-4 space-y-3">
-                    <div className="text-sm font-medium text-slate-700 dark:text-slate-200">自定义部门范围</div>
-                    <div className={nestedPanelClassName}>
-                      <div className="max-h-64 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-                        {deptTree.length > 0 ? renderDeptTreeNodes(deptTree) : (
-                          <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">暂无部门数据</div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                ) : null}
-              </section>
-
-              <section className={sectionPanelClassName}>
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">菜单权限</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    目录与子节点做联动勾选，减少逐项点选带来的维护成本。
-                  </div>
-                </div>
-                <div className={nestedPanelClassName}>
-                  <div className="max-h-[28rem] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
-                    {menuTree.length > 0 ? renderTreeNodes(menuTree) : (
-                      <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">暂无菜单数据</div>
-                    )}
-                  </div>
-                </div>
-              </section>
-
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
-                  取消
-                </Button>
-                <Button type="submit">{editingRole ? '保存修改' : '立即创建'}</Button>
+                )}
               </div>
-            </form>
-          </WorkspaceDialogShell>
-        ) : null}
+            </div>
+          ) : null}
 
-        <ConfirmDialog
-          open={Boolean(pendingDeleteRole)}
-          title="确认删除角色"
-          message={
-            pendingDeleteRole
-              ? `确定要删除角色“${pendingDeleteRole.roleName}”吗？此操作不可恢复。`
-              : ''
-          }
-          confirmText="确认删除"
-          cancelText="取消"
-          danger={true}
-          onCancel={() => setPendingDeleteRole(null)}
-          onConfirm={() => void handleDelete()}
-        />
-      </WorkspacePageContent>
-    </div>
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className={fieldLabelClassName}>菜单权限</label>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                已选菜单 {formData.menuIds.length} 项
+              </span>
+            </div>
+            <div className="max-h-[28rem] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+              {menuTree.length > 0 ? (
+                <TreeCheckboxList
+                  nodes={menuTree}
+                  expandedKeys={expandedKeys}
+                  onToggleExpand={(id) =>
+                    setExpandedKeys((current) =>
+                      current.includes(id)
+                        ? current.filter((item) => item !== id)
+                        : [...current, id],
+                    )
+                  }
+                  isChecked={(id) => formData.menuIds.includes(id)}
+                  onToggleCheck={toggleMenuCheck}
+                />
+              ) : (
+                <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
+                  暂无菜单数据
+                </div>
+              )}
+            </div>
+          </div>
+        </form>
+      </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(pendingDeleteRole)}
+        title="删除角色"
+        message={
+          pendingDeleteRole
+            ? `确定删除角色“${pendingDeleteRole.roleName}”吗？删除后将无法恢复。`
+            : ''
+        }
+        confirmText="确认删除"
+        cancelText="取消"
+        danger
+        onCancel={() => setPendingDeleteRole(null)}
+        onConfirm={() => void handleDelete()}
+      />
+    </>
   );
 };
 

@@ -11,9 +11,12 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog, Pagination } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
@@ -27,17 +30,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui';
-import { ConfirmDialog } from '@/components/common';
-import { TableRowActions } from '@/components/ui/table-row-actions';
-import {
-  WorkspaceBackdrop,
-  WorkspaceHeroMetricsSection,
-  WorkspacePaginationBar,
-  WorkspacePageContent,
-  WorkspaceResultCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace';
 import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
 import { useConfigInt } from '../../hooks/useSystemConfig';
 import {
@@ -74,10 +66,6 @@ type FilterState = {
 };
 
 const ALL_FILE_TYPE = '__ALL_FILE_TYPE__';
-const surfaceChipClassName =
-  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-const subtlePanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
 
 const FILE_TYPE_OPTIONS = [
   { value: ALL_FILE_TYPE, label: '全部类型' },
@@ -87,11 +75,6 @@ const FILE_TYPE_OPTIONS = [
   { value: 'xlsx', label: 'Excel' },
   { value: 'zip', label: '压缩包' },
 ] as const;
-
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
-};
 
 const formatSize = (size: number) => {
   if (size < 1024) return `${size} B`;
@@ -151,61 +134,78 @@ const getFileTypeLabel = (type: string) => {
 const getFileIcon = (type: string) => {
   const normalizedType = getNormalizedFileType(type);
   if (isImageFile(normalizedType)) {
-    return <ImageIcon className="text-fuchsia-500 dark:text-fuchsia-300" size={20} />;
+    return <ImageIcon size={16} className="text-slate-500 dark:text-slate-400" />;
   }
-  if (isPdfFile(normalizedType)) {
-    return <FileText className="text-rose-500 dark:text-rose-300" size={20} />;
+  if (isPdfFile(normalizedType) || isWordFile(normalizedType) || isExcelFile(normalizedType)) {
+    return <FileText size={16} className="text-slate-500 dark:text-slate-400" />;
   }
-  if (isWordFile(normalizedType)) {
-    return <FileText className="text-sky-500 dark:text-sky-300" size={20} />;
-  }
-  if (isExcelFile(normalizedType)) {
-    return <FileText className="text-emerald-500 dark:text-emerald-300" size={20} />;
-  }
-  return <FileIcon className="text-slate-500 dark:text-slate-300" size={20} />;
+  return <FileIcon size={16} className="text-slate-500 dark:text-slate-400" />;
 };
 
-const getFileTypeBadgeClassName = (type: string) => {
-  const normalizedType = getNormalizedFileType(type);
-  if (isImageFile(normalizedType)) {
-    return 'border border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700 dark:border-fuchsia-900/70 dark:bg-fuchsia-950/30 dark:text-fuchsia-200';
-  }
-  if (isPdfFile(normalizedType)) {
-    return 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
-  }
-  if (isWordFile(normalizedType)) {
-    return 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200';
-  }
-  if (isExcelFile(normalizedType)) {
-    return 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200';
-  }
-  if (isZipFile(normalizedType)) {
-    return 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200';
-  }
-  return 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-};
+const getFileTypeBadgeClassName = () =>
+  'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
 
-const getStorageTone = (percent: number) => {
-  if (percent >= 90) {
+const RowActionButton: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  tone?: 'neutral' | 'danger';
+}> = ({ label, icon, onClick, tone = 'neutral' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
+      tone === 'danger'
+        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
+        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+    )}
+    title={label}
+    aria-label={label}
+  >
+    {icon}
+  </button>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+    </TableCell>
+  </TableRow>
+);
+
+const normalizeListResponse = (response: any): { rows: SysFile[]; total: number } => {
+  if (Array.isArray(response?.rows)) {
     return {
-      bar: 'bg-rose-500',
-      text: 'text-rose-600 dark:text-rose-300',
-      hint: '容量接近上限，建议优先清理或扩容',
+      rows: response.rows,
+      total: typeof response.total === 'number' ? response.total : response.rows.length,
     };
   }
 
-  if (percent >= 70) {
+  if (Array.isArray(response)) {
     return {
-      bar: 'bg-amber-500',
-      text: 'text-amber-600 dark:text-amber-300',
-      hint: '容量已进入关注区，建议提前校准和排查',
+      rows: response,
+      total: response.length,
     };
   }
 
   return {
-    bar: 'bg-emerald-500',
-    text: 'text-emerald-600 dark:text-emerald-300',
-    hint: '容量处于安全区间',
+    rows: [],
+    total: 0,
   };
 };
 
@@ -235,22 +235,19 @@ export const FileList = () => {
   const fetchData = async (nextQuery: QueryState) => {
     setLoading(true);
     setError(null);
+
     try {
-      const response: any = await getFileList(nextQuery);
-      if (response && Array.isArray(response.rows)) {
-        setData(response.rows);
-        setTotal(response.total || 0);
-      } else {
-        setData([]);
-        setTotal(0);
-      }
-    } catch (err) {
-      console.error(err);
+      const response = await getFileList(nextQuery);
+      const normalized = normalizeListResponse(response);
+      setData(normalized.rows);
+      setTotal(normalized.total);
+    } catch (fetchError) {
+      console.error(fetchError);
       const message = '加载文件列表失败，请稍后重试';
       setError(message);
-      toast.error(message);
       setData([]);
       setTotal(0);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -258,11 +255,12 @@ export const FileList = () => {
 
   const loadStorageSummary = async () => {
     setStorageLoading(true);
+
     try {
       const summary = await getFileStorageSummary();
       setStorageSummary(summary);
-    } catch (err) {
-      console.error(err);
+    } catch (fetchError) {
+      console.error(fetchError);
       setStorageSummary(null);
     } finally {
       setStorageLoading(false);
@@ -279,21 +277,21 @@ export const FileList = () => {
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    setQuery((prev) => ({
-      ...prev,
+    setQuery((current) => ({
+      ...current,
       pageNum: 1,
       fileName: filters.fileName.trim(),
       fileType: filters.fileType === ALL_FILE_TYPE ? '' : filters.fileType,
     }));
   };
 
-  const handleClearFilters = () => {
+  const handleReset = () => {
     setFilters({
       fileName: '',
       fileType: ALL_FILE_TYPE,
     });
-    setQuery((prev) => ({
-      ...prev,
+    setQuery((current) => ({
+      ...current,
       pageNum: 1,
       fileName: '',
       fileType: '',
@@ -301,13 +299,15 @@ export const FileList = () => {
   };
 
   const handleRefreshList = () => {
-    setQuery((prev) => ({ ...prev }));
+    setQuery((current) => ({ ...current }));
   };
 
   const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const input = event.target;
     const file = input.files?.[0];
-    if (!file) return;
+    if (!file) {
+      return;
+    }
 
     if (file.size > maxFileSizeMB * 1024 * 1024) {
       toast.error(`文件大小不能超过 ${maxFileSizeMB}MB`);
@@ -316,13 +316,14 @@ export const FileList = () => {
     }
 
     setUploading(true);
+
     try {
       await uploadFile(file);
       toast.success('上传成功');
       await Promise.all([fetchData(query), loadStorageSummary()]);
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || '上传失败');
+    } catch (uploadError: any) {
+      console.error(uploadError);
+      toast.error(uploadError?.message || '上传失败');
     } finally {
       setUploading(false);
       input.value = '';
@@ -339,30 +340,32 @@ export const FileList = () => {
       toast.success('删除成功');
       setPendingDeleteFile(null);
       await Promise.all([fetchData(query), loadStorageSummary()]);
-    } catch (err) {
-      console.error(err);
+    } catch (deleteError) {
+      console.error(deleteError);
       toast.error('删除失败');
     }
   };
 
   const handleRefreshStorage = async () => {
     setStorageLoading(true);
+
     try {
       const summary = await refreshFileStorageSummary();
       setStorageSummary(summary);
       toast.success('存储空间已校准');
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message || '校准存储失败');
+    } catch (refreshError: any) {
+      console.error(refreshError);
+      toast.error(refreshError?.message || '校准存储失败');
     } finally {
       setStorageLoading(false);
     }
   };
 
   const storagePercent = useMemo(() => {
-    if (!storageSummary || !storageSummary.storageLimit) {
+    if (!storageSummary?.storageLimit) {
       return 0;
     }
+
     return Math.min(storageSummary.storageUsagePercent || 0, 100);
   }, [storageSummary]);
 
@@ -370,103 +373,103 @@ export const FileList = () => {
     () => data.reduce((sum, file) => sum + Number(file.fileSize || 0), 0),
     [data],
   );
+
   const imageCount = useMemo(
     () => data.filter((file) => isImageFile(file.fileType)).length,
     [data],
   );
+
   const docCount = useMemo(
-    () => data.filter((file) => isPdfFile(file.fileType) || isWordFile(file.fileType) || isExcelFile(file.fileType)).length,
+    () =>
+      data.filter(
+        (file) =>
+          isPdfFile(file.fileType) || isWordFile(file.fileType) || isExcelFile(file.fileType),
+      ).length,
     [data],
   );
+
   const archiveCount = useMemo(
     () => data.filter((file) => isZipFile(file.fileType)).length,
     [data],
   );
 
-  const storageTone = getStorageTone(storagePercent);
-  const todayLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
   const hasActiveFilters = Boolean(query.fileName || query.fileType);
-  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
-  const currentTypeLabel =
-    FILE_TYPE_OPTIONS.find((option) => option.value === filters.fileType)?.label || '全部类型';
-
-  const overviewItems = [
-    { label: '当前结果', value: `${data.length} 个文件` },
-    { label: '图片', value: `${imageCount} 个` },
-    { label: '文档', value: `${docCount} 个` },
-    { label: '压缩包', value: `${archiveCount} 个` },
-  ];
-  const heroMetrics = [
-    {
-      label: '存储占用',
-      value: `${storagePercent.toFixed(0)}%`,
-      hint: storageSummary
-        ? `已使用 ${formatStorage(storageSummary.storageUsed)} / ${formatStorage(storageSummary.storageLimit)}`
-        : '正在加载租户存储概览',
-      icon: <HardDrive size={17} />,
-    },
-    {
-      label: '当前页文件',
-      value: `${data.length}`,
-      hint: `本页合计 ${formatSize(currentPageTotalSize)}`,
-      icon: <FileIcon size={17} />,
-    },
-    {
-      label: '上传上限',
-      value: `${maxFileSizeMB}MB`,
-      hint: '单文件上传大小限制',
-      icon: <Upload size={17} />,
-    },
-    {
-      label: '剩余空间',
-      value: storageSummary ? formatStorage(storageSummary.remainingStorage) : '--',
-      hint: storageSummary ? storageTone.hint : '等待存储概览返回',
-      icon: <RefreshCw size={17} />,
-    },
-  ];
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <>
+      <TablePageLayout
+        className="gap-4"
+        filters={
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <form
+              onSubmit={handleSearch}
+              className="flex flex-1 flex-wrap items-center gap-3"
+            >
+              <div className="relative w-full sm:w-60">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                />
+                <Input
+                  value={filters.fileName}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, fileName: event.target.value }))
+                  }
+                  placeholder="搜索文件名"
+                  className="h-10 pl-10"
+                />
+              </div>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                <HardDrive size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {timeLabel}
-              </span>
-            </div>
-          )}
-          title="文件管理"
-          description="文件页同时承载上传、容量监控、搜索筛选和列表操作，所以重点统一信息模块和表格反馈，让它也进入同一套工作台系统。"
-          actions={(
-            <div className="flex flex-wrap gap-2">
+              <div className="w-full sm:w-40">
+                <Select
+                  value={filters.fileType}
+                  onValueChange={(value) =>
+                    setFilters((current) => ({ ...current, fileType: value }))
+                  }
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="全部类型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {FILE_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button type="submit" size="sm">
+                查询
+              </Button>
+
+              {hasActiveFilters ? (
+                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                  重置
+                </Button>
+              ) : null}
+            </form>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefreshList} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
               <Button
                 variant="outline"
-                size="lg"
+                size="sm"
                 onClick={handleRefreshStorage}
                 disabled={storageLoading}
               >
-                <RefreshCw size={15} className={cn(storageLoading && 'animate-spin')} />
+                <HardDrive size={15} className={cn(storageLoading && 'animate-spin')} />
                 {storageLoading ? '校准中' : '校准空间'}
               </Button>
-              <Button
-                size="lg"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploading}
-              >
+              <Button size="sm" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
                 <Upload size={15} />
                 {uploading ? '上传中' : '上传文件'}
               </Button>
+              {/* 复用原生文件选择器，避免再叠一层独立上传壳层。 */}
               <input
                 ref={fileInputRef}
                 type="file"
@@ -475,192 +478,72 @@ export const FileList = () => {
                 disabled={uploading}
               />
             </div>
-          )}
-          contentClassName="p-4 sm:p-5"
-          metrics={heroMetrics}
-        >
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-              System 文件工作台
-            </span>
-            <span className={surfaceChipClassName}>当前类型：{currentTypeLabel}</span>
-            <span className={surfaceChipClassName}>
-              关键词：{query.fileName || '未设置'}
-            </span>
-            <span className={surfaceChipClassName}>
-              上传上限 {maxFileSizeMB}MB
-            </span>
           </div>
-        </WorkspaceHeroMetricsSection>
-
-        <WorkspaceWorkbenchCard
-          eyebrow="文件筛选"
-          title="文件工作台"
-          total={total}
-          hasActiveFilters={hasActiveFilters}
-          overviewItems={overviewItems}
-          headerBadges={(
-            <div className="flex flex-wrap gap-2">
-              <span className={surfaceChipClassName}>支持按类型快速筛选</span>
-              <span className={surfaceChipClassName}>当前页 {data.length} 个</span>
-              <span className={surfaceChipClassName}>
-                本页大小 {formatSize(currentPageTotalSize)}
-              </span>
-            </div>
-          )}
-          quickFilterAside={(
-            <div className="flex flex-wrap items-center gap-2">
-              {hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={handleClearFilters}>
-                  清空筛选
-                </Button>
-              ) : (
-                <span className={surfaceChipClassName}>当前显示全部文件</span>
-              )}
-            </div>
-          )}
-          filterBar={(
-            <form onSubmit={handleSearch} className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-                <Input
-                  type="text"
-                  placeholder="搜索文件名"
-                  className="pl-10"
-                  value={filters.fileName}
-                  onChange={(event) =>
-                    setFilters((prev) => ({ ...prev, fileName: event.target.value }))
-                  }
-                />
+        }
+        table={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  文件列表
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  按源码后台列表页骨架重组，上传、搜索、容量校准和结果表格统一收进轻量列表页语法。
+                </div>
               </div>
 
-              <Select
-                value={filters.fileType}
-                onValueChange={(value) =>
-                  setFilters((prev) => ({ ...prev, fileType: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="文件类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  {FILE_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button type="submit" className="xl:min-w-[120px]">
-                <Search size={15} />
-                执行搜索
-              </Button>
-
-              <Button
-                type="button"
-                variant="outline"
-                className="xl:min-w-[120px]"
-                onClick={handleRefreshList}
-                disabled={loading}
-              >
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-            </form>
-          )}
-        />
-
-        <WorkspaceResultCard
-          total={total}
-          title="当前文件"
-          description="上传、筛选、容量监控和文件操作都归到同一套工作台视觉语言下。"
-          footer={(
-            <WorkspacePaginationBar
-              total={total}
-              pageNum={query.pageNum}
-              totalPages={totalPages}
-              onPrev={() =>
-                setQuery((prev) => ({
-                  ...prev,
-                  pageNum: Math.max(1, prev.pageNum - 1),
-                }))
-              }
-              onNext={() =>
-                setQuery((prev) => ({
-                  ...prev,
-                  pageNum: Math.min(totalPages, prev.pageNum + 1),
-                }))
-              }
-              prevDisabled={query.pageNum === 1}
-              nextDisabled={query.pageNum >= totalPages}
-            />
-          )}
-        >
-          <div className="space-y-4 px-4 py-4">
-            <div className={subtlePanelClassName}>
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div className="space-y-2">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">存储与结果概况</div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className={surfaceChipClassName}>文件总数 {total} 个</span>
-                    <span className={surfaceChipClassName}>当前页 {data.length} 个</span>
-                    <span className={surfaceChipClassName}>图片 {imageCount} 个</span>
-                    <span className={surfaceChipClassName}>文档 {docCount} 个</span>
-                    <span className={surfaceChipClassName}>压缩包 {archiveCount} 个</span>
-                  </div>
-                  <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    文件页已经和 System 其他标准 CRUD 页统一为同一套壳层、表格和反馈规则，上传、删除和容量校准也同步纳入 Light/Dark 语法。
-                  </div>
-                </div>
-
-                <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">租户存储占用</div>
-                    <span className={cn('text-xs font-semibold', storageTone.text)}>
-                      {storagePercent.toFixed(0)}%
-                    </span>
-                  </div>
-                  <div className="mt-3 h-2 rounded-full bg-slate-200 dark:bg-slate-800">
-                    <div
-                      className={cn('h-2 rounded-full transition-all', storageTone.bar)}
-                      style={{ width: `${storagePercent}%` }}
-                    />
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    <span className={surfaceChipClassName}>
-                      已使用 {storageSummary ? formatStorage(storageSummary.storageUsed) : '--'}
-                    </span>
-                    <span className={surfaceChipClassName}>
-                      剩余 {storageSummary ? formatStorage(storageSummary.remainingStorage) : '--'}
-                    </span>
-                  </div>
-                </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  共 {total} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  当前页 {data.length} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  图片 {imageCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  文档 {docCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  压缩包 {archiveCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  本页大小 {formatSize(currentPageTotalSize)}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  上传上限 {maxFileSizeMB}MB
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  存储占用 {storageSummary ? `${storagePercent.toFixed(0)}%` : '--'}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  已使用{' '}
+                  {storageSummary
+                    ? `${formatStorage(storageSummary.storageUsed)} / ${formatStorage(storageSummary.storageLimit)}`
+                    : '--'}
+                </span>
               </div>
             </div>
 
-            <Table className="min-w-[1120px]">
+            <Table className="min-w-[1040px]">
               <TableHeader>
-                <tr>
+                <TableRow>
                   <TableHead className="w-[38%]">文件名</TableHead>
                   <TableHead className="w-32">大小</TableHead>
-                  <TableHead className="w-40">类型</TableHead>
+                  <TableHead className="w-32">类型</TableHead>
                   <TableHead className="w-32">上传者</TableHead>
                   <TableHead className="w-48">上传时间</TableHead>
-                  <TableActionHead className="w-44">操作</TableActionHead>
-                </tr>
+                  <TableActionHead className="w-32">操作</TableActionHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <WorkspaceTableStateRow colSpan={6} type="loading" title="正在加载文件数据..." />
+                  <TableStateRow colSpan={6} title="正在加载文件列表..." loading />
                 ) : error ? (
-                  <WorkspaceTableStateRow
-                    colSpan={6}
-                    title="文件数据加载失败"
-                    description={error}
-                  />
+                  <TableStateRow colSpan={6} title="文件列表加载失败" description={error} />
                 ) : data.length === 0 ? (
-                  <WorkspaceTableStateRow
+                  <TableStateRow
                     colSpan={6}
                     title="暂无文件数据"
                     description="可以先上传文件，再按名称或类型进行管理。"
@@ -670,7 +553,7 @@ export const FileList = () => {
                     <TableRow key={file.fileId}>
                       <TableCell className="py-4">
                         <div className="flex min-w-0 items-center gap-3">
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+                          <div className="rounded-xl border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-900/70">
                             {getFileIcon(file.fileType)}
                           </div>
                           <div className="min-w-0">
@@ -695,65 +578,75 @@ export const FileList = () => {
                       <TableCell className="py-4">
                         <span
                           className={cn(
-                            'rounded-full px-2.5 py-1 text-xs font-semibold uppercase',
-                            getFileTypeBadgeClassName(file.fileType),
+                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium uppercase',
+                            getFileTypeBadgeClassName(),
                           )}
                         >
                           {getFileTypeLabel(file.fileType)}
                         </span>
                       </TableCell>
                       <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                        {file.createBy}
+                        {file.createBy || '-'}
                       </TableCell>
                       <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">
                         {formatDateTime(file.createTime)}
                       </TableCell>
-                      <TableCell className="py-4 text-right whitespace-nowrap">
-                        <TableRowActions
-                          align="end"
-                          wrap={false}
-                          className="whitespace-nowrap"
-                          actions={[
-                            {
-                              label: '下载',
-                              icon: <Download size={14} />,
-                              onClick: () =>
-                                window.open(file.url, '_blank', 'noopener,noreferrer'),
-                              tone: 'info',
-                            },
-                            {
-                              label: '删除',
-                              icon: <Trash2 size={14} />,
-                              onClick: () => setPendingDeleteFile(file),
-                              tone: 'danger',
-                            },
-                          ]}
-                        />
+                      <TableCell>
+                        <div className="flex items-center justify-end gap-1">
+                          <RowActionButton
+                            label="下载文件"
+                            icon={<Download size={15} />}
+                            onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
+                          />
+                          <RowActionButton
+                            label="删除文件"
+                            icon={<Trash2 size={15} />}
+                            onClick={() => setPendingDeleteFile(file)}
+                            tone="danger"
+                          />
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 )}
               </TableBody>
             </Table>
-          </div>
-        </WorkspaceResultCard>
+          </>
+        }
+        pagination={
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={query.pageNum}
+              pageSize={query.pageSize}
+              onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))}
+              onPageSizeChange={(pageSize) =>
+                setQuery((current) => ({
+                  ...current,
+                  pageNum: 1,
+                  pageSize,
+                }))
+              }
+            />
+          ) : null
+        }
+      />
 
-        <ConfirmDialog
-          open={Boolean(pendingDeleteFile)}
-          title="确认删除文件"
-          message={
-            pendingDeleteFile
-              ? `确定要删除文件“${pendingDeleteFile.fileName}”吗？此操作不可恢复。`
-              : ''
-          }
-          confirmText="确认删除"
-          cancelText="取消"
-          danger={true}
-          onCancel={() => setPendingDeleteFile(null)}
-          onConfirm={() => void handleDelete()}
-        />
-      </WorkspacePageContent>
-    </div>
+      <ConfirmDialog
+        open={Boolean(pendingDeleteFile)}
+        title="确认删除文件"
+        message={
+          pendingDeleteFile
+            ? `确定要删除文件“${pendingDeleteFile.fileName}”吗？此操作不可恢复。`
+            : ''
+        }
+        confirmText="确认删除"
+        cancelText="取消"
+        danger={true}
+        onCancel={() => setPendingDeleteFile(null)}
+        onConfirm={() => void handleDelete()}
+      />
+    </>
   );
 };
 

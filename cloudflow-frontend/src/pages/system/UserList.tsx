@@ -1,9 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Building2,
-  Check,
-  ChevronDown,
-  ChevronUp,
   Edit,
   Plus,
   RefreshCw,
@@ -13,9 +10,13 @@ import {
   UserRound,
   Users,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
+  LoadingSpinner,
   Select,
   SelectContent,
   SelectItem,
@@ -30,18 +31,6 @@ import {
   TableRow,
   Textarea,
 } from '@/components/ui';
-import { ConfirmDialog } from '@/components/common';
-import { TableRowActions } from '@/components/ui/table-row-actions';
-import {
-  WorkspaceBackdrop,
-  WorkspaceDialogShell,
-  WorkspaceHeroMetricsSection,
-  WorkspacePageContent,
-  WorkspaceResultCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace';
-import { toast } from 'sonner';
 import {
   addUser,
   deleteUser,
@@ -52,7 +41,6 @@ import {
 } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
 import { hashPassword } from '../../utils/crypto';
-import { useMount } from '../../hooks/useMount';
 import { cn } from '@/utils/cn';
 
 interface DeptItem {
@@ -93,19 +81,19 @@ interface UserItem {
   roleIds?: number[] | string;
 }
 
+type UserFilters = {
+  keyword: string;
+  status: string;
+  roleId: string;
+};
+
+type UserQuery = UserFilters & {
+  pageNum: number;
+  pageSize: number;
+};
+
 const DEFAULT_TENANT_VALUE = '__DEFAULT_TENANT__';
-const surfaceChipClassName =
-  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-const subtlePanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-const sectionPanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-const nestedPanelClassName =
-  'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78';
-const fieldLabelClassName =
-  'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
-const radioPanelClassName =
-  'flex gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/78';
+const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const flattenDepts = (
   depts: DeptItem[],
@@ -123,9 +111,7 @@ const flattenDepts = (
 
 const normalizeNumberList = (value: unknown): number[] => {
   if (Array.isArray(value)) {
-    return value
-      .map((item) => Number(item))
-      .filter((item) => !Number.isNaN(item));
+    return value.map((item) => Number(item)).filter((item) => !Number.isNaN(item));
   }
 
   if (typeof value === 'string') {
@@ -138,97 +124,73 @@ const normalizeNumberList = (value: unknown): number[] => {
   return [];
 };
 
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
-};
-
-const getUserStatusClassName = (status: string) =>
+const getUserStatusBadgeClassName = (status: string) =>
   status === '0'
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
     : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
 
-const TreeSelect: React.FC<{
-  value: number | undefined;
-  onChange: (value: number) => void;
-  deptTree: DeptItem[];
-  placeholder?: string;
-}> = ({ value, onChange, deptTree, placeholder = '请选择部门' }) => {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const flat = flattenDepts(deptTree);
-  const selected = flat.find((item) => item.dept.deptId === value);
+const RowActionButton: React.FC<{
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  tone?: 'neutral' | 'danger';
+}> = ({ label, icon, onClick, tone = 'neutral' }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={cn(
+      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
+      tone === 'danger'
+        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
+        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
+    )}
+    title={label}
+    aria-label={label}
+  >
+    {icon}
+  </button>
+);
 
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handlePointerDown = (event: MouseEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handlePointerDown);
-    return () => document.removeEventListener('mousedown', handlePointerDown);
-  }, [open]);
-
-  return (
-    <div ref={rootRef} className="relative">
-      <button
-        type="button"
-        className="flex h-11 w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-700 shadow-sm transition hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-cyan-100 dark:border-slate-800 dark:bg-slate-950/78 dark:text-slate-200 dark:hover:border-slate-700 dark:focus:ring-cyan-950/40"
-        onClick={() => setOpen((prev) => !prev)}
-      >
-        <span className={selected ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}>
-          {selected ? selected.dept.deptName : placeholder}
-        </span>
-        {open ? (
-          <ChevronUp size={16} className="text-slate-400 dark:text-slate-500" />
-        ) : (
-          <ChevronDown size={16} className="text-slate-400 dark:text-slate-500" />
-        )}
-      </button>
-
-      {open ? (
-        <div className="absolute z-[140] mt-2 max-h-64 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/70">
-          {flat.map(({ dept, level }) => (
-            <button
-              key={dept.deptId}
-              type="button"
-              className={cn(
-                'flex w-full items-center rounded-xl px-3 py-2 text-sm transition',
-                value === dept.deptId
-                  ? 'bg-slate-100 text-slate-900 dark:bg-slate-900 dark:text-slate-100'
-                  : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900/80 dark:hover:text-slate-100',
-              )}
-              style={{ paddingLeft: `${level * 18 + 14}px` }}
-              onClick={() => {
-                onChange(dept.deptId);
-                setOpen(false);
-              }}
-            >
-              {dept.deptName}
-            </button>
-          ))}
-          {flat.length === 0 ? (
-            <div className="px-3 py-2 text-sm text-slate-400 dark:text-slate-500">暂无部门</div>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  );
-};
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+    </TableCell>
+  </TableRow>
+);
 
 export const UserList = () => {
-  const [users, setUsers] = useState<UserItem[]>([]);
+  const [allUsers, setAllUsers] = useState<UserItem[]>([]);
   const [roles, setRoles] = useState<RoleItem[]>([]);
   const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
   const [tenants, setTenants] = useState<TenantItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [filters, setFilters] = useState<UserFilters>({
+    keyword: '',
+    status: '',
+    roleId: '',
+  });
+  const [query, setQuery] = useState<UserQuery>({
+    keyword: '',
+    status: '',
+    roleId: '',
+    pageNum: 1,
+    pageSize: 10,
+  });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [pendingDeleteUser, setPendingDeleteUser] = useState<UserItem | null>(null);
@@ -244,28 +206,38 @@ export const UserList = () => {
     tenantId: undefined as number | undefined,
     remark: '',
   });
-  const [selRoles, setSelRoles] = useState<number[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]);
 
-  useMount(() => {
-    void fetchUsers();
-    void fetchRoles();
-    void fetchDeptTree();
-    void fetchTenants();
-  });
+  const normalizePagedResponse = <T,>(response: any): { rows: T[]; total: number } => {
+    if (Array.isArray(response)) {
+      return { rows: response as T[], total: response.length };
+    }
+
+    const rows = Array.isArray(response?.rows)
+      ? response.rows
+      : Array.isArray(response?.records)
+        ? response.records
+        : [];
+
+    return {
+      rows,
+      total: typeof response?.total === 'number' ? response.total : rows.length,
+    };
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
     setError(null);
+
     try {
-      const response: any = await getUserList({ userName: searchTerm.trim() });
-      const nextUsers = Array.isArray(response)
-        ? response
-        : response?.rows || response?.records || [];
-      setUsers(nextUsers);
-    } catch (err) {
-      console.error(err);
-      const message = '加载用户失败，请稍后重试';
+      const response = await getUserList();
+      const normalized = normalizePagedResponse<UserItem>(response);
+      setAllUsers(normalized.rows);
+    } catch (fetchError) {
+      console.error(fetchError);
+      const message = '加载用户失败，请稍后重试。';
       setError(message);
+      setAllUsers([]);
       toast.error(message);
     } finally {
       setLoading(false);
@@ -274,10 +246,11 @@ export const UserList = () => {
 
   const fetchRoles = async () => {
     try {
-      const response: any = await getRoleList();
-      setRoles(Array.isArray(response) ? response : response?.rows || response?.records || []);
-    } catch (err) {
-      console.error(err);
+      const response = await getRoleList();
+      const normalized = normalizePagedResponse<RoleItem>(response);
+      setRoles(normalized.rows);
+    } catch (fetchError) {
+      console.error(fetchError);
       toast.error('加载角色失败');
     }
   };
@@ -286,25 +259,96 @@ export const UserList = () => {
     try {
       const response: any = await getDeptTree();
       setDeptTree(Array.isArray(response) ? response : []);
-    } catch (err) {
-      console.error(err);
+    } catch (fetchError) {
+      console.error(fetchError);
       toast.error('加载部门失败');
     }
   };
 
   const fetchTenants = async () => {
     try {
-      const response: any = await getTenantList();
-      setTenants(Array.isArray(response) ? response : response?.rows || response?.records || []);
-    } catch (err) {
-      console.error(err);
+      const response = await getTenantList({ pageNum: 1, pageSize: 200 });
+      const normalized = normalizePagedResponse<TenantItem>(response);
+      setTenants(normalized.rows);
+    } catch (fetchError) {
+      console.error(fetchError);
       toast.error('加载租户失败');
     }
   };
 
-  const handleSearch = async (event: React.FormEvent) => {
+  useEffect(() => {
+    void fetchUsers();
+    void fetchRoles();
+    void fetchDeptTree();
+    void fetchTenants();
+  }, []);
+
+  const deptOptions = useMemo(() => flattenDepts(deptTree), [deptTree]);
+
+  const getRoleNames = (user: UserItem) => {
+    const ids = normalizeNumberList(user.roleIds);
+    const names = roles
+      .filter((role) => ids.includes(role.roleId))
+      .map((role) => role.roleName);
+
+    if (names.length > 0) {
+      return names;
+    }
+
+    return user.role ? [user.role] : [];
+  };
+
+  const filteredUsers = useMemo(() => {
+    const keyword = query.keyword.trim().toLowerCase();
+
+    return allUsers.filter((user) => {
+      const matchesKeyword = keyword
+        ? [user.userName, user.nickName, user.email, user.phonenumber]
+            .filter(Boolean)
+            .some((value) => String(value).toLowerCase().includes(keyword))
+        : true;
+
+      const matchesStatus = query.status ? user.status === query.status : true;
+
+      const roleIds = normalizeNumberList(user.roleIds);
+      const matchesRole = query.roleId ? roleIds.includes(Number(query.roleId)) : true;
+
+      return matchesKeyword && matchesStatus && matchesRole;
+    });
+  }, [allUsers, query.keyword, query.roleId, query.status]);
+
+  const total = filteredUsers.length;
+  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+  const startIndex = (query.pageNum - 1) * query.pageSize;
+  const users = filteredUsers.slice(startIndex, startIndex + query.pageSize);
+
+  const activeCount = filteredUsers.filter((user) => user.status === '0').length;
+  const disabledCount = filteredUsers.length - activeCount;
+  const tenantCount = new Set(filteredUsers.map((user) => user.tenantId).filter(Boolean)).size;
+  const hasActiveFilters = Boolean(query.keyword || query.status || query.roleId);
+  const isEdit = Boolean(editingUser);
+
+  const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
-    await fetchUsers();
+    setQuery((current) => ({
+      ...current,
+      pageNum: 1,
+      keyword: filters.keyword.trim(),
+      status: filters.status,
+      roleId: filters.roleId,
+    }));
+  };
+
+  const clearFilters = () => {
+    const nextFilters = { keyword: '', status: '', roleId: '' };
+    setFilters(nextFilters);
+    setQuery((current) => ({
+      ...current,
+      pageNum: 1,
+      keyword: '',
+      status: '',
+      roleId: '',
+    }));
   };
 
   const handleRefresh = () => {
@@ -329,7 +373,7 @@ export const UserList = () => {
         tenantId: user.tenantId,
         remark: user.remark || '',
       });
-      setSelRoles(normalizeNumberList(user.roleIds));
+      setSelectedRoleIds(normalizeNumberList(user.roleIds));
     } else {
       setEditingUser(null);
       setFormData({
@@ -344,10 +388,36 @@ export const UserList = () => {
         tenantId: undefined,
         remark: '',
       });
-      setSelRoles([]);
+      setSelectedRoleIds([]);
     }
 
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingUser(null);
+    setFormData({
+      userName: '',
+      nickName: '',
+      email: '',
+      phonenumber: '',
+      password: '',
+      sex: '0',
+      status: '0',
+      deptId: undefined,
+      tenantId: undefined,
+      remark: '',
+    });
+    setSelectedRoleIds([]);
+  };
+
+  const toggleRole = (roleId: number) => {
+    setSelectedRoleIds((current) =>
+      current.includes(roleId)
+        ? current.filter((id) => id !== roleId)
+        : [...current, roleId],
+    );
   };
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -368,7 +438,7 @@ export const UserList = () => {
         const updateData: any = {
           ...formData,
           userId: editingUser.userId,
-          roleIds: selRoles,
+          roleIds: selectedRoleIds,
         };
 
         if (updateData.password) {
@@ -382,17 +452,17 @@ export const UserList = () => {
       } else {
         const createData: any = {
           ...formData,
-          roleIds: selRoles,
+          roleIds: selectedRoleIds,
         };
         createData.password = await hashPassword(createData.password || '123456');
         await addUser(createData);
         toast.success('用户创建成功');
       }
 
-      setIsModalOpen(false);
+      handleCloseModal();
       await fetchUsers();
-    } catch (err) {
-      console.error(err);
+    } catch (submitError) {
+      console.error(submitError);
       toast.error('保存用户失败');
     }
   };
@@ -407,189 +477,139 @@ export const UserList = () => {
       toast.success('用户删除成功');
       setPendingDeleteUser(null);
       await fetchUsers();
-    } catch (err) {
-      console.error(err);
+    } catch (deleteError) {
+      console.error(deleteError);
       toast.error('删除用户失败');
     }
   };
 
-  const toggleRole = (roleId: number) => {
-    setSelRoles((prev) =>
-      prev.includes(roleId) ? prev.filter((id) => id !== roleId) : [...prev, roleId],
-    );
-  };
-
-  const todayLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const activeCount = users.filter((user) => user.status === '0').length;
-  const disabledCount = users.filter((user) => user.status !== '0').length;
-  const tenantCount = new Set(users.map((user) => user.tenantId).filter(Boolean)).size;
-  const hasActiveFilters = Boolean(searchTerm.trim());
-  const currentSearchLabel = searchTerm.trim() || '未设置';
-
-  const overviewItems = [
-    { label: '当前结果', value: `${users.length} 人` },
-    { label: '正常账号', value: `${activeCount} 个` },
-    { label: '停用账号', value: `${disabledCount} 个` },
-    { label: '搜索关键词', value: currentSearchLabel },
-  ];
-  const heroMetrics = [
-    {
-      label: '用户规模',
-      value: `${users.length}`,
-      hint: '当前视图下已接入账号总量',
-      icon: <UserRound size={17} />,
-    },
-    {
-      label: '正常账号',
-      value: `${activeCount}`,
-      hint: '可正常登录和使用系统',
-      icon: <ShieldCheck size={17} />,
-    },
-    {
-      label: '停用账号',
-      value: `${disabledCount}`,
-      hint: '建议复核状态和角色分配',
-      icon: <Trash2 size={17} />,
-    },
-    {
-      label: '角色模板',
-      value: `${roles.length}`,
-      hint: `租户覆盖 ${tenantCount} 个`,
-      icon: <Check size={17} />,
-    },
-  ];
-
-  const isEdit = Boolean(editingUser);
+  const tenantNameById = (tenantId?: number) =>
+    tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <>
+      <TablePageLayout
+        className="gap-4"
+        filters={
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <form
+              onSubmit={handleSearch}
+              className="flex flex-1 flex-wrap items-center gap-3"
+            >
+              <div className="relative w-full sm:w-56">
+                <Search
+                  size={16}
+                  className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
+                />
+                <Input
+                  value={filters.keyword}
+                  onChange={(event) =>
+                    setFilters((current) => ({ ...current, keyword: event.target.value }))
+                  }
+                  placeholder="搜索用户名、昵称或联系方式"
+                  className="h-10 pl-10"
+                />
+              </div>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                <Users size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {timeLabel}
-              </span>
-            </div>
-          )}
-          title="用户管理"
-          description="统一管理账号、组织归属、角色分配和租户信息，让 System 标准 CRUD 页面也回到和业务页一致的工作台结构。"
-          actions={(
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="lg" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新数据
+              <div className="w-full sm:w-36">
+                <Select
+                  value={filters.status}
+                  onValueChange={(value) =>
+                    setFilters((current) => ({ ...current, status: value }))
+                  }
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="全部状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">全部状态</SelectItem>
+                    <SelectItem value="0">正常</SelectItem>
+                    <SelectItem value="1">停用</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-48">
+                <Select
+                  value={filters.roleId}
+                  onValueChange={(value) =>
+                    setFilters((current) => ({ ...current, roleId: value }))
+                  }
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="全部角色" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">全部角色</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.roleId} value={String(role.roleId)}>
+                        {role.roleName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Button type="submit" size="sm">
+                查询
               </Button>
-              <Button size="lg" onClick={() => handleOpenModal()}>
+
+              {hasActiveFilters ? (
+                <Button type="button" variant="outline" size="sm" onClick={clearFilters}>
+                  重置
+                </Button>
+              ) : null}
+            </form>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={() => handleOpenModal()}>
                 <Plus size={15} />
                 新增用户
               </Button>
             </div>
-          )}
-          contentClassName="p-4 sm:p-5"
-          metrics={heroMetrics}
-        >
-          <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-              System 用户工作台
-            </span>
-            <span className={surfaceChipClassName}>当前关键词：{currentSearchLabel}</span>
-            <span className={surfaceChipClassName}>租户 {tenants.length} 个</span>
           </div>
-        </WorkspaceHeroMetricsSection>
-
-        <WorkspaceWorkbenchCard
-          eyebrow="用户筛选"
-          title="用户工作台"
-          total={users.length}
-          hasActiveFilters={hasActiveFilters}
-          overviewItems={overviewItems}
-          headerBadges={(
-            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-              <span className={surfaceChipClassName}>已配置角色 {roles.length} 个</span>
-              <span className={surfaceChipClassName}>覆盖租户 {tenants.length} 个</span>
-              <span className={surfaceChipClassName}>{hasActiveFilters ? '筛选结果' : '默认视图'}</span>
-            </div>
-          )}
-          quickFilterAside={(
-            <div className="flex flex-wrap items-center gap-2">
-              {hasActiveFilters ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setSearchTerm('');
-                    void fetchUsers();
-                  }}
-                >
-                  清空筛选
-                </Button>
-              ) : (
-                <span className={surfaceChipClassName}>当前未应用额外筛选</span>
-              )}
-            </div>
-          )}
-          filterBar={(
-            <form onSubmit={handleSearch} className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-                <Input
-                  className="pl-9"
-                  value={searchTerm}
-                  onChange={(event) => setSearchTerm(event.target.value)}
-                  placeholder="按用户名或昵称搜索"
-                />
-              </div>
-              <Button type="submit" className="xl:min-w-[120px]">
-                <Search size={15} />
-                搜索用户
-              </Button>
-              <Button type="button" variant="outline" className="xl:min-w-[120px]" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-            </form>
-          )}
-        />
-
-        <WorkspaceResultCard
-          total={users.length}
-          title="当前用户"
-          description="统一展示账号、归属部门、角色和状态，操作反馈与业务申请页保持一致。"
-        >
-          <div className="space-y-4 px-4 py-4">
-            {!loading && !error && users.length > 0 ? (
-              <div className={subtlePanelClassName}>
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                  <div className="space-y-2">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">用户结果概况</div>
-                    <div className="flex flex-wrap gap-2">
-                      <span className={surfaceChipClassName}>当前页 {users.length} 人</span>
-                      <span className={surfaceChipClassName}>正常 {activeCount} 个</span>
-                      <span className={surfaceChipClassName}>停用 {disabledCount} 个</span>
-                      <span className={surfaceChipClassName}>租户覆盖 {tenantCount} 个</span>
-                    </div>
-                    <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      表格、状态标签和编辑弹层统一使用同一套 System 标准 CRUD 语法，避免再次出现页面私有视觉体系。
-                    </div>
-                  </div>
+        }
+        table={
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  用户列表
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  轻量后台列表骨架，保留角色分配、部门归属、租户选择和密码哈希能力。
                 </div>
               </div>
-            ) : null}
 
-            <Table className="min-w-[980px]">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  共 {total} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  当前页 {users.length} 条
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  正常 {activeCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  停用 {disabledCount}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  角色模板 {roles.length}
+                </span>
+                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                  租户覆盖 {tenantCount}
+                </span>
+              </div>
+            </div>
+
+            <Table className="min-w-[1080px]">
               <TableHeader>
-                <tr>
+                <TableRow>
                   <TableHead>ID</TableHead>
                   <TableHead>用户</TableHead>
                   <TableHead>昵称</TableHead>
@@ -597,326 +617,379 @@ export const UserList = () => {
                   <TableHead>部门</TableHead>
                   <TableHead>角色</TableHead>
                   <TableHead>状态</TableHead>
-                  <TableActionHead className="w-52">操作</TableActionHead>
-                </tr>
+                  <TableActionHead className="w-28">操作</TableActionHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载用户数据..." />
+                  <TableStateRow colSpan={8} title="正在加载用户数据..." loading />
                 ) : error ? (
-                  <WorkspaceTableStateRow
-                    colSpan={8}
-                    title="用户数据加载失败"
-                    description={error}
-                  />
+                  <TableStateRow colSpan={8} title="用户数据加载失败" description={error} />
                 ) : users.length === 0 ? (
-                  <WorkspaceTableStateRow
+                  <TableStateRow
                     colSpan={8}
                     title="暂无用户数据"
                     description="可以先创建账号，再分配角色和组织信息。"
                   />
                 ) : (
-                  users.map((user) => (
-                    <TableRow key={user.userId}>
-                      <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">
-                        {user.userId}
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-                            {(user.nickName || user.userName || '?')[0]}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {user.userName}
+                  users.map((user) => {
+                    const roleNames = getRoleNames(user);
+                    return (
+                      <TableRow key={user.userId}>
+                        <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                          {user.userId}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                              {(user.nickName || user.userName || '?')[0]}
                             </div>
-                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                              {user.email || user.phonenumber || '未补充联系方式'}
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                                {user.userName}
+                              </div>
+                              <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                                {user.email || user.phonenumber || '未补充联系方式'}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                        {user.nickName || '-'}
-                      </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                        <div className="inline-flex items-center gap-2">
-                          <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
-                          <span>
-                            {tenants.find((tenant) => tenant.tenantId === user.tenantId)?.tenantName || '默认租户'}
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                          {user.nickName || '-'}
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                          <div className="inline-flex items-center gap-2">
+                            <Building2 size={14} className="text-slate-400 dark:text-slate-500" />
+                            <span>{tenantNameById(user.tenantId)}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-600 dark:text-slate-300">
+                          {user.deptName || '-'}
+                        </TableCell>
+                        <TableCell>
+                          {roleNames.length > 0 ? (
+                            <div className="flex flex-wrap gap-1">
+                              {roleNames.slice(0, 2).map((roleName) => (
+                                <span
+                                  key={`${user.userId}-${roleName}`}
+                                  className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
+                                >
+                                  {roleName}
+                                </span>
+                              ))}
+                              {roleNames.length > 2 ? (
+                                <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
+                                  +{roleNames.length - 2}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : (
+                            <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                              getUserStatusBadgeClassName(user.status),
+                            )}
+                          >
+                            {user.status === '0' ? '正常' : '停用'}
                           </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                        {user.deptName || '-'}
-                      </TableCell>
-                      <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                        {user.role ? (
-                          <span className={surfaceChipClassName}>{user.role}</span>
-                        ) : (
-                          '-'
-                        )}
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', getUserStatusClassName(user.status))}>
-                          {user.status === '0' ? '正常' : '停用'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-4 text-right whitespace-nowrap">
-                        <TableRowActions
-                          align="end"
-                          actions={[
-                            {
-                              label: '编辑',
-                              icon: <Edit size={14} />,
-                              onClick: () => handleOpenModal(user),
-                              tone: 'primary',
-                            },
-                            {
-                              label: '删除',
-                              icon: <Trash2 size={14} />,
-                              onClick: () => setPendingDeleteUser(user),
-                              tone: 'danger',
-                            },
-                          ]}
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <RowActionButton
+                              label="编辑用户"
+                              icon={<Edit size={15} />}
+                              onClick={() => handleOpenModal(user)}
+                            />
+                            <RowActionButton
+                              label="删除用户"
+                              icon={<Trash2 size={15} />}
+                              onClick={() => setPendingDeleteUser(user)}
+                              tone="danger"
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
+          </>
+        }
+        pagination={
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={query.pageNum}
+              pageSize={query.pageSize}
+              onPageChange={(pageNum) =>
+                setQuery((current) => ({ ...current, pageNum }))
+              }
+              onPageSizeChange={(pageSize) =>
+                setQuery((current) => ({
+                  ...current,
+                  pageNum: 1,
+                  pageSize,
+                }))
+              }
+            />
+          ) : null
+        }
+      />
+
+      <BaseDialog
+        open={isModalOpen}
+        title={isEdit ? '编辑用户' : '新增用户'}
+        description="维护用户基础资料、部门归属、租户信息、状态和角色授权。"
+        onClose={handleCloseModal}
+        maxWidthClassName="max-w-4xl"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={handleCloseModal}>
+              取消
+            </Button>
+            <Button onClick={() => void 0} type="submit" form="user-form">
+              {isEdit ? '保存修改' : '创建用户'}
+            </Button>
           </div>
-        </WorkspaceResultCard>
+        }
+      >
+        <form id="user-form" onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className={fieldLabelClassName}>
+                用户名 {!isEdit ? <span className="text-rose-500">*</span> : null}
+              </label>
+              <Input
+                value={formData.userName}
+                disabled={isEdit}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, userName: event.target.value }))
+                }
+                placeholder="请输入用户名"
+              />
+            </div>
 
-        {isModalOpen ? (
-          <WorkspaceDialogShell
-            title={isEdit ? '编辑用户' : '新增用户'}
-            description="按业务页一致的分段表单结构填写基础资料、组织归属和角色授权。"
-            onClose={() => setIsModalOpen(false)}
-            maxWidthClassName="max-w-4xl"
-            headerAside={(
-              <div className="flex flex-wrap gap-2">
-                <span className={surfaceChipClassName}>{isEdit ? '编辑模式' : '新增模式'}</span>
-                <span className={surfaceChipClassName}>已选角色 {selRoles.length} 个</span>
-              </div>
-            )}
-            bodyClassName="space-y-6"
-          >
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <section className={sectionPanelClassName}>
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">基础资料</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    先确认用户名、昵称和联系方式，后续再补充组织与授权信息。
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className={fieldLabelClassName}>
-                      用户昵称 <span className="text-red-500">*</span>
-                    </label>
-                    <Input
-                      value={formData.nickName}
-                      onChange={(event) => setFormData({ ...formData, nickName: event.target.value })}
-                      placeholder="用户昵称"
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>
-                      用户名 {!isEdit ? <span className="text-red-500">*</span> : null}
-                    </label>
-                    <Input
-                      value={formData.userName}
-                      onChange={(event) => setFormData({ ...formData, userName: event.target.value })}
-                      placeholder="用户名"
-                      disabled={isEdit}
-                    />
-                  </div>
-                  {!isEdit ? (
-                    <div>
-                      <label className={fieldLabelClassName}>初始密码</label>
-                      <Input
-                        type="password"
-                        value={formData.password}
-                        onChange={(event) => setFormData({ ...formData, password: event.target.value })}
-                        placeholder="留空则默认使用 123456"
-                      />
-                    </div>
-                  ) : null}
-                  <div>
-                    <label className={fieldLabelClassName}>手机号</label>
-                    <Input
-                      value={formData.phonenumber}
-                      onChange={(event) => setFormData({ ...formData, phonenumber: event.target.value })}
-                      placeholder="手机号"
-                    />
-                  </div>
-                  <div className={isEdit ? 'md:col-span-2' : ''}>
-                    <label className={fieldLabelClassName}>邮箱</label>
-                    <Input
-                      value={formData.email}
-                      onChange={(event) => setFormData({ ...formData, email: event.target.value })}
-                      placeholder="邮箱"
-                    />
-                  </div>
-                </div>
-              </section>
+            <div>
+              <label className={fieldLabelClassName}>
+                用户昵称 <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={formData.nickName}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, nickName: event.target.value }))
+                }
+                placeholder="请输入用户昵称"
+              />
+            </div>
 
-              <section className={sectionPanelClassName}>
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">组织归属</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    将用户放到正确的部门和租户下，保证后续菜单权限和流程范围准确。
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className={fieldLabelClassName}>所属部门</label>
-                    <TreeSelect
-                      value={formData.deptId}
-                      onChange={(value) => setFormData({ ...formData, deptId: value })}
-                      deptTree={deptTree}
-                    />
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>所属租户</label>
-                    <Select
-                      value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
-                      onValueChange={(value) =>
-                        setFormData({
-                          ...formData,
-                          tenantId: value === DEFAULT_TENANT_VALUE ? undefined : Number(value),
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="请选择租户" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={DEFAULT_TENANT_VALUE}>默认租户</SelectItem>
-                        {tenants.map((tenant) => (
-                          <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
-                            {tenant.tenantName}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>性别</label>
-                    <div className={radioPanelClassName}>
-                      {[
-                        ['0', '男'],
-                        ['1', '女'],
-                      ].map(([value, label]) => (
-                        <label key={value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                          <input
-                            type="radio"
-                            checked={formData.sex === value}
-                            onChange={() => setFormData({ ...formData, sex: value })}
-                            className="accent-cyan-600 dark:accent-cyan-400"
-                          />
-                          <span>{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className={fieldLabelClassName}>状态</label>
-                    <div className={radioPanelClassName}>
-                      {[
-                        ['0', '正常'],
-                        ['1', '停用'],
-                      ].map(([value, label]) => (
-                        <label key={value} className="flex cursor-pointer items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                          <input
-                            type="radio"
-                            checked={formData.status === value}
-                            onChange={() => setFormData({ ...formData, status: value })}
-                            className="accent-cyan-600 dark:accent-cyan-400"
-                          />
-                          <span>{label}</span>
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </section>
+            <div>
+              <label className={fieldLabelClassName}>邮箱</label>
+              <Input
+                value={formData.email}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, email: event.target.value }))
+                }
+                placeholder="请输入邮箱"
+              />
+            </div>
 
-              <section className={sectionPanelClassName}>
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">角色授权</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    用更清晰的标签式交互分配角色，便于快速识别当前授权组合。
-                  </div>
-                </div>
-                <div className={nestedPanelClassName}>
-                  <div className="flex flex-wrap gap-2">
-                    {roles.map((role) => (
-                      <button
-                        type="button"
+            <div>
+              <label className={fieldLabelClassName}>手机号</label>
+              <Input
+                value={formData.phonenumber}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, phonenumber: event.target.value }))
+                }
+                placeholder="请输入手机号"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className={fieldLabelClassName}>
+                {isEdit ? '重置密码' : '登录密码'}
+              </label>
+              <Input
+                type="password"
+                value={formData.password}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, password: event.target.value }))
+                }
+                placeholder={isEdit ? '留空则不修改密码' : '留空默认使用 123456'}
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>性别</label>
+              <Select
+                value={formData.sex}
+                onValueChange={(value) =>
+                  setFormData((current) => ({ ...current, sex: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择性别" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">男</SelectItem>
+                  <SelectItem value="1">女</SelectItem>
+                  <SelectItem value="2">未知</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>状态</label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData((current) => ({ ...current, status: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">正常</SelectItem>
+                  <SelectItem value="1">停用</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>所属租户</label>
+              <Select
+                value={formData.tenantId ? String(formData.tenantId) : DEFAULT_TENANT_VALUE}
+                onValueChange={(value) =>
+                  setFormData((current) => ({
+                    ...current,
+                    tenantId: value === DEFAULT_TENANT_VALUE ? undefined : Number(value),
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择租户" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={DEFAULT_TENANT_VALUE}>默认租户</SelectItem>
+                  {tenants.map((tenant) => (
+                    <SelectItem key={tenant.tenantId} value={String(tenant.tenantId)}>
+                      {tenant.tenantName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className={fieldLabelClassName}>归属部门</label>
+              <Select
+                value={formData.deptId ? String(formData.deptId) : ''}
+                onValueChange={(value) =>
+                  setFormData((current) => ({
+                    ...current,
+                    deptId: value ? Number(value) : undefined,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="请选择部门" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">不指定部门</SelectItem>
+                  {deptOptions.map(({ dept, level }) => (
+                    <SelectItem key={dept.deptId} value={String(dept.deptId)}>
+                      {'-- '.repeat(level)}
+                      {dept.deptName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>备注</label>
+              <Textarea
+                rows={4}
+                className="resize-none"
+                value={formData.remark}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, remark: event.target.value }))
+                }
+                placeholder="补充用户说明或维护备注"
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="mb-2 flex items-center justify-between">
+              <label className={fieldLabelClassName}>角色分配</label>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                已选角色 {selectedRoleIds.length} 个
+              </span>
+            </div>
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
+              {roles.length > 0 ? (
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+                  {roles.map((role) => {
+                    const checked = selectedRoleIds.includes(role.roleId);
+                    return (
+                      <label
                         key={role.roleId}
-                        onClick={() => toggleRole(role.roleId)}
                         className={cn(
-                          'rounded-full border px-3 py-1.5 text-xs font-medium transition',
-                          selRoles.includes(role.roleId)
-                            ? 'border-cyan-200 bg-cyan-50 text-cyan-700 shadow-sm dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-700 dark:hover:text-slate-100',
+                          'flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-2.5 transition',
+                          checked
+                            ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
+                            : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-700',
                         )}
                       >
-                        {selRoles.includes(role.roleId) ? <Check size={12} className="mr-1 inline" /> : null}
-                        {role.roleName}
-                      </button>
-                    ))}
-                    {roles.length === 0 ? (
-                      <span className="text-xs text-slate-400 dark:text-slate-500">暂无角色</span>
-                    ) : null}
-                  </div>
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={() => toggleRole(role.roleId)}
+                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                        />
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{role.roleName}</div>
+                          <div className="truncate text-xs opacity-80">{role.roleKey}</div>
+                        </div>
+                      </label>
+                    );
+                  })}
                 </div>
-              </section>
-
-              <section className={sectionPanelClassName}>
-                <div className="mb-4">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">备注</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    保留账号补充说明，方便后续审计和协作交接。
-                  </div>
+              ) : (
+                <div className="px-2 py-4 text-center text-sm text-slate-400 dark:text-slate-500">
+                  暂无角色数据
                 </div>
-                <Textarea
-                  rows={3}
-                  value={formData.remark}
-                  onChange={(event) => setFormData({ ...formData, remark: event.target.value })}
-                  placeholder="备注信息"
-                />
-              </section>
+              )}
+            </div>
+          </div>
+        </form>
+      </BaseDialog>
 
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="outline" type="button" onClick={() => setIsModalOpen(false)}>
-                  取消
-                </Button>
-                <Button type="submit">{isEdit ? '保存修改' : '立即创建'}</Button>
-              </div>
-            </form>
-          </WorkspaceDialogShell>
-        ) : null}
-
-        <ConfirmDialog
-          open={Boolean(pendingDeleteUser)}
-          title="确认删除用户"
-          message={
-            pendingDeleteUser
-              ? `确定要删除用户“${pendingDeleteUser.nickName || pendingDeleteUser.userName}”吗？此操作不可恢复。`
-              : ''
-          }
-          confirmText="确认删除"
-          cancelText="取消"
-          danger={true}
-          onCancel={() => setPendingDeleteUser(null)}
-          onConfirm={() => void handleDelete()}
-        />
-      </WorkspacePageContent>
-    </div>
+      <ConfirmDialog
+        open={Boolean(pendingDeleteUser)}
+        title="删除用户"
+        message={
+          pendingDeleteUser
+            ? `确定删除用户“${pendingDeleteUser.nickName || pendingDeleteUser.userName}”吗？删除后将无法恢复。`
+            : ''
+        }
+        confirmText="确认删除"
+        cancelText="取消"
+        danger
+        onCancel={() => setPendingDeleteUser(null)}
+        onConfirm={() => void handleDelete()}
+      />
+    </>
   );
 };
 
