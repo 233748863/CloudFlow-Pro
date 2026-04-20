@@ -480,9 +480,9 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
   };
 
   return (
-    <div className="form-studio-shell flex h-full gap-6">
+    <div className="form-studio-shell flex h-full gap-4">
       {/* Toolbox */}
-      <div className="flex w-72 flex-col rounded-[28px] border border-slate-200 bg-white/95 p-4 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
+      <div className="flex w-[17.5rem] flex-col rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
         <div className="mb-4">
           <h3 className="text-sm font-bold uppercase tracking-[0.18em] text-slate-700 dark:text-slate-200">组件库</h3>
           <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">拖出统一字段原语，快速构建表单结构并保持与流程设计器同一套视觉密度。</p>
@@ -508,15 +508,15 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
       </div>
 
       {/* Canvas */}
-      <div className="flex flex-1 flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-sm shadow-slate-200/60 dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
-        <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex flex-1 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:shadow-none">
+        <div className="flex min-h-[72px] flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/80">
           <Input 
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
-            className="w-[20rem] border-none bg-transparent text-lg font-bold text-slate-800 shadow-none focus-visible:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="w-[20rem] max-w-full border-none bg-transparent px-0 text-lg font-semibold text-slate-800 shadow-none focus-visible:ring-0 dark:text-slate-100 dark:placeholder:text-slate-500"
             placeholder="请输入表单名称"
           />
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               variant={previewing ? 'soft' : 'outline'}
               onClick={() => {
@@ -537,7 +537,7 @@ export const FormBuilder: React.FC<Props> = ({ onSave, initialForm }) => {
           </div>
         </div>
         
-        <div className="flex-1 overflow-y-auto bg-slate-50/20 p-5 dark:bg-slate-950/60">
+        <div className="flex-1 overflow-y-auto bg-slate-50/40 p-5 dark:bg-slate-950/60">
           {previewing ? (
             /* 预览模式：模拟真实表单填写 */
             <div className="mx-auto max-w-2xl">
