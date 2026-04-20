@@ -22,7 +22,7 @@ import {
 } from "../../services/api/workflow";
 import { toast } from "sonner";
 import { useWorkflowPermission } from "../../hooks/useWorkflowPermission";
-import { Button, Input, PermissionGuard } from "@/components/ui";
+import { Button, DatePicker, Input, PermissionGuard } from "@/components/ui";
 import {
   WorkspaceBackdrop,
   WorkspaceInlineState,
@@ -446,7 +446,7 @@ export const ArchivedWorkflows: React.FC = () => {
                     <label className="mb-2 block text-sm font-medium text-slate-700">
                       归档开始日期
                     </label>
-                    <input
+                    <DatePicker
                       type="date"
                       value={dateRange.start}
                       onChange={(event) =>
@@ -455,14 +455,13 @@ export const ArchivedWorkflows: React.FC = () => {
                           start: event.target.value,
                         }))
                       }
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
                     />
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-medium text-slate-700">
                       归档结束日期
                     </label>
-                    <input
+                    <DatePicker
                       type="date"
                       value={dateRange.end}
                       onChange={(event) =>
@@ -471,7 +470,6 @@ export const ArchivedWorkflows: React.FC = () => {
                           end: event.target.value,
                         }))
                       }
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 text-sm text-slate-700 outline-none transition focus:border-slate-300"
                     />
                   </div>
                   <div className="md:col-span-2 flex justify-end">
