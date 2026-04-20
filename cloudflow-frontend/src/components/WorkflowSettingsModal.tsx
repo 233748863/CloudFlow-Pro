@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings, FileText, Tag, FolderOpen, Shield, Users } from 'lucide-react';
+import { Settings, FileText, Tag, FolderOpen, Shield } from 'lucide-react';
+import { BaseDialog } from '@/components/common';
+import { Button } from '@/components/ui';
 import { Input } from './ui/input';
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
 import { getDeptTree } from '../services/api/auth';
@@ -161,32 +163,29 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
     onClose();
   };
 
-  if (!open) return null;
-
   return (
-    <div className="workflow-settings-modal fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px]">
-      <div className="flex max-h-[85vh] w-[600px] flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white/96 shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950/96 dark:shadow-[0_24px_48px_rgba(2,6,23,0.48)] dark:ring-slate-800">
-        {/* 标题栏 */}
-        <div className="flex shrink-0 items-center justify-between border-b border-slate-200 bg-slate-50/80 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
-          <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 dark:border-cyan-900/70 dark:bg-cyan-950/50">
-              <Settings size={20} className="text-cyan-700 dark:text-cyan-200" />
-            </div>
-            <div>
-              <h2 className="text-lg font-bold text-slate-800 dark:text-slate-100">流程设置</h2>
-              <p className="mt-0.5 text-xs text-slate-400 dark:text-slate-500">配置流程的基本信息和属性</p>
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
-          >
-            <X size={18} />
-          </button>
+    <BaseDialog
+      open={open}
+      title="流程设置"
+      description="配置流程的基本信息、关联表单和启动权限。"
+      onClose={onClose}
+      maxWidthClassName="max-w-3xl"
+      bodyClassName="max-h-[78vh] overflow-y-auto"
+      headerAside={
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 dark:border-cyan-900/70 dark:bg-cyan-950/50">
+          <Settings size={20} className="text-cyan-700 dark:text-cyan-200" />
         </div>
-
-        {/* 内容区域 */}
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5">
+      }
+      footer={
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={onClose}>
+            取消
+          </Button>
+          <Button onClick={handleSave}>保存设置</Button>
+        </div>
+      }
+    >
+      <div className="space-y-5">
           {/* 基本信息（只读） */}
           <div className="space-y-3">
             <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 dark:text-slate-200">
@@ -454,24 +453,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
               💡 配置后，只有符合条件的用户才能启动此流程
             </p>
           </div>
-        </div>
-
-        {/* 底部按钮 */}
-        <div className="flex shrink-0 justify-end gap-3 border-t border-slate-200 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/80">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900"
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSave}
-            className="rounded-lg bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-700"
-          >
-            保存设置
-          </button>
-        </div>
       </div>
-    </div>
+    </BaseDialog>
   );
 };

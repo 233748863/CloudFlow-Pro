@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, GitMerge, Loader2 } from 'lucide-react';
+import { AlertTriangle, FileText, GitMerge, Layers, Loader2, ShieldCheck } from 'lucide-react';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
 import { Button } from '@/components/ui';
@@ -20,16 +20,6 @@ import {
   createDefaultWorkflowGraph,
   parseWorkflowGraphDefinition,
 } from '../utils/workflowGraph';
-import {
-  WorkspaceBackdrop,
-  WorkspacePageContent,
-  WorkspaceStatusPanel,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspaceSectionCard,
-} from '@/components/workspace/WorkspacePanels';
 
 type WorkflowDesignContextPayload = {
   forms: FormDefinition[];
@@ -41,6 +31,64 @@ let workflowDesignContextCache: WorkflowDesignContextPayload | null = null;
 let workflowDesignContextPromise: Promise<WorkflowDesignContextPayload> | null = null;
 const processDefinitionPromiseCache = new Map<string, Promise<any | null>>();
 let processDefinitionsListPromise: Promise<any[]> | null = null;
+
+const PanelCard: React.FC<{
+  title: string;
+  description?: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}> = ({ title, description, aside, children }) => (
+  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+      <div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+      {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
+    </div>
+    {children}
+  </section>
+);
+
+const SummaryCard: React.FC<{
+  label: string;
+  value: number | string;
+  hint: string;
+  icon: React.ReactNode;
+}> = ({ label, value, hint, icon }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="flex items-center justify-between gap-3">
+      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+        {icon}
+      </div>
+      <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+        {label}
+      </div>
+    </div>
+    <div className="mt-4 text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div>
+  </div>
+);
+
+const StatusPanel: React.FC<{
+  icon: React.ReactNode;
+  title: string;
+  description: React.ReactNode;
+  actions?: React.ReactNode;
+}> = ({ icon, title, description, actions }) => (
+  <div className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+      {icon}
+    </div>
+    <div className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    {actions ? <div className="mt-5 flex justify-center gap-3">{actions}</div> : null}
+  </div>
+);
 
 const loadWorkflowDesignContext = async (): Promise<WorkflowDesignContextPayload> => {
   if (workflowDesignContextCache) {
@@ -267,11 +315,8 @@ export const WorkflowDesign = () => {
   const skipNextUrlSyncRef = useRef(false);
 
   const renderStatusShell = (panel: React.ReactNode) => (
-    <div className="relative h-[calc(100vh-240px)] overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_24px_48px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/92 dark:shadow-[0_24px_48px_rgba(2,6,23,0.38)] dark:ring-slate-800">
-      <WorkspaceBackdrop />
-      <div className="relative z-10 flex h-full items-center justify-center p-5">
-        <div className="w-full max-w-2xl">{panel}</div>
-      </div>
+    <div className="flex min-h-[calc(100vh-260px)] items-center justify-center py-8">
+      <div className="w-full max-w-3xl">{panel}</div>
     </div>
   );
 
@@ -490,22 +535,21 @@ export const WorkflowDesign = () => {
 
   if (loading) {
     return renderStatusShell(
-      <WorkspaceStatusPanel
+      <StatusPanel
         icon={<Loader2 size={28} className="animate-spin text-cyan-600" />}
         title="正在加载流程设计器..."
         description="正在准备流程定义、表单列表和审批基础数据，请稍候。"
-        className="py-14"
       />
     );
   }
 
   if (error) {
     return renderStatusShell(
-      <WorkspaceStatusPanel
+      <StatusPanel
         icon={<AlertTriangle size={28} className="text-amber-500" />}
         title="流程设计数据加载失败"
         description={error}
-        actions={(
+        actions={
           <Button
             type="button"
             onClick={loadData}
@@ -513,19 +557,18 @@ export const WorkflowDesign = () => {
           >
             重新加载
           </Button>
-        )}
-        className="py-14"
+        }
       />
     );
   }
 
   if (!workflow) {
     return renderStatusShell(
-      <WorkspaceStatusPanel
+      <StatusPanel
         icon={<GitMerge size={28} className="text-slate-400" />}
         title="未找到可编辑流程"
         description="当前没有加载到流程定义。可以重新尝试，或者直接创建一个新的空白流程。"
-        actions={(
+        actions={
           <>
             <Button
               type="button"
@@ -543,8 +586,7 @@ export const WorkflowDesign = () => {
               新建流程
             </Button>
           </>
-        )}
-        className="py-14"
+        }
       />
     );
   }
@@ -556,60 +598,86 @@ export const WorkflowDesign = () => {
     : '流程设计器已接入统一工作台壳层，这一轮继续收口工具栏、画布、节点和侧边配置面板。';
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-      <WorkspacePageContent className="space-y-4">
-        <WorkspaceHeroCard
-          badge={(
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-cyan-700 shadow-sm dark:border-slate-800 dark:bg-slate-950/90 dark:text-cyan-200">
-              <GitMerge size={14} />
-              Workflow Studio
-            </div>
-          )}
-          title={studioTitle}
-          description={studioDescription}
-          actions={(
-            <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" onClick={loadData}>
-                刷新设计器
-              </Button>
-              <Button variant="soft" onClick={() => navigate('/workflow/create')}>
-                返回流程目录
-              </Button>
-            </div>
-          )}
-        >
-          <div className="mt-6 grid gap-4 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="设计模式"
-              value={isNewWorkflow ? '空白创建' : '编辑已有流程'}
-              hint={requestedWorkflowId ? `流程 ID：${requestedWorkflowId}` : '当前为新建模式'}
-            />
-            <WorkspaceMetricCard
-              label="关联表单"
-              value={savedForms.length}
-              hint="设计器已加载的表单资源数"
-            />
-            <WorkspaceMetricCard
-              label="审批资源"
-              value={`${availableRoles.length} 角色 / ${availableUsers.length} 人`}
-              hint="用于审批人和发起权限配置"
-            />
-            <WorkspaceMetricCard
-              label="当前 Key"
-              value={workflow.key || '未设置'}
-              hint="保存和发布时使用的流程标识"
-            />
-          </div>
-        </WorkspaceHeroCard>
+    <div className="space-y-4">
+      <div className="grid gap-4 xl:grid-cols-4">
+        <SummaryCard
+          label="设计模式"
+          value={isNewWorkflow ? '空白创建' : '编辑已有流程'}
+          hint={requestedWorkflowId ? `流程 ID：${requestedWorkflowId}` : '当前为新建模式'}
+          icon={<GitMerge className="h-[18px] w-[18px]" />}
+        />
+        <SummaryCard
+          label="关联表单"
+          value={savedForms.length}
+          hint="设计器已加载的表单资源数"
+          icon={<FileText className="h-[18px] w-[18px]" />}
+        />
+        <SummaryCard
+          label="审批资源"
+          value={`${availableRoles.length} / ${availableUsers.length}`}
+          hint="角色数量 / 用户数量"
+          icon={<ShieldCheck className="h-[18px] w-[18px]" />}
+        />
+        <SummaryCard
+          label="当前 Key"
+          value={workflow.key || '未设置'}
+          hint="保存和发布时使用的流程标识"
+          icon={<Layers className="h-[18px] w-[18px]" />}
+        />
+      </div>
 
-        <WorkspaceSectionCard
-          title="流程设计工作台"
-          description="统一收口设计器工具栏、节点画布、连接线拖拽区和右侧属性面板，避免继续保留旧的局部视觉体系。"
-          eyebrow="Design Canvas"
-          bodyClassName="space-y-4"
-        >
-          <div className="min-h-[calc(100vh-340px)] overflow-hidden rounded-[28px] border border-slate-200 bg-white/95 shadow-[0_24px_48px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950/92 dark:shadow-[0_24px_48px_rgba(2,6,23,0.38)] dark:ring-slate-800">
+      <PanelCard
+        title={studioTitle}
+        description={studioDescription}
+        aside={
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="outline" onClick={loadData}>
+              刷新设计器
+            </Button>
+            <Button variant="soft" onClick={() => navigate('/workflow/create')}>
+              返回流程目录
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4 px-4 py-4">
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                流程设计页本轮继续向参考源码的设计工作台靠拢，页面壳层只负责承载设计器，不再额外挂一层独立的 Hero 视觉体系。工具栏、画布、节点和右侧配置区会共用同一套轻量比例和明暗主题规则。
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前设计上下文</div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  流程名称
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {workflow.name || '未命名流程'}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  流程 ID
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {isNewWorkflow ? '未保存' : workflow.id}
+                </div>
+              </div>
+              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  审批资源
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {availableRoles.length} 个角色 / {availableUsers.length} 位用户
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="min-h-[calc(100vh-360px)] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/92">
             <WorkflowBuilder
               workflow={workflow}
               onChange={handleWorkflowChange}
@@ -619,8 +687,8 @@ export const WorkflowDesign = () => {
               availableUsers={availableUsers}
             />
           </div>
-        </WorkspaceSectionCard>
-      </WorkspacePageContent>
+        </div>
+      </PanelCard>
     </div>
   );
 };
