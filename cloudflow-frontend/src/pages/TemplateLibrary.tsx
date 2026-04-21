@@ -29,20 +29,8 @@ import {
   SkeletonCard,
   Textarea,
 } from "@/components/ui";
-import {
-  WorkspaceBackdrop,
-  WorkspaceInlineState,
-  WorkspacePageContent,
-} from "@/components/workspace/WorkspacePrimitives";
-import {
-  WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspacePaginationBar,
-  WorkspaceResultCard,
-  WorkspaceSectionCard,
-  WorkspaceWorkbenchCard,
-} from "@/components/workspace/WorkspacePanels";
+import { Pagination } from "@/components/common/Pagination";
+import { TablePageLayout } from "@/components/layout/TablePageLayout";
 import { useWorkflowPermission } from "@/hooks/useWorkflowPermission";
 import { cn } from "@/utils/cn";
 import { useAuth } from "../context/AuthContext";
@@ -172,10 +160,6 @@ const EMPTY_GRAPH = { nodes: [], edges: [] } as {
 
 const FILTER_CHIP_CLASS_NAME =
   "inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-700 shadow-sm transition-colors hover:border-cyan-200 hover:bg-cyan-50 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-cyan-900/70 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200";
-const SURFACE_CHIP_CLASS_NAME =
-  "rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300";
-const PANEL_STAT_LABEL_CLASS_NAME =
-  "text-xs font-bold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500";
 const PREVIEW_META_LABEL_CLASS_NAME =
   "text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500";
 const PREVIEW_SECTION_HEADER_CLASS_NAME =
@@ -280,19 +264,6 @@ const formatNodeType = (type: string): string => {
   return NODE_TYPE_LABELS[key] || type;
 };
 
-const getTemplateMetrics = (
-  template: TemplateItem,
-  graph: { nodes: PreviewNode[]; edges: PreviewEdge[] },
-) => [
-  { label: TEXT.category, value: template.categoryName || TEXT.uncategorized },
-  {
-    label: TEXT.tags,
-    value: normalizeTags(template.tags).slice(0, 2).join(" / ") || "-",
-  },
-  { label: TEXT.nodeCount, value: String(graph.nodes.length) },
-  { label: TEXT.edgeCount, value: String(graph.edges.length) },
-];
-
 export const TemplateLibrary: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -310,7 +281,7 @@ export const TemplateLibrary: React.FC = () => {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [recommendedTags, setRecommendedTags] =
     useState<string[]>(DEFAULT_COMMON_TAGS);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 12;
   const [total, setTotal] = useState(0);
@@ -384,7 +355,6 @@ export const TemplateLibrary: React.FC = () => {
     Boolean(searchTerm.trim()) ||
     Boolean(selectedCategory) ||
     selectedTags.length > 0;
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const activeFilterCount =
     (selectedCategory ? 1 : 0) +
     selectedTags.length +
@@ -394,18 +364,6 @@ export const TemplateLibrary: React.FC = () => {
     ? "这是创建流程的第二步。先挑选合适模板，再生成流程草稿进入设计器；如果没有合适模板，也可以随时回到空白创建。"
     : TEXT.pageDescription;
   const viewModeLabel = viewMode === "grid" ? TEXT.gridView : TEXT.listView;
-  const now = new Date();
-  const todayLabel = `${now.getMonth() + 1}/${now.getDate()}`;
-  const timeLabel = now.toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const overviewItems = [
-    { label: TEXT.currentResults, value: `${total} 个模板` },
-    { label: TEXT.category, value: selectedCategoryName },
-    { label: TEXT.activeFilters, value: `${activeFilterCount} 项` },
-    { label: TEXT.currentView, value: viewModeLabel },
-  ];
 
   const loadCategories = useCallback(async () => {
     try {
@@ -605,65 +563,139 @@ export const TemplateLibrary: React.FC = () => {
 
   const renderTemplateCard = (template: TemplateItem) => {
     const graph = templateInsights.get(template.id) || EMPTY_GRAPH;
-    const metrics = getTemplateMetrics(template, graph);
+    const tags = normalizeTags(template.tags).slice(0, 3);
 
     return (
-      <div
+      <article
         key={template.id}
-        className="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/78 dark:hover:border-slate-700 dark:hover:bg-slate-900/80"
+        className="flex h-full flex-col overflow-hidden rounded-xl border border-slate-200 bg-white transition-colors hover:border-cyan-200 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:border-cyan-900/70"
       >
-        <div className="flex-1 p-5">
-          <div className="mb-3 flex items-start justify-between gap-4">
-            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-              <Layers3 className="mr-1.5 h-3.5 w-3.5 text-slate-400 dark:text-slate-500" />
-              {template.categoryName || TEXT.uncategorized}
+        <div className="flex items-start justify-between gap-3 px-4 py-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {template.name}
+              </h3>
+              {template.isSystem ? (
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                  {TEXT.systemTemplate}
+                </span>
+              ) : null}
             </div>
-            {template.isSystem ? (
-              <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-                {TEXT.systemTemplate}
-              </span>
-            ) : null}
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span>{template.categoryName || TEXT.uncategorized}</span>
+              <span>·</span>
+              <span>{graph.nodes.length} 节点</span>
+              <span>·</span>
+              <span>{graph.edges.length} 连线</span>
+            </div>
           </div>
-
-          <div>
-            <h3 className="line-clamp-1 text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">
-              {template.name}
-            </h3>
-            <p className="mt-2 min-h-[40px] line-clamp-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-              {template.description || TEXT.noDescription}
-            </p>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3">
-            {metrics.map((metric) => (
-              <div key={metric.label}>
-                <div className="mb-0.5 text-xs text-slate-400">
-                  {metric.label}
-                </div>
-                <div
-                  className="truncate text-sm font-medium text-slate-700 dark:text-slate-200"
-                  title={metric.value}
-                >
-                  {metric.value}
-                </div>
-              </div>
-            ))}
-          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 px-2"
+            onClick={() => handlePreview(template)}
+          >
+            <Eye className="h-4 w-4" />
+          </Button>
         </div>
 
-        <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="flex flex-col">
-            <span className="text-xs text-slate-400 dark:text-slate-500">{TEXT.templateUsage}</span>
-            <span className="text-sm font-bold text-slate-700 dark:text-slate-100">
-              {template.usageCount || 0}
-            </span>
+        <p className="px-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
+          {template.description || TEXT.noDescription}
+        </p>
+
+        {tags.length > 0 ? (
+          <div className="flex flex-wrap gap-2 px-4 pt-3">
+            {tags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+              >
+                {tag}
+              </span>
+            ))}
           </div>
-          <div className="flex gap-2">
+        ) : null}
+
+        <div className="mt-auto flex items-center justify-between border-t border-slate-200 px-4 py-3 dark:border-slate-800">
+          <span className="text-xs text-slate-500 dark:text-slate-400">
+            使用 {template.usageCount || 0} 次
+          </span>
+          <div className="flex items-center gap-2">
             <Button
               variant="outline"
               size="sm"
               onClick={() => handlePreview(template)}
             >
+              {TEXT.preview}
+            </Button>
+            <Button
+              size="sm"
+              disabled={!user}
+              onClick={() => handleCreateFromTemplate(template.id)}
+              title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
+            >
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              {TEXT.useTemplate}
+            </Button>
+          </div>
+        </div>
+      </article>
+    );
+  };
+
+  const renderTemplateRow = (template: TemplateItem) => {
+    const graph = templateInsights.get(template.id) || EMPTY_GRAPH;
+    const tags = normalizeTags(template.tags);
+
+    return (
+      <article
+        key={template.id}
+        className="border-b border-slate-200 last:border-b-0 dark:border-slate-800"
+      >
+        <div className="flex flex-col gap-4 px-4 py-4 lg:flex-row lg:items-center">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {template.name}
+              </h3>
+              {template.isSystem ? (
+                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                  {TEXT.systemTemplate}
+                </span>
+              ) : null}
+            </div>
+
+            <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              {template.description || TEXT.noDescription}
+            </p>
+
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+              <span className="inline-flex items-center gap-1.5">
+                <Layers3 className="h-3.5 w-3.5" />
+                {template.categoryName || TEXT.uncategorized}
+              </span>
+              <span>{TEXT.templateUsage} {template.usageCount || 0}</span>
+              <span>{TEXT.nodeCount} {graph.nodes.length}</span>
+              <span>{TEXT.edgeCount} {graph.edges.length}</span>
+            </div>
+
+            {tags.length > 0 ? (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {tags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300"
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => handlePreview(template)}>
               <Eye className="mr-1.5 h-3.5 w-3.5" />
               {TEXT.preview}
             </Button>
@@ -678,773 +710,685 @@ export const TemplateLibrary: React.FC = () => {
             </Button>
           </div>
         </div>
-      </div>
+      </article>
     );
   };
 
-  const renderTemplateRow = (template: TemplateItem) => {
-    const graph = templateInsights.get(template.id) || EMPTY_GRAPH;
-    const tags = normalizeTags(template.tags);
+  const renderLoadingState = () => {
+    if (viewMode === "grid") {
+      return (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <SkeletonCard key={index} />
+          ))}
+        </div>
+      );
+    }
 
     return (
-      <div
-        key={template.id}
-        className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-950/78 dark:hover:border-slate-700 dark:hover:bg-slate-900/80"
-      >
-        <div className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center">
-          <div className="min-w-0 flex-1">
-            <div className="mb-2 flex items-center gap-3">
-              <h3 className="truncate text-lg font-bold text-slate-800 dark:text-slate-100">
-                {template.name}
-              </h3>
-              {template.isSystem ? (
-                <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-                  {TEXT.systemTemplate}
-                </span>
-              ) : null}
-            </div>
-            <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-              {template.description || TEXT.noDescription}
-            </p>
-
-            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-300">
-              <div className="flex items-center gap-1.5">
-                <Layers3 className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                {template.categoryName || TEXT.uncategorized}
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 dark:text-slate-500">{TEXT.templateUsage}:</span>
-                <span className="font-medium">{template.usageCount || 0}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 dark:text-slate-500">{TEXT.nodeCount}:</span>
-                <span className="font-medium">{graph.nodes.length}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-slate-400 dark:text-slate-500">{TEXT.edgeCount}:</span>
-                <span className="font-medium">{graph.edges.length}</span>
-              </div>
-              {tags.length > 0 ? (
-                <div className="ml-auto flex items-center gap-1.5">
-                  {tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
+      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            key={index}
+            className="border-b border-slate-200 px-4 py-4 last:border-b-0 dark:border-slate-800"
+          >
+            <SkeletonCard className="border-none p-0 shadow-none" />
           </div>
-
-          <div className="flex shrink-0 items-center gap-3 border-t border-slate-200 pt-4 dark:border-slate-800 lg:flex-col lg:border-l lg:border-t-0 lg:pl-4 lg:pt-0 xl:flex-row">
-            <Button variant="outline" onClick={() => handlePreview(template)}>
-              <Eye className="mr-2 h-4 w-4" />
-              {TEXT.preview}
-            </Button>
-            <Button
-              disabled={!user}
-              onClick={() => handleCreateFromTemplate(template.id)}
-              title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
-            >
-              <Plus className="mr-1.5 h-4 w-4" />
-              {TEXT.useTemplate}
-            </Button>
-          </div>
-        </div>
+        ))}
       </div>
     );
   };
 
-  const renderLoadingState = () => (
-    <div
-      className={cn(
-        viewMode === "grid"
-          ? "grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3"
-          : "space-y-4",
-      )}
-    >
-      {Array.from({ length: viewMode === "grid" ? 6 : 4 }).map((_, index) => (
-        <SkeletonCard
-          key={index}
-          className={viewMode === "list" ? "p-5" : ""}
-        />
+  const activeFilterChips = hasActiveFilters ? (
+    <div className="flex flex-wrap gap-2">
+      {selectedCategory ? (
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          onClick={() => {
+            setSelectedCategory("");
+            setCurrentPage(1);
+          }}
+          className={FILTER_CHIP_CLASS_NAME}
+        >
+          {selectedCategoryName}
+          <X className="ml-2 h-3.5 w-3.5" />
+        </Button>
+      ) : null}
+      {searchTerm.trim() ? (
+        <Button
+          variant="outline"
+          size="sm"
+          type="button"
+          onClick={() => {
+            setSearchTerm("");
+            setCurrentPage(1);
+          }}
+          className={FILTER_CHIP_CLASS_NAME}
+        >
+          {searchTerm.trim()}
+          <X className="ml-2 h-3.5 w-3.5" />
+        </Button>
+      ) : null}
+      {selectedTags.map((tag) => (
+        <Button
+          variant="outline"
+          size="sm"
+          key={tag}
+          type="button"
+          onClick={() => toggleTag(tag)}
+          className={FILTER_CHIP_CLASS_NAME}
+        >
+          {tag}
+          <X className="ml-2 h-3.5 w-3.5" />
+        </Button>
       ))}
     </div>
-  );
+  ) : null;
 
-  return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-      <WorkspacePageContent>
-        <WorkspaceHeroCard
-          badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
-                <Workflow className="h-3.5 w-3.5" />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {timeLabel}
-              </span>
-            </div>
-          }
-          title={heroTitle}
-          description={heroDescription}
-          actions={
-            <div className="flex flex-wrap gap-2">
-              {fromCreateFlow ? (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={handleBackToCreateFlow}
-                    className="gap-2"
-                  >
-                    <ArrowLeft className="h-4 w-4" />
-                    返回创建方式
-                  </Button>
-                  <Button onClick={handleStartBlankWorkflow} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    直接空白创建
-                  </Button>
-                </>
-              ) : null}
-              {canManageTemplates ? (
-                <Button
-                  variant="outline"
-                  onClick={() => navigate("/templates/manage")}
-                  className="gap-2"
-                >
-                  <FolderOpen className="h-4 w-4" />
-                  管理模板
-                </Button>
-              ) : null}
-            </div>
-          }
-          contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label={TEXT.currentResults}
-              value={total}
-              hint="当前分页接口返回的模板总量"
-              aside={<Layers3 className="h-[18px] w-[18px] text-cyan-600 dark:text-cyan-300" />}
-            />
-            <WorkspaceMetricCard
-              label={TEXT.categoryCount}
-              value={categoryCount}
-              hint="按业务分类收拢模板入口"
-              aside={
-                <FolderOpen className="h-[18px] w-[18px] text-amber-500 dark:text-amber-300" />
-              }
-            />
-            <WorkspaceMetricCard
-              label={TEXT.activeFilters}
-              value={activeFilterCount}
-              hint="搜索词、分类与标签共同生效"
-              aside={<Sparkles className="h-[18px] w-[18px] text-sky-500 dark:text-sky-300" />}
-            />
-            <WorkspaceMetricCard
-              label={TEXT.currentView}
-              value={viewModeLabel}
-              hint="支持卡片浏览与列表对比"
-              aside={
-                viewMode === "grid" ? (
-                  <Grid className="h-[18px] w-[18px] text-emerald-500" />
-                ) : (
-                  <List className="h-[18px] w-[18px] text-emerald-500" />
-                )
-              }
-            />
-          </div>
-        </WorkspaceHeroCard>
+  const renderResultContent = () => {
+    if (loading) {
+      return renderLoadingState();
+    }
 
-        <WorkspaceWorkbenchCard
-          title="模板筛选工作台"
-          total={total}
-          hasActiveFilters={hasActiveFilters}
-          overviewItems={overviewItems}
-          headerBadges={
-            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-              <span className={SURFACE_CHIP_CLASS_NAME}>
-                {hasActiveFilters ? `已启用 ${activeFilterCount} 项筛选` : "默认视图"}
-              </span>
-              <span className={SURFACE_CHIP_CLASS_NAME}>
-                分类 {selectedCategoryName}
-              </span>
-              <span className={SURFACE_CHIP_CLASS_NAME}>
-                当前视图 {viewModeLabel}
-              </span>
-            </div>
-          }
-          quickFilterAside={
-            hasActiveFilters ? (
-              <Button variant="outline" size="sm" onClick={clearFilters}>
-                <X className="h-4 w-4" />
-                {TEXT.clearFilters}
-              </Button>
-            ) : (
-              <span className={SURFACE_CHIP_CLASS_NAME}>
-                当前显示默认视图
-              </span>
-            )
-          }
-          filterBar={
-            <div className="space-y-4">
-              <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                  <Input
-                    value={searchTerm}
-                    onChange={(event) => {
-                      setSearchTerm(event.target.value);
-                      setCurrentPage(1);
-                    }}
-                    placeholder={TEXT.searchPlaceholder}
-                    className="pl-10"
-                  />
-                </div>
-                <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:flex-nowrap">
-                  <div className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950">
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("grid")}
-                      className={cn(
-                        "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
-                        viewMode === "grid"
-                          ? "bg-slate-50 text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-200"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100",
-                      )}
-                    >
-                      <Grid className="h-4 w-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setViewMode("list")}
-                      className={cn(
-                        "rounded-lg px-3 py-1.5 text-[11px] font-medium transition",
-                        viewMode === "list"
-                          ? "bg-slate-50 text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-200"
-                          : "text-slate-600 hover:bg-slate-50 hover:text-slate-700 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100",
-                      )}
-                    >
-                      <List className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+    if (loadError) {
+      return (
+        <EmptyState
+          icon={<Workflow className="h-12 w-12 text-slate-300" />}
+          title={TEXT.loadTemplatesFailed}
+          description={TEXT.emptyDescription}
+          action={{
+            label: TEXT.retry,
+            onClick: () => void loadTemplates(),
+          }}
+        />
+      );
+    }
 
-              {hasActiveFilters ? (
-                <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                  <div className={PANEL_STAT_LABEL_CLASS_NAME}>
-                    {TEXT.filterSummary}
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {selectedCategory ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        type="button"
-                        onClick={() => {
-                          setSelectedCategory("");
-                          setCurrentPage(1);
-                        }}
-                        className={FILTER_CHIP_CLASS_NAME}
-                      >
-                        {selectedCategoryName}
-                        <X className="ml-2 h-3.5 w-3.5" />
-                      </Button>
-                    ) : null}
-                    {searchTerm.trim() ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        type="button"
-                        onClick={() => {
-                          setSearchTerm("");
-                          setCurrentPage(1);
-                        }}
-                        className={FILTER_CHIP_CLASS_NAME}
-                      >
-                        {searchTerm.trim()}
-                        <X className="ml-2 h-3.5 w-3.5" />
-                      </Button>
-                    ) : null}
-                    {selectedTags.map((tag) => (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        key={tag}
-                        type="button"
-                        onClick={() => toggleTag(tag)}
-                        className={FILTER_CHIP_CLASS_NAME}
-                      >
-                        {tag}
-                        <X className="ml-2 h-3.5 w-3.5" />
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              ) : null}
-            </div>
+    if (templates.length === 0) {
+      return (
+        <EmptyState
+          icon={<Search className="h-12 w-12 text-slate-300" />}
+          title={TEXT.emptyTitle}
+          description={TEXT.emptyDescription}
+          action={
+            hasActiveFilters
+              ? { label: TEXT.clearFilters, onClick: clearFilters }
+              : undefined
           }
         />
+      );
+    }
 
-        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-          <div className="space-y-6">
-            <WorkspaceSectionCard
-              eyebrow="Navigation"
-              title={TEXT.categoryNavigation}
-              description={TEXT.categoryNavigationDesc}
-            >
-              <div className="space-y-1">
-                <Button
-                  type="button"
-                  variant={!selectedCategory ? "secondary" : "ghost"}
-                  onClick={() => {
-                    setSelectedCategory("");
-                    setCurrentPage(1);
-                  }}
-                  className={cn(
-                    "w-full justify-start text-sm",
-                    !selectedCategory ? "font-medium" : "text-slate-600 dark:text-slate-300",
-                  )}
-                >
-                  <Layers3 className="mr-2 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
-                  <span className="flex-1 text-left">{TEXT.allTemplates}</span>
-                  <span className="ml-2 text-xs text-slate-400 dark:text-slate-500">{total}</span>
-                </Button>
-                {categories.length > 0 ? (
-                  renderCategoryTree(categories)
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
-                    {TEXT.noCategoryDesc}
-                  </div>
-                )}
-              </div>
-            </WorkspaceSectionCard>
+    if (viewMode === "grid") {
+      return (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {templates.map(renderTemplateCard)}
+        </div>
+      );
+    }
 
-            <WorkspaceSectionCard
-              eyebrow="Tags"
-              title={TEXT.commonTags}
-              description={TEXT.commonTagsDesc}
-            >
-              <div className="flex flex-wrap gap-2">
-                {recommendedTags.map((tag) => {
-                  const active = selectedTags.includes(tag);
-                  return (
-                    <Button
-                      key={tag}
-                      type="button"
-                      size="sm"
-                      variant={active ? "default" : "outline"}
-                      onClick={() => toggleTag(tag)}
-                      className="h-8 text-xs"
-                    >
-                      {tag}
-                    </Button>
-                  );
-                })}
-              </div>
-            </WorkspaceSectionCard>
+    return (
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+        {templates.map(renderTemplateRow)}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+            <Workflow className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+            Template Library
           </div>
-
-          <WorkspaceResultCard
-            total={total}
-            title={viewModeLabel}
-            description={
-              viewMode === "grid"
-                ? "按卡片浏览模板摘要、分类和使用入口。"
-                : "按列表横向比较模板结构、标签与使用频次。"
-            }
-            footer={
-              total > pageSize ? (
-                <WorkspacePaginationBar
-                  total={total}
-                  pageNum={currentPage}
-                  totalPages={totalPages}
-                  onPrev={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                  onNext={() =>
-                    setCurrentPage((page) => Math.min(totalPages, page + 1))
-                  }
-                  prevDisabled={currentPage <= 1}
-                  nextDisabled={currentPage >= totalPages}
-                />
-              ) : null
-            }
-          >
-            <div className="px-4 py-4">
-              {loading ? (
-                renderLoadingState()
-              ) : loadError ? (
-                <div className="py-4">
-                  <EmptyState
-                    icon={<Workflow className="h-12 w-12 text-slate-300" />}
-                    title={TEXT.loadTemplatesFailed}
-                    description={TEXT.emptyDescription}
-                    action={{
-                      label: TEXT.retry,
-                      onClick: () => void loadTemplates(),
-                    }}
-                  />
-                </div>
-              ) : templates.length === 0 ? (
-                <div className="py-4">
-                  <EmptyState
-                    icon={<Search className="h-12 w-12 text-slate-300" />}
-                    title={TEXT.emptyTitle}
-                    description={TEXT.emptyDescription}
-                    action={
-                      hasActiveFilters
-                        ? { label: TEXT.clearFilters, onClick: clearFilters }
-                        : undefined
-                    }
-                  />
-                </div>
-              ) : viewMode === "grid" ? (
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-                  {templates.map(renderTemplateCard)}
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {templates.map(renderTemplateRow)}
-                </div>
-              )}
-            </div>
-          </WorkspaceResultCard>
+          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            {heroTitle}
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {heroDescription}
+          </p>
         </div>
 
-        <Dialog open={showPreview} onOpenChange={handlePreviewOpenChange}>
-          <DialogContent
-            disableDefaultMaxWidth
-            className="flex h-[min(92vh,860px)] w-[min(96vw,1220px)] max-h-[92vh] max-w-none flex-col overflow-hidden gap-0 p-0 sm:max-w-[min(96vw,1220px)] dark:border-slate-800 dark:bg-slate-950"
-          >
-            {previewTemplate ? (
-              <>
-                <DialogHeader className="shrink-0 border-b border-slate-200 bg-white px-6 py-5 pr-14 dark:border-slate-800 dark:bg-slate-950 lg:px-6">
-                  <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
-                        <Workflow className="h-5 w-5 text-cyan-600 dark:text-cyan-300" />
-                        {previewTemplate.name}
-                      </DialogTitle>
-                      <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
-                        {TEXT.previewTitleSuffix}
-                      </span>
-                      {previewTemplate.isSystem ? (
-                        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-                          {TEXT.systemTemplate}
-                        </span>
-                      ) : null}
+        <div className="flex flex-wrap gap-2">
+          {fromCreateFlow ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={handleBackToCreateFlow}
+                className="gap-2"
+              >
+                <ArrowLeft className="h-4 w-4" />
+                返回创建方式
+              </Button>
+              <Button onClick={handleStartBlankWorkflow} className="gap-2">
+                <Plus className="h-4 w-4" />
+                直接空白创建
+              </Button>
+            </>
+          ) : null}
+          {canManageTemplates ? (
+            <Button
+              variant="outline"
+              onClick={() => navigate("/templates/manage")}
+              className="gap-2"
+            >
+              <FolderOpen className="h-4 w-4" />
+              管理模板
+            </Button>
+          ) : null}
+        </div>
+      </div>
+
+      <TablePageLayout
+        className="gap-4"
+        actions={
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              模板 {total}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              分类 {categoryCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              当前 {selectedCategoryName}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              筛选 {activeFilterCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              视图 {viewModeLabel}
+            </span>
+          </div>
+        }
+        filters={
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+              <Input
+                value={searchTerm}
+                onChange={(event) => {
+                  setSearchTerm(event.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder={TEXT.searchPlaceholder}
+                className="pl-10"
+              />
+            </div>
+
+            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+              <button
+                type="button"
+                onClick={() => setViewMode("list")}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                  viewMode === "list"
+                    ? "bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                )}
+              >
+                <List className="h-4 w-4" />
+                列表
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode("grid")}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition",
+                  viewMode === "grid"
+                    ? "bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200"
+                    : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200",
+                )}
+              >
+                <Grid className="h-4 w-4" />
+                卡片
+              </button>
+            </div>
+
+            {hasActiveFilters ? (
+              <Button variant="outline" onClick={clearFilters}>
+                <X className="mr-1.5 h-4 w-4" />
+                {TEXT.clearFilters}
+              </Button>
+            ) : null}
+          </div>
+        }
+        table={
+          <div className="grid min-h-full xl:grid-cols-[250px_minmax(0,1fr)]">
+            <aside className="border-b border-slate-200 dark:border-slate-800 xl:border-b-0 xl:border-r">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  筛选导航
+                </div>
+                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  保留分类和标签两层筛选，不再叠工作台卡片。
+                </div>
+              </div>
+
+              <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                <section className="p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                      {TEXT.categoryNavigation}
                     </div>
-                    <DialogDescription className="max-w-4xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-                      {previewTemplate.description || TEXT.noDescription}
-                    </DialogDescription>
+                    <span className="text-xs text-slate-400 dark:text-slate-500">
+                      {categoryCount}
+                    </span>
                   </div>
-                </DialogHeader>
 
-                <div className="flex-1 overflow-hidden bg-slate-50 dark:bg-slate-900/60">
-                  <div className="h-full overflow-y-auto p-6">
-                    <div className="space-y-6">
-                      {previewTemplate.previewImage ? (
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/78">
-                          <img
-                            src={previewTemplate.previewImage}
-                            alt={`${previewTemplate.name} preview`}
-                            className="max-h-[240px] w-full object-cover"
-                          />
-                        </div>
-                      ) : null}
-
-                      <section className="space-y-5">
-                        <div>
-                          <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
-                            <Sparkles className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
-                            {TEXT.previewOverview}
-                          </div>
-                          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            {TEXT.previewStructureDesc}
-                          </div>
-                        </div>
-
-                        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                          {previewOverviewStats.map((item) => (
-                            <div
-                              key={item.label}
-                              className={PREVIEW_CARD_CLASS_NAME}
-                            >
-                              <div className={PREVIEW_META_LABEL_CLASS_NAME}>
-                                {item.label}
-                              </div>
-                              <div
-                                className="mt-2 truncate text-2xl font-bold text-slate-800 dark:text-slate-100"
-                                title={item.value}
-                              >
-                                {item.value}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,0.95fr)]">
-                          <div className={PREVIEW_CARD_CLASS_NAME}>
-                            <div className={PREVIEW_META_LABEL_CLASS_NAME}>
-                              {TEXT.templateInfo}
-                            </div>
-                            <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                              {previewTemplate.description ||
-                                TEXT.noDescription}
-                            </p>
-                          </div>
-
-                          <div className={PREVIEW_CARD_CLASS_NAME}>
-                            <div className={PREVIEW_META_LABEL_CLASS_NAME}>
-                              {TEXT.tags}
-                            </div>
-                            {previewTags.length > 0 ? (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {previewTags.map((tag) => (
-                                  <span
-                                    key={tag}
-                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                                  >
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="mt-2 text-sm text-slate-400 dark:text-slate-500">
-                                -
-                              </div>
-                            )}
-                          </div>
-
-                          <div className={PREVIEW_CARD_CLASS_NAME}>
-                            <div className={PREVIEW_META_LABEL_CLASS_NAME}>
-                              {TEXT.nodeTypes}
-                            </div>
-                            {previewNodeTypes.length > 0 ? (
-                              <div className="mt-3 flex flex-wrap gap-2">
-                                {previewNodeTypes.map((type) => (
-                                  <span
-                                    key={type}
-                                    className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
-                                  >
-                                    {type}
-                                  </span>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="mt-2 text-sm text-slate-400 dark:text-slate-500">
-                                -
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </section>
-
-                      <section className="space-y-4 px-1">
-                        <div>
-                          <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                            {TEXT.previewStructure}
-                          </div>
-                          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            {TEXT.previewStructureDesc}
-                          </div>
-                        </div>
-
-                        {previewGraph.nodes.length > 0 ? (
-                          <div className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-900 lg:p-5">
-                            <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent dark:scrollbar-thumb-slate-700">
-                              {previewGraph.nodes
-                                .slice(0, 8)
-                                .map((node, index) => (
-                                  <React.Fragment key={node.id}>
-                                    <div className="min-w-[220px] rounded-2xl border border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950/78">
-                                      <div
-                                        className={`${PREVIEW_META_LABEL_CLASS_NAME} mb-2`}
-                                      >
-                                        {formatNodeType(node.type)}
-                                      </div>
-                                      <div
-                                        className="truncate text-lg font-bold text-slate-800 dark:text-slate-100"
-                                        title={node.name}
-                                      >
-                                        {node.name}
-                                      </div>
-                                    </div>
-                                    {index <
-                                    Math.min(
-                                      previewGraph.nodes.length - 1,
-                                      7,
-                                    ) ? (
-                                      <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-600">
-                                        <ArrowRight className="h-4 w-4" />
-                                      </div>
-                                    ) : null}
-                                  </React.Fragment>
-                                ))}
-                              {previewGraph.nodes.length > 8 ? (
-                                <div className="flex h-[76px] min-w-[76px] items-center justify-center rounded-2xl bg-white text-base font-semibold text-slate-400 ring-1 ring-dashed ring-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:ring-slate-700">
-                                  +{previewGraph.nodes.length - 8}
-                                </div>
-                              ) : null}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-950/78">
-                            <Workflow className="mx-auto mb-4 h-12 w-12 text-slate-200 dark:text-slate-700" />
-                            <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-                              {TEXT.invalidDefinition}
-                            </p>
-                          </div>
-                        )}
-                      </section>
-
-                      <div className="grid gap-5 xl:grid-cols-2">
-                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/78">
-                          <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
-                            {TEXT.nodeList}
-                          </div>
-                          <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-                            {previewGraph.nodes.length === 0 ? (
-                              <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400 dark:text-slate-500">
-                                {TEXT.invalidDefinition}
-                              </div>
-                            ) : (
-                              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {previewGraph.nodes.map((node) => (
-                                  <div
-                                    key={node.id}
-                                    className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
-                                  >
-                                    <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
-                                      {node.name}
-                                    </span>
-                                    <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                                      {formatNodeType(node.type)}
-                                    </span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </section>
-
-                        <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/78">
-                          <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
-                            {TEXT.edgeList}
-                          </div>
-                          <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
-                            {previewGraph.edges.length === 0 ? (
-                              <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400 dark:text-slate-500">
-                                {TEXT.edgeNotFound}
-                              </div>
-                            ) : (
-                              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                                {previewGraph.edges.map((edge, index) => (
-                                  <div
-                                    key={`${edge.source}-${edge.target}-${index}`}
-                                    className="px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
-                                  >
-                                    <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
-                                      <span className="min-w-0 flex-1 truncate font-semibold">
-                                        {edge.source}
-                                      </span>
-                                      <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
-                                      <span className="min-w-0 flex-1 truncate font-semibold">
-                                        {edge.target}
-                                      </span>
-                                    </div>
-                                    {edge.condition ? (
-                                      <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
-                                        {edge.condition}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        </section>
+                  <div className="space-y-1">
+                    <Button
+                      type="button"
+                      variant={!selectedCategory ? "secondary" : "ghost"}
+                      onClick={() => {
+                        setSelectedCategory("");
+                        setCurrentPage(1);
+                      }}
+                      className={cn(
+                        "h-9 w-full justify-start text-sm",
+                        !selectedCategory
+                          ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200"
+                          : "text-slate-600 dark:text-slate-300",
+                      )}
+                    >
+                      <Layers3 className="mr-2 h-4 w-4 shrink-0 text-slate-400 dark:text-slate-500" />
+                      <span className="flex-1 text-left">{TEXT.allTemplates}</span>
+                    </Button>
+                    {categories.length > 0 ? (
+                      renderCategoryTree(categories)
+                    ) : (
+                      <div className="rounded-xl border border-dashed border-slate-200 px-3 py-4 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                        {TEXT.noCategoryDesc}
                       </div>
+                    )}
+                  </div>
+                </section>
+
+                <section className="p-4">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    {TEXT.commonTags}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {recommendedTags.map((tag) => {
+                      const active = selectedTags.includes(tag);
+                      return (
+                        <Button
+                          key={tag}
+                          type="button"
+                          size="sm"
+                          variant={active ? "default" : "outline"}
+                          onClick={() => toggleTag(tag)}
+                          className="h-8 text-xs"
+                        >
+                          {tag}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
+            </aside>
+
+            <section className="flex min-h-[40rem] flex-col">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="flex flex-col gap-3">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {selectedCategoryName}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {total} 个模板 · {viewModeLabel}
+                        {hasActiveFilters
+                          ? ` · 已启用 ${activeFilterCount} 项筛选`
+                          : " · 当前未启用筛选"}
+                      </div>
+                    </div>
+                    <div className="text-xs text-slate-400 dark:text-slate-500">
+                      结果区保持单容器输出
+                    </div>
+                  </div>
+                  {activeFilterChips}
+                </div>
+              </div>
+
+              <div className="flex-1 p-4 sm:p-5">{renderResultContent()}</div>
+            </section>
+          </div>
+        }
+        pagination={
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={currentPage}
+              pageSize={pageSize}
+              showPageSizeSelector={false}
+              showJump={false}
+              onPageChange={(page) => setCurrentPage(page)}
+              onPageSizeChange={() => {}}
+            />
+          ) : null
+        }
+      />
+
+      <Dialog open={showPreview} onOpenChange={handlePreviewOpenChange}>
+        <DialogContent
+          disableDefaultMaxWidth
+          className="flex h-[min(92vh,860px)] w-[min(96vw,1220px)] max-h-[92vh] max-w-none flex-col gap-0 overflow-hidden p-0 sm:max-w-[min(96vw,1220px)] dark:border-slate-800 dark:bg-slate-950"
+        >
+          {previewTemplate ? (
+            <>
+              <DialogHeader className="shrink-0 border-b border-slate-200 bg-white px-6 py-5 pr-14 dark:border-slate-800 dark:bg-slate-950">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <DialogTitle className="flex items-center gap-2 text-2xl font-bold text-slate-900 dark:text-slate-100">
+                      <Workflow className="h-5 w-5 text-cyan-600 dark:text-cyan-300" />
+                      {previewTemplate.name}
+                    </DialogTitle>
+                    <span className="rounded-full border border-cyan-100 bg-cyan-50 px-3 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
+                      {TEXT.previewTitleSuffix}
+                    </span>
+                    {previewTemplate.isSystem ? (
+                      <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-600 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                        {TEXT.systemTemplate}
+                      </span>
+                    ) : null}
+                  </div>
+                  <DialogDescription className="max-w-4xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {previewTemplate.description || TEXT.noDescription}
+                  </DialogDescription>
+                </div>
+              </DialogHeader>
+
+              <div className="flex-1 overflow-hidden bg-slate-50 dark:bg-slate-900/60">
+                <div className="h-full overflow-y-auto p-6">
+                  <div className="space-y-6">
+                    {previewTemplate.previewImage ? (
+                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/78">
+                        <img
+                          src={previewTemplate.previewImage}
+                          alt={`${previewTemplate.name} preview`}
+                          className="max-h-[240px] w-full object-cover"
+                        />
+                      </div>
+                    ) : null}
+
+                    <section className="space-y-5">
+                      <div>
+                        <div className="flex items-center gap-2 text-sm font-bold text-slate-900 dark:text-slate-100">
+                          <Sparkles className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
+                          {TEXT.previewOverview}
+                        </div>
+                        <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                          {TEXT.previewStructureDesc}
+                        </div>
+                      </div>
+
+                      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                        {previewOverviewStats.map((item) => (
+                          <div key={item.label} className={PREVIEW_CARD_CLASS_NAME}>
+                            <div className={PREVIEW_META_LABEL_CLASS_NAME}>
+                              {item.label}
+                            </div>
+                            <div
+                              className="mt-2 truncate text-2xl font-bold text-slate-800 dark:text-slate-100"
+                              title={item.value}
+                            >
+                              {item.value}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,0.9fr)_minmax(0,0.95fr)]">
+                        <div className={PREVIEW_CARD_CLASS_NAME}>
+                          <div className={PREVIEW_META_LABEL_CLASS_NAME}>
+                            {TEXT.templateInfo}
+                          </div>
+                          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                            {previewTemplate.description || TEXT.noDescription}
+                          </p>
+                        </div>
+
+                        <div className={PREVIEW_CARD_CLASS_NAME}>
+                          <div className={PREVIEW_META_LABEL_CLASS_NAME}>
+                            {TEXT.tags}
+                          </div>
+                          {previewTags.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {previewTags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="mt-2 text-sm text-slate-400 dark:text-slate-500">
+                              -
+                            </div>
+                          )}
+                        </div>
+
+                        <div className={PREVIEW_CARD_CLASS_NAME}>
+                          <div className={PREVIEW_META_LABEL_CLASS_NAME}>
+                            {TEXT.nodeTypes}
+                          </div>
+                          {previewNodeTypes.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {previewNodeTypes.map((type) => (
+                                <span
+                                  key={type}
+                                  className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
+                                >
+                                  {type}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="mt-2 text-sm text-slate-400 dark:text-slate-500">
+                              -
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </section>
+
+                    <section className="space-y-4 px-1">
+                      <div>
+                        <div className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                          {TEXT.previewStructure}
+                        </div>
+                        <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                          {TEXT.previewStructureDesc}
+                        </div>
+                      </div>
+
+                      {previewGraph.nodes.length > 0 ? (
+                        <div className="rounded-2xl bg-slate-100 p-5 dark:bg-slate-900 lg:p-5">
+                          <div className="flex items-center gap-4 overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-slate-200 scrollbar-track-transparent dark:scrollbar-thumb-slate-700">
+                            {previewGraph.nodes.slice(0, 8).map((node, index) => (
+                              <React.Fragment key={node.id}>
+                                <div className="min-w-[220px] rounded-2xl border border-slate-200 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950/78">
+                                  <div className={`${PREVIEW_META_LABEL_CLASS_NAME} mb-2`}>
+                                    {formatNodeType(node.type)}
+                                  </div>
+                                  <div
+                                    className="truncate text-lg font-bold text-slate-800 dark:text-slate-100"
+                                    title={node.name}
+                                  >
+                                    {node.name}
+                                  </div>
+                                </div>
+                                {index < Math.min(previewGraph.nodes.length - 1, 7) ? (
+                                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-300 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-600">
+                                    <ArrowRight className="h-4 w-4" />
+                                  </div>
+                                ) : null}
+                              </React.Fragment>
+                            ))}
+                            {previewGraph.nodes.length > 8 ? (
+                              <div className="flex h-[76px] min-w-[76px] items-center justify-center rounded-2xl bg-white text-base font-semibold text-slate-400 ring-1 ring-dashed ring-slate-200 dark:bg-slate-950 dark:text-slate-500 dark:ring-slate-700">
+                                +{previewGraph.nodes.length - 8}
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-slate-200 bg-white px-6 py-14 text-center dark:border-slate-800 dark:bg-slate-950/78">
+                          <Workflow className="mx-auto mb-4 h-12 w-12 text-slate-200 dark:text-slate-700" />
+                          <p className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                            {TEXT.invalidDefinition}
+                          </p>
+                        </div>
+                      )}
+                    </section>
+
+                    <div className="grid gap-5 xl:grid-cols-2">
+                      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/78">
+                        <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
+                          {TEXT.nodeList}
+                        </div>
+                        <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                          {previewGraph.nodes.length === 0 ? (
+                            <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400 dark:text-slate-500">
+                              {TEXT.invalidDefinition}
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {previewGraph.nodes.map((node) => (
+                                <div
+                                  key={node.id}
+                                  className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                                >
+                                  <span className="truncate text-sm font-semibold text-slate-800 dark:text-slate-100">
+                                    {node.name}
+                                  </span>
+                                  <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                                    {formatNodeType(node.type)}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </section>
+
+                      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/78">
+                        <div className={PREVIEW_SECTION_HEADER_CLASS_NAME}>
+                          {TEXT.edgeList}
+                        </div>
+                        <div className="max-h-[320px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-700">
+                          {previewGraph.edges.length === 0 ? (
+                            <div className="flex items-center justify-center px-4 py-14 text-sm text-slate-400 dark:text-slate-500">
+                              {TEXT.edgeNotFound}
+                            </div>
+                          ) : (
+                            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                              {previewGraph.edges.map((edge, index) => (
+                                <div
+                                  key={`${edge.source}-${edge.target}-${index}`}
+                                  className="px-4 py-3 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                                >
+                                  <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200">
+                                    <span className="min-w-0 flex-1 truncate font-semibold">
+                                      {edge.source}
+                                    </span>
+                                    <ArrowRight className="h-3.5 w-3.5 shrink-0 text-slate-300 dark:text-slate-600" />
+                                    <span className="min-w-0 flex-1 truncate font-semibold">
+                                      {edge.target}
+                                    </span>
+                                  </div>
+                                  {edge.condition ? (
+                                    <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                                      {edge.condition}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </section>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <DialogFooter className="gap-3 border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-end">
-                  <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
-                    <Button
-                      variant="outline"
-                      onClick={() => handlePreviewOpenChange(false)}
-                    >
-                      {TEXT.close}
-                    </Button>
-                    <Button
-                      disabled={!user}
-                      onClick={() => {
-                        handlePreviewOpenChange(false);
-                        handleCreateFromTemplate(previewTemplate.id);
-                      }}
-                      title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
-                    >
-                      <Plus className="mr-1.5 h-4 w-4" />
-                      {TEXT.useTemplate}
-                    </Button>
-                  </div>
-                </DialogFooter>
-              </>
-            ) : null}
-          </DialogContent>
-        </Dialog>
+              <DialogFooter className="gap-3 border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:items-center sm:justify-end">
+                <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
+                  <Button
+                    variant="outline"
+                    onClick={() => handlePreviewOpenChange(false)}
+                  >
+                    {TEXT.close}
+                  </Button>
+                  <Button
+                    disabled={!user}
+                    onClick={() => {
+                      handlePreviewOpenChange(false);
+                      handleCreateFromTemplate(previewTemplate.id);
+                    }}
+                    title={!user ? TEXT.loginRequired : TEXT.useTemplateTitle}
+                  >
+                    <Plus className="mr-1.5 h-4 w-4" />
+                    {TEXT.useTemplate}
+                  </Button>
+                </div>
+              </DialogFooter>
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
 
-        {showCreateModal ? (
-          <WorkspaceDialogShell
-            title={TEXT.createWorkflowFromTemplate}
-            description={TEXT.createWorkflowDesc}
-            onClose={() => handleCreateModalOpenChange(false)}
-            maxWidthClassName="max-w-2xl"
-            headerAside={<span className={SURFACE_CHIP_CLASS_NAME}>{TEXT.useTemplateTitle}</span>}
-          >
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="workflow-name" className="text-slate-700 dark:text-slate-200">{`${TEXT.workflowName} *`}</Label>
-                <Input
-                  id="workflow-name"
-                  value={workflowName}
-                  onChange={(event) => setWorkflowName(event.target.value)}
-                  placeholder={TEXT.workflowNamePlaceholder}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="workflow-description" className="text-slate-700 dark:text-slate-200">
-                  {TEXT.workflowDescriptionLabel}
-                </Label>
-                <Textarea
-                  id="workflow-description"
-                  value={workflowDescription}
-                  onChange={(event) =>
-                    setWorkflowDescription(event.target.value)
-                  }
-                  placeholder={TEXT.workflowDescriptionPlaceholder}
-                  rows={4}
-                />
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => handleCreateModalOpenChange(false)}
-                >
-                  {TEXT.cancel}
-                </Button>
-                <Button onClick={submitCreateWorkflow}>{TEXT.create}</Button>
-              </div>
+      <Dialog open={showCreateModal} onOpenChange={handleCreateModalOpenChange}>
+        <DialogContent className="overflow-hidden p-0 sm:max-w-xl">
+          <DialogHeader className="border-b border-slate-200 bg-white px-6 py-5 pr-14 dark:border-slate-800 dark:bg-slate-950">
+            <DialogTitle>{TEXT.createWorkflowFromTemplate}</DialogTitle>
+            <DialogDescription>{TEXT.createWorkflowDesc}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 px-6 py-5">
+            <div className="space-y-2">
+              <Label htmlFor="workflow-name" className="text-slate-700 dark:text-slate-200">
+                {`${TEXT.workflowName} *`}
+              </Label>
+              <Input
+                id="workflow-name"
+                value={workflowName}
+                onChange={(event) => setWorkflowName(event.target.value)}
+                placeholder={TEXT.workflowNamePlaceholder}
+              />
             </div>
-          </WorkspaceDialogShell>
-        ) : null}
-      </WorkspacePageContent>
+            <div className="space-y-2">
+              <Label htmlFor="workflow-description" className="text-slate-700 dark:text-slate-200">
+                {TEXT.workflowDescriptionLabel}
+              </Label>
+              <Textarea
+                id="workflow-description"
+                value={workflowDescription}
+                onChange={(event) => setWorkflowDescription(event.target.value)}
+                placeholder={TEXT.workflowDescriptionPlaceholder}
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 border-t border-slate-200 bg-white px-6 py-4 dark:border-slate-800 dark:bg-slate-950 sm:flex-row sm:justify-end">
+            <Button
+              variant="outline"
+              onClick={() => handleCreateModalOpenChange(false)}
+            >
+              {TEXT.cancel}
+            </Button>
+            <Button onClick={submitCreateWorkflow}>{TEXT.create}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

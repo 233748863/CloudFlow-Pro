@@ -325,9 +325,21 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
   const isRow = layout === 'row';
 
   return (
-    <div className={`flex ${isRow ? 'h-64 flex-row' : `h-52 flex-col border-t border-slate-100 bg-white md:h-[300px] md:border-l md:border-t-0`} w-full bg-white`}>
+    <div
+      className={cn(
+        'flex bg-white',
+        isRow
+          ? 'h-64 w-max flex-row'
+          : 'h-52 w-full flex-col border-t border-slate-100 md:h-[300px] md:border-l md:border-t-0',
+      )}
+    >
       {/* 小时列 */}
-      <div className={`flex-1 flex flex-col ${isRow ? 'border-r border-slate-100' : 'border-b border-slate-100'} min-h-0`}>
+      <div
+        className={cn(
+          'flex flex-col min-h-0',
+          isRow ? 'w-[5.25rem] border-r border-slate-100' : 'flex-1 border-b border-slate-100',
+        )}
+      >
         <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500">
           时
         </div>
@@ -338,13 +350,13 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
               type="button"
               data-selected={i === hour}
               onClick={() => onChangeTime(i, minute)}
-              className={`
-                w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
-                ${i === hour
+              className={cn(
+                'mx-1 my-0.5 rounded-md py-1.5 text-center text-[11px] transition-colors',
+                isRow ? 'w-[calc(100%-0.5rem)]' : 'w-full',
+                i === hour
                   ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }
-              `}
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+              )}
             >
               {pad(i)}
             </button>
@@ -353,7 +365,7 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
       </div>
 
       {/* 分钟列 */}
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className={cn('flex flex-col min-h-0', isRow ? 'w-[5.25rem]' : 'flex-1')}>
         <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500">
           分
         </div>
@@ -364,13 +376,13 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
               type="button"
               data-selected={i === minute}
               onClick={() => onChangeTime(hour, i)}
-              className={`
-                w-full mx-1 my-0.5 py-1.5 text-[11px] rounded-md text-center transition-colors
-                ${i === minute
+              className={cn(
+                'mx-1 my-0.5 rounded-md py-1.5 text-center text-[11px] transition-colors',
+                isRow ? 'w-[calc(100%-0.5rem)]' : 'w-full',
+                i === minute
                   ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                }
-              `}
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+              )}
             >
               {pad(i)}
             </button>
@@ -388,6 +400,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
+    const [alignRight, setAlignRight] = useState(false);
 
     // 解析当前值
     const now = new Date();
@@ -429,16 +442,38 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       }
     }, [open]);
 
-    // 弹出方向检测（上/下）
+    // 弹出方向与水平对齐检测
     const [dropUp, setDropUp] = useState(false);
     useEffect(() => {
-      if (open && containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const spaceBelow = window.innerHeight - rect.bottom;
-        // 日历面板大约 360px 高
-        setDropUp(spaceBelow < 380 && rect.top > 380);
+      if (!(open && containerRef.current)) {
+        return;
       }
-    }, [open]);
+
+      const updatePlacement = () => {
+        if (!containerRef.current) return;
+
+        const rect = containerRef.current.getBoundingClientRect();
+        const dropdownWidth = dropdownRef.current?.offsetWidth
+          ?? (type === 'time' ? 184 : type === 'datetime-local' ? 420 : Math.max(rect.width, 288));
+        const dropdownHeight = dropdownRef.current?.offsetHeight ?? 380;
+        const viewportPadding = 16;
+        const spaceBelow = window.innerHeight - rect.bottom;
+
+        setDropUp(spaceBelow < dropdownHeight + 12 && rect.top > dropdownHeight + 12);
+
+        const overflowRight = rect.left + dropdownWidth > window.innerWidth - viewportPadding;
+        const canAlignRight = rect.right - dropdownWidth >= viewportPadding;
+        setAlignRight(overflowRight && canAlignRight);
+      };
+
+      const rafId = window.requestAnimationFrame(updatePlacement);
+      window.addEventListener('resize', updatePlacement);
+
+      return () => {
+        window.cancelAnimationFrame(rafId);
+        window.removeEventListener('resize', updatePlacement);
+      };
+    }, [open, type]);
 
     /** 触发 onChange */
     const emitChange = useCallback((newValue: string) => {
@@ -633,8 +668,11 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
           <div
             ref={dropdownRef}
             className={cn(
-              'absolute left-0 z-[130] flex w-full min-w-[18rem] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_22px_46px_rgba(15,23,42,0.14)] animate-in fade-in-0 zoom-in-95 duration-150',
-              type === 'time' && 'min-w-[12rem]',
+              'absolute z-[130] flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_22px_46px_rgba(15,23,42,0.14)] animate-in fade-in-0 zoom-in-95 duration-150',
+              alignRight ? 'right-0' : 'left-0',
+              type === 'date' && 'w-full min-w-[18rem]',
+              type === 'time' && 'w-auto min-w-0',
+              type === 'datetime-local' && 'w-auto min-w-[18rem]',
               dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
             )}
           >

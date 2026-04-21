@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { Button, Input, Textarea } from '@/components/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -356,240 +357,229 @@ const AlertList: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-4">
-        <SummaryCard
-          label="超时告警"
-          value={timeoutAlerts.length}
-          hint={`未处理 ${unresolvedTimeoutCount} 条`}
-          icon={<Clock3 className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="异常告警"
-          value={anomalyAlerts.length}
-          hint={`未处理 ${unresolvedAnomalyCount} 条`}
-          icon={<AlertTriangle className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="严重超时"
-          value={criticalTimeoutCount}
-          hint="级别为 CRITICAL"
-          icon={<Bell className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="高危异常"
-          value={criticalAnomalyCount}
-          hint="级别为 HIGH / CRITICAL"
-          icon={<ShieldAlert className="h-[18px] w-[18px]" />}
-        />
+    <div className="space-y-5">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <Bell className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Alert Center
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          告警管理
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          告警页继续收口为标准后台列表语法，筛选、处理和回看都放在同一页，不再保留监控工作台式的拼装结构。
+        </p>
       </div>
 
-      <PanelCard
-        title="告警工作台"
-        description="把超时告警和异常告警统一到同一套轻量监控列表语法，筛选、处置和回看保持一致。"
-        aside={
-          <Button variant="outline" size="sm" onClick={() => void loadAlerts()}>
-            <RefreshCw className="h-4 w-4" />
-            刷新告警
-          </Button>
-        }
-      >
-        <div className="space-y-4 px-4 py-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="space-y-4">
-                <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/80">
-                  <SegmentedButton
-                    active={activeTab === 'timeout'}
-                    label="超时告警"
-                    count={timeoutAlerts.length}
-                    onClick={() => setActiveTab('timeout')}
-                  />
-                  <SegmentedButton
-                    active={activeTab === 'anomaly'}
-                    label="异常告警"
-                    count={anomalyAlerts.length}
-                    onClick={() => setActiveTab('anomaly')}
-                  />
-                </div>
-
-                <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_220px_auto]">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
-                    <Input
-                      value={keyword}
-                      onChange={(event) => setKeyword(event.target.value)}
-                      placeholder={
-                        activeTab === 'timeout'
-                          ? '按目标名称、处理人或目标 ID 搜索'
-                          : '按流程、类型或异常内容搜索'
-                      }
-                      className="pl-10"
-                    />
-                  </div>
-
-                  {activeTab === 'timeout' ? (
-                    <Select
-                      value={filters.alertLevel || 'all'}
-                      onValueChange={(value) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          alertLevel: value === 'all' ? '' : value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="级别" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">所有级别</SelectItem>
-                        <SelectItem value="REMIND">提醒</SelectItem>
-                        <SelectItem value="WARNING">警告</SelectItem>
-                        <SelectItem value="CRITICAL">严重</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  ) : (
-                    <Select
-                      value={filters.severity || 'all'}
-                      onValueChange={(value) =>
-                        setFilters((prev) => ({
-                          ...prev,
-                          severity: value === 'all' ? '' : value,
-                        }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="严重程度" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">所有严重程度</SelectItem>
-                        <SelectItem value="LOW">低</SelectItem>
-                        <SelectItem value="MEDIUM">中</SelectItem>
-                        <SelectItem value="HIGH">高</SelectItem>
-                        <SelectItem value="CRITICAL">严重</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-
-                  <Select
-                    value={filters.resolved || 'all'}
-                    onValueChange={(value) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        resolved: value === 'all' ? '' : value,
-                      }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="状态" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">所有状态</SelectItem>
-                      <SelectItem value="false">未处理</SelectItem>
-                      <SelectItem value="true">已处理</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setKeyword('');
-                      setFilters({ alertLevel: '', severity: '', resolved: '' });
-                    }}
-                  >
-                    <Filter className="h-4 w-4" />
-                    清空筛选
-                  </Button>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前视图</div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    时间
-                  </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500">{todayLabel}</span>
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{timeLabel}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  当前页签
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{currentTabLabel}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  筛选结果
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {currentList.length} 条，未处理 {currentUnresolvedCount} 条
-                </div>
-                <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">
-                  {hasActiveFilters ? `已启用筛选：${resolvedLabel}` : '默认视图，无附加筛选'}
-                </div>
-              </div>
+      <TablePageLayout
+        className="gap-4"
+        actions={
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              超时 {timeoutAlerts.length}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              异常 {anomalyAlerts.length}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              严重超时 {criticalTimeoutCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              高危异常 {criticalAnomalyCount}
+            </span>
+            <div className="ml-auto text-xs text-slate-400 dark:text-slate-500">
+              {todayLabel} {timeLabel}
             </div>
           </div>
-        </div>
-      </PanelCard>
+        }
+        filters={
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+              <SegmentedButton
+                active={activeTab === 'timeout'}
+                label="超时告警"
+                count={timeoutAlerts.length}
+                onClick={() => setActiveTab('timeout')}
+              />
+              <SegmentedButton
+                active={activeTab === 'anomaly'}
+                label="异常告警"
+                count={anomalyAlerts.length}
+                onClick={() => setActiveTab('anomaly')}
+              />
+            </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_320px]">
-        <PanelCard
-          title={activeTab === 'timeout' ? '超时告警结果' : '异常告警结果'}
-          description="告警列表、处理动作和异常解决入口全部收口到统一监控页结构。"
-        >
-          <div className="space-y-4 px-4 py-4">
-            {loading ? (
-              <InlineState
-                title={activeTab === 'timeout' ? '正在加载超时告警...' : '正在加载异常告警...'}
-                description="系统正在同步当前筛选条件下的告警数据。"
-                loading
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+              <Input
+                value={keyword}
+                onChange={(event) => setKeyword(event.target.value)}
+                placeholder={
+                  activeTab === 'timeout'
+                    ? '按目标名称、处理人或目标 ID 搜索'
+                    : '按流程、类型或异常内容搜索'
+                }
+                className="pl-10"
               />
-            ) : currentList.length === 0 ? (
-              <InlineState
-                icon={activeTab === 'timeout' ? <Clock3 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-                title={activeTab === 'timeout' ? '暂无超时告警' : '暂无异常告警'}
-                description="当前筛选条件下还没有需要处理的告警。"
-              />
+            </div>
+
+            {activeTab === 'timeout' ? (
+              <div className="w-full sm:w-40">
+                <Select
+                  value={filters.alertLevel || 'all'}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      alertLevel: value === 'all' ? '' : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="级别" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">所有级别</SelectItem>
+                    <SelectItem value="REMIND">提醒</SelectItem>
+                    <SelectItem value="WARNING">警告</SelectItem>
+                    <SelectItem value="CRITICAL">严重</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             ) : (
-              <div className="space-y-4">
-                {activeTab === 'timeout'
-                  ? filteredTimeoutAlerts.map((alert) => {
-                      const levelMeta = getTimeoutLevelMeta(alert.timeoutLevel);
+              <div className="w-full sm:w-40">
+                <Select
+                  value={filters.severity || 'all'}
+                  onValueChange={(value) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      severity: value === 'all' ? '' : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="严重程度" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">所有严重程度</SelectItem>
+                    <SelectItem value="LOW">低</SelectItem>
+                    <SelectItem value="MEDIUM">中</SelectItem>
+                    <SelectItem value="HIGH">高</SelectItem>
+                    <SelectItem value="CRITICAL">严重</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
-                      return (
-                        <div
-                          key={alert.id}
-                          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88"
-                        >
-                          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                            <div className="min-w-0 flex-1 space-y-4">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className={cn(
-                                    'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                                    levelMeta.className,
-                                  )}
-                                >
-                                  {levelMeta.label}
-                                </span>
-                                <span className="text-sm text-slate-500 dark:text-slate-400">
-                                  {alert.alertType === 'TASK' ? '任务超时' : '流程超时'}
-                                </span>
-                                {alert.resolved === 'Y' ? (
-                                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200">
-                                    已处理
+            <div className="w-full sm:w-36">
+              <Select
+                value={filters.resolved || 'all'}
+                onValueChange={(value) =>
+                  setFilters((prev) => ({
+                    ...prev,
+                    resolved: value === 'all' ? '' : value,
+                  }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">所有状态</SelectItem>
+                  <SelectItem value="false">未处理</SelectItem>
+                  <SelectItem value="true">已处理</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setKeyword('');
+                  setFilters({ alertLevel: '', severity: '', resolved: '' });
+                }}
+              >
+                <Filter className="h-4 w-4" />
+                清空
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => void loadAlerts()}>
+                <RefreshCw className="h-4 w-4" />
+                刷新
+              </Button>
+            </div>
+          </div>
+        }
+        table={
+          <div className="grid min-h-full xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
+              <section className="px-4 py-3 sm:px-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {currentTabLabel}
+                    </div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      当前结果 {currentList.length} 条，未处理 {currentUnresolvedCount} 条
+                    </div>
+                  </div>
+                  <div className="text-xs text-slate-400 dark:text-slate-500">
+                    {hasActiveFilters ? `已启用筛选：${resolvedLabel}` : '默认视图'}
+                  </div>
+                </div>
+              </section>
+
+              <section className="p-4 sm:p-5">
+                {loading ? (
+                  <InlineState
+                    title={activeTab === 'timeout' ? '正在加载超时告警...' : '正在加载异常告警...'}
+                    description="系统正在同步当前筛选条件下的告警数据。"
+                    loading
+                  />
+                ) : currentList.length === 0 ? (
+                  <InlineState
+                    icon={activeTab === 'timeout' ? <Clock3 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                    title={activeTab === 'timeout' ? '暂无超时告警' : '暂无异常告警'}
+                    description="当前筛选条件下还没有需要处理的告警。"
+                  />
+                ) : (
+                  <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                    <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 lg:grid lg:grid-cols-[minmax(0,1.2fr)_220px_220px] lg:items-center">
+                      <span>告警信息</span>
+                      <span>上下文</span>
+                      <span>操作</span>
+                    </div>
+
+                    {activeTab === 'timeout'
+                      ? filteredTimeoutAlerts.map((alert) => {
+                          const levelMeta = getTimeoutLevelMeta(alert.timeoutLevel);
+
+                          return (
+                            <div
+                              key={alert.id}
+                              className="grid gap-4 border-t border-slate-200 px-4 py-4 first:border-t-0 dark:border-slate-800 lg:grid-cols-[minmax(0,1.2fr)_220px_220px] lg:items-center"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                      levelMeta.className,
+                                    )}
+                                  >
+                                    {levelMeta.label}
                                   </span>
-                                ) : null}
-                              </div>
+                                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                                    {alert.alertType === 'TASK' ? '任务超时' : '流程超时'}
+                                  </span>
+                                  {alert.resolved === 'Y' ? (
+                                    <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                      已处理
+                                    </span>
+                                  ) : null}
+                                </div>
 
-                              <div>
-                                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                                   {alert.targetName}
                                 </div>
                                 <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
@@ -601,236 +591,217 @@ const AlertList: React.FC = () => {
                                 </div>
                               </div>
 
-                              <div className="grid gap-3 md:grid-cols-3">
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                    目标 ID
-                                  </div>
-                                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {alert.targetId}
-                                  </div>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                    处理人
-                                  </div>
-                                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {alert.assigneeName || '未分配'}
-                                  </div>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                    告警时间
-                                  </div>
-                                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
-                                  </div>
+                              <div className="text-sm text-slate-600 dark:text-slate-300">
+                                <div>目标 ID · {alert.targetId}</div>
+                                <div className="mt-1">处理人 · {alert.assigneeName || '未分配'}</div>
+                                <div className="mt-1">
+                                  时间 · {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
                                 </div>
                               </div>
-                            </div>
 
-                            <div className="flex shrink-0 flex-wrap items-center gap-2">
-                              {alert.notificationSent !== 'Y' ? (
-                                <Button size="sm" onClick={() => void handleTimeoutAction(alert.id, 'notify')}>
-                                  <Send className="h-4 w-4" />
-                                  发送通知
-                                </Button>
-                              ) : null}
-                              {alert.escalated !== 'Y' && alert.timeoutLevel === 'CRITICAL' ? (
-                                <Button
-                                  size="sm"
-                                  variant="secondary"
-                                  onClick={() => void handleTimeoutAction(alert.id, 'escalate')}
-                                >
-                                  <ShieldAlert className="h-4 w-4" />
-                                  升级处理
-                                </Button>
-                              ) : null}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
-                  : filteredAnomalyAlerts.map((alert) => {
-                      const severityMeta = getAnomalySeverityMeta(alert.severity);
-                      const anomalyDetails = getAnomalyDetails(alert);
-
-                      return (
-                        <div
-                          key={alert.id}
-                          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88"
-                        >
-                          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                            <div className="min-w-0 flex-1 space-y-4">
                               <div className="flex flex-wrap items-center gap-2">
-                                <span
-                                  className={cn(
-                                    'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                                    severityMeta.className,
-                                  )}
-                                >
-                                  {severityMeta.label}
-                                </span>
-                                <span className="text-sm text-slate-500 dark:text-slate-400">
-                                  {alert.anomalyType}
-                                </span>
-                                {alert.resolved === 'Y' ? (
-                                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200">
-                                    已解决
-                                  </span>
+                                {alert.notificationSent !== 'Y' ? (
+                                  <Button size="sm" onClick={() => void handleTimeoutAction(alert.id, 'notify')}>
+                                    <Send className="h-4 w-4" />
+                                    发送通知
+                                  </Button>
+                                ) : null}
+                                {alert.escalated !== 'Y' && alert.timeoutLevel === 'CRITICAL' ? (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => void handleTimeoutAction(alert.id, 'escalate')}
+                                  >
+                                    <ShieldAlert className="h-4 w-4" />
+                                    升级处理
+                                  </Button>
                                 ) : null}
                               </div>
+                            </div>
+                          );
+                        })
+                      : filteredAnomalyAlerts.map((alert) => {
+                          const severityMeta = getAnomalySeverityMeta(alert.severity);
+                          const anomalyDetails = getAnomalyDetails(alert);
 
-                              <div>
-                                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                          return (
+                            <div
+                              key={alert.id}
+                              className="grid gap-4 border-t border-slate-200 px-4 py-4 first:border-t-0 dark:border-slate-800 lg:grid-cols-[minmax(0,1.2fr)_220px_220px] lg:items-start"
+                            >
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span
+                                    className={cn(
+                                      'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                      severityMeta.className,
+                                    )}
+                                  >
+                                    {severityMeta.label}
+                                  </span>
+                                  <span className="text-sm text-slate-500 dark:text-slate-400">
+                                    {alert.anomalyType}
+                                  </span>
+                                  {alert.resolved === 'Y' ? (
+                                    <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200">
+                                      已解决
+                                    </span>
+                                  ) : null}
+                                </div>
+
+                                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
                                   {alert.processName}
                                 </div>
                                 <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
                                   {getAnomalyMessage(alert)}
                                 </div>
+
+                                {anomalyDetails ? (
+                                  <details className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+                                    <summary className="cursor-pointer font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white">
+                                      错误详情
+                                    </summary>
+                                    <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-slate-200 bg-white p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-300">
+                                      {anomalyDetails}
+                                    </pre>
+                                  </details>
+                                ) : null}
+
+                                {alert.resolveNote ? (
+                                  <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                                    解决说明：{alert.resolveNote}
+                                  </div>
+                                ) : null}
                               </div>
 
-                              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                    流程 Key
-                                  </div>
-                                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {alert.processDefKey}
-                                  </div>
+                              <div className="text-sm text-slate-600 dark:text-slate-300">
+                                <div>流程 Key · {alert.processDefKey}</div>
+                                <div className="mt-1">
+                                  时间 · {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
                                 </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                    告警时间
-                                  </div>
-                                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {new Date(alert.alertTime || alert.createTime).toLocaleString('zh-CN')}
-                                  </div>
-                                </div>
-                                <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                    解决状态
-                                  </div>
-                                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                    {alert.resolved === 'Y' ? '已解决' : '待处理'}
-                                  </div>
-                                </div>
+                                <div className="mt-1">状态 · {alert.resolved === 'Y' ? '已解决' : '待处理'}</div>
                               </div>
 
-                              {anomalyDetails ? (
-                                <details className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                                  <summary className="cursor-pointer font-medium text-slate-700 hover:text-slate-900 dark:text-slate-200 dark:hover:text-white">
-                                    错误详情
-                                  </summary>
-                                  <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-all rounded-xl border border-slate-200 bg-white/80 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/80 dark:text-slate-300">
-                                    {anomalyDetails}
-                                  </pre>
-                                </details>
-                              ) : null}
-
-                              {alert.resolveNote ? (
-                                <div className="rounded-2xl border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-                                  解决说明：{alert.resolveNote}
-                                </div>
-                              ) : null}
+                              <div className="flex flex-wrap items-center gap-2">
+                                {alert.resolved !== 'Y' ? (
+                                  <Button
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => {
+                                      setSelectedAlert(alert);
+                                    }}
+                                  >
+                                    标记已解决
+                                  </Button>
+                                ) : null}
+                              </div>
                             </div>
+                          );
+                        })}
+                  </div>
+                )}
+              </section>
+            </div>
 
-                            {alert.resolved !== 'Y' ? (
-                              <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                  setSelectedAlert(alert);
-                                }}
-                              >
-                                标记已解决
-                              </Button>
-                            ) : null}
+            <aside className="border-t border-slate-200 dark:border-slate-800 xl:border-l xl:border-t-0">
+              <section className="border-b border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前视图</div>
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                      当前页签
+                    </div>
+                    <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {currentTabLabel}
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                      筛选结果
+                    </div>
+                    <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {currentList.length} 条，未处理 {currentUnresolvedCount} 条
+                    </div>
+                    <div className="mt-2 text-xs text-slate-400 dark:text-slate-500">
+                      {hasActiveFilters ? `已启用筛选：${resolvedLabel}` : '默认视图'}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="border-b border-slate-200 p-4 dark:border-slate-800 sm:p-5">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">处理焦点</div>
+                <div className="mt-4 space-y-3">
+                  {focusAlerts.length > 0 ? (
+                    focusAlerts.map((alert) => {
+                      const meta =
+                        activeTab === 'timeout'
+                          ? getTimeoutLevelMeta((alert as TimeoutAlert).timeoutLevel)
+                          : getAnomalySeverityMeta((alert as AnomalyAlert).severity);
+
+                      return (
+                        <div
+                          key={`${activeTab}-${alert.id}`}
+                          className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                {'processName' in alert ? alert.processName : alert.targetName}
+                              </div>
+                              <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                                {'processDefKey' in alert ? alert.processDefKey : alert.targetId}
+                              </div>
+                            </div>
+                            <span
+                              className={cn(
+                                'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                meta.className,
+                              )}
+                            >
+                              {meta.label}
+                            </span>
+                          </div>
+                          <div className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                            {'anomalyType' in alert
+                              ? getAnomalyMessage(alert as AnomalyAlert)
+                              : `已超时 ${getTimeoutHours((alert as TimeoutAlert).timeoutDuration)} 小时`}
                           </div>
                         </div>
                       );
-                    })}
-              </div>
-            )}
-          </div>
-        </PanelCard>
+                    })
+                  ) : (
+                    <InlineState
+                      icon={activeTab === 'timeout' ? <Clock3 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
+                      title={activeTab === 'timeout' ? '暂无待处理超时告警' : '暂无待处理异常告警'}
+                      description="当前页签下已经没有需要优先处理的未解决告警。"
+                    />
+                  )}
+                </div>
+              </section>
 
-        <div className="space-y-4">
-          <PanelCard
-            title="处理焦点"
-            description="优先查看当前页签下尚未处理的高关注告警，减少在长列表中来回查找。"
-          >
-            <div className="space-y-3 px-4 py-4">
-              {focusAlerts.length > 0 ? (
-                focusAlerts.map((alert) => {
-                  const meta =
-                    activeTab === 'timeout'
-                      ? getTimeoutLevelMeta((alert as TimeoutAlert).timeoutLevel)
-                      : getAnomalySeverityMeta((alert as AnomalyAlert).severity);
-
-                  return (
+              <section className="p-4 sm:p-5">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">处置建议</div>
+                <div className="mt-4 space-y-3">
+                  {responseGuides.map((item) => (
                     <div
-                      key={`${activeTab}-${alert.id}`}
-                      className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88"
+                      key={item}
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
                     >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {'processName' in alert ? alert.processName : alert.targetName}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                            {'processDefKey' in alert ? alert.processDefKey : alert.targetId}
-                          </div>
-                        </div>
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                            meta.className,
-                          )}
-                        >
-                          {meta.label}
+                      <div className="flex items-start gap-3">
+                        <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
+                          <CheckCircle2 className="h-4 w-4" />
                         </span>
-                      </div>
-                      <div className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                        {'anomalyType' in alert
-                          ? getAnomalyMessage(alert as AnomalyAlert)
-                          : `已超时 ${getTimeoutHours((alert as TimeoutAlert).timeoutDuration)} 小时`}
+                        <span>{item}</span>
                       </div>
                     </div>
-                  );
-                })
-              ) : (
-                <InlineState
-                  icon={activeTab === 'timeout' ? <Clock3 className="h-5 w-5" /> : <AlertTriangle className="h-5 w-5" />}
-                  title={activeTab === 'timeout' ? '暂无待处理超时告警' : '暂无待处理异常告警'}
-                  description="当前页签下已经没有需要优先处理的未解决告警。"
-                />
-              )}
-            </div>
-          </PanelCard>
-
-          <PanelCard
-            title="处置建议"
-            description="告警页要和监控、性能页保持同一套处理语义，避免再出现分散的处置入口。"
-          >
-            <div className="space-y-3 px-4 py-4">
-              {responseGuides.map((item) => (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-300"
-                >
-                  <div className="flex items-start gap-3">
-                    <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
-                      <CheckCircle2 className="h-4 w-4" />
-                    </span>
-                    <span className="leading-6">{item}</span>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </PanelCard>
-        </div>
-      </div>
+              </section>
+            </aside>
+          </div>
+        }
+      />
 
       <ResolveModal
         alert={selectedAlert}

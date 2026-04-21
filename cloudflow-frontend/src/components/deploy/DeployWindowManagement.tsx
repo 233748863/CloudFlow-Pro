@@ -306,206 +306,132 @@ export const DeployWindowManagement: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-4">
-        <SummaryCard
-          label="窗口总数"
-          value={summary.total}
-          hint="当前系统中定义的全部发布窗口"
-          icon={<Clock3 className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="启用中"
-          value={summary.enabledCount}
-          hint="当前允许生效的窗口数量"
-          icon={<Power className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="每周策略"
-          value={summary.weeklyCount}
-          hint="按星期控制开放时段的窗口"
-          icon={<Calendar className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="自定义日期"
-          value={summary.customCount}
-          hint="用于活动日或特殊发版场景"
-          icon={<Sparkles className="h-[18px] w-[18px]" />}
-        />
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          总数 {summary.total}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          启用中 {summary.enabledCount}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          每周策略 {summary.weeklyCount}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          自定义日期 {summary.customCount}
+        </span>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => void loadWindows()}>
+            刷新
+          </Button>
+          <Button variant="contrast" size="sm" onClick={handleOpenCreate}>
+            <Plus className="h-4 w-4" />
+            新建窗口
+          </Button>
+        </div>
       </div>
 
-      <PanelCard
-        title="发布窗口列表"
-        description="统一管理允许发布的时间窗口，覆盖每日、每周、每月和自定义日期四种规则。"
-        aside={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => void loadWindows()}>
-              刷新
-            </Button>
-            <Button size="sm" onClick={handleOpenCreate}>
-              <Plus className="h-4 w-4" />
-              新建窗口
-            </Button>
+      {loading ? (
+        <InlineState
+          title="正在读取发布窗口..."
+          description="系统正在同步可用时段配置，请稍候。"
+          loading
+        />
+      ) : windows.length === 0 ? (
+        <InlineState
+          title="还没有配置发布窗口"
+          description="先创建一个窗口，后续部署审批和回滚策略才能按时段治理。"
+        />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 md:grid md:grid-cols-[minmax(0,1.3fr)_150px_150px_170px_110px_220px] md:items-center">
+            <span>窗口</span>
+            <span>类型</span>
+            <span>时段</span>
+            <span>生效规则</span>
+            <span>状态</span>
+            <span>操作</span>
           </div>
-        }
-      >
-        <div className="space-y-4 px-4 py-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    治理原则
+
+          {windows.map((window) => {
+            const typeMeta = getWindowTypeMeta(window.windowType);
+
+            return (
+              <div
+                key={window.id}
+                className={cn(
+                  'grid gap-3 border-t border-slate-200 px-4 py-4 first:border-t-0 dark:border-slate-800 md:grid-cols-[minmax(0,1.3fr)_150px_150px_170px_110px_220px] md:items-center',
+                  !window.isEnabled && 'bg-slate-50/60 dark:bg-slate-900/40',
+                )}
+              >
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {window.windowName}
                   </div>
                   <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    窗口配置要与审批、回滚策略协同工作，避免流程页、弹窗页和治理页出现各自维护一套规则的情况。
+                    {window.description || '未填写窗口说明，建议补充适用范围和审批边界。'}
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Governed Window
-                </span>
-              </div>
-            </div>
 
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                收口重点
-              </div>
-              {[
-                '窗口状态、类型徽标与动作按钮统一到同一套卡片比例。',
-                'Light / Dark 同时验收，卡片、表单和确认动作不再各写一套颜色。',
-                '删除动作改为统一确认框，避免继续使用浏览器原生 confirm。',
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300"
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {loading ? (
-            <InlineState
-              title="正在读取发布窗口..."
-              description="系统正在同步可用时段配置，请稍候。"
-              loading
-            />
-          ) : windows.length === 0 ? (
-            <InlineState
-              title="还没有配置发布窗口"
-              description="先创建一个窗口，后续部署审批和回滚策略才能按时段治理。"
-            />
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {windows.map((window) => {
-                const typeMeta = getWindowTypeMeta(window.windowType);
-
-                return (
-                  <div
-                    key={window.id}
+                <div className="min-w-0">
+                  <span
                     className={cn(
-                      'rounded-2xl border p-5 shadow-sm transition-colors dark:shadow-none',
-                      window.isEnabled
-                        ? 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88'
-                        : 'border-slate-200 bg-slate-50/90 dark:border-slate-800 dark:bg-slate-900/70',
+                      'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                      getWindowTypeBadgeClassName(window.windowType),
                     )}
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="min-w-0 space-y-2">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="truncate text-base font-semibold text-slate-950 dark:text-slate-100">
-                            {window.windowName}
-                          </div>
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                              window.isEnabled
-                                ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200'
-                                : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-                            )}
-                          >
-                            {window.isEnabled ? '启用中' : '已禁用'}
-                          </span>
-                          <span
-                            className={cn(
-                              'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                              getWindowTypeBadgeClassName(window.windowType),
-                            )}
-                          >
-                            {typeMeta.label}
-                          </span>
-                        </div>
-                        <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-                          {window.description || '未填写窗口说明，建议补充适用范围和审批边界。'}
-                        </div>
-                      </div>
+                    {typeMeta.label}
+                  </span>
+                  <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{typeMeta.summary}</div>
+                </div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 text-slate-500 dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
-                        <Calendar className="h-5 w-5" />
-                      </div>
-                    </div>
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  {window.startTime} - {window.endTime}
+                </div>
 
-                    <div className="mt-4 grid gap-3">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                          <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                            时段
-                          </div>
-                          <div className="mt-2 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            <Clock3 className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
-                            {window.startTime} - {window.endTime}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                          <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                            生效规则
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {getScheduleLabel(window)}
-                          </div>
-                        </div>
-                      </div>
+                <div className="text-sm text-slate-600 dark:text-slate-300">{getScheduleLabel(window)}</div>
 
-                      <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-                        <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                          规则说明
-                        </div>
-                        <div className="mt-2">{typeMeta.summary}</div>
-                      </div>
-                    </div>
+                <div>
+                  <span
+                    className={cn(
+                      'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                      window.isEnabled
+                        ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200'
+                        : 'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                    )}
+                  >
+                    {window.isEnabled ? '启用中' : '已禁用'}
+                  </span>
+                </div>
 
-                    <div className="mt-5 flex flex-wrap items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(window)}>
-                        <Edit2 className="h-4 w-4" />
-                        编辑
-                      </Button>
-                      <Button
-                        variant={window.isEnabled ? 'secondary' : 'soft'}
-                        size="sm"
-                        onClick={() => handleToggle(window.id, window.isEnabled)}
-                      >
-                        {window.isEnabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-                        {window.isEnabled ? '禁用' : '启用'}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-200"
-                        onClick={() => setDeleteTarget(window)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        删除
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(window)}>
+                    <Edit2 className="h-4 w-4" />
+                    编辑
+                  </Button>
+                  <Button
+                    variant={window.isEnabled ? 'secondary' : 'soft'}
+                    size="sm"
+                    onClick={() => handleToggle(window.id, window.isEnabled)}
+                  >
+                    {window.isEnabled ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
+                    {window.isEnabled ? '禁用' : '启用'}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-rose-500 hover:bg-rose-50 hover:text-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-200"
+                    onClick={() => setDeleteTarget(window)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    删除
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </PanelCard>
+      )}
 
       <BaseDialog
         open={showDialog}
@@ -688,50 +614,45 @@ export const DeployWindowManagement: React.FC = () => {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">规则预览</div>
-              <div className="mt-3 space-y-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    窗口类型
-                  </div>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span
-                      className={cn(
-                        'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                        getWindowTypeBadgeClassName(formData.windowType),
-                      )}
-                    >
-                      {dialogPreview.typeLabel}
-                    </span>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">{dialogPreview.typeSummary}</span>
-                  </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">规则预览</div>
+            <div className="mt-4 space-y-3">
+              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  窗口类型
                 </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    生效时段
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {dialogPreview.periodLabel}
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    生效规则
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {dialogPreview.scheduleLabel}
-                  </div>
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                      getWindowTypeBadgeClassName(formData.windowType),
+                    )}
+                  >
+                    {dialogPreview.typeLabel}
+                  </span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">{dialogPreview.typeSummary}</span>
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">治理提示</div>
-              <div className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  生效时段
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {dialogPreview.periodLabel}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  生效规则
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {dialogPreview.scheduleLabel}
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-500 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-400">
                 {dialogPreview.description}
               </div>
             </div>

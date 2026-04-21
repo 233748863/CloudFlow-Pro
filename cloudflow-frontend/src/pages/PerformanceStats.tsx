@@ -6,10 +6,11 @@ import {
   CheckCircle2,
   Clock3,
   Download,
-  Filter,
   RefreshCw,
   TrendingUp,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -29,7 +30,6 @@ import {
   PerformanceStats as PerformanceStatsItem,
   getPerformanceStats,
 } from '@/services/api/monitor';
-import { toast } from 'sonner';
 import { downloadBlob } from '@/utils/download';
 import { cn } from '@/utils/cn';
 
@@ -121,49 +121,7 @@ const getRateBadgeClassName = (value: number, inverse?: boolean) => {
   return 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200';
 };
 
-const PanelCard: React.FC<{
-  title: string;
-  description?: string;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ title, description, aside, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-      <div>
-        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? (
-          <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-            {description}
-          </div>
-        ) : null}
-      </div>
-      {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
-    </div>
-    {children}
-  </section>
-);
-
-const SummaryCard: React.FC<{
-  label: string;
-  value: number | string;
-  hint: string;
-  icon: React.ReactNode;
-}> = ({ label, value, hint, icon }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex items-center justify-between gap-3">
-      <div className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-        {icon}
-      </div>
-      <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-        {label}
-      </div>
-    </div>
-    <div className="mt-4 text-2xl font-semibold text-slate-900 dark:text-slate-100">{value}</div>
-    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div>
-  </div>
-);
-
-const InlineState: React.FC<{
+const EmptyBlock: React.FC<{
   title: string;
   description?: string;
   icon?: React.ReactNode;
@@ -177,40 +135,12 @@ const InlineState: React.FC<{
     ) : null}
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
     {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-        {description}
-      </div>
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
     ) : null}
   </div>
 );
 
-const ProgressMetric: React.FC<{
-  title: string;
-  icon: React.ReactNode;
-  value: string;
-  hint: string;
-  progress: number;
-  progressClassName: string;
-}> = ({ title, icon, value, hint, progress, progressClassName }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-      {icon}
-      {title}
-    </div>
-    <div className="mt-4 flex items-end justify-between gap-3">
-      <div className="text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">{value}</div>
-      <div className="max-w-[160px] text-right text-xs text-slate-400 dark:text-slate-500">{hint}</div>
-    </div>
-    <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
-      <div
-        className={cn('h-full rounded-full transition-all duration-300', progressClassName)}
-        style={{ width: `${Math.max(0, Math.min(progress, 100))}%` }}
-      />
-    </div>
-  </div>
-);
-
-const SegmentedButton: React.FC<{
+const PresetButton: React.FC<{
   active: boolean;
   label: string;
   onClick: () => void;
@@ -219,10 +149,10 @@ const SegmentedButton: React.FC<{
     type="button"
     onClick={onClick}
     className={cn(
-      'rounded-lg px-4 py-2 text-sm font-medium transition',
+      'inline-flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors',
       active
-        ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-200'
-        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
+        ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950'
+        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100',
     )}
   >
     {label}
@@ -310,6 +240,7 @@ const PerformanceStats: React.FC = () => {
   const processOptions = useMemo(() => {
     const map = new Map<string, string>();
 
+    // 保留当前选中的流程键，避免筛选后列表为空时选项突然丢失。
     stats.forEach((item) => {
       if (!map.has(item.processDefKey)) {
         map.set(item.processDefKey, item.processName);
@@ -382,7 +313,7 @@ const PerformanceStats: React.FC = () => {
   const processAggregates = useMemo(() => {
     const grouped = new Map<string, AggregatedProcessStat>();
 
-    // 按流程聚合，给流程分布、风险焦点和结果表复用同一份统计结果。
+    // 统一把原始按天样本聚合成流程维度统计，供分布、风险和结果表复用。
     stats.forEach((item) => {
       const current = grouped.get(item.processDefKey) || {
         processDefKey: item.processDefKey,
@@ -420,6 +351,7 @@ const PerformanceStats: React.FC = () => {
   const dailyTrends = useMemo(() => {
     const grouped = new Map<string, DailyTrendStat>();
 
+    // 日期趋势单独按天汇总，避免页面各处维护不同口径的趋势统计。
     stats.forEach((item) => {
       const current = grouped.get(item.statDate) || {
         statDate: item.statDate,
@@ -470,7 +402,7 @@ const PerformanceStats: React.FC = () => {
     return items;
   }, [summary]);
 
-  const topProcesses = processAggregates.slice(0, 5);
+  const topProcesses = processAggregates.slice(0, 6);
   const riskProcesses = [...processAggregates]
     .sort((a, b) => b.timeoutRate + b.anomalyRate - (a.timeoutRate + a.anomalyRate))
     .slice(0, 5);
@@ -478,8 +410,6 @@ const PerformanceStats: React.FC = () => {
   const maxProcessTotal = Math.max(...topProcesses.map((item) => item.totalCount), 1);
   const visibleDailyTrends = dailyTrends.slice(-10);
   const maxDailyTotal = Math.max(...visibleDailyTrends.map((item) => item.totalCount), 1);
-  const latestDailyTrend =
-    visibleDailyTrends.length > 0 ? visibleDailyTrends[visibleDailyTrends.length - 1] : null;
   const todayLabel = formatDateCN(new Date());
   const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
 
@@ -493,337 +423,200 @@ const PerformanceStats: React.FC = () => {
     setDateRange((prev) => ({ ...prev, endDate: value }));
   };
 
+  const isInitialLoading = loading && stats.length === 0;
+  const hasNoData = !loading && stats.length === 0;
+
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-4">
-        <SummaryCard
-          label="总流程数"
-          value={summary.totalCount}
-          hint={`已完成 ${summary.completedCount} 个`}
-          icon={<BarChart3 className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="平均时长"
-          value={formatDuration(summary.averageDuration)}
-          hint="按统计范围内所有流程加权计算"
-          icon={<Clock3 className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="成功率"
-          value={`${summary.successRate.toFixed(1)}%`}
-          hint="越高代表流程执行越稳定"
-          icon={<CheckCircle2 className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="风险窗口"
-          value={`${summary.timeoutRate.toFixed(1)}% / ${summary.anomalyRate.toFixed(1)}%`}
-          hint="超时率 / 异常率"
-          icon={<AlertTriangle className="h-[18px] w-[18px]" />}
-        />
+    <div className="space-y-5">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <BarChart3 className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Performance Analytics
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          性能统计
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          性能页继续回收到源码后台页语法，筛选、趋势、风险和结果表统一放在同一套轻量容器里，不再保留分析工作台式的拼装结构。
+        </p>
       </div>
 
-      <PanelCard
-        title="性能工作台"
-        description="把日期范围、流程筛选、风险焦点和结果表统一收口到同一套轻量分析工作台语法。"
-        aside={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => void loadStats()} disabled={loading}>
-              <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
-              刷新
-            </Button>
-            <Button variant="outline" size="sm" onClick={exportStats} disabled={stats.length === 0}>
-              <Download className="h-4 w-4" />
-              导出 CSV
-            </Button>
+      <TablePageLayout
+        className="gap-4"
+        actions={
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              流程数 {summary.totalCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              已完成 {summary.completedCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              平均时长 {formatDuration(summary.averageDuration)}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              成功率 {summary.successRate.toFixed(1)}%
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              风险 {summary.timeoutRate.toFixed(1)}% / {summary.anomalyRate.toFixed(1)}%
+            </span>
+            <span
+              className={cn(
+                'rounded-full border px-2.5 py-1 text-xs',
+                summary.healthLabel === '稳定'
+                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200'
+                  : summary.healthLabel === '可控'
+                    ? 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/40 dark:text-sky-200'
+                    : 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200',
+              )}
+            >
+              健康度 {summary.healthLabel}
+            </span>
           </div>
         }
-      >
-        <div className="space-y-4 px-4 py-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="space-y-4">
-                <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/80">
-                  {RANGE_PRESETS.map((item) => (
-                    <SegmentedButton
-                      key={item.value}
-                      active={rangePreset === item.value}
-                      label={item.label}
-                      onClick={() => applyRangePreset(item.value)}
-                    />
-                  ))}
-                </div>
-
-                <div className="grid gap-3 xl:grid-cols-[220px_220px_minmax(0,1fr)]">
-                  <DatePicker
-                    className="h-11 rounded-2xl"
-                    type="date"
-                    value={dateRange.startDate}
-                    onChange={(event) => handleStartDateChange(event.target.value)}
-                  />
-                  <DatePicker
-                    className="h-11 rounded-2xl"
-                    type="date"
-                    value={dateRange.endDate}
-                    onChange={(event) => handleEndDateChange(event.target.value)}
-                  />
-                  <Select
-                    value={selectedProcess || 'all'}
-                    onValueChange={(value) => setSelectedProcess(value === 'all' ? '' : value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="所有流程类型" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">所有流程类型</SelectItem>
-                      {processOptions.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+        filters={
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+              {RANGE_PRESETS.map((item) => (
+                <PresetButton
+                  key={item.value}
+                  active={rangePreset === item.value}
+                  label={item.label}
+                  onClick={() => applyRangePreset(item.value)}
+                />
+              ))}
             </div>
 
-            <div className="space-y-3 rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前统计上下文</div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    日期
-                  </span>
-                  <span className="text-xs text-slate-400 dark:text-slate-500">{todayLabel}</span>
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">{timeLabel}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  统计范围
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {dateRange.startDate} ~ {dateRange.endDate}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  健康度
-                </div>
-                <div className={cn('mt-2 text-sm font-semibold', summary.healthTone)}>{summary.healthLabel}</div>
-              </div>
+            <DatePicker
+              className="h-10 w-full sm:w-40"
+              type="date"
+              value={dateRange.startDate}
+              onChange={(event) => handleStartDateChange(event.target.value)}
+            />
+            <DatePicker
+              className="h-10 w-full sm:w-40"
+              type="date"
+              value={dateRange.endDate}
+              onChange={(event) => handleEndDateChange(event.target.value)}
+            />
+
+            <div className="w-full sm:w-56">
+              <Select
+                value={selectedProcess || 'all'}
+                onValueChange={(value) => setSelectedProcess(value === 'all' ? '' : value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="所有流程类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">所有流程类型</SelectItem>
+                  {processOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => void loadStats()} disabled={loading}>
+                <RefreshCw className={cn('h-4 w-4', loading ? 'animate-spin' : '')} />
+                刷新
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportStats} disabled={stats.length === 0}>
+                <Download className="h-4 w-4" />
+                导出 CSV
+              </Button>
             </div>
           </div>
-
-          {loading && stats.length === 0 ? (
-            <InlineState
-              title="正在加载性能统计..."
-              description="正在汇总流程性能样本、风险指标和趋势结果，请稍候。"
-              loading
-            />
-          ) : stats.length === 0 ? (
-            <InlineState
-              icon={<Activity className="h-5 w-5" />}
-              title="暂无统计数据"
-              description="请选择不同的时间范围或流程类型后再查看。"
-            />
-          ) : (
-            <>
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.95fr)]">
-                <PanelCard
-                  title="效率概览"
-                  description="用统一进度条和健康标签快速判断当前统计范围内的流程质量。"
-                >
-                  <div className="space-y-4 px-4 py-4">
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <ProgressMetric
-                        title="成功率"
-                        icon={<TrendingUp className="h-4 w-4 text-emerald-500 dark:text-emerald-300" />}
-                        value={`${summary.successRate.toFixed(1)}%`}
-                        hint={`${summary.completedCount} / ${summary.totalCount || 0} 已完成`}
-                        progress={summary.successRate}
-                        progressClassName="bg-gradient-to-r from-emerald-500 to-teal-500"
-                      />
-                      <ProgressMetric
-                        title="超时率"
-                        icon={<Clock3 className="h-4 w-4 text-amber-500 dark:text-amber-300" />}
-                        value={`${summary.timeoutRate.toFixed(1)}%`}
-                        hint="越低越有利于用户体验"
-                        progress={summary.timeoutRate}
-                        progressClassName="bg-gradient-to-r from-amber-400 to-orange-500"
-                      />
-                      <ProgressMetric
-                        title="异常率"
-                        icon={<AlertTriangle className="h-4 w-4 text-rose-500 dark:text-rose-300" />}
-                        value={`${summary.anomalyRate.toFixed(1)}%`}
-                        hint="用于判断流程配置稳定性"
-                        progress={summary.anomalyRate}
-                        progressClassName="bg-gradient-to-r from-rose-400 to-red-500"
-                      />
+        }
+        table={
+          <div className="grid min-h-full xl:grid-cols-[minmax(0,1.25fr)_320px]">
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
+              {isInitialLoading ? (
+                <section className="p-5 sm:p-6">
+                  <EmptyBlock
+                    title="正在加载性能统计..."
+                    description="正在汇总流程性能样本、风险指标和趋势结果，请稍候。"
+                    loading
+                  />
+                </section>
+              ) : hasNoData ? (
+                <section className="p-5 sm:p-6">
+                  <EmptyBlock
+                    icon={<Activity className="h-5 w-5" />}
+                    title="暂无统计数据"
+                    description="请选择不同的时间范围或流程类型后再查看。"
+                  />
+                </section>
+              ) : (
+                <>
+                  <section className="p-5 sm:p-6">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">效率概览</div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      用更紧凑的后台页语法直接查看成功率、超时率和异常率。
                     </div>
 
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                        <div>
-                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">统计健康度</div>
-                          <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-                            {summary.healthSummary}
-                          </div>
+                    <div className="mt-4 grid gap-3 md:grid-cols-3">
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          <TrendingUp className="h-4 w-4 text-emerald-500 dark:text-emerald-300" />
+                          成功率
                         </div>
-                        <span className={cn('text-3xl font-semibold tracking-tight', summary.healthTone)}>
-                          {summary.healthLabel}
-                        </span>
+                        <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                          {summary.successRate.toFixed(1)}%
+                        </div>
+                        <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">
+                          {summary.completedCount} / {summary.totalCount || 0} 已完成
+                        </div>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          <Clock3 className="h-4 w-4 text-amber-500 dark:text-amber-300" />
+                          超时率
+                        </div>
+                        <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                          {summary.timeoutRate.toFixed(1)}%
+                        </div>
+                        <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">越低越有利于用户体验</div>
+                      </div>
+
+                      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+                        <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          <AlertTriangle className="h-4 w-4 text-rose-500 dark:text-rose-300" />
+                          异常率
+                        </div>
+                        <div className="mt-3 text-3xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
+                          {summary.anomalyRate.toFixed(1)}%
+                        </div>
+                        <div className="mt-2 text-sm text-slate-500 dark:text-slate-400">用于判断流程配置稳定性</div>
                       </div>
                     </div>
-                  </div>
-                </PanelCard>
+                  </section>
 
-                <PanelCard
-                  title="流程分布"
-                  description="按流程聚合查看处理量、平均时长和风险分布，快速识别主力流程。"
-                >
-                  <div className="space-y-3 px-4 py-4">
-                    {topProcesses.length > 0 ? (
-                      topProcesses.map((item) => (
-                        <div
-                          key={item.processDefKey}
-                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88"
-                        >
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {item.processName}
-                              </div>
-                              <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                                {item.processDefKey}
-                              </div>
-                            </div>
-                            <div className="text-sm font-semibold text-cyan-700 dark:text-cyan-200">
-                              {item.totalCount} 单
-                            </div>
-                          </div>
-                          <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
-                            <div
-                              className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-500"
-                              style={{ width: `${Math.max((item.totalCount / maxProcessTotal) * 100, 8)}%` }}
-                            />
-                          </div>
-                          <div className="mt-4 grid gap-2 md:grid-cols-3">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                平均时长
-                              </div>
-                              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {formatDuration(item.avgDurationMs)}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                成功率
-                              </div>
-                              <div className={cn('mt-2 text-sm font-semibold', getSuccessTone(item.successRate))}>
-                                {item.successRate.toFixed(1)}%
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                风险率
-                              </div>
-                              <div
-                                className={cn(
-                                  'mt-2 text-sm font-semibold',
-                                  getRiskTone(item.timeoutRate + item.anomalyRate),
-                                )}
-                              >
-                                {(item.timeoutRate + item.anomalyRate).toFixed(1)}%
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <InlineState
-                        icon={<BarChart3 className="h-5 w-5" />}
-                        title="暂无流程分布"
-                        description="当前统计范围内还没有可聚合的流程样本。"
-                      />
-                    )}
-                  </div>
-                </PanelCard>
-              </div>
-
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.95fr)]">
-                <PanelCard
-                  title="日期趋势"
-                  description="按日期聚合查看处理量变化，并同步观察成功率和超时率波动。"
-                >
-                  <div className="space-y-4 px-4 py-4">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-                      <div className="flex items-end gap-3">
-                        {visibleDailyTrends.map((item) => (
-                          <div key={item.statDate} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                            <div className="flex h-36 w-full items-end justify-center">
-                              <div
-                                className="w-full rounded-t-2xl bg-gradient-to-t from-cyan-600 to-sky-400 shadow-[0_8px_18px_rgba(14,165,233,0.18)]"
-                                style={{
-                                  height: `${Math.max((item.totalCount / maxDailyTotal) * 100, item.totalCount > 0 ? 10 : 4)}%`,
-                                }}
-                                title={`${item.statDate} · ${item.totalCount} 单`}
-                              />
-                            </div>
-                            <div className="text-center">
-                              <div className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-                                {item.totalCount}
-                              </div>
-                              <div className="mt-1 text-[10px] text-slate-400 dark:text-slate-500">
-                                {item.statDate.slice(5)}
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  <section className="p-5 sm:p-6">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">流程分布</div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      按流程聚合查看处理量、平均时长和风险表现。
                     </div>
 
-                    <div className="grid gap-3 md:grid-cols-3">
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                        <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                          最近一天成功率
-                        </div>
-                        <div className={cn('mt-2 text-sm font-semibold', getSuccessTone(latestDailyTrend?.successRate || 0))}>
-                          {(latestDailyTrend?.successRate || 0).toFixed(1)}%
-                        </div>
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                      <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 md:grid md:grid-cols-[minmax(0,1fr)_110px_140px_120px_120px] md:items-center">
+                        <span>流程</span>
+                        <span>处理量</span>
+                        <span>平均时长</span>
+                        <span>成功率</span>
+                        <span>风险率</span>
                       </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                        <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                          最近一天超时率
-                        </div>
-                        <div className={cn('mt-2 text-sm font-semibold', getRiskTone(latestDailyTrend?.timeoutRate || 0))}>
-                          {(latestDailyTrend?.timeoutRate || 0).toFixed(1)}%
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                        <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                          最近一天异常率
-                        </div>
-                        <div className={cn('mt-2 text-sm font-semibold', getRiskTone(latestDailyTrend?.anomalyRate || 0))}>
-                          {(latestDailyTrend?.anomalyRate || 0).toFixed(1)}%
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </PanelCard>
 
-                <PanelCard
-                  title="风险焦点"
-                  description="按超时率和异常率排序，优先识别需要立即排查的流程。"
-                >
-                  <div className="space-y-3 px-4 py-4">
-                    {riskProcesses.length > 0 ? (
-                      riskProcesses.map((item) => (
-                        <div
-                          key={item.processDefKey}
-                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88"
-                        >
-                          <div className="flex items-start justify-between gap-3">
+                      {topProcesses.length > 0 ? (
+                        topProcesses.map((item) => (
+                          <div
+                            key={item.processDefKey}
+                            className="grid gap-3 border-t border-slate-200 px-4 py-4 first:border-t-0 dark:border-slate-800 md:grid-cols-[minmax(0,1fr)_110px_140px_120px_120px] md:items-center"
+                          >
                             <div className="min-w-0">
                               <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                                 {item.processName}
@@ -831,160 +624,275 @@ const PerformanceStats: React.FC = () => {
                               <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                                 {item.processDefKey}
                               </div>
+                              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
+                                <div
+                                  className="h-full rounded-full bg-cyan-500 dark:bg-cyan-400"
+                                  style={{ width: `${Math.max((item.totalCount / maxProcessTotal) * 100, 8)}%` }}
+                                />
+                              </div>
                             </div>
-                            <span
-                              className={cn(
-                                'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                                getRateBadgeClassName(item.timeoutRate + item.anomalyRate),
-                              )}
-                            >
-                              风险 {(item.timeoutRate + item.anomalyRate).toFixed(1)}%
-                            </span>
+                            <div className="text-sm font-semibold text-cyan-700 dark:text-cyan-200">{item.totalCount} 单</div>
+                            <div className="text-sm text-slate-600 dark:text-slate-300">{formatDuration(item.avgDurationMs)}</div>
+                            <div className={cn('text-sm font-semibold', getSuccessTone(item.successRate))}>
+                              {item.successRate.toFixed(1)}%
+                            </div>
+                            <div className={cn('text-sm font-semibold', getRiskTone(item.timeoutRate + item.anomalyRate))}>
+                              {(item.timeoutRate + item.anomalyRate).toFixed(1)}%
+                            </div>
                           </div>
-                          <div className="mt-4 grid gap-2 md:grid-cols-3">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                成功率
-                              </div>
-                              <div className={cn('mt-2 text-sm font-semibold', getSuccessTone(item.successRate))}>
-                                {item.successRate.toFixed(1)}%
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                超时率
-                              </div>
-                              <div className={cn('mt-2 text-sm font-semibold', getRiskTone(item.timeoutRate))}>
-                                {item.timeoutRate.toFixed(1)}%
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                异常率
-                              </div>
-                              <div className={cn('mt-2 text-sm font-semibold', getRiskTone(item.anomalyRate))}>
-                                {item.anomalyRate.toFixed(1)}%
-                              </div>
+                        ))
+                      ) : (
+                        <EmptyBlock
+                          icon={<BarChart3 className="h-5 w-5" />}
+                          title="暂无流程分布"
+                          description="当前统计范围内还没有可聚合的流程样本。"
+                        />
+                      )}
+                    </div>
+                  </section>
+
+                  <section className="p-5 sm:p-6">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">日期趋势</div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      按日期聚合查看处理量变化，并同步观察成功率和风险波动。
+                    </div>
+
+                    <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                      <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 md:grid md:grid-cols-[120px_100px_120px_100px_100px_minmax(0,1fr)] md:items-center">
+                        <span>日期</span>
+                        <span>处理量</span>
+                        <span>成功率</span>
+                        <span>超时率</span>
+                        <span>异常率</span>
+                        <span>趋势</span>
+                      </div>
+
+                      {visibleDailyTrends.map((item) => (
+                        <div
+                          key={item.statDate}
+                          className="grid gap-3 border-t border-slate-200 px-4 py-3 first:border-t-0 dark:border-slate-800 md:grid-cols-[120px_100px_120px_100px_100px_minmax(0,1fr)] md:items-center"
+                        >
+                          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                            {item.statDate}
+                          </div>
+                          <div className="text-sm text-slate-600 dark:text-slate-300">{item.totalCount}</div>
+                          <div className={cn('text-sm font-semibold', getSuccessTone(item.successRate))}>
+                            {item.successRate.toFixed(1)}%
+                          </div>
+                          <div className={cn('text-sm font-semibold', getRiskTone(item.timeoutRate))}>
+                            {item.timeoutRate.toFixed(1)}%
+                          </div>
+                          <div className={cn('text-sm font-semibold', getRiskTone(item.anomalyRate))}>
+                            {item.anomalyRate.toFixed(1)}%
+                          </div>
+                          <div className="w-full">
+                            <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
+                              <div
+                                className="h-full rounded-full bg-cyan-500 dark:bg-cyan-400"
+                                style={{
+                                  width: `${Math.max((item.totalCount / maxDailyTotal) * 100, item.totalCount > 0 ? 10 : 4)}%`,
+                                }}
+                              />
                             </div>
                           </div>
                         </div>
-                      ))
-                    ) : (
-                      <InlineState
-                        icon={<Filter className="h-5 w-5" />}
-                        title="暂无风险焦点"
-                        description="当前统计范围内还没有可识别的高风险流程。"
-                      />
-                    )}
-                  </div>
-                </PanelCard>
-              </div>
+                      ))}
+                    </div>
+                  </section>
 
-              <PanelCard
-                title="治理建议"
-                description="根据当前统计结果自动给出治理建议，帮助你判断是否需要调整流程。"
-              >
-                <div className="space-y-3 px-4 py-4">
+                  <section className="p-5 sm:p-6">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">流程结果表</div>
+                    <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      平均时长、成功率、超时率和异常率统一在同一张结果表里查看与导出。
+                    </div>
+
+                    <div className="mt-4 overflow-x-auto">
+                      <Table className="min-w-[1120px]">
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>流程</TableHead>
+                            <TableHead>流程 Key</TableHead>
+                            <TableHead className="text-right">总数</TableHead>
+                            <TableHead className="text-right">完成数</TableHead>
+                            <TableHead className="text-right">平均时长</TableHead>
+                            <TableHead className="text-right">统计天数</TableHead>
+                            <TableHead className="text-right">成功率</TableHead>
+                            <TableHead className="text-right">超时率</TableHead>
+                            <TableHead className="text-right">异常率</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {tableRows.map((item) => (
+                            <TableRow key={item.processDefKey}>
+                              <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                                {item.processName}
+                              </TableCell>
+                              <TableCell className="text-xs text-slate-500 dark:text-slate-400">
+                                {item.processDefKey}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-cyan-700 dark:text-cyan-200">
+                                {item.totalCount}
+                              </TableCell>
+                              <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-300">
+                                {item.completedCount}
+                              </TableCell>
+                              <TableCell className="text-right text-slate-900 dark:text-slate-100">
+                                {formatDuration(item.avgDurationMs)}
+                              </TableCell>
+                              <TableCell className="text-right text-slate-500 dark:text-slate-400">
+                                {item.dayCount}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                    getRateBadgeClassName(item.successRate, true),
+                                  )}
+                                >
+                                  {item.successRate.toFixed(1)}%
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                    getRateBadgeClassName(item.timeoutRate),
+                                  )}
+                                >
+                                  {item.timeoutRate.toFixed(1)}%
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                    getRateBadgeClassName(item.anomalyRate),
+                                  )}
+                                >
+                                  {item.anomalyRate.toFixed(1)}%
+                                </span>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </section>
+                </>
+              )}
+            </div>
+
+            <aside className="border-t border-slate-200 dark:border-slate-800 xl:border-l xl:border-t-0">
+              <section className="border-b border-slate-200 p-5 dark:border-slate-800 sm:p-6">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前统计上下文</div>
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                        时间
+                      </span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500">{todayLabel}</span>
+                    </div>
+                    <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {timeLabel}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                      统计范围
+                    </div>
+                    <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {dateRange.startDate} ~ {dateRange.endDate}
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                    <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                      健康度
+                    </div>
+                    <div className={cn('mt-1.5 text-sm font-semibold', summary.healthTone)}>
+                      {summary.healthLabel}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      {summary.healthSummary}
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <section className="border-b border-slate-200 p-5 dark:border-slate-800 sm:p-6">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">风险焦点</div>
+                <div className="mt-4 space-y-3">
+                  {riskProcesses.length > 0 ? (
+                    riskProcesses.map((item) => (
+                      <div
+                        key={item.processDefKey}
+                        className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {item.processName}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                              {item.processDefKey}
+                            </div>
+                          </div>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                              getRateBadgeClassName(item.timeoutRate + item.anomalyRate),
+                            )}
+                          >
+                            风险 {(item.timeoutRate + item.anomalyRate).toFixed(1)}%
+                          </span>
+                        </div>
+                        <div className="mt-3 grid gap-2 md:grid-cols-3">
+                          <div className={cn('text-sm font-semibold', getSuccessTone(item.successRate))}>
+                            成功 {item.successRate.toFixed(1)}%
+                          </div>
+                          <div className={cn('text-sm font-semibold', getRiskTone(item.timeoutRate))}>
+                            超时 {item.timeoutRate.toFixed(1)}%
+                          </div>
+                          <div className={cn('text-sm font-semibold', getRiskTone(item.anomalyRate))}>
+                            异常 {item.anomalyRate.toFixed(1)}%
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <EmptyBlock
+                      icon={<AlertTriangle className="h-5 w-5" />}
+                      title="暂无风险焦点"
+                      description="当前统计范围内还没有可识别的高风险流程。"
+                    />
+                  )}
+                </div>
+              </section>
+
+              <section className="p-5 sm:p-6">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">治理建议</div>
+                <div className="mt-4 space-y-3">
                   {suggestions.map((item, index) => (
                     <div
                       key={`${item}-${index}`}
-                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-300"
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
                     >
                       <div className="flex items-start gap-3">
-                        <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
-                          <Filter className="h-4 w-4" />
+                        <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
+                          <AlertTriangle className="h-4 w-4" />
                         </span>
-                        <span className="leading-6">{item}</span>
+                        <span>{item}</span>
                       </div>
                     </div>
                   ))}
                 </div>
-              </PanelCard>
-
-              <PanelCard
-                title="流程结果表"
-                description="平均时长、成功率、超时率和异常率统一在同一张结果表里查看与导出。"
-              >
-                <div className="overflow-x-auto">
-                  {loading ? (
-                    <InlineState title="正在加载性能统计..." loading />
-                  ) : (
-                    <Table className="min-w-[1180px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>流程</TableHead>
-                          <TableHead>流程 Key</TableHead>
-                          <TableHead className="text-right">总数</TableHead>
-                          <TableHead className="text-right">完成数</TableHead>
-                          <TableHead className="text-right">平均时长</TableHead>
-                          <TableHead className="text-right">统计天数</TableHead>
-                          <TableHead className="text-right">成功率</TableHead>
-                          <TableHead className="text-right">超时率</TableHead>
-                          <TableHead className="text-right">异常率</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {tableRows.map((item) => (
-                          <TableRow key={item.processDefKey}>
-                            <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                              {item.processName}
-                            </TableCell>
-                            <TableCell className="text-xs text-slate-500 dark:text-slate-400">
-                              {item.processDefKey}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold text-cyan-700 dark:text-cyan-200">
-                              {item.totalCount}
-                            </TableCell>
-                            <TableCell className="text-right font-semibold text-emerald-600 dark:text-emerald-300">
-                              {item.completedCount}
-                            </TableCell>
-                            <TableCell className="text-right text-slate-900 dark:text-slate-100">
-                              {formatDuration(item.avgDurationMs)}
-                            </TableCell>
-                            <TableCell className="text-right text-slate-500 dark:text-slate-400">
-                              {item.dayCount}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span
-                                className={cn(
-                                  'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                                  getRateBadgeClassName(item.successRate, true),
-                                )}
-                              >
-                                {item.successRate.toFixed(1)}%
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span
-                                className={cn(
-                                  'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                                  getRateBadgeClassName(item.timeoutRate),
-                                )}
-                              >
-                                {item.timeoutRate.toFixed(1)}%
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span
-                                className={cn(
-                                  'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                                  getRateBadgeClassName(item.anomalyRate),
-                                )}
-                              >
-                                {item.anomalyRate.toFixed(1)}%
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  )}
-                </div>
-              </PanelCard>
-            </>
-          )}
-        </div>
-      </PanelCard>
+              </section>
+            </aside>
+          </div>
+        }
+      />
     </div>
   );
 };

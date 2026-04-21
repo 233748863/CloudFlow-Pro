@@ -551,23 +551,21 @@ export const WorkflowDesign = () => {
 
   const isNewWorkflow = workflow.id.startsWith('new_');
   const studioTitle = isNewWorkflow ? '新建流程设计' : workflow.name || '流程设计';
-  const studioDescription = isNewWorkflow
-    ? '当前处于空白设计模式，优先收口画布、节点和右侧属性面板的统一设计语法。'
-    : '流程设计器已接入统一工作台壳层，这一轮继续收口工具栏、画布、节点和侧边配置面板。';
 
   return (
-    <div className="space-y-3">
-      <div className="flex flex-wrap items-start justify-between gap-3 px-1 py-1">
+    <div className="space-y-2">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200/80 px-1 pb-3 pt-1 dark:border-slate-800">
         <div className="min-w-0">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-            Workflow Studio
+          <div className="truncate text-[11px] font-medium tracking-[0.12em] text-slate-400 dark:text-slate-500">
+            {isNewWorkflow
+              ? '空白流程'
+              : workflow.key
+                ? `流程 KEY · ${workflow.key}`
+                : '流程设计'}
           </div>
-          <h1 className="mt-2 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
             {studioTitle}
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            {studioDescription}
-          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" onClick={loadData}>
@@ -579,7 +577,7 @@ export const WorkflowDesign = () => {
         </div>
       </div>
 
-      <div className="min-h-[calc(100vh-250px)] overflow-hidden rounded-xl border border-slate-200 bg-white/96 dark:border-slate-800 dark:bg-slate-950/94">
+      <div className="min-h-[calc(100vh-238px)] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <WorkflowBuilder
           workflow={workflow}
           onChange={handleWorkflowChange}

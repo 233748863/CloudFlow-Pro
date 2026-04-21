@@ -361,37 +361,51 @@ export const VersionRollbackManagement: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-4 xl:grid-cols-4">
-        <SummaryCard
-          label="流程数"
-          value={summary.processCount}
-          hint="当前可用于回滚治理的流程定义"
-          icon={<GitBranch className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="可回滚版本"
-          value={summary.versionCount}
-          hint="所选流程当前可用的版本快照"
-          icon={<RotateCcw className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="回滚历史"
-          value={summary.historyCount}
-          hint="所选流程过去执行过的回滚记录"
-          icon={<FileText className="h-[18px] w-[18px]" />}
-        />
-        <SummaryCard
-          label="最新快照"
-          value={summary.latestVersion > 0 ? `v${summary.latestVersion}` : '暂无'}
-          hint="用于快速识别当前沉淀到的版本上限"
-          icon={<ShieldAlert className="h-[18px] w-[18px]" />}
-        />
-      </div>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <div className="w-full sm:w-72">
+          <Select value={selectedProcess} onValueChange={setSelectedProcess}>
+            <SelectTrigger>
+              <SelectValue placeholder="请选择流程" />
+            </SelectTrigger>
+            <SelectContent>
+              {processes.map((item) => (
+                <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
+                  {item.processName || item.processKey || String(item.definitionId)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
 
-      <PanelCard
-        title="版本快照与回滚记录"
-        description="选定流程后，可以查看可回滚版本、回滚历史以及风险分析结果。"
-        aside={
+        <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+          {[
+            { key: 'versions', label: '版本列表' },
+            { key: 'history', label: '回滚历史' },
+          ].map((item) => (
+            <SegmentedButton
+              key={item.key}
+              active={activeView === item.key}
+              label={item.label}
+              onClick={() => setActiveView(item.key as 'versions' | 'history')}
+            />
+          ))}
+        </div>
+
+        <div className="text-sm text-slate-500 dark:text-slate-400">{activeViewSummary}</div>
+
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            流程 {summary.processCount}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            快照 {summary.versionCount}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            历史 {summary.historyCount}
+          </span>
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            最新 {summary.latestVersion > 0 ? `v${summary.latestVersion}` : '暂无'}
+          </span>
           <Button
             variant="outline"
             size="sm"
@@ -400,247 +414,143 @@ export const VersionRollbackManagement: React.FC = () => {
             <RefreshCw className="h-4 w-4" />
             刷新
           </Button>
-        }
-      >
-        <div className="space-y-4 px-4 py-4">
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="grid gap-4 lg:grid-cols-[minmax(260px,340px)_minmax(0,1fr)]">
-                <div>
-                  <label className="mb-2 block text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    选择流程
-                  </label>
-                  <Select value={selectedProcess} onValueChange={setSelectedProcess}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="请选择流程" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {processes.map((item) => (
-                        <SelectItem key={String(item.definitionId)} value={String(item.definitionId)}>
-                          {item.processName || item.processKey || String(item.definitionId)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+        </div>
+      </div>
 
-                <div className="space-y-3">
-                  <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-950/80">
-                    {[
-                      { key: 'versions', label: '版本列表' },
-                      { key: 'history', label: '回滚历史' },
-                    ].map((item) => (
-                      <SegmentedButton
-                        key={item.key}
-                        active={activeView === item.key}
-                        label={item.label}
-                        onClick={() => setActiveView(item.key as 'versions' | 'history')}
-                      />
-                    ))}
-                  </div>
-                  <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-                    {activeViewSummary}
-                  </div>
-                </div>
-              </div>
+      {!selectedProcess ? (
+        <InlineState
+          icon={<GitBranch className="h-5 w-5" />}
+          title="请先选择流程"
+          description="选择流程后才能查看该流程的版本快照和回滚历史。"
+        />
+      ) : loading ? (
+        <InlineState
+          title="正在读取版本数据..."
+          description="系统正在同步快照和回滚历史，请稍候。"
+          loading
+        />
+      ) : activeView === 'versions' ? (
+        versions.length === 0 ? (
+          <InlineState
+            icon={<GitBranch className="h-5 w-5" />}
+            title="没有可回滚版本"
+            description="当前流程还没有生成版本快照，后续发布后会自动沉淀到这里。"
+          />
+        ) : (
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 lg:grid lg:grid-cols-[minmax(0,1fr)_120px_180px_160px_220px] lg:items-center">
+              <span>版本</span>
+              <span>部署</span>
+              <span>创建时间</span>
+              <span>创建人</span>
+              <span>操作</span>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">当前治理对象</div>
-              <div className="mt-3 space-y-3">
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    流程
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {selectedProcessMeta?.processName || selectedProcessMeta?.processKey || '未选择流程'}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
-                  <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    视图焦点
-                  </div>
-                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {activeView === 'versions' ? '恢复快照' : '执行历史'}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white/80 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-                  回滚治理页已统一到轻量治理卡比例，快照、风险分析和执行记录使用同一套明暗主题语法。
-                </div>
-              </div>
-            </div>
-          </div>
+            {versions.map((version) => {
+              const latest = version.version === summary.latestVersion;
 
-          {!selectedProcess ? (
-            <InlineState
-              icon={<GitBranch className="h-5 w-5" />}
-              title="请先选择流程"
-              description="选择流程后才能查看该流程的版本快照和回滚历史。"
-            />
-          ) : loading ? (
-            <InlineState
-              title="正在读取版本数据..."
-              description="系统正在同步快照和回滚历史，请稍候。"
-              loading
-            />
-          ) : activeView === 'versions' ? (
-            versions.length === 0 ? (
-              <InlineState
-                icon={<GitBranch className="h-5 w-5" />}
-                title="没有可回滚版本"
-                description="当前流程还没有生成版本快照，后续发布后会自动沉淀到这里。"
-              />
-            ) : (
-              <div className="space-y-4">
-                {versions.map((version) => {
-                  const latest = version.version === summary.latestVersion;
-
-                  return (
-                    <div
-                      key={version.id}
-                      className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950/88"
-                    >
-                      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                        <div className="min-w-0 flex-1 space-y-4">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-base font-semibold text-slate-950 dark:text-slate-100">
-                              版本 v{version.version}
-                            </span>
-                            {latest ? (
-                              <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
-                                最新快照
-                              </span>
-                            ) : null}
-                            <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                              部署 ID：{version.deployId}
-                            </span>
-                          </div>
-
-                          <div className="grid gap-3 md:grid-cols-3">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                创建时间
-                              </div>
-                              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {version.createdTime}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                创建人
-                              </div>
-                              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {version.createdBy}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                流程定义
-                              </div>
-                              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {version.processDefId}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex shrink-0 flex-wrap items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => void handleViewSnapshot(version)}>
-                            <Eye className="h-4 w-4" />
-                            查看快照
-                          </Button>
-                          <Button size="sm" onClick={() => void handlePrepareRollback(version)}>
-                            <RotateCcw className="h-4 w-4" />
-                            回滚到此版本
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )
-          ) : history.length === 0 ? (
-            <InlineState
-              icon={<FileText className="h-5 w-5" />}
-              title="没有回滚历史"
-              description="当前流程尚未执行过版本回滚，后续操作后会在这里沉淀记录。"
-            />
-          ) : (
-            <div className="space-y-4">
-              {history.map((record) => {
-                const statusMeta = getRollbackStatusMeta(record.rollbackStatus);
-
-                return (
-                  <div
-                    key={record.id}
-                    className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950/88"
-                  >
-                    <div className="space-y-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-base font-semibold text-slate-950 dark:text-slate-100">
-                          v{record.fromVersion} {'->'} v{record.toVersion}
+              return (
+                <div
+                  key={version.id}
+                  className="grid gap-4 border-t border-slate-200 px-4 py-4 first:border-t-0 dark:border-slate-800 lg:grid-cols-[minmax(0,1fr)_120px_180px_160px_220px] lg:items-center"
+                >
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        版本 v{version.version}
+                      </span>
+                      {latest ? (
+                        <span className="inline-flex rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
+                          最新快照
                         </span>
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                            statusMeta.className,
-                          )}
-                        >
-                          {statusMeta.label}
-                        </span>
-                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
-                          {record.rollbackType === 'MANUAL' ? '手动回滚' : '自动回滚'}
-                        </span>
-                      </div>
-
-                      <div className="grid gap-3 md:grid-cols-3">
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                          <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                            回滚时间
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {record.rollbackTime}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                          <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                            操作人
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {record.rollbackBy}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                          <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                            原始部署 ID
-                          </div>
-                          <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {record.originalDeployId}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                        <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                          回滚原因
-                        </div>
-                        <div className="mt-2">{record.rollbackReason}</div>
-                      </div>
-
-                      {record.errorMessage ? (
-                        <div className="rounded-2xl border border-rose-200 bg-rose-50/90 px-4 py-3 text-sm text-rose-700 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200">
-                          {record.errorMessage}
-                        </div>
                       ) : null}
                     </div>
+                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      流程定义 {version.processDefId}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
+
+                  <div className="text-sm text-slate-600 dark:text-slate-300">{version.deployId}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-300">{version.createdTime}</div>
+                  <div className="text-sm text-slate-600 dark:text-slate-300">{version.createdBy}</div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => void handleViewSnapshot(version)}>
+                      <Eye className="h-4 w-4" />
+                      查看快照
+                    </Button>
+                    <Button size="sm" onClick={() => void handlePrepareRollback(version)}>
+                      <RotateCcw className="h-4 w-4" />
+                      回滚到此版本
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )
+      ) : history.length === 0 ? (
+        <InlineState
+          icon={<FileText className="h-5 w-5" />}
+          title="没有回滚历史"
+          description="当前流程尚未执行过版本回滚，后续操作后会在这里沉淀记录。"
+        />
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 lg:grid lg:grid-cols-[minmax(0,1fr)_180px_220px_160px] lg:items-center">
+            <span>回滚链路</span>
+            <span>状态</span>
+            <span>时间与操作人</span>
+            <span>原因</span>
+          </div>
+
+          {history.map((record) => {
+            const statusMeta = getRollbackStatusMeta(record.rollbackStatus);
+
+            return (
+              <div
+                key={record.id}
+                className="grid gap-4 border-t border-slate-200 px-4 py-4 first:border-t-0 dark:border-slate-800 lg:grid-cols-[minmax(0,1fr)_180px_220px_160px] lg:items-center"
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      v{record.fromVersion} {'->'} v{record.toVersion}
+                    </span>
+                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+                      {record.rollbackType === 'MANUAL' ? '手动回滚' : '自动回滚'}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    原始部署 ID {record.originalDeployId}
+                  </div>
+                  {record.errorMessage ? (
+                    <div className="mt-2 text-sm text-rose-600 dark:text-rose-300">{record.errorMessage}</div>
+                  ) : null}
+                </div>
+
+                <div>
+                  <span
+                    className={cn(
+                      'inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                      statusMeta.className,
+                    )}
+                  >
+                    {statusMeta.label}
+                  </span>
+                </div>
+
+                <div className="text-sm text-slate-600 dark:text-slate-300">
+                  <div>{record.rollbackTime}</div>
+                  <div className="mt-1">操作人 · {record.rollbackBy}</div>
+                </div>
+
+                <div className="text-sm text-slate-600 dark:text-slate-300">{record.rollbackReason}</div>
+              </div>
+            );
+          })}
         </div>
-      </PanelCard>
+      )}
 
       <BaseDialog
         open={Boolean(snapshotModal)}
@@ -651,31 +561,19 @@ export const VersionRollbackManagement: React.FC = () => {
       >
         {snapshotModal ? (
           <div className="max-h-[72vh] space-y-5 overflow-y-auto">
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <SummaryCard
-                label="流程定义"
-                value={snapshotModal.processDefId}
-                hint="快照所属流程"
-                icon={<GitBranch className="h-[18px] w-[18px]" />}
-              />
-              <SummaryCard
-                label="版本号"
-                value={`v${snapshotModal.version}`}
-                hint="当前查看的快照版本"
-                icon={<RotateCcw className="h-[18px] w-[18px]" />}
-              />
-              <SummaryCard
-                label="部署 ID"
-                value={snapshotModal.deployId}
-                hint="关联的部署记录"
-                icon={<ShieldAlert className="h-[18px] w-[18px]" />}
-              />
-              <SummaryCard
-                label="创建时间"
-                value={snapshotModal.createdTime}
-                hint="快照生成时间"
-                icon={<FileText className="h-[18px] w-[18px]" />}
-              />
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                流程定义 · {snapshotModal.processDefId}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                版本号 · v{snapshotModal.version}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                部署 ID · {snapshotModal.deployId}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                创建时间 · {snapshotModal.createdTime}
+              </span>
             </div>
 
             {snapshotModal.bpmnXml ? (
@@ -736,38 +634,27 @@ export const VersionRollbackManagement: React.FC = () => {
       >
         {rollbackModal ? (
           <div className="max-h-[72vh] space-y-5 overflow-y-auto">
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  目标版本
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  v{rollbackModal.version.version}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  部署 ID
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {rollbackModal.version.deployId}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  快照时间
-                </div>
-                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {rollbackModal.version.createdTime}
-                </div>
-              </div>
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                目标版本 · v{rollbackModal.version.version}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                部署 ID · {rollbackModal.version.deployId}
+              </span>
+              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
+                快照时间 · {rollbackModal.version.createdTime}
+              </span>
             </div>
 
             {rollbackModal.impact ? (
-              <PanelCard
-                title="影响分析"
-                description="根据当前流程状态评估本次回滚可能带来的影响。"
-                aside={
+              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">影响分析</div>
+                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      根据当前流程状态评估本次回滚可能带来的影响。
+                    </div>
+                  </div>
                   <span
                     className={cn(
                       'inline-flex items-center gap-1 rounded-full px-3 py-1 text-[11px] font-semibold',
@@ -779,9 +666,9 @@ export const VersionRollbackManagement: React.FC = () => {
                     })}
                     总体风险：{getImpactMeta(rollbackModal.impact.overallLevel).label}
                   </span>
-                }
-              >
-                <div className="space-y-3 px-4 py-4">
+                </div>
+
+                <div className="p-4">
                   {rollbackModal.impact.impacts.length === 0 ? (
                     <InlineState
                       icon={<CheckCircle className="h-5 w-5" />}
@@ -789,58 +676,60 @@ export const VersionRollbackManagement: React.FC = () => {
                       description="系统没有返回具体影响项，可以直接按标准流程执行回滚。"
                     />
                   ) : (
-                    rollbackModal.impact.impacts.map((impact, index) => {
-                      const impactMeta = getImpactMeta(impact.impactLevel);
+                    <div className="space-y-3">
+                      {rollbackModal.impact.impacts.map((impact, index) => {
+                        const impactMeta = getImpactMeta(impact.impactLevel);
 
-                      return (
-                        <div
-                          key={`${impact.impactType}-${index}`}
-                          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition-colors dark:border-slate-800 dark:bg-slate-950/88"
-                        >
-                          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-                            <div className="space-y-2">
-                              <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
-                                {impact.impactType}
+                        return (
+                          <div
+                            key={`${impact.impactType}-${index}`}
+                            className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70"
+                          >
+                            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+                              <div className="space-y-2">
+                                <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                                  {impact.impactType}
+                                </div>
+                                <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                                  {impact.impactDetail}
+                                </div>
                               </div>
-                              <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
-                                {impact.impactDetail}
-                              </div>
+                              <span
+                                className={cn(
+                                  'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold',
+                                  impactMeta.className,
+                                )}
+                              >
+                                {React.createElement(impactMeta.icon, { className: 'h-3.5 w-3.5' })}
+                                {impactMeta.label}
+                              </span>
                             </div>
-                            <span
-                              className={cn(
-                                'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold',
-                                impactMeta.className,
-                              )}
-                            >
-                              {React.createElement(impactMeta.icon, { className: 'h-3.5 w-3.5' })}
-                              {impactMeta.label}
-                            </span>
-                          </div>
 
-                          <div className="mt-4 grid gap-3 md:grid-cols-2">
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                影响数量
+                            <div className="mt-4 grid gap-3 md:grid-cols-2">
+                              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                  影响数量
+                                </div>
+                                <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                  {impact.impactCount}
+                                </div>
                               </div>
-                              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {impact.impactCount}
-                              </div>
-                            </div>
-                            <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                              <div className="text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                建议处理
-                              </div>
-                              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {impact.suggestion || '暂无建议'}
+                              <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/70">
+                                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                                  建议处理
+                                </div>
+                                <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                                  {impact.suggestion || '暂无建议'}
+                                </div>
                               </div>
                             </div>
                           </div>
-                        </div>
-                      );
-                    })
+                        );
+                      })}
+                    </div>
                   )}
                 </div>
-              </PanelCard>
+              </div>
             ) : null}
 
             {!rollbackModal.impact?.allowDeploy ? (

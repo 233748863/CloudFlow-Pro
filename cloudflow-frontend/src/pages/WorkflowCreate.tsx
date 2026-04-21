@@ -1,47 +1,47 @@
 import React from 'react';
-import {
-  ArrowRight,
-  DraftingCompass,
-  Layers3,
-  PenTool,
-  Sparkles,
-  Workflow,
-} from 'lucide-react';
+import { ArrowRight, Layers3, PenTool, Workflow } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { Button } from '@/components/ui';
-import {
-  WorkspaceBackdrop,
-  WorkspacePageContent,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspaceSectionCard,
-} from '@/components/workspace/WorkspacePanels';
-import { cn } from '@/utils/cn';
 
-const creationOptions = [
+type CreationOption = {
+  id: 'blank' | 'template';
+  badge: string;
+  title: string;
+  description: string;
+  highlights: string[];
+  actionLabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+};
+
+const creationOptions: CreationOption[] = [
   {
     id: 'blank',
+    badge: 'Blank Canvas',
     title: '空白创建',
-    description: '从开始节点和结束节点起步，自定义节点、规则、表单与权限。',
-    eyebrow: 'Blank Canvas',
-    accentClassName: 'border border-amber-200 bg-amber-50 text-amber-700',
-    icon: PenTool,
-    bulletPoints: ['适合全新业务流程', '避免模板历史包袱', '直接进入设计器开始搭建'],
+    description: '直接进入设计器，从开始节点和结束节点起步，自定义规则、表单与权限。',
+    highlights: ['适合全新业务流程', '不继承历史模板结构', '进入设计器后立即可编辑'],
     actionLabel: '进入空白设计',
+    icon: PenTool,
   },
   {
     id: 'template',
+    badge: 'Template Center',
     title: '从模板创建',
-    description: '先进入模板中心挑选行业或业务模板，再生成流程草稿进入设计器。',
-    eyebrow: 'Template Center',
-    accentClassName: 'border border-sky-200 bg-sky-50 text-sky-700',
-    icon: Sparkles,
-    bulletPoints: ['适合复用成熟流程', '支持分类、搜索与预览', '生成后自动带入模板结构'],
+    description: '先在模板中心选取行业或业务模板，再生成草稿进入流程设计器细化。',
+    highlights: ['适合复用成熟流程', '支持分类、搜索与预览', '带着模板骨架进入设计'],
     actionLabel: '进入模板中心',
+    icon: Layers3,
   },
-] as const;
+];
+
+const creationRules = [
+  '入口页只负责分流，不承载模板浏览和流程编辑。',
+  '需要快速落地时优先走模板中心，再进入设计器修改。',
+  '只在确认没有可复用骨架时再从空白流程开始。',
+];
+
+const recommendedPath = ['选择创建方式', '进入模板中心或空白流程', '进入设计器编辑与发布'];
 
 export const WorkflowCreate: React.FC = () => {
   const navigate = useNavigate();
@@ -54,158 +54,158 @@ export const WorkflowCreate: React.FC = () => {
     navigate('/templates?entry=create');
   };
 
+  const handleSelectOption = (id: CreationOption['id']) => {
+    if (id === 'blank') {
+      handleSelectBlankCreation();
+      return;
+    }
+
+    handleSelectTemplateCreation();
+  };
+
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-
-      <WorkspacePageContent>
-        <WorkspaceHeroCard
-          badge={
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-              <Workflow className="h-3.5 w-3.5 text-cyan-600" />
-              Flow Entry
-            </span>
-          }
-          title="新建流程先选创建方式，再进入设计器"
-          description="设计器现在只负责编辑、校验、保存与发布，不再承载模板浏览职责。先决定是从空白开始，还是从模板中心生成流程草稿。"
-        >
-          <div className="mt-6 grid gap-4 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="创建方式"
-              value={creationOptions.length}
-              hint="空白创建与模板创建双入口"
-              aside={<Workflow className="h-[18px] w-[18px] text-cyan-600" />}
-            />
-            <WorkspaceMetricCard
-              label="空白设计"
-              value="直接建模"
-              hint="适合新业务和非标准流程"
-              aside={<PenTool className="h-[18px] w-[18px] text-amber-500" />}
-            />
-            <WorkspaceMetricCard
-              label="模板中心"
-              value="复用骨架"
-              hint="先选模板，再进入设计器细化"
-              aside={<Layers3 className="h-[18px] w-[18px] text-sky-500" />}
-            />
-            <WorkspaceMetricCard
-              label="当前原则"
-              value="先分流，后编辑"
-              hint="入口职责清晰，避免模板与设计器混杂"
-              aside={<DraftingCompass className="h-[18px] w-[18px] text-emerald-500" />}
-            />
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+            <Workflow className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+            Workflow Entry
           </div>
-        </WorkspaceHeroCard>
+          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            选择流程创建方式
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            先决定是从空白流程开始，还是从模板中心复用，再进入流程设计器编辑与发布。
+          </p>
+        </div>
 
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(320px,0.9fr)]">
-          <div className="grid gap-6 md:grid-cols-2">
-            {creationOptions.map((option) => {
-              const Icon = option.icon;
-              const primaryAction =
-                option.id === 'blank' ? handleSelectBlankCreation : handleSelectTemplateCreation;
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleSelectTemplateCreation}>
+            模板中心
+          </Button>
+          <Button variant="contrast" size="sm" onClick={handleSelectBlankCreation}>
+            空白创建
+          </Button>
+        </div>
+      </div>
 
-              return (
-                <WorkspaceSectionCard
-                  key={option.id}
-                  title={option.title}
-                  description={option.description}
-                  eyebrow={option.eyebrow}
-                  className="h-full"
-                  bodyClassName="flex h-full flex-col"
-                >
-                  <div
-                    className={cn(
-                      'inline-flex w-fit items-center gap-2 rounded-full px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.16em]',
-                      option.accentClassName,
-                    )}
-                  >
-                    <Icon className="h-4 w-4" />
-                    {option.eyebrow}
-                  </div>
+      <TablePageLayout
+        className="gap-4"
+        table={
+          // 按源码后台页的“单容器分栏”组织入口，避免继续堆叠 Hero、摘要卡和说明卡。
+          <div className="grid min-h-full xl:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="divide-y divide-slate-200 dark:divide-slate-800">
+              {creationOptions.map((option) => {
+                const Icon = option.icon;
+                const isBlank = option.id === 'blank';
 
-                  <div className="mt-5 space-y-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
-                    {option.bulletPoints.map((item) => (
-                      <div key={item} className="flex items-center gap-3 text-sm text-slate-600">
-                        <div className="h-2.5 w-2.5 rounded-full bg-cyan-500/70" />
-                        <span>{item}</span>
+                return (
+                  <section key={option.id} className="p-5 sm:p-6">
+                    <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start gap-4">
+                          <div
+                            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${
+                              isBlank
+                                ? 'border-amber-200 bg-amber-50 text-amber-600 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200'
+                                : 'border-sky-200 bg-sky-50 text-sky-600 dark:border-sky-900/60 dark:bg-sky-950/30 dark:text-sky-200'
+                            }`}
+                          >
+                            <Icon className="h-5 w-5" />
+                          </div>
+
+                          <div className="min-w-0 flex-1">
+                            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                              {option.badge}
+                            </div>
+                            <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                              {option.title}
+                            </div>
+                            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+                              {option.description}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-2 md:grid-cols-3">
+                          {option.highlights.map((item) => (
+                            <div
+                              key={item}
+                              className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-5 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
+                            >
+                              {item}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 items-center gap-3">
+                        <Button
+                          variant={isBlank ? 'contrast' : 'outline'}
+                          size="sm"
+                          onClick={() => handleSelectOption(option.id)}
+                        >
+                          {option.actionLabel}
+                          <ArrowRight className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+
+            <aside className="border-t border-slate-200 dark:border-slate-800 xl:border-l xl:border-t-0">
+              <section className="border-b border-slate-200 p-5 dark:border-slate-800 sm:p-6">
+                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  创建规则
+                </div>
+                <div className="mt-3 space-y-3">
+                  {creationRules.map((rule) => (
+                    <div
+                      key={rule}
+                      className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
+                    >
+                      {rule}
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="p-5 sm:p-6">
+                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  推荐路径
+                </div>
+                <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-800 dark:bg-slate-900/70">
+                  <div className="space-y-3">
+                    {recommendedPath.map((step, index) => (
+                      <div key={step} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
+                        <span className="inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-xs font-semibold text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
+                          {index + 1}
+                        </span>
+                        <span>{step}</span>
                       </div>
                     ))}
                   </div>
+                </div>
 
-                  <div className="mt-6">
-                    <Button onClick={primaryAction} size="lg" className="w-full justify-between rounded-xl">
-                      <span>{option.actionLabel}</span>
-                      <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </WorkspaceSectionCard>
-              );
-            })}
+                <p className="mt-4 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                  如果你还不确定从哪里开始，先去模板中心看现有流程骨架，再决定是否需要从空白流程重建。
+                </p>
+
+                <div className="mt-5 flex flex-wrap gap-2">
+                  <Button variant="outline" size="sm" onClick={handleSelectTemplateCreation}>
+                    先看模板中心
+                  </Button>
+                  <Button variant="contrast" size="sm" onClick={handleSelectBlankCreation}>
+                    直接空白创建
+                  </Button>
+                </div>
+              </section>
+            </aside>
           </div>
-
-          <WorkspaceSectionCard
-            title="创建指南"
-            description="入口拆分后，模板资产和流程编辑不再互相堆叠，操作路径更清晰。"
-            eyebrow="Guide"
-            className="h-full"
-            bodyClassName="space-y-4"
-          >
-            <div className="rounded-2xl bg-slate-900 px-5 py-5 text-slate-100 shadow-[0_18px_36px_rgba(15,23,42,0.18)]">
-              <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-200">
-                <DraftingCompass className="h-4 w-4 text-amber-300" />
-                New Flow Guide
-              </div>
-
-              <div className="mt-5 space-y-3">
-                <h2 className="text-2xl font-black tracking-tight">创建链路已经拆分完成</h2>
-                <p className="text-sm leading-7 text-slate-300">
-                  推荐路径是“创建方式页 → 模板中心或空白流程 → 设计器”。这样模板资产和流程编辑不再互相干扰。
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
-                <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
-                  <Layers3 className="h-4 w-4 text-sky-500" />
-                  模板中心
-                </div>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  负责模板浏览、分类筛选、预览与从模板创建流程。
-                </p>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 shadow-sm">
-                <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
-                  <PenTool className="h-4 w-4 text-amber-500" />
-                  流程设计器
-                </div>
-                <p className="mt-2 text-sm leading-6 text-slate-500">
-                  只负责编辑流程结构、节点属性、保存、发布与版本相关操作。
-                </p>
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-cyan-100 bg-cyan-50/70 px-4 py-4">
-              <div className="flex items-center gap-3 text-sm font-semibold text-slate-900">
-                <Workflow className="h-4 w-4 text-cyan-600" />
-                当前建议
-              </div>
-              <p className="mt-2 text-sm leading-6 text-slate-500">
-                如果不确定从哪里开始，先去模板中心看现有流程骨架，再决定是否需要从空白流程重新搭建。
-              </p>
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Button variant="secondary" onClick={handleSelectTemplateCreation}>
-                  优先去模板中心
-                </Button>
-                <Button variant="outline" onClick={handleSelectBlankCreation}>
-                  直接空白创建
-                </Button>
-              </div>
-            </div>
-          </WorkspaceSectionCard>
-        </div>
-      </WorkspacePageContent>
+        }
+      />
     </div>
   );
 };
