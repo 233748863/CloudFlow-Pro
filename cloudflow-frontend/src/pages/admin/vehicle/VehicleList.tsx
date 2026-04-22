@@ -157,10 +157,26 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
 );
 
 const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
-  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-    <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+      {label}
+    </div>
+    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">
+      {value}
+    </div>
   </div>
+);
+
+const DetailSection: React.FC<{
+  title: string;
+  children: React.ReactNode;
+}> = ({ title, children }) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+    </div>
+    <div>{children}</div>
+  </section>
 );
 
 const createVehicleForm = (): Partial<SysVehicle> => ({
@@ -373,18 +389,14 @@ const VehicleList: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <Car className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Vehicles
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           车辆管理
         </h1>
       </div>
 
       <TablePageLayout
         actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-medium text-slate-900 dark:text-slate-100">共 {stats?.total ?? total} 条</span>
               <span className="text-slate-500 dark:text-slate-400">可用 {stats?.available ?? 0}</span>
@@ -406,9 +418,9 @@ const VehicleList: React.FC = () => {
             </div>
           </div>
         )}
-        className="gap-4"
+        className="gap-3"
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -476,12 +488,14 @@ const VehicleList: React.FC = () => {
 
             <div className="px-4 pt-4">
               {selectedIds.length > 0 ? (
-                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3 text-sm text-slate-600 dark:border-slate-800 dark:text-slate-300">
-                  <span>已选中 {selectedIds.length} 辆车辆</span>
+                <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
+                    已选 {selectedIds.length} 辆
+                  </span>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="justify-start px-0 text-rose-600 hover:bg-transparent hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200"
+                    className="h-8 justify-start px-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-200"
                     onClick={() => openDeleteConfirm(selectedIds, `确认删除选中的 ${selectedIds.length} 辆车？`)}
                   >
                     <Trash2 size={14} className="mr-1.5" />
@@ -492,7 +506,7 @@ const VehicleList: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <Table className="min-w-[1040px]">
+              <Table className="min-w-[980px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                     <TableHead className="w-12 px-4 py-3">
@@ -586,7 +600,7 @@ const VehicleList: React.FC = () => {
                                 icon: <Eye size={14} />,
                                 onClick: () => handleViewDetail(vehicle),
                                 tone: 'neutral',
-                                className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
+                                className: 'rounded-lg',
                               },
                               {
                                 label: '编辑',
@@ -664,7 +678,6 @@ const VehicleList: React.FC = () => {
             <div className="space-y-2">
               <Label>车牌号</Label>
               <Input
-                placeholder="如：京A12345"
                 value={formData.licensePlate || ''}
                 onChange={(event) =>
                   setFormData({
@@ -678,7 +691,6 @@ const VehicleList: React.FC = () => {
             <div className="space-y-2">
               <Label>品牌</Label>
               <Input
-                placeholder="如：丰田"
                 value={formData.brand || ''}
                 onChange={(event) =>
                   setFormData({
@@ -692,7 +704,6 @@ const VehicleList: React.FC = () => {
             <div className="space-y-2">
               <Label>型号</Label>
               <Input
-                placeholder="如：凯美瑞"
                 value={formData.model || ''}
                 onChange={(event) =>
                   setFormData({
@@ -706,7 +717,6 @@ const VehicleList: React.FC = () => {
             <div className="space-y-2">
               <Label>颜色</Label>
               <Input
-                placeholder="如：白色"
                 value={formData.color || ''}
                 onChange={(event) =>
                   setFormData({
@@ -772,7 +782,6 @@ const VehicleList: React.FC = () => {
             <div className="space-y-2">
               <Label>停放位置</Label>
               <Input
-                placeholder="如：B1停车场A区"
                 value={formData.location || ''}
                 onChange={(event) =>
                   setFormData({
@@ -817,7 +826,6 @@ const VehicleList: React.FC = () => {
             <Label>备注</Label>
             <Textarea
               className="min-h-[120px] resize-none"
-              placeholder="其他备注信息"
               value={formData.remark || ''}
               onChange={(event) =>
                 setFormData({ ...formData, remark: event.target.value })
@@ -829,10 +837,11 @@ const VehicleList: React.FC = () => {
 
       <BaseDialog
         open={showDetailDialog && Boolean(detailVehicle)}
-        title="车辆详情"
+        title={detailVehicle?.licensePlate || '车辆详情'}
         onClose={() => setShowDetailDialog(false)}
-        maxWidthClassName="max-w-2xl"
-        bodyClassName="space-y-4"
+        maxWidthClassName="max-w-xl"
+        headerAside={detailVehicle ? <StatusBadge status={detailVehicle.status} /> : null}
+        bodyClassName="space-y-3"
         footer={(
           <>
             <Button variant="outline" onClick={() => setShowDetailDialog(false)}>
@@ -852,26 +861,14 @@ const VehicleList: React.FC = () => {
       >
         {detailVehicle ? (
           <>
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                <Car size={22} />
-              </div>
-              <div className="min-w-0">
-                <div className="font-mono text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  {detailVehicle.licensePlate}
-                </div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {detailVehicle.brand} {detailVehicle.model || ''}
-                </div>
-              </div>
-              <div className="ml-auto">
-                <StatusBadge status={detailVehicle.status} />
-              </div>
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <DetailSection title="基础信息">
+              <DetailField label="品牌" value={renderDetailValue(detailVehicle.brand)} />
+              <DetailField label="型号" value={renderDetailValue(detailVehicle.model)} />
               <DetailField label="颜色" value={renderDetailValue(detailVehicle.color)} />
               <DetailField label="座位数" value={`${detailVehicle.capacity} 座`} />
+            </DetailSection>
+
+            <DetailSection title="台账信息">
               <DetailField label="当前里程" value={`${detailVehicle.mileage?.toLocaleString() || 0} km`} />
               <DetailField label="停放位置" value={renderDetailValue(detailVehicle.location)} />
               <DetailField label="购买日期" value={renderDetailValue(detailVehicle.purchaseDate)} />
@@ -883,16 +880,20 @@ const VehicleList: React.FC = () => {
                     : '-'
                 }
               />
+            </DetailSection>
+
+            <DetailSection title="记录信息">
               <DetailField label="创建时间" value={renderDetailValue(detailVehicle.createTime)} />
               <DetailField label="更新时间" value={renderDetailValue(detailVehicle.updateTime)} />
-            </div>
+            </DetailSection>
 
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">备注</div>
-              <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
-                {detailVehicle.remark || '无'}
-              </div>
-            </div>
+            {detailVehicle.remark ? (
+              <DetailSection title="备注">
+                <div className="px-4 py-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {detailVehicle.remark}
+                </div>
+              </DetailSection>
+            ) : null}
           </>
         ) : null}
       </BaseDialog>
