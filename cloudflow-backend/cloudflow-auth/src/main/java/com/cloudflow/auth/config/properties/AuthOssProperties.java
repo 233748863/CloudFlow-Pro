@@ -6,10 +6,10 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 /**
- * Auth ??? OSS ???
+ * Auth 服务 OSS 配置。
  * <p>
- * ???? common-oss ????????? enabled / configKey?
- * ????????? MinIO???? OSS???? COS ????
+ * 在 common-oss 的基础上补充 enabled / configKey 配置，
+ * 用于在认证服务中复用 MinIO、阿里云 OSS、腾讯云 COS 等对象存储。
  */
 @Component
 @RefreshScope
@@ -17,12 +17,12 @@ import org.springframework.stereotype.Component;
 public class AuthOssProperties extends OssProperties {
 
     /**
-     * ???? OSS ???
+     * 是否启用 OSS 存储。
      */
     private Boolean enabled = false;
 
     /**
-     * ?? OSS ????
+     * 默认 OSS 配置键。
      */
     private String configKey = "default";
 

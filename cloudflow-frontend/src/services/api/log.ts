@@ -68,7 +68,7 @@ export interface AuditLogQuery {
   endTime?: string;
 }
 
-/** ???????? */
+/** 登录日志查询参数 */
 export interface LoginLogQuery {
   pageNum?: number;
   pageSize?: number;
@@ -122,24 +122,24 @@ export const deleteAuditLogs = (ids: number[]): Promise<string> => {
 };
 
 
-// ==================== ???? API ====================
+// ==================== 登录日志 API ====================
 
-/** ???????? */
+/** 分页查询登录日志 */
 export const getLoginLogPage = (params: LoginLogQuery): Promise<PageResult<SysLog>> => {
   return request.get<PageResult<SysLog>>('/auth/system/login-log/page', { params });
 };
 
-/** ???????? */
+/** 获取登录日志详情 */
 export const getLoginLogDetail = (id: number): Promise<SysLog> => {
   return request.get<SysLog>(`/auth/system/login-log/${id}`);
 };
 
-/** ?????????? */
+/** 删除登录日志（批量） */
 export const deleteLoginLogs = (ids: number[]): Promise<string> => {
   return request.delete<string>('/auth/system/login-log', { data: ids });
 };
 
-/** ???????????30?? */
+/** 获取登录日志趋势（最近30天） */
 export const getLoginLogTrend = (): Promise<LogTrendItem[]> => {
   return request.get<LogTrendItem[]>('/auth/system/login-log/trend');
 };

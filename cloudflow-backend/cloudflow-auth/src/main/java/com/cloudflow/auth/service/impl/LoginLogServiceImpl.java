@@ -17,12 +17,12 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * ?????????
+ * 登录日志服务实现。
  * <p>
- * ?????
- * 1. ?????? common-log ? sys_log ??????????
- * 2. ?? requestUri=/login ????????????????
- * 3. ??????????????????????????
+ * 职责：
+ * 1. 复用 common-log 的 sys_log 表作为登录日志存储。
+ * 2. 通过 requestUri=/login 与普通操作日志隔离。
+ * 3. 统一封装登录成功 / 失败日志的构建与发布。
  */
 @Slf4j
 @Service
@@ -30,6 +30,8 @@ import java.util.Map;
 public class LoginLogServiceImpl implements LoginLogService {
 
     private static final String LOGIN_URI = "/login";
+    private static final String LOGIN_SUCCESS_TITLE = "用户登录";
+    private static final String LOGIN_FAILURE_TITLE = "用户登录失败";
 
     private final ApplicationEventPublisher eventPublisher;
     private final TenantConfigProperties tenantConfigProperties;
@@ -37,12 +39,12 @@ public class LoginLogServiceImpl implements LoginLogService {
 
     @Override
     public void recordLoginSuccess(String username, Long tenantId, HttpServletRequest request, long costMs) {
-        publishLoginEvent(username, tenantId, request, LogTypeEnum.NORMAL.getType(), "????", null, costMs);
+        publishLoginEvent(username, tenantId, request, LogTypeEnum.NORMAL.getType(), LOGIN_SUCCESS_TITLE, null, costMs);
     }
 
     @Override
     public void recordLoginFailure(String username, Long tenantId, HttpServletRequest request, String reason, long costMs) {
-        publishLoginEvent(username, tenantId, request, LogTypeEnum.ERROR.getType(), "????", reason, costMs);
+        publishLoginEvent(username, tenantId, request, LogTypeEnum.ERROR.getType(), LOGIN_FAILURE_TITLE, reason, costMs);
     }
 
     @Override
@@ -70,12 +72,12 @@ public class LoginLogServiceImpl implements LoginLogService {
             sysLog.setException(exception);
             eventPublisher.publishEvent(new SysLogEvent(sysLog));
         } catch (Exception ex) {
-            log.warn("????????: username={}, reason={}", username, ex.getMessage());
+            log.warn("记录登录日志失败: username={}, reason={}", username, ex.getMessage());
         }
     }
 
     /**
-     * ???????????????????????????
+     * 仅保留安全字段，避免将密码等敏感信息写入日志。
      */
     private String buildSafeParams(String username) {
         try {

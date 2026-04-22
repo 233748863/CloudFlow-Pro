@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Ban,
   Edit,
+  Eye,
   History,
   Package,
   Plus,
@@ -85,6 +86,11 @@ interface ConfirmState {
   danger?: boolean;
 }
 
+interface DetailFieldProps {
+  label: string;
+  value: React.ReactNode;
+}
+
 const ALL_FILTER_VALUE = '__all__';
 
 const STATUS_META: Record<string, { label: string; className: string }> = {
@@ -145,6 +151,29 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
   </TableRow>
 );
 
+const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+      {label}
+    </div>
+    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">
+      {value}
+    </div>
+  </div>
+);
+
+const DetailSection: React.FC<{
+  title: string;
+  children: React.ReactNode;
+}> = ({ title, children }) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+    </div>
+    <div>{children}</div>
+  </section>
+);
+
 const formatAmount = (value?: number | null) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
     return '-';
@@ -176,6 +205,8 @@ const AssetList: React.FC = () => {
   const [stats, setStats] = useState<AssetStatistics | null>(null);
   const [showFormDialog, setShowFormDialog] = useState(false);
   const [editingAsset, setEditingAsset] = useState<Asset | null>(null);
+  const [assetFormSubmitting, setAssetFormSubmitting] = useState(false);
+  const [detailAsset, setDetailAsset] = useState<Asset | null>(null);
   const [qrAsset, setQrAsset] = useState<Asset | null>(null);
   const [logAsset, setLogAsset] = useState<Asset | null>(null);
   const [assetLogs, setAssetLogs] = useState<AssetLog[]>([]);
@@ -275,6 +306,7 @@ const AssetList: React.FC = () => {
   const handleFormSuccess = () => {
     setShowFormDialog(false);
     setEditingAsset(null);
+    setAssetFormSubmitting(false);
     void refreshPage();
   };
 
@@ -286,6 +318,10 @@ const AssetList: React.FC = () => {
   const handleEdit = (asset: Asset) => {
     setEditingAsset(asset);
     setShowFormDialog(true);
+  };
+
+  const handleShowDetail = (asset: Asset) => {
+    setDetailAsset(asset);
   };
 
   const openDeleteConfirm = (asset: Asset) => {
@@ -331,6 +367,7 @@ const AssetList: React.FC = () => {
         await returnAsset(currentState.asset.assetId);
         toast.success('归还成功');
       }
+      setDetailAsset(null);
       await refreshPage();
     } catch (error) {
       toast.error(getErrorMessage(error, currentState.type === 'delete' ? '删除失败' : '归还失败'));
@@ -362,6 +399,7 @@ const AssetList: React.FC = () => {
       setShowBorrowDialog(false);
       setBorrowTarget(null);
       setBorrowUserId('');
+      setDetailAsset(null);
       await refreshPage();
     } catch (error) {
       toast.error(getErrorMessage(error, '领用失败'));
@@ -394,6 +432,7 @@ const AssetList: React.FC = () => {
       setShowRemarkDialog(false);
       setRemarkAsset(null);
       setRemarkText('');
+      setDetailAsset(null);
       await refreshPage();
     } catch (error) {
       toast.error(getErrorMessage(error, '操作失败'));
@@ -460,23 +499,26 @@ const AssetList: React.FC = () => {
   const currentCategoryLabel = searchParams.category || '全部分类';
   const currentNameLabel = searchParams.name || '全部名称';
   const currentCodeLabel = searchParams.assetCode || '全部编码';
+  const renderDetailValue = (value?: string | number | null) => {
+    if (value === null || value === undefined || value === '') {
+      return '-';
+    }
+
+    return String(value);
+  };
 
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <Package className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Fixed Assets
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           固定资产管理
         </h1>
       </div>
 
       <TablePageLayout
-        className="gap-4"
+        className="gap-3"
         actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-medium text-slate-900 dark:text-slate-100">共 {stats?.total ?? total} 条</span>
               <span className="text-slate-500 dark:text-slate-400">闲置 {stats?.statusCount.idle ?? 0}</span>
@@ -499,7 +541,7 @@ const AssetList: React.FC = () => {
           </div>
         )}
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
             <div className="grid flex-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -591,7 +633,7 @@ const AssetList: React.FC = () => {
             </div>
 
             <div className="overflow-x-auto">
-              <Table className="min-w-[1040px]">
+              <Table className="min-w-[980px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">资产编码</TableHead>
@@ -637,23 +679,22 @@ const AssetList: React.FC = () => {
                         <TableCell className="px-4 py-3 text-right">
                           <TableRowActions
                             align="end"
-                            wrap
                             className="gap-1"
                             iconOnly
                             actions={[
+                              {
+                                label: '详情',
+                                icon: <Eye size={14} />,
+                                onClick: () => handleShowDetail(asset),
+                                tone: 'neutral',
+                                className: 'rounded-lg',
+                              },
                               {
                                 label: '编辑',
                                 icon: <Edit size={14} />,
                                 onClick: () => handleEdit(asset),
                                 tone: 'primary',
                                 className: 'rounded-lg',
-                              },
-                              {
-                                label: '标签',
-                                icon: <QrCode size={14} />,
-                                onClick: () => setQrAsset(asset),
-                                tone: 'neutral',
-                                className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
                               },
                               {
                                 label: '领用',
@@ -670,37 +711,6 @@ const AssetList: React.FC = () => {
                                 tone: 'success',
                                 hidden: asset.status !== '2',
                                 className: 'rounded-lg',
-                              },
-                              {
-                                label: '送修',
-                                icon: <Wrench size={14} />,
-                                onClick: () => openRemarkDialog('repair', asset),
-                                tone: 'warning',
-                                hidden: asset.status === '3' || asset.status === '4',
-                                className: 'rounded-lg',
-                              },
-                              {
-                                label: '报废',
-                                icon: <Ban size={14} />,
-                                onClick: () => openRemarkDialog('scrap', asset),
-                                tone: 'danger',
-                                hidden: asset.status === '4',
-                                className: 'rounded-lg',
-                              },
-                              {
-                                label: '删除',
-                                icon: <Trash2 size={14} />,
-                                onClick: () => openDeleteConfirm(asset),
-                                tone: 'danger',
-                                hidden: asset.status === '2',
-                                className: 'rounded-lg',
-                              },
-                              {
-                                label: '日志',
-                                icon: <History size={14} />,
-                                onClick: () => void handleShowLogs(asset),
-                                tone: 'neutral',
-                                className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
                               },
                             ]}
                           />
@@ -734,15 +744,172 @@ const AssetList: React.FC = () => {
         onClose={() => {
           setShowFormDialog(false);
           setEditingAsset(null);
+          setAssetFormSubmitting(false);
         }}
-        maxWidthClassName="max-w-3xl"
+        maxWidthClassName="max-w-2xl"
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowFormDialog(false);
+                setEditingAsset(null);
+                setAssetFormSubmitting(false);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              type="submit"
+              form="asset-form"
+              disabled={assetFormSubmitting}
+            >
+              {assetFormSubmitting ? '提交中...' : editingAsset ? '保存修改' : '确认新增'}
+            </Button>
+          </>
+        )}
       >
-        <AssetForm initialData={editingAsset} onSuccess={handleFormSuccess} />
+        <AssetForm
+          formId="asset-form"
+          initialData={editingAsset}
+          onSuccess={handleFormSuccess}
+          onSubmittingChange={setAssetFormSubmitting}
+        />
+      </BaseDialog>
+
+      <BaseDialog
+        open={Boolean(detailAsset)}
+        title={detailAsset?.name || '资产详情'}
+        onClose={() => setDetailAsset(null)}
+        maxWidthClassName="max-w-xl"
+        headerAside={detailAsset ? getStatusBadge(detailAsset.status) : null}
+        bodyClassName="space-y-3"
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => setDetailAsset(null)}>
+              关闭
+            </Button>
+            {detailAsset ? (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setDetailAsset(null);
+                  handleEdit(detailAsset);
+                }}
+              >
+                编辑
+              </Button>
+            ) : null}
+            {detailAsset?.status === '1' ? (
+              <Button
+                onClick={() => {
+                  setDetailAsset(null);
+                  openBorrowDialog(detailAsset);
+                }}
+              >
+                领用
+              </Button>
+            ) : null}
+            {detailAsset?.status === '2' ? (
+              <Button
+                onClick={() => {
+                  setDetailAsset(null);
+                  openReturnConfirm(detailAsset);
+                }}
+              >
+                归还
+              </Button>
+            ) : null}
+          </>
+        )}
+      >
+        {detailAsset ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setQrAsset(detailAsset)}
+              >
+                <QrCode size={14} className="mr-1.5" />
+                标签
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void handleShowLogs(detailAsset)}
+              >
+                <History size={14} className="mr-1.5" />
+                日志
+              </Button>
+              {detailAsset.status !== '3' && detailAsset.status !== '4' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDetailAsset(null);
+                    openRemarkDialog('repair', detailAsset);
+                  }}
+                >
+                  <Wrench size={14} className="mr-1.5" />
+                  送修
+                </Button>
+              ) : null}
+              {detailAsset.status !== '4' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setDetailAsset(null);
+                    openRemarkDialog('scrap', detailAsset);
+                  }}
+                >
+                  <Ban size={14} className="mr-1.5" />
+                  报废
+                </Button>
+              ) : null}
+              {detailAsset.status !== '2' ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/30 dark:hover:text-rose-200"
+                  onClick={() => {
+                    setDetailAsset(null);
+                    openDeleteConfirm(detailAsset);
+                  }}
+                >
+                  <Trash2 size={14} className="mr-1.5" />
+                  删除
+                </Button>
+              ) : null}
+            </div>
+
+            <DetailSection title="基础信息">
+              <DetailField label="资产编码" value={renderDetailValue(detailAsset.assetCode)} />
+              <DetailField label="分类" value={renderDetailValue(detailAsset.category)} />
+              <DetailField label="规格型号" value={renderDetailValue(detailAsset.model)} />
+            </DetailSection>
+
+            <DetailSection title="台账信息">
+              <DetailField label="价格" value={formatAmount(detailAsset.price)} />
+              <DetailField label="存放位置" value={renderDetailValue(detailAsset.location)} />
+              <DetailField label="购入日期" value={renderDetailValue(detailAsset.purchaseDate)} />
+            </DetailSection>
+
+            {detailAsset.remark ? (
+              <DetailSection title="备注">
+                <div className="px-4 py-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  {detailAsset.remark}
+                </div>
+              </DetailSection>
+            ) : null}
+          </>
+        ) : null}
       </BaseDialog>
 
       <BaseDialog
         open={Boolean(qrAsset)}
-        title="资产标签"
+        title={qrAsset?.assetCode || '资产标签'}
         onClose={() => setQrAsset(null)}
         maxWidthClassName="max-w-md"
         footer={(
@@ -758,7 +925,12 @@ const AssetList: React.FC = () => {
         )}
       >
         {qrAsset?.assetId ? (
-          <div className="flex flex-col items-center justify-center gap-4 py-2">
+          <div className="space-y-4 py-1">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+              <div className="font-medium text-slate-900 dark:text-slate-100">{qrAsset.name}</div>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{qrAsset.assetCode || '-'}</div>
+            </div>
+            <div className="flex flex-col items-center justify-center gap-4">
             <img
               src={getAssetQrCodeUrl(qrAsset.assetId)}
               alt="资产二维码"
@@ -766,6 +938,7 @@ const AssetList: React.FC = () => {
             />
             <div className="text-sm text-slate-500 dark:text-slate-400">
               {qrAsset.assetCode || '-'}
+            </div>
             </div>
           </div>
         ) : null}
@@ -786,21 +959,23 @@ const AssetList: React.FC = () => {
         ) : assetLogs.length === 0 ? (
           <InlineState title="暂无变动记录" className="py-8" icon={<History className="h-4 w-4" />} />
         ) : (
-          <div className="space-y-3">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
             {assetLogs.map((log, index) => (
               <div
                 key={log.logId || `${log.type || 'log'}-${index}`}
-                className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60"
+                className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800"
               >
-                <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-                  <History className="h-4 w-4 text-slate-400 dark:text-slate-500" />
-                  <span>{log.type || '资产变动'}</span>
-                  <span className="text-xs font-normal text-slate-500 dark:text-slate-400">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                    <History className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                    <span>{log.type || '资产变动'}</span>
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
                     {log.createTime || '-'}
-                  </span>
+                  </div>
                 </div>
                 {log.remark ? (
-                  <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                  <div className="mt-2 pl-6 text-sm leading-6 text-slate-600 dark:text-slate-300">
                     {log.remark}
                   </div>
                 ) : null}
@@ -837,14 +1012,20 @@ const AssetList: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">领用人 ID</Label>
-          <Input
-            value={borrowUserId}
-            onChange={(event) => setBorrowUserId(event.target.value)}
-            placeholder="请输入领用人 ID"
-            className="h-11"
-          />
+        <div className="space-y-4">
+          {borrowTarget ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+              {borrowTarget.name}
+            </div>
+          ) : null}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">领用人 ID</Label>
+            <Input
+              value={borrowUserId}
+              onChange={(event) => setBorrowUserId(event.target.value)}
+              className="h-11"
+            />
+          </div>
         </div>
       </BaseDialog>
 
@@ -878,14 +1059,20 @@ const AssetList: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-2">
-          <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">备注</Label>
-          <Textarea
-            value={remarkText}
-            onChange={(event) => setRemarkText(event.target.value)}
-            placeholder={remarkAction === 'repair' ? '填写送修原因' : '填写报废原因'}
-            className="min-h-[120px]"
-          />
+        <div className="space-y-4">
+          {remarkAsset ? (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+              {remarkAsset.name}
+            </div>
+          ) : null}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">备注</Label>
+            <Textarea
+              value={remarkText}
+              onChange={(event) => setRemarkText(event.target.value)}
+              className="min-h-[120px]"
+            />
+          </div>
         </div>
       </BaseDialog>
 

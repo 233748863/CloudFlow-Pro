@@ -26,7 +26,7 @@ public class SysFile {
     private String url;
 
     /**
-     * ?????LOCAL/OSS??
+     * 存储类型：LOCAL/OSS。
      */
     private String storageType;
 

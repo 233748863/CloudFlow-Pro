@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Edit, Plus, RefreshCw, Search, Settings2, Trash2 } from 'lucide-react';
+import { Edit, Plus, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   addConfig,
@@ -54,6 +54,7 @@ const DEFAULT_FORM_DATA: SysConfig = {
   remark: '',
 };
 
+const DEFAULT_TYPE_VALUE = '__all__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const getConfigTypeBadgeClassName = (configType: string) =>
@@ -131,7 +132,6 @@ export const ConfigList = () => {
   const [pendingDeleteConfig, setPendingDeleteConfig] = useState<SysConfig | null>(null);
   const [formData, setFormData] = useState<SysConfig>(DEFAULT_FORM_DATA);
 
-  // 统一兼容后端 rows / records / array 三种返回，保证分页列表语法稳定。
   const normalizeConfigListResponse = (response: any) => {
     if (Array.isArray(response)) {
       return { rows: response as SysConfig[], total: response.length };
@@ -193,7 +193,13 @@ export const ConfigList = () => {
   const globalCount = configs.length - tenantScopedCount;
   const hasActiveFilters = Boolean(query.configName || query.configKey || query.configType);
   const isEdit = Boolean(editingConfig);
-  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+
+  const filterSummary = useMemo(() => {
+    const nameLabel = query.configName || '全部参数';
+    const keyLabel = query.configKey || '全部键名';
+    const typeLabel = !query.configType ? '全部类型' : query.configType === 'Y' ? '内置' : '自定义';
+    return `${nameLabel} / ${keyLabel} / ${typeLabel}`;
+  }, [query.configKey, query.configName, query.configType]);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -328,13 +334,33 @@ export const ConfigList = () => {
   return (
     <>
       <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
+        className="gap-3"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
+              <span className="text-slate-500 dark:text-slate-400">当前页 {configs.length} 条</span>
+              <span className="text-slate-500 dark:text-slate-400">内置 {builtInCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">自定义 {customCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">全局 {globalCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">租户 {tenantScopedCount}</span>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={() => handleOpenModal()}>
+                <Plus size={15} />
+                新增参数
+              </Button>
+            </div>
+          </div>
+        )}
+        filters={(
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative w-full sm:w-52">
                 <Search
                   size={16}
@@ -363,16 +389,19 @@ export const ConfigList = () => {
 
               <div className="w-full sm:w-36">
                 <Select
-                  value={filters.configType}
+                  value={filters.configType || DEFAULT_TYPE_VALUE}
                   onValueChange={(value) =>
-                    setFilters((current) => ({ ...current, configType: value }))
+                    setFilters((current) => ({
+                      ...current,
+                      configType: value === DEFAULT_TYPE_VALUE ? '' : value,
+                    }))
                   }
                 >
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="全部类型" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">全部类型</SelectItem>
+                    <SelectItem value={DEFAULT_TYPE_VALUE}>全部类型</SelectItem>
                     <SelectItem value="Y">内置</SelectItem>
                     <SelectItem value="N">自定义</SelectItem>
                   </SelectContent>
@@ -385,167 +414,138 @@ export const ConfigList = () => {
 
               {hasActiveFilters ? (
                 <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                  <RotateCcw size={14} />
                   重置
                 </Button>
               ) : null}
             </form>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                新增参数
-              </Button>
-            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{filterSummary}</div>
           </div>
-        }
-        table={
+        )}
+        table={(
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
               <div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   参数配置列表
                 </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  按源码后台列表页骨架重组，统一筛选条、表格密度、分页和扁平弹窗。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {configs.length} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  内置 {builtInCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  自定义 {customCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  全局 {globalCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  租户 {tenantScopedCount}
-                </span>
+                {hasActiveFilters ? (
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {filterSummary}
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            <Table className="min-w-[1080px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>参数名称</TableHead>
-                  <TableHead>参数键名</TableHead>
-                  <TableHead>参数键值</TableHead>
-                  <TableHead>类型</TableHead>
-                  <TableHead>作用域</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableActionHead className="w-32">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={8} title="正在加载参数配置..." loading />
-                ) : error ? (
-                  <TableStateRow
-                    colSpan={8}
-                    title="参数配置加载失败"
-                    description={error}
-                  />
-                ) : configs.length === 0 ? (
-                  <TableStateRow
-                    colSpan={8}
-                    title="暂无参数配置"
-                    description="可以创建参数键值，用于系统级和租户级配置。"
-                  />
-                ) : (
-                  configs.map((config) => (
-                    <TableRow key={config.configId}>
-                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
-                        {config.configId}
-                      </TableCell>
-                      <TableCell>
-                        <div className="min-w-0">
-                          <div className="font-medium text-slate-900 dark:text-slate-100">
-                            {config.configName}
-                          </div>
-                          {config.remark ? (
-                            <div
-                              className="mt-1 max-w-[260px] truncate text-xs text-slate-500 dark:text-slate-400"
-                              title={config.remark}
-                            >
-                              {config.remark}
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1080px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>参数名称</TableHead>
+                    <TableHead>参数键名</TableHead>
+                    <TableHead>参数键值</TableHead>
+                    <TableHead>类型</TableHead>
+                    <TableHead>作用域</TableHead>
+                    <TableHead>创建时间</TableHead>
+                    <TableActionHead className="w-32">操作</TableActionHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableStateRow colSpan={8} title="正在加载参数配置..." loading />
+                  ) : error ? (
+                    <TableStateRow
+                      colSpan={8}
+                      title="参数配置加载失败"
+                      description={error}
+                    />
+                  ) : configs.length === 0 ? (
+                    <TableStateRow colSpan={8} title="暂无参数配置" />
+                  ) : (
+                    configs.map((config) => (
+                      <TableRow key={config.configId}>
+                        <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                          {config.configId}
+                        </TableCell>
+                        <TableCell>
+                          <div className="min-w-0">
+                            <div className="font-medium text-slate-900 dark:text-slate-100">
+                              {config.configName}
                             </div>
-                          ) : null}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <code className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                          {config.configKey}
-                        </code>
-                      </TableCell>
-                      <TableCell className="max-w-[260px]">
-                        <span
-                          className="block truncate text-sm text-slate-600 dark:text-slate-300"
-                          title={config.configValue}
-                        >
-                          {config.configValue}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                            getConfigTypeBadgeClassName(config.configType),
-                          )}
-                        >
-                          {config.configType === 'Y' ? '内置' : '自定义'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                            getConfigScopeBadgeClassName(config.configScope),
-                          )}
-                        >
-                          {config.configScope === '0' ? '全局' : '租户'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
-                        {config.createTime || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <RowActionButton
-                            label="编辑参数"
-                            icon={<Edit size={15} />}
-                            onClick={() => handleOpenModal(config)}
-                          />
-                          {config.configType !== 'Y' ? (
+                            {config.remark ? (
+                              <div
+                                className="mt-1 max-w-[260px] truncate text-xs text-slate-500 dark:text-slate-400"
+                                title={config.remark}
+                              >
+                                {config.remark}
+                              </div>
+                            ) : null}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <code className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                            {config.configKey}
+                          </code>
+                        </TableCell>
+                        <TableCell className="max-w-[260px]">
+                          <span
+                            className="block truncate text-sm text-slate-600 dark:text-slate-300"
+                            title={config.configValue}
+                          >
+                            {config.configValue}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                              getConfigTypeBadgeClassName(config.configType),
+                            )}
+                          >
+                            {config.configType === 'Y' ? '内置' : '自定义'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                              getConfigScopeBadgeClassName(config.configScope),
+                            )}
+                          >
+                            {config.configScope === '0' ? '全局' : '租户'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                          {config.createTime || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
                             <RowActionButton
-                              label="删除参数"
-                              icon={<Trash2 size={15} />}
-                              onClick={() => setPendingDeleteConfig(config)}
-                              tone="danger"
+                              label="编辑参数"
+                              icon={<Edit size={15} />}
+                              onClick={() => handleOpenModal(config)}
                             />
-                          ) : null}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                            {config.configType !== 'Y' ? (
+                              <RowActionButton
+                                label="删除参数"
+                                icon={<Trash2 size={15} />}
+                                onClick={() => setPendingDeleteConfig(config)}
+                                tone="danger"
+                              />
+                            ) : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </>
-        }
-        pagination={
+        )}
+        pagination={(
           total > 0 ? (
             <Pagination
               total={total}
@@ -563,25 +563,24 @@ export const ConfigList = () => {
               }
             />
           ) : null
-        }
+        )}
       />
 
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑参数' : '新增参数'}
-        description="维护参数名称、键名、键值、类型、作用域和备注。"
         onClose={handleCloseModal}
         maxWidthClassName="max-w-2xl"
-        footer={
-          <div className="flex justify-end gap-3">
+        footer={(
+          <>
             <Button variant="outline" onClick={handleCloseModal}>
               取消
             </Button>
             <Button onClick={() => void 0} type="submit" form="config-form">
               {isEdit ? '保存修改' : '创建参数'}
             </Button>
-          </div>
-        }
+          </>
+        )}
       >
         <form id="config-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -691,7 +690,7 @@ export const ConfigList = () => {
                   remark: event.target.value,
                 }))
               }
-              placeholder="补充参数用途、变更说明或维护备注"
+              placeholder="补充参数用途或维护说明"
             />
           </div>
         </form>

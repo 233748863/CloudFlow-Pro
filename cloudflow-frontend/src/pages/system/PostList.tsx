@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Edit, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
+import { Edit, Plus, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { addPost, deletePost, getPostList, updatePost, type SysPost } from '../../services/api/system';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
@@ -46,6 +46,7 @@ const DEFAULT_FORM_DATA: SysPost = {
   remark: '',
 };
 
+const DEFAULT_STATUS_VALUE = '__all__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const getStatusBadgeClassName = (status: string) =>
@@ -118,7 +119,6 @@ export const PostList = () => {
   const [pendingDeletePost, setPendingDeletePost] = useState<SysPost | null>(null);
   const [formData, setFormData] = useState<SysPost>(DEFAULT_FORM_DATA);
 
-  // 统一兼容不同后端分页结构，保证表格和分页都以正式列表接口为准。
   const normalizePostListResponse = (response: any) => {
     if (Array.isArray(response)) {
       return { rows: response as SysPost[], total: response.length };
@@ -168,12 +168,18 @@ export const PostList = () => {
     void fetchPosts();
   }, [query]);
 
-  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
   const isEdit = Boolean(editingPost);
   const hasActiveFilters = Boolean(query.postCode || query.postName || query.status);
 
   const activeCount = useMemo(() => posts.filter((item) => item.status === '0').length, [posts]);
   const disabledCount = posts.length - activeCount;
+
+  const filterSummary = useMemo(() => {
+    const nameLabel = query.postName || '全部岗位';
+    const codeLabel = query.postCode || '全部编码';
+    const statusLabel = !query.status ? '全部状态' : query.status === '0' ? '正常' : '停用';
+    return `${nameLabel} / ${codeLabel} / ${statusLabel}`;
+  }, [query.postCode, query.postName, query.status]);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -300,13 +306,31 @@ export const PostList = () => {
   return (
     <>
       <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
+        className="gap-3"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
+              <span className="text-slate-500 dark:text-slate-400">当前页 {posts.length} 条</span>
+              <span className="text-slate-500 dark:text-slate-400">正常 {activeCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">停用 {disabledCount}</span>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={() => handleOpenModal()}>
+                <Plus size={15} />
+                新增岗位
+              </Button>
+            </div>
+          </div>
+        )}
+        filters={(
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative w-full sm:w-52">
                 <Search
                   size={16}
@@ -317,7 +341,7 @@ export const PostList = () => {
                   onChange={(event) =>
                     setFilters((current) => ({ ...current, postName: event.target.value }))
                   }
-                  placeholder="搜索岗位名称"
+                  placeholder="按岗位名称搜索"
                   className="h-10 pl-10"
                 />
               </div>
@@ -335,16 +359,19 @@ export const PostList = () => {
 
               <div className="w-full sm:w-36">
                 <Select
-                  value={filters.status}
+                  value={filters.status || DEFAULT_STATUS_VALUE}
                   onValueChange={(value) =>
-                    setFilters((current) => ({ ...current, status: value }))
+                    setFilters((current) => ({
+                      ...current,
+                      status: value === DEFAULT_STATUS_VALUE ? '' : value,
+                    }))
                   }
                 >
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="全部状态" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">全部状态</SelectItem>
+                    <SelectItem value={DEFAULT_STATUS_VALUE}>全部状态</SelectItem>
                     <SelectItem value="0">正常</SelectItem>
                     <SelectItem value="1">停用</SelectItem>
                   </SelectContent>
@@ -357,127 +384,104 @@ export const PostList = () => {
 
               {hasActiveFilters ? (
                 <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                  <RotateCcw size={14} />
                   重置
                 </Button>
               ) : null}
             </form>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                新增岗位
-              </Button>
-            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{filterSummary}</div>
           </div>
-        }
-        table={
+        )}
+        table={(
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
               <div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   岗位列表
                 </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  按源码后台列表页骨架重组，保留轻量筛选、轻量表头和行内操作。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {posts.length} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  正常 {activeCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  停用 {disabledCount}
-                </span>
+                {hasActiveFilters ? (
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {filterSummary}
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            <Table className="min-w-[920px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>ID</TableHead>
-                  <TableHead>岗位编码</TableHead>
-                  <TableHead>岗位名称</TableHead>
-                  <TableHead>排序</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableActionHead className="w-32">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={7} title="正在加载岗位列表..." loading />
-                ) : error ? (
-                  <TableStateRow
-                    colSpan={7}
-                    title="岗位列表加载失败"
-                    description={error}
-                  />
-                ) : posts.length === 0 ? (
-                  <TableStateRow
-                    colSpan={7}
-                    title="暂无岗位数据"
-                    description="可以先创建岗位，再分配到组织或员工信息中。"
-                  />
-                ) : (
-                  posts.map((post) => (
-                    <TableRow key={post.postId}>
-                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
-                        {post.postId}
-                      </TableCell>
-                      <TableCell>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">
-                          {post.postCode}
-                        </span>
-                      </TableCell>
-                      <TableCell>{post.postName}</TableCell>
-                      <TableCell>{post.postSort}</TableCell>
-                      <TableCell>
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                            getStatusBadgeClassName(post.status),
-                          )}
-                        >
-                          {post.status === '0' ? '正常' : '停用'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-slate-500 dark:text-slate-400">
-                        {post.createTime || '-'}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <RowActionButton
-                            label="编辑岗位"
-                            icon={<Edit size={15} />}
-                            onClick={() => handleOpenModal(post)}
-                          />
-                          <RowActionButton
-                            label="删除岗位"
-                            icon={<Trash2 size={15} />}
-                            onClick={() => setPendingDeletePost(post)}
-                            tone="danger"
-                          />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+            <div className="overflow-x-auto">
+              <Table className="min-w-[920px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>ID</TableHead>
+                    <TableHead>岗位编码</TableHead>
+                    <TableHead>岗位名称</TableHead>
+                    <TableHead>排序</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead>创建时间</TableHead>
+                    <TableActionHead className="w-32">操作</TableActionHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableStateRow colSpan={7} title="正在加载岗位列表..." loading />
+                  ) : error ? (
+                    <TableStateRow
+                      colSpan={7}
+                      title="岗位列表加载失败"
+                      description={error}
+                    />
+                  ) : posts.length === 0 ? (
+                    <TableStateRow colSpan={7} title="暂无岗位数据" />
+                  ) : (
+                    posts.map((post) => (
+                      <TableRow key={post.postId}>
+                        <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                          {post.postId}
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">
+                            {post.postCode}
+                          </span>
+                        </TableCell>
+                        <TableCell>{post.postName}</TableCell>
+                        <TableCell>{post.postSort}</TableCell>
+                        <TableCell>
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                              getStatusBadgeClassName(post.status),
+                            )}
+                          >
+                            {post.status === '0' ? '正常' : '停用'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-sm text-slate-500 dark:text-slate-400">
+                          {post.createTime || '-'}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <RowActionButton
+                              label="编辑岗位"
+                              icon={<Edit size={15} />}
+                              onClick={() => handleOpenModal(post)}
+                            />
+                            <RowActionButton
+                              label="删除岗位"
+                              icon={<Trash2 size={15} />}
+                              onClick={() => setPendingDeletePost(post)}
+                              tone="danger"
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </>
-        }
-        pagination={
+        )}
+        pagination={(
           total > 0 ? (
             <Pagination
               total={total}
@@ -495,25 +499,24 @@ export const PostList = () => {
               }
             />
           ) : null
-        }
+        )}
       />
 
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑岗位' : '新增岗位'}
-        description="维护岗位编码、岗位名称、排序、状态和补充说明。"
         onClose={handleCloseModal}
         maxWidthClassName="max-w-2xl"
-        footer={
-          <div className="flex justify-end gap-3">
+        footer={(
+          <>
             <Button variant="outline" onClick={handleCloseModal}>
               取消
             </Button>
             <Button onClick={() => void 0} type="submit" form="post-form">
               {isEdit ? '保存修改' : '创建岗位'}
             </Button>
-          </div>
-        }
+          </>
+        )}
       >
         <form id="post-form" onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
@@ -598,7 +601,7 @@ export const PostList = () => {
                   remark: event.target.value,
                 }))
               }
-              placeholder="补充岗位职责、适用范围或维护说明"
+              placeholder="补充岗位职责或适用范围"
             />
           </div>
         </form>

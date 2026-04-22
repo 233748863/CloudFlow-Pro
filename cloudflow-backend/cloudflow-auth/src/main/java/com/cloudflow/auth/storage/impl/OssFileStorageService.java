@@ -17,9 +17,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.Duration;
 
 /**
- * OSS ???????
+ * OSS 文件存储实现。
  * <p>
- * ?? S3 ???????MinIO???? OSS???? COS??????
+ * 基于 S3 兼容接口，支持 MinIO、阿里云 OSS、腾讯云 COS 等对象存储。
  */
 @Service
 @RequiredArgsConstructor
@@ -62,7 +62,7 @@ public class OssFileStorageService implements FileStorageService {
             int expireMinutes = fileStorageProperties.getPresignedExpireMinutes() == null
                 ? 30
                 : Math.max(fileStorageProperties.getPresignedExpireMinutes(), 1);
-            // ????????????????????? URL ?????????
+            // 私有读场景生成带时效的预签名 URL，避免直接暴露对象地址。
             return client.getPresignedUrl(filePath, Duration.ofMinutes(expireMinutes));
         }
         return client.getUrl() + "/" + filePath;
@@ -70,7 +70,7 @@ public class OssFileStorageService implements FileStorageService {
 
     private OssClient getClient() {
         if (!Boolean.TRUE.equals(authOssProperties.getEnabled())) {
-            throw new IllegalStateException("OSS ?????????? cloudflow.oss.enabled ???????");
+            throw new IllegalStateException("OSS 存储未启用，请先开启 cloudflow.oss.enabled 配置");
         }
         validateRequiredConfig();
         OssFactory.register(authOssProperties.getConfigKey(), authOssProperties);
@@ -79,7 +79,7 @@ public class OssFileStorageService implements FileStorageService {
     }
 
     /**
-     * ?????????????????????????
+     * 校验创建 OSS 客户端所需的关键配置。
      */
     private void validateRequiredConfig() {
         if (StrUtil.hasBlank(
@@ -88,7 +88,7 @@ public class OssFileStorageService implements FileStorageService {
             authOssProperties.getSecretKey(),
             authOssProperties.getBucketName(),
             authOssProperties.getRegion())) {
-            throw new IllegalStateException("OSS ????????? endpoint/accessKey/secretKey/bucketName/region");
+            throw new IllegalStateException("OSS 存储配置不完整，请检查 endpoint/accessKey/secretKey/bucketName/region");
         }
     }
 

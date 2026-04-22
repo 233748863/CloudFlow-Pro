@@ -8,7 +8,6 @@ import {
   RotateCcw,
   Search,
   UserCheck,
-  Users,
   XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -231,55 +230,33 @@ export const VisitorPage: React.FC = () => {
 
   const pendingCount = useMemo(() => list.filter((item) => item.status === 'PENDING').length, [list]);
   const arrivedCount = useMemo(() => list.filter((item) => item.status === 'ARRIVED').length, [list]);
-  const completedCount = useMemo(
-    () => list.filter((item) => item.status === 'COMPLETED').length,
-    [list],
-  );
-  const cancelledCount = useMemo(
-    () => list.filter((item) => item.status === 'CANCELLED').length,
-    [list],
-  );
+  const completedCount = useMemo(() => list.filter((item) => item.status === 'COMPLETED').length, [list]);
+  const cancelledCount = useMemo(() => list.filter((item) => item.status === 'CANCELLED').length, [list]);
 
   const currentStatusLabel = searchParams.status
     ? STATUS_MAP[searchParams.status] || searchParams.status
     : '全部状态';
   const hasActiveFilters = Boolean(searchParams.status || searchParams.visitorName || searchParams.visitDate);
-  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
 
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <UserCheck className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Visitor Booking
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           访客预约
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          统一查看预约状态、签到进度和来访记录，页面结构直接收敛到参考后台列表页语法。
-        </p>
       </div>
 
       <TablePageLayout
-        className="gap-4"
+        className="gap-3"
         actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              当前结果 {total}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              待确认 {pendingCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              已到访 {arrivedCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              已离场 {completedCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              已取消 {cancelledCount}
-            </span>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
+              <span className="text-slate-500 dark:text-slate-400">待确认 {pendingCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">已到访 {arrivedCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">已离场 {completedCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">已取消 {cancelledCount}</span>
+            </div>
 
             <div className="ml-auto flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
@@ -294,7 +271,7 @@ export const VisitorPage: React.FC = () => {
           </div>
         )}
         filters={(
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -344,7 +321,13 @@ export const VisitorPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {hasActiveFilters
+                ? `${currentStatusLabel} / ${searchParams.visitorName || '全部访客'} / ${searchParams.visitDate || '全部日期'}`
+                : '全部预约'}
+            </div>
+
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:justify-start">
               <Button variant="outline" size="sm" onClick={applySearch}>
                 <Search size={14} className="mr-1.5" />
                 搜索
@@ -361,20 +344,18 @@ export const VisitorPage: React.FC = () => {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">预约列表</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {hasActiveFilters
-                      ? `${currentStatusLabel} · ${searchParams.visitorName || '全部访客'}`
-                      : '当前显示全部访客预约'}
-                  </div>
+                  {hasActiveFilters ? (
+                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {currentStatusLabel} / {searchParams.visitorName || '全部访客'}
+                    </div>
+                  ) : null}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  第 {searchParams.pageNum} / {totalPages} 页 · {total} 条
-                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">共 {total} 条</div>
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <Table className="min-w-[1100px]">
+              <Table className="min-w-[1020px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">访客</TableHead>
@@ -392,11 +373,7 @@ export const VisitorPage: React.FC = () => {
                   {loading ? (
                     <TableStateRow colSpan={8} title="正在加载访客记录..." loading />
                   ) : list.length === 0 ? (
-                    <TableStateRow
-                      colSpan={8}
-                      title="暂无访客记录"
-                      description="新增预约后，这里会展示被访人、通行码、签到签退和取消动作。"
-                    />
+                    <TableStateRow colSpan={8} title="暂无访客记录" />
                   ) : (
                     list.map((item) => {
                       const tone = getStatusTone(item.status || 'PENDING');
@@ -445,34 +422,39 @@ export const VisitorPage: React.FC = () => {
                             <TableRowActions
                               align="end"
                               className="gap-1"
+                              iconOnly
                               actions={[
                                 {
                                   label: '确认',
                                   icon: <CheckCircle size={14} />,
                                   onClick: () => handleConfirm(item.visitorId!),
-                                  tone: 'primary',
+                                  tone: 'neutral',
                                   hidden: item.status !== 'PENDING',
+                                  className: 'rounded-lg',
                                 },
                                 {
                                   label: '签到',
                                   icon: <LogIn size={14} />,
                                   onClick: () => handleCheckIn(item.visitorId!),
-                                  tone: 'success',
+                                  tone: 'neutral',
                                   hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                                  className: 'rounded-lg',
                                 },
                                 {
                                   label: '签退',
                                   icon: <LogOut size={14} />,
                                   onClick: () => handleCheckOut(item.visitorId!),
-                                  tone: 'warning',
+                                  tone: 'neutral',
                                   hidden: item.status !== 'ARRIVED',
+                                  className: 'rounded-lg',
                                 },
                                 {
                                   label: '取消',
                                   icon: <XCircle size={14} />,
                                   onClick: () => setCancelTarget(item),
-                                  tone: 'danger',
+                                  tone: 'neutral',
                                   hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                                  className: 'rounded-lg',
                                 },
                               ]}
                             />
@@ -504,21 +486,27 @@ export const VisitorPage: React.FC = () => {
       <BaseDialog
         open={showDialog}
         title="新增访客预约"
-        description="填写来访人、单位、日期与被访人信息，形成完整预约记录。"
-        onClose={() => setShowDialog(false)}
-        maxWidthClassName="max-w-3xl"
+        onClose={() => {
+          setShowDialog(false);
+          setFormData(createDefaultForm());
+        }}
+        maxWidthClassName="max-w-2xl"
         panelClassName="max-h-[92vh]"
         bodyClassName="max-h-[72vh] overflow-y-auto"
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDialog(false);
+                setFormData(createDefaultForm());
+              }}
+            >
               取消
             </Button>
-            <Button onClick={handleSave}>
-              保存
-            </Button>
-          </div>
-        }
+            <Button onClick={handleSave}>保存</Button>
+          </>
+        )}
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2">
@@ -615,7 +603,7 @@ export const VisitorPage: React.FC = () => {
       <ConfirmDialog
         open={Boolean(cancelTarget)}
         title="取消预约"
-        message={cancelTarget ? `确定取消“${cancelTarget.visitorName}”的来访预约吗？` : '确定取消这条预约吗？'}
+        message={cancelTarget ? `确定取消“${cancelTarget.visitorName}”的预约吗？` : '确定取消这条预约吗？'}
         confirmText="取消预约"
         danger
         onCancel={() => setCancelTarget(null)}

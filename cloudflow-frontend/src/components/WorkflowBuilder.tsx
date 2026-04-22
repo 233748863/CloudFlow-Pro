@@ -3489,7 +3489,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     );
   }, [defaultGraphModel, graphModel]);
 
-  // ? ref ???? graphModel????????????????
+  // 用 ref 保存最新 graphModel，避免回调闭包读取到旧状态。
   const graphModelRef = useRef(graphModel);
   graphModelRef.current = graphModel;
   const replaceGraphState = useCallback(

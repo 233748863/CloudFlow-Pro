@@ -45,10 +45,10 @@ public class SysFileServiceImpl implements ISysFileService {
 
             if (tenantId != null && !sysTenantService.hasAvailableStorage(tenantId, size)) {
                 sysTenantService.refreshTenantStorageSummary(tenantId);
-                throw new RuntimeException("??????????????????????");
+                throw new RuntimeException("租户可用存储空间不足，无法上传当前文件");
             }
 
-            // ?????????????????????????????/OSS ???
+            // 根据当前配置自动选择本地存储或 OSS 存储实现。
             FileStorageService storageService = storageRegistry.getCurrentService();
             StoredFileInfo storedFileInfo = storageService.store(file);
 
@@ -70,14 +70,14 @@ public class SysFileServiceImpl implements ISysFileService {
                 sysTenantService.refreshTenantStorageSummary(tenantId);
             }
 
-            // ?????????????????????????????
+            // 补齐可访问地址，前端统一读取 url 字段。
             fillAccessibleUrl(sysFile);
-            log.info("??????: {}, ??: {}??, ??ID: {}, ????: {}", originalFilename, size, tenantId, sysFile.getStorageType());
+            log.info("文件上传成功: {}, 大小: {}字节, 租户ID: {}, 存储类型: {}", originalFilename, size, tenantId, sysFile.getStorageType());
             return sysFile;
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("??????: " + e.getMessage(), e);
+            throw new RuntimeException("文件上传失败: " + e.getMessage(), e);
         }
     }
 
@@ -111,7 +111,7 @@ public class SysFileServiceImpl implements ISysFileService {
 
             FileStorageType storageType = storageRegistry.resolveType(existingFile.getStorageType());
             FileStorageService storageService = storageRegistry.getService(storageType);
-            // ????????????????????????????????????
+            // 同步删除底层存储文件，避免数据库删除后遗留脏文件。
             storageService.delete(existingFile.getFilePath());
 
             SysFile updateFile = new SysFile();
@@ -121,7 +121,7 @@ public class SysFileServiceImpl implements ISysFileService {
 
             if (existingFile.getTenantId() != null) {
                 sysTenantService.refreshTenantStorageSummary(existingFile.getTenantId());
-                log.info("????????????: tenantId={}, fileId={}, storageType={}", existingFile.getTenantId(), id, storageType.name());
+                log.info("文件删除后刷新租户存储: tenantId={}, fileId={}, storageType={}", existingFile.getTenantId(), id, storageType.name());
             }
         }
     }
@@ -145,7 +145,7 @@ public class SysFileServiceImpl implements ISysFileService {
                 file.setUrl(accessibleUrl);
             }
         } catch (Exception ex) {
-            log.warn("??????????????????: fileId={}, storageType={}, reason={}", file.getFileId(), storageType.name(), ex.getMessage());
+            log.warn("解析文件访问地址失败: fileId={}, storageType={}, reason={}", file.getFileId(), storageType.name(), ex.getMessage());
         }
     }
 }

@@ -13,9 +13,9 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 
 /**
- * ?????????
+ * 本地文件存储实现。
  * <p>
- * ?????????????cloudflow.profile/upload?
+ * 文件保存到本机目录 cloudflow.profile/upload 下。
  */
 @Service
 public class LocalFileStorageService implements FileStorageService {

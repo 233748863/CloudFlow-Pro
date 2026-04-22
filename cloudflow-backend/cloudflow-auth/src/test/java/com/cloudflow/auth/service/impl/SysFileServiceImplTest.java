@@ -166,7 +166,7 @@ class SysFileServiceImplTest {
     }
 
     /**
-     * ????????????????? spring-test?
+     * 简易 MultipartFile 测试桩，避免引入额外的 spring-test 依赖。
      */
     private static class SimpleMultipartFile implements MultipartFile {
 
@@ -217,7 +217,7 @@ class SysFileServiceImplTest {
 
         @Override
         public void transferTo(java.io.File dest) throws IOException {
-            throw new UnsupportedOperationException("??????? transferTo");
+            throw new UnsupportedOperationException("测试桩未实现 transferTo");
         }
     }
 }

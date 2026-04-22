@@ -3,7 +3,7 @@ package com.cloudflow.auth.domain.dto;
 import java.io.Serializable;
 
 /**
- * ?????????
+ * 租户统计结果。
  */
 public class TenantStatisticsDTO implements Serializable {
 

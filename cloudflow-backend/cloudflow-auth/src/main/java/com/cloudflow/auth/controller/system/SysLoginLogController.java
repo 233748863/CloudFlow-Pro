@@ -21,10 +21,10 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
- * ????????
+ * 登录日志控制器。
  * <p>
- * ?? sys_log ????? requestUri=/login ????
- * ?????????????????
+ * 基于 sys_log 表中 requestUri=/login 的记录进行查询，
+ * 用于独立展示登录日志列表、详情和趋势统计。
  */
 @RestController
 @RequestMapping("/system/login-log")
@@ -72,7 +72,7 @@ public class SysLoginLogController {
     public R getById(@PathVariable("id") Long id) {
         SysLogEntity log = sysLogMapper.selectById(id);
         if (!loginLogService.isLoginLog(log)) {
-            return R.fail("???????");
+            return R.fail("登录日志不存在");
         }
         return R.ok(log);
     }
@@ -80,13 +80,13 @@ public class SysLoginLogController {
     @DeleteMapping
     public R delete(@RequestBody List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
-            return R.fail("???????????");
+            return R.fail("请选择要删除的登录日志");
         }
         LambdaQueryWrapper<SysLogEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.in(SysLogEntity::getLogId, ids)
             .eq(SysLogEntity::getRequestUri, "/login");
         sysLogMapper.delete(wrapper);
-        return R.ok("????");
+        return R.ok("删除成功");
     }
 
     @GetMapping("/trend")

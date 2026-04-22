@@ -246,10 +246,7 @@ export const DutySchedulePage: React.FC = () => {
     }
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
   const hasActiveFilters = Boolean(searchParams.status || searchParams.scheduleType);
-
-  // 这里保持后台页常见的紧凑摘要条，只保留和当前治理动作直接相关的计数。
   const summary = useMemo(() => {
     const scheduledCount = list.filter((item) => item.status === 'SCHEDULED').length;
     const checkedInCount = list.filter((item) => item.status === 'CHECKED_IN').length;
@@ -267,37 +264,22 @@ export const DutySchedulePage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <Calendar className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Duty Schedule
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           值班排班
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          统一管理日常、节假日和应急值班安排，并把签到、签退与换班动作收口到同一套后台列表页语法。
-        </p>
       </div>
 
       <TablePageLayout
-        className="gap-4"
+        className="gap-3"
         actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              当前结果 {total}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              待签到 {summary.scheduledCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              值班中 {summary.checkedInCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              已完成 {summary.completedCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              已换班 {summary.swappedCount}
-            </span>
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
+              <span className="text-slate-500 dark:text-slate-400">待签到 {summary.scheduledCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">值班中 {summary.checkedInCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">已完成 {summary.completedCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">已换班 {summary.swappedCount}</span>
+            </div>
 
             <div className="ml-auto flex flex-wrap gap-2">
               <Button variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
@@ -312,7 +294,7 @@ export const DutySchedulePage: React.FC = () => {
           </div>
         )}
         filters={(
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="w-full sm:w-[180px]">
                 <Select
@@ -355,7 +337,13 @@ export const DutySchedulePage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {hasActiveFilters
+                ? `${searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态'} / ${searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型'}`
+                : '全部排班'}
+            </div>
+
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto lg:justify-start">
               <Button variant="outline" size="sm" onClick={handleApplyFilters}>
                 <Search size={14} className="mr-1.5" />
                 搜索
@@ -372,20 +360,18 @@ export const DutySchedulePage: React.FC = () => {
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">排班列表</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {hasActiveFilters
-                      ? `${searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态'} · ${searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型'}`
-                      : '当前显示全部排班记录'}
-                  </div>
+                  {hasActiveFilters ? (
+                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                      {searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态'} / {searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型'}
+                    </div>
+                  ) : null}
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  第 {searchParams.pageNum} / {totalPages} 页 · {total} 条
-                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">共 {total} 条</div>
               </div>
             </div>
 
             <div className="overflow-x-auto">
-              <Table className="min-w-[1180px]">
+              <Table className="min-w-[1080px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">标题</TableHead>
@@ -404,11 +390,7 @@ export const DutySchedulePage: React.FC = () => {
                   {loading ? (
                     <TableStateRow colSpan={9} title="正在加载排班记录..." loading />
                   ) : list.length === 0 ? (
-                    <TableStateRow
-                      colSpan={9}
-                      title="暂无排班记录"
-                      description="先创建一条排班，后续可在这里执行签到、签退和换班。"
-                    />
+                    <TableStateRow colSpan={9} title="暂无排班记录" />
                   ) : (
                     list.map((item) => (
                       <TableRow key={item.scheduleId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
@@ -450,27 +432,31 @@ export const DutySchedulePage: React.FC = () => {
                           <TableRowActions
                             align="end"
                             className="gap-1"
+                            iconOnly
                             actions={[
                               {
                                 label: '签到',
                                 icon: <LogIn size={14} />,
                                 onClick: () => handleCheckIn(item.scheduleId!),
-                                tone: 'success',
+                                tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
+                                className: 'rounded-lg',
                               },
                               {
                                 label: '换班',
                                 icon: <RefreshCw size={14} />,
                                 onClick: () => openSwapDialog(item.scheduleId!),
-                                tone: 'info',
+                                tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
+                                className: 'rounded-lg',
                               },
                               {
                                 label: '签退',
                                 icon: <LogOut size={14} />,
                                 onClick: () => handleCheckOut(item.scheduleId!),
-                                tone: 'warning',
+                                tone: 'neutral',
                                 hidden: item.status !== 'CHECKED_IN',
+                                className: 'rounded-lg',
                               },
                             ]}
                           />
@@ -501,19 +487,27 @@ export const DutySchedulePage: React.FC = () => {
       <BaseDialog
         open={showDialog}
         title="新增排班"
-        description="填写排班标题、值班类型、班次、日期和值班人信息。"
-        onClose={() => setShowDialog(false)}
-        maxWidthClassName="max-w-3xl"
+        onClose={() => {
+          setShowDialog(false);
+          setFormData(emptyFormData);
+        }}
+        maxWidthClassName="max-w-2xl"
         panelClassName="max-h-[92vh]"
         bodyClassName="max-h-[72vh] overflow-y-auto"
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowDialog(false)}>
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDialog(false);
+                setFormData(emptyFormData);
+              }}
+            >
               取消
             </Button>
             <Button onClick={handleSave}>保存</Button>
-          </div>
-        }
+          </>
+        )}
       >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-2 md:col-span-2">
@@ -522,7 +516,7 @@ export const DutySchedulePage: React.FC = () => {
               type="text"
               value={formData.title}
               onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-              placeholder="例如：2月6日值班"
+              placeholder="例如：周末值班"
               className="h-11"
             />
           </div>
@@ -608,17 +602,27 @@ export const DutySchedulePage: React.FC = () => {
       <BaseDialog
         open={showSwapDialog}
         title="换班申请"
-        description="填写替班人和换班原因，提交换班操作。"
-        onClose={() => setShowSwapDialog(false)}
+        onClose={() => {
+          setShowSwapDialog(false);
+          setSwapId(null);
+          setSwapData(emptySwapData);
+        }}
         maxWidthClassName="max-w-md"
-        footer={
-          <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={() => setShowSwapDialog(false)}>
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowSwapDialog(false);
+                setSwapId(null);
+                setSwapData(emptySwapData);
+              }}
+            >
               取消
             </Button>
             <Button onClick={handleSwap}>确认换班</Button>
-          </div>
-        }
+          </>
+        )}
       >
         <div className="space-y-4">
           <div className="space-y-2">

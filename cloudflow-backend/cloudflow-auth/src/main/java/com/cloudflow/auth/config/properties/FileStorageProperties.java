@@ -6,9 +6,9 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.stereotype.Component;
 
 /**
- * ???????
+ * 文件存储配置。
  * <p>
- * ?????
+ * 配置示例：
  * cloudflow:
  *   file-storage:
  *     type: local
@@ -20,12 +20,12 @@ import org.springframework.stereotype.Component;
 public class FileStorageProperties {
 
     /**
-     * ??????????????????????????
+     * 存储类型，支持 local / oss，默认 local。
      */
     private String type = FileStorageType.LOCAL.name();
 
     /**
-     * ????????????????
+     * 私有 OSS 预签名访问地址有效期，单位分钟。
      */
     private Integer presignedExpireMinutes = 30;
 

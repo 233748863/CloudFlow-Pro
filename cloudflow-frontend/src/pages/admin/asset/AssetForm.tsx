@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { addAsset, updateAsset, Asset } from '@/services/api/admin';
-import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 interface AssetFormProps {
   /** 编辑时传入已有资产数据 */
   initialData?: Asset | null;
+  formId?: string;
   onSuccess: () => void;
+  onSubmittingChange?: (submitting: boolean) => void;
 }
 
-const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
+const AssetForm: React.FC<AssetFormProps> = ({
+  initialData,
+  formId,
+  onSuccess,
+  onSubmittingChange,
+}) => {
   const [loading, setLoading] = useState(false);
   const isEdit = !!initialData?.assetId;
 
@@ -51,6 +58,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
     }
 
     setLoading(true);
+    onSubmittingChange?.(true);
     try {
       if (isEdit) {
         await updateAsset(formData);
@@ -64,11 +72,12 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
       toast.error(getErrorMessage(error, '保存资产失败'));
     } finally {
       setLoading(false);
+      onSubmittingChange?.(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-5">
+    <form id={formId} onSubmit={handleSubmit} className="space-y-5">
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="name">资产名称 <span className="text-red-500">*</span></Label>
@@ -122,7 +131,7 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
             onValueChange={(val) => handleChange('status', val)}
           >
             <SelectTrigger className="h-11">
-              <SelectValue placeholder="选择状态" />
+              <SelectValue />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="1">闲置</SelectItem>
@@ -175,12 +184,6 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
           onChange={(e) => handleChange('remark', e.target.value)}
           rows={3}
         />
-      </div>
-
-      <div className="flex justify-end">
-        <Button type="submit" disabled={loading}>
-          {loading ? '提交中...' : isEdit ? '保存修改' : '确认新增'}
-        </Button>
       </div>
     </form>
   );

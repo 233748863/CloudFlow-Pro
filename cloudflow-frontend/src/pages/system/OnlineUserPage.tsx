@@ -18,8 +18,8 @@ import {
 import {
   forceLogoutOnlineUsers,
   getOnlineUserPage,
-  type OnlineUserItem,
-  type OnlineUserQuery,
+  OnlineUserItem,
+  OnlineUserQuery,
 } from '@/services/api/onlineUser';
 import { cn } from '@/utils/cn';
 
@@ -72,10 +72,9 @@ const getRemainingClassName = (seconds?: number) => {
 
 const RowActionButton: React.FC<{
   label: string;
-  icon: React.ReactNode;
   onClick: () => void;
   disabled?: boolean;
-}> = ({ label, icon, onClick, disabled = false }) => (
+}> = ({ label, onClick, disabled = false }) => (
   <button
     type="button"
     onClick={onClick}
@@ -84,7 +83,7 @@ const RowActionButton: React.FC<{
     title={label}
     aria-label={label}
   >
-    {icon}
+    <LogOut size={15} />
   </button>
 );
 
@@ -238,16 +237,49 @@ export const OnlineUserPage: React.FC = () => {
     query.username || query.nickName || query.deptName || query.tenantId,
   );
 
+  const filterSummary = useMemo(() => {
+    const usernameLabel = query.username || '全部账号';
+    const nicknameLabel = query.nickName || '全部昵称';
+    const deptLabel = query.deptName || '全部部门';
+    const tenantLabel = query.tenantId ? `租户 ${query.tenantId}` : '全部租户';
+    return `${usernameLabel} / ${nicknameLabel} / ${deptLabel} / ${tenantLabel}`;
+  }, [query.deptName, query.nickName, query.tenantId, query.username]);
+
   return (
     <>
       <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
+        className="gap-3"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 个</span>
+              <span className="text-slate-500 dark:text-slate-400">当前页 {records.length} 个</span>
+              <span className="text-slate-500 dark:text-slate-400">可操作 {selectableRecords.length} 个</span>
+              <span className="text-slate-500 dark:text-slate-400">当前登录 {currentLoginCount} 个</span>
+              <span className="text-slate-500 dark:text-slate-400">即将过期 {expiringSoonCount} 个</span>
+              <span className="text-slate-500 dark:text-slate-400">已选 {selectedTokens.length} 个</span>
+            </div>
+
+            <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleForceLogout(selectedTokens)}
+                disabled={!selectedTokens.length}
+              >
+                <LogOut size={15} />
+                批量强退
+              </Button>
+            </div>
+          </div>
+        )}
+        filters={(
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative w-full sm:w-40">
                 <Search
                   size={16}
@@ -309,176 +341,140 @@ export const OnlineUserPage: React.FC = () => {
               ) : null}
             </form>
 
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleForceLogout(selectedTokens)}
-                disabled={!selectedTokens.length}
-              >
-                <LogOut size={15} />
-                批量强退
-              </Button>
-            </div>
+            <div className="text-xs text-slate-500 dark:text-slate-400">{filterSummary}</div>
           </div>
-        }
-        table={
+        )}
+        table={(
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
               <div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                   在线用户
                 </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  按源码后台列表页骨架重组，筛选、会话状态和强制下线统一收口到轻量列表页语法。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {records.length} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  可操作 {selectableRecords.length} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前登录 {currentLoginCount} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  即将过期 {expiringSoonCount} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  已勾选 {selectedTokens.length} 个
-                </span>
+                {hasActiveFilters ? (
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {filterSummary}
+                  </div>
+                ) : null}
               </div>
             </div>
 
-            <Table className="min-w-[1180px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
-                    />
-                  </TableHead>
-                  <TableHead>用户</TableHead>
-                  <TableHead>部门</TableHead>
-                  <TableHead>租户</TableHead>
-                  <TableHead>角色</TableHead>
-                  <TableHead>登录时间</TableHead>
-                  <TableHead>剩余有效期</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableActionHead className="w-24">操作</TableActionHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <TableStateRow colSpan={9} title="正在加载在线用户..." loading />
-                ) : error ? (
-                  <TableStateRow colSpan={9} title="在线用户加载失败" description={error} />
-                ) : records.length === 0 ? (
-                  <TableStateRow
-                    colSpan={9}
-                    title="暂无在线用户数据"
-                    description="可以调整筛选条件，或等待新的登录会话出现。"
-                  />
-                ) : (
-                  records.map((item) => (
-                    <TableRow key={item.token}>
-                      <TableCell className="py-4 align-top">
-                        <input
-                          type="checkbox"
-                          disabled={item.currentLogin}
-                          checked={selectedTokens.includes(item.token)}
-                          onChange={() => toggleSelect(item.token)}
-                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-950"
-                        />
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <div className="flex items-start gap-3">
-                          <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
-                            {getAvatarText(item)}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-slate-900 dark:text-slate-100">
-                                {item.username || '-'}
-                              </span>
-                              {item.currentLogin ? (
-                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
-                                  当前会话
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="mt-1 text-slate-500 dark:text-slate-400">
-                              {item.nickName || '-'}
-                            </div>
-                            <div
-                              className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500"
-                              title={item.token}
-                            >
-                              Token: {item.token.slice(0, 12)}...
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell className="py-4 text-slate-600 dark:text-slate-300">
-                        {item.deptName || '-'}
-                      </TableCell>
-                      <TableCell className="py-4 text-slate-600 dark:text-slate-300">
-                        {item.tenantId ?? '-'}
-                      </TableCell>
-                      <TableCell className="py-4 text-slate-600 dark:text-slate-300">
-                        {item.roles?.length ? item.roles.join('、') : '-'}
-                      </TableCell>
-                      <TableCell className="py-4 whitespace-nowrap text-slate-600 dark:text-slate-300">
-                        {formatDateTime(item.loginTime)}
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span
-                          className={cn('text-sm font-medium', getRemainingClassName(item.remainingSeconds))}
-                        >
-                          {formatDuration(item.remainingSeconds)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="py-4">
-                        <span
-                          className={cn(
-                            'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                            getSessionStatusClassName(item),
-                          )}
-                        >
-                          {item.currentLogin ? '当前在线' : '在线'}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <RowActionButton
-                            label="强制下线"
-                            icon={<LogOut size={15} />}
-                            onClick={() => handleForceLogout([item.token])}
-                            disabled={Boolean(item.currentLogin)}
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1120px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        onChange={toggleSelectAll}
+                        className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                      />
+                    </TableHead>
+                    <TableHead>用户</TableHead>
+                    <TableHead>部门</TableHead>
+                    <TableHead>租户</TableHead>
+                    <TableHead>角色</TableHead>
+                    <TableHead>登录时间</TableHead>
+                    <TableHead>剩余有效期</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableActionHead className="w-24">操作</TableActionHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableStateRow colSpan={9} title="正在加载在线用户..." loading />
+                  ) : error ? (
+                    <TableStateRow colSpan={9} title="在线用户加载失败" description={error} />
+                  ) : records.length === 0 ? (
+                    <TableStateRow colSpan={9} title="暂无在线用户数据" />
+                  ) : (
+                    records.map((item) => (
+                      <TableRow key={item.token}>
+                        <TableCell className="py-4 align-top">
+                          <input
+                            type="checkbox"
+                            disabled={item.currentLogin}
+                            checked={selectedTokens.includes(item.token)}
+                            onChange={() => toggleSelect(item.token)}
+                            className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-950"
                           />
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <div className="flex items-start gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200">
+                              {getAvatarText(item)}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium text-slate-900 dark:text-slate-100">
+                                  {item.username || '-'}
+                                </span>
+                                {item.currentLogin ? (
+                                  <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200">
+                                    当前会话
+                                  </span>
+                                ) : null}
+                              </div>
+                              <div className="mt-1 text-slate-500 dark:text-slate-400">
+                                {item.nickName || '-'}
+                              </div>
+                              <div
+                                className="mt-1 font-mono text-xs text-slate-400 dark:text-slate-500"
+                                title={item.token}
+                              >
+                                Token: {item.token.slice(0, 12)}...
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 text-slate-600 dark:text-slate-300">
+                          {item.deptName || '-'}
+                        </TableCell>
+                        <TableCell className="py-4 text-slate-600 dark:text-slate-300">
+                          {item.tenantId ?? '-'}
+                        </TableCell>
+                        <TableCell className="py-4 text-slate-600 dark:text-slate-300">
+                          {item.roles?.length ? item.roles.join('、') : '-'}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap py-4 text-slate-600 dark:text-slate-300">
+                          {formatDateTime(item.loginTime)}
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span
+                            className={cn('text-sm font-medium', getRemainingClassName(item.remainingSeconds))}
+                          >
+                            {formatDuration(item.remainingSeconds)}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span
+                            className={cn(
+                              'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                              getSessionStatusClassName(item),
+                            )}
+                          >
+                            {item.currentLogin ? '当前在线' : '在线'}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <RowActionButton
+                              label="强制下线"
+                              onClick={() => handleForceLogout([item.token])}
+                              disabled={Boolean(item.currentLogin)}
+                            />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </>
-        }
-        pagination={
+        )}
+        pagination={(
           total > 0 ? (
             <Pagination
               total={total}
@@ -494,7 +490,7 @@ export const OnlineUserPage: React.FC = () => {
               }
             />
           ) : null
-        }
+        )}
       />
 
       <ConfirmDialog
@@ -507,7 +503,7 @@ export const OnlineUserPage: React.FC = () => {
         }
         confirmText="确认强退"
         cancelText="取消"
-        danger={true}
+        danger
         onCancel={() => setPendingLogoutTokens([])}
         onConfirm={() => void confirmForceLogout()}
       />

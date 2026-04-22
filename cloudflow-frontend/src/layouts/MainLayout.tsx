@@ -2,14 +2,14 @@ import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 're
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronDown,
-  PanelLeftClose,
-  PanelLeftOpen,
-  ShieldCheck,
+  ChevronsLeft,
+  ChevronsRight,
+  MoonStar,
+  SunMedium,
 } from 'lucide-react';
 import { AnnouncementHub } from '@/components/common';
 import { HeaderAnnouncementBell } from '@/components/header/HeaderAnnouncementBell';
 import { HeaderUserMenu } from '@/components/header/HeaderUserMenu';
-import { ThemeModeSwitcher } from '@/components/ui';
 import { TenantSwitcher } from '@/components/TenantSwitcher';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -37,8 +37,8 @@ function readStoredSidebarState(): boolean {
 }
 
 export const MainLayout = () => {
-  const { user, loading, logout } = useAuth();
-  const { resolvedTheme } = useTheme();
+  const { user, loading } = useAuth();
+  const { resolvedTheme, setThemeMode } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const mainScrollRef = useRef<HTMLDivElement | null>(null);
@@ -102,21 +102,24 @@ export const MainLayout = () => {
       return;
     }
 
-    for (const group of menuTree) {
-      const match = group.children?.find((child) => {
-        if (child.path === '/') {
-          return location.pathname === '/';
+    setExpandedGroups((prev) => {
+      for (const group of menuTree) {
+        const match = group.children?.find((child) => {
+          if (child.path === '/') {
+            return location.pathname === '/';
+          }
+
+          return child.path && (location.pathname === child.path || location.pathname.startsWith(`${child.path}/`));
+        });
+
+        if (match && !prev.includes(group.id)) {
+          return [...prev, group.id];
         }
-
-        return child.path && (location.pathname === child.path || location.pathname.startsWith(`${child.path}/`));
-      });
-
-      if (match && !expandedGroups.includes(group.id)) {
-        setExpandedGroups((prev) => [...prev, group.id]);
-        break;
       }
-    }
-  }, [expandedGroups, location.pathname, menuTree, sidebarCollapsed]);
+
+      return prev;
+    });
+  }, [location.pathname, menuTree, sidebarCollapsed]);
 
   useLayoutEffect(() => {
     if (!mainScrollRef.current) {
@@ -186,18 +189,14 @@ export const MainLayout = () => {
     };
   }, [menuTree, location.pathname]);
 
-  const pageDescription = useMemo(() => {
-    if (activeLabel.group && activeLabel.group !== activeLabel.item) {
-      return `${activeLabel.group} · CloudFlow Workspace`;
-    }
-
-    return 'CloudFlow Workspace';
-  }, [activeLabel.group, activeLabel.item]);
-
   const toggleGroup = (groupId: string) => {
     setExpandedGroups((prev) =>
       prev.includes(groupId) ? prev.filter((id) => id !== groupId) : [...prev, groupId],
     );
+  };
+
+  const toggleThemeMode = () => {
+    setThemeMode(resolvedTheme === 'dark' ? 'light' : 'dark');
   };
 
   if (loading || menuLoading) {
@@ -245,9 +244,6 @@ export const MainLayout = () => {
             <div className="min-w-0 flex-1">
               <span className="block truncate text-[17px] font-bold tracking-[-0.01em] text-slate-900 dark:text-white">
                 CloudFlow Pro
-              </span>
-              <span className="mt-0.5 block truncate text-[11px] text-slate-400 dark:text-slate-500">
-                Desktop Workspace
               </span>
             </div>
           )}
@@ -337,35 +333,34 @@ export const MainLayout = () => {
 
         <div className="mt-auto border-t border-slate-100 p-3 dark:border-slate-800">
           <div className={cn('space-y-2', sidebarCollapsed && 'flex flex-col items-center')}>
-            <ThemeModeSwitcher
-              compact={sidebarCollapsed}
-              className={cn(!sidebarCollapsed && 'w-full justify-start')}
-            />
+            <button
+              type="button"
+              onClick={toggleThemeMode}
+              title={sidebarCollapsed ? (resolvedTheme === 'dark' ? '浅色模式' : '深色模式') : undefined}
+              className={cn(
+                'flex items-center gap-3 overflow-hidden rounded-xl py-2.5 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+                sidebarCollapsed ? 'w-10 justify-center px-0' : 'w-full pl-[1.0625rem] pr-3.5',
+              )}
+            >
+              {resolvedTheme === 'dark' ? (
+                <SunMedium size={18} className="shrink-0 text-amber-500" />
+              ) : (
+                <MoonStar size={18} className="shrink-0" />
+              )}
+              {sidebarCollapsed ? null : <span>{resolvedTheme === 'dark' ? '浅色模式' : '深色模式'}</span>}
+            </button>
 
             <button
               type="button"
               onClick={() => setSidebarCollapsed((prev) => !prev)}
               title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
               className={cn(
-                'flex items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-800 dark:hover:text-white',
-                sidebarCollapsed ? 'h-10 w-10 justify-center' : 'h-10 w-full justify-start gap-2 px-4',
+                'flex items-center gap-3 overflow-hidden rounded-xl py-2.5 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
+                sidebarCollapsed ? 'w-10 justify-center px-0' : 'w-full pl-[1.0625rem] pr-3.5',
               )}
             >
-              {sidebarCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+              {sidebarCollapsed ? <ChevronsRight size={18} className="shrink-0" /> : <ChevronsLeft size={18} className="shrink-0" />}
               {sidebarCollapsed ? null : <span>收起侧栏</span>}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => void logout()}
-              title="退出登录"
-              className={cn(
-                'flex items-center rounded-xl text-sm font-medium text-slate-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-slate-400 dark:hover:bg-red-950/30 dark:hover:text-red-300',
-                sidebarCollapsed ? 'h-10 w-10 justify-center' : 'h-10 w-full justify-start gap-2 px-4',
-              )}
-            >
-              <span className="text-base">⤴</span>
-              {sidebarCollapsed ? null : <span>退出登录</span>}
             </button>
           </div>
         </div>
@@ -380,25 +375,12 @@ export const MainLayout = () => {
         <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/72 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/78">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-                <span>{activeLabel.group}</span>
-                <span>·</span>
-                <span>{resolvedTheme === 'dark' ? 'Dark' : 'Light'}</span>
-              </div>
-              <h1 className="mt-1 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+              <h1 className="hidden truncate text-lg font-semibold text-slate-900 dark:text-slate-100 lg:block">
                 {activeLabel.item}
               </h1>
-              <p className="truncate text-xs text-slate-500 dark:text-slate-400">
-                {pageDescription}
-              </p>
             </div>
 
             <div className="ml-4 flex shrink-0 items-center gap-2.5 md:gap-3">
-              <div className="hidden items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1.5 text-sm font-medium text-emerald-700 xl:flex dark:border-emerald-950/40 dark:bg-emerald-950/20 dark:text-emerald-300">
-                <ShieldCheck size={14} />
-                <span>CloudFlow Desktop</span>
-              </div>
-
               <TenantSwitcher />
               <HeaderAnnouncementBell />
               <HeaderUserMenu />
