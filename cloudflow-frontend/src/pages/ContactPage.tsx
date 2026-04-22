@@ -1,42 +1,80 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  BookUser,
-  Building2,
-  Mail,
-  Phone,
-  RotateCcw,
-  Search,
-  User,
-  Users,
-} from 'lucide-react';
+import { BookUser, Building2, Eye, RotateCcw, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { SearchInput } from '@/components/common';
-import { Button, Card } from '@/components/ui';
+import { BaseDialog, Pagination } from '@/components/common';
 import {
-  WorkspaceBackdrop,
-  WorkspaceDialogShell,
-  WorkspaceHeroMetricsSection,
-  WorkspaceInlineState,
-  WorkspacePageContent,
-  WorkspacePaginationBar,
-  WorkspaceResultCard,
-  WorkspaceSectionCard,
-  WorkspaceWorkbenchCard,
-  workspaceGlassSurfaceClassName,
-} from '@/components/workspace';
+  Button,
+  Input,
+  Table,
+  TableActionHead,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 import { contactApi, Contact, DeptNode } from '../services/api/contact';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
 
+const PAGE_SIZE = 20;
+
 const avatarFallback = (seed: string) =>
   `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(seed)}`;
+
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}> = ({ title, description, icon, className }) => (
+  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      {icon || <Users className="h-4 w-4" />}
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+  </div>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  loading?: boolean;
+}> = ({ colSpan, title, description, icon, loading = false }) => (
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          {loading ? <Search className="h-4 w-4 animate-pulse" /> : icon || <Users className="h-4 w-4" />}
+        </div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+      </div>
+    </td>
+  </tr>
+);
+
+const DetailField: React.FC<{
+  label: string;
+  value: React.ReactNode;
+}> = ({ label, value }) => (
+  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
+    <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  </div>
+);
 
 export const ContactPage: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [depts, setDepts] = useState<DeptNode[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
-  const [keywordInput, setKeywordInput] = useState('');
+  const [keywordDraft, setKeywordDraft] = useState('');
   const [selectedDeptId, setSelectedDeptId] = useState<number | undefined>();
   const [total, setTotal] = useState(0);
   const [pageNum, setPageNum] = useState(1);
@@ -52,29 +90,33 @@ export const ContactPage: React.FC = () => {
 
   const loadDepts = async () => {
     try {
-      const res = await contactApi.deptTree();
-      if (res) {
-        setDepts(Array.isArray(res) ? res : []);
-      }
+      const response = await contactApi.deptTree();
+      setDepts(Array.isArray(response) ? response : []);
     } catch {
-      // 通讯录允许部门树静默失败，仍然保留联系人搜索能力。
+      // 部门树失败时仍允许按关键字搜索联系人。
+      setDepts([]);
     }
   };
 
   const fetchContacts = async () => {
     setLoading(true);
     try {
-      const res = await contactApi.list({
+      const response = await contactApi.list({
         keyword,
         deptId: selectedDeptId,
         pageNum,
-        pageSize: 20,
+        pageSize: PAGE_SIZE,
       });
-      if (res) {
-        setContacts(res.records || res.rows || []);
-        setTotal(res.total || 0);
-      }
+      const nextContacts = Array.isArray(response.records)
+        ? response.records
+        : Array.isArray(response.rows)
+          ? response.rows
+          : [];
+      setContacts(nextContacts);
+      setTotal(response.total || 0);
     } catch (error) {
+      setContacts([]);
+      setTotal(0);
       toast.error(getErrorMessage(error, '获取通讯录失败'));
     } finally {
       setLoading(false);
@@ -83,9 +125,11 @@ export const ContactPage: React.FC = () => {
 
   const handleViewUser = async (userId: number) => {
     try {
-      const res = await contactApi.getUserDetail(userId);
-      if (res) {
-        setSelectedUser(res);
+      const response = await contactApi.getUserDetail(userId);
+      if (response && typeof response === 'object') {
+        setSelectedUser(response);
+      } else {
+        toast.error('获取用户详情失败');
       }
     } catch (error) {
       toast.error(getErrorMessage(error, '获取用户详情失败'));
@@ -93,157 +137,78 @@ export const ContactPage: React.FC = () => {
   };
 
   const handleApplyFilters = () => {
-    setKeyword(keywordInput.trim());
+    setKeyword(keywordDraft.trim());
     setPageNum(1);
   };
 
   const handleResetFilters = () => {
     setKeyword('');
-    setKeywordInput('');
+    setKeywordDraft('');
     setSelectedDeptId(undefined);
     setPageNum(1);
   };
 
   const topDepts = useMemo(
-    () => depts.filter((dept) => dept.parent_id === 0 || dept.parent_id === 100),
+    () => depts.filter(dept => dept.parent_id === 0 || dept.parent_id === 100),
     [depts],
   );
 
-  const totalPages = Math.max(1, Math.ceil(total / 20));
   const hasActiveFilters = Boolean(keyword || selectedDeptId);
-  const selectedDept = topDepts.find((dept) => dept.dept_id === selectedDeptId);
-
-  // 统一把页头统计收口到公共 Hero 组件，后续继续收紧样式时只需要调整公共层。
-  const heroMetrics = useMemo(
-    () => [
-      {
-        label: '当前联系人',
-        value: `${total}`,
-        hint: keyword ? `关键字：${keyword}` : '默认展示当前目录范围内的联系人',
-        icon: <Users size={17} />,
-      },
-      {
-        label: '一级部门',
-        value: `${topDepts.length}`,
-        hint: '支持按部门切换通讯录范围',
-        icon: <Building2 size={17} />,
-      },
-      {
-        label: '当前范围',
-        value: selectedDept?.dept_name || '全部部门',
-        hint: hasActiveFilters ? '已应用目录或关键词筛选' : '未额外限制部门范围',
-        icon: <BookUser size={17} />,
-      },
-      {
-        label: '当前页码',
-        value: `${pageNum} / ${totalPages}`,
-        hint: '左侧目录与右侧联系人列表保持同一工作台',
-        icon: <Search size={17} />,
-      },
-    ],
-    [hasActiveFilters, keyword, pageNum, selectedDept?.dept_name, topDepts.length, total, totalPages],
-  );
-
-  const overviewItems = [
-    {
-      label: '搜索关键字',
-      value: keyword || '未设置',
-    },
-    {
-      label: '部门范围',
-      value: selectedDept?.dept_name || '全部部门',
-    },
-    {
-      label: '当前结果',
-      value: contacts.length,
-    },
-    {
-      label: '视图状态',
-      value: hasActiveFilters ? '筛选结果' : '默认视图',
-    },
-  ];
+  const selectedDept = topDepts.find(dept => dept.dept_id === selectedDeptId);
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <BookUser className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Contacts
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          企业通讯录
+        </h1>
+      </div>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={
-            <span className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-              <BookUser className="h-3.5 w-3.5" />
-              通讯录工作台
-            </span>
-          }
-          title="企业通讯录"
-          description="按部门和关键字快速检索联系人，并在同一工作台里查看员工名片。"
-          contentClassName="p-3.5 sm:p-4"
-          metrics={heroMetrics}
-        >
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
-            点击联系人卡片可直接查看名片详情
+      <TablePageLayout
+        className="gap-4"
+        filters={
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={keywordDraft}
+                  onChange={event => setKeywordDraft(event.target.value)}
+                  onKeyDown={event => {
+                    if (event.key === 'Enter') {
+                      handleApplyFilters();
+                    }
+                  }}
+                  placeholder="搜索姓名、用户名、手机号或邮箱"
+                  className="h-10 pl-10"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+              <Button variant="outline" size="sm" onClick={handleApplyFilters}>
+                <Search className="mr-1.5 h-4 w-4" />
+                应用
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                <RotateCcw className="mr-1.5 h-4 w-4" />
+                清空条件
+              </Button>
+            </div>
           </div>
-        </WorkspaceHeroMetricsSection>
+        }
+        table={
+          <div className="grid min-h-[40rem] xl:grid-cols-[200px_minmax(0,1fr)]">
+            <aside className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20 xl:border-b-0 xl:border-r">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">部门</div>
+              </div>
 
-        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
-          <div className="flex flex-col gap-3">
-            <WorkspaceWorkbenchCard
-              eyebrow="目录检索"
-              title="部门导航与联系人搜索"
-              total={total}
-              hasActiveFilters={hasActiveFilters}
-              overviewItems={overviewItems}
-              quickFilterAside={
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                  目录筛选与搜索结果同步联动
-                </span>
-              }
-              filterBar={
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex flex-1 flex-col gap-2.5 xl:flex-row xl:items-center">
-                    <SearchInput
-                      value={keywordInput}
-                      onChange={setKeywordInput}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter') {
-                            handleApplyFilters();
-                          }
-                        }}
-                        placeholder="搜索姓名、用户名或手机号"
-                      className="max-w-xl flex-1"
-                      inputClassName="h-10 rounded-xl pr-4"
-                      />
-
-                    <div className="flex flex-wrap gap-2">
-                      <Button size="sm" className="h-10 rounded-xl" onClick={handleApplyFilters}>
-                        <Search className="h-4 w-4" />
-                        搜索
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-10 rounded-xl px-4"
-                        onClick={handleResetFilters}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        重置
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div className="text-xs text-slate-400">左侧切部门，右侧直接打开联系人卡片</div>
-                </div>
-              }
-            />
-
-            <div className="grid gap-3 xl:grid-cols-[240px_minmax(0,1fr)]">
-              <WorkspaceSectionCard
-                title="部门导航"
-                description="快速切换联系人范围"
-                eyebrow="Department"
-                className="self-start"
-                bodyClassName="space-y-2.5"
-              >
+              <div className="space-y-1.5 p-3">
                 <button
                   type="button"
                   onClick={() => {
@@ -251,10 +216,10 @@ export const ContactPage: React.FC = () => {
                     setPageNum(1);
                   }}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
+                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition',
                     !selectedDeptId
-                      ? 'border border-cyan-200 bg-cyan-50 text-cyan-700'
-                      : 'border border-transparent text-slate-600 hover:bg-slate-50',
+                      ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-200'
+                      : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-slate-100',
                   )}
                 >
                   <BookUser className="h-4 w-4" />
@@ -262,15 +227,15 @@ export const ContactPage: React.FC = () => {
                 </button>
 
                 {topDepts.length === 0 ? (
-                  <WorkspaceInlineState
-                    icon={<Building2 className="h-5 w-5" />}
+                  <InlineState
                     title="暂无部门数据"
-                    description="部门树暂未返回数据，仍可使用关键字检索联系人。"
-                    className="py-10"
+                    className="py-8"
+                    icon={<Building2 className="h-4 w-4" />}
                   />
                 ) : (
-                  topDepts.map((dept) => {
+                  topDepts.map(dept => {
                     const active = selectedDeptId === dept.dept_id;
+
                     return (
                       <button
                         key={dept.dept_id}
@@ -280,10 +245,10 @@ export const ContactPage: React.FC = () => {
                           setPageNum(1);
                         }}
                         className={cn(
-                          'flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition',
+                          'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition',
                           active
-                            ? 'border border-cyan-200 bg-cyan-50 text-cyan-700'
-                            : 'border border-transparent text-slate-600 hover:bg-slate-50',
+                            ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-200'
+                            : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-slate-100',
                         )}
                       >
                         <Building2 className="h-4 w-4 opacity-70" />
@@ -292,157 +257,152 @@ export const ContactPage: React.FC = () => {
                     );
                   })
                 )}
-              </WorkspaceSectionCard>
+              </div>
+            </aside>
 
-              <WorkspaceResultCard
-                total={total}
-                title="联系人列表"
-                description="集中查看联系人、部门与联系方式"
-                footer={
-                  <WorkspacePaginationBar
-                    total={total}
-                    pageNum={pageNum}
-                    totalPages={totalPages}
-                    onPrev={() => setPageNum((prev) => Math.max(1, prev - 1))}
-                    onNext={() => setPageNum((prev) => prev + 1)}
-                    prevDisabled={pageNum === 1}
-                    nextDisabled={pageNum >= totalPages}
-                  />
-                }
-              >
-                <div className="p-4">
-                  {loading ? (
-                    <WorkspaceInlineState
-                      type="loading"
-                      title="正在加载通讯录..."
-                      description="系统正在同步联系人和部门数据。"
-                      className="py-16"
-                    />
-                  ) : contacts.length === 0 ? (
-                    <WorkspaceInlineState
-                      icon={<BookUser className="h-5 w-5" />}
-                      title="暂无匹配联系人"
-                      description="当前筛选条件下没有匹配的联系人，试试切换部门或调整关键字。"
-                      className="py-16"
-                    />
-                  ) : (
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                      {contacts.map((contact) => (
-                        <button
-                          key={contact.user_id}
-                          type="button"
-                          onClick={() => void handleViewUser(contact.user_id)}
-                          className="card card-hover rounded-2xl p-4 text-left"
-                        >
-                          <div className="flex items-center gap-3">
-                            <img
-                              src={
-                                contact.avatar ||
-                                avatarFallback(contact.nick_name || String(contact.user_id))
-                              }
-                              className="h-12 w-12 rounded-full border border-slate-200"
-                              alt=""
-                            />
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold text-slate-900">
-                                {contact.nick_name}
-                              </div>
-                              <div className="text-xs text-slate-500">
-                                {contact.post_name || '员工'}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex flex-wrap gap-2 text-xs text-slate-600">
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                              <Building2 className="h-3.5 w-3.5 text-cyan-500" />
-                              <span className="truncate">{contact.dept_name || '-'}</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                              <Phone className="h-3.5 w-3.5 text-cyan-500" />
-                              <span>{contact.phonenumber || '-'}</span>
-                            </span>
-                            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                              <Mail className="h-3.5 w-3.5 text-cyan-500" />
-                              <span className="truncate">{contact.email || '-'}</span>
-                            </span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </WorkspaceResultCard>
-            </div>
-          </div>
-        </Card>
-      </WorkspacePageContent>
-
-      {selectedUser ? (
-        <WorkspaceDialogShell
-          title={selectedUser.nick_name}
-          description={selectedUser.post_name || '员工名片'}
-          onClose={() => setSelectedUser(null)}
-          maxWidthClassName="max-w-md"
-        >
-          <div className="space-y-5">
-            <div className="text-center">
-              <img
-                src={
-                  selectedUser.avatar ||
-                  avatarFallback(selectedUser.nick_name || String(selectedUser.user_id))
-                }
-                className="mx-auto mb-3 h-20 w-20 rounded-full border-2 border-cyan-100"
-                alt=""
-              />
-              <div className="text-lg font-semibold text-slate-800">{selectedUser.nick_name}</div>
-              <div className="text-sm text-slate-500">{selectedUser.post_name || '员工'}</div>
-            </div>
-
-            <div className="space-y-3">
-              {[
-                {
-                  icon: <Building2 size={16} className="text-cyan-500" />,
-                  label: '部门',
-                  value: selectedUser.dept_name || '-',
-                },
-                {
-                  icon: <Phone size={16} className="text-cyan-500" />,
-                  label: '电话',
-                  value: selectedUser.phonenumber || '-',
-                },
-                {
-                  icon: <Mail size={16} className="text-cyan-500" />,
-                  label: '邮箱',
-                  value: selectedUser.email || '-',
-                },
-                {
-                  icon: <User size={16} className="text-cyan-500" />,
-                  label: '用户名',
-                  value: selectedUser.user_name || '-',
-                },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3"
-                >
-                  {item.icon}
+            <div className="flex min-h-0 flex-col">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
-                    <div className="text-xs text-slate-500">{item.label}</div>
-                    <div className="text-sm text-slate-800">{item.value}</div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">联系人列表</div>
+                    {hasActiveFilters ? (
+                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        {selectedDept?.dept_name || '全部部门'} / {keyword || '全部关键字'}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    共 {total} 条
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
 
-            <div className="flex justify-end">
-              <Button variant="outline" className="rounded-xl" onClick={() => setSelectedUser(null)}>
-                关闭
-              </Button>
+              <div className="overflow-x-auto">
+                <Table className="min-w-[860px]">
+                  <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                    <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">联系人</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">组织</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">联系方式</TableHead>
+                      <TableActionHead className="w-24 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {loading ? (
+                      <TableStateRow colSpan={4} title="正在加载通讯录..." loading />
+                    ) : contacts.length === 0 ? (
+                      <TableStateRow
+                        colSpan={4}
+                        title="暂无匹配联系人"
+                        icon={<Users className="h-4 w-4" />}
+                      />
+                    ) : (
+                      contacts.map(contact => (
+                        <TableRow key={contact.user_id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                          <TableCell className="px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <img
+                                src={contact.avatar || avatarFallback(contact.nick_name || String(contact.user_id))}
+                                className="h-9 w-9 rounded-full border border-slate-200 dark:border-slate-800"
+                                alt=""
+                              />
+                              <div className="min-w-0">
+                                <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                                  {contact.nick_name}
+                                </div>
+                                <div className="truncate text-xs text-slate-500 dark:text-slate-400">
+                                  {contact.user_name || '-'}
+                                </div>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                            <div className="font-medium text-slate-900 dark:text-slate-100">{contact.dept_name || '-'}</div>
+                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{contact.post_name || '-'}</div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                            <div>{contact.phonenumber || '-'}</div>
+                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{contact.email || '-'}</div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 text-right">
+                            <TableRowActions
+                              align="end"
+                              iconOnly
+                              actions={[
+                                {
+                                  label: '查看',
+                                  icon: <Eye className="h-4 w-4" />,
+                                  onClick: () => void handleViewUser(contact.user_id),
+                                  tone: 'neutral',
+                                  className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
+                                },
+                              ]}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
             </div>
           </div>
-        </WorkspaceDialogShell>
-      ) : null}
+        }
+        pagination={
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={pageNum}
+              pageSize={PAGE_SIZE}
+              showPageSizeSelector={false}
+              showJump={false}
+              onPageChange={setPageNum}
+              onPageSizeChange={() => {}}
+            />
+          ) : null
+        }
+      />
+
+      <BaseDialog
+        open={Boolean(selectedUser)}
+        title={selectedUser?.nick_name || '联系人名片'}
+        onClose={() => setSelectedUser(null)}
+        maxWidthClassName="max-w-lg"
+        footer={
+          <div className="flex justify-end">
+            <Button variant="outline" onClick={() => setSelectedUser(null)}>
+              关闭
+            </Button>
+          </div>
+        }
+      >
+        {selectedUser ? (
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <img
+                src={selectedUser.avatar || avatarFallback(selectedUser.nick_name || String(selectedUser.user_id))}
+                className="h-14 w-14 rounded-full border border-slate-200 dark:border-slate-800"
+                alt=""
+              />
+              <div className="min-w-0">
+                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">{selectedUser.nick_name}</div>
+                <div className="text-sm text-slate-500 dark:text-slate-400">
+                  {selectedUser.dept_name || '-'} / {selectedUser.post_name || '员工'}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <DetailField label="部门" value={selectedUser.dept_name || '-'} />
+              <DetailField label="岗位" value={selectedUser.post_name || '-'} />
+              <DetailField label="电话" value={selectedUser.phonenumber || '-'} />
+              <DetailField label="邮箱" value={selectedUser.email || '-'} />
+              <DetailField label="用户名" value={selectedUser.user_name || '-'} />
+              <DetailField label="用户 ID" value={selectedUser.user_id} />
+            </div>
+          </div>
+        ) : null}
+      </BaseDialog>
     </div>
   );
 };

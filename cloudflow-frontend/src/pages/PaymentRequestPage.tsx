@@ -1,28 +1,29 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Search, Send, Trash2, WalletCards, X } from 'lucide-react';
+import { Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { paymentRequestApi, PaymentRequest } from '../services/api/expense';
-import { FileUpload } from '../components/FileUpload';
+import { paymentRequestApi, PaymentRequest } from '@/services/api/expense';
+import FileUpload from '@/components/FileUpload';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { Button, Card, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+import { BaseDialog } from '@/components/common/BaseDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { Pagination } from '@/components/common/Pagination';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
-  WorkspaceBackdrop,
-  WorkspaceHeroMetricsSection,
-  WorkspaceInlineState,
-  WorkspacePageContent,
-  WorkspacePaginationBar,
-  WorkspaceResultCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-  workspaceGlassSurfaceClassName,
-} from '@/components/workspace';
-
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
-};
+  Button,
+  DatePicker,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  TableActionHead,
+  TableHead,
+  TableHeader,
+  Textarea,
+} from '@/components/ui';
+import { TableRowActions } from '@/components/ui/table-row-actions';
 
 const PAYMENT_TYPE_OPTIONS = [
   { value: 'PURCHASE', label: '采购' },
@@ -32,7 +33,7 @@ const PAYMENT_TYPE_OPTIONS = [
 ] as const;
 
 const PAYMENT_TYPE_LABELS = Object.fromEntries(
-  PAYMENT_TYPE_OPTIONS.map(option => [option.value, option.label]),
+  PAYMENT_TYPE_OPTIONS.map((option) => [option.value, option.label]),
 ) as Record<(typeof PAYMENT_TYPE_OPTIONS)[number]['value'], string>;
 
 const STATUS_LABELS: Record<string, string> = {
@@ -42,6 +43,15 @@ const STATUS_LABELS: Record<string, string> = {
   REJECTED: '已驳回',
   PAID: '已付款',
 };
+
+interface ConfirmState {
+  type: 'delete' | 'submit';
+  id: number;
+  title: string;
+  message: string;
+  confirmText: string;
+  danger?: boolean;
+}
 
 const createDefaultForm = (): PaymentRequest => ({
   payeeName: '',
@@ -54,18 +64,71 @@ const createDefaultForm = (): PaymentRequest => ({
   attachmentUrl: '',
 });
 
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}> = ({ title, description, icon, className }) => (
+  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      {icon || <DollarSign className="h-4 w-4" />}
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  loading?: boolean;
+}> = ({ colSpan, title, description, icon, loading = false }) => (
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : icon || <DollarSign className="h-4 w-4" />}
+        </div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+        ) : null}
+      </div>
+    </td>
+  </tr>
+);
+
+const DetailField: React.FC<{
+  label: string;
+  value: React.ReactNode;
+}> = ({ label, value }) => (
+  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
+    <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  </div>
+);
+
 const formatAmount = (value?: number | null) => {
   if (value === undefined || value === null || Number.isNaN(Number(value))) {
     return '-';
   }
-  return `¥${Number(value).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return `¥${Number(value).toLocaleString('zh-CN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
 };
 
 const getPaymentTypeLabel = (paymentType?: string) =>
   PAYMENT_TYPE_LABELS[paymentType as keyof typeof PAYMENT_TYPE_LABELS] || paymentType || '-';
 
 const getAttachmentList = (attachmentUrl?: string) =>
-  attachmentUrl?.split(',').map(item => item.trim()).filter(Boolean) ?? [];
+  attachmentUrl?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
 
 export const PaymentRequestPage: React.FC = () => {
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
@@ -76,13 +139,14 @@ export const PaymentRequestPage: React.FC = () => {
     pageNum: 1,
     pageSize: 10,
   });
-  const [paymentTypeInput, setPaymentTypeInput] = useState('');
+  const [paymentTypeDraft, setPaymentTypeDraft] = useState('');
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
   const [currentPayment, setCurrentPayment] = useState<PaymentRequest | null>(null);
   const [detailPayment, setDetailPayment] = useState<PaymentRequest | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [formData, setFormData] = useState<PaymentRequest>(createDefaultForm());
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   useEffect(() => {
     void fetchPayments();
@@ -101,16 +165,42 @@ export const PaymentRequestPage: React.FC = () => {
     }
   };
 
-  const applyStatusFilter = (status: string) => {
-    setSearchParams(prev => ({ ...prev, status, pageNum: 1 }));
-  };
+  const draftCount = useMemo(
+    () => payments.filter((item) => item.status === 'DRAFT').length,
+    [payments],
+  );
+  const pendingCount = useMemo(
+    () => payments.filter((item) => item.status === 'PENDING').length,
+    [payments],
+  );
+  const approvedCount = useMemo(
+    () => payments.filter((item) => item.status === 'APPROVED').length,
+    [payments],
+  );
+  const paidCount = useMemo(
+    () => payments.filter((item) => item.status === 'PAID').length,
+    [payments],
+  );
 
-  const applySearch = () => {
-    setSearchParams(prev => ({ ...prev, paymentType: paymentTypeInput, pageNum: 1 }));
+  const hasActiveFilters = Boolean(searchParams.status || searchParams.paymentType);
+  const currentStatusLabel = searchParams.status
+    ? STATUS_LABELS[searchParams.status] || searchParams.status
+    : '全部状态';
+  const currentTypeLabel = searchParams.paymentType
+    ? getPaymentTypeLabel(searchParams.paymentType)
+    : '全部类型';
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
+
+  const handleApplyFilters = () => {
+    setSearchParams((prev) => ({
+      ...prev,
+      paymentType: paymentTypeDraft,
+      pageNum: 1,
+    }));
   };
 
   const handleResetFilters = () => {
-    setPaymentTypeInput('');
+    setPaymentTypeDraft('');
     setSearchParams({
       status: '',
       paymentType: '',
@@ -125,6 +215,17 @@ export const PaymentRequestPage: React.FC = () => {
     setShowDialog(true);
   };
 
+  const closeFormDialog = () => {
+    setShowDialog(false);
+    setCurrentPayment(null);
+    setFormData(createDefaultForm());
+  };
+
+  const closeDetailDialog = () => {
+    setDetailLoading(false);
+    setDetailPayment(null);
+  };
+
   const handleView = async (payment: PaymentRequest) => {
     setDetailPayment(payment);
     setDetailLoading(true);
@@ -132,6 +233,7 @@ export const PaymentRequestPage: React.FC = () => {
       const result = await paymentRequestApi.getInfo(payment.id!);
       setDetailPayment(result);
     } catch (error) {
+      closeDetailDialog();
       toast.error(getErrorMessage(error, '获取付款申请详情失败'));
     } finally {
       setDetailLoading(false);
@@ -146,28 +248,6 @@ export const PaymentRequestPage: React.FC = () => {
       setShowDialog(true);
     } catch (error) {
       toast.error(getErrorMessage(error, '获取付款申请详情失败'));
-    }
-  };
-
-  const handleDelete = async (ids: number[]) => {
-    if (!confirm('确定要删除选中的付款申请吗？')) return;
-    try {
-      await paymentRequestApi.remove(ids);
-      toast.success('删除成功');
-      void fetchPayments();
-    } catch (error) {
-      toast.error(getErrorMessage(error, '删除失败'));
-    }
-  };
-
-  const handleSubmit = async (id: number) => {
-    if (!confirm('确定要提交该付款申请吗？提交后将进入审批流程。')) return;
-    try {
-      await paymentRequestApi.submit(id);
-      toast.success('提交成功');
-      void fetchPayments();
-    } catch (error) {
-      toast.error(getErrorMessage(error, '提交失败'));
     }
   };
 
@@ -190,12 +270,56 @@ export const PaymentRequestPage: React.FC = () => {
         await paymentRequestApi.add(formData);
         toast.success('创建成功');
       }
-      setShowDialog(false);
-      setCurrentPayment(null);
-      setFormData(createDefaultForm());
-      void fetchPayments();
+
+      closeFormDialog();
+      await fetchPayments();
     } catch (error) {
       toast.error(getErrorMessage(error, '保存失败'));
+    }
+  };
+
+  const openDeleteConfirm = (id: number) => {
+    setConfirmState({
+      type: 'delete',
+      id,
+      title: '删除付款申请',
+      message: '删除后当前草稿不可恢复。',
+      confirmText: '删除',
+      danger: true,
+    });
+  };
+
+  const openSubmitConfirm = (id: number) => {
+    setConfirmState({
+      type: 'submit',
+      id,
+      title: '提交付款申请',
+      message: '提交后将进入审批流程。',
+      confirmText: '提交',
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmState) {
+      return;
+    }
+
+    const currentState = confirmState;
+    setConfirmState(null);
+
+    try {
+      if (currentState.type === 'delete') {
+        await paymentRequestApi.remove([currentState.id]);
+        toast.success('删除成功');
+      } else {
+        await paymentRequestApi.submit(currentState.id);
+        toast.success('提交成功');
+      }
+
+      await fetchPayments();
+      setDetailPayment((prev) => (prev?.id === currentState.id ? null : prev));
+    } catch (error) {
+      toast.error(getErrorMessage(error, currentState.type === 'delete' ? '删除失败' : '提交失败'));
     }
   };
 
@@ -203,24 +327,28 @@ export const PaymentRequestPage: React.FC = () => {
     try {
       const blob = await paymentRequestApi.export(searchParams);
       const fileName = downloadBlob(blob, buildExcelFileName('付款申请'));
-      toast.success(total > 0 ? `已导出 ${total} 条付款申请，下载文件：${fileName}` : `已导出空结果，下载文件：${fileName}`);
+      toast.success(
+        total > 0
+          ? `已导出 ${total} 条付款申请，下载文件：${fileName}`
+          : `已导出空结果，下载文件：${fileName}`,
+      );
     } catch (error) {
       toast.error(getErrorMessage(error, '导出失败'));
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, { bg: string; text: string }> = {
-      DRAFT: { bg: 'border border-slate-200 bg-slate-50', text: 'text-slate-600' },
-      PENDING: { bg: 'border border-cyan-200 bg-cyan-50', text: 'text-cyan-700' },
-      APPROVED: { bg: 'border border-emerald-200 bg-emerald-50', text: 'text-emerald-600' },
-      REJECTED: { bg: 'border border-rose-200 bg-rose-50', text: 'text-rose-600' },
-      PAID: { bg: 'border border-amber-200 bg-amber-50', text: 'text-amber-700' },
+  const getStatusBadge = (status?: string) => {
+    const toneMap: Record<string, string> = {
+      DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+      PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+      APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+      REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+      PAID: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
     };
-    const currentConfig = config[status] || config.DRAFT;
+
     return (
-      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${currentConfig.bg} ${currentConfig.text}`}>
-        {STATUS_LABELS[status] || status}
+      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
+        {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
       </span>
     );
   };
@@ -232,376 +360,443 @@ export const PaymentRequestPage: React.FC = () => {
     return value;
   };
 
-  const getActionHint = (status?: string) => {
-    switch (status) {
-      case 'DRAFT':
-        return '可继续补充收款与付款信息';
-      case 'PENDING':
-        return '可查看审批进度与付款背景';
-      case 'APPROVED':
-        return '审批通过，待进入付款执行';
-      case 'REJECTED':
-        return '建议查看驳回原因后调整';
-      case 'PAID':
-        return '已完成付款，仅保留记录留痕';
-      default:
-        return '可查看申请详情';
-    }
-  };
-
-  const statusQuickFilters = useMemo(() => ([
-    { label: '全部', value: '' },
-    { label: '草稿', value: 'DRAFT' },
-    { label: '审批中', value: 'PENDING' },
-    { label: '已通过', value: 'APPROVED' },
-    { label: '已驳回', value: 'REJECTED' },
-    { label: '已付款', value: 'PAID' },
-  ]), []);
-
-  const todayLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  const hasActiveFilters = Boolean(searchParams.status || searchParams.paymentType);
-  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
-  const currentStatusLabel = searchParams.status ? STATUS_LABELS[searchParams.status] || searchParams.status : '全部状态';
-  const currentTypeLabel = searchParams.paymentType ? getPaymentTypeLabel(searchParams.paymentType) : '全部类型';
-  const draftCount = payments.filter(item => item.status === 'DRAFT').length;
-  const pendingCount = payments.filter(item => item.status === 'PENDING').length;
-  const approvedCount = payments.filter(item => item.status === 'APPROVED').length;
-  const totalAmount = payments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-
-  const heroMetrics = useMemo(() => ([
-    {
-      label: '当前结果',
-      value: `${total}`,
-      hint: hasActiveFilters ? `${currentStatusLabel} · ${currentTypeLabel}` : '默认视图下全部付款申请',
-      icon: <DollarSign size={17} />,
-    },
-    {
-      label: '待补充草稿',
-      value: `${draftCount}`,
-      hint: draftCount > 0 ? '建议优先补齐收款与账户信息' : '当前没有待补充草稿',
-      icon: <Edit size={17} />,
-    },
-    {
-      label: '审批中',
-      value: `${pendingCount}`,
-      hint: pendingCount > 0 ? '可快速查看当前审批进度' : '当前没有审批中的申请',
-      icon: <Clock3 size={17} />,
-    },
-    {
-      label: '累计申请金额',
-      value: formatAmount(totalAmount),
-      hint: approvedCount > 0 ? `已通过 ${approvedCount} 条，便于快速判断付款规模` : '用于快速判断当前付款规模',
-      icon: <WalletCards size={17} />,
-    },
-  ]), [approvedCount, currentStatusLabel, currentTypeLabel, draftCount, hasActiveFilters, pendingCount, total, totalAmount]);
-
-  const workspaceOverviewItems = [
-    { label: '记录数', value: `${total} 条` },
-    { label: '状态', value: currentStatusLabel },
-    { label: '类型', value: currentTypeLabel },
-    { label: '视图', value: hasActiveFilters ? '筛选结果' : '默认视图' },
-  ];
-
-  const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]';
-  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-5 py-4';
-  const glassModalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
-  const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
-  const glassModalInputClass = 'h-11 rounded-xl';
-  const glassModalTextareaClass = 'min-h-28 rounded-xl';
-  const glassModalFooterClass = 'sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4';
-  const glassSelectContentClass = '';
-  const glassDetailCardClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
-
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600"><DollarSign size={14} />{todayLabel}</span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
-            </div>
-          )}
-          title="付款申请"
-          actions={(
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button className="h-9 rounded-xl px-4" onClick={handleAdd}><Plus size={15} className="mr-2" />新建申请</Button>
-              <Button variant="outline" className="h-9 rounded-xl px-4" onClick={handleExport}><Download size={15} className="mr-2 text-slate-500" />导出结果</Button>
-            </div>
-          )}
-          contentClassName="p-4 sm:p-5"
-          metrics={heroMetrics}
-        />
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <DollarSign className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Payment Requests
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          付款申请
+        </h1>
+      </div>
 
-        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
-          <div className="flex flex-col gap-3">
-            <WorkspaceWorkbenchCard
-              title="申请列表"
-              total={total}
-              hasActiveFilters={hasActiveFilters}
-              overviewItems={workspaceOverviewItems}
-              quickFilters={statusQuickFilters}
-              activeQuickFilter={searchParams.status}
-              onQuickFilterChange={applyStatusFilter}
-              quickFilterAside={hasActiveFilters ? (
-                <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-8 rounded-xl px-3.5"><RotateCcw size={15} className="mr-2" />清空所有条件</Button>
-              ) : (
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">当前未应用额外筛选</span>
-              )}
-              filterBar={(
-                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
-                  <Select value={paymentTypeInput} onValueChange={setPaymentTypeInput}>
-                    <SelectTrigger className="h-10 rounded-xl px-4"><SelectValue placeholder="按付款类型筛选" /></SelectTrigger>
-                    <SelectContent className={glassSelectContentClass}>
-                      <SelectItem className="rounded-xl" value="">全部类型</SelectItem>
-                      {PAYMENT_TYPE_OPTIONS.map(option => (
-                        <SelectItem key={option.value} className="rounded-xl" value={option.value}>{option.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button size="sm" onClick={applySearch} className="h-10 rounded-xl px-3.5"><Search size={15} className="mr-2" />应用筛选</Button>
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-xl px-3.5"><RotateCcw size={15} className="mr-2" />清空条件</Button>
+      <TablePageLayout
+        className="gap-4"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
+              <span className="text-slate-500 dark:text-slate-400">草稿 {draftCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">审批中 {pendingCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">已通过 {approvedCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">已付款 {paidCount}</span>
+            </div>
+
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button size="sm" onClick={handleAdd}>
+                <Plus size={14} className="mr-1.5" />
+                新建申请
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download size={14} className="mr-1.5" />
+                导出结果
+              </Button>
+            </div>
+          </div>
+        )}
+        filters={(
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
+            <div className="w-full sm:w-[180px]">
+              <Select
+                value={searchParams.status || 'ALL'}
+                onValueChange={(value) =>
+                  setSearchParams((prev) => ({
+                    ...prev,
+                    status: value === 'ALL' ? '' : value,
+                    pageNum: 1,
+                  }))
+                }
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部状态</SelectItem>
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="w-full sm:w-[180px]">
+              <Select
+                value={paymentTypeDraft || 'ALL'}
+                onValueChange={(value) => setPaymentTypeDraft(value === 'ALL' ? '' : value)}
+              >
+                <SelectTrigger className="h-10">
+                  <SelectValue placeholder="付款类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">全部类型</SelectItem>
+                  {PAYMENT_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+              <Button variant="outline" size="sm" onClick={handleApplyFilters}>
+                应用
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                <RotateCcw size={14} className="mr-1.5" />
+                清空条件
+              </Button>
+            </div>
+          </div>
+        )}
+        table={(
+          <div className="flex min-h-[40rem] flex-col">
+            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  申请列表
+                  <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
+                    {hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部'}
+                  </span>
                 </div>
-              )}
-            />
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  第 {searchParams.pageNum} / {totalPages} 页 · 共 {total} 条
+                </div>
+              </div>
+            </div>
 
-            <WorkspaceResultCard total={total} description="统一展示付款单、收款对象、金额和当前审批动作">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <TableHeader className="sticky top-0 z-10 bg-white">
-                    <tr>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">付款单号</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">收款方</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">金额</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">付款类型</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">付款事由</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">创建时间</TableHead>
-                      <TableActionHead className="px-4 py-3 w-52 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
-                    </tr>
-                  </TableHeader>
-                  <tbody className="divide-y divide-slate-100">
-                    {loading ? (
-                      <WorkspaceTableStateRow colSpan={8} type="loading" title="正在加载付款申请..." />
-                    ) : payments.length === 0 ? (
-                      <WorkspaceTableStateRow
-                        colSpan={8}
-                        variant="glass"
-                        icon={<DollarSign size={26} />}
-                        title={hasActiveFilters ? '当前条件下暂无记录' : '暂无付款申请'}
-                        description={hasActiveFilters ? '试试切换状态或付款类型筛选，或者直接新建一条付款申请。' : '创建新的付款申请后，这里会展示收款对象、金额和审批状态。'}
-                      />
-                    ) : payments.map(item => (
-                      <tr key={item.id} className="transition hover:bg-slate-50">
-                        <td className="px-4 py-2.5 text-sm text-slate-900">{item.paymentNo || '-'}</td>
-                        <td className="px-4 py-2.5 text-sm font-medium text-slate-900">{item.payeeName}</td>
-                        <td className="px-4 py-2.5 text-sm">{formatAmount(item.amount)}</td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600">{getPaymentTypeLabel(item.paymentType)}</td>
-                        <td className="max-w-xs truncate px-4 py-2.5 text-sm text-slate-600">{item.reason || '-'}</td>
-                        <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
-                        <td className="px-4 py-2.5 text-sm text-slate-600">{item.createTime || '-'}</td>
-                        <td className="px-4 py-2.5 whitespace-nowrap text-right">
-                          <div className="flex flex-col items-end gap-1">
-                            <TableRowActions align="end" className="gap-1" actions={[
-                              { label: '详情', icon: <Eye size={14} />, onClick: () => void handleView(item), tone: 'neutral', className: 'rounded-full border border-slate-200 bg-white px-2.5 hover:bg-slate-50' },
-                              { label: '编辑', icon: <Edit size={14} />, onClick: () => handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-cyan-200 bg-cyan-50 px-2.5 text-cyan-700 hover:bg-cyan-100' },
-                              { label: '提交', icon: <Send size={14} />, onClick: () => handleSubmit(item.id!), tone: 'success', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-emerald-200 bg-emerald-50 px-2.5 text-emerald-700 hover:bg-emerald-100' },
-                              { label: '删除', icon: <Trash2 size={14} />, onClick: () => handleDelete([item.id!]), tone: 'danger', hidden: item.status !== 'DRAFT', className: 'rounded-full border border-rose-200 bg-rose-50 px-2.5 text-rose-600 hover:bg-rose-100' },
-                            ]} />
-                            <span className="text-[10px] font-medium text-slate-400">{getActionHint(item.status)}</span>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[1180px]">
+                <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                  <tr>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      付款单号
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      收款方 / 账户
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      申请人 / 部门
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      类型 / 日期
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      金额
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      付款事由
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      状态
+                    </TableHead>
+                    <TableActionHead className="w-40 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      当前操作
+                    </TableActionHead>
+                  </tr>
+                </TableHeader>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {loading ? (
+                    <TableStateRow colSpan={8} title="正在加载付款申请..." loading />
+                  ) : payments.length === 0 ? (
+                    <TableStateRow
+                      colSpan={8}
+                      title={hasActiveFilters ? '当前筛选下暂无记录' : '暂无付款申请'}
+                    />
+                  ) : (
+                    payments.map((item) => (
+                      <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.paymentNo || '-'}</div>
+                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.createTime || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.payeeName || '-'}</div>
+                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                            {item.payeeAccount || item.payeeBank || '-'}
                           </div>
                         </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || '-'}</div>
+                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.deptName || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{getPaymentTypeLabel(item.paymentType)}</div>
+                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.expectedDate || '-'}</div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{formatAmount(item.amount)}</td>
+                        <td className="max-w-sm truncate px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                          {item.reason || '-'}
+                        </td>
+                        <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
+                        <td className="px-4 py-3 text-right">
+                          <TableRowActions
+                            align="end"
+                            className="gap-1"
+                            iconOnly
+                            actions={[
+                              {
+                                label: '详情',
+                                icon: <Eye size={14} />,
+                                onClick: () => void handleView(item),
+                                tone: 'neutral',
+                                className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
+                              },
+                              {
+                                label: '编辑',
+                                icon: <Edit size={14} />,
+                                onClick: () => void handleEdit(item.id!),
+                                tone: 'primary',
+                                hidden: item.status !== 'DRAFT',
+                                className: 'rounded-lg',
+                              },
+                              {
+                                label: '提交',
+                                icon: <Send size={14} />,
+                                onClick: () => openSubmitConfirm(item.id!),
+                                tone: 'success',
+                                hidden: item.status !== 'DRAFT',
+                                className: 'rounded-lg',
+                              },
+                              {
+                                label: '删除',
+                                icon: <Trash2 size={14} />,
+                                onClick: () => openDeleteConfirm(item.id!),
+                                tone: 'danger',
+                                hidden: item.status !== 'DRAFT',
+                                className: 'rounded-lg',
+                              },
+                            ]}
+                          />
+                        </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <WorkspacePaginationBar
-                total={total}
-                pageNum={searchParams.pageNum}
-                totalPages={totalPages}
-                onPrev={() => setSearchParams(prev => ({ ...prev, pageNum: Math.max(1, prev.pageNum - 1) }))}
-                onNext={() => setSearchParams(prev => ({ ...prev, pageNum: prev.pageNum + 1 }))}
-                prevDisabled={searchParams.pageNum === 1}
-                nextDisabled={searchParams.pageNum * searchParams.pageSize >= total}
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+        pagination={(
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={searchParams.pageNum}
+              pageSize={searchParams.pageSize}
+              showPageSizeSelector={false}
+              showJump={false}
+              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+              onPageSizeChange={() => {}}
+            />
+          ) : null
+        )}
+      />
+
+      <BaseDialog
+        open={showDialog}
+        title={currentPayment ? '编辑付款申请' : '新建付款申请'}
+        onClose={closeFormDialog}
+        width="wide"
+        footer={(
+          <>
+            <Button variant="outline" onClick={closeFormDialog}>
+              取消
+            </Button>
+            <Button onClick={() => void handleSave()}>
+              保存
+            </Button>
+          </>
+        )}
+      >
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                收款方名称
+              </label>
+              <Input
+                className="h-11"
+                type="text"
+                value={formData.payeeName}
+                onChange={(event) => setFormData((prev) => ({ ...prev, payeeName: event.target.value }))}
+                placeholder="请输入收款方名称"
               />
-            </WorkspaceResultCard>
-          </div>
-        </Card>
-      </WorkspacePageContent>
-
-        {showDialog && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4">
-            <div className={`${glassModalShellClass} max-w-4xl`}>
-              <div className={glassModalHeaderClass}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                      <DollarSign size={14} />
-                      付款申请表单
-                    </div>
-                    <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">{currentPayment ? '编辑付款申请' : '新增付款申请'}</h3>
-                    <p className="mt-2 text-sm leading-6 text-slate-500">整理收款对象、账户信息、付款类型和附件材料，形成完整的付款申请单。</p>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => setShowDialog(false)} className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700">
-                    <X size={18} />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="space-y-4 p-5">
-                <section className={glassModalSectionClass}>
-                  <div className="mb-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">基础付款</div>
-                    <div className="mt-1 text-sm text-slate-500">先确定收款方、金额、付款类型和期望日期，方便审批人快速判断付款背景。</div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className={glassModalLabelClass}>收款方名称 <span className="text-red-500">*</span></label>
-                      <Input className={glassModalInputClass} type="text" value={formData.payeeName} onChange={e => setFormData(prev => ({ ...prev, payeeName: e.target.value }))} placeholder="请输入收款方名称" />
-                    </div>
-                    <div>
-                      <label className={glassModalLabelClass}>付款金额(元) <span className="text-red-500">*</span></label>
-                      <Input className={glassModalInputClass} type="number" value={formData.amount || ''} onChange={e => setFormData(prev => ({ ...prev, amount: parseFloat(e.target.value) || 0 }))} placeholder="0.00" step="0.01" min="0" />
-                    </div>
-                    <div>
-                      <label className={glassModalLabelClass}>付款类型</label>
-                      <Select value={formData.paymentType} onValueChange={value => setFormData(prev => ({ ...prev, paymentType: value }))}>
-                        <SelectTrigger className={glassModalInputClass}><SelectValue placeholder="请选择付款类型" /></SelectTrigger>
-                        <SelectContent className={glassSelectContentClass}>
-                          {PAYMENT_TYPE_OPTIONS.map(option => (
-                            <SelectItem key={option.value} className="rounded-xl" value={option.value}>{option.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <label className={glassModalLabelClass}>期望付款日期</label>
-                      <DatePicker className={glassModalInputClass} type="date" value={formData.expectedDate || ''} onChange={e => setFormData(prev => ({ ...prev, expectedDate: e.target.value }))} />
-                    </div>
-                  </div>
-                </section>
-
-                <section className={glassModalSectionClass}>
-                  <div className="mb-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">账户信息</div>
-                    <div className="mt-1 text-sm text-slate-500">补充收款账号和开户银行，保证后续执行付款时信息可直接核对。</div>
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className={glassModalLabelClass}>收款账号</label>
-                      <Input className={glassModalInputClass} type="text" value={formData.payeeAccount || ''} onChange={e => setFormData(prev => ({ ...prev, payeeAccount: e.target.value }))} placeholder="请输入收款账号" />
-                    </div>
-                    <div>
-                      <label className={glassModalLabelClass}>开户银行</label>
-                      <Input className={glassModalInputClass} type="text" value={formData.payeeBank || ''} onChange={e => setFormData(prev => ({ ...prev, payeeBank: e.target.value }))} placeholder="请输入开户银行" />
-                    </div>
-                  </div>
-                </section>
-
-                <section className={glassModalSectionClass}>
-                  <div className="mb-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">申请说明</div>
-                    <div className="mt-1 text-sm text-slate-500">用一段简洁说明交代付款用途、背景和付款必要性。</div>
-                  </div>
-                  <label className={glassModalLabelClass}>付款事由 <span className="text-red-500">*</span></label>
-                  <Textarea className={glassModalTextareaClass} value={formData.reason} onChange={e => setFormData(prev => ({ ...prev, reason: e.target.value }))} placeholder="例如：供应商项目尾款、驻场服务费、场地租赁费、办公采购付款等" />
-                </section>
-
-                <section className={glassModalSectionClass}>
-                  <div className="mb-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">附件材料</div>
-                    <div className="mt-1 text-sm text-slate-500">可附上合同、发票、付款通知或审批附件，帮助审批人与财务快速核实背景。</div>
-                  </div>
-                  <FileUpload value={formData.attachmentUrl || ''} onChange={urls => setFormData(prev => ({ ...prev, attachmentUrl: urls }))} maxCount={5} hint="可上传合同、付款通知、发票或收款凭证，最多 5 个文件" />
-                </section>
-              </div>
-
-              <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setShowDialog(false)} className="rounded-xl px-5">取消</Button>
-                <Button onClick={handleSave} className="rounded-xl px-5">保存</Button>
-              </div>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                付款金额
+              </label>
+              <Input
+                className="h-11"
+                type="number"
+                value={formData.amount || ''}
+                onChange={(event) => setFormData((prev) => ({ ...prev, amount: parseFloat(event.target.value) || 0 }))}
+                placeholder="0.00"
+                step="0.01"
+                min="0"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                付款类型
+              </label>
+              <Select
+                value={formData.paymentType}
+                onValueChange={(value) => setFormData((prev) => ({ ...prev, paymentType: value }))}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="请选择付款类型" />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                期望付款日期
+              </label>
+              <DatePicker
+                className="h-11"
+                type="date"
+                value={formData.expectedDate || ''}
+                onChange={(event) => setFormData((prev) => ({ ...prev, expectedDate: event.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                收款账号
+              </label>
+              <Input
+                className="h-11"
+                type="text"
+                value={formData.payeeAccount || ''}
+                onChange={(event) => setFormData((prev) => ({ ...prev, payeeAccount: event.target.value }))}
+                placeholder="请输入收款账号"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                开户银行
+              </label>
+              <Input
+                className="h-11"
+                type="text"
+                value={formData.payeeBank || ''}
+                onChange={(event) => setFormData((prev) => ({ ...prev, payeeBank: event.target.value }))}
+                placeholder="请输入开户银行"
+              />
             </div>
           </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              付款事由
+            </label>
+            <Textarea
+              className="min-h-[120px] resize-none"
+              value={formData.reason}
+              onChange={(event) => setFormData((prev) => ({ ...prev, reason: event.target.value }))}
+              placeholder="填写付款原因"
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              附件
+            </label>
+            <FileUpload
+              value={formData.attachmentUrl || ''}
+              onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
+              maxCount={5}
+            />
+          </div>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={Boolean(detailPayment)}
+        title={detailPayment?.paymentNo || '付款申请详情'}
+        onClose={closeDetailDialog}
+        width="wide"
+        headerAside={detailPayment && !detailLoading ? getStatusBadge(detailPayment.status) : null}
+        bodyClassName="space-y-4"
+        footer={(
+          <Button variant="outline" onClick={closeDetailDialog}>
+            关闭
+          </Button>
         )}
+      >
+        {detailLoading ? (
+          <InlineState title="正在加载付款详情..." className="py-12" icon={<Clock3 className="h-4 w-4 animate-spin" />} />
+        ) : detailPayment ? (
+          <>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <DetailField label="收款方" value={renderDetailValue(detailPayment.payeeName)} />
+              <DetailField label="付款金额" value={formatAmount(detailPayment.amount)} />
+              <DetailField label="付款类型" value={getPaymentTypeLabel(detailPayment.paymentType)} />
+              <DetailField label="期望付款日期" value={renderDetailValue(detailPayment.expectedDate)} />
+              <DetailField label="收款账号" value={renderDetailValue(detailPayment.payeeAccount)} />
+              <DetailField label="开户银行" value={renderDetailValue(detailPayment.payeeBank)} />
+              <DetailField label="申请人" value={renderDetailValue(detailPayment.userName)} />
+              <DetailField label="所属部门" value={renderDetailValue(detailPayment.deptName)} />
+              <DetailField label="流程实例" value={renderDetailValue(detailPayment.instanceId)} />
+              <DetailField label="创建时间" value={renderDetailValue(detailPayment.createTime)} />
+              <DetailField label="更新时间" value={renderDetailValue(detailPayment.updateTime)} />
+            </div>
 
-        {detailPayment && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32 p-4" onClick={() => !detailLoading && setDetailPayment(null)}>
-            <div className={`flex max-h-[90vh] max-w-5xl flex-col ${glassModalShellClass}`} onClick={e => e.stopPropagation()}>
-              <div className={glassModalHeaderClass}>
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                      <Eye size={14} />
-                      申请详情
-                    </div>
-                    <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-900">{detailPayment.paymentNo || '付款申请'}</h3>
-                    <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                      <span>{detailPayment.payeeName || '-'}</span>
-                      {getStatusBadge(detailPayment.status || 'DRAFT')}
-                    </div>
-                  </div>
-                  <Button variant="ghost" size="icon" onClick={() => setDetailPayment(null)} className="rounded-full border border-slate-200 bg-white text-slate-400 hover:bg-slate-50 hover:text-slate-700">
-                    <X size={18} />
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex-1 space-y-5 overflow-y-auto p-5">
-                {detailLoading ? (
-                  <WorkspaceInlineState type="loading" title="正在加载付款详情..." className="py-12" />
-                ) : (
-                  <>
-                    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">收款方</div><div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailPayment.payeeName)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">付款金额</div><div className="mt-2 text-sm font-semibold text-slate-900">{formatAmount(detailPayment.amount)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">付款类型</div><div className="mt-2 text-sm font-semibold text-slate-900">{getPaymentTypeLabel(detailPayment.paymentType)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">收款账号</div><div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailPayment.payeeAccount)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">开户银行</div><div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailPayment.payeeBank)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">期望付款日期</div><div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailPayment.expectedDate)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">申请人</div><div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailPayment.userName)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">所属部门</div><div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailPayment.deptName)}</div></div>
-                      <div className={glassDetailCardClass}><div className="text-xs font-medium text-slate-400">创建时间</div><div className="mt-2 text-sm font-semibold text-slate-900">{renderDetailValue(detailPayment.createTime)}</div></div>
-                    </div>
-
-                    <div className={glassModalSectionClass}>
-                      <div className="text-sm font-semibold text-slate-900">付款事由</div>
-                      <div className="mt-3 whitespace-pre-wrap rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm leading-7 text-slate-600">{detailPayment.reason || '-'}</div>
-                    </div>
-
-                    <div className={glassModalSectionClass}>
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-sm font-semibold text-slate-900">附件</div>
-                        <div className="text-xs text-slate-400">支持直接打开已上传文件</div>
-                      </div>
-                      <div className="mt-4 space-y-2">
-                        {getAttachmentList(detailPayment.attachmentUrl).length ? (
-                          getAttachmentList(detailPayment.attachmentUrl).map(url => {
-                            const label = url.split('/').pop() || '附件';
-                            return (
-                              <a key={url} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 transition hover:border-cyan-200 hover:bg-white hover:text-cyan-700">
-                                <Paperclip size={14} />
-                                <span className="truncate">{label}</span>
-                              </a>
-                            );
-                          })
-                        ) : (
-                          <WorkspaceInlineState title="暂无附件" description="当前付款单还没有上传附件材料。" className="py-5" />
-                        )}
-                      </div>
-                    </div>
-                  </>
-                )}
-              </div>
-
-              <div className={glassModalFooterClass}>
-                <Button variant="outline" onClick={() => setDetailPayment(null)} className="rounded-xl px-5">关闭</Button>
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">付款事由</div>
+              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {detailPayment.reason || '-'}
               </div>
             </div>
-          </div>
-        )}
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
+              {getAttachmentList(detailPayment.attachmentUrl).length ? (
+                <div className="space-y-2">
+                  {getAttachmentList(detailPayment.attachmentUrl).map((url) => {
+                    const label = url.split('/').pop() || '附件';
+                    return (
+                      <a
+                        key={url}
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 transition hover:border-cyan-200 hover:bg-slate-50 hover:text-cyan-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+                      >
+                        <Paperclip size={14} />
+                        <span className="truncate">{label}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : (
+                <InlineState title="暂无附件" className="py-5" icon={<Paperclip className="h-4 w-4" />} />
+              )}
+            </div>
+          </>
+        ) : null}
+      </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        title={confirmState?.title || '确认操作'}
+        message={confirmState?.message || ''}
+        confirmText={confirmState?.confirmText || '确定'}
+        danger={confirmState?.danger}
+        onConfirm={() => void handleConfirmAction()}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 };
