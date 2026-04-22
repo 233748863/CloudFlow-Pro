@@ -4,9 +4,9 @@ import { Bell, Check, Clock3, Eye, X } from 'lucide-react';
 import type { Announcement } from '@/types';
 import { AnnouncementContent } from '@/components/common/AnnouncementContent';
 import { Button } from '@/components/ui';
-import { WorkspaceIconButton } from '@/components/workspace/WorkspaceControls';
 import { cn } from '@/utils/cn';
 import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
+import { lockBodyScroll } from '@/utils/bodyScrollLock';
 import './announcement-overlays.css';
 
 interface AnnouncementDetailModalProps {
@@ -45,12 +45,11 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
       }
     };
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlockBodyScroll = lockBodyScroll();
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      unlockBodyScroll();
       window.removeEventListener('keydown', handleEscape);
     };
   }, [announcement, onClose]);
@@ -62,24 +61,24 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
   return createPortal(
     <div
       className={cn(
-        'cf-announcement-modal-overlay fixed inset-0 flex items-start justify-center overflow-y-auto bg-slate-950/40 p-4 pt-[6vh] backdrop-blur-[2px]',
+        'cf-announcement-modal-overlay fixed inset-0 flex items-start justify-center overflow-y-auto bg-slate-950/44 p-4 pt-[6vh] backdrop-blur-[3px]',
         zIndexClassName,
       )}
       onClick={onClose}
     >
       <div
         className={cn(
-          'cf-announcement-modal-panel w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80 dark:shadow-[0_22px_44px_rgba(2,6,23,0.56)]',
+          'cf-announcement-modal-panel w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_24px_48px_rgba(15,23,42,0.16)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]',
           maxWidthClassName,
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="border-b border-slate-100 bg-white px-5 pb-4 pt-5 dark:border-slate-800 dark:bg-slate-950">
+        <div className="border-b border-slate-100 bg-white px-5 py-4 dark:border-slate-800 dark:bg-slate-950">
           <div className="relative z-10 flex items-start justify-between gap-4">
             <div className="min-w-0 flex-1">
               <div className="mb-3 flex flex-wrap items-center gap-2">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-                  <Bell size={18} />
+                <div className="flex h-8 w-8 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+                  <Bell size={15} />
                 </div>
                 <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
                   {titleBadgeLabel}
@@ -112,16 +111,20 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
               {extraInfo ? <div className="mt-3">{extraInfo}</div> : null}
             </div>
 
-            <WorkspaceIconButton icon={<X size={18} />} label="关闭公告详情" shape="circle" onClick={onClose} />
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg border border-slate-200 bg-white p-2 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
+              aria-label="关闭公告详情"
+            >
+              <X size={18} />
+            </button>
           </div>
         </div>
 
         <div className="cf-announcement-scroll max-h-[60vh] overflow-y-auto bg-white px-5 py-5 dark:bg-slate-950">
-          <div className="relative">
-            <div className="absolute bottom-0 left-0 top-0 w-0.5 rounded-full bg-cyan-500" />
-            <div className="pl-5">
-              <AnnouncementContent content={announcement.content} />
-            </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <AnnouncementContent content={announcement.content} />
           </div>
         </div>
 

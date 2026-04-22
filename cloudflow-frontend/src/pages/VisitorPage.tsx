@@ -12,15 +12,20 @@ import {
   XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { BaseDialog, SearchInput } from '@/components/common';
+import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { visitorApi, Visitor } from '../services/api/visitor';
 import {
   Button,
-  Card,
   DatePicker,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Table,
   TableActionHead,
   TableBody,
@@ -31,16 +36,6 @@ import {
   Textarea,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import {
-  WorkspaceBackdrop,
-  WorkspaceHeroMetricsSection,
-  WorkspacePageContent,
-  WorkspacePaginationBar,
-  WorkspaceResultCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-  workspaceGlassSurfaceClassName,
-} from '@/components/workspace';
 
 const STATUS_MAP: Record<string, string> = {
   PENDING: '待确认',
@@ -50,30 +45,64 @@ const STATUS_MAP: Record<string, string> = {
   CANCELLED: '已取消',
 };
 
-const STATUS_QUICK_FILTERS = [
-  { label: '全部', value: '' },
-  { label: '待确认', value: 'PENDING' },
-  { label: '已确认', value: 'CONFIRMED' },
-  { label: '已到访', value: 'ARRIVED' },
-  { label: '已离场', value: 'COMPLETED' },
-  { label: '已取消', value: 'CANCELLED' },
-];
+const createDefaultForm = (): Visitor => ({
+  visitorName: '',
+  visitReason: '',
+  hostId: 0,
+  visitDate: '',
+  visitorPhone: '',
+  visitorCompany: '',
+  visitorCount: 1,
+  visitArea: '',
+  carPlate: '',
+  hostName: '',
+});
+
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}> = ({ title, description, icon, className }) => (
+  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      {icon || <UserCheck className="h-4 w-4" />}
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+  </div>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  loading?: boolean;
+}> = ({ colSpan, title, description, icon, loading = false }) => (
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          {loading ? <RotateCcw className="h-4 w-4 animate-spin" /> : icon || <UserCheck className="h-4 w-4" />}
+        </div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+      </div>
+    </td>
+  </tr>
+);
 
 const getStatusTone = (status: string) => {
   const config: Record<string, string> = {
-    PENDING: 'border-amber-200 bg-amber-50 text-amber-700',
-    CONFIRMED: 'border-cyan-200 bg-cyan-50 text-cyan-700',
-    ARRIVED: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-    COMPLETED: 'border-slate-200 bg-slate-50 text-slate-700',
-    CANCELLED: 'border-slate-200 bg-slate-100 text-slate-500',
+    PENDING: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    CONFIRMED: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+    ARRIVED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    COMPLETED: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+    CANCELLED: 'border-slate-200 bg-slate-100 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
   };
 
   return config[status] || config.PENDING;
-};
-
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
 };
 
 export const VisitorPage: React.FC = () => {
@@ -90,12 +119,8 @@ export const VisitorPage: React.FC = () => {
   const [visitDateInput, setVisitDateInput] = useState('');
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
-  const [formData, setFormData] = useState<Visitor>({
-    visitorName: '',
-    visitReason: '',
-    hostId: 0,
-    visitDate: '',
-  });
+  const [cancelTarget, setCancelTarget] = useState<Visitor | null>(null);
+  const [formData, setFormData] = useState<Visitor>(createDefaultForm());
 
   useEffect(() => {
     void fetchList();
@@ -105,30 +130,19 @@ export const VisitorPage: React.FC = () => {
     setLoading(true);
     try {
       const res = await visitorApi.list(searchParams);
-      if (res) {
-        setList(res.records || res.rows || []);
-        setTotal(res.total || 0);
-      }
+      setList(res.records || res.rows || []);
+      setTotal(res.total || 0);
     } catch (error) {
       toast.error(getErrorMessage(error, '获取访客列表失败'));
+      setList([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
   };
 
   const handleAdd = () => {
-    setFormData({
-      visitorName: '',
-      visitReason: '',
-      hostId: 0,
-      visitDate: '',
-      visitorPhone: '',
-      visitorCompany: '',
-      visitorCount: 1,
-      visitArea: '',
-      carPlate: '',
-      hostName: '',
-    });
+    setFormData(createDefaultForm());
     setShowDialog(true);
   };
 
@@ -142,6 +156,7 @@ export const VisitorPage: React.FC = () => {
       await visitorApi.add(formData);
       toast.success('预约成功');
       setShowDialog(false);
+      setFormData(createDefaultForm());
       void fetchList();
     } catch (error) {
       toast.error(getErrorMessage(error, '保存失败'));
@@ -178,14 +193,15 @@ export const VisitorPage: React.FC = () => {
     }
   };
 
-  const handleCancel = async (id: number) => {
-    if (!confirm('确定取消这条预约吗？')) {
+  const handleCancel = async () => {
+    if (!cancelTarget?.visitorId) {
       return;
     }
 
     try {
-      await visitorApi.cancel(id);
+      await visitorApi.cancel(cancelTarget.visitorId);
       toast.success('已取消');
+      setCancelTarget(null);
       void fetchList();
     } catch (error) {
       toast.error(getErrorMessage(error, '操作失败'));
@@ -197,14 +213,6 @@ export const VisitorPage: React.FC = () => {
       ...prev,
       visitorName: visitorNameInput.trim(),
       visitDate: visitDateInput,
-      pageNum: 1,
-    }));
-  };
-
-  const applyStatusFilter = (status: string) => {
-    setSearchParams((prev) => ({
-      ...prev,
-      status,
       pageNum: 1,
     }));
   };
@@ -221,25 +229,15 @@ export const VisitorPage: React.FC = () => {
     });
   };
 
-  const now = useMemo(() => new Date(), []);
-  const todayLabel = useMemo(() => formatDateCN(now), [now]);
-  const timeLabel = useMemo(() => now.toTimeString().slice(0, 5), [now]);
-  const todayString = useMemo(() => {
-    const date = new Date();
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-      date.getDate(),
-    ).padStart(2, '0')}`;
-  }, []);
-
   const pendingCount = useMemo(() => list.filter((item) => item.status === 'PENDING').length, [list]);
   const arrivedCount = useMemo(() => list.filter((item) => item.status === 'ARRIVED').length, [list]);
   const completedCount = useMemo(
     () => list.filter((item) => item.status === 'COMPLETED').length,
     [list],
   );
-  const todayVisitCount = useMemo(
-    () => list.filter((item) => item.visitDate?.slice(0, 10) === todayString).length,
-    [list, todayString],
+  const cancelledCount = useMemo(
+    () => list.filter((item) => item.status === 'CANCELLED').length,
+    [list],
   );
 
   const currentStatusLabel = searchParams.status
@@ -248,289 +246,260 @@ export const VisitorPage: React.FC = () => {
   const hasActiveFilters = Boolean(searchParams.status || searchParams.visitorName || searchParams.visitDate);
   const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
 
-  const heroMetrics = useMemo(
-    () => [
-      {
-        label: '当前记录',
-        value: `${total}`,
-        hint: '默认展示当前条件下的访客预约记录',
-        icon: <Users size={17} />,
-      },
-      {
-        label: '待确认',
-        value: `${pendingCount}`,
-        hint: pendingCount > 0 ? '建议优先处理待确认预约' : '当前没有待确认预约',
-        icon: <CheckCircle size={17} />,
-      },
-      {
-        label: '今日来访',
-        value: `${todayVisitCount}`,
-        hint: arrivedCount > 0 ? `当前已有 ${arrivedCount} 位访客完成签到` : '今天还没有签到记录',
-        icon: <LogIn size={17} />,
-      },
-      {
-        label: '已离场',
-        value: `${completedCount}`,
-        hint: completedCount > 0 ? '离场记录会持续保留在列表中' : '当前还没有离场访客',
-        icon: <LogOut size={17} />,
-      },
-    ],
-    [arrivedCount, completedCount, pendingCount, todayVisitCount, total],
-  );
-
-  const workspaceOverviewItems = [
-    {
-      label: '记录数',
-      value: `${total} 条`,
-    },
-    {
-      label: '状态',
-      value: currentStatusLabel,
-    },
-    {
-      label: '访客',
-      value: searchParams.visitorName || '全部',
-    },
-    {
-      label: '视图',
-      value: hasActiveFilters ? '筛选结果' : '默认视图',
-    },
-  ];
-
-  const modalSectionClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
-  const modalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
-  const modalInputClass = 'h-11 rounded-xl';
-  const modalTextareaClass = 'min-h-28 rounded-xl';
-
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <UserCheck className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Visitor Booking
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          访客预约
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          统一查看预约状态、签到进度和来访记录，页面结构直接收敛到参考后台列表页语法。
+        </p>
+      </div>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
-                <UserCheck size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">
-                {timeLabel}
-              </span>
-            </div>
-          }
-          title="访客预约"
-          description="统一查看预约状态、签到进度和当日来访情况。"
-          actions={
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button className="h-9 rounded-xl px-4" onClick={handleAdd}>
-                <Plus size={15} className="mr-2" />
+      <TablePageLayout
+        className="gap-4"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              当前结果 {total}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              待确认 {pendingCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              已到访 {arrivedCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              已离场 {completedCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              已取消 {cancelledCount}
+            </span>
+
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => void fetchList()} disabled={loading}>
+                <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={handleAdd}>
+                <Plus size={14} className="mr-1.5" />
                 新增预约
               </Button>
-              <Button variant="outline" className="h-9 rounded-xl px-4" onClick={() => void fetchList()}>
-                <RotateCcw size={15} className="mr-2 text-slate-500" />
-                刷新数据
-              </Button>
             </div>
-          }
-          contentClassName="p-3.5 sm:p-4"
-          metrics={heroMetrics}
-        />
-
-        <Card className={`${workspaceGlassSurfaceClassName} p-3`}>
-          <div className="flex flex-col gap-3">
-            <WorkspaceWorkbenchCard
-              title="预约列表"
-              total={total}
-              hasActiveFilters={hasActiveFilters}
-              overviewItems={workspaceOverviewItems}
-              quickFilters={STATUS_QUICK_FILTERS}
-              activeQuickFilter={searchParams.status}
-              onQuickFilterChange={applyStatusFilter}
-              quickFilterAside={
-                hasActiveFilters ? (
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-9 rounded-xl px-4">
-                    <RotateCcw size={15} className="mr-2" />
-                    清空全部条件
-                  </Button>
-                ) : (
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
-                    当前未启用额外筛选
-                  </span>
-                )
-              }
-              filterBar={
-                <div className="grid grid-cols-1 gap-2.5 xl:grid-cols-[minmax(0,1fr)_220px_auto_auto]">
-                  <SearchInput
-                    value={visitorNameInput}
-                    onChange={setVisitorNameInput}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        applySearch();
-                      }
-                    }}
-                    placeholder="按访客姓名搜索"
-                    inputClassName="h-10 rounded-xl pr-4"
-                  />
-
-                  <DatePicker
-                    className="h-10 rounded-xl"
-                    type="date"
-                    value={visitDateInput}
-                    onChange={(e) => setVisitDateInput(e.target.value)}
-                  />
-
-                  <Button size="sm" onClick={applySearch} className="h-10 rounded-xl px-4">
-                    <Search size={15} className="mr-2" />
-                    应用筛选
-                  </Button>
-
-                  <Button variant="outline" size="sm" onClick={handleResetFilters} className="h-10 rounded-xl px-4">
-                    <RotateCcw size={15} className="mr-2" />
-                    清空条件
-                  </Button>
-                </div>
-              }
-            />
-
-            <WorkspaceResultCard total={total} description="展示访客预约、通行码、来访状态和当前可执行动作">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader className="bg-slate-50">
-                    <TableRow className="border-slate-200 hover:bg-transparent">
-                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        访客姓名
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        单位
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        来访日期
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        被访人
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        来访事由
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        通行码
-                      </TableHead>
-                      <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        状态
-                      </TableHead>
-                      <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
-                        当前操作
-                      </TableActionHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      <WorkspaceTableStateRow type="loading" colSpan={8} title="正在加载访客记录..." />
-                    ) : list.length === 0 ? (
-                      <WorkspaceTableStateRow
-                        colSpan={8}
-                        icon={<UserCheck size={26} />}
-                        title="暂无访客记录"
-                        description="新增预约后，这里会展示被访人、通行码、签到签退和取消动作。"
-                      />
-                    ) : (
-                      list.map((item) => {
-                        const tone = getStatusTone(item.status || 'PENDING');
-
-                        return (
-                          <TableRow key={item.visitorId} className="border-slate-200 transition hover:bg-slate-50/60">
-                            <TableCell className="px-4 py-4 align-top">
-                              <div className="text-sm font-semibold text-slate-900">{item.visitorName}</div>
-                              <div className="mt-1 text-[11px] text-slate-400">{item.visitorPhone || '未填写联系电话'}</div>
-                            </TableCell>
-                            <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                              <span className="inline-flex items-center gap-1">
-                                <Building2 size={12} className="text-slate-400" />
-                                {item.visitorCompany || '-'}
-                              </span>
-                            </TableCell>
-                            <TableCell className="px-4 py-4 align-top text-sm text-slate-600">{item.visitDate}</TableCell>
-                            <TableCell className="px-4 py-4 align-top text-sm text-slate-600">{item.hostName || '-'}</TableCell>
-                            <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                              <span className="line-clamp-1 max-w-[180px]">{item.visitReason}</span>
-                            </TableCell>
-                            <TableCell className="px-4 py-4 align-top text-sm font-medium text-cyan-600">
-                              {item.passCode || '-'}
-                            </TableCell>
-                            <TableCell className="px-4 py-4 align-top">
-                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>
-                                {STATUS_MAP[item.status || 'PENDING'] || item.status}
-                              </span>
-                            </TableCell>
-                            <TableCell className="px-4 py-4 align-top">
-                              <TableRowActions
-                                align="end"
-                                actions={[
-                                  {
-                                    label: '确认',
-                                    icon: <CheckCircle size={14} />,
-                                    onClick: () => handleConfirm(item.visitorId!),
-                                    tone: 'primary',
-                                    hidden: item.status !== 'PENDING',
-                                  },
-                                  {
-                                    label: '签到',
-                                    icon: <LogIn size={14} />,
-                                    onClick: () => handleCheckIn(item.visitorId!),
-                                    tone: 'success',
-                                    hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
-                                  },
-                                  {
-                                    label: '签退',
-                                    icon: <LogOut size={14} />,
-                                    onClick: () => handleCheckOut(item.visitorId!),
-                                    tone: 'warning',
-                                    hidden: item.status !== 'ARRIVED',
-                                  },
-                                  {
-                                    label: '取消',
-                                    icon: <XCircle size={14} />,
-                                    onClick: () => handleCancel(item.visitorId!),
-                                    tone: 'danger',
-                                    hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
-                                  },
-                                ]}
-                              />
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })
-                    )}
-                  </TableBody>
-                </Table>
+          </div>
+        )}
+        filters={(
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Input
+                  value={visitorNameInput}
+                  onChange={(event) => setVisitorNameInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      applySearch();
+                    }
+                  }}
+                  placeholder="按访客姓名搜索"
+                  className="h-10 pl-10"
+                />
               </div>
 
-              {total > 0 ? (
-                <WorkspacePaginationBar
-                  total={total}
-                  pageNum={searchParams.pageNum}
-                  totalPages={totalPages}
-                  onPrev={() =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      pageNum: Math.max(1, prev.pageNum - 1),
-                    }))
-                  }
-                  onNext={() =>
-                    setSearchParams((prev) => ({
-                      ...prev,
-                      pageNum: prev.pageNum + 1,
-                    }))
-                  }
-                  prevDisabled={searchParams.pageNum <= 1}
-                  nextDisabled={searchParams.pageNum >= totalPages}
+              <div className="w-full sm:w-[170px]">
+                <Select
+                  value={searchParams.status || 'ALL'}
+                  onValueChange={(value) => setSearchParams((prev) => ({
+                    ...prev,
+                    status: value === 'ALL' ? '' : value,
+                    pageNum: 1,
+                  }))}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">全部状态</SelectItem>
+                    <SelectItem value="PENDING">待确认</SelectItem>
+                    <SelectItem value="CONFIRMED">已确认</SelectItem>
+                    <SelectItem value="ARRIVED">已到访</SelectItem>
+                    <SelectItem value="COMPLETED">已离场</SelectItem>
+                    <SelectItem value="CANCELLED">已取消</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-[180px]">
+                <DatePicker
+                  className="h-10"
+                  type="date"
+                  value={visitDateInput}
+                  onChange={(event) => setVisitDateInput(event.target.value)}
                 />
-              ) : null}
-            </WorkspaceResultCard>
+              </div>
+            </div>
+
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
+              <Button variant="outline" size="sm" onClick={applySearch}>
+                <Search size={14} className="mr-1.5" />
+                搜索
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleResetFilters}>
+                清空筛选
+              </Button>
+            </div>
           </div>
-        </Card>
-      </WorkspacePageContent>
+        )}
+        table={(
+          <div className="flex min-h-[40rem] flex-col">
+            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">预约列表</div>
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {hasActiveFilters
+                      ? `${currentStatusLabel} · ${searchParams.visitorName || '全部访客'}`
+                      : '当前显示全部访客预约'}
+                  </div>
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  第 {searchParams.pageNum} / {totalPages} 页 · {total} 条
+                </div>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1100px]">
+                <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                  <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">访客</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">单位</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">来访日期</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">被访人</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">来访事由</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">通行码</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
+                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
+                  </TableRow>
+                </TableHeader>
+
+                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {loading ? (
+                    <TableStateRow colSpan={8} title="正在加载访客记录..." loading />
+                  ) : list.length === 0 ? (
+                    <TableStateRow
+                      colSpan={8}
+                      title="暂无访客记录"
+                      description="新增预约后，这里会展示被访人、通行码、签到签退和取消动作。"
+                    />
+                  ) : (
+                    list.map((item) => {
+                      const tone = getStatusTone(item.status || 'PENDING');
+
+                      return (
+                        <TableRow key={item.visitorId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                          <TableCell className="px-4 py-3 align-top">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {item.visitorName}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              {item.visitorPhone || '未填写联系电话'}
+                            </div>
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            <span className="inline-flex items-center gap-1">
+                              <Building2 size={12} className="text-slate-400 dark:text-slate-500" />
+                              {item.visitorCompany || '-'}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            {item.visitDate}
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            {item.hostName || '-'}
+                          </TableCell>
+
+                          <TableCell className="max-w-xs px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            <span className="line-clamp-1">{item.visitReason}</span>
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 align-top text-sm font-medium text-cyan-700 dark:text-cyan-300">
+                            {item.passCode || '-'}
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 align-top">
+                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${tone}`}>
+                              {STATUS_MAP[item.status || 'PENDING'] || item.status}
+                            </span>
+                          </TableCell>
+
+                          <TableCell className="px-4 py-3 align-top text-right">
+                            <TableRowActions
+                              align="end"
+                              className="gap-1"
+                              actions={[
+                                {
+                                  label: '确认',
+                                  icon: <CheckCircle size={14} />,
+                                  onClick: () => handleConfirm(item.visitorId!),
+                                  tone: 'primary',
+                                  hidden: item.status !== 'PENDING',
+                                },
+                                {
+                                  label: '签到',
+                                  icon: <LogIn size={14} />,
+                                  onClick: () => handleCheckIn(item.visitorId!),
+                                  tone: 'success',
+                                  hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                                },
+                                {
+                                  label: '签退',
+                                  icon: <LogOut size={14} />,
+                                  onClick: () => handleCheckOut(item.visitorId!),
+                                  tone: 'warning',
+                                  hidden: item.status !== 'ARRIVED',
+                                },
+                                {
+                                  label: '取消',
+                                  icon: <XCircle size={14} />,
+                                  onClick: () => setCancelTarget(item),
+                                  tone: 'danger',
+                                  hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                                },
+                              ]}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        )}
+        pagination={(
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={searchParams.pageNum}
+              pageSize={searchParams.pageSize}
+              showPageSizeSelector={false}
+              showJump={false}
+              onPageChange={(page) => setSearchParams((prev) => ({ ...prev, pageNum: page }))}
+              onPageSizeChange={() => {}}
+            />
+          ) : null
+        )}
+      />
 
       <BaseDialog
         open={showDialog}
@@ -538,112 +507,120 @@ export const VisitorPage: React.FC = () => {
         description="填写来访人、单位、日期与被访人信息，形成完整预约记录。"
         onClose={() => setShowDialog(false)}
         maxWidthClassName="max-w-3xl"
-        bodyClassName="space-y-4"
+        panelClassName="max-h-[92vh]"
+        bodyClassName="max-h-[72vh] overflow-y-auto"
         footer={
-          <>
-            <Button variant="outline" className="h-11 rounded-xl px-4" onClick={() => setShowDialog(false)}>
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setShowDialog(false)}>
               取消
             </Button>
-            <Button className="h-11 rounded-xl px-4" onClick={handleSave}>
+            <Button onClick={handleSave}>
               保存
             </Button>
-          </>
+          </div>
         }
       >
         <div className="grid gap-4 md:grid-cols-2">
-          <div className={modalSectionClass}>
-            <Label className={modalLabelClass}>访客姓名</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">访客姓名</Label>
             <Input
               type="text"
               value={formData.visitorName}
-              onChange={(e) => setFormData({ ...formData, visitorName: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, visitorName: event.target.value })}
               placeholder="请输入访客姓名"
-              className={modalInputClass}
+              className="h-11"
             />
           </div>
-          <div className={modalSectionClass}>
-            <Label className={modalLabelClass}>访客电话</Label>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">访客电话</Label>
             <Input
               type="text"
               value={formData.visitorPhone || ''}
-              onChange={(e) => setFormData({ ...formData, visitorPhone: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, visitorPhone: event.target.value })}
               placeholder="请输入电话号码"
-              className={modalInputClass}
+              className="h-11"
             />
           </div>
-        </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className={modalSectionClass}>
-            <Label className={modalLabelClass}>访客单位</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">访客单位</Label>
             <Input
               type="text"
               value={formData.visitorCompany || ''}
-              onChange={(e) => setFormData({ ...formData, visitorCompany: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, visitorCompany: event.target.value })}
               placeholder="请输入单位名称"
-              className={modalInputClass}
+              className="h-11"
             />
           </div>
-          <div className={modalSectionClass}>
-            <Label className={modalLabelClass}>来访人数</Label>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来访人数</Label>
             <Input
               type="number"
               value={formData.visitorCount || 1}
-              onChange={(e) =>
-                setFormData({
-                  ...formData,
-                  visitorCount: parseInt(e.target.value, 10) || 1,
-                })
-              }
+              onChange={(event) => setFormData({
+                ...formData,
+                visitorCount: parseInt(event.target.value, 10) || 1,
+              })}
               min="1"
-              className={modalInputClass}
+              className="h-11"
             />
           </div>
-        </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className={modalSectionClass}>
-            <Label className={modalLabelClass}>来访日期</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来访日期</Label>
             <DatePicker
-              className={modalInputClass}
+              className="h-11"
               type="date"
               value={formData.visitDate}
-              onChange={(e) => setFormData({ ...formData, visitDate: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, visitDate: event.target.value })}
             />
           </div>
-          <div className={modalSectionClass}>
-            <Label className={modalLabelClass}>车牌号</Label>
+
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">车牌号</Label>
             <Input
               type="text"
               value={formData.carPlate || ''}
-              onChange={(e) => setFormData({ ...formData, carPlate: e.target.value })}
+              onChange={(event) => setFormData({ ...formData, carPlate: event.target.value })}
               placeholder="选填"
-              className={modalInputClass}
+              className="h-11"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">被访人姓名</Label>
+            <Input
+              type="text"
+              value={formData.hostName || ''}
+              onChange={(event) => setFormData({ ...formData, hostName: event.target.value })}
+              placeholder="请输入被访人姓名"
+              className="h-11"
+            />
+          </div>
+
+          <div className="space-y-2 md:col-span-2">
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">来访事由</Label>
+            <Textarea
+              className="min-h-[120px]"
+              value={formData.visitReason}
+              onChange={(event) => setFormData({ ...formData, visitReason: event.target.value })}
+              placeholder="请输入来访事由"
             />
           </div>
         </div>
-
-        <div className={modalSectionClass}>
-          <Label className={modalLabelClass}>被访人姓名</Label>
-          <Input
-            type="text"
-            value={formData.hostName || ''}
-            onChange={(e) => setFormData({ ...formData, hostName: e.target.value })}
-            placeholder="请输入被访人姓名"
-            className={modalInputClass}
-          />
-        </div>
-
-        <div className={modalSectionClass}>
-          <Label className={modalLabelClass}>来访事由</Label>
-          <Textarea
-            className={modalTextareaClass}
-            value={formData.visitReason}
-            onChange={(e) => setFormData({ ...formData, visitReason: e.target.value })}
-            placeholder="请输入来访事由"
-          />
-        </div>
       </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(cancelTarget)}
+        title="取消预约"
+        message={cancelTarget ? `确定取消“${cancelTarget.visitorName}”的来访预约吗？` : '确定取消这条预约吗？'}
+        confirmText="取消预约"
+        danger
+        onCancel={() => setCancelTarget(null)}
+        onConfirm={() => void handleCancel()}
+      />
     </div>
   );
 };

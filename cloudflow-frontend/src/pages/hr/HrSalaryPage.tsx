@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { BadgePlus, FilePlus2, FileText, Landmark, Layers3, RefreshCcw, Search, ShieldCheck, Users } from 'lucide-react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Layers3, RefreshCcw, Search, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { BaseDialog, type BaseDialogWidth } from '@/components/common/BaseDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
   Button,
-  Card,
   Input,
   Label,
   Select,
@@ -17,14 +19,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
   Textarea,
 } from '@/components/ui';
-import { WorkspaceDialogShell, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceBackdrop, WorkspaceInlineState, WorkspacePageContent, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import { cn } from '@/utils/cn';
 import {
   EmployeeInsurance,
   EmployeeSalary,
@@ -96,9 +93,45 @@ import {
   updateSalaryStructure,
 } from '@/services/api/hr';
 import { buildEmployeeLabel, toDateInputValue } from './hrShared';
+import {
+  SalaryGradesSection,
+  SalaryInsuranceSection,
+  SalaryItemsSection,
+  SalaryStructuresSection,
+} from './salary/SalaryFoundationSections';
+import {
+  SalaryAdjustmentsSection,
+  SalaryEmployeesSection,
+} from './salary/SalaryPrimarySections';
+import {
+  AssignSalaryDialog,
+  CreateAdjustmentDialog,
+  InsuranceAssignDialog,
+} from './salary/SalaryFormDialogs';
+import {
+  InsuranceSchemeDialog,
+  SalaryGradeDialog,
+  SalaryItemDialog,
+  SalaryStructureDialog,
+} from './salary/SalaryFoundationDialogs';
+import {
+  TaxConfigDialog,
+  TaxDeductionDialog,
+} from './salary/SalaryTaxDialogs';
 
 const EMPTY_VALUE = '__empty__';
 const ALL_VALUE = '__all__';
+const FOUNDATION_SECTIONS = ['items', 'structures', 'grades', 'insurance'] as const;
+type FoundationSection = (typeof FOUNDATION_SECTIONS)[number];
+type SalarySection = 'employees' | 'adjustments' | FoundationSection;
+const SALARY_SECTION_NAV_ITEMS: Array<{ value: SalarySection; label: string }> = [
+  { value: 'employees', label: '员工薪资' },
+  { value: 'adjustments', label: '调薪申请' },
+  { value: 'items', label: '薪资项目' },
+  { value: 'structures', label: '薪资结构' },
+  { value: 'grades', label: '薪资等级' },
+  { value: 'insurance', label: '社保方案' },
+];
 
 const adjustmentTypeOptions = [
   { value: 'ANNUAL', label: '年度调薪' },
@@ -184,6 +217,26 @@ type TaxConfigFormState = {
 };
 
 type InsuranceSchemeFormState = InsuranceSchemePayload;
+
+type ConfirmDialogState = {
+  open: boolean;
+  title: string;
+  message: string;
+  confirmText: string;
+  cancelText: string;
+  danger: boolean;
+  onConfirm: null | (() => void | Promise<void>);
+};
+
+const createDefaultConfirmDialogState = (): ConfirmDialogState => ({
+  open: false,
+  title: '',
+  message: '',
+  confirmText: '确定',
+  cancelText: '取消',
+  danger: false,
+  onConfirm: null,
+});
 
 const defaultTaxBracketRows = [
   { min: 0, max: 36000, rate: 0.03, deduction: 0 },
@@ -444,6 +497,13 @@ const taxDeductionStatusClass = (status?: string | null) => {
     default:
       return 'border-slate-200 bg-slate-100 text-slate-600';
   }
+};
+
+const compactTaxDeductionRemark = (remark?: string | null) => {
+  const text = String(remark || '').trim();
+  if (!text) return '-';
+  if (/(联调|样本|桌面端薪酬|回放|测试)/i.test(text)) return '-';
+  return text.length > 18 ? `${text.slice(0, 18)}...` : text;
 };
 
 const parseTaxDeductionItemValues = (value?: string | null) => {
@@ -843,8 +903,317 @@ const SalaryDiffTable: React.FC<{ rows: SalaryDiffField[] }> = ({ rows }) => {
   );
 };
 
+const WorkspaceInlineState: React.FC<{
+  title: string;
+  description?: string;
+  type?: 'loading' | 'default';
+  className?: string;
+}> = ({ title, description, type = 'default', className }) => (
+  <div
+    className={cn(
+      'flex flex-col items-center justify-center px-4 py-8 text-center',
+      className,
+    )}
+  >
+    <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      {type === 'loading' ? (
+        <RefreshCcw className="h-4 w-4 animate-spin" />
+      ) : (
+        <Layers3 className="h-4 w-4" />
+      )}
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const WorkspaceTableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  type?: 'loading' | 'default';
+}> = ({ colSpan, title, description, type = 'default' }) => (
+  <TableRow className="hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-14">
+      <WorkspaceInlineState
+        title={title}
+        description={description}
+        type={type}
+        className={type === 'loading' ? 'py-6' : 'py-4'}
+      />
+    </TableCell>
+  </TableRow>
+);
+
+const WorkspaceSectionCard: React.FC<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  headerAside?: React.ReactNode;
+  eyebrow?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}> = ({ title, description, headerAside, eyebrow, className, children }) => (
+  <section
+    className={cn(
+      'overflow-hidden rounded-lg border border-slate-200/80 bg-slate-50/45 dark:border-slate-800 dark:bg-slate-950/75',
+      className,
+    )}
+  >
+    <div className="flex flex-col gap-2 border-b border-slate-200/80 px-3.5 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0">
+        {eyebrow ? (
+          <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            {eyebrow}
+          </div>
+        ) : null}
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+            {description}
+          </div>
+        ) : null}
+      </div>
+      {headerAside ? <div className="flex flex-wrap items-center gap-2">{headerAside}</div> : null}
+    </div>
+    <div className="p-3.5">{children}</div>
+  </section>
+);
+
+type WorkspaceMetricStripTone = 'default' | 'emerald' | 'amber' | 'sky' | 'rose';
+
+type WorkspaceMetricStripItem = {
+  key: string;
+  label: string;
+  value: React.ReactNode;
+  hint?: React.ReactNode;
+  tone?: WorkspaceMetricStripTone;
+  valueClassName?: string;
+};
+
+const workspaceMetricToneClassMap: Record<WorkspaceMetricStripTone, {
+  label: string;
+  value: string;
+  hint: string;
+}> = {
+  default: {
+    label: 'text-slate-400 dark:text-slate-500',
+    value: 'text-slate-900 dark:text-slate-100',
+    hint: 'text-slate-500 dark:text-slate-400',
+  },
+  emerald: {
+    label: 'text-emerald-600 dark:text-emerald-300',
+    value: 'text-emerald-700 dark:text-emerald-200',
+    hint: 'text-emerald-700/90 dark:text-emerald-200/90',
+  },
+  amber: {
+    label: 'text-amber-600 dark:text-amber-300',
+    value: 'text-amber-700 dark:text-amber-200',
+    hint: 'text-amber-700/90 dark:text-amber-200/90',
+  },
+  sky: {
+    label: 'text-sky-600 dark:text-sky-300',
+    value: 'text-sky-700 dark:text-sky-200',
+    hint: 'text-sky-700/90 dark:text-sky-200/90',
+  },
+  rose: {
+    label: 'text-rose-600 dark:text-rose-300',
+    value: 'text-rose-700 dark:text-rose-200',
+    hint: 'text-rose-700/90 dark:text-rose-200/90',
+  },
+};
+
+const WorkspaceMetricStrip: React.FC<{
+  items: WorkspaceMetricStripItem[];
+  className?: string;
+  gridClassName?: string;
+}> = ({ items, className, gridClassName = 'md:grid-cols-2 xl:grid-cols-4' }) => (
+  <div
+    className={cn(
+      'overflow-hidden rounded-lg border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/80',
+      className,
+    )}
+  >
+    <div className={cn('grid grid-cols-1 divide-y divide-slate-200/80 dark:divide-slate-800 md:divide-y-0 md:divide-x', gridClassName)}>
+      {items.map(item => {
+        const tone = workspaceMetricToneClassMap[item.tone || 'default'];
+        return (
+          <div key={item.key} className="px-3.5 py-2.5">
+            <div className={cn('text-[10px] font-medium uppercase tracking-[0.12em]', tone.label)}>
+              {item.label}
+            </div>
+            <div className={cn('mt-1.5 text-sm font-semibold', tone.value, item.valueClassName)}>
+              {item.value}
+            </div>
+            {item.hint ? (
+              <div className={cn('mt-1 text-xs leading-5', tone.hint)}>
+                {item.hint}
+              </div>
+            ) : null}
+          </div>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const WorkspaceDiagnosticSummary: React.FC<{
+  summary: {
+    label: string;
+    hint: string;
+    className: string;
+  };
+  items: Array<{
+    key: string;
+    title: string;
+    detail: string;
+    severity?: 'warning' | 'danger';
+  }>;
+  emptyText?: React.ReactNode;
+  className?: string;
+}> = ({ summary, items, emptyText, className }) => (
+  <div
+    className={cn(
+      'overflow-hidden rounded-lg border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/80',
+      className,
+    )}
+  >
+    <div className="flex flex-col gap-2 px-3.5 py-2.5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0">
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          {items.length ? '状态校验' : '状态'}
+        </div>
+        <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{summary.hint}</div>
+      </div>
+      <span className={cn('inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-medium', summary.className)}>
+        {summary.label}
+      </span>
+    </div>
+    {items.length ? (
+      <div className="border-t border-slate-200/80 dark:border-slate-800">
+        {items.map(item => (
+          <div
+            key={item.key}
+            className="border-t border-slate-100 px-3.5 py-2.5 first:border-t-0 dark:border-slate-800"
+          >
+            <div
+              className={cn(
+                'text-sm font-medium',
+                item.severity === 'danger'
+                  ? 'text-rose-700 dark:text-rose-300'
+                  : 'text-slate-900 dark:text-slate-100',
+              )}
+            >
+              {item.title}
+            </div>
+            <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{item.detail}</div>
+          </div>
+        ))}
+      </div>
+    ) : emptyText ? (
+      <div className="border-t border-slate-200/80 px-3.5 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        {emptyText}
+      </div>
+    ) : null}
+  </div>
+);
+
+const WorkspaceInlineRiskList: React.FC<{
+  items: Array<{
+    key: string;
+    title: string;
+    detail: string;
+    severity?: 'warning' | 'danger';
+  }>;
+  className?: string;
+}> = ({ items, className }) => {
+  if (!items.length) return null;
+
+  return (
+    <div className={cn('space-y-2', className)}>
+      {items.map(item => (
+        <div
+          key={item.key}
+          className={cn(
+            'flex items-start gap-3 rounded-lg border px-3 py-2',
+            item.severity === 'danger'
+              ? 'border-rose-200/80 bg-rose-50/45 dark:border-rose-900 dark:bg-rose-950/15'
+              : 'border-amber-200/80 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/15',
+          )}
+        >
+          <span
+            className={cn(
+              'mt-1 inline-flex h-1.5 w-1.5 flex-shrink-0 rounded-full',
+              item.severity === 'danger'
+                ? 'bg-rose-500 dark:bg-rose-400'
+                : 'bg-amber-500 dark:bg-amber-400',
+            )}
+          />
+          <div className="min-w-0 flex-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+            <span className="font-medium text-slate-900 dark:text-slate-100">{item.title}</span>
+            <span>：{item.detail}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const DetailRow: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  valueClassName?: string;
+}> = ({ label, value, valueClassName }) => (
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-3.5 py-2.5 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+      {label}
+    </div>
+    <div className={cn('text-right text-sm font-medium text-slate-900 dark:text-slate-100', valueClassName)}>
+      {value}
+    </div>
+  </div>
+);
+
+const WorkspaceDialogShell: React.FC<{
+  title: React.ReactNode;
+  description?: React.ReactNode;
+  onClose: () => void;
+  children: React.ReactNode;
+  width?: BaseDialogWidth;
+  maxWidthClassName?: string;
+  headerAside?: React.ReactNode;
+  panelClassName?: string;
+  bodyClassName?: string;
+}> = ({
+  title,
+  description,
+  onClose,
+  children,
+  width = 'wide',
+  maxWidthClassName,
+  headerAside,
+  panelClassName,
+  bodyClassName,
+}) => (
+  <BaseDialog
+    open
+    title={title}
+    description={description}
+    onClose={onClose}
+    width={width}
+    maxWidthClassName={maxWidthClassName}
+    headerAside={headerAside}
+    panelClassName={panelClassName}
+    bodyClassName={bodyClassName}
+  >
+    {children}
+  </BaseDialog>
+);
+
 export const HrSalaryPage: React.FC = () => {
-  const [tab, setTab] = useState('employees');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [salaryItems, setSalaryItems] = useState<SalaryItem[]>([]);
   const [salaryStructures, setSalaryStructures] = useState<SalaryStructure[]>([]);
@@ -877,6 +1246,7 @@ export const HrSalaryPage: React.FC = () => {
   const [employeeInsuranceListLoading, setEmployeeInsuranceListLoading] = useState(false);
   const [taxDeductionListLoading, setTaxDeductionListLoading] = useState(false);
   const [taxConfigDialogLoading, setTaxConfigDialogLoading] = useState(false);
+  const [confirmDialogState, setConfirmDialogState] = useState<ConfirmDialogState>(createDefaultConfirmDialogState);
   const [structureDetailLoading, setStructureDetailLoading] = useState(false);
   const [adjustmentListLoading, setAdjustmentListLoading] = useState(false);
   const [adjustmentDetailLoading, setAdjustmentDetailLoading] = useState(false);
@@ -933,6 +1303,33 @@ export const HrSalaryPage: React.FC = () => {
   const [adjustForm, setAdjustForm] = useState(createDefaultAdjustmentForm);
   const [assignStructurePreview, setAssignStructurePreview] = useState<SalaryStructureDetail | null>(null);
   const [adjustmentBaseline, setAdjustmentBaseline] = useState<EmployeeSalaryDetail | null>(null);
+
+  const currentSection = useMemo<SalarySection>(() => {
+    if (location.pathname.startsWith('/hr/salary/adjustments')) return 'adjustments';
+    for (const section of FOUNDATION_SECTIONS) {
+      if (location.pathname.startsWith(`/hr/salary/${section}`)) {
+        return section;
+      }
+    }
+    if (location.pathname.startsWith('/hr/salary/foundation')) return 'items';
+    return 'employees';
+  }, [location.pathname]);
+
+  const goSalarySection = (section: SalarySection) => {
+    const targetPath = `/hr/salary/${section}`;
+    if (location.pathname !== targetPath) {
+      navigate(targetPath);
+    }
+  };
+
+  useEffect(() => {
+    if (location.pathname === '/hr/salary' || location.pathname === '/hr/salary/') {
+      navigate('/hr/salary/employees', { replace: true });
+    }
+    if (location.pathname === '/hr/salary/foundation' || location.pathname === '/hr/salary/foundation/') {
+      navigate('/hr/salary/items', { replace: true });
+    }
+  }, [location.pathname, navigate]);
 
   const salaryItemMap = useMemo(
     () => new Map(salaryItems.map(item => [String(item.id), item])),
@@ -1117,7 +1514,7 @@ export const HrSalaryPage: React.FC = () => {
       items.push({
         key: 'unused-schemes',
         title: '存在未命中员工的方案',
-        detail: `${unusedInsuranceSchemes.map(item => item.schemeName).join('、')} 目前还没有任何员工台账命中，建议补一条分配样本再继续联调。`,
+        detail: `${unusedInsuranceSchemes.map(item => item.schemeName).join('、')} 未命中员工样本。`,
         severity: 'warning',
       });
     }
@@ -1134,24 +1531,24 @@ export const HrSalaryPage: React.FC = () => {
     const score = insuranceSchemeRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     if (!score) {
       return {
-        label: '方案可直接联调',
+        label: '可分配',
         className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        hint: '当前方案状态、台账命中和基数区间都比较清晰，可以直接核对员工社保分配结果。',
+        hint: '方案状态与样本已对齐。',
       };
     }
 
     if (score <= 2) {
       return {
-        label: '方案需注意',
+        label: '待核对',
         className: 'border-amber-200 bg-amber-50 text-amber-700',
-        hint: `发现 ${insuranceSchemeRiskItems.length} 条需要人工确认的社保方案联调提示。`,
+        hint: `${insuranceSchemeRiskItems.length} 条待处理。`,
       };
     }
 
     return {
-      label: '方案信息不足',
+      label: '待补样本',
       className: 'border-rose-200 bg-rose-50 text-rose-700',
-      hint: `当前有 ${insuranceSchemeRiskItems.length} 条高风险提示，建议先补齐方案分配口径再继续联调。`,
+      hint: `${insuranceSchemeRiskItems.length} 条待处理。`,
     };
   }, [insuranceSchemeRiskItems]);
 
@@ -1333,14 +1730,6 @@ export const HrSalaryPage: React.FC = () => {
           key: 'missing-base-rule',
           title: '基数规则说明为空',
           detail: '后续核对基数上下限时缺少可读说明，容易让联调样本失去参照。',
-          severity: 'warning',
-        });
-      }
-      if (noChanges) {
-        riskItems.push({
-          key: 'no-changes',
-          title: '本次保存不会带来变化',
-          detail: '名称、城市、生效日、基数和比例都没有变化，继续保存通常只是重复覆盖。',
           severity: 'warning',
         });
       }
@@ -1594,7 +1983,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'duplicate-employee-date',
           label: '同日多单',
-          detail: `${duplicateGroup.employeeName} 在 ${duplicateGroup.effectiveDate} 共有 ${duplicateGroup.count} 张调薪单，联调时要确认最终由哪张单据落当前现薪。`,
+          detail: `${duplicateGroup.effectiveDate} / ${duplicateGroup.count} 张`,
           severity: duplicateGroup.count > 1 ? 'warning' : 'warning',
         });
       }
@@ -1604,7 +1993,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'future-effective',
           label: '未来生效',
-          detail: `${effectiveDate} 才开始生效，这条调薪更像“未来档案预演”，不是今天已经实际发放。`,
+          detail: `${effectiveDate} 生效`,
           severity: 'warning',
         });
       }
@@ -1614,7 +2003,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'matched-current',
           label: '已落当前现薪',
-          detail: '这条调薪已经和当前 ACTIVE 现薪对齐，继续核对五险一金和个税即可。',
+          detail: '已对齐 ACTIVE 现薪',
           severity: 'warning',
         });
       }
@@ -1624,7 +2013,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'resigned-pending',
           label: '离职员工待推进',
-          detail: '这名员工已经离职，但调薪单还没走完状态流转，建议确认是否还需要继续推进。',
+          detail: '离职员工',
           severity: 'warning',
         });
       }
@@ -1636,7 +2025,7 @@ export const HrSalaryPage: React.FC = () => {
               pushRowIssue(item.id, {
                 key: 'covered-by-newer-salary',
                 label: '已被后续覆盖',
-                detail: `当前现薪生效日是 ${currentEffectiveDate}，说明这条调薪已经被后续现薪链路覆盖。`,
+                detail: `${currentEffectiveDate} 现薪已覆盖`,
                 severity: 'warning',
               });
             } else if (currentSalary && currentEffectiveDate < effectiveDate && !futureEffective) {
@@ -1644,7 +2033,7 @@ export const HrSalaryPage: React.FC = () => {
               pushRowIssue(item.id, {
                 key: 'effective-not-current',
                 label: '已生效未追平',
-                detail: `状态已是 EFFECTIVE，但当前现薪仍停在 ${currentEffectiveDate || '-'} / ${formatCurrency(currentSalary.totalSalary)}。`,
+                detail: `${currentEffectiveDate || '-'} / ${formatCurrency(currentSalary.totalSalary)}`,
                 severity: 'danger',
               });
             } else if (!currentSalary && !futureEffective) {
@@ -1652,7 +2041,7 @@ export const HrSalaryPage: React.FC = () => {
               pushRowIssue(item.id, {
                 key: 'effective-no-current-salary',
                 label: '已生效无现薪',
-                detail: '状态已是 EFFECTIVE，但当前员工没有可命中的 ACTIVE 现薪记录。',
+                detail: '无 ACTIVE 现薪',
                 severity: 'danger',
               });
             }
@@ -1664,7 +2053,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approved-but-current',
               label: '状态滞后',
-              detail: '当前现薪已经命中这条调薪，但单据状态还停留在 APPROVED。',
+              detail: 'APPROVED 已落当前',
               severity: 'danger',
             });
           } else if (!futureEffective) {
@@ -1672,7 +2061,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approved-past-due',
               label: '到期未执行',
-              detail: `生效日 ${effectiveDate} 已到，但这条单据还没真正落到当前现薪。`,
+              detail: `${effectiveDate} 已到期`,
               severity: 'danger',
             });
           }
@@ -1683,7 +2072,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approving-but-current',
               label: '审批中已落当前',
-              detail: '当前现薪已经命中这条调薪，但流程状态仍在审批中。',
+              detail: 'APPROVING 已落当前',
               severity: 'danger',
             });
           } else if (!futureEffective) {
@@ -1691,7 +2080,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approving-past-due',
               label: '审批滞后',
-              detail: `生效日 ${effectiveDate} 已到，这条单据仍卡在审批中。`,
+              detail: `${effectiveDate} 已到期`,
               severity: 'warning',
             });
           }
@@ -1702,7 +2091,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'draft-but-current',
               label: '草稿已落当前',
-              detail: '当前现薪已经命中这条调薪，但单据还是草稿，属于明显的链路异常。',
+              detail: 'DRAFT 已落当前',
               severity: 'danger',
             });
           } else if (!futureEffective) {
@@ -1710,7 +2099,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'stale-draft',
               label: '草稿过期',
-              detail: `生效日 ${effectiveDate} 已到，这条草稿如果继续保留，很容易和真实现薪脱节。`,
+              detail: `${effectiveDate} 已到期`,
               severity: 'warning',
             });
           }
@@ -1721,7 +2110,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'rejected-but-current',
               label: '已拒绝却落当前',
-              detail: '当前现薪已经命中这条已拒绝单据，需要优先回查后端状态与落库逻辑。',
+              detail: 'REJECTED 已落当前',
               severity: 'danger',
             });
           }
@@ -1735,24 +2124,24 @@ export const HrSalaryPage: React.FC = () => {
     if (currentMismatchCount > 0) {
       riskItems.push({
         key: 'current-mismatch',
-        title: '存在已生效但当前现薪未追平的调薪',
-        detail: `当前有 ${currentMismatchCount} 条 EFFECTIVE 记录没有命中当前现薪，优先核对生效后的现薪切换。`,
+        title: '现薪未追平',
+        detail: `${currentMismatchCount} 条`,
         severity: 'danger',
       });
     }
     if (pendingPastDueCount > 0) {
       riskItems.push({
         key: 'pending-past-due',
-        title: '存在过了生效日仍未推进的调薪',
-        detail: `当前有 ${pendingPastDueCount} 条单据已经过了生效日，但仍停留在草稿、审批中或 APPROVED。`,
+        title: '到期未推进',
+        detail: `${pendingPastDueCount} 条`,
         severity: 'danger',
       });
     }
     if (statusLagCount > 0) {
       riskItems.push({
         key: 'status-lag',
-        title: '存在状态与当前现薪不同步的调薪',
-        detail: `当前有 ${statusLagCount} 条非 EFFECTIVE 单据已经命中当前现薪，状态同步需要回查。`,
+        title: '状态不同步',
+        detail: `${statusLagCount} 条`,
         severity: 'danger',
       });
     }
@@ -1760,24 +2149,24 @@ export const HrSalaryPage: React.FC = () => {
       const first = duplicateEmployeeDateGroups[0];
       riskItems.push({
         key: 'duplicate-employee-date',
-        title: '存在同一员工同日多张调薪单',
-        detail: `${first.employeeName} 在 ${first.effectiveDate} 共有 ${first.count} 张调薪单，联调时要重点确认覆盖顺序。`,
+        title: '同日多单',
+        detail: `${first.employeeName} / ${first.effectiveDate} / ${first.count} 张`,
         severity: 'warning',
       });
     }
     if (futureEffectiveCount > 0) {
       riskItems.push({
         key: 'future-effective',
-        title: '存在未来生效调薪',
-        detail: `当前有 ${futureEffectiveCount} 条记录的生效日晚于今天，核对时要区分“未来档案”与“当前现薪”。`,
+        title: '未来生效',
+        detail: `${futureEffectiveCount} 条`,
         severity: 'warning',
       });
     }
     if (resignedPendingCount > 0) {
       riskItems.push({
         key: 'resigned-pending',
-        title: '存在离职员工的待推进调薪',
-        detail: `当前有 ${resignedPendingCount} 条待推进调薪挂在离职员工名下，建议尽快人工确认。`,
+        title: '离职待推进',
+        detail: `${resignedPendingCount} 条`,
         severity: 'warning',
       });
     }
@@ -1786,20 +2175,20 @@ export const HrSalaryPage: React.FC = () => {
     const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     const riskSummary = !score
       ? {
-        label: '申请列表可直接联调',
+        label: '可核对',
         className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        hint: '当前调薪单据、现薪结果和状态流转比较一致，可以直接沿着单据继续核链路。',
+        hint: '申请链路已对齐。',
       }
       : score <= 2
         ? {
-          label: '申请列表需注意',
+          label: '待核对',
           className: 'border-amber-200 bg-amber-50 text-amber-700',
-          hint: `发现 ${riskItems.length} 条需要人工确认的调薪列表提示。`,
+          hint: `${riskItems.length} 条待处理。`,
         }
         : {
-          label: '申请列表存在风险',
+          label: '待处理',
           className: 'border-rose-200 bg-rose-50 text-rose-700',
-          hint: `当前有 ${riskItems.length} 条高风险提示，建议先把异常单据收敛后再继续联调。`,
+          hint: `${riskItems.length} 条待处理。`,
         };
 
     return {
@@ -2064,7 +2453,7 @@ export const HrSalaryPage: React.FC = () => {
       items.push({
         key: 'empty-series',
         title: '存在整条序列未配置',
-        detail: `${emptyGradeSeries.map(item => `${item.series} ${item.configured}/${item.total}`).join('、')}，这些序列现在完全无法参与薪级联调。`,
+        detail: emptyGradeSeries.map(item => `${item.series} ${item.configured}/${item.total}`).join('、'),
         severity: 'danger',
       });
     }
@@ -2074,7 +2463,7 @@ export const HrSalaryPage: React.FC = () => {
       items.push({
         key: 'partial-series',
         title: '序列覆盖还不完整',
-        detail: `${partialSeries.map(item => `${item.series} ${item.configured}/${item.total}`).join('、')}，建议按序列继续补齐，避免相邻职级口径断档。`,
+        detail: partialSeries.map(item => `${item.series} ${item.configured}/${item.total}`).join('、'),
         severity: 'warning',
       });
     }
@@ -2083,7 +2472,7 @@ export const HrSalaryPage: React.FC = () => {
       items.push({
         key: 'pending-levels',
         title: '启用职级仍有待配置薪级',
-        detail: `当前还有 ${pendingGradeLevels.length} 个启用职级未配置薪级，整体覆盖率 ${gradeCoverageRate}%。`,
+        detail: `待配 ${pendingGradeLevels.length} 个 / 覆盖率 ${gradeCoverageRate}%`,
         severity: pendingGradeLevels.length >= 5 ? 'danger' : 'warning',
       });
     }
@@ -2102,24 +2491,24 @@ export const HrSalaryPage: React.FC = () => {
     const score = salaryGradeRiskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     if (!score) {
       return {
-        label: '薪级可直接联调',
+        label: '可核对',
         className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        hint: '当前薪级覆盖、序列关系和区间口径基本对齐，可以直接核对薪酬带宽。',
+        hint: '薪级覆盖已对齐。',
       };
     }
 
     if (score <= 3) {
       return {
-        label: '薪级需注意',
+        label: '待核对',
         className: 'border-amber-200 bg-amber-50 text-amber-700',
-        hint: `发现 ${salaryGradeRiskItems.length} 条需要人工确认的薪级联调提示。`,
+        hint: `${salaryGradeRiskItems.length} 条待处理。`,
       };
     }
 
     return {
-      label: '薪级信息不足',
+      label: '待补薪级',
       className: 'border-rose-200 bg-rose-50 text-rose-700',
-      hint: `当前有 ${salaryGradeRiskItems.length} 条高风险提示，建议先补齐薪级口径再继续联调。`,
+      hint: `${salaryGradeRiskItems.length} 条待处理。`,
     };
   }, [salaryGradeRiskItems]);
 
@@ -2268,14 +2657,6 @@ export const HrSalaryPage: React.FC = () => {
           key: 'placeholder-range',
           title: '薪级区间仍是默认值',
           detail: '当前最低、中位、最高都是 0，保存后无法作为真实薪酬带宽样本使用。',
-          severity: 'warning',
-        });
-      }
-      if (noChanges) {
-        riskItems.push({
-          key: 'no-changes',
-          title: '本次保存不会带来变化',
-          detail: '当前输入和已有薪级完全一致，继续保存通常没有业务意义。',
           severity: 'warning',
         });
       }
@@ -2745,14 +3126,6 @@ export const HrSalaryPage: React.FC = () => {
           severity: 'warning',
         });
       }
-      if (noChanges) {
-        riskItems.push({
-          key: 'no-changes',
-          title: '本次保存不会带来变化',
-          detail: '编码、名称、分类、类型、计税状态和公式都没有变化，继续保存意义不大。',
-          severity: 'warning',
-        });
-      }
       if (disablesInUseItem) {
         riskItems.push({
           key: 'disable-in-use',
@@ -3179,52 +3552,6 @@ export const HrSalaryPage: React.FC = () => {
     [activeJobLevels, gradeCoverageRate, jobLevelMap, salaryGrades, sortedSalaryGrades],
   );
 
-  const metrics = useMemo(() => {
-    const pendingAdjustmentCount = salaryAdjustments.filter(item =>
-      ['DRAFT', 'APPROVING', 'APPROVED'].includes(String(item.status || '').toUpperCase()),
-    ).length;
-
-    return [
-      {
-        label: '薪资项目',
-        value: salaryItems.length,
-        hint: '项目、税务属性和计算口径',
-        icon: <Layers3 size={18} />,
-        tone: 'bg-slate-100 text-slate-600',
-      },
-      {
-        label: '薪资结构',
-        value: salaryStructures.length,
-        hint: '结构决定项目组合与分配范围',
-        icon: <Landmark size={18} />,
-        tone: 'bg-sky-50 text-sky-600',
-      },
-      {
-        label: '在岗薪资档案',
-        value: workingEmployeeSalaries.length,
-        hint: resignedEmployeeSalaries.length
-          ? `${assignableEmployees.length} 名待分配，${resignedEmployeeSalaries.length} 条离职档案已过滤`
-          : `${assignableEmployees.length} 名员工待分配薪资`,
-        icon: <Users size={18} />,
-        tone: 'bg-emerald-50 text-emerald-600',
-      },
-      {
-        label: '调薪申请',
-        value: salaryAdjustments.length,
-        hint: `${pendingAdjustmentCount} 条待推进`,
-        icon: <FileText size={18} />,
-        tone: 'bg-amber-50 text-amber-600',
-      },
-    ];
-  }, [
-    assignableEmployees.length,
-    resignedEmployeeSalaries.length,
-    salaryAdjustments,
-    salaryItems.length,
-    salaryStructures.length,
-    workingEmployeeSalaries.length,
-  ]);
-
   const futureEffectiveEmployeeSalaries = useMemo(
     () => workingEmployeeSalaries.filter(item => isFutureDate(item.effectiveDate)),
     [workingEmployeeSalaries],
@@ -3256,22 +3583,6 @@ export const HrSalaryPage: React.FC = () => {
   const structureLinkedEmployeeRecords = useMemo(
     () => !structureDetail ? [] : workingEmployeeSalaries.filter(item => item.structureId === structureDetail.id),
     [structureDetail, workingEmployeeSalaries],
-  );
-  const structureLinkedDeptNames = useMemo(
-    () => Array.from(new Set(
-      structureLinkedEmployeeRecords
-        .map(item => employeeMap.get(item.employeeId)?.deptName)
-        .filter((value): value is string => Boolean(value)),
-    )),
-    [employeeMap, structureLinkedEmployeeRecords],
-  );
-  const structureLinkedEmployeeNames = useMemo(
-    () => Array.from(new Set(
-      structureLinkedEmployeeRecords
-        .map(item => item.employeeName || employeeMap.get(item.employeeId)?.name)
-        .filter((value): value is string => Boolean(value)),
-    )),
-    [employeeMap, structureLinkedEmployeeRecords],
   );
   const structureLinkedEmployeeIds = useMemo(
     () => Array.from(new Set(structureLinkedEmployeeRecords.map(item => item.employeeId))),
@@ -3701,12 +4012,12 @@ export const HrSalaryPage: React.FC = () => {
     const effectiveDateLabel = toDateInputValue(adjustmentDetail.effectiveDate) || '-';
     const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
     let actionLabel = '刷新详情';
-    let actionHint = '当前状态不需要继续推进流程，建议刷新详情和闭环结果。';
+    let actionHint = '刷新后核对闭环。';
     let canRun = false;
 
     if (status === 'DRAFT') {
       actionLabel = '提交审批';
-      actionHint = '提交后会启动真实审批流程，并把单据推进到 APPROVING。';
+      actionHint = '提交后进入审批。';
       canRun = true;
 
       if (adjustmentChangedItemCount === 0) {
@@ -3752,8 +4063,8 @@ export const HrSalaryPage: React.FC = () => {
       actionLabel = '审批通过';
       // 真实联调确认：今天生效的单据在 approve 后会直接生效，不会停留在 APPROVED。
       actionHint = isFutureEffective
-        ? '审批通过后单据会进入 APPROVED，并继续等待生效日。'
-        : '审批通过后如已到生效日，后端会直接把单据推进到 EFFECTIVE，并刷新当前 ACTIVE 现薪。';
+        ? '审批后待生效。'
+        : '审批后直生效。';
       canRun = true;
 
       if (!String(adjustmentDetail.processInstanceId || '').trim()) {
@@ -3790,8 +4101,8 @@ export const HrSalaryPage: React.FC = () => {
     } else if (status === 'APPROVED') {
       actionLabel = '执行生效';
       actionHint = isFutureEffective
-        ? `当前还没到 ${effectiveDateLabel}，暂时不应执行生效。`
-        : '执行后会把调薪结果写入真实薪资档案，并刷新当前 ACTIVE 现薪。';
+        ? `${effectiveDateLabel} 前不可执行。`
+        : '执行后写入现薪。';
       canRun = !isFutureEffective;
 
       if (isFutureEffective) {
@@ -3820,8 +4131,8 @@ export const HrSalaryPage: React.FC = () => {
     } else if (status === 'EFFECTIVE') {
       actionLabel = '已完成生效';
       actionHint = adjustmentCurrentSalaryMatched
-        ? '当前现薪已经与调薪后结果对齐，可以切回员工视角继续核对薪资、社保和个税。'
-        : '状态虽然已生效，但现薪闭环还没完全追平，建议先刷新并核对档案链路。';
+        ? '已对齐现薪。'
+        : '已生效，待核对。';
       canRun = false;
 
       if (!adjustmentCurrentSalaryMatched && !adjustmentMatchedArchive) {
@@ -3841,7 +4152,7 @@ export const HrSalaryPage: React.FC = () => {
       }
     } else if (status === 'REJECTED') {
       actionLabel = '已拒绝';
-      actionHint = '已拒绝单据当前页不再继续推进，如需继续联调建议直接新建一张调薪单。';
+      actionHint = '已拒绝。';
       canRun = false;
     }
 
@@ -3850,31 +4161,31 @@ export const HrSalaryPage: React.FC = () => {
     const riskSummary = !canRun
       ? score
         ? {
-          label: '先核对闭环',
+          label: '待核对',
           className: 'border-amber-200 bg-amber-50 text-amber-700',
-          hint: `当前不建议继续推进，先处理 ${riskItems.length} 条联调提示。`,
+          hint: `${riskItems.length} 条待处理。`,
         }
         : {
-          label: '当前无需动作',
+          label: '无动作',
           className: 'border-slate-200 bg-slate-50 text-slate-600',
           hint: actionHint,
         }
       : !score
         ? {
-          label: `可直接${actionLabel}`,
+          label: `可${actionLabel}`,
           className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-          hint: `当前可以直接执行“${actionLabel}”，动作后再核对闭环结果。`,
+          hint: actionHint,
         }
         : blockingRiskItems.length
           ? {
-            label: `${actionLabel}前需处理`,
+            label: `${actionLabel}前处理`,
             className: 'border-rose-200 bg-rose-50 text-rose-700',
-            hint: `当前有 ${blockingRiskItems.length} 条高风险提示，建议先核对链路再继续。`,
+            hint: `${blockingRiskItems.length} 条待处理。`,
           }
           : {
-            label: `${actionLabel}需确认`,
+            label: `${actionLabel}前核对`,
             className: 'border-amber-200 bg-amber-50 text-amber-700',
-            hint: `发现 ${riskItems.length} 条动作前提示，确认影响范围后再继续。`,
+            hint: `${riskItems.length} 条待核对。`,
           };
 
     return {
@@ -3955,7 +4266,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'duplicate-effective-date',
           label: '同日多次',
-          detail: `${effectiveDate} 共有 ${duplicateCount} 条调薪记录，联调时要结合薪资档案确认最终落哪一条。`,
+          detail: `${effectiveDate} ${duplicateCount} 条`,
           severity: duplicateCount > 1 ? 'warning' : 'warning',
         });
       }
@@ -3965,7 +4276,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'landed-current',
           label: '已落当前现薪',
-          detail: '这条调薪已经命中当前 ACTIVE 现薪，后续测算会直接按这条结果继续走。',
+          detail: '已命中 ACTIVE 现薪',
           severity: 'warning',
         });
       } else if (matchedArchive) {
@@ -3973,7 +4284,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'landed-history',
           label: '已落历史档案',
-          detail: `已命中薪资档案 #${matchedArchive.id}，当前现薪可能已经被后续调薪覆盖。`,
+          detail: `命中档案 #${matchedArchive.id}`,
           severity: 'warning',
         });
       }
@@ -3983,7 +4294,7 @@ export const HrSalaryPage: React.FC = () => {
         pushRowIssue(item.id, {
           key: 'future-effective',
           label: '未来生效',
-          detail: `${effectiveDate} 才开始生效，核对今天的口径时不要把它当成当前已发放薪资。`,
+          detail: `${effectiveDate} 生效`,
           severity: 'warning',
         });
       }
@@ -3995,7 +4306,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'effective-unmatched',
               label: '已生效未落档',
-              detail: `状态已经是 EFFECTIVE，但当前没有在薪资档案中找到 ${effectiveDate} / ${formatCurrency(item.afterTotal)} 的落档记录。`,
+              detail: `${effectiveDate} / ${formatCurrency(item.afterTotal)}`,
               severity: 'danger',
             });
           }
@@ -4006,7 +4317,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approved-but-landed',
               label: '状态滞后',
-              detail: '这条调薪已经在薪资档案中命中，但单据状态还停留在 APPROVED，建议回查状态同步。',
+              detail: 'APPROVED 已落档',
               severity: 'danger',
             });
           } else if (!futureEffective) {
@@ -4014,7 +4325,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approved-past-due',
               label: '到期未执行',
-              detail: `生效日 ${effectiveDate} 已到，但当前还没看到落档结果，通常需要继续执行生效。`,
+              detail: `${effectiveDate} 已到期`,
               severity: 'danger',
             });
           }
@@ -4025,7 +4336,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approving-but-landed',
               label: '审批中已落档',
-              detail: '这条调薪还在审批中，但工资档案已经命中，联调时要重点核对流程与落库先后关系。',
+              detail: 'APPROVING 已落档',
               severity: 'danger',
             });
           } else if (!futureEffective) {
@@ -4033,7 +4344,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'approving-past-due',
               label: '审批滞后',
-              detail: `生效日 ${effectiveDate} 已到，单据仍停留在审批中。`,
+              detail: `${effectiveDate} 已到期`,
               severity: 'warning',
             });
           }
@@ -4044,7 +4355,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'draft-but-landed',
               label: '草稿已落档',
-              detail: '这条单据仍是草稿，但薪资档案已经命中对应结果，说明状态和落档链路不一致。',
+              detail: 'DRAFT 已落档',
               severity: 'danger',
             });
           } else if (!futureEffective) {
@@ -4052,7 +4363,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'stale-draft',
               label: '草稿过期',
-              detail: `生效日 ${effectiveDate} 已到，这条草稿如果继续保留，很容易和真实现薪口径脱节。`,
+              detail: `${effectiveDate} 已到期`,
               severity: 'warning',
             });
           }
@@ -4063,7 +4374,7 @@ export const HrSalaryPage: React.FC = () => {
             pushRowIssue(item.id, {
               key: 'rejected-but-landed',
               label: '已拒绝却落档',
-              detail: '这条单据状态是 REJECTED，但薪资档案已经命中，属于需要优先排查的链路异常。',
+              detail: 'REJECTED 已落档',
               severity: 'danger',
             });
           }
@@ -4077,24 +4388,24 @@ export const HrSalaryPage: React.FC = () => {
     if (unmatchedEffectiveCount > 0) {
       riskItems.push({
         key: 'effective-unmatched',
-        title: '存在已生效但未落档的调薪',
-        detail: `当前有 ${unmatchedEffectiveCount} 条 EFFECTIVE 记录没有在员工薪资档案里命中，优先核对生效落库逻辑。`,
+        title: '已生效未落档',
+        detail: `${unmatchedEffectiveCount} 条`,
         severity: 'danger',
       });
     }
     if (pendingPastDueCount > 0) {
       riskItems.push({
         key: 'pending-past-due',
-        title: '存在过了生效日仍未推进的调薪',
-        detail: `当前有 ${pendingPastDueCount} 条单据已经过了生效日，但状态还没推进到最终落档。`,
+        title: '到期未推进',
+        detail: `${pendingPastDueCount} 条`,
         severity: 'danger',
       });
     }
     if (statusLagCount > 0) {
       riskItems.push({
         key: 'status-lag',
-        title: '存在状态与落档不同步的调薪',
-        detail: `当前有 ${statusLagCount} 条非 EFFECTIVE 单据已经命中现薪或历史档案，流程状态需要回查。`,
+        title: '状态不同步',
+        detail: `${statusLagCount} 条`,
         severity: 'danger',
       });
     }
@@ -4102,16 +4413,16 @@ export const HrSalaryPage: React.FC = () => {
       const [effectiveDate, count] = duplicateEffectiveDates[0];
       riskItems.push({
         key: 'duplicate-effective-date',
-        title: '存在同日多次调薪',
-        detail: `${effectiveDate} 共有 ${count} 条调薪记录，联调时要结合历史档案确认最终落哪一条。`,
+        title: '同日多次调薪',
+        detail: `${effectiveDate} / ${count} 条`,
         severity: 'warning',
       });
     }
     if (futureEffectiveCount > 0) {
       riskItems.push({
         key: 'future-effective',
-        title: '存在未来生效调薪',
-        detail: `当前有 ${futureEffectiveCount} 条记录的生效日晚于今天，测算时要区分“已创建未来档案”和“当前已发放”。`,
+        title: '未来生效',
+        detail: `${futureEffectiveCount} 条`,
         severity: 'warning',
       });
     }
@@ -4119,20 +4430,20 @@ export const HrSalaryPage: React.FC = () => {
     const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     const riskSummary = !score
       ? {
-        label: '履历可直接联调',
+        label: '可核对',
         className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        hint: '当前员工的调薪履历、薪资档案和现薪口径比较一致，可以直接顺着链路往下核。',
+        hint: '履历已对齐。',
       }
       : score <= 2
         ? {
-          label: '履历需注意',
+          label: '待核对',
           className: 'border-amber-200 bg-amber-50 text-amber-700',
-          hint: `发现 ${riskItems.length} 条需要人工确认的调薪履历提示。`,
+          hint: `${riskItems.length} 条待处理。`,
         }
         : {
-          label: '履历存在风险',
+          label: '待处理',
           className: 'border-rose-200 bg-rose-50 text-rose-700',
-          hint: `当前有 ${riskItems.length} 条高风险提示，建议先核对调薪状态流转和薪资档案结果。`,
+          hint: `${riskItems.length} 条待处理。`,
         };
 
     return {
@@ -4370,7 +4681,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'threshold-invalid',
           title: '起征点未设置为有效值',
-          detail: '当前起征点小于等于 0，保存后会直接影响所有员工的个税口径。',
+          detail: '起征点 <= 0',
           severity: 'danger',
         });
       }
@@ -4380,7 +4691,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'bracket-gap',
           title: '税率档之间存在断层',
-          detail: `当前税率档在 ${formatCurrency(firstGap.from)} 到 ${formatCurrency(firstGap.to)} 之间存在空档，部分应纳税所得额将落不到任何税档。`,
+          detail: `${formatCurrency(firstGap.from)} - ${formatCurrency(firstGap.to)} 无档`,
           severity: 'danger',
         });
       }
@@ -4390,7 +4701,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'rate-drop',
           title: '后续税率低于前一档',
-          detail: `第 ${firstDrop.toIndex} 档税率 ${formatPercent(firstDrop.nextRate * 100)} 低于第 ${firstDrop.fromIndex} 档的 ${formatPercent(firstDrop.previousRate * 100)}。`,
+          detail: `第 ${firstDrop.toIndex} 档 < 第 ${firstDrop.fromIndex} 档`,
           severity: 'danger',
         });
       }
@@ -4400,7 +4711,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'deduction-drop',
           title: '速算扣除数出现倒退',
-          detail: `第 ${firstDrop.toIndex} 档速算扣除数 ${formatCurrency(firstDrop.nextDeduction)} 低于第 ${firstDrop.fromIndex} 档的 ${formatCurrency(firstDrop.previousDeduction)}。`,
+          detail: `第 ${firstDrop.toIndex} 档 < 第 ${firstDrop.fromIndex} 档`,
           severity: 'warning',
         });
       }
@@ -4409,7 +4720,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'last-bracket-capped',
           title: '最后一档仍设置了上限',
-          detail: '当前最后一档没有放开为无上限，高收入样本可能在页面里落不到任何税档。',
+          detail: '最后一档需无上限',
           severity: 'warning',
         });
       }
@@ -4418,7 +4729,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'reference-empty',
           title: '专项附加扣除参考标准为空',
-          detail: '当前没有配置任何正向专项附加扣除参考值，HR 在录入员工扣除时缺少模板基线。',
+          detail: '无专项扣除参考值',
           severity: 'warning',
         });
       }
@@ -4427,7 +4738,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'sample-outside-brackets',
           title: '当前联调样本落不到任何税档',
-          detail: `${currentSelectedEmployeeLabel || '当前员工'} 的应纳税所得额 ${formatCurrency(sampleTaxableAmount)} 没有命中任何税率档。`,
+          detail: `${currentSelectedEmployeeLabel || '当前员工'} ${formatCurrency(sampleTaxableAmount)} 未命中税档`,
           severity: 'danger',
         });
       }
@@ -4436,7 +4747,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'sample-deduction-empty',
           title: '当前联调样本仍按 0 扣除项估算',
-          detail: `${currentSelectedEmployeeLabel || '当前员工'} 当前 ${taxReferencePeriod} 没有命中专项扣除，样本预览会按 0 扣除项继续估算。`,
+          detail: `${currentSelectedEmployeeLabel || '当前员工'} ${taxReferencePeriod} 扣除为 0`,
           severity: 'warning',
         });
       }
@@ -4446,20 +4757,20 @@ export const HrSalaryPage: React.FC = () => {
     const score = riskItems.reduce((total, item) => total + (item.severity === 'danger' ? 2 : 1), 0);
     const riskSummary = !score
       ? {
-        label: '配置可直接联调',
+        label: '可保存',
         className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-        hint: '当前税率档、参考标准和样本预览都比较清晰，可以直接核对个税结果。',
+        hint: '已对齐',
       }
       : score <= 2
         ? {
-          label: '配置需注意',
+          label: '需注意',
           className: 'border-amber-200 bg-amber-50 text-amber-700',
-          hint: `发现 ${riskItems.length} 条需要人工确认的个税配置联调提示。`,
+          hint: `${riskItems.length} 项`,
         }
         : {
-          label: '配置信息不足',
+          label: '配置异常',
           className: 'border-rose-200 bg-rose-50 text-rose-700',
-          hint: `当前有 ${riskItems.length} 条高风险提示，建议先修正个税配置再继续联调。`,
+          hint: `${riskItems.length} 项`,
         };
 
     return {
@@ -4755,11 +5066,6 @@ export const HrSalaryPage: React.FC = () => {
     };
   }, [employeeInsuranceDetail, employeeInsuranceLedgerCatalogRecords, insuranceSchemeMap]);
 
-  const currentEmployeeInsuranceSchemeId = useMemo(
-    () => Number(employeeInsuranceLedgerDiagnostics.activeReferenceRecord?.schemeId ?? employeeInsuranceDetail?.schemeId ?? 0),
-    [employeeInsuranceDetail?.schemeId, employeeInsuranceLedgerDiagnostics.activeReferenceRecord?.schemeId],
-  );
-
   const selectedInsuranceScheme = useMemo(
     () => enabledInsuranceSchemes.find(item => item.id === insuranceForm.schemeId) || null,
     [enabledInsuranceSchemes, insuranceForm.schemeId],
@@ -4885,12 +5191,12 @@ export const HrSalaryPage: React.FC = () => {
     }
 
     const riskItems: Array<{ key: string; title: string; detail: string; severity: 'warning' | 'danger' }> = [];
-    if (selectedInsuranceScheme) {
+      if (selectedInsuranceScheme) {
       if (schemeStartsLater) {
         riskItems.push({
           key: 'scheme-effective-date',
           title: '分配日期早于方案生效日',
-          detail: `当前方案要到 ${schemeEffectiveDate || '-'} 才开始生效，但本次分配日期是 ${selectedEffectiveDate || '-'}。`,
+          detail: `${schemeEffectiveDate || '-'} > ${selectedEffectiveDate || '-'}`,
           severity: 'danger',
         });
       }
@@ -4899,7 +5205,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'base-out-of-range',
           title: '缴纳基数超出方案范围',
-          detail: `当前输入 ${formatCurrency(insuranceForm.base)}，方案区间是 ${formatCurrency(baseMin)} - ${formatCurrency(baseMax)}。`,
+          detail: `${formatCurrency(insuranceForm.base)} / ${formatCurrency(baseMin)} - ${formatCurrency(baseMax)}`,
           severity: 'danger',
         });
       }
@@ -4909,7 +5215,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'same-date-records',
           title: '目标日期已存在社保台账',
-          detail: `${selectedEffectiveDate} 已经有 ${sameDateRecords.length} 条台账，其中 ACTIVE ${activeCount} 条，继续保存会让同日链路更复杂。`,
+          detail: `${selectedEffectiveDate} ${sameDateRecords.length} 条 / ACTIVE ${activeCount}`,
           severity: activeCount > 0 ? 'danger' : 'warning',
         });
       }
@@ -4918,7 +5224,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'same-as-current',
           title: '本次分配与当前 ACTIVE 完全一致',
-          detail: '如果只是想刷新测算，不需要再次保存；继续提交只会增加重复样本。',
+          detail: '与当前 ACTIVE 一致',
           severity: 'warning',
         });
       }
@@ -4927,7 +5233,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'backfill-history',
           title: '本次是在回补历史台账',
-          detail: '这会影响历史链路核对，不适合当成“切换当前社保方案”的常规操作。',
+          detail: '回补历史日期',
           severity: 'warning',
         });
       }
@@ -4936,7 +5242,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'first-active-ledger',
           title: '当前员工还没有 ACTIVE 台账',
-          detail: '这次保存会生成首条可用社保记录，后续五险一金测算也会跟着切到这套方案。',
+          detail: '将创建首条 ACTIVE 台账',
           severity: 'warning',
         });
       }
@@ -4948,25 +5254,25 @@ export const HrSalaryPage: React.FC = () => {
       ? {
         label: '等待选择',
         className: 'border-slate-200 bg-slate-50 text-slate-600',
-        hint: '先选择社保方案，再决定是否需要保存新的分配记录。',
+        hint: '-',
       }
       : !score
         ? {
           label: '可直接分配',
           className: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-          hint: '当前方案、生效日和基数看起来都合理，可以直接继续真实联调。',
+          hint: '已对齐',
         }
-        : score <= 2
-          ? {
-            label: '分配需注意',
-            className: 'border-amber-200 bg-amber-50 text-amber-700',
-            hint: `发现 ${riskItems.length} 条需要人工确认的分配提示。`,
-          }
-          : {
-            label: '分配存在风险',
-            className: 'border-rose-200 bg-rose-50 text-rose-700',
-            hint: `当前有 ${riskItems.length} 条高风险提示，建议先调整参数再保存。`,
-          };
+      : score <= 2
+        ? {
+          label: '分配需注意',
+          className: 'border-amber-200 bg-amber-50 text-amber-700',
+          hint: `${riskItems.length} 项`,
+        }
+        : {
+          label: '分配存在风险',
+          className: 'border-rose-200 bg-rose-50 text-rose-700',
+          hint: `${riskItems.length} 项`,
+        };
 
     return {
       currentActiveLedger,
@@ -5747,7 +6053,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'missing-type',
         title: '还没有选择扣除类型',
-        detail: '不明确扣除类型时，无法判断这条记录是否会命中当前税月与参考标准。',
+        detail: '未选扣除类型',
         severity: 'warning',
       });
     }
@@ -5755,7 +6061,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'missing-start-date',
         title: '还没有填写开始日期',
-        detail: '专项扣除按月份参与个税测算，没有开始日期就无法判断生效月份。',
+        detail: '未填开始日期',
         severity: 'danger',
       });
     }
@@ -5763,7 +6069,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'invalid-amount',
         title: '扣除金额必须大于 0',
-        detail: '金额为 0 时不会形成有效专项扣除，当前保存也无法用于真实个税联调。',
+        detail: '金额需 > 0',
         severity: 'danger',
       });
     }
@@ -5771,30 +6077,22 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'invalid-range',
         title: '结束日期早于开始日期',
-        detail: '生效区间顺序已经反了，保存后会直接制造异常扣除记录。',
+        detail: '结束日期 < 开始日期',
         severity: 'danger',
-      });
-    }
-    if (noChanges) {
-      riskItems.push({
-        key: 'no-changes',
-        title: '本次保存不会带来变化',
-        detail: '当前金额、开始日期、结束日期、状态和备注都与原记录一致。',
-        severity: 'warning',
       });
     }
     if (duplicateNewCurrentRecord) {
       riskItems.push({
         key: 'existing-current-hit',
         title: '当前税月已存在同类型命中记录',
-        detail: `${label} 在 ${taxReferencePeriod} 已命中 ${sameTypeInScopeRecords.length} 条 ACTIVE 记录，再新增会直接形成重复扣除。`,
+        detail: `${taxReferencePeriod} 已有 ${sameTypeInScopeRecords.length} 条`,
         severity: 'danger',
       });
     } else if (duplicateCurrentPeriod) {
       riskItems.push({
         key: 'duplicate-current-period',
         title: '保存后同类型会在本月重复命中',
-        detail: `${label} 保存后预计会在 ${taxReferencePeriod} 命中 ${predictedInScopeCount} 条记录，个税口径需要人工确认。`,
+        detail: `保存后 ${taxReferencePeriod} ${predictedInScopeCount} 条`,
         severity: 'danger',
       });
     }
@@ -5803,7 +6101,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'overlap-active-ranges',
         title: '与现有 ACTIVE 记录的区间重叠',
-        detail: `当前区间会和 ${toDateInputValue(first.startDate) || '-'} ~ ${toDateInputValue(first.endDate) || '长期有效'} 的 ${label} 记录重叠。`,
+        detail: `${toDateInputValue(first.startDate) || '-'} ~ ${toDateInputValue(first.endDate) || '长期有效'} 重叠`,
         severity: 'danger',
       });
     }
@@ -5811,7 +6109,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'active-out-of-scope',
         title: '当前保存不会参与本月个税',
-        detail: `${label} 会保持 ACTIVE，但不会命中 ${taxReferencePeriod}，右侧个税测算结果不会读取这条记录。`,
+        detail: `${taxReferencePeriod} 不命中`,
         severity: 'warning',
       });
     }
@@ -5819,14 +6117,14 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'reference-drift-large',
         title: '当前金额与参考标准偏差过大',
-        detail: `${label} 当前输入 ${formatCurrency(amount)}，与参考标准 ${formatCurrency(referenceAmount)} 相差 ${formatCurrency(Math.abs(referenceDelta))}。`,
+        detail: `${formatCurrency(amount)} / 参考 ${formatCurrency(referenceAmount)}`,
         severity: 'danger',
       });
     } else if (hasLargeReferenceDeviation) {
       riskItems.push({
         key: 'reference-drift',
         title: '当前金额与参考标准存在明显偏差',
-        detail: `${label} 当前输入 ${formatCurrency(amount)}，与参考标准 ${formatCurrency(referenceAmount)} 偏差 ${formatCurrency(Math.abs(referenceDelta))}。`,
+        detail: `${formatCurrency(amount)} / 参考 ${formatCurrency(referenceAmount)}`,
         severity: 'warning',
       });
     }
@@ -5834,7 +6132,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'missing-remark',
         title: '建议补充备注说明差异原因',
-        detail: '当前属于重叠、重复命中或金额明显偏差场景，没有备注会增加后续联调排查成本。',
+        detail: '建议补备注',
         severity: 'warning',
       });
     }
@@ -6044,7 +6342,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'missing-employee',
         title: '还没有选择员工',
-        detail: '首薪分配必须明确具体员工，否则无法判断入职时间和后续联调链路。',
+        detail: '未选员工',
         severity: 'warning',
       });
     }
@@ -6052,7 +6350,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'missing-structure',
         title: '还没有选择薪资结构',
-        detail: '没有结构时无法展开项目明细，也无法判断这次分配是否符合当前样本口径。',
+        detail: '未选结构',
         severity: 'warning',
       });
     }
@@ -6060,7 +6358,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'missing-effective-date',
         title: '还没有填写生效日期',
-        detail: '首薪档案会直接按这个日期落库，没有生效日期就无法判断当前口径。',
+        detail: '未填生效日期',
         severity: 'danger',
       });
     }
@@ -6068,7 +6366,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'employee-already-has-salary',
         title: '当前员工已经存在现薪档案',
-        detail: `当前现薪是 ${toDateInputValue(currentSalaryRecord.effectiveDate) || '-'} / ${formatCurrency(currentSalaryRecord.totalSalary)}，继续分配会制造重复链路。`,
+        detail: `${toDateInputValue(currentSalaryRecord.effectiveDate) || '-'} / ${formatCurrency(currentSalaryRecord.totalSalary)}`,
         severity: 'danger',
       });
     }
@@ -6076,7 +6374,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'empty-structure',
         title: '当前薪资结构没有任何项目',
-        detail: '像“高管薪资结构”“销售薪资结构”这类空结构当前无法直接用于员工首薪分配。',
+        detail: '空结构',
         severity: 'danger',
       });
     }
@@ -6084,7 +6382,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'effective-before-hire',
         title: '生效日期早于员工入职日',
-        detail: `员工入职日是 ${hireDate}，当前却准备在 ${selectedEffectiveDate} 生效。`,
+        detail: `${selectedEffectiveDate} < ${hireDate}`,
         severity: 'danger',
       });
     }
@@ -6092,7 +6390,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'all-zero-amounts',
         title: '当前首薪明细全部是 0',
-        detail: '全 0 薪资会直接生成无效档案，真实联调也无法继续核对税前税后结果。',
+        detail: '总额为 0',
         severity: 'danger',
       });
     }
@@ -6100,7 +6398,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'fixed-items-zero',
         title: '固定项金额全部为 0',
-        detail: '首次分配如果固定项全为 0，通常说明结构金额还没录入完整。',
+        detail: '固定项全为 0',
         severity: 'danger',
       });
     }
@@ -6108,7 +6406,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'basic-item-zero',
         title: '基本工资项当前仍为 0',
-        detail: `${zeroBasicItems.map(item => item.itemName).join('、')} 还没有录入正值，首薪口径明显不完整。`,
+        detail: `${zeroBasicItems.map(item => item.itemName).join('、')} 为 0`,
         severity: 'danger',
       });
     }
@@ -6116,7 +6414,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'fixed-items-blank',
         title: '仍有固定项没有填写金额',
-        detail: `${fixedBlankItems.slice(0, 3).map(item => item.itemName).join('、')}${fixedBlankItems.length > 3 ? ' 等' : ''} 仍是空值，提交时会按 0 落库。`,
+        detail: `${fixedBlankItems.slice(0, 3).map(item => item.itemName).join('、')}${fixedBlankItems.length > 3 ? ' 等' : ''} 为空`,
         severity: 'warning',
       });
     }
@@ -6124,7 +6422,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'variable-items-positive',
         title: '首次分配已经带入浮动项',
-        detail: `${positiveVariableItems.map(item => item.itemName).join('、')} 当前有正值，后续调薪和绩效核对时要确认是否应首薪即生效。`,
+        detail: `${positiveVariableItems.map(item => item.itemName).join('、')} 有值`,
         severity: 'warning',
       });
     }
@@ -6132,7 +6430,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'formula-items-exist',
         title: '当前结构包含公式项',
-        detail: `${formulaItems.map(item => item.itemName).join('、')} 带有公式，首次分配前要确认这里是否应该手工录值。`,
+        detail: `${formulaItems.map(item => item.itemName).join('、')} 带公式`,
         severity: 'warning',
       });
     }
@@ -6140,21 +6438,21 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'benchmark-extreme-outlier',
         title: '当前首薪总额明显偏离结构现有样本',
-        detail: `当前总额 ${formatCurrency(assignTotal)}，而该结构现有样本区间大致是 ${formatCurrency(benchmarkStats.min)} - ${formatCurrency(benchmarkStats.max)}。`,
+        detail: `${formatCurrency(assignTotal)} / ${formatCurrency(benchmarkStats.min)} - ${formatCurrency(benchmarkStats.max)}`,
         severity: 'danger',
       });
     } else if (benchmarkOutOfRange) {
       riskItems.push({
         key: 'benchmark-out-of-range',
         title: '当前首薪总额超出结构样本区间',
-        detail: `当前总额 ${formatCurrency(assignTotal)} 超出了该结构已在用样本的 ${formatCurrency(benchmarkStats.min)} - ${formatCurrency(benchmarkStats.max)}。`,
+        detail: `${formatCurrency(assignTotal)} / ${formatCurrency(benchmarkStats.min)} - ${formatCurrency(benchmarkStats.max)}`,
         severity: 'warning',
       });
     } else if (benchmarkFarFromMedian) {
       riskItems.push({
         key: 'benchmark-far-from-median',
         title: '当前首薪总额与结构中位样本差异较大',
-        detail: `当前总额 ${formatCurrency(assignTotal)}，结构中位样本约 ${formatCurrency(benchmarkStats.median)}。`,
+        detail: `${formatCurrency(assignTotal)} / 中位 ${formatCurrency(benchmarkStats.median)}`,
         severity: 'warning',
       });
     }
@@ -6162,7 +6460,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'no-benchmark-sample',
         title: '当前结构还没有可参考的现薪样本',
-        detail: '这次保存后会成为该结构的首个在岗薪资样本，建议把金额填得更保守可核对。',
+        detail: '无现薪样本',
         severity: 'warning',
       });
     }
@@ -6170,7 +6468,7 @@ export const HrSalaryPage: React.FC = () => {
       riskItems.push({
         key: 'delayed-initial-assignment',
         title: '首薪生效日明显晚于入职日',
-        detail: `员工入职 ${hireDate}，当前要到 ${selectedEffectiveDate} 才生成首薪档案，属于回补历史链路。`,
+        detail: `${hireDate} -> ${selectedEffectiveDate}`,
         severity: 'warning',
       });
     }
@@ -6297,7 +6595,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'no-changes',
           title: '调薪后明细没有变化',
-          detail: '当前金额明细和现薪完全一致，继续创建通常只会制造重复调薪单。',
+          detail: '与现薪一致',
           severity: 'danger',
         });
       }
@@ -6305,7 +6603,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'same-date-adjustments',
           title: '目标生效日已有调薪单',
-          detail: `${selectedEffectiveDate || '-'} 已经有 ${sameDateAdjustments.length} 张调薪单，继续创建会让同日覆盖链路更难核对。`,
+          detail: `${selectedEffectiveDate || '-'} ${sameDateAdjustments.length} 张`,
           severity: sameDateAdjustments.some(item => String(item.status || '').toUpperCase() === 'EFFECTIVE') ? 'danger' : 'warning',
         });
       }
@@ -6313,7 +6611,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'exact-duplicate',
           title: '调薪结果已经存在',
-          detail: '当前调薪后的总额已经和现有现薪或同日调薪结果命中，再提一张单据很容易变成重复样本。',
+          detail: '结果已存在',
           severity: 'danger',
         });
       }
@@ -6321,7 +6619,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'backfill-history',
           title: '本次是在回补历史调薪',
-          detail: `当前现薪生效于 ${baselineEffectiveDate}，这次却准备回填到更早的 ${selectedEffectiveDate}。`,
+          detail: `${selectedEffectiveDate} < ${baselineEffectiveDate}`,
           severity: 'warning',
         });
       }
@@ -6329,7 +6627,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'decrease-salary',
           title: '本次调薪后的总额低于现薪',
-          detail: `当前现薪是 ${formatCurrency(adjustmentBaseline.totalSalary)}，调薪后变成 ${formatCurrency(adjustmentAfterTotal)}，这更像降薪链路。`,
+          detail: `${formatCurrency(adjustmentBaseline.totalSalary)} -> ${formatCurrency(adjustmentAfterTotal)}`,
           severity: 'warning',
         });
       }
@@ -6337,7 +6635,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'future-chain-exists',
           title: '当前员工已存在未来调薪链路',
-          detail: `这名员工已经有 ${futureAdjustments.length} 条未来生效调薪，继续新增前建议先核对现有未来档案。`,
+          detail: `未来 ${futureAdjustments.length} 条`,
           severity: 'warning',
         });
       }
@@ -6345,7 +6643,7 @@ export const HrSalaryPage: React.FC = () => {
         riskItems.push({
           key: 'missing-reason',
           title: '还没有填写调薪原因',
-          detail: '真实联调时建议把原因填清楚，后面回看同日多单或未来调薪链路会更容易排查。',
+          detail: '未填原因',
           severity: 'warning',
         });
       }
@@ -7288,6 +7586,37 @@ export const HrSalaryPage: React.FC = () => {
     setTaxConfigForm(buildTaxConfigForm(currentTaxConfig));
   };
 
+  const openConfirmDialog = ({
+    title,
+    message,
+    confirmText = '确定',
+    cancelText = '取消',
+    danger = false,
+    onConfirm,
+  }: Omit<ConfirmDialogState, 'open'>) => {
+    setConfirmDialogState({
+      open: true,
+      title,
+      message,
+      confirmText,
+      cancelText,
+      danger,
+      onConfirm,
+    });
+  };
+
+  const closeConfirmDialog = () => {
+    setConfirmDialogState(createDefaultConfirmDialogState());
+  };
+
+  const handleConfirmDialogConfirm = async () => {
+    const action = confirmDialogState.onConfirm;
+    closeConfirmDialog();
+    if (action) {
+      await action();
+    }
+  };
+
   const openAssignDialog = () => {
     if (!assignableEmployees.length) {
       toast.error('当前没有待分配薪资的在岗员工');
@@ -7331,7 +7660,7 @@ export const HrSalaryPage: React.FC = () => {
     if (employeeId) {
       setSelectedEmployeeId(String(employeeId));
     }
-    setTab('employees');
+    goSalarySection('employees');
   };
 
   const focusAdjustmentEmployeeWorkspace = async (employeeId?: number) => {
@@ -7342,7 +7671,7 @@ export const HrSalaryPage: React.FC = () => {
     setSalaryStructureFilter(ALL_VALUE);
     setSalaryHistoryStatusFilter(ALL_VALUE);
     setSelectedEmployeeId(String(employeeId));
-    setTab('employees');
+    goSalarySection('employees');
     await loadEmployeeSalaryList(employeeId, ALL_VALUE, ALL_VALUE);
   };
 
@@ -7350,7 +7679,7 @@ export const HrSalaryPage: React.FC = () => {
     setSalaryKeyword('');
     setSalaryDeptFilter(ALL_VALUE);
     setSalaryStructureFilter(String(structureId));
-    setTab('employees');
+    goSalarySection('employees');
     await loadEmployeeSalaryList(undefined, ALL_VALUE, String(structureId));
   };
 
@@ -7368,7 +7697,7 @@ export const HrSalaryPage: React.FC = () => {
     if (employeeId) {
       setSelectedEmployeeId(String(employeeId));
     }
-    setTab('adjustments');
+    goSalarySection('adjustments');
   };
 
   const handleSaveItem = async () => {
@@ -7418,24 +7747,28 @@ export const HrSalaryPage: React.FC = () => {
       return;
     }
 
-    if (!window.confirm(buildDeleteConfirmMessage(`薪资项目“${item.itemName}”`, diagnostics.riskItems))) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      await deleteSalaryItem(item.id);
-      toast.success('薪资项目已删除');
-      if (editingItemId === item.id) {
-        closeItemDialog();
-      }
-      await loadFoundationData();
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.message || '删除薪资项目失败');
-    } finally {
-      setActionLoading(false);
-    }
+    openConfirmDialog({
+      title: '删除薪资项目',
+      message: buildDeleteConfirmMessage(`薪资项目“${item.itemName}”`, diagnostics.riskItems),
+      confirmText: '删除',
+      danger: true,
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await deleteSalaryItem(item.id);
+          toast.success('薪资项目已删除');
+          if (editingItemId === item.id) {
+            closeItemDialog();
+          }
+          await loadFoundationData();
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error?.message || '删除薪资项目失败');
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
   };
 
   const handleSaveStructure = async () => {
@@ -7505,28 +7838,32 @@ export const HrSalaryPage: React.FC = () => {
     }
 
     const confirmRiskItems = diagnostics?.riskItems || [];
-    if (!window.confirm(buildDeleteConfirmMessage(`薪资结构“${structure.structureName}”`, confirmRiskItems))) {
-      return;
-    }
-
-    setActionLoading(true);
-    try {
-      await deleteSalaryStructure(structure.id);
-      toast.success('薪资结构已删除');
-      if (selectedStructureId === String(structure.id)) {
-        setSelectedStructureId('');
-        setStructureDetail(null);
-      }
-      if (editingStructureId === structure.id) {
-        closeStructureDialog();
-      }
-      await loadFoundationData();
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.message || '删除薪资结构失败');
-    } finally {
-      setActionLoading(false);
-    }
+    openConfirmDialog({
+      title: '删除薪资结构',
+      message: buildDeleteConfirmMessage(`薪资结构“${structure.structureName}”`, confirmRiskItems),
+      confirmText: '删除',
+      danger: true,
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await deleteSalaryStructure(structure.id);
+          toast.success('薪资结构已删除');
+          if (selectedStructureId === String(structure.id)) {
+            setSelectedStructureId('');
+            setStructureDetail(null);
+          }
+          if (editingStructureId === structure.id) {
+            closeStructureDialog();
+          }
+          await loadFoundationData();
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error?.message || '删除薪资结构失败');
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
   };
 
   const handleSetGrade = async () => {
@@ -7565,21 +7902,26 @@ export const HrSalaryPage: React.FC = () => {
   const handleDeleteGrade = async (grade: SalaryGrade) => {
     const gradeLabel = [grade.levelCode, grade.levelName].filter(Boolean).join(' / ') || `职级 ${grade.levelId}`;
     const diagnostics = salaryGradeDeleteDiagnosticsMap.get(grade.levelId) || buildSalaryGradeDeleteDiagnostics(grade);
-    if (!window.confirm(buildDeleteConfirmMessage(`薪级“${gradeLabel}”`, diagnostics.riskItems))) {
-      return;
-    }
 
-    setActionLoading(true);
-    try {
-      await deleteSalaryGrade(grade.levelId);
-      toast.success('薪级已删除');
-      await loadFoundationData();
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.message || '删除薪级失败');
-    } finally {
-      setActionLoading(false);
-    }
+    openConfirmDialog({
+      title: '删除薪级',
+      message: buildDeleteConfirmMessage(`薪级“${gradeLabel}”`, diagnostics.riskItems),
+      confirmText: '删除',
+      danger: true,
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await deleteSalaryGrade(grade.levelId);
+          toast.success('薪级已删除');
+          await loadFoundationData();
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error?.message || '删除薪级失败');
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
   };
 
   const handleSaveInsuranceScheme = async () => {
@@ -7838,24 +8180,29 @@ export const HrSalaryPage: React.FC = () => {
   const handleDeleteTaxDeduction = async (item: EmployeeTaxDeduction) => {
     const deductionLabel = item.deductionTypeName || deductionTypeLabel(item.deductionType);
     const diagnostics = taxDeductionDeleteDiagnosticsMap.get(item.id) || buildTaxDeductionDeleteDiagnostics(item);
-    if (!window.confirm(buildDeleteConfirmMessage(`专项扣除“${deductionLabel}”`, diagnostics.riskItems))) {
-      return;
-    }
 
-    setActionLoading(true);
-    try {
-      await deleteTaxDeduction(item.id);
-      toast.success('专项扣除已删除');
-      await refreshCurrentTaxDeductionWorkspace(item.employeeId);
-      if (editingTaxDeductionId === item.id) {
-        resetTaxDeductionForm(item.employeeId);
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.message || '删除专项扣除失败');
-    } finally {
-      setActionLoading(false);
-    }
+    openConfirmDialog({
+      title: '删除专项扣除',
+      message: buildDeleteConfirmMessage(`专项扣除“${deductionLabel}”`, diagnostics.riskItems),
+      confirmText: '删除',
+      danger: true,
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          await deleteTaxDeduction(item.id);
+          toast.success('专项扣除已删除');
+          await refreshCurrentTaxDeductionWorkspace(item.employeeId);
+          if (editingTaxDeductionId === item.id) {
+            resetTaxDeductionForm(item.employeeId);
+          }
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error?.message || '删除专项扣除失败');
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
   };
 
   const handleSaveTaxConfig = async () => {
@@ -8000,37 +8347,42 @@ export const HrSalaryPage: React.FC = () => {
       toast.error(`${firstBlockingRisk.title}：${firstBlockingRisk.detail}`);
       return;
     }
-    if (!window.confirm(buildActionConfirmMessage(
-      actionLabel,
-      adjustmentActionDiagnostics?.riskItems || [],
-      adjustmentActionDiagnostics?.actionHint,
-    ))) {
-      return;
-    }
 
-    setActionLoading(true);
-    try {
-      const nextAdjustmentId = adjustmentDetail.id;
-      const nextEmployeeId = adjustmentDetail.employeeId;
-      await action();
-      toast.success(successMessage);
-      focusAdjustmentWorkspace(nextAdjustmentId, nextEmployeeId);
-      await Promise.all([
-        loadAdjustmentList(nextAdjustmentId, ALL_VALUE, ALL_VALUE, ALL_VALUE, '', ''),
-        loadAdjustmentDetail(nextAdjustmentId),
-        loadAdjustmentEmployeeSalaryContext(nextEmployeeId),
-        loadEmployeeSalaryList(nextEmployeeId),
-        loadEmployeeAdjustmentHistory(nextEmployeeId),
-      ]);
-      if (currentEmployeeRecord?.employeeId === nextEmployeeId) {
-        await refreshCurrentEmployeeWorkspace(currentEmployeeRecord);
-      }
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.message || '调薪操作失败');
-    } finally {
-      setActionLoading(false);
-    }
+    openConfirmDialog({
+      title: actionLabel,
+      message: buildActionConfirmMessage(
+        actionLabel,
+        adjustmentActionDiagnostics?.riskItems || [],
+        adjustmentActionDiagnostics?.actionHint,
+      ),
+      confirmText: actionLabel,
+      danger: false,
+      onConfirm: async () => {
+        setActionLoading(true);
+        try {
+          const nextAdjustmentId = adjustmentDetail.id;
+          const nextEmployeeId = adjustmentDetail.employeeId;
+          await action();
+          toast.success(successMessage);
+          focusAdjustmentWorkspace(nextAdjustmentId, nextEmployeeId);
+          await Promise.all([
+            loadAdjustmentList(nextAdjustmentId, ALL_VALUE, ALL_VALUE, ALL_VALUE, '', ''),
+            loadAdjustmentDetail(nextAdjustmentId),
+            loadAdjustmentEmployeeSalaryContext(nextEmployeeId),
+            loadEmployeeSalaryList(nextEmployeeId),
+            loadEmployeeAdjustmentHistory(nextEmployeeId),
+          ]);
+          if (currentEmployeeRecord?.employeeId === nextEmployeeId) {
+            await refreshCurrentEmployeeWorkspace(currentEmployeeRecord);
+          }
+        } catch (error: any) {
+          console.error(error);
+          toast.error(error?.message || '调薪操作失败');
+        } finally {
+          setActionLoading(false);
+        }
+      },
+    });
   };
 
   const openAdjustmentFromHistory = (adjustmentId: number) => {
@@ -8041,7 +8393,7 @@ export const HrSalaryPage: React.FC = () => {
     setAdjustmentEffectiveStart('');
     setAdjustmentEffectiveEnd('');
     setSelectedAdjustmentId(String(adjustmentId));
-    setTab('adjustments');
+    goSalarySection('adjustments');
   };
 
   const canSubmitAdjustment = String(adjustmentDetail?.status || '').toUpperCase() === 'DRAFT';
@@ -8050,4965 +8402,610 @@ export const HrSalaryPage: React.FC = () => {
     String(adjustmentDetail?.status || '').toUpperCase() === 'APPROVED'
     && !isFutureDate(adjustmentDetail?.effectiveDate);
 
+  const foundationSectionComponents = {
+    WorkspaceSectionCard,
+    WorkspaceMetricStrip,
+    WorkspaceDiagnosticSummary,
+    WorkspaceTableStateRow,
+    WorkspaceInlineState,
+    DetailRow,
+  };
+
+  const primarySectionComponents = {
+    ...foundationSectionComponents,
+    WorkspaceInlineRiskList,
+    SalaryDiffTable,
+  };
+
+  const dialogSectionComponents = {
+    WorkspaceDialogShell,
+    WorkspaceMetricStrip,
+    WorkspaceInlineRiskList,
+    DetailRow,
+    SalaryAmountEditor,
+  };
+
+  const foundationDialogComponents = {
+    WorkspaceDialogShell,
+    WorkspaceInlineRiskList,
+    DetailRow,
+  };
+
+  const taxDialogComponents = {
+    WorkspaceDialogShell,
+    WorkspaceInlineState,
+    WorkspaceMetricStrip,
+    WorkspaceDiagnosticSummary,
+    WorkspaceInlineRiskList,
+    WorkspaceTableStateRow,
+    DetailRow,
+  };
+
+  const employeesSectionViewModel = {
+    ALL_VALUE,
+    loading,
+    salaryKeyword,
+    setSalaryKeyword,
+    salaryDeptFilter,
+    setSalaryDeptFilter,
+    salaryStructureFilter,
+    setSalaryStructureFilter,
+    salaryDeptOptions,
+    salaryStructureOptions,
+    loadEmployeeSalaryList,
+    currentEmployeeRecord,
+    workingEmployeeSalaries,
+    filteredEmployeeSalaries,
+    futureEffectiveEmployeeSalaries,
+    assignableEmployees,
+    resignedEmployeeSalaries,
+    selectedEmployeeId,
+    setSelectedEmployeeId,
+    isFutureDate,
+    formatCurrency,
+    employeeSalaryListLoading,
+    latestEmployeeAdjustment,
+    openAdjustmentFromHistory,
+    refreshCurrentEmployeeWorkspace,
+    employeeSalaryDetailLoading,
+    employeeSalaryDetail,
+    currentEmployeeEffectiveDate,
+    currentEmployeeFutureEffective,
+    currentEmployeeEffectiveOffsetDays,
+    salaryHistoryMetrics,
+    employeeSalaryDuplicateEffectiveDates,
+    latestEmployeeAdjustmentMatchedCurrentSalary,
+    latestEmployeeAdjustmentMatchedArchive,
+    itemCategoryLabel,
+    salaryHistoryStatusFilter,
+    setSalaryHistoryStatusFilter,
+    employeeSalaryHistoryLoading,
+    loadEmployeeSalaryHistory,
+    sortedEmployeeSalaryHistory,
+    salaryArchiveStatusClass,
+    salaryArchiveStatusLabel,
+    openInsuranceDialog,
+    openTaxDeductionDialog,
+    loadEmployeeCompensationProfile,
+    currentGrossSalary,
+    employeeCompensationLoading,
+    hasInsuranceProfile,
+    currentEmployeeEffectiveHint,
+    employeeInsuranceDetail,
+    latestEmployeeInsuranceLedger,
+    insuranceBaseMismatch,
+    insuranceReferenceBase,
+    insuranceCalculatedBase,
+    employeeInsuranceCalculation,
+    sortedEmployeeTaxDeductions,
+    taxReferencePeriod,
+    currentTaxDeductionTotal,
+    compensationRiskSummary,
+    compensationRiskItems,
+    currentTaxConfig,
+    currentPersonalInsurance,
+    currentTaxableIncome,
+    employeeTaxCalculation,
+    currentTaxAmount,
+    currentNetIncome,
+    currentCompanyInsurance,
+    currentEmployerCost,
+    currentTaxableAmount,
+    insuranceBreakdownRows,
+    openTaxConfigDialog,
+    compactTaxDeductionRemark,
+    insuranceLedgerStatusFilter,
+    setInsuranceLedgerStatusFilter,
+    setInsuranceLedgerPageNum,
+    loadEmployeeInsuranceLedger,
+    insuranceLedgerPageNum,
+    insuranceLedgerStatusOptions,
+    employeeInsuranceListLoading,
+    employeeInsuranceLedgerDiagnostics,
+    employeeInsuranceLedgerPage,
+    employeeInsuranceLedgerRecords,
+    loadEmployeeAdjustmentHistory,
+    employeeAdjustmentHistoryLoading,
+    sortedEmployeeAdjustmentHistory,
+    employeeAdjustmentHistoryDiagnostics,
+    adjustmentStatusClass,
+    adjustmentStatusLabel,
+    adjustmentTypeLabel,
+    normalizeAmount,
+    insuranceReferenceEffectiveDate,
+  };
+
+  const adjustmentsSectionViewModel = {
+    ALL_VALUE,
+    loading,
+    adjustmentKeyword,
+    setAdjustmentKeyword,
+    adjustmentStatusFilter,
+    setAdjustmentStatusFilter,
+    adjustmentTypeFilter,
+    setAdjustmentTypeFilter,
+    adjustmentEmployeeFilter,
+    setAdjustmentEmployeeFilter,
+    adjustmentEmployeeOptions,
+    adjustmentEffectiveStart,
+    setAdjustmentEffectiveStart,
+    adjustmentEffectiveEnd,
+    setAdjustmentEffectiveEnd,
+    adjustmentTypeOptions,
+    currentEmployeeRecord,
+    currentSelectedEmployeeLabel,
+    selectedEmployeeId,
+    currentAdjustmentFilterEmployee,
+    salaryAdjustments,
+    filteredAdjustments,
+    adjustmentListDiagnostics,
+    selectedAdjustmentId,
+    setSelectedAdjustmentId,
+    adjustmentStatusClass,
+    adjustmentStatusLabel,
+    adjustmentTypeLabel,
+    formatCurrency,
+    adjustmentListLoading,
+    adjustmentDetail,
+    canSubmitAdjustment,
+    handleSubmitAdjustment: () => adjustmentDetail
+      ? runAdjustmentAction(() => submitSalaryAdjustment(adjustmentDetail.id), '调薪申请已提交审批', '提交审批')
+      : Promise.resolve(),
+    canApproveAdjustment,
+    handleApproveAdjustment: () => adjustmentDetail
+      ? runAdjustmentAction(() => approveSalaryAdjustment(adjustmentDetail.id), '调薪申请已审批通过', '审批通过')
+      : Promise.resolve(),
+    canEffectiveAdjustment,
+    handleEffectiveAdjustment: () => adjustmentDetail
+      ? runAdjustmentAction(() => effectiveSalaryAdjustment(adjustmentDetail.id), '调薪已生效', '执行生效')
+      : Promise.resolve(),
+    actionLoading,
+    adjustmentDetailLoading,
+    adjustmentActionDiagnostics,
+    adjustmentEmployeeSalaryLoading,
+    loadAdjustmentEmployeeSalaryContext,
+    focusAdjustmentEmployeeWorkspace,
+    adjustmentClosureInsight,
+    adjustmentEmployeeSalaryDetail,
+    adjustmentCurrentSalaryMatched,
+    adjustmentMatchedArchive,
+    salaryArchiveStatusLabel,
+    adjustmentCurrentTotalDelta,
+    adjustmentDiffRows,
+  };
+
+  const assignDialogViewModel = {
+    open: assignDialogOpen,
+    EMPTY_VALUE,
+    assignForm,
+    setAssignForm,
+    assignableEmployees,
+    enabledSalaryStructures,
+    getTodayValue,
+    assignFormDiagnostics,
+    formatCurrency,
+    structurePreviewFields,
+    assignTotal,
+    actionLoading,
+    close: () => setAssignDialogOpen(false),
+    submit: handleAssignSalary,
+  };
+
+  const adjustDialogViewModel = {
+    open: adjustDialogOpen,
+    EMPTY_VALUE,
+    adjustForm,
+    setAdjustForm,
+    employeesWithSalary,
+    adjustmentTypeOptions,
+    adjustmentBaseline,
+    adjustmentAfterTotal,
+    adjustmentFormEmployee,
+    adjustmentFormDiagnostics,
+    formatCurrency,
+    adjustmentEditorFields,
+    actionLoading,
+    close: () => setAdjustDialogOpen(false),
+    submit: handleCreateAdjustment,
+  };
+
+  const insuranceAssignDialogViewModel = {
+    open: insuranceDialogOpen,
+    close: closeInsuranceDialog,
+    EMPTY_VALUE,
+    currentEmployeeRecord,
+    insuranceForm,
+    setInsuranceForm,
+    enabledInsuranceSchemes,
+    selectedInsuranceScheme,
+    getTodayValue,
+    insuranceAssignDiagnostics,
+    employeeInsuranceDetail,
+    insuranceAssignPreview,
+    formatCurrency,
+    actionLoading,
+    submit: handleAssignInsurance,
+  };
+
+  const itemDialogViewModel = {
+    open: itemDialogOpen,
+    editingItemId,
+    close: closeItemDialog,
+    itemForm,
+    setItemForm,
+    itemTypeOptions,
+    itemCategoryOptions,
+    statusOptions,
+    itemFormDiagnostics,
+    itemCategoryLabel,
+    itemTypeLabel,
+    actionLoading,
+    submit: handleSaveItem,
+  };
+
+  const structureDialogViewModel = {
+    open: structureDialogOpen,
+    editingStructureId,
+    close: closeStructureDialog,
+    structureForm,
+    setStructureForm,
+    statusOptions,
+    salaryItems,
+    itemCategoryLabel,
+    itemTypeLabel,
+    structureFormDiagnostics,
+    actionLoading,
+    submit: handleSaveStructure,
+  };
+
+  const gradeDialogViewModel = {
+    open: gradeDialogOpen,
+    editingGradeLevelId,
+    close: closeGradeDialog,
+    EMPTY_VALUE,
+    gradeForm,
+    setGradeForm,
+    sortedJobLevels,
+    gradeFormDiagnostics,
+    formatCurrency,
+    actionLoading,
+    submit: handleSetGrade,
+  };
+
+  const insuranceSchemeDialogViewModel = {
+    open: insuranceSchemeDialogOpen,
+    editingInsuranceSchemeId,
+    close: closeInsuranceSchemeDialog,
+    insuranceSchemeForm,
+    setInsuranceSchemeForm,
+    statusOptions,
+    formatPercent,
+    insuranceSchemeFormDiagnostics,
+    actionLoading,
+    submit: handleSaveInsuranceScheme,
+  };
+
+  const taxConfigDialogViewModel = {
+    open: taxConfigDialogOpen,
+    close: closeTaxConfigDialog,
+    taxConfigForm,
+    setTaxConfigForm,
+    taxConfigDialogLoading,
+    getTodayValue,
+    deductionTypeOptions,
+    taxConfigStandardDeductionTotal,
+    formatCurrency,
+    defaultTaxBracketJson,
+    taxConfigBracketPreview,
+    formatPercent,
+    taxConfigDiagnostics,
+    currentEmployeeRecord,
+    currentSelectedEmployeeLabel,
+    taxReferencePeriod,
+    currentEmployeeEffectiveDate,
+    taxConfigReferenceEntries,
+    currentTaxConfigReferenceMap,
+    actionLoading,
+    submit: handleSaveTaxConfig,
+  };
+
+  const taxDeductionDialogViewModel = {
+    open: taxDeductionDialogOpen,
+    close: closeTaxDeductionDialog,
+    currentEmployeeRecord,
+    employeeTaxDeductionDiagnostics,
+    applyTaxDeductionReferenceTemplate,
+    editingTaxDeductionId,
+    resetTaxDeductionForm,
+    taxDeductionForm,
+    setTaxDeductionForm,
+    deductionTypeLabel,
+    EMPTY_VALUE,
+    deductionTypeOptions,
+    taxDeductionStatusOptions,
+    taxDeductionFormDiagnostics,
+    formatCurrency,
+    actionLoading,
+    submit: handleSaveTaxDeduction,
+    employeeTaxDeductionStats,
+    taxReferencePeriod,
+    taxDeductionRiskItems,
+    taxDeductionTypeFilter,
+    setTaxDeductionTypeFilter,
+    taxDeductionFilterTypeOptions,
+    taxDeductionStatusFilter,
+    setTaxDeductionStatusFilter,
+    taxDeductionScopeFilter,
+    setTaxDeductionScopeFilter,
+    taxDeductionScopeOptions,
+    ALL_VALUE,
+    filteredEmployeeAllTaxDeductions,
+    taxDeductionListLoading,
+    currentTaxConfigReferenceMap,
+    compactTaxDeductionRemark,
+    taxDeductionStatusClass,
+    taxDeductionStatusLabel,
+    activeTaxDeductionIds,
+    openTaxDeductionEditDialog,
+    handleDeleteTaxDeduction,
+  };
+
+  const renderFoundationSection = () => {
+    switch (currentSection) {
+      case 'items':
+        return (
+          <SalaryItemsSection
+            components={foundationSectionComponents}
+            enabledSalaryItems={enabledSalaryItems}
+            salaryItems={salaryItems}
+            linkedSalaryItems={linkedSalaryItems}
+            orphanSalaryItems={orphanSalaryItems}
+            formulaSalaryItems={formulaSalaryItems}
+            salaryItemUsageMap={salaryItemUsageMap}
+            itemTypeLabel={itemTypeLabel}
+            itemCategoryLabel={itemCategoryLabel}
+            openItemDialog={openItemDialog}
+            openItemEditDialog={openItemEditDialog}
+            handleDeleteItem={handleDeleteItem}
+            actionLoading={actionLoading}
+            foundationLoading={foundationLoading}
+          />
+        );
+      case 'structures':
+        return (
+          <SalaryStructuresSection
+            components={foundationSectionComponents}
+            salaryStructures={salaryStructures}
+            selectedStructureId={selectedStructureId}
+            setSelectedStructureId={setSelectedStructureId}
+            structureStatusClass={structureStatusClass}
+            structureDetail={structureDetail}
+            structureDetailLoading={structureDetailLoading}
+            openStructureDialog={openStructureDialog}
+            openStructureEditDialog={openStructureEditDialog}
+            handleDeleteStructure={handleDeleteStructure}
+            actionLoading={actionLoading}
+            structureLinkedEmployeeIds={structureLinkedEmployeeIds}
+            structureLinkedSalaryStats={structureLinkedSalaryStats}
+            structureItemStats={structureItemStats}
+            selectedStructureDeleteDiagnostics={selectedStructureDeleteDiagnostics}
+            structureLinkedEmployeeRecords={structureLinkedEmployeeRecords}
+            focusStructureEmployees={focusStructureEmployees}
+            structureLinkedEmployeeRows={structureLinkedEmployeeRows}
+            employeeMap={employeeMap}
+            formatCurrency={formatCurrency}
+            isFutureDate={isFutureDate}
+            focusEmployeeWorkspace={focusEmployeeWorkspace}
+            itemCategoryLabel={itemCategoryLabel}
+            itemTypeLabel={itemTypeLabel}
+          />
+        );
+      case 'grades':
+        return (
+          <SalaryGradesSection
+            components={foundationSectionComponents}
+            activeJobLevels={activeJobLevels}
+            sortedSalaryGrades={sortedSalaryGrades}
+            pendingGradeLevels={pendingGradeLevels}
+            highestSalaryGrade={highestSalaryGrade}
+            salaryGradeRiskSummary={salaryGradeRiskSummary}
+            salaryGradeRiskItems={salaryGradeRiskItems}
+            gradeSeriesCoverage={gradeSeriesCoverage}
+            openGradeDialog={openGradeDialog}
+            salaryGradeDiagnostics={salaryGradeDiagnostics}
+            jobLevelMap={jobLevelMap}
+            formatCurrency={formatCurrency}
+            openGradeEditDialog={openGradeEditDialog}
+            handleDeleteGrade={handleDeleteGrade}
+            actionLoading={actionLoading}
+            foundationLoading={foundationLoading}
+          />
+        );
+      case 'insurance':
+        return (
+          <SalaryInsuranceSection
+            components={foundationSectionComponents}
+            openInsuranceSchemeDialog={openInsuranceSchemeDialog}
+            insuranceSchemeStats={insuranceSchemeStats}
+            insuranceSchemeRiskSummary={insuranceSchemeRiskSummary}
+            insuranceSchemeRiskItems={insuranceSchemeRiskItems}
+            insuranceSchemeCityFilter={insuranceSchemeCityFilter}
+            setInsuranceSchemeCityFilter={setInsuranceSchemeCityFilter}
+            insuranceSchemeStatusFilter={insuranceSchemeStatusFilter}
+            setInsuranceSchemeStatusFilter={setInsuranceSchemeStatusFilter}
+            insuranceSchemeCityOptions={insuranceSchemeCityOptions}
+            ALL_VALUE={ALL_VALUE}
+            currentEmployeeRecord={currentEmployeeRecord}
+            currentSelectedEmployeeLabel={currentSelectedEmployeeLabel}
+            activeLinkedInsuranceSchemes={activeLinkedInsuranceSchemes}
+            unusedInsuranceSchemes={unusedInsuranceSchemes}
+            expiredOnlyInsuranceSchemes={expiredOnlyInsuranceSchemes}
+            filteredInsuranceSchemes={filteredInsuranceSchemes}
+            insuranceSchemeUsageMap={insuranceSchemeUsageMap}
+            structureStatusClass={structureStatusClass}
+            formatCurrency={formatCurrency}
+            formatPercent={formatPercent}
+            openInsuranceSchemeEditDialog={openInsuranceSchemeEditDialog}
+            openInsuranceAssignDialogWithScheme={openInsuranceAssignDialogWithScheme}
+            actionLoading={actionLoading}
+            foundationLoading={foundationLoading}
+          />
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <>
-      <div className="relative min-h-screen pb-6">
-        <WorkspaceBackdrop />
-        <WorkspacePageContent className="space-y-6">
-          <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-                <ShieldCheck size={14} />
-                Salary Control
-              </div>
-              <h1 className="text-3xl font-bold tracking-tight text-slate-900">薪酬管理中心</h1>
-              <p className="mt-2 text-sm text-slate-500">
-                把薪资项目、结构、职级区间、员工现薪和调薪申请放到同一页联调，先打通桌面端核心流程。
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button className="rounded-xl" onClick={openAssignDialog} disabled={!assignableEmployees.length || !enabledSalaryStructures.length}>
-                <BadgePlus size={16} className="mr-2" />
+      <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 px-4 py-4 lg:px-6">
+        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-[22px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+              薪酬管理
+            </h1>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                onClick={openAssignDialog}
+                disabled={!assignableEmployees.length || !enabledSalaryStructures.length}
+              >
                 分配薪资
               </Button>
-              <Button variant="outline" className="rounded-xl" onClick={openAdjustDialog} disabled={!employeesWithSalary.length}>
-                <FilePlus2 size={16} className="mr-2" />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={openAdjustDialog}
+                disabled={!employeesWithSalary.length}
+              >
                 发起调薪
               </Button>
               <Button
                 variant="outline"
-                className="rounded-xl"
+                size="sm"
                 onClick={() => {
                   void Promise.all([loadFoundationData(), loadEmployeeSalaryList(), loadAdjustmentList()]);
                 }}
               >
-                <RefreshCcw size={16} className="mr-2" />
-                刷新全部
+                刷新数据
               </Button>
-            </div>
           </div>
-        </Card>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {metrics.map(metric => (
-            <Card key={metric.label} className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-              <div className="flex items-start justify-between">
-                <div>
-                  <div className="text-sm font-medium text-slate-500">{metric.label}</div>
-                  <div className="mt-3 text-3xl font-bold tracking-tight text-slate-900">{loading ? '--' : metric.value}</div>
-                  <div className="mt-2 text-xs text-slate-400">{metric.hint}</div>
-                </div>
-                <div className={`rounded-2xl p-3 ${metric.tone}`}>
-                  {metric.icon}
-                </div>
-              </div>
-            </Card>
-          ))}
         </div>
 
-        <Tabs value={tab} onValueChange={setTab} className="space-y-4">
-          <TabsList className="rounded-xl border border-slate-200 bg-white p-1 shadow-sm">
-            <TabsTrigger value="employees">员工薪资</TabsTrigger>
-            <TabsTrigger value="adjustments">调薪申请</TabsTrigger>
-            <TabsTrigger value="foundation">基础配置</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="employees" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-              <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-slate-900">在岗薪资档案</h2>
-                  <p className="mt-1 text-sm text-slate-500">当前只拉生效中的员工薪资，方便直接联调调薪与现薪详情。</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="pl-10"
-                      placeholder="搜索员工工号、姓名、薪资结构"
-                      value={salaryKeyword}
-                      onChange={event => setSalaryKeyword(event.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <Select
-                      value={salaryDeptFilter}
-                      onValueChange={value => {
-                        setSalaryDeptFilter(value);
-                        void loadEmployeeSalaryList(currentEmployeeRecord?.employeeId, value, salaryStructureFilter);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="筛选部门" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部部门</SelectItem>
-                        {salaryDeptOptions.map(option => (
-                          <SelectItem key={option.value} value={String(option.value)}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select
-                      value={salaryStructureFilter}
-                      onValueChange={value => {
-                        setSalaryStructureFilter(value);
-                        void loadEmployeeSalaryList(currentEmployeeRecord?.employeeId, salaryDeptFilter, value);
-                      }}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="筛选薪资结构" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部结构</SelectItem>
-                        {salaryStructureOptions.map(option => (
-                          <SelectItem key={option.value} value={String(option.value)}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    <div>
-                      当前命中 {workingEmployeeSalaries.length} 条在岗现薪档案
-                      {salaryKeyword.trim() ? `，关键词筛后 ${filteredEmployeeSalaries.length} 条` : ''}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setSalaryKeyword('');
-                        setSalaryDeptFilter(ALL_VALUE);
-                        setSalaryStructureFilter(ALL_VALUE);
-                        void loadEmployeeSalaryList(currentEmployeeRecord?.employeeId, ALL_VALUE, ALL_VALUE);
-                      }}
-                    >
-                      清空筛选
-                    </Button>
-                  </div>
-
-                  {futureEffectiveEmployeeSalaries.length > 0 && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                      真实联调发现 {workingEmployeeSalaries.length} 条 ACTIVE 现薪里有 {futureEffectiveEmployeeSalaries.length} 条生效日晚于今天。
-                      当前页面会按接口原样展示这些未来档案，联调时需要区分“接口当前返回”和“实际已到生效日”。
-                    </div>
-                  )}
-
-                  <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
-                    当前还有 {assignableEmployees.length} 名在岗员工未分配薪资，可直接通过上方“分配薪资”真实写库联调。
-                  </div>
-
-                  {resignedEmployeeSalaries.length > 0 && (
-                    <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                      真实联调发现 {resignedEmployeeSalaries.length} 条 ACTIVE 薪资档案对应的员工已离职。
-                      这些记录已从当前工作区和调薪候选中过滤，避免继续对离职员工发起调薪。
-                    </div>
-                  )}
-
-                  <div className="space-y-3">
-                    {filteredEmployeeSalaries.map(item => {
-                      const isActive = String(item.employeeId) === selectedEmployeeId;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                            isActive
-                              ? 'border-emerald-200 bg-emerald-50 shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                          }`}
-                          onClick={() => setSelectedEmployeeId(String(item.employeeId))}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-sm font-semibold text-slate-900">
-                                {item.employeeName || `员工 #${item.employeeId}`}
-                              </div>
-                              <div className="mt-1 text-xs text-slate-400">
-                                {[item.employeeNo, item.structureName].filter(Boolean).join(' / ')}
-                              </div>
-                            </div>
-                            <div className="flex flex-wrap justify-end gap-2">
-                              {isFutureDate(item.effectiveDate) && (
-                                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-                                  未来生效
-                                </span>
-                              )}
-                              <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                                {item.statusDesc || item.status}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                            <span>{formatCurrency(item.totalSalary)}</span>
-                            <span>生效 {toDateInputValue(item.effectiveDate) || '-'}</span>
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {!filteredEmployeeSalaries.length && !employeeSalaryListLoading && (
-                      <WorkspaceInlineState
-                        title="当前筛选条件下没有命中在岗薪资记录。"
-                        className="py-12"
-                      />
-                    )}
-
-                    {(loading || employeeSalaryListLoading) && (
-                      <WorkspaceInlineState
-                        type="loading"
-                        title="正在加载员工薪资..."
-                        className="py-12"
-                      />
-                    )}
-                  </div>
-                </div>
-              </Card>
-
-              <div className="space-y-6">
-                <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">员工薪资详情</h2>
-                      <p className="mt-1 text-sm text-slate-500">详情接口会展开薪资项目明细，适合验证结构绑定和金额写库是否正确。</p>
-                    </div>
-                    {currentEmployeeRecord && (
-                      <div className="flex flex-wrap gap-3">
-                        {latestEmployeeAdjustment && (
-                          <Button variant="outline" onClick={() => openAdjustmentFromHistory(latestEmployeeAdjustment.id)}>
-                            <FileText size={14} className="mr-2" />
-                            查看最近调薪
-                          </Button>
-                        )}
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            void refreshCurrentEmployeeWorkspace(currentEmployeeRecord);
-                          }}
-                        >
-                          <RefreshCcw size={14} className="mr-2" />
-                          刷新当前员工
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {!currentEmployeeRecord && !employeeSalaryDetailLoading && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-                      先分配一条员工薪资，或从左侧选择一条现有记录。
-                    </div>
-                  )}
-
-                  {currentEmployeeRecord && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">员工</div>
-                          <div className="mt-2 font-semibold text-slate-900">{employeeSalaryDetail?.employeeName || currentEmployeeRecord.employeeName || '-'}</div>
-                          <div className="mt-1 text-sm text-slate-500">{employeeSalaryDetail?.employeeNo || currentEmployeeRecord.employeeNo || '-'}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">薪资结构</div>
-                          <div className="mt-2 font-semibold text-slate-900">{employeeSalaryDetail?.structureName || currentEmployeeRecord.structureName || '-'}</div>
-                          <div className="mt-1 text-sm text-slate-500">{employeeSalaryDetail?.structureCode || currentEmployeeRecord.structureCode || '-'}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">总薪资</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(employeeSalaryDetail?.totalSalary || currentEmployeeRecord.totalSalary)}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">生效日期</div>
-                          <div className="mt-2 font-semibold text-slate-900">{currentEmployeeEffectiveDate || '-'}</div>
-                          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
-                            <span>{employeeSalaryDetail?.statusDesc || currentEmployeeRecord.statusDesc || currentEmployeeRecord.status}</span>
-                            {currentEmployeeFutureEffective && (
-                              <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                未来生效
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className={`rounded-2xl border p-4 ${
-                          currentEmployeeFutureEffective
-                            ? 'border-amber-200 bg-amber-50'
-                            : 'border-emerald-200 bg-emerald-50'
-                        }`}>
-                          <div className={`text-xs ${currentEmployeeFutureEffective ? 'text-amber-600' : 'text-emerald-600'}`}>当前档案阶段</div>
-                          <div className={`mt-2 text-2xl font-semibold ${currentEmployeeFutureEffective ? 'text-amber-700' : 'text-emerald-700'}`}>
-                            {currentEmployeeFutureEffective ? '未来生效' : '已到生效日'}
-                          </div>
-                          <div className={`mt-2 text-sm ${currentEmployeeFutureEffective ? 'text-amber-700' : 'text-emerald-700'}`}>
-                            {currentEmployeeFutureEffective
-                              ? `${currentEmployeeEffectiveOffsetDays ?? '-'} 天后生效`
-                              : '当前档案已经进入生效区间'}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">ACTIVE 档案数</div>
-                          <div className={`mt-2 text-2xl font-semibold ${salaryHistoryMetrics.active === 1 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {salaryHistoryMetrics.active}
-                          </div>
-                          <div className="mt-2 text-sm text-slate-500">正常情况下应只保留 1 条 ACTIVE</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">同日档案峰值</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">
-                            {employeeSalaryDuplicateEffectiveDates[0]?.[1] || 1}
-                          </div>
-                          <div className="mt-2 text-sm text-slate-500">
-                            {employeeSalaryDuplicateEffectiveDates[0]
-                              ? `${employeeSalaryDuplicateEffectiveDates[0][0]} 有 ${employeeSalaryDuplicateEffectiveDates[0][1]} 条档案`
-                              : '当前没有同一生效日重复档案'}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">最近调薪</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">
-                            {latestEmployeeAdjustment ? adjustmentStatusLabel(latestEmployeeAdjustment.status) : '暂无'}
-                          </div>
-                          <div className="mt-2 text-sm text-slate-500">
-                            {latestEmployeeAdjustment
-                              ? `${latestEmployeeAdjustment.applicationNo} / ${toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '-'}`
-                              : '还没有调薪链路'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {currentEmployeeFutureEffective && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700">
-                          当前 ACTIVE 现薪的生效日是 {currentEmployeeEffectiveDate}，晚于今天。
-                          到手收入测算、社保台账联动和调薪候选都会基于这条未来档案继续联调，核对结果时要注意它并不代表“今天已经实际发放”的薪资。
-                        </div>
-                      )}
-
-                      {!currentEmployeeFutureEffective && latestEmployeeAdjustment && latestEmployeeAdjustmentMatchedCurrentSalary && (
-                        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-700">
-                          最近一次调薪已经对齐到当前 ACTIVE 现薪，当前档案与最近调薪单据的生效日和调薪后总额一致。
-                        </div>
-                      )}
-
-                      {!currentEmployeeFutureEffective && latestEmployeeAdjustment && !latestEmployeeAdjustmentMatchedCurrentSalary && latestEmployeeAdjustmentMatchedArchive && (
-                        <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4 text-sm text-sky-700">
-                          最近一次调薪已经写入薪资档案 #{latestEmployeeAdjustmentMatchedArchive.id}，但当前 ACTIVE 现薪不是这一条。
-                          这通常表示后面还有新的调薪或重新分配链路覆盖了它。
-                        </div>
-                      )}
-
-                      {!currentEmployeeFutureEffective && latestEmployeeAdjustment && !latestEmployeeAdjustmentMatchedCurrentSalary && !latestEmployeeAdjustmentMatchedArchive && (
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-700">
-                          最近一次调薪还没有在当前现薪或历史档案中命中。
-                          如果这条调薪的生效日还没到，属于正常待落档；如果已经过了生效日，建议切到“调薪申请”页继续核对真实状态流转。
-                        </div>
-                      )}
-
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>薪资项目</TableHead>
-                              <TableHead>项目编码</TableHead>
-                              <TableHead>分类</TableHead>
-                              <TableHead>金额</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {(employeeSalaryDetail?.items || []).map(item => (
-                              <TableRow key={item.itemId}>
-                                <TableCell className="font-medium text-slate-900">{item.itemName || `项目 ${item.itemId}`}</TableCell>
-                                <TableCell>{item.itemCode || '-'}</TableCell>
-                                <TableCell>{itemCategoryLabel(item.category)}</TableCell>
-                                <TableCell>{formatCurrency(item.amount)}</TableCell>
-                              </TableRow>
-                            ))}
-                            {!employeeSalaryDetail?.items?.length && !employeeSalaryDetailLoading && (
-                              <WorkspaceTableStateRow colSpan={4} title="当前员工薪资没有可展示的项目明细。" />
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  )}
-
-                  {employeeSalaryDetailLoading && (
-                    <WorkspaceInlineState type="loading" title="正在加载员工薪资详情..." className="mt-4 py-4" />
-                  )}
-                </Card>
-
-                <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">薪资档案历史</h2>
-                      <p className="mt-1 text-sm text-slate-500">读取员工全部薪资档案，直接对比 ACTIVE 与 EXPIRED 记录是否按预期切换。</p>
-                    </div>
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                      <Select value={salaryHistoryStatusFilter} onValueChange={setSalaryHistoryStatusFilter}>
-                        <SelectTrigger className="min-w-[150px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={ALL_VALUE}>全部档案</SelectItem>
-                          <SelectItem value="ACTIVE">生效中</SelectItem>
-                          <SelectItem value="EXPIRED">已失效</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      {currentEmployeeRecord && (
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            void loadEmployeeSalaryHistory(currentEmployeeRecord.employeeId);
-                          }}
-                        >
-                          <RefreshCcw size={14} className="mr-2" />
-                          刷新历史
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {!currentEmployeeRecord && !employeeSalaryHistoryLoading && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-                      先从左侧选择一名员工，再查看薪资档案历史。
-                    </div>
-                  )}
-
-                  {currentEmployeeRecord && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">档案总数</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{salaryHistoryMetrics.total}</div>
-                          <div className="mt-1 text-sm text-slate-500">当前员工所有薪资档案</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">生效中</div>
-                          <div className="mt-2 text-2xl font-semibold text-emerald-600">{salaryHistoryMetrics.active}</div>
-                          <div className="mt-1 text-sm text-slate-500">正常应只保留 1 条 ACTIVE</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">已失效</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{salaryHistoryMetrics.expired}</div>
-                          <div className="mt-1 text-sm text-slate-500">调薪或重新分配后自动沉淀</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">重复生效日</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{employeeSalaryDuplicateEffectiveDates.length}</div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {employeeSalaryDuplicateEffectiveDates[0]
-                              ? `最高 ${employeeSalaryDuplicateEffectiveDates[0][1]} 条落在 ${employeeSalaryDuplicateEffectiveDates[0][0]}`
-                              : '当前没有重复生效日'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {employeeSalaryDuplicateEffectiveDates.length > 0 && (
-                        <div className="rounded-2xl border border-sky-200 bg-sky-50/80 p-4 text-sm text-sky-700">
-                          当前员工存在 {employeeSalaryDuplicateEffectiveDates.length} 个重复生效日。
-                          最明显的是 {employeeSalaryDuplicateEffectiveDates[0][0]}，同一天沉淀了 {employeeSalaryDuplicateEffectiveDates[0][1]} 条档案，说明这名员工在同日发生过多次调薪或重新分配。
-                        </div>
-                      )}
-
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>结构信息</TableHead>
-                              <TableHead>总薪资</TableHead>
-                              <TableHead>生效日期</TableHead>
-                              <TableHead>状态</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {sortedEmployeeSalaryHistory.map(item => (
-                              <TableRow key={item.id}>
-                                <TableCell>
-                                  <div className="font-medium text-slate-900">{item.structureName || '-'}</div>
-                                  <div className="mt-1 text-xs text-slate-400">
-                                    {[item.structureCode, item.employeeNo].filter(Boolean).join(' / ') || '-'}
-                                  </div>
-                                </TableCell>
-                                <TableCell>{formatCurrency(item.totalSalary)}</TableCell>
-                                <TableCell>
-                                  <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
-                                  <div className="mt-1 flex flex-wrap gap-2">
-                                    {isFutureDate(item.effectiveDate) && (
-                                      <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                        未来生效
-                                      </span>
-                                    )}
-                                    {latestEmployeeAdjustment
-                                      && (toDateInputValue(item.effectiveDate) || '') === (toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '')
-                                      && normalizeAmount(item.totalSalary) === normalizeAmount(latestEmployeeAdjustment.afterTotal) && (
-                                        <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
-                                          对应最近调薪
-                                        </span>
-                                      )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
-                                    {salaryArchiveStatusLabel(item.status, item.statusDesc)}
-                                  </span>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                            {!sortedEmployeeSalaryHistory.length && !employeeSalaryHistoryLoading && (
-                              <WorkspaceTableStateRow colSpan={4} title="当前筛选条件下没有薪资档案记录。" />
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  )}
-
-                  {employeeSalaryHistoryLoading && (
-                    <WorkspaceInlineState type="loading" title="正在加载薪资档案历史..." className="mt-4 py-4" />
-                  )}
-                </Card>
-
-                <Card className="rounded-2xl border-slate-200 bg-white p-5 shadow-sm">
-                  <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-slate-900">到手收入测算</h2>
-                      <p className="mt-1 text-sm text-slate-500">联动五险一金和专项扣除接口，估算员工到手收入与公司用工成本。</p>
-                    </div>
-                    {currentEmployeeRecord && (
-                      <div className="flex flex-wrap gap-3">
-                        <Button variant="outline" onClick={openInsuranceDialog}>
-                          <ShieldCheck size={14} className="mr-2" />
-                          分配社保方案
-                        </Button>
-                        <Button variant="outline" onClick={() => void openTaxDeductionDialog()}>
-                          <BadgePlus size={14} className="mr-2" />
-                          管理专项扣除
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            void loadEmployeeCompensationProfile(
-                              currentEmployeeRecord.employeeId,
-                              currentGrossSalary,
-                              employeeSalaryDetail?.effectiveDate || currentEmployeeRecord.effectiveDate,
-                            );
-                          }}
-                        >
-                          <RefreshCcw size={14} className="mr-2" />
-                          刷新测算
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-
-                  {!currentEmployeeRecord && !employeeCompensationLoading && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-                      先从左侧选择一名员工，再查看五险一金和个税测算结果。
-                    </div>
-                  )}
-
-                  {currentEmployeeRecord && (
-                    <div className="space-y-4">
-                      {!hasInsuranceProfile && !employeeCompensationLoading && (
-                        <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50 p-4 text-sm text-amber-700">
-                          当前员工还没有可用的社保公积金方案。可以直接点击右上角“分配社保方案”补齐后，再刷新测算结果。
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">测算基准薪资</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(currentGrossSalary)}</div>
-                          <div className="mt-1 text-sm text-slate-500">{currentEmployeeEffectiveHint}</div>
-                          <div className={`mt-2 text-xs ${currentEmployeeFutureEffective ? 'text-amber-600' : 'text-emerald-600'}`}>
-                            {currentEmployeeFutureEffective ? '当前测算引用未来生效档案' : '当前测算引用已生效档案'}
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">社保方案口径</div>
-                          <div className="mt-2 text-lg font-semibold text-slate-900">
-                            {employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '未分配'}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {employeeInsuranceDetail?.city || latestEmployeeInsuranceLedger?.city || '按 0 估算'}
-                          </div>
-                          <div className="mt-2 text-xs text-slate-400">
-                            {hasInsuranceProfile
-                              ? insuranceBaseMismatch
-                                ? `当前台账 ${formatCurrency(insuranceReferenceBase)} / 按现薪测算 ${formatCurrency(insuranceCalculatedBase)} / 生效 ${insuranceReferenceEffectiveDate || '-'}`
-                                : `基数 ${formatCurrency(employeeInsuranceCalculation?.base ?? employeeInsuranceDetail?.base ?? latestEmployeeInsuranceLedger?.base)} / 生效 ${insuranceReferenceEffectiveDate || '-'}`
-                              : '当前没有员工社保档案，个人社保和公司承担暂按 0 计算'}
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">专项扣除命中</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{sortedEmployeeTaxDeductions.length} 项</div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {taxReferencePeriod} 合计 {formatCurrency(currentTaxDeductionTotal)}
-                          </div>
-                          <div className="mt-2 text-xs text-slate-400">
-                            {sortedEmployeeTaxDeductions.length
-                              ? `已命中 ${sortedEmployeeTaxDeductions.map(item => item.deductionTypeName || item.deductionType).join(' / ')}`
-                              : '当前月份没有命中 ACTIVE 专项扣除'}
-                          </div>
-                        </div>
-
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">联调风险等级</div>
-                          <div className="mt-2 flex items-center gap-2">
-                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${compensationRiskSummary.className}`}>
-                              {compensationRiskSummary.label}
-                            </span>
-                            <span className="text-xs text-slate-400">{compensationRiskItems.length} 条提示</span>
-                          </div>
-                          <div className="mt-3 text-sm text-slate-500">{compensationRiskSummary.hint}</div>
-                          <div className="mt-2 text-xs text-slate-400">
-                            个税参考月份 {taxReferencePeriod}
-                            {currentTaxConfig ? ` / 当前配置生效 ${toDateInputValue(currentTaxConfig.effectiveDate) || '-'}` : ''}
-                          </div>
-                        </div>
-                      </div>
-
-                      {!employeeCompensationLoading && (
-                        <div className={`rounded-2xl border p-4 ${
-                          compensationRiskItems.length
-                            ? compensationRiskSummary.className
-                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        }`}>
-                          <div className="font-medium">
-                            {compensationRiskItems.length ? '测算风险提示' : '当前测算口径已对齐'}
-                          </div>
-                          <div className="mt-2 space-y-2 text-sm">
-                            {compensationRiskItems.length ? compensationRiskItems.map(item => (
-                              <div key={item.key} className="rounded-xl bg-white/50 p-3">
-                                <div className="font-medium">{item.title}</div>
-                                <div className="mt-1 opacity-90">{item.detail}</div>
-                              </div>
-                            )) : (
-                              <div className="rounded-xl bg-white/50 p-3">
-                                当前薪资档案、社保方案和专项扣除都能落到同一轮测算里，适合直接拿接口结果做人工核对。
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        {[
-                          {
-                            label: '税前总薪资',
-                            value: formatCurrency(currentGrossSalary),
-                            hint: '当前员工现薪总额',
-                          },
-                          {
-                            label: '个人社保公积金',
-                            value: hasInsuranceProfile ? formatCurrency(currentPersonalInsurance) : '-',
-                            hint: '从五险一金测算结果读取',
-                          },
-                          {
-                            label: '应税收入',
-                            value: formatCurrency(currentTaxableIncome),
-                            hint: '税前减个人社保后的收入',
-                          },
-                          {
-                            label: '个税',
-                            value: employeeTaxCalculation ? formatCurrency(currentTaxAmount) : '-',
-                            hint: `${taxReferencePeriod} 个税测算`,
-                          },
-                          {
-                            label: '预估到手',
-                            value: employeeTaxCalculation ? formatCurrency(currentNetIncome) : '-',
-                            hint: '税前减个人社保与个税',
-                          },
-                          {
-                            label: '公司额外缴纳',
-                            value: hasInsuranceProfile ? formatCurrency(currentCompanyInsurance) : '-',
-                            hint: '公司承担的社保公积金',
-                          },
-                          {
-                            label: '用工总成本',
-                            value: hasInsuranceProfile ? formatCurrency(currentEmployerCost) : formatCurrency(currentGrossSalary),
-                            hint: '税前薪资 + 公司承担',
-                          },
-                          {
-                            label: '专项扣除合计',
-                            value: (employeeTaxCalculation || sortedEmployeeTaxDeductions.length)
-                              ? formatCurrency(currentTaxDeductionTotal)
-                              : '-',
-                            hint: '住房租金、继续教育等',
-                          },
-                        ].map(metric => (
-                          <div key={metric.label} className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <div className="text-xs text-slate-400">{metric.label}</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{metric.value}</div>
-                            <div className="mt-1 text-sm text-slate-500">{metric.hint}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="mb-4 flex items-start justify-between gap-3">
-                            <div>
-                              <div className="font-semibold text-slate-900">五险一金拆分</div>
-                              <div className="mt-1 text-sm text-slate-500">
-                                {employeeInsuranceDetail?.schemeName || '未分配方案'}
-                                {employeeInsuranceDetail?.city ? ` / ${employeeInsuranceDetail.city}` : ''}
-                              </div>
-                            </div>
-                            <div className="text-right text-xs text-slate-400">
-                              {hasInsuranceProfile ? (
-                                <>
-                                  <div>当前台账 {formatCurrency(insuranceReferenceBase)}</div>
-                                  <div className={`mt-1 ${insuranceBaseMismatch ? 'text-amber-600' : ''}`}>
-                                    {insuranceBaseMismatch ? `按现薪测算 ${formatCurrency(insuranceCalculatedBase)}` : `测算基数 ${formatCurrency(employeeInsuranceCalculation?.base ?? insuranceReferenceBase)}`}
-                                  </div>
-                                  <div className="mt-1">方案生效 {insuranceReferenceEffectiveDate || '-'}</div>
-                                </>
-                              ) : (
-                                <div>当前没有可参考的社保档案</div>
-                              )}
-                            </div>
-                          </div>
-
-                          {insuranceBaseMismatch && (
-                            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                              当前台账基数仍是 {formatCurrency(insuranceReferenceBase)}，下方拆分按现薪 {formatCurrency(insuranceCalculatedBase)} 做模拟测算，用来核对调薪后的成本变化。
-                            </div>
-                          )}
-
-                          <div className="overflow-hidden rounded-2xl border border-slate-200">
-                            <Table>
-                              <TableHeader>
-                                <TableRow>
-                                  <TableHead>项目</TableHead>
-                                  <TableHead>个人</TableHead>
-                                  <TableHead>公司</TableHead>
-                                  <TableHead>合计</TableHead>
-                                </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                {insuranceBreakdownRows.map(row => {
-                                  const personal = Number(row.personal ?? 0);
-                                  const company = Number(row.company ?? 0);
-                                  const total = Number((personal + company).toFixed(2));
-
-                                  return (
-                                    <TableRow key={row.key}>
-                                      <TableCell className="font-medium text-slate-900">{row.label}</TableCell>
-                                      <TableCell>{row.personal != null ? formatCurrency(personal) : '-'}</TableCell>
-                                      <TableCell>{row.company != null ? formatCurrency(company) : '-'}</TableCell>
-                                      <TableCell>{(row.personal != null || row.company != null) ? formatCurrency(total) : '-'}</TableCell>
-                                    </TableRow>
-                                  );
-                                })}
-                                {!hasInsuranceProfile && !employeeCompensationLoading && (
-                                  <WorkspaceTableStateRow colSpan={4} title="当前没有可展示的社保公积金拆分数据。" />
-                                )}
-                              </TableBody>
-                            </Table>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="font-semibold text-slate-900">个税测算摘要</div>
-                                <div className="mt-1 text-sm text-slate-500">按 {taxReferencePeriod} 的专项扣除配置进行估算。</div>
-                                <div className="mt-1 text-xs text-slate-400">
-                                  {currentTaxConfig
-                                    ? `当前配置 #${currentTaxConfig.id}，生效于 ${toDateInputValue(currentTaxConfig.effectiveDate) || '-'}`
-                                    : '当前没有加载到可维护的个税配置'}
-                                </div>
-                              </div>
-                              <Button variant="outline" onClick={() => void openTaxConfigDialog()}>
-                                <FileText size={14} className="mr-2" />
-                                维护个税配置
-                              </Button>
-                            </div>
-                            <div className="mt-4 grid grid-cols-1 gap-3">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <div className="text-xs text-slate-400">起征点</div>
-                                <div className="mt-1 font-semibold text-slate-900">
-                                  {employeeTaxCalculation ? formatCurrency(employeeTaxCalculation.threshold) : '-'}
-                                </div>
-                              </div>
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <div className="text-xs text-slate-400">专项扣除合计</div>
-                                <div className="mt-1 font-semibold text-slate-900">
-                                  {(employeeTaxCalculation || sortedEmployeeTaxDeductions.length)
-                                    ? formatCurrency(currentTaxDeductionTotal)
-                                    : '-'}
-                                </div>
-                              </div>
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3">
-                                <div className="text-xs text-slate-400">应纳税所得额</div>
-                                <div className="mt-1 font-semibold text-slate-900">
-                                  {employeeTaxCalculation ? formatCurrency(currentTaxableAmount) : '-'}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                            <div className="mb-4 flex items-start justify-between gap-3">
-                              <div>
-                                <div className="font-semibold text-slate-900">专项扣除明细</div>
-                                <div className="mt-1 text-sm text-slate-500">当前员工处于 ACTIVE 状态的专项扣除项。</div>
-                              </div>
-                              <div className="text-xs text-slate-400">{taxReferencePeriod}</div>
-                            </div>
-
-                            <div className="overflow-hidden rounded-2xl border border-slate-200">
-                              <Table>
-                                <TableHeader>
-                                  <TableRow>
-                                    <TableHead>扣除项</TableHead>
-                                    <TableHead>金额</TableHead>
-                                    <TableHead>生效区间</TableHead>
-                                  </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                  {sortedEmployeeTaxDeductions.map(item => (
-                                    <TableRow key={item.id}>
-                                      <TableCell>
-                                        <div className="font-medium text-slate-900">
-                                          {item.deductionTypeName || item.deductionType}
-                                        </div>
-                                        <div className="mt-1 text-xs text-slate-400">{item.remark || '无备注'}</div>
-                                      </TableCell>
-                                      <TableCell>{formatCurrency(item.amount)}</TableCell>
-                                      <TableCell>
-                                        <div>{toDateInputValue(item.startDate) || '-'}</div>
-                                        <div className="mt-1 text-xs text-slate-400">
-                                          截止 {toDateInputValue(item.endDate) || '长期有效'}
-                                        </div>
-                                      </TableCell>
-                                    </TableRow>
-                                  ))}
-                                  {!sortedEmployeeTaxDeductions.length && !employeeCompensationLoading && (
-                                    <WorkspaceTableStateRow colSpan={3} title="当前员工没有 ACTIVE 状态的专项扣除数据。" />
-                                  )}
-                                </TableBody>
-                              </Table>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {employeeCompensationLoading && (
-                    <WorkspaceInlineState type="loading" title="正在加载五险一金与个税测算..." className="mt-4 py-4" />
-                  )}
-                </Card>
-
-                <WorkspaceSectionCard
-                  title="社保台账"
-                  description="按员工维度查看当前与历史社保分配记录，便于核对生效链路和历史基数。"
-                  headerAside={currentEmployeeRecord ? (
-                    <>
-                      <Select
-                        value={insuranceLedgerStatusFilter}
-                        onValueChange={value => {
-                          setInsuranceLedgerStatusFilter(value);
-                          setInsuranceLedgerPageNum(1);
-                        }}
-                      >
-                        <SelectTrigger className="w-[168px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {insuranceLedgerStatusOptions.map(option => (
-                            <SelectItem key={option.value} value={option.value}>
-                              {option.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="outline"
-                        onClick={() => void loadEmployeeInsuranceLedger(
-                          currentEmployeeRecord.employeeId,
-                          insuranceLedgerStatusFilter,
-                          insuranceLedgerPageNum,
-                        )}
-                      >
-                        <RefreshCcw size={14} className="mr-2" />
-                        刷新台账
-                      </Button>
-                    </>
-                  ) : undefined}
-                >
-
-                  {!currentEmployeeRecord && !employeeInsuranceListLoading && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-                      先从左侧选择一名员工，再查看社保台账。
-                    </div>
-                  )}
-
-                  {currentEmployeeRecord && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">全量台账</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">
-                            {employeeInsuranceLedgerDiagnostics.allRecords.length}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            当前筛选展示 {employeeInsuranceLedgerPage?.total ?? 0} 条
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {insuranceLedgerStatusOptions.find(option => option.value === insuranceLedgerStatusFilter)?.label}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">当前 ACTIVE 方案</div>
-                          <div className="mt-2 font-semibold text-slate-900">
-                            {employeeInsuranceLedgerDiagnostics.activeReferenceRecord?.schemeName || employeeInsuranceDetail?.schemeName || latestEmployeeInsuranceLedger?.schemeName || '-'}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {employeeInsuranceLedgerDiagnostics.activeReferenceRecord?.city || employeeInsuranceDetail?.city || latestEmployeeInsuranceLedger?.city || '暂无城市信息'}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {employeeInsuranceLedgerDiagnostics.activeRecords.length
-                              ? `ACTIVE ${employeeInsuranceLedgerDiagnostics.activeRecords.length} 条，${employeeInsuranceLedgerDiagnostics.detailMatchedActiveLedger ? '详情已命中最新台账' : '详情与最新台账待核对'}`
-                              : '当前没有 ACTIVE 台账'}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">未来生效记录</div>
-                          <div className="mt-2 text-2xl font-semibold text-amber-700">
-                            {employeeInsuranceLedgerDiagnostics.futureRecords.length}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {employeeInsuranceLedgerDiagnostics.futureRecords[0]
-                              ? `${toDateInputValue(employeeInsuranceLedgerDiagnostics.futureRecords[0].effectiveDate) || '-'} / ${employeeInsuranceLedgerDiagnostics.futureRecords[0].schemeName || '-'}`
-                              : '当前没有未来生效记录'}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {employeeInsuranceLedgerDiagnostics.futureRecords[0]
-                              ? `最新未来基数 ${formatCurrency(employeeInsuranceLedgerDiagnostics.futureRecords[0].base)}`
-                              : '可以直接按当前社保口径核对本月结果'}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">最近基数变化</div>
-                          <div className={`mt-2 text-2xl font-semibold ${
-                            (employeeInsuranceLedgerDiagnostics.latestBaseShift?.delta ?? 0) >= 0 ? 'text-sky-700' : 'text-rose-700'
-                          }`}>
-                            {employeeInsuranceLedgerDiagnostics.latestBaseShift
-                              ? `${employeeInsuranceLedgerDiagnostics.latestBaseShift.delta >= 0 ? '+' : '-'}${formatCurrency(Math.abs(employeeInsuranceLedgerDiagnostics.latestBaseShift.delta))}`
-                              : '-'}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {employeeInsuranceLedgerDiagnostics.latestBaseShift
-                              ? `${toDateInputValue(employeeInsuranceLedgerDiagnostics.latestBaseShift.previous.effectiveDate) || '-'} -> ${toDateInputValue(employeeInsuranceLedgerDiagnostics.latestBaseShift.current.effectiveDate) || '-'}`
-                              : '暂无可比较的历史切换'}
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {employeeInsuranceLedgerDiagnostics.latestBaseShift
-                              ? `${formatCurrency(employeeInsuranceLedgerDiagnostics.latestBaseShift.previous.base)} -> ${formatCurrency(employeeInsuranceLedgerDiagnostics.latestBaseShift.current.base)}`
-                              : '至少两条不同生效日记录后才会展示'}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className={`rounded-2xl border p-4 ${employeeInsuranceLedgerDiagnostics.riskSummary.className}`}>
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div>
-                            <div className="font-semibold text-current">
-                              {employeeInsuranceLedgerDiagnostics.riskItems.length ? '社保台账联调风险提示' : '社保台账链路已对齐'}
-                            </div>
-                            <div className="mt-1 text-sm opacity-90">{employeeInsuranceLedgerDiagnostics.riskSummary.hint}</div>
-                          </div>
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${employeeInsuranceLedgerDiagnostics.riskSummary.className}`}>
-                            {employeeInsuranceLedgerDiagnostics.riskSummary.label}
-                          </span>
-                        </div>
-
-                        {employeeInsuranceLedgerDiagnostics.riskItems.length > 0 && (
-                          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                            {employeeInsuranceLedgerDiagnostics.riskItems.map(item => (
-                              <div
-                                key={item.key}
-                                className={`rounded-2xl border px-4 py-3 ${
-                                  item.severity === 'danger'
-                                    ? 'border-rose-200 bg-white text-rose-700'
-                                    : 'border-amber-200 bg-white text-amber-700'
-                                }`}
-                              >
-                                <div className="text-sm font-semibold">{item.title}</div>
-                                <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>方案</TableHead>
-                              <TableHead>缴费基数</TableHead>
-                              <TableHead>生效日期</TableHead>
-                              <TableHead>状态</TableHead>
-                              <TableHead>联调提示</TableHead>
-                              <TableHead>更新时间</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {employeeInsuranceLedgerRecords.map(item => {
-                              const rowIssues = employeeInsuranceLedgerDiagnostics.rowIssueMap.get(item.id) || [];
-                              const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
-                                ? 'bg-rose-50/40'
-                                : rowIssues.length
-                                  ? 'bg-amber-50/40'
-                                  : '';
-
-                              return (
-                                <TableRow key={item.id} className={rowClassName}>
-                                  <TableCell>
-                                    <div className="font-medium text-slate-900">{item.schemeName || '-'}</div>
-                                    <div className="mt-1 text-xs text-slate-400">{item.city || '未填写城市'}</div>
-                                  </TableCell>
-                                  <TableCell>{formatCurrency(item.base)}</TableCell>
-                                  <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
-                                  <TableCell>
-                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(item.status)}`}>
-                                      {salaryArchiveStatusLabel(item.status)}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell>
-                                    {rowIssues.length > 0 ? (
-                                      <div className="space-y-2">
-                                        <div className="flex flex-wrap gap-2">
-                                          {rowIssues.map(issue => (
-                                            <span
-                                              key={issue.key}
-                                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                                issue.severity === 'danger'
-                                                  ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                                  : 'border-amber-200 bg-amber-50 text-amber-700'
-                                              }`}
-                                            >
-                                              {issue.label}
-                                            </span>
-                                          ))}
-                                        </div>
-                                        <div className="space-y-1 text-xs text-slate-500">
-                                          {rowIssues.slice(0, 2).map(issue => (
-                                            <div key={`${item.id}-${issue.key}`}>{issue.detail}</div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span className="text-sm text-slate-400">链路正常</span>
-                                    )}
-                                  </TableCell>
-                                  <TableCell>{toDateInputValue(item.updateTime || item.createTime) || '-'}</TableCell>
-                                </TableRow>
-                              );
-                            })}
-                            {!employeeInsuranceLedgerRecords.length && !employeeInsuranceListLoading && (
-                              <WorkspaceTableStateRow colSpan={6} title="当前筛选条件下没有社保台账记录。" />
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-
-                      <div className="flex flex-col gap-3 text-sm text-slate-500 md:flex-row md:items-center md:justify-between">
-                        <div>
-                          共 {employeeInsuranceLedgerPage?.total ?? 0} 条，第 {employeeInsuranceLedgerPage?.current ?? 1} / {Math.max(Number(employeeInsuranceLedgerPage?.pages ?? 1), 1)} 页
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            onClick={() => setInsuranceLedgerPageNum(prev => Math.max(1, prev - 1))}
-                            disabled={employeeInsuranceListLoading || Number(employeeInsuranceLedgerPage?.current ?? 1) <= 1}
-                          >
-                            上一页
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => setInsuranceLedgerPageNum(prev => prev + 1)}
-                            disabled={
-                              employeeInsuranceListLoading
-                              || Number(employeeInsuranceLedgerPage?.current ?? 1) >= Math.max(Number(employeeInsuranceLedgerPage?.pages ?? 1), 1)
-                            }
-                          >
-                            下一页
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {employeeInsuranceListLoading && (
-                    <WorkspaceInlineState type="loading" title="正在加载员工社保台账..." className="mt-4 py-4" />
-                  )}
-                </WorkspaceSectionCard>
-
-                <WorkspaceSectionCard
-                  title="联调提示"
-                  description="建议先给一名正式员工分配标准薪资结构，再发起调薪，可以最快看清整条链路。"
-                >
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                      如果左侧为空，优先点击“分配薪资”，后端会把旧记录自动置为 EXPIRED，并新建 ACTIVE 档案。
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                      薪资详情里的项目金额来自员工薪资 JSON 展开，不是前端本地计算出来的临时值。
-                    </div>
-                  </div>
-                </WorkspaceSectionCard>
-
-                <WorkspaceSectionCard
-                  title="调薪履历"
-                  description="直接读取员工调薪历史，点任意一条可切到“调薪申请”继续查看单据详情。草稿、审批中单据以右侧“调薪申请”列表为准。"
-                  headerAside={currentEmployeeRecord ? (
-                    <Button variant="outline" onClick={() => void loadEmployeeAdjustmentHistory(currentEmployeeRecord.employeeId)}>
-                      <RefreshCcw size={14} className="mr-2" />
-                      刷新履历
-                    </Button>
-                  ) : undefined}
-                >
-
-                  {!currentEmployeeRecord && !employeeAdjustmentHistoryLoading && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-                      先从左侧选择一名员工，再查看调薪历史。
-                    </div>
-                  )}
-
-                  {currentEmployeeRecord && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">累计调薪次数</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{sortedEmployeeAdjustmentHistory.length}</div>
-                          <div className="mt-1 text-sm text-slate-500">当前接口仅统计已通过或已生效的历史调薪单据</div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            {employeeAdjustmentHistoryDiagnostics.duplicateEffectiveDates.length
-                              ? `其中 ${employeeAdjustmentHistoryDiagnostics.duplicateEffectiveDates.length} 个生效日发生过多次调薪`
-                              : '当前没有同日多次调薪'}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">最近状态</div>
-                          {latestEmployeeAdjustment ? (
-                            <>
-                              <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(latestEmployeeAdjustment.status)}`}>
-                                {adjustmentStatusLabel(latestEmployeeAdjustment.status)}
-                              </div>
-                              <div className="mt-2 text-sm text-slate-500">
-                                {toDateInputValue(latestEmployeeAdjustment.effectiveDate) || '-'} / {latestEmployeeAdjustment.applicationNo}
-                              </div>
-                              <div className="mt-1 text-xs text-slate-400">{adjustmentTypeLabel(latestEmployeeAdjustment.adjustmentType)}</div>
-                            </>
-                          ) : (
-                            <WorkspaceInlineState title="暂无调薪记录" className="mt-2 py-3" />
-                          )}
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">落档命中</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">
-                            {employeeAdjustmentHistoryDiagnostics.landedCurrentCount + employeeAdjustmentHistoryDiagnostics.landedHistoryCount}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            当前现薪 {employeeAdjustmentHistoryDiagnostics.landedCurrentCount} 条 / 历史档案 {employeeAdjustmentHistoryDiagnostics.landedHistoryCount} 条
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">待核对风险</div>
-                          <div className="mt-2 text-2xl font-semibold text-rose-700">
-                            {employeeAdjustmentHistoryDiagnostics.pendingPastDueCount + employeeAdjustmentHistoryDiagnostics.unmatchedEffectiveCount}
-                          </div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            过期未推进 {employeeAdjustmentHistoryDiagnostics.pendingPastDueCount} 条
-                          </div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            已生效未落档 {employeeAdjustmentHistoryDiagnostics.unmatchedEffectiveCount} 条
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className={`rounded-2xl border p-4 ${employeeAdjustmentHistoryDiagnostics.riskSummary.className}`}>
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                          <div>
-                            <div className="font-semibold text-current">
-                              {employeeAdjustmentHistoryDiagnostics.riskItems.length ? '调薪履历联调风险提示' : '调薪履历链路已对齐'}
-                            </div>
-                            <div className="mt-1 text-sm opacity-90">{employeeAdjustmentHistoryDiagnostics.riskSummary.hint}</div>
-                          </div>
-                          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${employeeAdjustmentHistoryDiagnostics.riskSummary.className}`}>
-                            {employeeAdjustmentHistoryDiagnostics.riskSummary.label}
-                          </span>
-                        </div>
-
-                        {employeeAdjustmentHistoryDiagnostics.riskItems.length > 0 && (
-                          <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                            {employeeAdjustmentHistoryDiagnostics.riskItems.map(item => (
-                              <div
-                                key={item.key}
-                                className={`rounded-2xl border px-4 py-3 ${
-                                  item.severity === 'danger'
-                                    ? 'border-rose-200 bg-white text-rose-700'
-                                    : 'border-amber-200 bg-white text-amber-700'
-                                }`}
-                              >
-                                <div className="text-sm font-semibold">{item.title}</div>
-                                <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>申请编号</TableHead>
-                              <TableHead>类型</TableHead>
-                              <TableHead>调薪变化</TableHead>
-                              <TableHead>生效日期</TableHead>
-                              <TableHead>状态</TableHead>
-                              <TableHead>联调提示</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {sortedEmployeeAdjustmentHistory.map(item => {
-                              const amount = Number(item.adjustmentAmount || 0);
-                              const rowIssues = employeeAdjustmentHistoryDiagnostics.rowIssueMap.get(item.id) || [];
-                              const matchedArchive = employeeAdjustmentHistoryDiagnostics.matchedArchiveMap.get(item.id) || null;
-                              const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
-                                ? 'cursor-pointer bg-rose-50/40 hover:bg-rose-50'
-                                : rowIssues.length
-                                  ? 'cursor-pointer bg-amber-50/40 hover:bg-amber-50'
-                                  : 'cursor-pointer hover:bg-slate-50';
-
-                              return (
-                                <TableRow
-                                  key={item.id}
-                                  className={rowClassName}
-                                  onClick={() => openAdjustmentFromHistory(item.id)}
-                                >
-                                  <TableCell>
-                                    <div className="font-medium text-slate-900">{item.applicationNo}</div>
-                                    <div className="mt-1 text-xs text-slate-400">
-                                      {item.adjustmentReason || '未填写调薪原因'}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>{adjustmentTypeLabel(item.adjustmentType)}</TableCell>
-                                  <TableCell>
-                                    <div className="font-medium text-slate-900">
-                                      {formatCurrency(item.beforeTotal)} → {formatCurrency(item.afterTotal)}
-                                    </div>
-                                    <div className={`mt-1 text-xs ${amount >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                                      {amount >= 0 ? '+' : ''}
-                                      {formatCurrency(item.adjustmentAmount)}
-                                      {Number.isFinite(Number(item.adjustmentRate))
-                                        ? ` / ${Number(item.adjustmentRate).toFixed(2)}%`
-                                        : ''}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>{toDateInputValue(item.effectiveDate) || '-'}</TableCell>
-                                  <TableCell>
-                                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(item.status)}`}>
-                                      {adjustmentStatusLabel(item.status)}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell>
-                                    {rowIssues.length > 0 ? (
-                                      <div className="space-y-2">
-                                        <div className="flex flex-wrap gap-2">
-                                          {rowIssues.map(issue => (
-                                            <span
-                                              key={issue.key}
-                                              className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                                issue.severity === 'danger'
-                                                  ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                                  : 'border-amber-200 bg-amber-50 text-amber-700'
-                                              }`}
-                                            >
-                                              {issue.label}
-                                            </span>
-                                          ))}
-                                        </div>
-                                        <div className="space-y-1 text-xs text-slate-500">
-                                          {rowIssues.slice(0, 2).map(issue => (
-                                            <div key={`${item.id}-${issue.key}`}>{issue.detail}</div>
-                                          ))}
-                                          {matchedArchive && (
-                                            <div>命中薪资档案 #{matchedArchive.id}</div>
-                                          )}
-                                        </div>
-                                      </div>
-                                    ) : (
-                                      <span className="text-sm text-slate-400">链路正常</span>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              );
-                            })}
-                            {!sortedEmployeeAdjustmentHistory.length && !employeeAdjustmentHistoryLoading && (
-                              <WorkspaceTableStateRow colSpan={6} title="当前员工还没有调薪记录。" />
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </div>
-                  )}
-
-                  {employeeAdjustmentHistoryLoading && (
-                    <WorkspaceInlineState type="loading" title="正在加载调薪履历..." className="mt-4 py-4" />
-                  )}
-                </WorkspaceSectionCard>
-              </div>
-            </div>
-          </TabsContent>
-          <TabsContent value="adjustments" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[380px_minmax(0,1fr)]">
-              <WorkspaceSectionCard
-                title="调薪申请列表"
-                description="状态、类型、员工和生效日期区间先走服务端过滤，关键词再做前端补筛，适合开发联调场景。"
-              >
-
-                <div className="space-y-4">
-                  <div className="relative">
-                    <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      className="pl-10"
-                      placeholder="搜索申请单号、员工姓名、工号"
-                      value={adjustmentKeyword}
-                      onChange={event => setAdjustmentKeyword(event.target.value)}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-                    <Select value={adjustmentStatusFilter} onValueChange={setAdjustmentStatusFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-                        <SelectItem value="DRAFT">草稿</SelectItem>
-                        <SelectItem value="APPROVING">审批中</SelectItem>
-                        <SelectItem value="APPROVED">已通过</SelectItem>
-                        <SelectItem value="EFFECTIVE">已生效</SelectItem>
-                        <SelectItem value="REJECTED">已拒绝</SelectItem>
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={adjustmentTypeFilter} onValueChange={setAdjustmentTypeFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部类型</SelectItem>
-                        {adjustmentTypeOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={adjustmentEmployeeFilter} onValueChange={setAdjustmentEmployeeFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部员工</SelectItem>
-                        {adjustmentEmployeeOptions.map(option => (
-                          <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <Input
-                      type="date"
-                      value={adjustmentEffectiveStart}
-                      onChange={event => setAdjustmentEffectiveStart(event.target.value)}
-                    />
-                    <Input
-                      type="date"
-                      value={adjustmentEffectiveEnd}
-                      onChange={event => setAdjustmentEffectiveEnd(event.target.value)}
-                    />
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    <div className="text-xs text-slate-500">
-                      {currentEmployeeRecord
-                        ? `当前员工：${currentSelectedEmployeeLabel}`
-                        : '先在左侧现薪区域选中员工，再一键收敛调薪记录。'}
-                    </div>
-                    <Button
-                      variant={selectedEmployeeId && adjustmentEmployeeFilter === selectedEmployeeId ? 'secondary' : 'outline'}
-                      size="sm"
-                      disabled={!selectedEmployeeId}
-                      onClick={() => {
-                        if (!selectedEmployeeId) return;
-                        setAdjustmentEmployeeFilter(selectedEmployeeId);
-                      }}
-                    >
-                      只看当前员工
-                    </Button>
-                  </div>
-
-                  <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                    <div>
-                      当前命中 {salaryAdjustments.length} 条服务端结果
-                      {currentAdjustmentFilterEmployee ? `，员工：${buildEmployeeLabel(currentAdjustmentFilterEmployee)}` : ''}
-                      {adjustmentKeyword.trim() ? `，关键词筛后 ${filteredAdjustments.length} 条` : ''}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setAdjustmentKeyword('');
-                        setAdjustmentStatusFilter(ALL_VALUE);
-                        setAdjustmentTypeFilter(ALL_VALUE);
-                        setAdjustmentEmployeeFilter(ALL_VALUE);
-                        setAdjustmentEffectiveStart('');
-                        setAdjustmentEffectiveEnd('');
-                      }}
-                    >
-                      清空筛选
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="text-xs text-slate-400">已落当前现薪</div>
-                      <div className="mt-2 text-2xl font-semibold text-emerald-700">{adjustmentListDiagnostics.matchedCurrentCount}</div>
-                      <div className="mt-1 text-sm text-slate-500">当前 ACTIVE 现薪已命中的调薪单</div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="text-xs text-slate-400">过期未推进</div>
-                      <div className="mt-2 text-2xl font-semibold text-rose-700">{adjustmentListDiagnostics.pendingPastDueCount}</div>
-                      <div className="mt-1 text-sm text-slate-500">生效日已到但状态仍未推进</div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="text-xs text-slate-400">当前现薪未追平</div>
-                      <div className="mt-2 text-2xl font-semibold text-rose-700">{adjustmentListDiagnostics.currentMismatchCount}</div>
-                      <div className="mt-1 text-sm text-slate-500">EFFECTIVE 但当前现薪仍未命中</div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                      <div className="text-xs text-slate-400">同日多单 / 未来生效</div>
-                      <div className="mt-2 text-2xl font-semibold text-amber-700">
-                        {adjustmentListDiagnostics.duplicateEmployeeDateGroups.length} / {adjustmentListDiagnostics.futureEffectiveCount}
-                      </div>
-                      <div className="mt-1 text-sm text-slate-500">同一员工同日多张单据，或仍属于未来链路</div>
-                    </div>
-                  </div>
-
-                  <div className={`rounded-2xl border p-4 ${adjustmentListDiagnostics.riskSummary.className}`}>
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <div className="font-semibold text-current">
-                          {adjustmentListDiagnostics.riskItems.length ? '调薪申请联调风险提示' : '调薪申请链路已对齐'}
-                        </div>
-                        <div className="mt-1 text-sm opacity-90">{adjustmentListDiagnostics.riskSummary.hint}</div>
-                      </div>
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentListDiagnostics.riskSummary.className}`}>
-                        {adjustmentListDiagnostics.riskSummary.label}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 text-xs opacity-90">
-                      当前服务端返回 {adjustmentPage?.total || 0} 条调薪记录，审批通过后如果生效日不晚于今天，后端会直接生效。
-                    </div>
-
-                    {adjustmentListDiagnostics.riskItems.length > 0 && (
-                      <div className="mt-4 grid grid-cols-1 gap-3">
-                        {adjustmentListDiagnostics.riskItems.map(item => (
-                          <div
-                            key={item.key}
-                            className={`rounded-2xl border px-4 py-3 ${
-                              item.severity === 'danger'
-                                ? 'border-rose-200 bg-white text-rose-700'
-                                : 'border-amber-200 bg-white text-amber-700'
-                            }`}
-                          >
-                            <div className="text-sm font-semibold">{item.title}</div>
-                            <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    {filteredAdjustments.map(item => {
-                      const isActive = String(item.id) === selectedAdjustmentId;
-                      const rowIssues = adjustmentListDiagnostics.rowIssueMap.get(item.id) || [];
-                      const itemClassName = rowIssues.some(issue => issue.severity === 'danger')
-                        ? 'border-rose-200 bg-rose-50 shadow-sm hover:border-rose-300 hover:bg-rose-50'
-                        : rowIssues.length
-                          ? 'border-amber-200 bg-amber-50 shadow-sm hover:border-amber-300 hover:bg-amber-50'
-                          : isActive
-                            ? 'border-amber-200 bg-amber-50 shadow-sm'
-                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50';
-
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                            isActive && !rowIssues.length
-                              ? 'border-amber-200 bg-amber-50 shadow-sm'
-                              : itemClassName
-                          }`}
-                          onClick={() => setSelectedAdjustmentId(String(item.id))}
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-sm font-semibold text-slate-900">{item.applicationNo}</div>
-                              <div className="mt-1 text-sm text-slate-600">{item.employeeName || `员工 #${item.employeeId}`}</div>
-                              <div className="mt-1 text-xs text-slate-400">
-                                {[item.employeeNo, adjustmentTypeLabel(item.adjustmentType)].filter(Boolean).join(' / ')}
-                              </div>
-                            </div>
-                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(item.status)}`}>
-                              {adjustmentStatusLabel(item.status)}
-                            </span>
-                          </div>
-                          <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                            <span>{formatCurrency(item.afterTotal)}</span>
-                            <span>生效 {toDateInputValue(item.effectiveDate) || '-'}</span>
-                          </div>
-                          {rowIssues.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              <div className="flex flex-wrap gap-2">
-                                {rowIssues.map(issue => (
-                                  <span
-                                    key={issue.key}
-                                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                      issue.severity === 'danger'
-                                        ? 'border-rose-200 bg-white text-rose-700'
-                                        : 'border-amber-200 bg-white text-amber-700'
-                                    }`}
-                                  >
-                                    {issue.label}
-                                  </span>
-                                ))}
-                              </div>
-                              <div className="space-y-1 text-xs text-slate-500">
-                                {rowIssues.slice(0, 2).map(issue => (
-                                  <div key={`${item.id}-${issue.key}`}>{issue.detail}</div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-
-                    {!filteredAdjustments.length && !adjustmentListLoading && (
-                      <WorkspaceInlineState
-                        title="当前筛选条件下没有调薪记录。"
-                        className="py-12"
-                      />
-                    )}
-
-                    {(adjustmentListLoading || loading) && (
-                      <WorkspaceInlineState
-                        type="loading"
-                        title="正在加载调薪申请..."
-                        className="py-12"
-                      />
-                    )}
-                  </div>
-                </div>
-              </WorkspaceSectionCard>
-
-              <div className="space-y-6">
-                <WorkspaceSectionCard
-                  title="调薪详情"
-                  description="这里直接展示前后薪资 JSON 的差异，并允许推进真实状态流转。"
-                  headerAside={adjustmentDetail ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        disabled={!canSubmitAdjustment || actionLoading}
-                        onClick={() => void runAdjustmentAction(() => submitSalaryAdjustment(adjustmentDetail.id), '调薪申请已提交审批', '提交审批')}
-                      >
-                        提交审批
-                      </Button>
-                      <Button
-                        variant="outline"
-                        disabled={!canApproveAdjustment || actionLoading}
-                        onClick={() => void runAdjustmentAction(() => approveSalaryAdjustment(adjustmentDetail.id), '调薪申请已审批通过', '审批通过')}
-                      >
-                        审批通过
-                      </Button>
-                      <Button
-                        disabled={!canEffectiveAdjustment || actionLoading}
-                        onClick={() => void runAdjustmentAction(() => effectiveSalaryAdjustment(adjustmentDetail.id), '调薪已生效', '执行生效')}
-                      >
-                        执行生效
-                      </Button>
-                    </>
-                  ) : undefined}
-                >
-
-                  {!adjustmentDetail && !adjustmentDetailLoading && (
-                    <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-                      从左侧选择一条调薪申请，或先发起新的调薪。
-                    </div>
-                  )}
-
-                  {adjustmentDetail && (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">申请编号</div>
-                          <div className="mt-2 font-semibold text-slate-900">{adjustmentDetail.applicationNo}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">员工</div>
-                          <div className="mt-2 font-semibold text-slate-900">{adjustmentDetail.employeeName || '-'}</div>
-                          <div className="mt-1 text-sm text-slate-500">{adjustmentDetail.employeeNo || '-'}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">类型 / 状态</div>
-                          <div className="mt-2 font-semibold text-slate-900">{adjustmentTypeLabel(adjustmentDetail.adjustmentType)}</div>
-                          <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentStatusClass(adjustmentDetail.status)}`}>
-                            {adjustmentStatusLabel(adjustmentDetail.status)}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">生效日期</div>
-                          <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(adjustmentDetail.effectiveDate) || '-'}</div>
-                          <div className="mt-1 text-sm text-slate-500">流程实例：{adjustmentDetail.processInstanceId || '-'}</div>
-                          {String(adjustmentDetail.status || '').toUpperCase() === 'APPROVED' && isFutureDate(adjustmentDetail.effectiveDate) && (
-                            <div className="mt-2 text-xs text-amber-600">未到生效日期前，前端不会开放“执行生效”。</div>
-                          )}
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">调薪前总额</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentDetail.beforeTotal)}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">调薪后总额</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentDetail.afterTotal)}</div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">调薪金额</div>
-                          <div className={`mt-2 text-2xl font-semibold ${Number(adjustmentDetail.adjustmentAmount || 0) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
-                            {formatCurrency(adjustmentDetail.adjustmentAmount)}
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                          <div className="text-xs text-slate-400">调薪比例</div>
-                          <div className="mt-2 text-2xl font-semibold text-slate-900">
-                            {Number.isFinite(Number(adjustmentDetail.adjustmentRate))
-                              ? `${Number(adjustmentDetail.adjustmentRate).toFixed(2)}%`
-                              : '-'}
-                          </div>
-                        </div>
-                      </div>
-
-                      {adjustmentActionDiagnostics && (
-                        <div className={`rounded-2xl border p-4 ${adjustmentActionDiagnostics.riskSummary.className}`}>
-                          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                            <div>
-                              <div className="font-semibold text-current">
-                                {adjustmentActionDiagnostics.canRun
-                                  ? `${adjustmentActionDiagnostics.actionLabel}前联调校验`
-                                  : '当前流程动作提示'}
-                              </div>
-                              <div className="mt-1 text-sm opacity-90">{adjustmentActionDiagnostics.riskSummary.hint}</div>
-                              <div className="mt-2 text-xs opacity-80">
-                                当前建议动作：{adjustmentActionDiagnostics.actionLabel}。{adjustmentActionDiagnostics.actionHint}
-                              </div>
-                            </div>
-                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentActionDiagnostics.riskSummary.className}`}>
-                              {adjustmentActionDiagnostics.riskSummary.label}
-                            </span>
-                          </div>
-
-                          <div className="mt-4 space-y-2 text-sm">
-                            {adjustmentActionDiagnostics.riskItems.length ? adjustmentActionDiagnostics.riskItems.map(item => (
-                              <div
-                                key={item.key}
-                                className={`rounded-2xl border px-4 py-3 ${
-                                  item.severity === 'danger'
-                                    ? 'border-rose-200 bg-white text-rose-700'
-                                    : 'border-amber-200 bg-white text-amber-700'
-                                }`}
-                              >
-                                <div className="font-medium">{item.title}</div>
-                                <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                              </div>
-                            )) : (
-                              <div className="rounded-2xl border border-white/50 bg-white/50 px-4 py-3 text-slate-600">
-                                当前没有额外动作风险提示，可以按建议动作继续回放真实流程。
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                          <div>
-                            <div className="font-semibold text-slate-900">调薪闭环校验</div>
-                            <div className="mt-1 text-sm text-slate-500">把流程状态、薪资档案落地和当前现薪放到一处核对，减少来回切页。</div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={adjustmentEmployeeSalaryLoading}
-                              onClick={() => void loadAdjustmentEmployeeSalaryContext(adjustmentDetail.employeeId)}
-                            >
-                              <RefreshCcw size={14} className="mr-2" />
-                              刷新闭环
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => void focusAdjustmentEmployeeWorkspace(adjustmentDetail.employeeId)}
-                            >
-                              查看员工现薪
-                            </Button>
-                          </div>
-                        </div>
-
-                        {adjustmentEmployeeSalaryLoading ? (
-                          <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
-                            正在读取调薪对应员工的现薪与档案历史...
-                          </div>
-                        ) : (
-                          <>
-                            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                                <div className="text-xs text-slate-400">流程阶段</div>
-                                <div className="mt-2 text-2xl font-semibold text-slate-900">{adjustmentClosureInsight?.stageLabel || '-'}</div>
-                                <div className="mt-2 text-sm text-slate-500">{adjustmentClosureInsight?.stageHint || '等待读取调薪状态。'}</div>
-                              </div>
-                              <div className={`rounded-2xl border p-4 ${
-                                adjustmentClosureInsight?.landingTone === 'emerald'
-                                  ? 'border-emerald-200 bg-emerald-50'
-                                  : adjustmentClosureInsight?.landingTone === 'sky'
-                                    ? 'border-sky-200 bg-sky-50/80'
-                                    : adjustmentClosureInsight?.landingTone === 'amber'
-                                      ? 'border-amber-200 bg-amber-50'
-                                      : adjustmentClosureInsight?.landingTone === 'rose'
-                                        ? 'border-rose-200 bg-rose-50'
-                                        : 'border-slate-200 bg-slate-50'
-                              }`}>
-                                <div className={`text-xs ${
-                                  adjustmentClosureInsight?.landingTone === 'emerald'
-                                    ? 'text-emerald-600'
-                                    : adjustmentClosureInsight?.landingTone === 'sky'
-                                      ? 'text-sky-600'
-                                      : adjustmentClosureInsight?.landingTone === 'amber'
-                                        ? 'text-amber-600'
-                                        : adjustmentClosureInsight?.landingTone === 'rose'
-                                          ? 'text-rose-600'
-                                          : 'text-slate-400'
-                                }`}>档案落地</div>
-                                <div className={`mt-2 text-2xl font-semibold ${
-                                  adjustmentClosureInsight?.landingTone === 'emerald'
-                                    ? 'text-emerald-700'
-                                    : adjustmentClosureInsight?.landingTone === 'sky'
-                                      ? 'text-sky-700'
-                                      : adjustmentClosureInsight?.landingTone === 'amber'
-                                        ? 'text-amber-700'
-                                        : adjustmentClosureInsight?.landingTone === 'rose'
-                                          ? 'text-rose-700'
-                                          : 'text-slate-900'
-                                }`}>
-                                  {adjustmentClosureInsight?.landingLabel || '-'}
-                                </div>
-                                <div className={`mt-2 text-sm ${
-                                  adjustmentClosureInsight?.landingTone === 'emerald'
-                                    ? 'text-emerald-700'
-                                    : adjustmentClosureInsight?.landingTone === 'sky'
-                                      ? 'text-sky-700'
-                                      : adjustmentClosureInsight?.landingTone === 'amber'
-                                        ? 'text-amber-700'
-                                        : adjustmentClosureInsight?.landingTone === 'rose'
-                                          ? 'text-rose-700'
-                                          : 'text-slate-500'
-                                }`}>
-                                  {adjustmentClosureInsight?.landingHint || '等待校验结果。'}
-                                </div>
-                              </div>
-                              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                                <div className="text-xs text-slate-400">目标档案</div>
-                                <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentDetail.afterTotal)}</div>
-                                <div className="mt-2 text-sm text-slate-500">生效 {toDateInputValue(adjustmentDetail.effectiveDate) || '-'} / 调整 {adjustmentChangedItemCount} 项</div>
-                                <div className="mt-2 text-xs text-slate-400">流程实例：{adjustmentDetail.processInstanceId || '-'}</div>
-                              </div>
-                              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                                <div className="text-xs text-slate-400">当前现薪</div>
-                                {adjustmentEmployeeSalaryDetail ? (
-                                  <>
-                                    <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(adjustmentEmployeeSalaryDetail.totalSalary)}</div>
-                                    <div className="mt-2 text-sm text-slate-500">
-                                      生效 {toDateInputValue(adjustmentEmployeeSalaryDetail.effectiveDate) || '-'} / {adjustmentEmployeeSalaryDetail.structureName || '-'}
-                                    </div>
-                                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryArchiveStatusClass(adjustmentEmployeeSalaryDetail.status)}`}>
-                                        {salaryArchiveStatusLabel(adjustmentEmployeeSalaryDetail.status, adjustmentEmployeeSalaryDetail.statusDesc)}
-                                      </span>
-                                      {adjustmentCurrentSalaryMatched && (
-                                        <span className="inline-flex rounded-full border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                                          明细完全一致
-                                        </span>
-                                      )}
-                                    </div>
-                                  </>
-                                ) : (
-                                  <div className="mt-2 text-sm text-slate-500">当前没有读取到 ACTIVE 现薪档案。</div>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-[1.2fr_minmax(0,1fr)]">
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                                <div className="font-medium text-slate-900">下一步动作建议</div>
-                                <div className="mt-2">{adjustmentClosureInsight?.nextAction || '等待更多闭环信息。'}</div>
-                              </div>
-                              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-600">
-                                <div className="font-medium text-slate-900">档案匹配结果</div>
-                                <div className="mt-2">
-                                  {adjustmentMatchedArchive
-                                    ? `已命中薪资档案 #${adjustmentMatchedArchive.id}，状态 ${salaryArchiveStatusLabel(adjustmentMatchedArchive.status, adjustmentMatchedArchive.statusDesc)}。`
-                                    : '当前还没有命中与调薪后总额和生效日一致的薪资档案。'}
-                                </div>
-                                {adjustmentEmployeeSalaryDetail && adjustmentCurrentTotalDelta != null && (
-                                  <div className="mt-2 text-xs text-slate-400">
-                                    当前现薪与目标总额差额：{formatCurrency(adjustmentCurrentTotalDelta)}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-
-                      <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                        <div className="text-xs text-slate-400">调薪原因</div>
-                        <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                          {adjustmentDetail.adjustmentReason || '未填写调薪原因。'}
-                        </div>
-                      </div>
-
-                      <SalaryDiffTable rows={adjustmentDiffRows} />
-                    </div>
-                  )}
-
-                  {adjustmentDetailLoading && (
-                    <WorkspaceInlineState type="loading" title="正在加载调薪详情..." className="mt-4 py-4" />
-                  )}
-                </WorkspaceSectionCard>
-
-                <WorkspaceSectionCard
-                  title="联调提示"
-                  description="推荐使用今天或更早的生效日，这样审批通过后更容易观察是否自动生效。"
-                >
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                      调薪后明细的金额之和必须等于 `afterTotal`，页面会按明细自动求和，避免手工算错。
-                    </div>
-                    <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                      调薪生效后，会生成新的员工薪资记录并把旧的 ACTIVE 记录置为 EXPIRED。
-                    </div>
-                  </div>
-                </WorkspaceSectionCard>
-              </div>
-            </div>
-          </TabsContent>
-          <TabsContent value="foundation" className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.15fr_minmax(0,1fr)]">
-              <WorkspaceSectionCard
-                title="薪资项目"
-                description="项目列表直接来自真实库，这里继续把结构引用和现薪命中一起摊开，方便做真实联调。"
-                headerAside={(
-                  <Button variant="outline" onClick={openItemDialog}>
-                    <FilePlus2 size={14} className="mr-2" />
-                    新建项目
-                  </Button>
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            {SALARY_SECTION_NAV_ITEMS.map(item => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => goSalarySection(item.value)}
+                className={cn(
+                  'inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium transition-colors',
+                  currentSection === item.value
+                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
+                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
                 )}
               >
+                {item.label}
+              </button>
+            ))}
+          </div>
 
-                <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                    <div className="text-xs text-slate-400">已启用项目</div>
-                    <div className="mt-2 text-2xl font-semibold text-slate-900">{enabledSalaryItems.length}</div>
-                    <div className="mt-2 text-sm text-slate-500">当前总数 {salaryItems.length}</div>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                    <div className="text-xs text-emerald-600">命中现薪联动</div>
-                    <div className="mt-2 text-2xl font-semibold text-emerald-700">{linkedSalaryItems.length}</div>
-                    <div className="mt-2 text-sm text-emerald-700">这些项目已落到当前 ACTIVE 现薪链路</div>
-                  </div>
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                    <div className="text-xs text-amber-600">孤立项目</div>
-                    <div className="mt-2 text-2xl font-semibold text-amber-700">{orphanSalaryItems.length}</div>
-                    <div className="mt-2 text-sm text-amber-700">当前未被任何薪资结构引用</div>
-                  </div>
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
-                    <div className="text-xs text-sky-600">带公式项目</div>
-                    <div className="mt-2 text-2xl font-semibold text-sky-700">{formulaSalaryItems.length}</div>
-                    <div className="mt-2 text-sm text-sky-700">联调时要额外确认公式是否真实生效</div>
-                  </div>
-                </div>
-
-                <div className={`mb-4 rounded-2xl border p-4 ${
-                  salaryItemRiskItems.length
-                    ? salaryItemRiskSummary.className
-                    : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                }`}>
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <div className="font-medium">
-                        {salaryItemRiskItems.length ? '项目联调风险提示' : '项目口径已对齐'}
-                      </div>
-                      <div className="mt-1 text-sm opacity-90">{salaryItemRiskSummary.hint}</div>
-                    </div>
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryItemRiskSummary.className}`}>
-                      {salaryItemRiskSummary.label}
-                    </span>
-                  </div>
-                  <div className="mt-3 space-y-2 text-sm">
-                    {salaryItemRiskItems.length ? salaryItemRiskItems.map(item => (
-                      <div key={item.key} className="rounded-xl bg-white/50 p-3">
-                        <div className="font-medium">{item.title}</div>
-                        <div className="mt-1 opacity-90">{item.detail}</div>
-                      </div>
-                    )) : (
-                      <div className="rounded-xl bg-white/50 p-3">
-                        当前项目和结构、现薪引用关系已经比较完整，可以直接继续核对员工分配和调薪链路。
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>项目名称</TableHead>
-                        <TableHead>编码</TableHead>
-                        <TableHead>类型 / 分类</TableHead>
-                        <TableHead>联动体检</TableHead>
-                        <TableHead>项目状态</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {salaryItems.map(item => {
-                        const usage = salaryItemUsageMap.get(item.id);
-                        const deleteDiagnostics = salaryItemDeleteDiagnosticsMap.get(item.id);
-
-                        return (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.itemName}</div>
-                            <div className="text-xs text-slate-400">排序 {item.sortOrder ?? '-'}</div>
-                            <div className="mt-2 flex flex-wrap gap-2">
-                              <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
-                                Number(item.status ?? 1) === 1
-                                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                  : 'border-amber-200 bg-amber-50 text-amber-700'
-                              }`}>
-                                {Number(item.status ?? 1) === 1 ? '项目启用' : '项目禁用'}
-                              </span>
-                              {item.formula && String(item.formula).trim() && (
-                                <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
-                                  带公式
-                                </span>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>{item.itemCode}</TableCell>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.itemTypeDesc || itemTypeLabel(item.itemType)}</div>
-                            <div className="mt-1 text-xs text-slate-400">{item.categoryDesc || itemCategoryLabel(item.category)}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">
-                              {usage?.structureIds.size || 0} 套结构 / {usage?.activeEmployeeIds.size || 0} 名员工
-                            </div>
-                            <div className="mt-1 text-xs text-slate-400">
-                              {usage?.structureIds.size
-                                ? `命中 ${usage?.activeArchiveCount || 0} 条 ACTIVE 现薪${usage?.futureArchiveCount ? `，其中 ${usage.futureArchiveCount} 条未来生效` : ''}`
-                                : '当前还没有结构引用这个项目'}
-                            </div>
-                            <div className="mt-1 text-xs text-slate-400">
-                              {usage?.sampleStructureNames.length
-                                ? `结构样本：${usage.sampleStructureNames.join(' / ')}`
-                                : '暂无结构样本'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.isTaxable ? '参与计税' : '不参与计税'}</div>
-                            <div className="mt-1 text-xs text-slate-400">
-                              {Number(item.status ?? 1) === 0 && usage?.structureIds.size
-                                ? '已禁用但仍被结构引用'
-                                : usage?.structureIds.size
-                                  ? '已进入结构联动'
-                                  : '仍是孤立项目'}
-                            </div>
-                            <div className={`mt-2 text-xs ${
-                              deleteDiagnostics?.blockingRiskItems.length
-                                ? 'text-rose-600'
-                                : deleteDiagnostics?.riskItems.length
-                                  ? 'text-amber-600'
-                                  : 'text-emerald-600'
-                            }`}>
-                              {deleteDiagnostics?.blockingRiskItems.length
-                                ? `删除前联调校验：${deleteDiagnostics.blockingRiskItems[0].title}`
-                                : deleteDiagnostics?.riskItems.length
-                                  ? `删除前需确认：${deleteDiagnostics.riskItems[0].title}`
-                                  : '删除口径已对齐，可直接回放删除接口'}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => openItemEditDialog(item)}>
-                                编辑
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={actionLoading}
-                                onClick={() => void handleDeleteItem(item)}
-                              >
-                                删除
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )})}
-                      {!salaryItems.length && !foundationLoading && <WorkspaceTableStateRow colSpan={6} title="当前没有薪资项目数据。" />}
-                    </TableBody>
-                  </Table>
-                </div>
-              </WorkspaceSectionCard>
-
-              <WorkspaceSectionCard
-                title="薪资结构"
-                description="结构详情会展开关联项目，适合核对结构与员工薪资明细是否对齐。"
-                headerAside={(
-                  <Button variant="outline" onClick={openStructureDialog}>
-                    <FilePlus2 size={14} className="mr-2" />
-                    新建结构
-                  </Button>
-                )}
-              >
-
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
-                  <div className="space-y-3">
-                    {salaryStructures.map(item => {
-                      const isActive = String(item.id) === selectedStructureId;
-                      return (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                            isActive
-                              ? 'border-sky-200 bg-sky-50/80 shadow-sm'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                          }`}
-                          onClick={() => setSelectedStructureId(String(item.id))}
-                        >
-                          <div className="font-semibold text-slate-900">{item.structureName}</div>
-                          <div className="mt-1 text-xs text-slate-400">{item.structureCode}</div>
-                          <div className={`mt-3 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
-                            {item.statusDesc || (item.status === 1 ? '启用' : '禁用')}
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className="rounded-2xl border border-slate-200 bg-white p-5">
-                    {!structureDetail && !structureDetailLoading && (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-12 text-center text-sm text-slate-500">
-                        从左侧选择一个薪资结构查看详情。
-                      </div>
-                    )}
-
-                    {structureDetail && (
-                      <div className="space-y-4">
-                        <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-                          <div>
-                            <div className="text-xs text-slate-400">结构名称</div>
-                            <div className="mt-2 text-xl font-semibold text-slate-900">{structureDetail.structureName}</div>
-                            <div className="mt-1 text-sm text-slate-500">{structureDetail.structureCode}</div>
-                          </div>
-                          <div className="flex flex-wrap gap-2">
-                            <Button variant="outline" onClick={() => void openStructureEditDialog(structureDetail.id)}>
-                              编辑结构
-                            </Button>
-                            <Button
-                              variant="outline"
-                              disabled={actionLoading}
-                              onClick={() => void handleDeleteStructure(structureDetail)}
-                            >
-                              删除结构
-                            </Button>
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                          {structureDetail.description || '当前结构未填写描述。'}
-                        </div>
-                        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                            <div className="text-xs text-slate-400">结构状态</div>
-                            <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(structureDetail.status)}`}>
-                              {structureDetail.statusDesc || (structureDetail.status === 1 ? '启用' : '禁用')}
-                            </div>
-                            <div className="mt-3 text-sm text-slate-500">
-                              {structureDetail.status === 1
-                                ? '当前可直接用于新员工分配和现薪维护。'
-                                : '当前已禁用，旧档案保留，但新的薪资分配入口会自动隐藏。'}
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                            <div className="text-xs text-slate-400">在岗关联员工</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureLinkedEmployeeIds.length}</div>
-                            <div className="mt-2 text-sm text-slate-500">
-                              {structureLinkedDeptNames.length
-                                ? `覆盖 ${structureLinkedDeptNames.slice(0, 3).join(' / ')}${structureLinkedDeptNames.length > 3 ? ' 等部门' : ''}`
-                                : '当前还没有在岗员工使用这套结构。'}
-                            </div>
-                            <div className="mt-2 text-xs text-slate-400">
-                              当前命中 {structureLinkedEmployeeRecords.length} 条 ACTIVE 现薪档案
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                            <div className="text-xs text-slate-400">关联现薪分布</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureLinkedSalaryStats.count}</div>
-                            <div className="mt-2 text-sm text-slate-500">
-                              {structureLinkedSalaryStats.count
-                                ? `最低 ${formatCurrency(structureLinkedSalaryStats.min)} / 中位 ${formatCurrency(structureLinkedSalaryStats.median)}`
-                                : '当前还没有可用于测算的现薪样本。'}
-                            </div>
-                            <div className="mt-2 text-xs text-slate-400">
-                              {structureLinkedFutureEmployeeRecords.length
-                                ? `${structureLinkedFutureEmployeeRecords.length} 条未来生效，${structureLinkedCurrentEmployeeRecords.length} 条已到生效日`
-                                : '当前关联样本都已进入生效区间'}
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                            <div className="text-xs text-slate-400">项目体检</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{structureItemStats.total}</div>
-                            <div className="mt-2 text-sm text-slate-500">
-                              {structureItemStats.total
-                                ? `${structureItemStats.fixed} 个固定项 / ${structureItemStats.variable} 个浮动项 / ${structureItemStats.taxable} 个计税项`
-                                : '当前结构还没有配置薪资项目。'}
-                            </div>
-                            <div className={`mt-2 text-xs ${structureItemStats.disabled ? 'text-amber-600' : 'text-slate-400'}`}>
-                              {structureItemStats.disabled
-                                ? `${structureItemStats.disabled} 个禁用项目仍在结构里`
-                                : `${structureItemStats.formula} 个项目带公式配置`}
-                            </div>
-                          </div>
-                        </div>
-                        <div className={`rounded-2xl border p-4 ${
-                          structureRiskItems.length
-                            ? structureRiskSummary.className
-                            : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                        }`}>
-                          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                            <div>
-                              <div className="font-medium">
-                                {structureRiskItems.length ? '结构联调风险提示' : '结构口径已对齐'}
-                              </div>
-                              <div className="mt-1 text-sm opacity-90">{structureRiskSummary.hint}</div>
-                            </div>
-                            <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureRiskSummary.className}`}>
-                              {structureRiskSummary.label}
-                            </span>
-                          </div>
-                          <div className="mt-3 space-y-2 text-sm">
-                            {structureRiskItems.length ? structureRiskItems.map(item => (
-                              <div key={item.key} className="rounded-xl bg-white/50 p-3">
-                                <div className="font-medium">{item.title}</div>
-                                <div className="mt-1 opacity-90">{item.detail}</div>
-                              </div>
-                            )) : (
-                              <div className="rounded-xl bg-white/50 p-3">
-                                当前结构下的项目状态、在岗样本和生效口径都比较完整，适合直接切到员工现薪继续核对。
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        {selectedStructureDeleteDiagnostics && (
-                          <div className={`rounded-2xl border p-4 ${
-                            selectedStructureDeleteDiagnostics.riskItems.length
-                              ? selectedStructureDeleteDiagnostics.riskSummary.className
-                              : 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          }`}>
-                            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                              <div>
-                                <div className="font-medium">
-                                  {selectedStructureDeleteDiagnostics.riskItems.length ? '删除前联调校验' : '删除口径已对齐'}
-                                </div>
-                                <div className="mt-1 text-sm opacity-90">{selectedStructureDeleteDiagnostics.riskSummary.hint}</div>
-                              </div>
-                              <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${selectedStructureDeleteDiagnostics.riskSummary.className}`}>
-                                {selectedStructureDeleteDiagnostics.riskSummary.label}
-                              </span>
-                            </div>
-                            <div className="mt-3 space-y-2 text-sm">
-                              {selectedStructureDeleteDiagnostics.riskItems.length ? selectedStructureDeleteDiagnostics.riskItems.map(item => (
-                                <div key={item.key} className="rounded-xl bg-white/50 p-3">
-                                  <div className="font-medium">{item.title}</div>
-                                  <div className="mt-1 opacity-90">{item.detail}</div>
-                                </div>
-                              )) : (
-                                <div className="rounded-xl bg-white/50 p-3">
-                                  当前结构没有命中在岗现薪，删除动作可以直接作为真实接口回放样本。
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        )}
-                        <div className="flex flex-col gap-3 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-4 text-sm text-sky-700 lg:flex-row lg:items-center lg:justify-between">
-                          <div>
-                            {structureLinkedEmployeeNames.length
-                              ? `当前在岗样本：${structureLinkedEmployeeNames.slice(0, 4).join('、')}${structureLinkedEmployeeNames.length > 4 ? ' 等员工' : ''}。`
-                              : '当前结构还没有在岗员工样本，可以先完成一次薪资分配再回来看联动结果。'}
-                          </div>
-                          {structureLinkedEmployeeRecords.length > 0 && (
-                            <Button variant="outline" onClick={() => void focusStructureEmployees(structureDetail.id)}>
-                              查看关联员工
-                            </Button>
-                          )}
-                        </div>
-                        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                          <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-4 lg:flex-row lg:items-center lg:justify-between">
-                            <div>
-                              <div className="font-semibold text-slate-900">关联现薪样本</div>
-                              <div className="mt-1 text-sm text-slate-500">这里直接读取当前在岗 ACTIVE 现薪，方便从结构配置跳回员工现薪闭环核对。</div>
-                            </div>
-                            <div className="text-xs text-slate-400">
-                              共 {structureLinkedEmployeeRows.length} 条 / {structureLinkedEmployeeIds.length} 名员工
-                              {structureLinkedSalaryStats.count ? ` / 最高 ${formatCurrency(structureLinkedSalaryStats.max)}` : ''}
-                            </div>
-                          </div>
-                          <Table>
-                            <TableHeader>
-                              <TableRow>
-                                <TableHead>员工</TableHead>
-                                <TableHead>部门</TableHead>
-                                <TableHead>总薪资</TableHead>
-                                <TableHead>生效日期</TableHead>
-                                <TableHead className="text-right">操作</TableHead>
-                              </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                              {structureLinkedEmployeeRows.map(item => (
-                                <TableRow key={item.id}>
-                                  <TableCell>
-                                    <div className="font-medium text-slate-900">{item.employeeName || `员工 #${item.employeeId}`}</div>
-                                    <div className="mt-1 text-xs text-slate-400">{item.employeeNo || '-'}</div>
-                                  </TableCell>
-                                  <TableCell>{employeeMap.get(item.employeeId)?.deptName || '-'}</TableCell>
-                                  <TableCell>{formatCurrency(item.totalSalary)}</TableCell>
-                                  <TableCell>
-                                    <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
-                                    <div className="mt-1 flex flex-wrap gap-2">
-                                      {isFutureDate(item.effectiveDate) ? (
-                                        <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
-                                          未来生效
-                                        </span>
-                                      ) : (
-                                        <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
-                                          已生效
-                                        </span>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex justify-end">
-                                      <Button variant="outline" size="sm" onClick={() => focusEmployeeWorkspace(item.employeeId)}>
-                                        查看现薪
-                                      </Button>
-                                    </div>
-                                  </TableCell>
-                                </TableRow>
-                              ))}
-                              {!structureLinkedEmployeeRows.length && <WorkspaceTableStateRow colSpan={5} title="当前结构还没有在岗现薪样本。" />}
-                            </TableBody>
-                          </Table>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                          {structureDetail.items?.map(item => (
-                            <div key={item.id} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                              <div className="font-medium text-slate-900">{item.itemName}</div>
-                              <div className="mt-1 text-xs text-slate-400">{item.itemCode}</div>
-                              <div className="mt-2 text-xs text-slate-500">
-                                {item.categoryDesc || itemCategoryLabel(item.category)} / {item.itemTypeDesc || itemTypeLabel(item.itemType)}
-                              </div>
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
-                                  Number(item.status ?? 1) === 1
-                                    ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                    : 'border-amber-200 bg-amber-50 text-amber-700'
-                                }`}>
-                                  {Number(item.status ?? 1) === 1 ? '项目启用' : '项目禁用'}
-                                </span>
-                                <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
-                                  item.isTaxable
-                                    ? 'border-sky-200 bg-sky-50 text-sky-700'
-                                    : 'border-slate-200 bg-slate-50 text-slate-600'
-                                }`}>
-                                  {item.isTaxable ? '参与计税' : '不计税'}
-                                </span>
-                                {item.formula && String(item.formula).trim() && (
-                                  <span className="inline-flex rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
-                                    带公式
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        {!structureDetail.items?.length && (
-                          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
-                            当前结构还没有关联薪资项目。
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {structureDetailLoading && (
-                      <WorkspaceInlineState type="loading" title="正在加载薪资结构详情..." className="py-4" />
-                    )}
-                  </div>
-                </div>
-              </WorkspaceSectionCard>
-            </div>
-
-            <WorkspaceSectionCard
-              title="薪资等级"
-              description="薪级区间基于职级维护，现在把覆盖率、待配置职级和已配置清单放到同一区域，方便真实联调。"
-              headerAside={(
-                <Button variant="outline" onClick={() => openGradeDialog()}>
-                  <Landmark size={14} className="mr-2" />
-                  设置薪级
-                </Button>
-              )}
-            >
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                  <div className="text-xs text-slate-400">启用职级</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-900">{activeJobLevels.length}</div>
-                  <div className="mt-2 text-sm text-slate-500">来自职级配置中心</div>
-                </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                  <div className="text-xs text-emerald-600">已配置薪级</div>
-                  <div className="mt-2 text-2xl font-semibold text-emerald-700">{sortedSalaryGrades.length}</div>
-                  <div className="mt-2 text-sm text-emerald-700">覆盖率 {gradeCoverageRate}%</div>
-                </div>
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                  <div className="text-xs text-amber-600">待配置职级</div>
-                  <div className="mt-2 text-2xl font-semibold text-amber-700">{pendingGradeLevels.length}</div>
-                  <div className="mt-2 text-sm text-amber-700">可以从下方直接补齐</div>
-                </div>
-                <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
-                  <div className="text-xs text-sky-600">当前最高上限</div>
-                  <div className="mt-2 text-2xl font-semibold text-sky-700">{formatCurrency(highestSalaryGrade?.maxSalary || 0)}</div>
-                  <div className="mt-2 text-sm text-sky-700">
-                    {highestSalaryGrade ? `${highestSalaryGrade.levelCode || '-'} / ${highestSalaryGrade.levelName || '-'}` : '暂无薪级样本'}
-                  </div>
-                </div>
-              </div>
-
-              <div className={`mt-4 rounded-2xl border p-4 ${salaryGradeRiskSummary.className}`}>
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold">
-                      {salaryGradeRiskItems.length ? '薪级联调风险提示' : '薪级口径已对齐'}
-                    </div>
-                    <div className="mt-1 text-sm opacity-90">{salaryGradeRiskSummary.hint}</div>
-                  </div>
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${salaryGradeRiskSummary.className}`}>
-                    {salaryGradeRiskSummary.label}
-                  </span>
-                </div>
-
-                {salaryGradeRiskItems.length > 0 && (
-                  <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                    {salaryGradeRiskItems.map(item => (
-                      <div
-                        key={item.key}
-                        className={`rounded-2xl border bg-white px-4 py-3 ${
-                          item.severity === 'danger'
-                            ? 'border-rose-200 text-rose-800'
-                            : 'border-amber-200 text-amber-800'
-                        }`}
-                      >
-                        <div className="text-sm font-semibold">{item.title}</div>
-                        <div className="mt-1 text-sm opacity-90">{item.detail}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {gradeSeriesCoverage.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                  {gradeSeriesCoverage.map(item => (
-                    <div key={item.series} className={`rounded-2xl border px-4 py-4 ${item.cardClassName}`}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className={`text-sm font-semibold ${item.textClassName}`}>{item.series} 序列</div>
-                          <div className="mt-1 text-xs text-slate-500">{item.configured}/{item.total} 个职级已配薪级</div>
-                        </div>
-                        <div className={`text-sm font-semibold ${item.textClassName}`}>{item.coverage}%</div>
-                      </div>
-                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white">
-                        <div className={`h-full rounded-full ${item.barClassName}`} style={{ width: `${item.coverage}%` }} />
-                      </div>
-                      <div className="mt-3 text-xs text-slate-600">
-                        {item.missing
-                          ? item.configured === 0
-                            ? `当前整条 ${item.series} 序列都还没配置，真实联调会直接缺口。`
-                            : `还差 ${item.missing} 个职级，建议按序列继续补齐。`
-                          : '当前序列已全部覆盖，可以直接核对带宽区间。'}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="mt-4 rounded-2xl border border-amber-100 bg-amber-50 p-4">
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-amber-800">待配置职级</div>
-                    <div className="mt-1 text-sm text-amber-700">
-                      {pendingGradeLevels.length
-                        ? '从这里直接点选一个职级补薪级，保存后覆盖率和下方清单会一起刷新。'
-                        : '当前启用职级都已经配置了薪级。'}
-                    </div>
-                  </div>
-                  {pendingGradeLevels.length > 0 && (
-                    <Button variant="outline" size="sm" onClick={() => openGradeDialog(pendingGradeLevels[0].id)}>
-                      优先补一条
-                    </Button>
-                  )}
-                </div>
-
-                {pendingGradeLevels.length > 0 && (
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {pendingGradeLevels.slice(0, 10).map(level => (
-                      <button
-                        key={level.id}
-                        type="button"
-                        className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs text-amber-700 transition hover:border-amber-300 hover:bg-amber-100"
-                        onClick={() => openGradeDialog(level.id)}
-                      >
-                        {[level.levelCode, level.levelName].filter(Boolean).join(' / ')}
-                      </button>
-                    ))}
-                    {pendingGradeLevels.length > 10 && (
-                      <div className="rounded-full border border-transparent px-1 py-1.5 text-xs text-amber-700">
-                        其余 {pendingGradeLevels.length - 10} 个职级可在弹窗中继续补齐
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>职级</TableHead>
-                      <TableHead>最低薪资</TableHead>
-                      <TableHead>中位薪资</TableHead>
-                      <TableHead>最高薪资</TableHead>
-                      <TableHead>币种</TableHead>
-                      <TableHead>联调提示</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sortedSalaryGrades.map(item => {
-                      const rowIssues = salaryGradeDiagnostics.rowIssueMap.get(item.id) || [];
-                      const deleteDiagnostics = salaryGradeDeleteDiagnosticsMap.get(item.levelId);
-                      const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
-                        ? 'bg-rose-50/40'
-                        : rowIssues.length
-                          ? 'bg-amber-50/40'
-                          : '';
-
-                      return (
-                        <TableRow key={item.id} className={rowClassName}>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.levelName || '-'}</div>
-                            <div className="text-xs text-slate-400">
-                              {[item.levelCode, jobLevelMap.get(item.levelId)?.levelSeries ? `${jobLevelMap.get(item.levelId)?.levelSeries} 序列` : ''].filter(Boolean).join(' / ') || '-'}
-                            </div>
-                          </TableCell>
-                          <TableCell>{formatCurrency(item.minSalary)}</TableCell>
-                          <TableCell>{formatCurrency(item.midSalary)}</TableCell>
-                          <TableCell>{formatCurrency(item.maxSalary)}</TableCell>
-                          <TableCell>{item.currencyDesc || item.currency || '-'}</TableCell>
-                          <TableCell>
-                            {rowIssues.length > 0 ? (
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap gap-2">
-                                  {rowIssues.map(issue => (
-                                    <span
-                                      key={issue.key}
-                                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                        issue.severity === 'danger'
-                                          ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                          : 'border-amber-200 bg-amber-50 text-amber-700'
-                                      }`}
-                                    >
-                                      {issue.label}
-                                    </span>
-                                  ))}
-                                </div>
-                                <div className="space-y-1 text-xs text-slate-500">
-                                  {rowIssues.slice(0, 2).map(issue => (
-                                    <div key={`${issue.key}-detail`}>{issue.detail}</div>
-                                  ))}
-                                </div>
-                                <div className={`text-xs ${
-                                  deleteDiagnostics?.riskItems.length
-                                    ? 'text-amber-600'
-                                    : 'text-emerald-600'
-                                }`}>
-                                  {deleteDiagnostics?.riskItems.length
-                                    ? `删除前需确认：${deleteDiagnostics.riskItems[0].title}`
-                                    : '删除口径已对齐，可直接回放删除接口'}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="space-y-1">
-                                <span className="text-sm text-slate-400">区间正常</span>
-                                <div className={`text-xs ${
-                                  deleteDiagnostics?.riskItems.length
-                                    ? 'text-amber-600'
-                                    : 'text-emerald-600'
-                                }`}>
-                                  {deleteDiagnostics?.riskItems.length
-                                    ? `删除前需确认：${deleteDiagnostics.riskItems[0].title}`
-                                    : '删除口径已对齐，可直接回放删除接口'}
-                                </div>
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => openGradeEditDialog(item)}>
-                                编辑
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={actionLoading}
-                                onClick={() => void handleDeleteGrade(item)}
-                              >
-                                删除
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {!salaryGrades.length && !foundationLoading && (
-                      <WorkspaceTableStateRow colSpan={7} title="当前还没有薪资等级数据，可以直接设置一条用于联调。" />
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </WorkspaceSectionCard>
-
-            <WorkspaceSectionCard
-              title="社保方案"
-              description="方案配置会直接影响员工社保测算与分配可选项，这里统一维护启用和禁用状态，并补齐联调筛选。"
-              headerAside={(
-                <Button variant="outline" onClick={openInsuranceSchemeDialog}>
-                  <ShieldCheck size={14} className="mr-2" />
-                  新建方案
-                </Button>
-              )}
-            >
-
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                  <div className="text-xs text-slate-400">全量方案</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-900">{insuranceSchemeStats.total}</div>
-                  <div className="mt-2 text-sm text-slate-500">来自真实接口返回</div>
-                </div>
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                  <div className="text-xs text-emerald-600">启用中</div>
-                  <div className="mt-2 text-2xl font-semibold text-emerald-700">{insuranceSchemeStats.enabled}</div>
-                  <div className="mt-2 text-sm text-emerald-700">员工分配入口可见</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  <div className="text-xs text-slate-500">禁用中</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-700">{insuranceSchemeStats.disabled}</div>
-                  <div className="mt-2 text-sm text-slate-600">仍保留在维护列表</div>
-                </div>
-                <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
-                  <div className="text-xs text-sky-600">当前命中</div>
-                  <div className="mt-2 text-2xl font-semibold text-sky-700">{insuranceSchemeStats.matched}</div>
-                  <div className="mt-2 text-sm text-sky-700">
-                    {insuranceSchemeCityFilter === ALL_VALUE ? '全部城市' : `${insuranceSchemeCityFilter} 城市`}
-                  </div>
-                </div>
-              </div>
-
-              <div className={`mt-4 rounded-2xl border p-4 ${insuranceSchemeRiskSummary.className}`}>
-                <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold">
-                      {insuranceSchemeRiskItems.length ? '社保方案联调风险提示' : '社保方案口径已对齐'}
-                    </div>
-                    <div className="mt-1 text-sm opacity-90">{insuranceSchemeRiskSummary.hint}</div>
-                  </div>
-                  <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${insuranceSchemeRiskSummary.className}`}>
-                    {insuranceSchemeRiskSummary.label}
-                  </span>
-                </div>
-
-                {insuranceSchemeRiskItems.length > 0 && (
-                  <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                    {insuranceSchemeRiskItems.map(item => (
-                      <div
-                        key={item.key}
-                        className={`rounded-2xl border bg-white px-4 py-3 ${
-                          item.severity === 'danger'
-                            ? 'border-rose-200 text-rose-800'
-                            : 'border-amber-200 text-amber-800'
-                        }`}
-                      >
-                        <div className="text-sm font-semibold">{item.title}</div>
-                        <div className="mt-1 text-sm opacity-90">{item.detail}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-2">
-                  <Select value={insuranceSchemeCityFilter} onValueChange={setInsuranceSchemeCityFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_VALUE}>全部城市</SelectItem>
-                      {insuranceSchemeCityOptions.map(option => (
-                        <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-
-                  <Select value={insuranceSchemeStatusFilter} onValueChange={setInsuranceSchemeStatusFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-                      <SelectItem value="1">仅看启用</SelectItem>
-                      <SelectItem value="0">仅看禁用</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setInsuranceSchemeCityFilter(ALL_VALUE);
-                    setInsuranceSchemeStatusFilter(ALL_VALUE);
-                  }}
-                >
-                  清空筛选
-                </Button>
-              </div>
-
-              <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
-                当前先读取服务端全量方案，再在前端按城市和状态补筛，便于把禁用方案一起保留在维护视图里继续联调。
-              </div>
-
-              <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${
-                currentEmployeeRecord
-                  ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                  : 'border-slate-200 bg-slate-50 text-slate-600'
-              }`}>
-                {currentEmployeeRecord
-                  ? `${currentSelectedEmployeeLabel || '当前员工'} 已锁定为联调对象，下方可以直接发起“给当前员工分配”回放社保方案切换。`
-                  : '先在员工薪资区选中一个员工，下方才会开放“给当前员工分配”的快捷入口。'}
-              </div>
-
-              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-                <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                  <div className="text-xs text-emerald-600">命中 ACTIVE 台账方案</div>
-                  <div className="mt-2 text-2xl font-semibold text-emerald-700">{activeLinkedInsuranceSchemes.length}</div>
-                  <div className="mt-2 text-sm text-emerald-700">当前至少有一条员工台账在用</div>
-                </div>
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                  <div className="text-xs text-amber-600">待补分配样本</div>
-                  <div className="mt-2 text-2xl font-semibold text-amber-700">{unusedInsuranceSchemes.length}</div>
-                  <div className="mt-2 text-sm text-amber-700">当前还没有员工命中的方案</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                  <div className="text-xs text-slate-500">仅历史台账</div>
-                  <div className="mt-2 text-2xl font-semibold text-slate-700">{expiredOnlyInsuranceSchemes.length}</div>
-                  <div className="mt-2 text-sm text-slate-600">保留历史样本但当前无人使用</div>
-                </div>
-              </div>
-
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>方案</TableHead>
-                      <TableHead>基数范围</TableHead>
-                      <TableHead>公司比例</TableHead>
-                      <TableHead>个人比例</TableHead>
-                      <TableHead>联调命中</TableHead>
-                      <TableHead>生效 / 状态</TableHead>
-                      <TableHead className="text-right">操作</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredInsuranceSchemes.map(item => {
-                      const companyRate = Number(item.pensionCompanyRate || 0)
-                        + Number(item.medicalCompanyRate || 0)
-                        + Number(item.unemploymentCompanyRate || 0)
-                        + Number(item.injuryCompanyRate || 0)
-                        + Number(item.maternityCompanyRate || 0)
-                        + Number(item.housingFundCompanyRate || 0);
-                      const personalRate = Number(item.pensionPersonalRate || 0)
-                        + Number(item.medicalPersonalRate || 0)
-                        + Number(item.unemploymentPersonalRate || 0)
-                        + Number(item.housingFundPersonalRate || 0);
-                      const usage = insuranceSchemeUsageMap.get(item.id);
-                      const rowIssues: Array<{ label: string; severity: 'warning' | 'danger' }> = [];
-                      if (Number(item.baseMin ?? 0) > Number(item.baseMax ?? 0)) {
-                        rowIssues.push({ label: '区间异常', severity: 'danger' });
-                      }
-                      if (Number(item.status ?? 1) === 0 && usage?.recordCount) {
-                        rowIssues.push({ label: '禁用仍有台账', severity: 'danger' });
-                      }
-                      if (!usage?.recordCount) {
-                        rowIssues.push({ label: '未命中员工', severity: 'warning' });
-                      } else if (!usage.activeRecordCount) {
-                        rowIssues.push({ label: '仅历史台账', severity: 'warning' });
-                      }
-                      const currentEmployeeUsingThisScheme = Boolean(
-                        currentEmployeeRecord && currentEmployeeInsuranceSchemeId === item.id,
-                      );
-                      const quickAssignDisabled = !currentEmployeeRecord || Number(item.status ?? 1) === 0 || actionLoading;
-                      const actionHint = !currentEmployeeRecord
-                        ? '先在员工薪资区选择一个员工，再从这里发起方案分配。'
-                        : Number(item.status ?? 1) === 0
-                          ? '当前方案已禁用，只适合继续核对历史台账。'
-                          : currentEmployeeUsingThisScheme
-                            ? `${currentSelectedEmployeeLabel || '当前员工'} 已命中这套方案，可直接核对社保测算结果。`
-                            : !usage?.recordCount
-                              ? `当前还没有员工命中过这套方案，建议先给 ${currentSelectedEmployeeLabel || '当前员工'} 补一条分配样本。`
-                              : `可直接给 ${currentSelectedEmployeeLabel || '当前员工'} 回放分配，检查台账切换是否符合预期。`;
-                      const actionHintClass = !currentEmployeeRecord
-                        ? 'text-slate-500'
-                        : Number(item.status ?? 1) === 0
-                          ? 'text-slate-500'
-                          : currentEmployeeUsingThisScheme
-                            ? 'text-emerald-600'
-                            : !usage?.recordCount || !usage.activeRecordCount
-                              ? 'text-amber-600'
-                              : 'text-sky-600';
-                      const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
-                        ? 'bg-rose-50/40'
-                        : rowIssues.length
-                          ? 'bg-amber-50/40'
-                          : '';
-
-                      return (
-                        <TableRow key={item.id} className={rowClassName}>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{item.schemeName}</div>
-                            <div className="text-xs text-slate-400">{item.city || '-'}</div>
-                            {rowIssues.length > 0 && (
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {rowIssues.map(issue => (
-                                  <span
-                                    key={`${item.id}-${issue.label}`}
-                                    className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
-                                      issue.severity === 'danger'
-                                        ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                        : 'border-amber-200 bg-amber-50 text-amber-700'
-                                    }`}
-                                  >
-                                    {issue.label}
-                                  </span>
-                                ))}
-                              </div>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div>{formatCurrency(item.baseMin)} - {formatCurrency(item.baseMax)}</div>
-                            <div className="mt-1 text-xs text-slate-400">{item.baseRule || '未填写规则'}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{formatPercent(companyRate)}</div>
-                            <div className="mt-1 text-xs text-slate-400">含养老/医疗/失业/工伤/生育/公积金</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-medium text-slate-900">{formatPercent(personalRate)}</div>
-                            <div className="mt-1 text-xs text-slate-400">含养老/医疗/失业/公积金</div>
-                          </TableCell>
-                          <TableCell>
-                            {usage?.recordCount ? (
-                              <div>
-                                <div className="font-medium text-slate-900">
-                                  {usage.activeRecordCount
-                                    ? `${usage.activeRecordCount} 条 ACTIVE 台账 / ${usage.activeEmployeeIds.size} 名员工`
-                                    : '当前没有 ACTIVE 台账'}
-                                </div>
-                                <div className={`mt-1 text-xs ${usage.activeRecordCount ? 'text-slate-400' : 'text-amber-600'}`}>
-                                  {[
-                                    usage.futureRecordCount ? `${usage.futureRecordCount} 条未来生效` : '',
-                                    usage.expiredRecordCount ? `${usage.expiredRecordCount} 条历史台账` : usage.activeRecordCount ? '当前口径已命中' : '',
-                                  ].filter(Boolean).join(' / ') || '当前还没有可参考的联调样本'}
-                                </div>
-                                {usage.sampleEmployeeNames.length > 0 && (
-                                  <div className="mt-1 text-xs text-slate-400">
-                                    样本：{usage.sampleEmployeeNames.join('、')}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-sm text-slate-400">当前还没有员工命中</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div>{toDateInputValue(item.effectiveDate) || '-'}</div>
-                            <div className={`mt-2 inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureStatusClass(item.status)}`}>
-                              {item.status === 1 ? '启用' : '禁用'}
-                            </div>
-                            <div className={`mt-2 text-xs ${actionHintClass}`}>
-                              {actionHint}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex justify-end gap-2">
-                              <Button variant="outline" size="sm" onClick={() => openInsuranceSchemeEditDialog(item)}>
-                                编辑
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                disabled={quickAssignDisabled}
-                                onClick={() => openInsuranceAssignDialogWithScheme(item)}
-                              >
-                                给当前员工分配
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      );
-                    })}
-                    {!filteredInsuranceSchemes.length && !foundationLoading && (
-                      <WorkspaceTableStateRow colSpan={7} title="当前筛选条件下没有社保方案数据。" />
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </WorkspaceSectionCard>
-          </TabsContent>
-        </Tabs>
-        </WorkspacePageContent>
+          <div className="space-y-6">
+            {currentSection === 'employees' && (
+              <SalaryEmployeesSection
+                components={primarySectionComponents}
+                viewModel={employeesSectionViewModel}
+              />
+            )}
+            {currentSection === 'adjustments' && (
+              <SalaryAdjustmentsSection
+                components={primarySectionComponents}
+                viewModel={adjustmentsSectionViewModel}
+              />
+            )}
+            {FOUNDATION_SECTIONS.includes(currentSection as FoundationSection) && renderFoundationSection()}
+          </div>
+        </div>
       </div>
 
-      {itemDialogOpen && (
-        <WorkspaceDialogShell
-          title={editingItemId ? '编辑薪资项目' : '新建薪资项目'}
-          description="先补项目，再配置结构和员工薪资。"
-          onClose={closeItemDialog}
-          maxWidthClassName="max-w-2xl"
-        >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label>项目编码</Label>
-                <Input value={itemForm.itemCode} onChange={event => setItemForm(prev => ({ ...prev, itemCode: event.target.value }))} />
-              </div>
-              <div>
-                <Label>项目名称</Label>
-                <Input value={itemForm.itemName} onChange={event => setItemForm(prev => ({ ...prev, itemName: event.target.value }))} />
-              </div>
-              <div>
-                <Label>项目类型</Label>
-                <Select value={itemForm.itemType} onValueChange={value => setItemForm(prev => ({ ...prev, itemType: value }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {itemTypeOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>项目分类</Label>
-                <Select value={itemForm.category} onValueChange={value => setItemForm(prev => ({ ...prev, category: value }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {itemCategoryOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>是否计税</Label>
-                <Select value={String(itemForm.isTaxable)} onValueChange={value => setItemForm(prev => ({ ...prev, isTaxable: value === 'true' }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="true">计税</SelectItem>
-                    <SelectItem value="false">不计税</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>状态</Label>
-                <Select value={String(itemForm.status ?? 1)} onValueChange={value => setItemForm(prev => ({ ...prev, status: Number(value) }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>排序号</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={itemForm.sortOrder ?? 0}
-                  onChange={event => setItemForm(prev => ({ ...prev, sortOrder: Number(event.target.value || 0) }))}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label>计算公式</Label>
-                <Textarea
-                  rows={4}
-                  value={itemForm.formula || ''}
-                  onChange={event => setItemForm(prev => ({ ...prev, formula: event.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前保存影响</div>
-                <div className="mt-2 font-semibold text-slate-900">{itemFormDiagnostics.modeLabel}</div>
-                <div className="mt-1 text-sm text-slate-500">{itemFormDiagnostics.modeHint}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">结构命中</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{itemFormDiagnostics.usage?.structureIds.size || 0}</div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {itemFormDiagnostics.usage
-                    ? `${itemFormDiagnostics.usage.activeEmployeeIds.size} 名员工 / ${itemFormDiagnostics.usage.activeArchiveCount} 条在岗档案`
-                    : '当前项目还没有被结构引用'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {itemFormDiagnostics.usage?.futureArchiveCount
-                    ? `${itemFormDiagnostics.usage.futureArchiveCount} 条未来生效档案`
-                    : '当前没有未来生效样本'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前口径</div>
-                <div className="mt-2 font-semibold text-slate-900">{itemCategoryLabel(itemForm.category)} / {itemTypeLabel(itemForm.itemType)}</div>
-                <div className="mt-1 text-sm text-slate-500">{itemForm.isTaxable ? '参与计税' : '不参与计税'}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {itemForm.formula?.trim() ? '已填写计算公式' : '当前没有计算公式'}
-                </div>
-              </div>
-            </div>
-
-            <div className={`mt-4 rounded-2xl border p-4 ${itemFormDiagnostics.riskSummary.className}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="font-semibold text-current">
-                    {itemFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
-                  </div>
-                  <div className="mt-1 text-sm opacity-90">{itemFormDiagnostics.riskSummary.hint}</div>
-                </div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${itemFormDiagnostics.riskSummary.className}`}>
-                  {itemFormDiagnostics.riskSummary.label}
-                </span>
-              </div>
-
-              {itemFormDiagnostics.riskItems.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {itemFormDiagnostics.riskItems.map(item => (
-                    <div
-                      key={item.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        item.severity === 'danger'
-                          ? 'border-rose-200 bg-white text-rose-700'
-                          : 'border-amber-200 bg-white text-amber-700'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold">{item.title}</div>
-                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closeItemDialog}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleSaveItem()}>
-                {editingItemId ? '保存修改' : '创建项目'}
-              </Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {structureDialogOpen && (
-        <WorkspaceDialogShell
-          title={editingStructureId ? '编辑薪资结构' : '新建薪资结构'}
-          description="至少勾选一个薪资项目，后续员工分配会按结构中的项目录入金额。"
-          onClose={closeStructureDialog}
-        >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label>结构编码</Label>
-                <Input value={structureForm.structureCode} onChange={event => setStructureForm(prev => ({ ...prev, structureCode: event.target.value }))} />
-              </div>
-              <div>
-                <Label>结构名称</Label>
-                <Input value={structureForm.structureName} onChange={event => setStructureForm(prev => ({ ...prev, structureName: event.target.value }))} />
-              </div>
-              <div className="md:col-span-2">
-                <Label>结构描述</Label>
-                <Textarea
-                  rows={4}
-                  value={structureForm.description || ''}
-                  onChange={event => setStructureForm(prev => ({ ...prev, description: event.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>状态</Label>
-                <Select value={String(structureForm.status ?? 1)} onValueChange={value => setStructureForm(prev => ({ ...prev, status: Number(value) }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="md:col-span-2">
-                <Label>关联项目</Label>
-                <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                  {salaryItems.map(item => {
-                    const selected = structureForm.itemIds.includes(item.id);
-                    const disabled = item.status === 0 && !selected;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        disabled={disabled}
-                        className={`rounded-2xl border px-4 py-4 text-left transition ${
-                          selected
-                            ? 'border-sky-200 bg-sky-50 text-sky-700'
-                            : disabled
-                              ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-400'
-                              : 'border-slate-200 bg-slate-50 text-slate-700 hover:border-slate-300'
-                        }`}
-                        onClick={() => setStructureForm(prev => ({
-                          ...prev,
-                          itemIds: prev.itemIds.includes(item.id)
-                            ? prev.itemIds.filter(itemId => itemId !== item.id)
-                            : [...prev.itemIds, item.id],
-                        }))}
-                      >
-                        <div className="font-medium">{item.itemName}</div>
-                        <div className="mt-1 text-xs opacity-80">{item.itemCode}</div>
-                        <div className="mt-2 text-xs opacity-80">{item.statusDesc || (item.status === 1 ? '启用' : '禁用')}</div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-2 text-xs text-slate-400">禁用项目不会再允许新结构继续关联；若历史结构仍在使用，请先取消勾选再保存。</div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前保存影响</div>
-                <div className="mt-2 font-semibold text-slate-900">{structureFormDiagnostics.modeLabel}</div>
-                <div className="mt-1 text-sm text-slate-500">{structureFormDiagnostics.modeHint}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">项目体检</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{structureFormDiagnostics.selectedItems.length}</div>
-                <div className="mt-1 text-sm text-slate-500">
-                  计税 {structureFormDiagnostics.taxableItems.length} 个 / 浮动 {structureFormDiagnostics.variableItems.length} 个
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {structureFormDiagnostics.disabledSelectedItems.length
-                    ? `${structureFormDiagnostics.disabledSelectedItems.length} 个禁用项目仍被选中`
-                    : '当前没有选中禁用项目'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">历史命中</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{structureFormDiagnostics.activeUsage?.archiveCount || 0}</div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {structureFormDiagnostics.activeUsage
-                    ? `${structureFormDiagnostics.activeUsage.employeeIds.size} 名员工 / ${structureFormDiagnostics.activeUsage.futureCount} 条未来生效`
-                    : '当前结构还没有在岗样本命中'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {structureFormDiagnostics.removedItems.length
-                    ? `本次会移除 ${structureFormDiagnostics.removedItems.length} 个既有项目`
-                    : '当前没有移除既有项目'}
-                </div>
-              </div>
-            </div>
-
-            <div className={`mt-4 rounded-2xl border p-4 ${structureFormDiagnostics.riskSummary.className}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="font-semibold text-current">
-                    {structureFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
-                  </div>
-                  <div className="mt-1 text-sm opacity-90">{structureFormDiagnostics.riskSummary.hint}</div>
-                </div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${structureFormDiagnostics.riskSummary.className}`}>
-                  {structureFormDiagnostics.riskSummary.label}
-                </span>
-              </div>
-
-              {structureFormDiagnostics.riskItems.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {structureFormDiagnostics.riskItems.map(item => (
-                    <div
-                      key={item.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        item.severity === 'danger'
-                          ? 'border-rose-200 bg-white text-rose-700'
-                          : 'border-amber-200 bg-white text-amber-700'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold">{item.title}</div>
-                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closeStructureDialog}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleSaveStructure()}>
-                {editingStructureId ? '保存修改' : '创建结构'}
-              </Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {gradeDialogOpen && (
-        <WorkspaceDialogShell
-          title={editingGradeLevelId ? '编辑薪资等级' : '设置薪资等级'}
-          description="按职级维护薪资区间，已存在则覆盖。"
-          onClose={closeGradeDialog}
-          maxWidthClassName="max-w-2xl"
-        >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <Label>职级</Label>
-                <Select
-                  value={gradeForm.levelId ? String(gradeForm.levelId) : EMPTY_VALUE}
-                  onValueChange={value => setGradeForm(prev => ({ ...prev, levelId: value === EMPTY_VALUE ? 0 : Number(value) }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="请选择职级" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {sortedJobLevels.map(level => (
-                      <SelectItem key={level.id} value={String(level.id)}>
-                        {[level.levelCode, level.levelName, level.levelSeries ? `${level.levelSeries} 序列` : ''].filter(Boolean).join(' / ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>最低薪资</Label>
-                <Input type="number" min={0} value={gradeForm.minSalary} onChange={event => setGradeForm(prev => ({ ...prev, minSalary: Number(event.target.value || 0) }))} />
-              </div>
-              <div>
-                <Label>中位薪资</Label>
-                <Input type="number" min={0} value={gradeForm.midSalary} onChange={event => setGradeForm(prev => ({ ...prev, midSalary: Number(event.target.value || 0) }))} />
-              </div>
-              <div>
-                <Label>最高薪资</Label>
-                <Input type="number" min={0} value={gradeForm.maxSalary} onChange={event => setGradeForm(prev => ({ ...prev, maxSalary: Number(event.target.value || 0) }))} />
-              </div>
-              <div>
-                <Label>币种</Label>
-                <Select value={gradeForm.currency || 'CNY'} onValueChange={value => setGradeForm(prev => ({ ...prev, currency: value }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CNY">人民币</SelectItem>
-                    <SelectItem value="USD">美元</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">目标职级</div>
-                <div className="mt-2 font-semibold text-slate-900">
-                  {gradeFormDiagnostics.selectedLevel
-                    ? [gradeFormDiagnostics.selectedLevel.levelCode, gradeFormDiagnostics.selectedLevel.levelName].filter(Boolean).join(' / ')
-                    : '请选择职级'}
-                </div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {gradeFormDiagnostics.selectedLevel
-                    ? `${gradeFormDiagnostics.selectedLevel.levelSeries || '未分组'} 序列 / Rank ${gradeFormDiagnostics.selectedLevel.levelRank}`
-                    : '选中后会显示当前序列和排序信息'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {gradeFormDiagnostics.existingGrade
-                    ? `当前已配 ${formatCurrency(gradeFormDiagnostics.existingGrade.minSalary)} - ${formatCurrency(gradeFormDiagnostics.existingGrade.maxSalary)}`
-                    : '当前职级还没有薪级配置'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前保存影响</div>
-                <div className="mt-2 font-semibold text-slate-900">{gradeFormDiagnostics.modeLabel}</div>
-                <div className="mt-1 text-sm text-slate-500">{gradeFormDiagnostics.modeHint}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">覆盖率变化</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">
-                  {gradeFormDiagnostics.currentCoverageRate}% → {gradeFormDiagnostics.nextCoverageRate}%
-                </div>
-                <div className="mt-1 text-sm text-slate-500">
-                  序列内 {gradeFormDiagnostics.seriesConfiguredCount}/{gradeFormDiagnostics.seriesTotal} → {gradeFormDiagnostics.nextSeriesConfiguredCount}/{gradeFormDiagnostics.seriesTotal}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  预计序列覆盖率 {gradeFormDiagnostics.nextSeriesCoverageRate}%
-                </div>
-              </div>
-            </div>
-
-            <div className={`mt-4 rounded-2xl border p-4 ${gradeFormDiagnostics.riskSummary.className}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="font-semibold text-current">
-                    {gradeFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
-                  </div>
-                  <div className="mt-1 text-sm opacity-90">{gradeFormDiagnostics.riskSummary.hint}</div>
-                </div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${gradeFormDiagnostics.riskSummary.className}`}>
-                  {gradeFormDiagnostics.riskSummary.label}
-                </span>
-              </div>
-
-              {gradeFormDiagnostics.riskItems.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {gradeFormDiagnostics.riskItems.map(item => (
-                    <div
-                      key={item.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        item.severity === 'danger'
-                          ? 'border-rose-200 bg-white text-rose-700'
-                          : 'border-amber-200 bg-white text-amber-700'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold">{item.title}</div>
-                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs text-slate-400">上一级已配薪级</div>
-                {gradeFormDiagnostics.previousLevel && gradeFormDiagnostics.previousGrade ? (
-                  <>
-                    <div className="mt-2 font-semibold text-slate-900">
-                      {[gradeFormDiagnostics.previousLevel.levelCode, gradeFormDiagnostics.previousLevel.levelName].filter(Boolean).join(' / ')}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-500">
-                      {formatCurrency(gradeFormDiagnostics.previousGrade.minSalary)} - {formatCurrency(gradeFormDiagnostics.previousGrade.maxSalary)}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      币种 {gradeFormDiagnostics.previousGrade.currency || 'CNY'}
-                    </div>
-                  </>
-                ) : (
-                  <div className="mt-2 text-sm text-slate-500">当前序列里还没有更低一级的已配薪级。</div>
-                )}
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs text-slate-400">下一级已配薪级</div>
-                {gradeFormDiagnostics.nextLevel && gradeFormDiagnostics.nextGrade ? (
-                  <>
-                    <div className="mt-2 font-semibold text-slate-900">
-                      {[gradeFormDiagnostics.nextLevel.levelCode, gradeFormDiagnostics.nextLevel.levelName].filter(Boolean).join(' / ')}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-500">
-                      {formatCurrency(gradeFormDiagnostics.nextGrade.minSalary)} - {formatCurrency(gradeFormDiagnostics.nextGrade.maxSalary)}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      币种 {gradeFormDiagnostics.nextGrade.currency || 'CNY'}
-                    </div>
-                  </>
-                ) : (
-                  <div className="mt-2 text-sm text-slate-500">当前序列里还没有更高一级的已配薪级。</div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closeGradeDialog}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleSetGrade()}>
-                {editingGradeLevelId ? '保存修改' : '保存薪级'}
-              </Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {insuranceSchemeDialogOpen && (
-        <WorkspaceDialogShell
-          title={editingInsuranceSchemeId ? '编辑社保方案' : '新建社保方案'}
-          description="维护方案比例、基数范围和启停状态，员工分配时只会展示启用方案。"
-          onClose={closeInsuranceSchemeDialog}
-          maxWidthClassName="max-w-5xl"
-        >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label>方案名称</Label>
-                <Input
-                  value={insuranceSchemeForm.schemeName}
-                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, schemeName: event.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>适用城市</Label>
-                <Input
-                  value={insuranceSchemeForm.city}
-                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, city: event.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>生效日期</Label>
-                <Input
-                  type="date"
-                  value={insuranceSchemeForm.effectiveDate}
-                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
-                />
-              </div>
-              <div>
-                <Label>状态</Label>
-                <Select
-                  value={String(insuranceSchemeForm.status ?? 1)}
-                  onValueChange={value => setInsuranceSchemeForm(prev => ({ ...prev, status: Number(value) }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {statusOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>基数下限</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={insuranceSchemeForm.baseMin}
-                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, baseMin: Number(event.target.value || 0) }))}
-                />
-              </div>
-              <div>
-                <Label>基数上限</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={insuranceSchemeForm.baseMax}
-                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, baseMax: Number(event.target.value || 0) }))}
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label>基数规则</Label>
-                <Textarea
-                  rows={3}
-                  value={insuranceSchemeForm.baseRule || ''}
-                  onChange={event => setInsuranceSchemeForm(prev => ({ ...prev, baseRule: event.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
-              {[
-                ['pensionCompanyRate', '养老公司比例'],
-                ['pensionPersonalRate', '养老个人比例'],
-                ['medicalCompanyRate', '医疗公司比例'],
-                ['medicalPersonalRate', '医疗个人比例'],
-                ['unemploymentCompanyRate', '失业公司比例'],
-                ['unemploymentPersonalRate', '失业个人比例'],
-                ['injuryCompanyRate', '工伤公司比例'],
-                ['maternityCompanyRate', '生育公司比例'],
-                ['housingFundCompanyRate', '公积金公司比例'],
-                ['housingFundPersonalRate', '公积金个人比例'],
-              ].map(([field, label]) => (
-                <div key={field}>
-                  <Label>{label}</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    step="0.01"
-                    value={insuranceSchemeForm[field as keyof InsuranceSchemeFormState] as number}
-                    onChange={event => setInsuranceSchemeForm(prev => ({
-                      ...prev,
-                      [field]: Number(event.target.value || 0),
-                    }))}
-                  />
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-              <div className="font-medium text-slate-900">当前比例汇总</div>
-              <div className="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div>
-                  公司承担合计：
-                  {formatPercent(insuranceSchemeFormDiagnostics.companyTotalRate)}
-                </div>
-                <div>
-                  个人承担合计：
-                  {formatPercent(insuranceSchemeFormDiagnostics.personalTotalRate)}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前保存影响</div>
-                <div className="mt-2 font-semibold text-slate-900">{insuranceSchemeFormDiagnostics.modeLabel}</div>
-                <div className="mt-1 text-sm text-slate-500">{insuranceSchemeFormDiagnostics.modeHint}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">台账命中</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{insuranceSchemeFormDiagnostics.usage?.recordCount || 0}</div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {insuranceSchemeFormDiagnostics.usage
-                    ? `ACTIVE ${insuranceSchemeFormDiagnostics.usage.activeRecordCount} 条 / 在岗 ${insuranceSchemeFormDiagnostics.usage.activeEmployeeIds.size} 人`
-                    : '当前方案还没有任何员工台账'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {insuranceSchemeFormDiagnostics.usage
-                    ? `未来生效 ${insuranceSchemeFormDiagnostics.usage.futureRecordCount} 条`
-                    : '保存后需要补员工分配样本'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">比例合计</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{formatPercent(insuranceSchemeFormDiagnostics.totalRate)}</div>
-                <div className="mt-1 text-sm text-slate-500">
-                  公司 {formatPercent(insuranceSchemeFormDiagnostics.companyTotalRate)}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  个人 {formatPercent(insuranceSchemeFormDiagnostics.personalTotalRate)}
-                </div>
-              </div>
-            </div>
-
-            <div className={`mt-4 rounded-2xl border p-4 ${insuranceSchemeFormDiagnostics.riskSummary.className}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="font-semibold text-current">
-                    {insuranceSchemeFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
-                  </div>
-                  <div className="mt-1 text-sm opacity-90">{insuranceSchemeFormDiagnostics.riskSummary.hint}</div>
-                </div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${insuranceSchemeFormDiagnostics.riskSummary.className}`}>
-                  {insuranceSchemeFormDiagnostics.riskSummary.label}
-                </span>
-              </div>
-
-              {insuranceSchemeFormDiagnostics.riskItems.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {insuranceSchemeFormDiagnostics.riskItems.map(item => (
-                    <div
-                      key={item.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        item.severity === 'danger'
-                          ? 'border-rose-200 bg-white text-rose-700'
-                          : 'border-amber-200 bg-white text-amber-700'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold">{item.title}</div>
-                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closeInsuranceSchemeDialog}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleSaveInsuranceScheme()}>
-                {editingInsuranceSchemeId ? '保存方案' : '创建方案'}
-              </Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {taxConfigDialogOpen && (
-        <WorkspaceDialogShell
-          title={taxConfigForm.id ? '维护当前个税配置' : '新建个税配置'}
-          description="当前页面只维护今天及以前生效的个税配置，保存后会立即刷新个税测算摘要。"
-          onClose={closeTaxConfigDialog}
-          maxWidthClassName="max-w-6xl"
-        >
-
-            {taxConfigDialogLoading ? (
-              <WorkspaceInlineState
-                type="loading"
-                title="正在加载当前个税配置..."
-                className="px-6 py-16"
-              />
-            ) : (
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-4">
-                    <div className="font-semibold text-slate-900">基础参数</div>
-                    <div className="mt-1 text-sm text-slate-500">维护起征点、生效日期和专项附加扣除参考标准。</div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    <div>
-                      <Label>起征点</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step="0.01"
-                        value={taxConfigForm.threshold}
-                        onChange={event => setTaxConfigForm(prev => ({ ...prev, threshold: event.target.value }))}
-                      />
-                    </div>
-                    <div>
-                      <Label>生效日期</Label>
-                      <Input
-                        type="date"
-                        value={taxConfigForm.effectiveDate}
-                        max={getTodayValue()}
-                        onChange={event => setTaxConfigForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <div className="font-semibold text-slate-900">专项附加扣除参考标准</div>
-                    <div className="mt-1 text-sm text-slate-500">这里维护的是标准配置值，员工实际测算仍以员工专项扣除记录为准。</div>
-                    <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                      {deductionTypeOptions.map(item => (
-                        <div key={item.value}>
-                          <Label>{item.label}</Label>
-                          <Input
-                            type="number"
-                            min={0}
-                            step="0.01"
-                            value={taxConfigForm.deductionItems[item.value] ?? ''}
-                            onChange={event => setTaxConfigForm(prev => ({
-                              ...prev,
-                              deductionItems: {
-                                ...prev.deductionItems,
-                                [item.value]: event.target.value,
-                              },
-                            }))}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-                      <div className="text-xs text-amber-600">标准月度合计</div>
-                      <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(taxConfigStandardDeductionTotal)}</div>
-                      <div className="mt-2 text-sm text-amber-700">用于核对各专项附加扣除参考标准是否录齐。</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="mb-4 flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-semibold text-slate-900">税率档配置</div>
-                      <div className="mt-1 text-sm text-slate-500">使用 JSON 维护年累计税率档，字段为 min / max / rate / deduction。</div>
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() => setTaxConfigForm(prev => ({ ...prev, taxBracketsJson: defaultTaxBracketJson }))}
-                    >
-                      恢复默认档
-                    </Button>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
-                      <div className="text-xs text-slate-400">起征点</div>
-                      <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(taxConfigForm.threshold)}</div>
-                      <div className="mt-2 text-sm text-slate-500">当前编辑值</div>
-                    </div>
-                    <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
-                      <div className="text-xs text-sky-600">生效日期</div>
-                      <div className="mt-2 text-2xl font-semibold text-sky-700">{taxConfigForm.effectiveDate || '-'}</div>
-                      <div className="mt-2 text-sm text-sky-700">保存后将按此日期生效</div>
-                    </div>
-                    <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                      <div className="text-xs text-emerald-600">税率档数</div>
-                      <div className="mt-2 text-2xl font-semibold text-emerald-700">{taxConfigBracketPreview.rows.length}</div>
-                      <div className="mt-2 text-sm text-emerald-700">即时从 JSON 解析</div>
-                    </div>
-                    <div className="rounded-2xl border border-cyan-200 bg-cyan-50/80 px-4 py-4">
-                      <div className="text-xs text-cyan-600">最高税率</div>
-                      <div className="mt-2 text-2xl font-semibold text-cyan-700">
-                        {taxConfigBracketPreview.rows.length ? formatPercent(Number(taxConfigBracketPreview.maxRate) * 100) : '-'}
-                      </div>
-                      <div className="mt-2 text-sm text-cyan-700">便于核对累计区间上限</div>
-                    </div>
-                  </div>
-
-                  <div className={`mt-4 rounded-2xl border p-4 ${taxConfigDiagnostics.riskSummary.className}`}>
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <div className="text-sm font-semibold">
-                          {taxConfigDiagnostics.riskItems.length ? '个税配置联调风险提示' : '个税配置口径已对齐'}
-                        </div>
-                        <div className="mt-1 text-sm opacity-90">{taxConfigDiagnostics.riskSummary.hint}</div>
-                      </div>
-                      <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${taxConfigDiagnostics.riskSummary.className}`}>
-                        {taxConfigDiagnostics.riskSummary.label}
-                      </span>
-                    </div>
-
-                    {taxConfigDiagnostics.riskItems.length > 0 && (
-                      <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                        {taxConfigDiagnostics.riskItems.map(item => (
-                          <div
-                            key={item.key}
-                            className={`rounded-2xl border bg-white px-4 py-3 ${
-                              item.severity === 'danger'
-                                ? 'border-rose-200 text-rose-800'
-                                : 'border-amber-200 text-amber-800'
-                            }`}
-                          >
-                            <div className="text-sm font-semibold">{item.title}</div>
-                            <div className="mt-1 text-sm opacity-90">{item.detail}</div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="mt-4 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <div className="font-semibold text-slate-900">当前联调样本预览</div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {currentEmployeeRecord
-                              ? `使用 ${currentSelectedEmployeeLabel || '当前员工'} 的 ${taxReferencePeriod} 口径，预估当前编辑值会命中哪一档。`
-                              : '当前没有选中联调样本，下面只展示配置本身。'}
-                          </div>
-                        </div>
-                        {currentEmployeeRecord && (
-                          <span className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600">
-                            {currentEmployeeEffectiveDate || '-'}
-                          </span>
-                        )}
-                      </div>
-
-                      {currentEmployeeRecord ? (
-                        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                            <div className="text-xs text-slate-400">计税前收入</div>
-                            <div className="mt-2 text-2xl font-semibold text-slate-900">{formatCurrency(taxConfigDiagnostics.sampleTaxableIncome)}</div>
-                            <div className="mt-2 text-sm text-slate-500">税前减个人社保后的口径</div>
-                          </div>
-                          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                            <div className="text-xs text-amber-600">应纳税所得额</div>
-                            <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(taxConfigDiagnostics.sampleTaxableAmount)}</div>
-                            <div className="mt-2 text-sm text-amber-700">已扣起征点与专项扣除</div>
-                          </div>
-                          <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
-                            <div className="text-xs text-sky-600">命中税档</div>
-                            <div className="mt-2 text-lg font-semibold text-sky-700">
-                              {taxConfigDiagnostics.matchedBracket
-                                ? `第 ${taxConfigDiagnostics.matchedBracketIndex + 1} 档 / ${formatPercent(Number(taxConfigDiagnostics.matchedBracket.rate || 0) * 100)}`
-                                : '未命中'}
-                            </div>
-                            <div className="mt-2 text-sm text-sky-700">
-                              {taxConfigDiagnostics.remainingToNextBracket != null && taxConfigDiagnostics.nextBracket
-                                ? `距下一档还差 ${formatCurrency(taxConfigDiagnostics.remainingToNextBracket)}`
-                                : taxConfigDiagnostics.matchedBracket
-                                  ? '当前已落在最后一档或无下一档'
-                                  : '请先检查税率档区间是否连续'}
-                            </div>
-                          </div>
-                          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                            <div className="text-xs text-emerald-600">预估个税 / 到手</div>
-                            <div className="mt-2 text-2xl font-semibold text-emerald-700">{formatCurrency(taxConfigDiagnostics.estimatedTaxAmount)}</div>
-                            <div className="mt-2 text-sm text-emerald-700">
-                              到手 {formatCurrency(taxConfigDiagnostics.estimatedAfterTaxIncome)}
-                            </div>
-                            <div className="mt-2 text-xs text-emerald-700">
-                              {taxConfigDiagnostics.differenceFromCurrentTax === 0
-                                ? '与当前后端个税结果一致'
-                                : `较当前后端结果${taxConfigDiagnostics.differenceFromCurrentTax > 0 ? '增加' : '减少'} ${formatCurrency(Math.abs(taxConfigDiagnostics.differenceFromCurrentTax))}`}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
-                          当前没有选中员工，无法展示样本税档预览。
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                      <div className="font-semibold text-slate-900">专项附加扣除参考值</div>
-                      <div className="mt-1 text-sm text-slate-500">这里展示的是当前编辑值里的正向模板，方便你核对 HR 常用扣除标准是否录齐。</div>
-
-                      {taxConfigReferenceEntries.length > 0 ? (
-                        <div className="mt-4 space-y-3">
-                          {taxConfigReferenceEntries.map(item => (
-                            <div key={item.type} className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="font-medium text-slate-900">{item.label}</div>
-                                <div className="text-sm font-semibold text-slate-900">{formatCurrency(item.amount)}</div>
-                              </div>
-                              <div className="mt-1 text-xs text-slate-400">
-                                {currentTaxConfigReferenceMap.get(item.type) === item.amount
-                                  ? '与当前已生效配置一致'
-                                  : `当前已生效值 ${formatCurrency(currentTaxConfigReferenceMap.get(item.type) || 0)}`}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="mt-4 rounded-2xl border border-dashed border-amber-200 bg-amber-50 px-4 py-10 text-center text-sm text-amber-700">
-                          当前编辑值里还没有任何正向专项附加扣除模板。
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <Textarea
-                    className="mt-4 min-h-[260px] font-mono text-sm"
-                    value={taxConfigForm.taxBracketsJson}
-                    onChange={event => setTaxConfigForm(prev => ({ ...prev, taxBracketsJson: event.target.value }))}
-                    placeholder='[{"min":0,"max":36000,"rate":0.03,"deduction":0}]'
-                  />
-
-                  {taxConfigBracketPreview.error ? (
-                    <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
-                      {taxConfigBracketPreview.error}
-                    </div>
-                  ) : (
-                    <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>档位</TableHead>
-                            <TableHead>起点</TableHead>
-                            <TableHead>终点</TableHead>
-                            <TableHead>税率</TableHead>
-                            <TableHead>速算扣除数</TableHead>
-                            <TableHead>联调样本</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {taxConfigBracketPreview.rows.map((item, index) => {
-                            const matched = taxConfigDiagnostics.matchedBracketIndex === index;
-                            const next = taxConfigDiagnostics.nextBracket
-                              && taxConfigDiagnostics.nextBracket.min === item.min
-                              && taxConfigDiagnostics.nextBracket.max === item.max
-                              && taxConfigDiagnostics.nextBracket.rate === item.rate
-                              && taxConfigDiagnostics.nextBracket.deduction === item.deduction;
-                            const rowClassName = matched ? 'bg-sky-50/60' : '';
-
-                            return (
-                              <TableRow key={`${item.min}-${item.max ?? 'none'}-${item.rate}-${index}`} className={rowClassName}>
-                                <TableCell>第 {index + 1} 档</TableCell>
-                                <TableCell>{formatCurrency(item.min)}</TableCell>
-                                <TableCell>{item.max == null ? '无上限' : formatCurrency(item.max)}</TableCell>
-                                <TableCell>{formatPercent(Number(item.rate || 0) * 100)}</TableCell>
-                                <TableCell>{formatCurrency(item.deduction)}</TableCell>
-                                <TableCell>
-                                  {matched ? (
-                                    <div className="space-y-1">
-                                      <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
-                                        当前样本命中
-                                      </span>
-                                      <div className="text-xs text-slate-500">
-                                        应纳税所得额 {formatCurrency(taxConfigDiagnostics.sampleTaxableAmount)}
-                                      </div>
-                                    </div>
-                                  ) : next ? (
-                                    <div className="space-y-1">
-                                      <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-                                        下一档
-                                      </span>
-                                      <div className="text-xs text-slate-500">
-                                        还差 {formatCurrency(taxConfigDiagnostics.remainingToNextBracket || 0)}
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-slate-400">未命中</span>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  )}
-
-                  <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500">
-                    <div>规则说明：</div>
-                    <div className="mt-1">1. `rate` 使用 0.03 这种小数格式，不是 3。</div>
-                    <div className="mt-1">2. 最后一档可以不写 `max`，表示无上限。</div>
-                    <div className="mt-1">3. 每一档的 `min` 需要按从小到大的顺序填写。</div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closeTaxConfigDialog}>取消</Button>
-              <Button disabled={actionLoading || taxConfigDialogLoading} onClick={() => void handleSaveTaxConfig()}>
-                {taxConfigForm.id ? '保存配置' : '创建配置'}
-              </Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {taxDeductionDialogOpen && (
-        <WorkspaceDialogShell
-          title="管理员工专项扣除"
-          description={`当前个税测算按 ${taxReferencePeriod} 读取 ACTIVE 记录。新增时默认回填到当月 1 号，保存后会立即刷新右侧测算结果。`}
-          onClose={closeTaxDeductionDialog}
-          maxWidthClassName="max-w-6xl"
-          headerAside={(
-            <>
-              {employeeTaxDeductionDiagnostics.missingReferenceEntries.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => applyTaxDeductionReferenceTemplate(
-                    employeeTaxDeductionDiagnostics.missingReferenceEntries[0].type,
-                    employeeTaxDeductionDiagnostics.missingReferenceEntries[0].referenceAmount,
-                  )}
-                >
-                  优先回填一条
-                </Button>
-              )}
-              {editingTaxDeductionId && (
-                <Button variant="outline" onClick={() => resetTaxDeductionForm(currentEmployeeRecord?.employeeId)}>
-                  新建一条
-                </Button>
-              )}
-            </>
-          )}
-        >
-
-            <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="mb-4">
-                  <div className="font-semibold text-slate-900">{editingTaxDeductionId ? '编辑专项扣除' : '新增专项扣除'}</div>
-                  <div className="mt-1 text-sm text-slate-500">支持直接维护当前员工的专项附加扣除，并同步刷新个税测算。</div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="md:col-span-2">
-                    <Label>员工</Label>
-                    <Input value={currentEmployeeRecord ? [currentEmployeeRecord.employeeName, currentEmployeeRecord.employeeNo].filter(Boolean).join(' / ') : ''} disabled />
-                  </div>
-                  <div>
-                    <Label>扣除类型</Label>
-                    {editingTaxDeductionId ? (
-                      <Input value={deductionTypeLabel(taxDeductionForm.deductionType)} disabled />
-                    ) : (
-                      <Select
-                        value={taxDeductionForm.deductionType || EMPTY_VALUE}
-                        onValueChange={value => setTaxDeductionForm(prev => ({ ...prev, deductionType: value === EMPTY_VALUE ? '' : value }))}
-                      >
-                        <SelectTrigger><SelectValue placeholder="请选择扣除类型" /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                          {deductionTypeOptions.map(item => (
-                            <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  </div>
-                  <div>
-                    <Label>{editingTaxDeductionId ? '状态' : '当前状态'}</Label>
-                    {editingTaxDeductionId ? (
-                      <Select
-                        value={taxDeductionForm.status || 'ACTIVE'}
-                        onValueChange={value => setTaxDeductionForm(prev => ({ ...prev, status: value }))}
-                      >
-                        <SelectTrigger><SelectValue placeholder="请选择状态" /></SelectTrigger>
-                        <SelectContent>
-                          {taxDeductionStatusOptions.map(item => (
-                            <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <Input value="生效中" disabled />
-                    )}
-                    <div className="mt-1 text-xs text-slate-400">
-                      {taxDeductionFormDiagnostics.proposedInScope
-                        ? `保存后会参与 ${taxReferencePeriod} 个税测算`
-                        : `保存后不会命中 ${taxReferencePeriod}`}
-                    </div>
-                  </div>
-                  <div>
-                    <Label>月扣除金额</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      step="0.01"
-                      value={taxDeductionForm.amount || ''}
-                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, amount: Number(event.target.value || 0) }))}
-                    />
-                    <div className="mt-1 text-xs text-slate-400">
-                      {taxDeductionFormDiagnostics.referenceAmount > 0
-                        ? `当前参考标准 ${formatCurrency(taxDeductionFormDiagnostics.referenceAmount)}`
-                        : '当前个税配置里暂未提供这个类型的参考标准'}
-                    </div>
-                  </div>
-                  <div>
-                    <Label>开始日期</Label>
-                    <Input
-                      type="date"
-                      value={taxDeductionForm.startDate}
-                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, startDate: event.target.value }))}
-                    />
-                    <div className="mt-1 text-xs text-slate-400">建议按月份生效时填写当月 1 号。</div>
-                  </div>
-                  <div>
-                    <Label>结束日期</Label>
-                    <Input
-                      type="date"
-                      value={taxDeductionForm.endDate}
-                      min={taxDeductionForm.startDate || undefined}
-                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, endDate: event.target.value }))}
-                    />
-                    <div className="mt-1 text-xs text-slate-400">留空表示长期有效。</div>
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label>备注</Label>
-                    <Textarea
-                      rows={4}
-                      value={taxDeductionForm.remark}
-                      onChange={event => setTaxDeductionForm(prev => ({ ...prev, remark: event.target.value }))}
-                      placeholder="例如：独生子女 2000 元标准，2026 年起执行"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="text-xs text-slate-400">当前保存影响</div>
-                    <div className="mt-2 font-semibold text-slate-900">{taxDeductionFormDiagnostics.modeLabel}</div>
-                    <div className="mt-1 text-sm text-slate-500">{taxDeductionFormDiagnostics.modeHint}</div>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="text-xs text-slate-400">本月命中预估</div>
-                    <div className="mt-2 font-semibold text-slate-900">
-                      {taxDeductionFormDiagnostics.proposedInScope ? `会命中 ${taxReferencePeriod}` : `不会命中 ${taxReferencePeriod}`}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-500">
-                      当前同类型已命中 {taxDeductionFormDiagnostics.sameTypeCurrentScopeCount} 条，保存后预计
-                      {' '}
-                      {taxDeductionFormDiagnostics.predictedInScopeCount}
-                      {' '}
-                      条 / {formatCurrency(taxDeductionFormDiagnostics.predictedInScopeAmount)}
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      {taxDeductionFormDiagnostics.overlappingActiveCount > 0
-                        ? `存在 ${taxDeductionFormDiagnostics.overlappingActiveCount} 条 ACTIVE 区间重叠`
-                        : '当前没有与历史 ACTIVE 记录的区间重叠'}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                    <div className="text-xs text-slate-400">参考与历史</div>
-                    <div className="mt-2 font-semibold text-slate-900">
-                      {taxDeductionFormDiagnostics.referenceAmount > 0
-                        ? formatCurrency(taxDeductionFormDiagnostics.referenceAmount)
-                        : '未配置参考值'}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-500">
-                      历史 {taxDeductionFormDiagnostics.sameTypeHistoryCount} 条 / ACTIVE {taxDeductionFormDiagnostics.sameTypeActiveCount} 条
-                    </div>
-                    <div className="mt-1 text-xs text-slate-400">
-                      {taxDeductionFormDiagnostics.referenceAmount > 0
-                        ? taxDeductionFormDiagnostics.referenceDelta === 0
-                          ? '当前输入与参考标准一致'
-                          : `当前输入较参考${taxDeductionFormDiagnostics.referenceDelta > 0 ? '高' : '低'} ${formatCurrency(Math.abs(taxDeductionFormDiagnostics.referenceDelta))} / ${formatPercent(taxDeductionFormDiagnostics.referenceDeltaRatio * 100)}`
-                        : '可结合右侧参考模板和历史记录判断当前金额是否合理'}
-                    </div>
-                  </div>
-                </div>
-
-                <div className={`mt-4 rounded-2xl border p-4 ${taxDeductionFormDiagnostics.riskSummary.className}`}>
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <div className="font-semibold text-current">
-                        {taxDeductionFormDiagnostics.riskItems.length ? '保存前联调校验' : '保存口径已对齐'}
-                      </div>
-                      <div className="mt-1 text-sm opacity-90">{taxDeductionFormDiagnostics.riskSummary.hint}</div>
-                    </div>
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionFormDiagnostics.riskSummary.className}`}>
-                      {taxDeductionFormDiagnostics.riskSummary.label}
-                    </span>
-                  </div>
-
-                  {taxDeductionFormDiagnostics.riskItems.length > 0 && (
-                    <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                      {taxDeductionFormDiagnostics.riskItems.map(item => (
-                        <div
-                          key={item.key}
-                          className={`rounded-2xl border px-4 py-3 ${
-                            item.severity === 'danger'
-                              ? 'border-rose-200 bg-white text-rose-700'
-                              : 'border-amber-200 bg-white text-amber-700'
-                          }`}
-                        >
-                          <div className="text-sm font-semibold">{item.title}</div>
-                          <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="mt-6 flex justify-end gap-3">
-                  {editingTaxDeductionId && (
-                    <Button variant="outline" onClick={() => resetTaxDeductionForm(currentEmployeeRecord?.employeeId)}>
-                      取消编辑
-                    </Button>
-                  )}
-                  <Button disabled={actionLoading} onClick={() => void handleSaveTaxDeduction()}>
-                    {editingTaxDeductionId ? '保存修改' : '确认新增'}
-                  </Button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="mb-4 flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-semibold text-slate-900">专项扣除记录</div>
-                    <div className="mt-1 text-sm text-slate-500">全部记录都会展示在这里，命中 {taxReferencePeriod} 的 ACTIVE 记录会参与当前个税测算。</div>
-                  </div>
-                  <div className="text-xs text-slate-400">{employeeTaxDeductionStats.matched} / {employeeTaxDeductionStats.total} 条</div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
-                    <div className="text-xs text-slate-400">全部记录</div>
-                    <div className="mt-2 text-2xl font-semibold text-slate-900">{employeeTaxDeductionStats.total}</div>
-                    <div className="mt-2 text-sm text-slate-500">当前员工历史专项扣除</div>
-                  </div>
-                  <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-4">
-                    <div className="text-xs text-emerald-600">ACTIVE 状态</div>
-                    <div className="mt-2 text-2xl font-semibold text-emerald-700">{employeeTaxDeductionStats.active}</div>
-                    <div className="mt-2 text-sm text-emerald-700">记录状态仍处于生效</div>
-                  </div>
-                  <div className="rounded-2xl border border-sky-200 bg-sky-50/80 px-4 py-4">
-                    <div className="text-xs text-sky-600">命中 {taxReferencePeriod}</div>
-                    <div className="mt-2 text-2xl font-semibold text-sky-700">{employeeTaxDeductionStats.inScope}</div>
-                    <div className="mt-2 text-sm text-sky-700">参与当前个税测算</div>
-                  </div>
-                  <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-4">
-                    <div className="text-xs text-amber-600">当月扣除合计</div>
-                    <div className="mt-2 text-2xl font-semibold text-amber-700">{formatCurrency(employeeTaxDeductionStats.currentAmount)}</div>
-                    <div className="mt-2 text-sm text-amber-700">与右侧测算摘要保持同月</div>
-                  </div>
-                </div>
-
-                <div className={`mt-4 rounded-2xl border p-4 ${taxDeductionRiskSummary.className}`}>
-                  <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                    <div>
-                      <div className="text-sm font-semibold">
-                        {taxDeductionRiskItems.length ? '专项扣除联调风险提示' : '专项扣除口径已对齐'}
-                      </div>
-                      <div className="mt-1 text-sm opacity-90">{taxDeductionRiskSummary.hint}</div>
-                    </div>
-                    <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionRiskSummary.className}`}>
-                      {taxDeductionRiskSummary.label}
-                    </span>
-                  </div>
-
-                  {taxDeductionRiskItems.length > 0 && (
-                    <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                      {taxDeductionRiskItems.map(item => (
-                        <div
-                          key={item.key}
-                          className={`rounded-2xl border bg-white px-4 py-3 ${
-                            item.severity === 'danger'
-                              ? 'border-rose-200 text-rose-800'
-                              : 'border-amber-200 text-amber-800'
-                          }`}
-                        >
-                          <div className="text-sm font-semibold">{item.title}</div>
-                          <div className="mt-1 text-sm opacity-90">{item.detail}</div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {employeeTaxDeductionDiagnostics.referenceEntries.length > 0 && (
-                  <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-                      <div>
-                        <div className="font-semibold text-slate-900">个税参考模板</div>
-                        <div className="mt-1 text-sm text-slate-500">直接对照当前个税配置里的标准值，看当前员工本月是否已经命中专项扣除。</div>
-                      </div>
-                      <div className="text-xs text-slate-400">
-                        参考项 {employeeTaxDeductionDiagnostics.referenceEntries.filter(item => item.referenceAmount > 0).length} 个
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-1 gap-3 xl:grid-cols-2">
-                      {employeeTaxDeductionDiagnostics.referenceEntries.map(item => {
-                        const cardClassName = item.hasDuplicateInScope || item.hasOverlap
-                          ? 'border-rose-200 bg-rose-50'
-                          : item.inScopeCount > 0
-                            ? 'border-emerald-200 bg-emerald-50'
-                            : item.referenceAmount > 0
-                              ? 'border-amber-200 bg-amber-50'
-                              : 'border-slate-200 bg-white';
-                        const textClassName = item.hasDuplicateInScope || item.hasOverlap
-                          ? 'text-rose-700'
-                          : item.inScopeCount > 0
-                            ? 'text-emerald-700'
-                            : item.referenceAmount > 0
-                              ? 'text-amber-700'
-                              : 'text-slate-700';
-
-                        return (
-                          <div key={item.type} className={`rounded-2xl border px-4 py-4 ${cardClassName}`}>
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className={`text-sm font-semibold ${textClassName}`}>{item.label}</div>
-                                <div className="mt-1 text-xs text-slate-500">
-                                  参考值 {item.referenceAmount > 0 ? formatCurrency(item.referenceAmount) : '未配置'}
-                                </div>
-                              </div>
-                              <div className={`text-sm font-semibold ${textClassName}`}>
-                                {item.inScopeCount > 0 ? '已命中' : item.activeCount > 0 ? 'ACTIVE 未命中' : '未命中'}
-                              </div>
-                            </div>
-
-                            <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
-                              <div className="rounded-xl bg-white px-3 py-2">
-                                <div className="text-xs text-slate-400">本月命中</div>
-                                <div className="mt-1 font-semibold text-slate-900">
-                                  {item.inScopeCount ? `${item.inScopeCount} 条 / ${formatCurrency(item.inScopeAmount)}` : '0 条'}
-                                </div>
-                              </div>
-                              <div className="rounded-xl bg-white px-3 py-2">
-                                <div className="text-xs text-slate-400">历史记录</div>
-                                <div className="mt-1 font-semibold text-slate-900">
-                                  {item.totalCount} 条
-                                  {item.activeOutOfScopeCount ? ` / ${item.activeOutOfScopeCount} 条待生效` : ''}
-                                </div>
-                              </div>
-                            </div>
-
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              {item.hasDuplicateInScope && (
-                                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
-                                  本月重复命中
-                                </span>
-                              )}
-                              {item.hasOverlap && (
-                                <span className="inline-flex rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-medium text-rose-700">
-                                  区间重叠
-                                </span>
-                              )}
-                              {item.activeOutOfScopeCount > 0 && (
-                                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-                                  ACTIVE 未命中当前税月
-                                </span>
-                              )}
-                              {item.inScopeCount > 0 && (
-                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-                                  已参与 {taxReferencePeriod} 测算
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="mt-3 flex justify-end gap-2">
-                              {item.latestInScopeRecord ? (
-                                <Button variant="outline" size="sm" onClick={() => openTaxDeductionEditDialog(item.latestInScopeRecord!)}>
-                                  编辑当前命中
-                                </Button>
-                              ) : item.referenceAmount > 0 ? (
-                                <Button variant="outline" size="sm" onClick={() => applyTaxDeductionReferenceTemplate(item.type, item.referenceAmount)}>
-                                  回填到表单
-                                </Button>
-                              ) : item.latestRecord ? (
-                                <Button variant="outline" size="sm" onClick={() => openTaxDeductionEditDialog(item.latestRecord!)}>
-                                  编辑最近记录
-                                </Button>
-                              ) : (
-                                <Button variant="outline" size="sm" disabled>
-                                  暂无操作
-                                </Button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-4 flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 lg:flex-row lg:items-center lg:justify-between">
-                  <div className="grid flex-1 grid-cols-1 gap-3 md:grid-cols-3">
-                    <Select value={taxDeductionTypeFilter} onValueChange={setTaxDeductionTypeFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部扣除项</SelectItem>
-                        {taxDeductionFilterTypeOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={taxDeductionStatusFilter} onValueChange={setTaxDeductionStatusFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-                        {taxDeductionStatusOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-
-                    <Select value={taxDeductionScopeFilter} onValueChange={setTaxDeductionScopeFilter}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={ALL_VALUE}>全部测算范围</SelectItem>
-                        {taxDeductionScopeOptions.map(option => (
-                          <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setTaxDeductionTypeFilter(ALL_VALUE);
-                      setTaxDeductionStatusFilter(ALL_VALUE);
-                      setTaxDeductionScopeFilter(ALL_VALUE);
-                    }}
-                  >
-                    清空筛选
-                  </Button>
-                </div>
-
-                <div className="mt-4 rounded-2xl border border-sky-100 bg-sky-50/80 px-4 py-3 text-sm text-sky-700">
-                  列表保留全部历史记录，同时用 {taxReferencePeriod} 的 active 结果标识“参与测算”，方便直接核对当前个税命中链路。
-                </div>
-
-                <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>扣除项</TableHead>
-                        <TableHead>月金额</TableHead>
-                        <TableHead>生效区间</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead>联调提示</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredEmployeeAllTaxDeductions.map(item => {
-                        const rowIssues = employeeTaxDeductionDiagnostics.rowIssueMap.get(item.id) || [];
-                        const deleteDiagnostics = taxDeductionDeleteDiagnosticsMap.get(item.id);
-                        const referenceAmount = Number(currentTaxConfigReferenceMap.get(item.deductionType) || 0);
-                        const rowClassName = rowIssues.some(issue => issue.severity === 'danger')
-                          ? 'bg-rose-50/40'
-                          : rowIssues.length
-                            ? 'bg-amber-50/40'
-                            : '';
-
-                        return (
-                          <TableRow key={item.id} className={rowClassName}>
-                            <TableCell>
-                              <div className="font-medium text-slate-900">{item.deductionTypeName || deductionTypeLabel(item.deductionType)}</div>
-                              <div className="mt-1 text-xs text-slate-400">{item.remark || '无备注'}</div>
-                            </TableCell>
-                            <TableCell>{formatCurrency(item.amount)}</TableCell>
-                            <TableCell>
-                              <div>{toDateInputValue(item.startDate) || '-'}</div>
-                              <div className="mt-1 text-xs text-slate-400">截止 {toDateInputValue(item.endDate) || '长期有效'}</div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex flex-col gap-2">
-                                <span className={`inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-medium ${taxDeductionStatusClass(item.status)}`}>
-                                  {taxDeductionStatusLabel(item.status)}
-                                </span>
-                                {activeTaxDeductionIds.has(item.id) && (
-                                  <span className="inline-flex w-fit rounded-full border border-sky-100 bg-sky-50 px-2.5 py-1 text-xs font-medium text-sky-700">
-                                    参与{taxReferencePeriod}测算
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="space-y-2">
-                                <div className="flex flex-wrap gap-2">
-                                  {referenceAmount > 0 && (
-                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
-                                      参考值 {formatCurrency(referenceAmount)}
-                                    </span>
-                                  )}
-                                  {!rowIssues.length && !activeTaxDeductionIds.has(item.id) && (
-                                    <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-600">
-                                      记录正常
-                                    </span>
-                                  )}
-                                  {rowIssues.map(issue => (
-                                    <span
-                                      key={issue.key}
-                                      className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                                        issue.severity === 'danger'
-                                          ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                          : 'border-amber-200 bg-amber-50 text-amber-700'
-                                      }`}
-                                    >
-                                      {issue.label}
-                                    </span>
-                                  ))}
-                                </div>
-                                {rowIssues.length > 0 && (
-                                  <div className="space-y-1 text-xs text-slate-500">
-                                    {rowIssues.slice(0, 2).map(issue => (
-                                      <div key={`${issue.key}-detail`}>{issue.detail}</div>
-                                    ))}
-                                  </div>
-                                )}
-                                <div className={`text-xs ${
-                                  deleteDiagnostics?.riskItems.length
-                                    ? deleteDiagnostics.riskSummary.className.includes('rose')
-                                      ? 'text-rose-600'
-                                      : 'text-amber-600'
-                                    : 'text-emerald-600'
-                                }`}>
-                                  {deleteDiagnostics?.riskItems.length
-                                    ? `删除前需确认：${deleteDiagnostics.riskItems[0].title}`
-                                    : '删除口径已对齐，可直接回放删除接口'}
-                                </div>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button variant="outline" className="rounded-xl" onClick={() => openTaxDeductionEditDialog(item)}>
-                                  编辑
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  className="rounded-xl border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
-                                  onClick={() => void handleDeleteTaxDeduction(item)}
-                                >
-                                  删除
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                      {!filteredEmployeeAllTaxDeductions.length && !taxDeductionListLoading && (
-                        <WorkspaceTableStateRow colSpan={6} title="当前筛选条件下没有专项扣除记录。" />
-                      )}
-                      {taxDeductionListLoading && (
-                        <WorkspaceTableStateRow
-                          type="loading"
-                          colSpan={6}
-                          title="正在加载专项扣除记录..."
-                          rowClassName="border-white/60 hover:bg-transparent"
-                          cellClassName="px-4 py-10"
-                        />
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {insuranceDialogOpen && (
-        <WorkspaceDialogShell
-          title="分配社保公积金方案"
-          description="当前页面只支持今天及以前生效，保存后会直接切换到当前生效中的社保方案。"
-          onClose={closeInsuranceDialog}
-          maxWidthClassName="max-w-3xl"
-        >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <Label>员工</Label>
-                <Input value={currentEmployeeRecord ? [currentEmployeeRecord.employeeName, currentEmployeeRecord.employeeNo].filter(Boolean).join(' / ') : ''} disabled />
-              </div>
-              <div>
-                <Label>社保方案</Label>
-                <Select
-                  value={insuranceForm.schemeId ? String(insuranceForm.schemeId) : EMPTY_VALUE}
-                  onValueChange={value => setInsuranceForm(prev => ({ ...prev, schemeId: value === EMPTY_VALUE ? 0 : Number(value) }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="请选择方案" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {enabledInsuranceSchemes.map(item => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {[item.schemeName, item.city].filter(Boolean).join(' / ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>缴纳基数</Label>
-                <Input
-                  type="number"
-                  min={0}
-                  value={insuranceForm.base || ''}
-                  onChange={event => setInsuranceForm(prev => ({ ...prev, base: Number(event.target.value || 0) }))}
-                />
-                <div className="mt-1 text-xs text-slate-400">默认回填当前税前总薪资，可按方案上下限调整。</div>
-              </div>
-              <div>
-                <Label>生效日期</Label>
-                <Input
-                  type="date"
-                  value={insuranceForm.effectiveDate}
-                  max={getTodayValue()}
-                  onChange={event => setInsuranceForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="font-semibold text-slate-900">{selectedInsuranceScheme?.schemeName || '请选择社保方案'}</div>
-              <div className="mt-2 grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-3">
-                <div>
-                  <div className="text-xs text-slate-400">适用城市</div>
-                  <div className="mt-1">{selectedInsuranceScheme?.city || '-'}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">基数范围</div>
-                  <div className="mt-1">
-                    {selectedInsuranceScheme
-                      ? `${formatCurrency(selectedInsuranceScheme.baseMin)} - ${formatCurrency(selectedInsuranceScheme.baseMax)}`
-                      : '-'}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-slate-400">方案生效</div>
-                  <div className="mt-1">{toDateInputValue(selectedInsuranceScheme?.effectiveDate) || '-'}</div>
-                </div>
-              </div>
-              <div className="mt-3 text-xs text-slate-500">{selectedInsuranceScheme?.baseRule || '选择方案后可查看基数规则。'}</div>
-            </div>
-
-            <div className={`mt-4 rounded-2xl border p-4 ${insuranceAssignDiagnostics.riskSummary.className}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="font-semibold text-current">
-                    {selectedInsuranceScheme ? '分配前联调校验' : '等待选择社保方案'}
-                  </div>
-                  <div className="mt-1 text-sm opacity-90">{insuranceAssignDiagnostics.riskSummary.hint}</div>
-                </div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${insuranceAssignDiagnostics.riskSummary.className}`}>
-                  {insuranceAssignDiagnostics.riskSummary.label}
-                </span>
-              </div>
-
-              {insuranceAssignDiagnostics.riskItems.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {insuranceAssignDiagnostics.riskItems.map(item => (
-                    <div
-                      key={item.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        item.severity === 'danger'
-                          ? 'border-rose-200 bg-white text-rose-700'
-                          : 'border-amber-200 bg-white text-amber-700'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold">{item.title}</div>
-                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前 ACTIVE</div>
-                <div className="mt-2 font-semibold text-slate-900">
-                  {insuranceAssignDiagnostics.currentActiveLedger?.schemeName || employeeInsuranceDetail?.schemeName || '暂无当前方案'}
-                </div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {insuranceAssignDiagnostics.currentActiveLedger
-                    ? `${toDateInputValue(insuranceAssignDiagnostics.currentActiveLedger.effectiveDate) || '-'} / ${formatCurrency(insuranceAssignDiagnostics.currentActiveLedger.base)}`
-                    : employeeInsuranceDetail
-                      ? `${toDateInputValue(employeeInsuranceDetail.effectiveDate) || '-'} / ${formatCurrency(employeeInsuranceDetail.base)}`
-                      : '当前员工还没有 ACTIVE 台账'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">本次保存影响</div>
-                <div className="mt-2 font-semibold text-slate-900">{insuranceAssignDiagnostics.modeLabel}</div>
-                <div className="mt-1 text-sm text-slate-500">{insuranceAssignDiagnostics.modeHint}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {insuranceAssignDiagnostics.sameDateRecords.length > 0
-                    ? `目标日期已有 ${insuranceAssignDiagnostics.sameDateRecords.length} 条同日台账`
-                    : '目标日期当前没有同日台账'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">预计缴纳合计</div>
-                <div className="mt-2 font-semibold text-slate-900">
-                  {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.totalAmount) : '-'}
-                </div>
-                <div className="mt-1 text-sm text-slate-500">
-                  个人 {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.personalTotal) : '-'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  公司 {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.companyTotal) : '-'}
-                </div>
-              </div>
-            </div>
-
-            {insuranceAssignPreview && (
-              <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>项目</TableHead>
-                      <TableHead>个人承担</TableHead>
-                      <TableHead>公司承担</TableHead>
-                      <TableHead>合计</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {insuranceAssignPreview.rows.map(row => (
-                      <TableRow key={row.key}>
-                        <TableCell>
-                          <div className="font-medium text-slate-900">{row.label}</div>
-                          <div className="mt-1 text-xs text-slate-400">
-                            个人 {formatPercent(row.personalRate)} / 公司 {formatPercent(row.companyRate)}
-                          </div>
-                        </TableCell>
-                        <TableCell>{formatCurrency(row.personalAmount)}</TableCell>
-                        <TableCell>{formatCurrency(row.companyAmount)}</TableCell>
-                        <TableCell>{formatCurrency(row.totalAmount)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={closeInsuranceDialog}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleAssignInsurance()}>确认分配</Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {assignDialogOpen && (
-        <WorkspaceDialogShell
-          title="分配员工薪资"
-          description="首次分配只支持今天及以前生效，保存后会直接生成当前生效的薪资档案。"
-          onClose={() => setAssignDialogOpen(false)}
-          maxWidthClassName="max-w-5xl"
-        >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <Label>员工</Label>
-                <Select
-                  value={assignForm.employeeId ? String(assignForm.employeeId) : EMPTY_VALUE}
-                  onValueChange={value => setAssignForm(prev => ({ ...prev, employeeId: value === EMPTY_VALUE ? 0 : Number(value) }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="请选择员工" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {assignableEmployees.map(employee => (
-                      <SelectItem key={employee.id} value={String(employee.id)}>
-                        {buildEmployeeLabel(employee)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="mt-1 text-xs text-slate-400">
-                  {assignFormDiagnostics.selectedEmployee
-                    ? `${assignFormDiagnostics.selectedEmployee.deptName || '未分配部门'} / 入职 ${assignFormDiagnostics.hireDate || '-'}`
-                    : '选择员工后显示部门和入职时间'}
-                </div>
-              </div>
-              <div>
-                <Label>薪资结构</Label>
-                <Select
-                  value={assignForm.structureId ? String(assignForm.structureId) : EMPTY_VALUE}
-                  onValueChange={value => setAssignForm(prev => ({ ...prev, structureId: value === EMPTY_VALUE ? 0 : Number(value) }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="请选择结构" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {enabledSalaryStructures.map(item => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {[item.structureName, item.structureCode].filter(Boolean).join(' / ')}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="mt-1 text-xs text-slate-400">
-                  {assignFormDiagnostics.selectedStructureUsage
-                    ? `${assignFormDiagnostics.selectedStructureUsage.employeeIds.size} 名员工 / ${assignFormDiagnostics.selectedStructureUsage.archiveCount} 条档案`
-                    : '当前结构还没有在岗员工样本'}
-                </div>
-              </div>
-              <div>
-                <Label>生效日期</Label>
-                <Input
-                  type="date"
-                  value={assignForm.effectiveDate}
-                  max={getTodayValue()}
-                  onChange={event => setAssignForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
-                />
-                <div className="mt-1 text-xs text-slate-400">
-                  {assignFormDiagnostics.hireDate && assignForm.effectiveDate
-                    ? `当前正在分配 ${assignFormDiagnostics.hireDate === assignForm.effectiveDate ? '入职当天' : assignForm.effectiveDate < assignFormDiagnostics.hireDate ? '入职前' : '入职后'} 的首薪档案`
-                    : '未来生效请走调薪流程，避免当前薪资档案被提前切换。'}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前保存影响</div>
-                <div className="mt-2 font-semibold text-slate-900">{assignFormDiagnostics.modeLabel}</div>
-                <div className="mt-1 text-sm text-slate-500">{assignFormDiagnostics.modeHint}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">结构样本</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{assignFormDiagnostics.benchmarkStats.count}</div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {assignFormDiagnostics.benchmarkStats.count
-                    ? `当前结构样本 ${formatCurrency(assignFormDiagnostics.benchmarkStats.min)} - ${formatCurrency(assignFormDiagnostics.benchmarkStats.max)}`
-                    : '当前还没有可参考的现薪样本'}
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  {assignFormDiagnostics.benchmarkStats.count
-                    ? `中位样本约 ${formatCurrency(assignFormDiagnostics.benchmarkStats.median)}`
-                    : '这次保存后可能成为首个联调样本'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前口径</div>
-                <div className="mt-2 font-semibold text-slate-900">
-                  已录入 {assignFormDiagnostics.filledItemCount} / {assignFormDiagnostics.selectedItemCount} 项
-                </div>
-                <div className="mt-1 text-sm text-slate-500">
-                  固定项 {assignFormDiagnostics.fixedItemCount} 个 / 浮动项 {assignFormDiagnostics.variableItemCount} 个
-                </div>
-                <div className="mt-1 text-xs text-slate-400">
-                  正值 {assignFormDiagnostics.positiveItemCount} 项
-                  {assignFormDiagnostics.positiveVariableItemCount > 0
-                    ? ` / 其中浮动项 ${assignFormDiagnostics.positiveVariableItemCount} 项`
-                    : ' / 当前没有录入正值浮动项'}
-                </div>
-              </div>
-            </div>
-
-            <div className={`mt-4 rounded-2xl border p-4 ${assignFormDiagnostics.riskSummary.className}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="font-semibold text-current">
-                    {assignFormDiagnostics.riskItems.length ? '分配前联调校验' : '分配口径已对齐'}
-                  </div>
-                  <div className="mt-1 text-sm opacity-90">{assignFormDiagnostics.riskSummary.hint}</div>
-                </div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${assignFormDiagnostics.riskSummary.className}`}>
-                  {assignFormDiagnostics.riskSummary.label}
-                </span>
-              </div>
-
-              {assignFormDiagnostics.riskItems.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {assignFormDiagnostics.riskItems.map(item => (
-                    <div
-                      key={item.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        item.severity === 'danger'
-                          ? 'border-rose-200 bg-white text-rose-700'
-                          : 'border-amber-200 bg-white text-amber-700'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold">{item.title}</div>
-                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900">薪资明细</h3>
-                  <p className="text-sm text-slate-500">金额总计会随输入实时变化。</p>
-                </div>
-                <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">
-                  合计 {formatCurrency(assignTotal)}
-                </div>
-              </div>
-
-              <SalaryAmountEditor
-                fields={structurePreviewFields}
-                valueMap={assignForm.salaryData}
-                onValueChange={(fieldKey, value) => setAssignForm(prev => ({
-                  ...prev,
-                  salaryData: {
-                    ...prev.salaryData,
-                    [fieldKey]: value,
-                  },
-                }))}
-                emptyText="先选择薪资结构，结构中的项目会自动展开到这里。"
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleAssignSalary()}>确认分配</Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {adjustDialogOpen && (
-        <WorkspaceDialogShell
-          title="发起调薪"
-          description="先读取员工现薪，再按项目修改调薪后金额。"
-          onClose={() => setAdjustDialogOpen(false)}
-          maxWidthClassName="max-w-5xl"
-        >
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div className="xl:col-span-2">
-                <Label>员工</Label>
-                <Select
-                  value={adjustForm.employeeId ? String(adjustForm.employeeId) : EMPTY_VALUE}
-                  onValueChange={value => setAdjustForm(prev => ({ ...prev, employeeId: value === EMPTY_VALUE ? 0 : Number(value) }))}
-                >
-                  <SelectTrigger><SelectValue placeholder="请选择员工" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {employeesWithSalary.map(employee => (
-                      <SelectItem key={employee.id} value={String(employee.id)}>
-                        {buildEmployeeLabel(employee)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>调薪类型</Label>
-                <Select value={adjustForm.adjustmentType} onValueChange={value => setAdjustForm(prev => ({ ...prev, adjustmentType: value }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {adjustmentTypeOptions.map(option => (
-                      <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>生效日期</Label>
-                <Input
-                  type="date"
-                  value={adjustForm.effectiveDate}
-                  onChange={event => setAdjustForm(prev => ({ ...prev, effectiveDate: event.target.value }))}
-                />
-              </div>
-              <div className="md:col-span-2 xl:col-span-4">
-                <Label>调薪原因</Label>
-                <Textarea
-                  rows={4}
-                  value={adjustForm.adjustmentReason}
-                  onChange={event => setAdjustForm(prev => ({ ...prev, adjustmentReason: event.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
-                <div className="text-xs text-slate-400">调薪前总额</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{formatCurrency(adjustmentBaseline?.totalSalary)}</div>
-              </div>
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3">
-                <div className="text-xs text-emerald-600">调薪后总额</div>
-                <div className="mt-2 text-xl font-semibold text-emerald-700">{formatCurrency(adjustmentAfterTotal)}</div>
-              </div>
-              <div className={`rounded-2xl border px-4 py-3 ${adjustmentAfterTotal >= Number(adjustmentBaseline?.totalSalary || 0) ? 'border-emerald-100 bg-emerald-50' : 'border-rose-100 bg-rose-50'}`}>
-                <div className={`text-xs ${adjustmentAfterTotal >= Number(adjustmentBaseline?.totalSalary || 0) ? 'text-emerald-600' : 'text-rose-600'}`}>调薪差额</div>
-                <div className={`mt-2 text-xl font-semibold ${adjustmentAfterTotal >= Number(adjustmentBaseline?.totalSalary || 0) ? 'text-emerald-700' : 'text-rose-700'}`}>
-                  {formatCurrency(adjustmentAfterTotal - Number(adjustmentBaseline?.totalSalary || 0))}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">当前现薪</div>
-                <div className="mt-2 font-semibold text-slate-900">
-                  {adjustmentFormEmployee ? buildEmployeeLabel(adjustmentFormEmployee) : '请选择员工'}
-                </div>
-                <div className="mt-1 text-sm text-slate-500">
-                  {adjustmentBaseline
-                    ? `${toDateInputValue(adjustmentBaseline.effectiveDate) || '-'} / ${formatCurrency(adjustmentBaseline.totalSalary)}`
-                    : '读取员工现薪后显示'}
-                </div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">本次创建影响</div>
-                <div className="mt-2 font-semibold text-slate-900">{adjustmentFormDiagnostics.modeLabel}</div>
-                <div className="mt-1 text-sm text-slate-500">{adjustmentFormDiagnostics.modeHint}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <div className="text-xs text-slate-400">变更规模</div>
-                <div className="mt-2 text-xl font-semibold text-slate-900">{adjustmentFormDiagnostics.changedItemCount}</div>
-                <div className="mt-1 text-sm text-slate-500">变动薪资项目数</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  同日已有 {adjustmentFormDiagnostics.sameDateAdjustments.length} 张，未来链路 {adjustmentFormDiagnostics.futureAdjustments.length} 条
-                </div>
-              </div>
-            </div>
-
-            <div className={`mt-4 rounded-2xl border p-4 ${adjustmentFormDiagnostics.riskSummary.className}`}>
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="font-semibold text-current">
-                    {adjustmentFormDiagnostics.riskItems.length ? '创建前联调校验' : '创建口径已对齐'}
-                  </div>
-                  <div className="mt-1 text-sm opacity-90">{adjustmentFormDiagnostics.riskSummary.hint}</div>
-                </div>
-                <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${adjustmentFormDiagnostics.riskSummary.className}`}>
-                  {adjustmentFormDiagnostics.riskSummary.label}
-                </span>
-              </div>
-
-              {adjustmentFormDiagnostics.riskItems.length > 0 && (
-                <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-                  {adjustmentFormDiagnostics.riskItems.map(item => (
-                    <div
-                      key={item.key}
-                      className={`rounded-2xl border px-4 py-3 ${
-                        item.severity === 'danger'
-                          ? 'border-rose-200 bg-white text-rose-700'
-                          : 'border-amber-200 bg-white text-amber-700'
-                      }`}
-                    >
-                      <div className="text-sm font-semibold">{item.title}</div>
-                      <div className="mt-1 text-xs leading-5 opacity-90">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6">
-              <div className="mb-3">
-                <h3 className="text-base font-semibold text-slate-900">调薪后明细</h3>
-                <p className="text-sm text-slate-500">默认回填现薪金额，直接改成目标金额即可。</p>
-              </div>
-
-              <SalaryAmountEditor
-                fields={adjustmentEditorFields}
-                valueMap={adjustForm.afterSalaryData}
-                onValueChange={(fieldKey, value) => setAdjustForm(prev => ({
-                  ...prev,
-                  afterSalaryData: {
-                    ...prev.afterSalaryData,
-                    [fieldKey]: value,
-                  },
-                }))}
-                emptyText="先选择一名已有现薪的员工，页面会自动带出当前薪资明细。"
-              />
-            </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setAdjustDialogOpen(false)}>取消</Button>
-              <Button disabled={actionLoading} onClick={() => void handleCreateAdjustment()}>创建调薪申请</Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
+      <ConfirmDialog
+        open={confirmDialogState.open}
+        title={confirmDialogState.title}
+        message={confirmDialogState.message}
+        confirmText={confirmDialogState.confirmText}
+        cancelText={confirmDialogState.cancelText}
+        danger={confirmDialogState.danger}
+        onConfirm={() => void handleConfirmDialogConfirm()}
+        onCancel={closeConfirmDialog}
+      />
+
+      <SalaryItemDialog
+        components={foundationDialogComponents}
+        viewModel={itemDialogViewModel}
+      />
+
+      <SalaryStructureDialog
+        components={foundationDialogComponents}
+        viewModel={structureDialogViewModel}
+      />
+
+      <SalaryGradeDialog
+        components={foundationDialogComponents}
+        viewModel={gradeDialogViewModel}
+      />
+
+      <InsuranceSchemeDialog
+        components={foundationDialogComponents}
+        viewModel={insuranceSchemeDialogViewModel}
+      />
+
+      <TaxConfigDialog
+        components={taxDialogComponents}
+        viewModel={taxConfigDialogViewModel}
+      />
+
+      <TaxDeductionDialog
+        components={taxDialogComponents}
+        viewModel={taxDeductionDialogViewModel}
+      />
+
+      <InsuranceAssignDialog
+        components={dialogSectionComponents}
+        viewModel={insuranceAssignDialogViewModel}
+      />
+
+      <AssignSalaryDialog
+        components={dialogSectionComponents}
+        viewModel={assignDialogViewModel}
+      />
+
+      <CreateAdjustmentDialog
+        components={dialogSectionComponents}
+        viewModel={adjustDialogViewModel}
+      />
     </>
   );
 };

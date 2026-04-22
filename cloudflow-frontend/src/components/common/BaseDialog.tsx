@@ -2,6 +2,9 @@ import React, { useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { lockBodyScroll } from '@/utils/bodyScrollLock';
+
+export type BaseDialogWidth = 'narrow' | 'normal' | 'wide' | 'extra-wide' | 'full';
 
 interface BaseDialogProps {
   open: boolean;
@@ -10,6 +13,7 @@ interface BaseDialogProps {
   onClose: () => void;
   children: React.ReactNode;
   footer?: React.ReactNode;
+  width?: BaseDialogWidth;
   maxWidthClassName?: string;
   headerAside?: React.ReactNode;
   bodyClassName?: string;
@@ -25,13 +29,25 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   onClose,
   children,
   footer,
-  maxWidthClassName = 'max-w-lg',
+  width = 'normal',
+  maxWidthClassName,
   headerAside,
   bodyClassName,
   footerClassName,
   panelClassName,
   closeOnClickOutside = true,
 }) => {
+  const widthClassMap: Record<BaseDialogWidth, string> = {
+    narrow: 'max-w-md',
+    normal: 'max-w-lg',
+    wide: 'w-full sm:max-w-2xl md:max-w-3xl lg:max-w-4xl',
+    'extra-wide': 'w-full sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl',
+    full: 'w-full sm:max-w-4xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl',
+  };
+  const resolvedMaxWidthClassName = maxWidthClassName || widthClassMap[width];
+  const hasCustomPanelMaxHeight = Boolean(panelClassName && /(^|\s)!?max-h-/.test(panelClassName));
+  const hasCustomBodyOverflow = Boolean(bodyClassName && /(^|\s)!?overflow(?:-[xy])?-/.test(bodyClassName));
+
   useEffect(() => {
     if (!open) {
       return;
@@ -43,12 +59,11 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       }
     };
 
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlockBodyScroll = lockBodyScroll();
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.body.style.overflow = originalOverflow;
+      unlockBodyScroll();
       window.removeEventListener('keydown', handleEscape);
     };
   }, [onClose, open]);
@@ -59,7 +74,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/48 p-4 backdrop-blur-[3px]"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/48 p-2 backdrop-blur-sm sm:p-4"
       onClick={() => {
         if (closeOnClickOutside) {
           onClose();
@@ -72,12 +87,14 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       <div
         className={cn(
           'w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]',
-          maxWidthClassName,
+          'flex flex-col',
+          !hasCustomPanelMaxHeight && 'max-h-[95vh] sm:max-h-[90vh]',
+          resolvedMaxWidthClassName,
           panelClassName,
         )}
         onClick={(event) => event.stopPropagation()}
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 dark:border-slate-800">
+        <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <div className="min-w-0">
             <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
             {description ? (
@@ -98,11 +115,19 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
             </button>
           </div>
         </div>
-        <div className={cn('px-5 py-5', bodyClassName)}>{children}</div>
+        <div
+          className={cn(
+            'min-h-0 flex-1 px-4 py-3 sm:px-6 sm:py-4',
+            !hasCustomBodyOverflow && 'overflow-y-auto',
+            bodyClassName,
+          )}
+        >
+          {children}
+        </div>
         {footer ? (
           <div
             className={cn(
-              'border-t border-slate-100 bg-slate-50/70 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70',
+              'flex flex-shrink-0 items-center justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800 dark:bg-slate-900/70',
               footerClassName,
             )}
           >

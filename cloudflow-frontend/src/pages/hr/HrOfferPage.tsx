@@ -1,6 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BriefcaseBusiness, FilePlus2, Search, Send, ShieldCheck, UserRoundPlus } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  FilePlus2,
+  RefreshCcw,
+  Search,
+  Send,
+  ShieldCheck,
+  UserRoundPlus,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { BaseDialog } from '@/components/common/BaseDialog';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -12,13 +22,11 @@ import {
   SelectValue,
   Textarea,
 } from '@/components/ui';
-import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import {
   Candidate,
   Offer,
-  OnboardingApplication,
   OfferPayload,
+  OnboardingApplication,
   PositionOption,
   acceptOffer,
   approveOffer,
@@ -28,14 +36,19 @@ import {
   getDeptTreeOptions,
   getOffer,
   getPositionOptions,
-  listOnboardingApplications,
   listCandidates,
   listOffers,
+  listOnboardingApplications,
   rejectOffer,
   sendOffer,
   submitOffer,
 } from '@/services/api/hr';
-import { flattenDeptTree, hasWorkflowStatus, normalizeRows, toDateInputValue } from './hrShared';
+import {
+  flattenDeptTree,
+  hasWorkflowStatus,
+  normalizeRows,
+  toDateInputValue,
+} from './hrShared';
 
 const EMPTY_VALUE = '__empty__';
 const ALL_STATUS_VALUE = '__all__';
@@ -77,12 +90,29 @@ const salaryFormatter = new Intl.NumberFormat('zh-CN', {
 const formatSalary = (value?: number | null) =>
   typeof value === 'number' && !Number.isNaN(value) ? `¥${salaryFormatter.format(value)}` : '-';
 
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString('zh-CN');
+};
+
 const offerStatusClass = (status?: string) => {
-  if (!status) return 'bg-slate-100 text-slate-700';
-  if (/(APPROVED|ACCEPTED)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
-  if (/(APPROVING|SENT)/i.test(status)) return 'bg-amber-50 text-amber-700';
-  if (/(REJECT|EXPIRE)/i.test(status)) return 'bg-rose-50 text-rose-700';
-  return 'bg-slate-100 text-slate-700';
+  if (!status) {
+    return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  }
+  if (/(APPROVED|ACCEPTED)/i.test(status)) {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
+  }
+  if (/(APPROVING|SENT)/i.test(status)) {
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
+  }
+  if (/(REJECT|EXPIRE)/i.test(status)) {
+    return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
+  }
+  return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
 };
 
 const onboardingStatusPriority = (status?: string | null) => {
@@ -96,7 +126,7 @@ const onboardingStatusPriority = (status?: string | null) => {
 const buildOnboardingMap = (applications: OnboardingApplication[]) => {
   const result = new Map<number, OnboardingApplication>();
 
-  applications.forEach(application => {
+  applications.forEach((application) => {
     if (!application.candidateId || hasWorkflowStatus(application.status, 'REJECTED')) return;
 
     const current = result.get(application.candidateId);
@@ -107,7 +137,10 @@ const buildOnboardingMap = (applications: OnboardingApplication[]) => {
 
     const nextPriority = onboardingStatusPriority(application.status);
     const currentPriority = onboardingStatusPriority(current.status);
-    if (nextPriority > currentPriority || (nextPriority === currentPriority && application.id > current.id)) {
+    if (
+      nextPriority > currentPriority
+      || (nextPriority === currentPriority && application.id > current.id)
+    ) {
       result.set(application.candidateId, application);
     }
   });
@@ -122,7 +155,8 @@ const getOfferStatusMeta = (offer?: Offer | null, onboarding?: OnboardingApplica
   if (isOfferConverted(offer, onboarding)) {
     return {
       label: '已转入职',
-      className: 'bg-sky-50 text-sky-700',
+      className:
+        'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
     };
   }
 
@@ -148,16 +182,72 @@ const buildOfferContent = (
   salary: number,
   expectedDate: string,
   expiryDate: string,
-) => [
-  `候选人：${candidate.name}`,
-  `拟录用部门：${deptLabel || candidate.deptName || '待确认'}`,
-  `拟录用岗位：${positionName || candidate.positionName || '待确认'}`,
-  `建议薪资：${formatSalary(salary)}`,
-  `预计入职日期：${expectedDate || '待确认'}`,
-  `Offer 有效期至：${expiryDate || '待确认'}`,
-  '',
-  '请在审批通过后发送正式录用通知，并同步入职准备事项。',
-].join('\n');
+) =>
+  [
+    `候选人：${candidate.name}`,
+    `拟录用部门：${deptLabel || candidate.deptName || '待确认'}`,
+    `拟录用岗位：${positionName || candidate.positionName || '待确认'}`,
+    `建议薪资：${formatSalary(salary)}`,
+    `预计入职日期：${expectedDate || '待确认'}`,
+    `Offer 有效期至：${expiryDate || '待确认'}`,
+    '',
+    '请在审批通过后发送正式录用通知，并同步入职准备事项。',
+  ].join('\n');
+
+const InlineState = ({
+  title,
+  description,
+  className,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+}) => (
+  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      <ShieldCheck className="h-4 w-4" />
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const DetailRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+      {label}
+    </div>
+    <div className="text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  </div>
+);
+
+const DialogSection = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+      {description ? (
+        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      ) : null}
+    </div>
+    <div className="p-4">{children}</div>
+  </section>
+);
 
 export const HrOfferPage: React.FC = () => {
   const [offers, setOffers] = useState<Offer[]>([]);
@@ -168,7 +258,7 @@ export const HrOfferPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
-  const [actionLoading, setActionLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [statusFilter, setStatusFilter] = useState(ALL_STATUS_VALUE);
@@ -177,12 +267,12 @@ export const HrOfferPage: React.FC = () => {
   const [createForm, setCreateForm] = useState<OfferPayload>(createDefaultForm);
 
   const candidateMap = useMemo(
-    () => new Map(candidates.map(candidate => [candidate.id, candidate])),
+    () => new Map(candidates.map((candidate) => [candidate.id, candidate])),
     [candidates],
   );
 
   const positionMap = useMemo(
-    () => new Map(positionOptions.map(position => [position.id, position])),
+    () => new Map(positionOptions.map((position) => [position.id, position])),
     [positionOptions],
   );
 
@@ -192,51 +282,34 @@ export const HrOfferPage: React.FC = () => {
   );
 
   const activeOfferCandidateIds = useMemo(
-    () => new Set(
-      offers
-        .filter(offer => hasWorkflowStatus(offer.status, 'DRAFT', 'APPROVING', 'APPROVED', 'SENT', 'ACCEPTED'))
-        .map(offer => offer.candidateId),
-    ),
+    () =>
+      new Set(
+        offers
+          .filter((offer) =>
+            hasWorkflowStatus(
+              offer.status,
+              'DRAFT',
+              'APPROVING',
+              'APPROVED',
+              'SENT',
+              'ACCEPTED',
+            ),
+          )
+          .map((offer) => offer.candidateId),
+      ),
     [offers],
   );
 
   const availableCandidates = useMemo(
-    () => candidates.filter(candidate =>
-      hasWorkflowStatus(candidate.status, 'INTERVIEW')
-      && !onboardingMap.has(candidate.id)
-      && !activeOfferCandidateIds.has(candidate.id),
-    ),
+    () =>
+      candidates.filter(
+        (candidate) =>
+          hasWorkflowStatus(candidate.status, 'INTERVIEW')
+          && !onboardingMap.has(candidate.id)
+          && !activeOfferCandidateIds.has(candidate.id),
+      ),
     [activeOfferCandidateIds, candidates, onboardingMap],
   );
-
-  const loadOfferWorkspace = async (preservedId?: number) => {
-    setListLoading(true);
-    try {
-      const [offerRes, candidateRes, onboardingRes] = await Promise.all([
-        listOffers(),
-        listCandidates({ pageNum: 1, pageSize: 200 }),
-        listOnboardingApplications(),
-      ]);
-      const offerList = normalizeRows<Offer>(offerRes);
-      setOffers(offerList);
-      setCandidates(normalizeRows<Candidate>(candidateRes));
-      setOnboardingApplications(normalizeRows<OnboardingApplication>(onboardingRes));
-
-      const nextId = preservedId && offerList.some(item => item.id === preservedId)
-        ? preservedId
-        : offerList[0]?.id;
-
-      setSelectedOfferId(nextId ? String(nextId) : '');
-      if (!nextId) {
-        setCurrentOffer(null);
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('Offer 列表加载失败');
-    } finally {
-      setListLoading(false);
-    }
-  };
 
   const loadBootstrapData = async () => {
     setLoading(true);
@@ -253,12 +326,44 @@ export const HrOfferPage: React.FC = () => {
       setCandidates(normalizeRows<Candidate>(candidateRes));
       setOnboardingApplications(normalizeRows<OnboardingApplication>(onboardingRes));
       setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
-      setPositionOptions(Array.isArray(positionRes) ? positionRes : normalizeRows<PositionOption>(positionRes));
+      setPositionOptions(
+        Array.isArray(positionRes) ? positionRes : normalizeRows<PositionOption>(positionRes),
+      );
     } catch (error) {
       console.error(error);
       toast.error('Offer 页面基础数据加载失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadOfferWorkspace = async (preservedId?: number) => {
+    setListLoading(true);
+    try {
+      const [offerRes, candidateRes, onboardingRes] = await Promise.all([
+        listOffers(),
+        listCandidates({ pageNum: 1, pageSize: 200 }),
+        listOnboardingApplications(),
+      ]);
+      const offerList = normalizeRows<Offer>(offerRes);
+      setOffers(offerList);
+      setCandidates(normalizeRows<Candidate>(candidateRes));
+      setOnboardingApplications(normalizeRows<OnboardingApplication>(onboardingRes));
+
+      const nextId =
+        preservedId && offerList.some((item) => item.id === preservedId)
+          ? preservedId
+          : offerList[0]?.id;
+
+      setSelectedOfferId(nextId ? String(nextId) : '');
+      if (!nextId) {
+        setCurrentOffer(null);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('Offer 列表加载失败');
+    } finally {
+      setListLoading(false);
     }
   };
 
@@ -285,7 +390,7 @@ export const HrOfferPage: React.FC = () => {
     const expectedDate = addDaysToDateValue(todayValue(), 7);
     const expiryDate = addDaysToDateValue(expectedDate, 7);
 
-    setCreateForm(prev => ({
+    setCreateForm((prev) => ({
       ...prev,
       deptId: prev.deptId || deptOptions[0]?.value || 0,
       positionId: prev.positionId || positionOptions[0]?.id || 0,
@@ -310,7 +415,7 @@ export const HrOfferPage: React.FC = () => {
       return;
     }
 
-    if (!selectedOfferId || !offers.some(item => String(item.id) === selectedOfferId)) {
+    if (!selectedOfferId || !offers.some((item) => String(item.id) === selectedOfferId)) {
       setSelectedOfferId(String(offers[0].id));
     }
   }, [offers, selectedOfferId]);
@@ -327,14 +432,18 @@ export const HrOfferPage: React.FC = () => {
 
         const deptId = candidate.deptId || deptOptions[0]?.value || 0;
         const positionId = candidate.positionId || positionOptions[0]?.id || 0;
-        const expectedDate = toDateInputValue(candidate.expectedDate) || addDaysToDateValue(todayValue(), 7);
-        const expiryDate = addDaysToDateValue(expectedDate, 7) || addDaysToDateValue(todayValue(), 14);
+        const expectedDate =
+          toDateInputValue(candidate.expectedDate) || addDaysToDateValue(todayValue(), 7);
+        const expiryDate =
+          addDaysToDateValue(expectedDate, 7) || addDaysToDateValue(todayValue(), 14);
         const salary = calcSuggestedSalary(candidate);
-        const deptLabel = deptOptions.find(item => item.value === deptId)?.label || candidate.deptName || '';
-        const positionName = positionMap.get(positionId)?.positionName || candidate.positionName || '';
+        const deptLabel =
+          deptOptions.find((item) => item.value === deptId)?.label || candidate.deptName || '';
+        const positionName =
+          positionMap.get(positionId)?.positionName || candidate.positionName || '';
 
         // 从候选人切入创建 Offer 时，优先回填可直接联调的真实业务字段。
-        setCreateForm(prev => ({
+        setCreateForm((prev) => ({
           ...prev,
           candidateId: candidate.id,
           deptId,
@@ -342,7 +451,14 @@ export const HrOfferPage: React.FC = () => {
           salary,
           expectedDate,
           expiryDate,
-          offerContent: buildOfferContent(candidate, deptLabel, positionName, salary, expectedDate, expiryDate),
+          offerContent: buildOfferContent(
+            candidate,
+            deptLabel,
+            positionName,
+            salary,
+            expectedDate,
+            expiryDate,
+          ),
         }));
       } catch (error) {
         console.error(error);
@@ -359,7 +475,7 @@ export const HrOfferPage: React.FC = () => {
   const filteredOffers = useMemo(() => {
     const normalizedKeyword = keyword.trim().toLowerCase();
 
-    return offers.filter(offer => {
+    return offers.filter((offer) => {
       if (statusFilter !== ALL_STATUS_VALUE && offer.status !== statusFilter) return false;
       if (!normalizedKeyword) return true;
 
@@ -374,39 +490,52 @@ export const HrOfferPage: React.FC = () => {
         offer.status,
       ]
         .filter(Boolean)
-        .some(value => String(value).toLowerCase().includes(normalizedKeyword));
+        .some((value) => String(value).toLowerCase().includes(normalizedKeyword));
     });
   }, [candidateMap, keyword, offers, statusFilter]);
 
   useEffect(() => {
     if (!filteredOffers.length) {
+      setSelectedOfferId('');
       setCurrentOffer(null);
       return;
     }
 
-    if (!selectedOfferId || !filteredOffers.some(item => String(item.id) === selectedOfferId)) {
+    if (
+      !selectedOfferId
+      || !filteredOffers.some((item) => String(item.id) === selectedOfferId)
+    ) {
       setSelectedOfferId(String(filteredOffers[0].id));
     }
   }, [filteredOffers, selectedOfferId]);
 
-  const offerMetrics = useMemo(() => {
-    const approvingCount = offers.filter(item => hasWorkflowStatus(item.status, 'APPROVING', 'APPROVED')).length;
-    const sentCount = offers.filter(item => hasWorkflowStatus(item.status, 'SENT')).length;
-    const convertedCount = offers.filter(item => isOfferConverted(item, onboardingMap.get(item.candidateId))).length;
-    const acceptedCount = offers.filter(item =>
-      hasWorkflowStatus(item.status, 'ACCEPTED') && !isOfferConverted(item, onboardingMap.get(item.candidateId)),
+  const summary = useMemo(() => {
+    const approvingCount = offers.filter((item) =>
+      hasWorkflowStatus(item.status, 'APPROVING', 'APPROVED'),
+    ).length;
+    const sentCount = offers.filter((item) => hasWorkflowStatus(item.status, 'SENT')).length;
+    const convertedCount = offers.filter((item) =>
+      isOfferConverted(item, onboardingMap.get(item.candidateId)),
+    ).length;
+    const acceptedCount = offers.filter(
+      (item) =>
+        hasWorkflowStatus(item.status, 'ACCEPTED')
+        && !isOfferConverted(item, onboardingMap.get(item.candidateId)),
     ).length;
 
-    return [
-      { label: 'Offer 总量', value: offers.length, hint: '当前已创建的录用通知', tone: 'pink' as const, icon: <BriefcaseBusiness size={18} /> },
-      { label: '待推进审批', value: approvingCount, hint: '审批中与待发送的 Offer', tone: 'amber' as const, icon: <ShieldCheck size={18} /> },
-      { label: '已发送', value: sentCount, hint: '候选人可确认的 Offer', tone: 'sky' as const, icon: <Send size={18} /> },
-      { label: '待转入职', value: acceptedCount, hint: `已转入职 ${convertedCount} 条`, tone: 'emerald' as const, icon: <UserRoundPlus size={18} /> },
-    ];
+    return {
+      total: offers.length,
+      approvingCount,
+      sentCount,
+      acceptedCount,
+      convertedCount,
+    };
   }, [offers, onboardingMap]);
 
   const selectedCandidate = currentOffer ? candidateMap.get(currentOffer.candidateId) : null;
-  const selectedOnboarding = currentOffer ? onboardingMap.get(currentOffer.candidateId) || null : null;
+  const selectedOnboarding = currentOffer
+    ? onboardingMap.get(currentOffer.candidateId) || null
+    : null;
   const offerAlreadyConverted = isOfferConverted(currentOffer, selectedOnboarding);
   const currentOfferStatusMeta = getOfferStatusMeta(currentOffer, selectedOnboarding);
   const canSubmit = hasWorkflowStatus(currentOffer?.status, 'DRAFT');
@@ -414,7 +543,8 @@ export const HrOfferPage: React.FC = () => {
   const canSend = hasWorkflowStatus(currentOffer?.status, 'APPROVED');
   const canAccept = hasWorkflowStatus(currentOffer?.status, 'SENT');
   const canReject = hasWorkflowStatus(currentOffer?.status, 'APPROVING', 'SENT');
-  const canConvert = hasWorkflowStatus(currentOffer?.status, 'ACCEPTED') && !offerAlreadyConverted;
+  const canConvert =
+    hasWorkflowStatus(currentOffer?.status, 'ACCEPTED') && !offerAlreadyConverted;
 
   const resetCreateDialog = () => {
     const expectedDate = addDaysToDateValue(todayValue(), 7);
@@ -451,6 +581,7 @@ export const HrOfferPage: React.FC = () => {
       return;
     }
 
+    setPendingAction('create');
     try {
       const id = await createOffer({
         ...createForm,
@@ -463,17 +594,20 @@ export const HrOfferPage: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '创建 Offer 失败');
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const runOfferAction = async (
+    actionKey: string,
     action: () => Promise<number | void>,
     successMessage: string,
     afterAction?: (result: number | void) => void,
   ) => {
     if (!currentOffer) return;
 
-    setActionLoading(true);
+    setPendingAction(actionKey);
     try {
       const result = await action();
       afterAction?.(result);
@@ -483,339 +617,472 @@ export const HrOfferPage: React.FC = () => {
       console.error(error);
       toast.error(error?.message || 'Offer 操作失败');
     } finally {
-      setActionLoading(false);
+      setPendingAction(null);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <WorkspaceHeroCard
-        badge={(
-          <div className="inline-flex items-center gap-2 rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-            <ShieldCheck size={14} />
-            Offer Flow
-          </div>
-        )}
-        title="Offer 管理中心"
-        description="直接按真实后端状态机推进 Offer 的创建、审批、发送、接受和转入职，不绕工作流回调壳子。"
-        actions={(
-          <>
-            <Button className="rounded-lg" onClick={() => setCreateDialogOpen(true)}>
-              <FilePlus2 size={16} className="mr-2" />
-              新建 Offer
-            </Button>
-            <Button
-              variant="outline"
-              className="rounded-lg"
-              onClick={() => {
-                if (currentOffer) {
-                  void loadOfferWorkspace(currentOffer.id);
-                  return;
-                }
-
-                void loadBootstrapData();
-              }}
-            >
-              刷新列表
-            </Button>
-          </>
-        )}
-      />
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {offerMetrics.map(metric => (
-          <WorkspaceMetricCard
-            key={metric.label}
-            label={metric.label}
-            value={loading ? '--' : metric.value}
-            hint={metric.hint}
-            aside={(
-              <div className={`rounded-xl p-3 ${
-                metric.tone === 'pink'
-                  ? 'bg-cyan-50 text-cyan-600'
-                  : metric.tone === 'amber'
-                    ? 'bg-amber-50 text-amber-500'
-                    : metric.tone === 'emerald'
-                      ? 'bg-emerald-50 text-emerald-500'
-                      : 'bg-sky-50 text-sky-500'
-              }`}>
-                {metric.icon}
-              </div>
-            )}
-          />
-        ))}
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <ShieldCheck className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Offer Flow
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          Offer 管理
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          直接按真实后端状态机推进 Offer 的创建、审批、发送、接受和转入职，页面结构收敛到参考后台列表页语法。
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[360px_minmax(0,1fr)]">
-        <WorkspaceSectionCard
-          title="Offer 列表"
-          description="按候选人、状态和关键词筛选后，直接点选进入详情联调。"
-          bodyClassName="mt-0"
-        >
-          <div className="space-y-4">
-            <div className="relative">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="pl-10"
-                placeholder="搜索 Offer 编号、候选人、手机号、岗位"
-                value={keyword}
-                onChange={event => setKeyword(event.target.value)}
-              />
-            </div>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          Offer 总量 {loading ? '--' : summary.total}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          待推进审批 {loading ? '--' : summary.approvingCount}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          已发送 {loading ? '--' : summary.sentCount}
+        </span>
+        <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+          待转入职 {loading ? '--' : summary.acceptedCount}
+        </span>
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          已转入职 {loading ? '--' : summary.convertedCount}
+        </span>
 
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_STATUS_VALUE}>全部状态</SelectItem>
-                <SelectItem value="DRAFT">草稿</SelectItem>
-                <SelectItem value="APPROVING">审批中</SelectItem>
-                <SelectItem value="APPROVED">已通过</SelectItem>
-                <SelectItem value="SENT">已发送</SelectItem>
-                <SelectItem value="ACCEPTED">已接受</SelectItem>
-                <SelectItem value="REJECTED">已拒绝</SelectItem>
-                <SelectItem value="EXPIRED">已过期</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700">
-              当前可直接创建 Offer 的候选人 {availableCandidates.length} 名，仅展示面试中且尚未生成 Offer / 入职申请的候选人。
-            </div>
-
-            <div className="space-y-3">
-              {filteredOffers.map(item => {
-                const isActive = String(item.id) === selectedOfferId;
-                const candidate = candidateMap.get(item.candidateId);
-                const onboarding = onboardingMap.get(item.candidateId);
-                const statusMeta = getOfferStatusMeta(item, onboarding);
-
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                      isActive
-                        ? 'border-emerald-200 bg-emerald-50 shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                    onClick={() => setSelectedOfferId(String(item.id))}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-semibold text-slate-900">{item.offerNo}</div>
-                        <div className="mt-1 text-sm text-slate-600">{item.candidateName || `候选人 #${item.candidateId}`}</div>
-                        <div className="mt-1 text-xs text-slate-400">
-                          {(candidate?.phone || '-') + ' / ' + (item.positionName || '-')}
-                        </div>
-                      </div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusMeta.className}`}>
-                        {statusMeta.label}
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
-                      <span>{formatSalary(item.salary)}</span>
-                      <span>预计入职 {toDateInputValue(item.expectedDate) || '-'}</span>
-                    </div>
-                  </button>
-                );
-              })}
-
-              {!filteredOffers.length && !listLoading && (
-                <WorkspaceInlineState
-                  title="当前筛选条件下没有 Offer 记录。"
-                  className="py-12"
-                />
-              )}
-
-              {(loading || listLoading) && (
-                <WorkspaceInlineState
-                  type="loading"
-                  title="正在加载 Offer 列表..."
-                  className="py-12"
-                />
-              )}
-            </div>
-          </div>
-        </WorkspaceSectionCard>
-
-        <div className="space-y-6">
-          <WorkspaceSectionCard
-            title="Offer 详情"
-            description="详情与动作都走真实接口，适合直接验证状态流转和入职衔接。"
-            headerAside={currentOffer ? (
-              <div className="flex flex-wrap gap-3">
-                <Button variant="outline" disabled={!canSubmit || actionLoading} onClick={() => void runOfferAction(() => submitOffer(currentOffer.id), 'Offer 已提交审批')}>
-                  提交审批
-                </Button>
-                <Button variant="outline" disabled={!canApprove || actionLoading} onClick={() => void runOfferAction(() => approveOffer(currentOffer.id), 'Offer 已审批通过')}>
-                  审批通过
-                </Button>
-                <Button variant="outline" disabled={!canSend || actionLoading} onClick={() => void runOfferAction(() => sendOffer(currentOffer.id), 'Offer 已发送给候选人')}>
-                  发送 Offer
-                </Button>
-                <Button variant="outline" disabled={!canAccept || actionLoading} onClick={() => void runOfferAction(() => acceptOffer(currentOffer.id), '候选人已接受 Offer')}>
-                  接受 Offer
-                </Button>
-                <Button variant="outline" disabled={!canReject || actionLoading} onClick={() => void runOfferAction(() => rejectOffer(currentOffer.id), 'Offer 已拒绝')}>
-                  拒绝 Offer
-                </Button>
-                <Button
-                  disabled={!canConvert || actionLoading}
-                  onClick={() => void runOfferAction(
-                    () => convertOfferToOnboarding(currentOffer.id),
-                    '已转入入职流程',
-                    result => {
-                      if (typeof result === 'number') {
-                        toast.info(`入职申请 ID：${result}`);
-                      }
-                    },
-                  )}
-                >
-                  {offerAlreadyConverted ? '已转入职' : '转入职'}
-                </Button>
-              </div>
-            ) : null}
-            bodyClassName="mt-0"
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              if (currentOffer) {
+                void loadOfferWorkspace(currentOffer.id);
+                return;
+              }
+              void loadBootstrapData();
+            }}
           >
-            {currentOffer && offerAlreadyConverted && selectedOnboarding && (
-              <div className="mb-5 rounded-2xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700">
-                该 Offer 已生成入职申请 #{selectedOnboarding.id}，页面已锁定重复转入职操作。
-              </div>
-            )}
-
-            {!currentOffer && !detailLoading && (
-              <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-                从左侧选择一条 Offer，或者先创建一条新的 Offer 记录。
-              </div>
-            )}
-
-            {currentOffer && (
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">Offer 编号</div>
-                  <div className="mt-2 font-semibold text-slate-900">{currentOffer.offerNo}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">当前状态</div>
-                  <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${currentOfferStatusMeta.className}`}>
-                    {currentOfferStatusMeta.label}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">流程实例</div>
-                  <div className="mt-2 break-all text-sm font-semibold text-slate-900">{currentOffer.processInstanceId || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">候选人</div>
-                  <div className="mt-2 font-semibold text-slate-900">{currentOffer.candidateName || '-'}</div>
-                  <div className="mt-1 text-sm text-slate-500">{selectedCandidate?.phone || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">部门 / 岗位</div>
-                  <div className="mt-2 font-semibold text-slate-900">{currentOffer.deptName || '-'}</div>
-                  <div className="mt-1 text-sm text-slate-500">{currentOffer.positionName || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">建议薪资</div>
-                  <div className="mt-2 font-semibold text-slate-900">{formatSalary(currentOffer.salary)}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">预计入职日期</div>
-                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(currentOffer.expectedDate) || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">Offer 有效期</div>
-                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(currentOffer.expiryDate) || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">候选人状态</div>
-                  <div className="mt-2 font-semibold text-slate-900">{selectedCandidate?.statusDesc || selectedCandidate?.status || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">入职申请</div>
-                  <div className="mt-2 font-semibold text-slate-900">
-                    {selectedOnboarding ? `#${selectedOnboarding.id}` : '未生成'}
-                  </div>
-                  <div className="mt-1 text-sm text-slate-500">
-                    {selectedOnboarding?.statusDesc || selectedOnboarding?.status || '可在候选人接受 Offer 后生成'}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
-                  <div className="text-xs text-slate-400">Offer 内容</div>
-                  <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">
-                    {currentOffer.offerContent || '当前 Offer 未填写正文内容。'}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {detailLoading && <WorkspaceInlineState type="loading" title="正在加载 Offer 详情..." className="mt-4 py-4" />}
-          </WorkspaceSectionCard>
-
-          <WorkspaceSectionCard
-            title="联调提示"
-            description="这页的动作顺序严格贴合后端状态机，点不动通常就意味着后端状态不允许。"
-            bodyClassName="mt-0"
-          >
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                建议链路：创建 Offer → 提交审批 → 审批通过 → 发送 → 接受 → 转入职。
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                如果发送或接受时报过期，优先检查 Offer 有效期是否早于当前日期。
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
-                如果右侧已经出现入职申请编号，说明这条 Offer 已完成转入职，页面会自动禁止再次建单。
-              </div>
-            </div>
-          </WorkspaceSectionCard>
+            <RefreshCcw
+              size={14}
+              className={`mr-1.5 ${loading || listLoading || detailLoading ? 'animate-spin' : ''}`}
+            />
+            刷新列表
+          </Button>
+          <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+            <FilePlus2 size={14} className="mr-1.5" />
+            新建 Offer
+          </Button>
         </div>
       </div>
 
-      {createDialogOpen && (
-        <WorkspaceDialogShell
-          title="新建 Offer"
-          description="优先从可用候选人自动回填，页面会自动排除已有 Offer 或入职申请的候选人。"
-          onClose={resetCreateDialog}
-          maxWidthClassName="max-w-4xl"
-        >
+      <TablePageLayout
+        filters={(
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Input
+                  className="pl-10"
+                  placeholder="搜索 Offer 编号、候选人、手机号、岗位"
+                  value={keyword}
+                  onChange={(event) => setKeyword(event.target.value)}
+                />
+              </div>
 
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <Label>候选人</Label>
-                <Select
-                  value={createForm.candidateId ? String(createForm.candidateId) : EMPTY_VALUE}
-                  onValueChange={value => setCreateForm(prev => ({
-                    ...prev,
-                    candidateId: value === EMPTY_VALUE ? 0 : Number(value),
-                  }))}
-                >
+              <div className="w-full sm:w-40">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
                   <SelectTrigger>
-                    <SelectValue placeholder="请选择候选人" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
-                    {availableCandidates.map(item => (
-                      <SelectItem key={item.id} value={String(item.id)}>
-                        {[item.name, item.phone, item.positionName].filter(Boolean).join(' / ')}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value={ALL_STATUS_VALUE}>全部状态</SelectItem>
+                    <SelectItem value="DRAFT">草稿</SelectItem>
+                    <SelectItem value="APPROVING">审批中</SelectItem>
+                    <SelectItem value="APPROVED">已通过</SelectItem>
+                    <SelectItem value="SENT">已发送</SelectItem>
+                    <SelectItem value="ACCEPTED">已接受</SelectItem>
+                    <SelectItem value="REJECTED">已拒绝</SelectItem>
+                    <SelectItem value="EXPIRED">已过期</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+            </div>
 
-              <div>
-                <Label>部门</Label>
+            <div className="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setKeyword('');
+                  setStatusFilter(ALL_STATUS_VALUE);
+                }}
+              >
+                重置筛选
+              </Button>
+            </div>
+          </div>
+        )}
+        table={(
+          <div className="grid min-h-[680px] grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)]">
+            <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 列表</div>
+                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                  按候选人、状态和关键词筛选后，直接点选进入详情联调。
+                </div>
+              </div>
+
+              <div className="space-y-3 border-b border-slate-200 p-4 dark:border-slate-800">
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                  当前可直接创建 Offer 的候选人 {availableCandidates.length} 名，仅展示面试中且尚未生成 Offer / 入职申请的候选人。
+                </div>
+              </div>
+
+              <div className="space-y-3 overflow-y-auto p-4">
+                {loading || listLoading ? (
+                  <InlineState
+                    title="正在加载 Offer 列表..."
+                    className="py-12"
+                  />
+                ) : filteredOffers.length === 0 ? (
+                  <InlineState
+                    title="当前筛选条件下没有 Offer 记录"
+                    description="可以先创建一条新的 Offer，或调整筛选条件。"
+                    className="py-12"
+                  />
+                ) : (
+                  filteredOffers.map((item) => {
+                    const isActive = String(item.id) === selectedOfferId;
+                    const candidate = candidateMap.get(item.candidateId);
+                    const onboarding = onboardingMap.get(item.candidateId);
+                    const statusMeta = getOfferStatusMeta(item, onboarding);
+
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={[
+                          'w-full rounded-xl border px-4 py-4 text-left transition',
+                          isActive
+                            ? 'border-emerald-200 bg-emerald-50 shadow-sm dark:border-emerald-900 dark:bg-emerald-950/20'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:bg-slate-900/70',
+                        ].join(' ')}
+                        onClick={() => setSelectedOfferId(String(item.id))}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {item.offerNo}
+                            </div>
+                            <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                              {item.candidateName || `候选人 #${item.candidateId}`}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
+                              {(candidate?.phone || '-') + ' / ' + (item.positionName || '-')}
+                            </div>
+                          </div>
+                          <span
+                            className={[
+                              'rounded-full border px-2 py-0.5 text-xs font-medium',
+                              statusMeta.className,
+                            ].join(' ')}
+                          >
+                            {statusMeta.label}
+                          </span>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                          <span>{formatSalary(item.salary)}</span>
+                          <span>预计入职 {toDateInputValue(item.expectedDate) || '-'}</span>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+
+            <div className="flex min-h-0 flex-col">
+              <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 详情</div>
+                  <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                    详情与动作都走真实接口，适合直接验证状态流转和入职衔接。
+                  </div>
+                </div>
+                {currentOffer ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canSubmit || Boolean(pendingAction)}
+                      onClick={() =>
+                        void runOfferAction(
+                          'submit',
+                          () => submitOffer(currentOffer.id),
+                          'Offer 已提交审批',
+                        )
+                      }
+                    >
+                      {pendingAction === 'submit' ? '处理中...' : '提交审批'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canApprove || Boolean(pendingAction)}
+                      onClick={() =>
+                        void runOfferAction(
+                          'approve',
+                          () => approveOffer(currentOffer.id),
+                          'Offer 已审批通过',
+                        )
+                      }
+                    >
+                      {pendingAction === 'approve' ? '处理中...' : '审批通过'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canSend || Boolean(pendingAction)}
+                      onClick={() =>
+                        void runOfferAction(
+                          'send',
+                          () => sendOffer(currentOffer.id),
+                          'Offer 已发送给候选人',
+                        )
+                      }
+                    >
+                      {pendingAction === 'send' ? '处理中...' : '发送 Offer'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canAccept || Boolean(pendingAction)}
+                      onClick={() =>
+                        void runOfferAction(
+                          'accept',
+                          () => acceptOffer(currentOffer.id),
+                          '候选人已接受 Offer',
+                        )
+                      }
+                    >
+                      {pendingAction === 'accept' ? '处理中...' : '接受 Offer'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canReject || Boolean(pendingAction)}
+                      onClick={() =>
+                        void runOfferAction(
+                          'reject',
+                          () => rejectOffer(currentOffer.id),
+                          'Offer 已拒绝',
+                        )
+                      }
+                    >
+                      {pendingAction === 'reject' ? '处理中...' : '拒绝 Offer'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={!canConvert || Boolean(pendingAction)}
+                      onClick={() =>
+                        void runOfferAction(
+                          'convert',
+                          () => convertOfferToOnboarding(currentOffer.id),
+                          '已转入入职流程',
+                          (result) => {
+                            if (typeof result === 'number') {
+                              toast.info(`入职申请 ID：${result}`);
+                            }
+                          },
+                        )
+                      }
+                    >
+                      {pendingAction === 'convert'
+                        ? '处理中...'
+                        : offerAlreadyConverted
+                          ? '已转入职'
+                          : '转入职'}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+
+              {!currentOffer ? (
+                <InlineState
+                  title="请选择一条 Offer"
+                  description="从左侧选择一条 Offer，或者先创建一条新的 Offer 记录。"
+                  className="py-20"
+                />
+              ) : (
+                <div className="flex flex-1 flex-col gap-4 p-4">
+                  {offerAlreadyConverted && selectedOnboarding ? (
+                    <div className="rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200">
+                      该 Offer 已生成入职申请 #{selectedOnboarding.id}，页面已锁定重复转入职操作。
+                    </div>
+                  ) : null}
+
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                    <DetailRow label="Offer 编号" value={currentOffer.offerNo} />
+                    <DetailRow
+                      label="当前状态"
+                      value={(
+                        <span
+                          className={[
+                            'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                            currentOfferStatusMeta.className,
+                          ].join(' ')}
+                        >
+                          {currentOfferStatusMeta.label}
+                        </span>
+                      )}
+                    />
+                    <DetailRow
+                      label="流程实例"
+                      value={currentOffer.processInstanceId || '-'}
+                    />
+                    <DetailRow
+                      label="候选人"
+                      value={`${currentOffer.candidateName || '-'} / ${selectedCandidate?.phone || '-'}`}
+                    />
+                    <DetailRow
+                      label="部门 / 岗位"
+                      value={`${currentOffer.deptName || '-'} / ${currentOffer.positionName || '-'}`}
+                    />
+                    <DetailRow label="建议薪资" value={formatSalary(currentOffer.salary)} />
+                    <DetailRow
+                      label="预计入职日期"
+                      value={toDateInputValue(currentOffer.expectedDate) || '-'}
+                    />
+                    <DetailRow
+                      label="Offer 有效期"
+                      value={toDateInputValue(currentOffer.expiryDate) || '-'}
+                    />
+                    <DetailRow
+                      label="候选人状态"
+                      value={selectedCandidate?.statusDesc || selectedCandidate?.status || '-'}
+                    />
+                    <DetailRow
+                      label="入职申请"
+                      value={
+                        selectedOnboarding
+                          ? `#${selectedOnboarding.id} / ${selectedOnboarding.statusDesc || selectedOnboarding.status || '-'}`
+                          : '未生成'
+                      }
+                    />
+                    <DetailRow
+                      label="创建时间"
+                      value={formatDateTime(currentOffer.createTime)}
+                    />
+                    <DetailRow
+                      label="更新时间"
+                      value={formatDateTime(currentOffer.updateTime)}
+                    />
+                  </div>
+
+                  {detailLoading ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                      正在加载 Offer 详情...
+                    </div>
+                  ) : null}
+
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 内容</div>
+                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        内容会在创建时自动结合候选人、部门、岗位和日期回填。
+                      </div>
+                    </div>
+                    <div className="whitespace-pre-wrap px-4 py-4 text-sm leading-6 text-slate-700 dark:text-slate-300">
+                      {currentOffer.offerContent || '当前 Offer 未填写正文内容。'}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                      建议链路：创建 Offer → 提交审批 → 审批通过 → 发送 → 接受 → 转入职。
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                      如果发送或接受时报过期，优先检查 Offer 有效期是否早于当前日期。
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                      如果右侧已经出现入职申请编号，说明这条 Offer 已完成转入职，页面会自动禁止再次建单。
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      />
+
+      <BaseDialog
+        open={createDialogOpen}
+        title="新建 Offer"
+        description="优先从可用候选人自动回填，页面会自动排除已有 Offer 或入职申请的候选人。"
+        onClose={resetCreateDialog}
+        maxWidthClassName="max-w-4xl"
+        footer={(
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={resetCreateDialog}>
+              取消
+            </Button>
+            <Button disabled={pendingAction === 'create'} onClick={() => void handleCreateOffer()}>
+              {pendingAction === 'create' ? '创建中...' : '创建 Offer'}
+            </Button>
+          </div>
+        )}
+      >
+        <div className="space-y-4">
+          <DialogSection
+            title="候选人"
+            description="只展示面试中且尚未生成 Offer / 入职申请的候选人。"
+          >
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人</Label>
+              <Select
+                value={createForm.candidateId ? String(createForm.candidateId) : EMPTY_VALUE}
+                onValueChange={(value) =>
+                  setCreateForm((prev) => ({
+                    ...prev,
+                    candidateId: value === EMPTY_VALUE ? 0 : Number(value),
+                  }))
+                }
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder="请选择候选人" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EMPTY_VALUE}>请选择</SelectItem>
+                  {availableCandidates.map((item) => (
+                    <SelectItem key={item.id} value={String(item.id)}>
+                      {[item.name, item.phone, item.positionName].filter(Boolean).join(' / ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </DialogSection>
+
+          <DialogSection
+            title="录用信息"
+            description="维护部门、岗位、薪资和日期字段。"
+          >
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
                 <Select
                   value={createForm.deptId ? String(createForm.deptId) : undefined}
-                  onValueChange={value => setCreateForm(prev => ({ ...prev, deptId: Number(value) }))}
+                  onValueChange={(value) =>
+                    setCreateForm((prev) => ({ ...prev, deptId: Number(value) }))
+                  }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder="请选择部门" />
                   </SelectTrigger>
                   <SelectContent>
-                    {deptOptions.map(option => (
+                    {deptOptions.map((option) => (
                       <SelectItem key={option.value} value={String(option.value)}>
                         {option.label}
                       </SelectItem>
@@ -824,17 +1091,19 @@ export const HrOfferPage: React.FC = () => {
                 </Select>
               </div>
 
-              <div>
-                <Label>岗位</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">岗位</Label>
                 <Select
                   value={createForm.positionId ? String(createForm.positionId) : undefined}
-                  onValueChange={value => setCreateForm(prev => ({ ...prev, positionId: Number(value) }))}
+                  onValueChange={(value) =>
+                    setCreateForm((prev) => ({ ...prev, positionId: Number(value) }))
+                  }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder="请选择岗位" />
                   </SelectTrigger>
                   <SelectContent>
-                    {positionOptions.map(option => (
+                    {positionOptions.map((option) => (
                       <SelectItem key={option.id} value={String(option.id)}>
                         {option.positionName}
                       </SelectItem>
@@ -843,54 +1112,66 @@ export const HrOfferPage: React.FC = () => {
                 </Select>
               </div>
 
-              <div>
-                <Label>建议薪资</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">建议薪资</Label>
                 <Input
                   type="number"
                   min={0}
                   step="0.01"
                   value={createForm.salary || ''}
-                  onChange={event => setCreateForm(prev => ({
-                    ...prev,
-                    salary: Number(event.target.value || 0),
-                  }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({
+                      ...prev,
+                      salary: Number(event.target.value || 0),
+                    }))
+                  }
+                  className="h-11"
                 />
               </div>
 
-              <div>
-                <Label>预计入职日期</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计入职日期</Label>
                 <Input
                   type="date"
                   value={createForm.expectedDate}
-                  onChange={event => setCreateForm(prev => ({ ...prev, expectedDate: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, expectedDate: event.target.value }))
+                  }
+                  className="h-11"
                 />
               </div>
 
-              <div className="md:col-span-2">
-                <Label>Offer 有效期</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Offer 有效期</Label>
                 <Input
                   type="date"
                   value={createForm.expiryDate}
-                  onChange={event => setCreateForm(prev => ({ ...prev, expiryDate: event.target.value }))}
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <Label>Offer 内容</Label>
-                <Textarea
-                  rows={10}
-                  value={createForm.offerContent || ''}
-                  onChange={event => setCreateForm(prev => ({ ...prev, offerContent: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, expiryDate: event.target.value }))
+                  }
+                  className="h-11"
                 />
               </div>
             </div>
+          </DialogSection>
 
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={resetCreateDialog}>取消</Button>
-              <Button onClick={() => void handleCreateOffer()}>创建 Offer</Button>
+          <DialogSection
+            title="Offer 内容"
+            description="会根据候选人信息自动生成，你也可以继续手动调整。"
+          >
+            <div className="space-y-2">
+              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">正文</Label>
+              <Textarea
+                rows={10}
+                value={createForm.offerContent || ''}
+                onChange={(event) =>
+                  setCreateForm((prev) => ({ ...prev, offerContent: event.target.value }))
+                }
+              />
             </div>
-        </WorkspaceDialogShell>
-      )}
+          </DialogSection>
+        </div>
+      </BaseDialog>
     </div>
   );
 };

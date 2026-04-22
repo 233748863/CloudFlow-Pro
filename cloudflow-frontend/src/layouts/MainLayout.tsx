@@ -219,7 +219,7 @@ export const MainLayout = () => {
   }
 
   return (
-    <div className="relative min-h-screen bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
+    <div className="relative h-screen overflow-hidden bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(at_40%_20%,rgba(20,184,166,0.12)_0px,transparent_48%),radial-gradient(at_80%_0%,rgba(6,182,212,0.08)_0px,transparent_50%),radial-gradient(at_0%_55%,rgba(20,184,166,0.08)_0px,transparent_48%)] dark:opacity-50" />
         <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.025)_1px,transparent_1px)] bg-[size:72px_72px] opacity-70 dark:opacity-20" />
@@ -373,7 +373,7 @@ export const MainLayout = () => {
 
       <div
         className={cn(
-          'relative flex min-h-screen flex-col transition-[padding] duration-300',
+          'relative flex h-screen min-h-0 flex-col overflow-hidden transition-[padding] duration-300',
           sidebarCollapsed ? 'pl-[88px]' : 'pl-72',
         )}
       >
@@ -408,7 +408,7 @@ export const MainLayout = () => {
 
         <main
           ref={mainScrollRef}
-          className="hide-scrollbar min-h-[calc(100vh-4rem)] flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 lg:p-8"
+          className="hide-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-4 md:p-6 lg:p-8"
         >
           <div className="animate-fade-in">
             <Outlet />

@@ -1,30 +1,36 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCheck, Inbox, Megaphone, Shield } from 'lucide-react';
+import { Bell, CheckCheck, Inbox, Megaphone, RefreshCw, Shield } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
-import { Button } from '@/components/ui';
 import { AnnouncementDetailModal, AnnouncementListItem } from '@/components/common';
 import { AnnouncementManageView } from '@/components/admin/announcements';
-import {
-  WorkspaceBackdrop,
-  WorkspaceEmptyPanel,
-  WorkspaceHeroMetricsSection,
-  WorkspaceInlineState,
-  WorkspacePageContent,
-  WorkspaceSectionCard,
-  workspaceGlassSurfaceClassName,
-} from '@/components/workspace';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { Button } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { AnnouncementScope, Role, type Announcement } from '@/types';
 import {
   useAnnouncementStore,
   useAnnouncementUnreadCount,
 } from '@/stores/announcementStore';
-import { cn } from '@/utils/cn';
 import { getAnnouncementPriorityMeta } from '@/utils/announcementMeta';
 import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
 import '@/components/common/announcement-overlays.css';
 
 type ViewMode = 'user' | 'manage';
+
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  className?: string;
+}> = ({ title, description, icon, className }) => (
+  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      {icon || <Inbox className="h-4 w-4" />}
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
+  </div>
+);
 
 export const AnnouncementPage = () => {
   const location = useLocation();
@@ -65,6 +71,7 @@ export const AnnouncementPage = () => {
     if (showUnreadOnly) {
       return announcements.filter((item) => !item.isRead);
     }
+
     return announcements;
   }, [announcements, showUnreadOnly]);
 
@@ -76,8 +83,6 @@ export const AnnouncementPage = () => {
     () => announcements.filter((item) => item.priority === 'H').length,
     [announcements],
   );
-  const readCount = announcements.length - unreadCount;
-  const readRate = announcements.length > 0 ? Math.round((readCount / announcements.length) * 100) : 100;
   const latestAnnouncement = displayList[0] || announcements[0] || null;
 
   async function openDetail(announcement: Announcement) {
@@ -104,168 +109,128 @@ export const AnnouncementPage = () => {
   }
 
   if (viewMode === 'manage' && canManage) {
-    return (
-      <div className="relative min-h-screen pb-6">
-        <WorkspaceBackdrop />
-        <WorkspacePageContent className="p-4 sm:p-5">
-          <div className="mx-auto max-w-[1320px]">
-            <AnnouncementManageView onExitManage={() => setViewMode('user')} />
-          </div>
-        </WorkspacePageContent>
-      </div>
-    );
+    return <AnnouncementManageView onExitManage={() => setViewMode('user')} />;
   }
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <Megaphone className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Announcements
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          公告中心
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          统一查看已发布公告、未读状态和置顶内容，页面结构直接向参考后台列表页靠拢。
+        </p>
+      </div>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                <Megaphone size={14} />
-                公告中心
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                共 {announcements.length} 条
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {showUnreadOnly ? '仅看未读' : '默认视图'}
-              </span>
-            </div>
-          }
-          title="公告工作台"
-          description={
-            showUnreadOnly
-              ? '当前仅聚焦未读内容，便于快速处理新消息。'
-              : '按发布时间查看全部公告，置顶和高优先级内容优先可见。'
-          }
-          actions={
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button
-                variant={showUnreadOnly ? 'soft' : 'outline'}
-                size="lg"
-                className={cn(showUnreadOnly && 'border-cyan-200')}
-                onClick={() => setShowUnreadOnly((previous) => !previous)}
-              >
-                <Bell size={16} className="mr-2" />
-                {showUnreadOnly ? '显示全部' : '仅看未读'}
+      <TablePageLayout
+        className="gap-4"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              全部 {announcements.length}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              未读 {unreadCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              置顶 {pinnedCount}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              高优先级 {highPriorityCount}
+            </span>
+
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => void fetchAnnouncements(true)} disabled={loading}>
+                <RefreshCw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
+                刷新
               </Button>
               {unreadCount > 0 ? (
-                <Button size="lg" onClick={() => void handleMarkAllAsRead()}>
-                  <CheckCheck size={16} className="mr-2" />
+                <Button size="sm" onClick={() => void handleMarkAllAsRead()}>
+                  <CheckCheck size={14} className="mr-1.5" />
                   全部已读
                 </Button>
               ) : null}
               {canManage ? (
-                <Button variant="outline" size="lg" onClick={() => setViewMode('manage')}>
-                  <Shield size={16} className="mr-2" />
+                <Button variant="outline" size="sm" onClick={() => setViewMode('manage')}>
+                  <Shield size={14} className="mr-1.5" />
                   公告管理
                 </Button>
               ) : null}
             </div>
-          }
-          metrics={[
-            {
-              label: '公告总量',
-              value: `${announcements.length} 条`,
-              hint: showUnreadOnly ? `${displayList.length} 条待处理` : `高优先级 ${highPriorityCount} 条`,
-              icon: <Megaphone size={17} />,
-            },
-            {
-              label: '未读公告',
-              value: `${unreadCount} 条`,
-              hint: unreadCount > 0 ? '建议优先处理最新消息' : '当前没有待处理公告',
-              icon: <Bell size={17} />,
-            },
-            {
-              label: '已读进度',
-              value: `${readRate}%`,
-              hint: `${readCount} 条已完成阅读确认`,
-              icon: <CheckCheck size={17} />,
-            },
-            {
-              label: '置顶 / 高优先级',
-              value: `${pinnedCount} / ${highPriorityCount}`,
-              hint: latestAnnouncement?.title || '等待新的公告内容',
-              icon: <Shield size={17} />,
-            },
-          ]}
-          contentClassName="p-4 sm:p-5"
-        />
-
-        <WorkspaceSectionCard
-          eyebrow="公告列表"
-          title={showUnreadOnly ? '未读公告' : '全部公告'}
-          headerAside={
+          </div>
+        )}
+        filters={(
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                共 {displayList.length} 条
-              </span>
-              {latestAnnouncement ? (
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                  最新：{formatAnnouncementRelativeWithDateTime(latestAnnouncement.publishTime || latestAnnouncement.createTime)}
-                </span>
-              ) : null}
+              <Button
+                variant={showUnreadOnly ? 'outline' : 'secondary'}
+                size="sm"
+                onClick={() => setShowUnreadOnly(false)}
+              >
+                全部公告
+              </Button>
+              <Button
+                variant={showUnreadOnly ? 'secondary' : 'outline'}
+                size="sm"
+                onClick={() => setShowUnreadOnly(true)}
+              >
+                <Bell size={14} className="mr-1.5" />
+                仅看未读
+              </Button>
             </div>
-          }
-          className={`${workspaceGlassSurfaceClassName} space-y-0`}
-          bodyClassName="space-y-2.5"
-        >
-          <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-800 dark:bg-slate-900/60">
-            <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
-                  {showUnreadOnly ? '当前仅显示未读' : '当前显示全部'}
-                </span>
-                <span className="rounded-full border border-cyan-100 bg-cyan-50 px-2.5 py-1 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-                  未读 {unreadCount} 条
-                </span>
-                {canManage ? (
-                  <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
-                    支持切换管理视图
-                  </span>
-                ) : null}
-              </div>
 
-              {showUnreadOnly && announcements.length > displayList.length ? (
-                <Button variant="outline" onClick={() => setShowUnreadOnly(false)}>
-                  查看全部公告
-                </Button>
-              ) : null}
+            <div className="text-xs text-slate-500 dark:text-slate-400">
+              {latestAnnouncement
+                ? `最近发布时间 ${formatAnnouncementRelativeWithDateTime(latestAnnouncement.publishTime || latestAnnouncement.createTime)}`
+                : '暂无公告'}
             </div>
           </div>
+        )}
+        table={(
+          <div className="flex min-h-[36rem] flex-col">
+            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">公告列表</div>
+                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    {showUnreadOnly ? '当前仅显示未读公告。' : '按发布时间倒序显示，置顶内容优先。'}
+                  </div>
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  当前结果 {displayList.length} 条
+                </div>
+              </div>
+            </div>
 
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
             {loading ? (
-              <WorkspaceInlineState type="loading" title="正在加载公告..." className="m-3.5 py-12" />
+              <InlineState title="正在加载公告..." className="py-16" icon={<Bell className="h-4 w-4 animate-pulse" />} />
             ) : displayList.length > 0 ? (
-              <div>
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {displayList.map((item, index) => (
                   <AnnouncementListItem
                     key={item.announcementId}
                     announcement={item}
                     variant="compact"
                     onClick={() => void openDetail(item)}
-                    className={cn(index === displayList.length - 1 && 'border-b-0')}
+                    className={index === displayList.length - 1 ? 'border-b-0' : undefined}
                   />
                 ))}
               </div>
             ) : (
-              <div className="p-3.5">
-                <WorkspaceEmptyPanel
-                  variant="glass"
-                  icon={<Inbox size={26} />}
-                  title={showUnreadOnly ? '暂无未读公告' : '暂无公告'}
-                  description={showUnreadOnly ? '当前公告都已处理完成。' : '暂时没有新的系统公告。'}
-                />
-              </div>
+              <InlineState
+                title={showUnreadOnly ? '暂无未读公告' : '暂无公告'}
+                description={showUnreadOnly ? '当前公告都已处理完成。' : '新公告发布后会显示在这里。'}
+                className="py-16"
+              />
             )}
           </div>
-        </WorkspaceSectionCard>
-      </WorkspacePageContent>
+        )}
+      />
 
       <AnnouncementDetailModal
         announcement={selectedAnnouncement}
@@ -281,10 +246,10 @@ export const AnnouncementPage = () => {
                 </span>
               ) : null}
               <span
-                className={cn(
+                className={[
                   'rounded-full px-2.5 py-1 text-xs font-medium',
                   getAnnouncementPriorityMeta(selectedAnnouncement.priority).className,
-                )}
+                ].join(' ')}
               >
                 {getAnnouncementPriorityMeta(selectedAnnouncement.priority).label}
               </span>

@@ -1,22 +1,33 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-  Car, Clock, CheckCircle, XCircle, Eye, DollarSign,
-  RotateCcw, Loader2,
-  MapPin, ArrowLeftRight, Ban, CornerDownLeft,
-  Fuel, ParkingCircle, Wrench, Shield, MoreHorizontal,
-  Calendar, Plus
+  ArrowLeftRight,
+  Ban,
+  Car,
+  CheckCircle,
+  Clock,
+  CornerDownLeft,
+  DollarSign,
+  Eye,
+  Fuel,
+  Loader2,
+  MapPin,
+  MoreHorizontal,
+  ParkingCircle,
+  Plus,
+  RotateCcw,
+  Shield,
+  Wrench,
+  XCircle,
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
+import { BaseDialog } from '@/components/common/BaseDialog';
+import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { Pagination } from '@/components/common/Pagination';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
-  Card,
   DatePicker,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   Input,
   Label,
   Select,
@@ -25,135 +36,210 @@ import {
   SelectTrigger,
   SelectValue,
   Table,
+  TableActionHead,
   TableBody,
   TableCell,
   TableHead,
-  TableActionHead,
   TableHeader,
   TableRow,
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-  Textarea
+  Textarea,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
-  WorkspaceBackdrop,
-  WorkspaceHeroMetricsSection,
-  WorkspacePaginationBar,
-  WorkspacePageContent,
-  WorkspaceResultCard,
-  WorkspaceTableStateRow,
-  WorkspaceWorkbenchCard,
-  workspaceGlassSurfaceClassName,
-} from '@/components/workspace';
-import {
-  getUsageList,
-  getExpenseList,
   addExpense,
-  getExpenseStats,
   approveUsage,
-  returnVehicle,
   cancelUsage,
-  VehicleUsage,
+  ExpenseStats,
+  getExpenseList,
+  getExpenseStats,
+  getUsageList,
+  returnVehicle,
   VehicleExpense,
-  ExpenseStats
+  VehicleUsage,
 } from '@/services/api/vehicle';
 
-// ==================== 常量配置 ====================
+interface TableStateRowProps {
+  colSpan: number;
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  loading?: boolean;
+}
 
-/** 用车状态配置 */
-const USAGE_STATUS: Record<string, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
+interface DetailFieldProps {
+  label: string;
+  value: React.ReactNode;
+}
+
+interface CancelState {
+  usageId: number;
+  message: string;
+}
+
+const ALL_FILTER_VALUE = '__all__';
+
+const USAGE_STATUS: Record<string, { label: string; className: string; icon: React.ReactNode }> = {
   '0': {
     label: '待审批',
-    color: 'text-amber-700',
-    bg: 'border border-amber-200 bg-amber-50',
-    icon: <Clock size={14} />
+    className: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    icon: <Clock size={14} />,
   },
   '1': {
     label: '已批准',
-    color: 'text-emerald-700',
-    bg: 'border border-emerald-200 bg-emerald-50',
-    icon: <CheckCircle size={14} />
+    className: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    icon: <CheckCircle size={14} />,
   },
   '2': {
     label: '已驳回',
-    color: 'text-rose-700',
-    bg: 'border border-rose-200 bg-rose-50',
-    icon: <XCircle size={14} />
+    className: 'border border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+    icon: <XCircle size={14} />,
   },
   '3': {
     label: '进行中',
-    color: 'text-cyan-700',
-    bg: 'border border-cyan-200 bg-cyan-50',
-    icon: <Car size={14} />
+    className: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+    icon: <Car size={14} />,
   },
   '4': {
     label: '已完成',
-    color: 'text-cyan-700',
-    bg: 'border border-cyan-200 bg-cyan-50',
-    icon: <CheckCircle size={14} />
+    className: 'border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200',
+    icon: <CheckCircle size={14} />,
   },
   '5': {
     label: '已取消',
-    color: 'text-slate-500',
-    bg: 'border border-slate-200 bg-slate-50',
-    icon: <Ban size={14} />
+    className: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    icon: <Ban size={14} />,
   },
 };
 
-/** 费用类型配置 */
-const EXPENSE_TYPES: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
-  '1': { label: '油费', icon: <Fuel size={14} />, color: 'text-orange-600' },
-  '2': { label: '过路费', icon: <ArrowLeftRight size={14} />, color: 'text-cyan-600' },
-  '3': { label: '停车费', icon: <ParkingCircle size={14} />, color: 'text-violet-600' },
-  '4': { label: '维修保养', icon: <Wrench size={14} />, color: 'text-amber-600' },
-  '5': { label: '保险', icon: <Shield size={14} />, color: 'text-emerald-600' },
-  '6': { label: '其他', icon: <MoreHorizontal size={14} />, color: 'text-slate-600' },
-};
-
-const STATUS_QUICK_FILTERS = [
-  { label: '全部', value: '' },
-  { label: '待审批', value: '0' },
-  { label: '已批准', value: '1' },
-  { label: '进行中', value: '3' },
-  { label: '已完成', value: '4' },
-  { label: '已取消', value: '5' },
+const USAGE_STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: '0', label: '待审批' },
+  { value: '1', label: '已批准' },
+  { value: '3', label: '进行中' },
+  { value: '4', label: '已完成' },
+  { value: '5', label: '已取消' },
 ];
 
-// ==================== 子组件 ====================
+const EXPENSE_TYPES: Record<string, { label: string; icon: React.ReactNode }> = {
+  '1': { label: '油费', icon: <Fuel size={14} /> },
+  '2': { label: '过路费', icon: <ArrowLeftRight size={14} /> },
+  '3': { label: '停车费', icon: <ParkingCircle size={14} /> },
+  '4': { label: '维修保养', icon: <Wrench size={14} /> },
+  '5': { label: '保险', icon: <Shield size={14} /> },
+  '6': { label: '其他', icon: <MoreHorizontal size={14} /> },
+};
 
-/** 轻玻璃状态标签 */
+const EXPENSE_TYPE_OPTIONS = [
+  { value: '', label: '全部类型' },
+  { value: '1', label: '油费' },
+  { value: '2', label: '过路费' },
+  { value: '3', label: '停车费' },
+  { value: '4', label: '维修保养' },
+  { value: '5', label: '保险' },
+  { value: '6', label: '其他' },
+];
+
+const TableStateRow: React.FC<TableStateRowProps> = ({
+  colSpan,
+  title,
+  description,
+  icon,
+  loading = false,
+}) => (
+  <TableRow className="hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : icon || <Car className="h-4 w-4" />}
+        </div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+        ) : null}
+      </div>
+    </TableCell>
+  </TableRow>
+);
+
+const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+      {label}
+    </div>
+    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">
+      {value}
+    </div>
+  </div>
+);
+
+const DetailSection: React.FC<{
+  title: string;
+  children: React.ReactNode;
+}> = ({ title, children }) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+    </div>
+    <div>{children}</div>
+  </section>
+);
+
 const UsageStatusBadge: React.FC<{ status: string }> = ({ status }) => {
   const config = USAGE_STATUS[status] || {
     label: '未知',
-    color: 'text-slate-500',
-    bg: 'border border-slate-200 bg-slate-50',
-    icon: null
+    className: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    icon: null,
   };
 
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${config.bg} ${config.color}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium ${config.className}`}>
       {config.icon}
       {config.label}
     </span>
   );
 };
 
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
+const ExpenseTypeBadge: React.FC<{ expenseType: string }> = ({ expenseType }) => {
+  const config = EXPENSE_TYPES[expenseType] || {
+    label: '未知',
+    icon: <MoreHorizontal size={14} />,
+  };
+
+  return (
+    <span className="inline-flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+      <span className="text-slate-400 dark:text-slate-500">{config.icon}</span>
+      {config.label}
+    </span>
+  );
 };
+
+const createExpenseForm = (): Partial<VehicleExpense> => ({
+  expenseType: '1',
+  amount: 0,
+  expenseDate: new Date().toISOString().split('T')[0],
+  description: '',
+});
 
 const formatCurrency = (value?: number) => `¥ ${Number(value || 0).toLocaleString()}`;
 
-// ==================== 主组件 ====================
+const formatDateTime = (value?: string | null) => {
+  if (!value) {
+    return '-';
+  }
+  return value.replace('T', ' ');
+};
+
+const renderText = (value?: string | number | null) => {
+  if (value === null || value === undefined || value === '') {
+    return '-';
+  }
+  return String(value);
+};
 
 const VehicleUsageList: React.FC = () => {
   const navigate = useNavigate();
-
-  // 数据状态
+  const [activeTab, setActiveTab] = useState<'usage' | 'expense'>('usage');
   const [usages, setUsages] = useState<VehicleUsage[]>([]);
   const [usageTotal, setUsageTotal] = useState(0);
   const [expenses, setExpenses] = useState<VehicleExpense[]>([]);
@@ -161,30 +247,23 @@ const VehicleUsageList: React.FC = () => {
   const [stats, setStats] = useState<ExpenseStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [expenseLoading, setExpenseLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'usage' | 'expense'>('usage');
-
-  // 查询条件
   const [usageQuery, setUsageQuery] = useState({ pageNum: 1, pageSize: 10, status: '' });
-  const [expenseQuery, setExpenseQuery] = useState({ pageNum: 1, pageSize: 10 });
-
-  // 弹窗状态
-  const [isExpenseDialogOpen, setIsExpenseDialogOpen] = useState(false);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
-  const [isApproveDialogOpen, setIsApproveDialogOpen] = useState(false);
-  const [isReturnDialogOpen, setIsReturnDialogOpen] = useState(false);
-  const [currentUsage, setCurrentUsage] = useState<VehicleUsage | null>(null);
-
-  // 表单数据
-  const [expenseForm, setExpenseForm] = useState<Partial<VehicleExpense>>({
-    expenseType: '1',
-    amount: 0,
-    expenseDate: new Date().toISOString().split('T')[0],
-    description: '',
+  const [expenseQuery, setExpenseQuery] = useState({
+    pageNum: 1,
+    pageSize: 10,
+    expenseType: '',
+    startDate: '',
+    endDate: '',
   });
+  const [currentUsage, setCurrentUsage] = useState<VehicleUsage | null>(null);
+  const [showDetailDialog, setShowDetailDialog] = useState(false);
+  const [showApproveDialog, setShowApproveDialog] = useState(false);
+  const [showReturnDialog, setShowReturnDialog] = useState(false);
+  const [showExpenseDialog, setShowExpenseDialog] = useState(false);
+  const [cancelState, setCancelState] = useState<CancelState | null>(null);
   const [approveRemark, setApproveRemark] = useState('');
   const [returnMileage, setReturnMileage] = useState(0);
-
-  // ==================== 数据加载 ====================
+  const [expenseForm, setExpenseForm] = useState<Partial<VehicleExpense>>(createExpenseForm);
 
   const fetchUsages = async () => {
     setLoading(true);
@@ -197,8 +276,8 @@ const VehicleUsageList: React.FC = () => {
       const res = await getUsageList(params);
       setUsages(res.rows || []);
       setUsageTotal(res.total || 0);
-    } catch {
-      toast.error('获取用车记录失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取用车记录失败'));
     } finally {
       setLoading(false);
     }
@@ -207,22 +286,28 @@ const VehicleUsageList: React.FC = () => {
   const fetchExpenses = async () => {
     setExpenseLoading(true);
     try {
-      const res = await getExpenseList({ pageNum: expenseQuery.pageNum, pageSize: expenseQuery.pageSize });
+      const res = await getExpenseList({
+        pageNum: expenseQuery.pageNum,
+        pageSize: expenseQuery.pageSize,
+        ...(expenseQuery.expenseType ? { expenseType: expenseQuery.expenseType } : {}),
+        ...(expenseQuery.startDate ? { startDate: expenseQuery.startDate } : {}),
+        ...(expenseQuery.endDate ? { endDate: expenseQuery.endDate } : {}),
+      });
       setExpenses(res.rows || []);
       setExpenseTotal(res.total || 0);
-    } catch {
-      toast.error('获取费用明细失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取费用记录失败'));
     } finally {
       setExpenseLoading(false);
     }
   };
 
-  const fetchStats = async () => {
+  const fetchStats = async (startDate?: string, endDate?: string) => {
     try {
-      const res = await getExpenseStats();
+      const res = await getExpenseStats(startDate, endDate);
       setStats(res);
-    } catch {
-      toast.error('获取费用统计失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取费用汇总失败'));
     }
   };
 
@@ -232,43 +317,52 @@ const VehicleUsageList: React.FC = () => {
 
   useEffect(() => {
     void fetchExpenses();
-  }, [expenseQuery.pageNum, expenseQuery.pageSize]);
+  }, [expenseQuery.pageNum, expenseQuery.pageSize, expenseQuery.expenseType, expenseQuery.startDate, expenseQuery.endDate]);
 
   useEffect(() => {
-    void fetchStats();
-  }, []);
+    void fetchStats(expenseQuery.startDate || undefined, expenseQuery.endDate || undefined);
+  }, [expenseQuery.startDate, expenseQuery.endDate]);
 
-  // ==================== 操作处理 ====================
+  const refreshCurrentView = async () => {
+    if (activeTab === 'usage') {
+      await Promise.all([fetchUsages(), fetchStats(expenseQuery.startDate || undefined, expenseQuery.endDate || undefined)]);
+      return;
+    }
+
+    await Promise.all([fetchExpenses(), fetchStats(expenseQuery.startDate || undefined, expenseQuery.endDate || undefined)]);
+  };
 
   const handleViewDetail = (usage: VehicleUsage) => {
     setCurrentUsage(usage);
-    setIsDetailDialogOpen(true);
+    setShowDetailDialog(true);
   };
 
   const handleOpenApprove = (usage: VehicleUsage) => {
     setCurrentUsage(usage);
     setApproveRemark('');
-    setIsApproveDialogOpen(true);
+    setShowApproveDialog(true);
   };
 
   const handleApprove = async (approved: boolean) => {
     if (!currentUsage?.usageId) {
       return;
     }
+
     try {
       await approveUsage(currentUsage.usageId, approved, approveRemark);
       toast.success(approved ? '已批准' : '已驳回');
-      setIsApproveDialogOpen(false);
-      void fetchUsages();
-    } catch {
-      toast.error('操作失败');
+      setShowApproveDialog(false);
+      setCurrentUsage(null);
+      await fetchUsages();
+    } catch (error) {
+      toast.error(getErrorMessage(error, approved ? '批准失败' : '驳回失败'));
     }
   };
 
   const handleOpenReturn = (usage: VehicleUsage) => {
     setCurrentUsage(usage);
-    setReturnMileage(0);
-    setIsReturnDialogOpen(true);
+    setReturnMileage(usage.endMileage || usage.startMileage || 0);
+    setShowReturnDialog(true);
   };
 
   const handleReturn = async () => {
@@ -276,48 +370,33 @@ const VehicleUsageList: React.FC = () => {
       return;
     }
     if (returnMileage <= 0) {
-      toast.error('请输入有效的结束里程');
+      toast.error('请输入有效的归还里程');
       return;
     }
+
     try {
       await returnVehicle(currentUsage.usageId, { endMileage: returnMileage });
       toast.success('车辆已归还');
-      setIsReturnDialogOpen(false);
-      void fetchUsages();
-    } catch {
-      toast.error('归还失败');
-    }
-  };
-
-  const handleCancel = async (usage: VehicleUsage) => {
-    if (!confirm('确认取消该用车申请？')) {
-      return;
-    }
-    try {
-      await cancelUsage(usage.usageId!);
-      toast.success('已取消');
-      void fetchUsages();
-    } catch {
-      toast.error('取消失败');
+      setShowReturnDialog(false);
+      setCurrentUsage(null);
+      await fetchUsages();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '归还失败'));
     }
   };
 
   const handleOpenExpense = (usage: VehicleUsage) => {
     setCurrentUsage(usage);
-    setExpenseForm({
-      expenseType: '1',
-      amount: 0,
-      expenseDate: new Date().toISOString().split('T')[0],
-      description: '',
-    });
-    setIsExpenseDialogOpen(true);
+    setExpenseForm(createExpenseForm());
+    setShowExpenseDialog(true);
   };
 
   const handleSubmitExpense = async () => {
-    if (!currentUsage || !expenseForm.amount || expenseForm.amount <= 0) {
+    if (!currentUsage?.usageId || !expenseForm.amount || expenseForm.amount <= 0) {
       toast.error('请输入有效的费用金额');
       return;
     }
+
     try {
       await addExpense({
         ...expenseForm,
@@ -325,708 +404,715 @@ const VehicleUsageList: React.FC = () => {
         vehicleId: currentUsage.vehicleId,
       } as VehicleExpense);
       toast.success('费用已录入');
-      setIsExpenseDialogOpen(false);
-      void fetchExpenses();
-      void fetchStats();
-    } catch {
-      toast.error('录入失败');
+      setShowExpenseDialog(false);
+      setCurrentUsage(null);
+      await Promise.all([
+        fetchExpenses(),
+        fetchStats(expenseQuery.startDate || undefined, expenseQuery.endDate || undefined),
+      ]);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '录入费用失败'));
     }
   };
 
-  const handleRefreshCurrentTab = () => {
-    if (activeTab === 'usage') {
-      void fetchUsages();
-    } else {
-      void fetchExpenses();
+  const openCancelConfirm = (usage: VehicleUsage) => {
+    if (!usage.usageId) {
+      return;
     }
-    void fetchStats();
+    setCancelState({
+      usageId: usage.usageId,
+      message: `确认取消 ${usage.vehiclePlate || `车辆#${usage.vehicleId}`} 的用车申请？`,
+    });
   };
 
-  const applyStatusFilter = (status: string) => {
-    setUsageQuery((prev) => ({
-      ...prev,
-      status,
-      pageNum: 1,
-    }));
+  const usagePrimaryAction = (usage: VehicleUsage) => {
+    if (usage.status === '0') {
+      return {
+        label: '审批',
+        icon: <CheckCircle size={14} />,
+        onClick: () => handleOpenApprove(usage),
+        tone: 'primary' as const,
+      };
+    }
+
+    if (usage.status === '1' || usage.status === '3') {
+      return {
+        label: '归还',
+        icon: <CornerDownLeft size={14} />,
+        onClick: () => handleOpenReturn(usage),
+        tone: 'success' as const,
+      };
+    }
+
+    if (usage.status === '4') {
+      return {
+        label: '费用',
+        icon: <DollarSign size={14} />,
+        onClick: () => handleOpenExpense(usage),
+        tone: 'info' as const,
+      };
+    }
+
+    return null;
   };
 
-  const resetUsageFilters = () => {
-    setUsageQuery((prev) => ({
-      ...prev,
-      status: '',
-      pageNum: 1,
-    }));
+  const handleCancelConfirm = async () => {
+    if (!cancelState) {
+      return;
+    }
+
+    try {
+      await cancelUsage(cancelState.usageId);
+      toast.success('已取消');
+      setCancelState(null);
+      await fetchUsages();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '取消失败'));
+    }
   };
 
-  // ==================== 衍生状态 ====================
-
+  const pendingCount = useMemo(
+    () => usages.filter((item) => item.status === '0').length,
+    [usages],
+  );
+  const inUseCount = useMemo(
+    () => usages.filter((item) => item.status === '3').length,
+    [usages],
+  );
+  const completedCount = useMemo(
+    () => usages.filter((item) => item.status === '4').length,
+    [usages],
+  );
   const usageTotalPages = Math.max(1, Math.ceil(usageTotal / usageQuery.pageSize));
   const expenseTotalPages = Math.max(1, Math.ceil(expenseTotal / expenseQuery.pageSize));
-  const now = useMemo(() => new Date(), []);
-  const todayLabel = useMemo(() => formatDateCN(now), [now]);
-  const timeLabel = useMemo(() => now.toTimeString().slice(0, 5), [now]);
-  const pendingCount = useMemo(() => usages.filter((item) => item.status === '0').length, [usages]);
-  const inUseCount = useMemo(() => usages.filter((item) => item.status === '3').length, [usages]);
-  const completedCount = useMemo(() => usages.filter((item) => item.status === '4').length, [usages]);
-  const currentStatusLabel = usageQuery.status ? (USAGE_STATUS[usageQuery.status]?.label || '未知状态') : '全部状态';
-  const hasUsageFilters = Boolean(usageQuery.status);
-
-  const expenseTypeSummary = useMemo(() => (
-    Object.entries(stats?.byType || {}).map(([type, amount]) => {
-      const config = EXPENSE_TYPES[type] || {
-        label: '未知',
-        icon: <MoreHorizontal size={14} />,
-        color: 'text-slate-600',
-      };
-      return {
-        type,
-        amount: amount as number,
-        ...config,
-      };
-    })
-  ), [stats]);
-
-  const heroMetrics = useMemo(() => ([
-    {
-      label: '当前视图',
-      value: activeTab === 'usage' ? `${usageTotal}` : `${expenseTotal}`,
-      hint: activeTab === 'usage' ? '聚焦审批、归还与状态流转' : '查看车辆费用明细与录入情况',
-      icon: activeTab === 'usage' ? <Car size={17} /> : <DollarSign size={17} />,
-    },
-    {
-      label: '待审批',
-      value: `${pendingCount}`,
-      hint: pendingCount > 0 ? '建议优先处理待审批用车申请' : '当前没有待审批的申请',
-      icon: <Clock size={17} />,
-    },
-    {
-      label: '进行中',
-      value: `${inUseCount}`,
-      hint: completedCount > 0 ? `已完成 ${completedCount} 条归还记录` : '暂无已完成归还记录',
-      icon: <Car size={17} />,
-    },
-    {
-      label: '累计费用',
-      value: formatCurrency(stats?.totalAmount),
-      hint: stats?.count ? `共 ${stats.count} 笔费用记录` : '当前还没有录入车辆费用',
-      icon: <DollarSign size={17} />,
-    },
-  ]), [activeTab, completedCount, expenseTotal, inUseCount, pendingCount, stats, usageTotal]);
-
-  const workspaceOverviewItems = useMemo(() => {
-    if (activeTab === 'usage') {
-      return [
-        { label: '记录数', value: `${usageTotal} 条` },
-        { label: '状态', value: currentStatusLabel },
-        { label: '当前页', value: `第 ${usageQuery.pageNum} 页` },
-        { label: '视图', value: hasUsageFilters ? '筛选结果' : '默认视图' },
-      ];
-    }
-
-    return [
-      { label: '费用笔数', value: `${expenseTotal} 条` },
-      { label: '本月费用', value: formatCurrency(stats?.monthlyAmount) },
-      { label: '上月费用', value: formatCurrency(stats?.lastMonthAmount) },
-      { label: '视图', value: '费用明细' },
-    ];
-  }, [activeTab, currentStatusLabel, expenseTotal, hasUsageFilters, stats, usageQuery.pageNum, usageTotal]);
-
-  const workspaceTitle = activeTab === 'usage' ? '用车记录' : '费用明细';
-  const glassModalShellClass = 'w-full max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-0 shadow-[0_22px_44px_rgba(15,23,42,0.14)]';
-  const glassModalHeaderClass = 'sticky top-0 z-10 border-b border-slate-100 bg-white px-5 py-4';
-  const glassModalSectionClass = 'overflow-visible rounded-2xl border border-slate-200 bg-slate-50 p-4';
-  const glassModalLabelClass = 'mb-1.5 block text-sm font-medium text-slate-700';
-  const glassModalInputClass = 'h-11 rounded-xl';
-  const glassModalTextareaClass = 'min-h-28 rounded-xl';
-  const glassModalFooterClass = 'sticky bottom-0 flex justify-end gap-3 border-t border-slate-100 bg-white px-5 py-4';
-  const glassDetailCardClass = 'rounded-2xl border border-slate-200 bg-slate-50 p-4';
-
-  // ==================== 渲染 ====================
-
+  const currentStatusLabel = USAGE_STATUS_OPTIONS.find((item) => item.value === usageQuery.status)?.label || '全部状态';
+  const currentExpenseTypeLabel = EXPENSE_TYPE_OPTIONS.find((item) => item.value === expenseQuery.expenseType)?.label || '全部类型';
+  const usageSummaryText = `待审批 ${pendingCount} · 进行中 ${inUseCount} · 已完成 ${completedCount}`;
+  const selectedExpenseAmount = expenseQuery.expenseType
+    ? Number(stats?.byType?.[expenseQuery.expenseType] || 0)
+    : null;
+  const expenseSummaryText = stats
+    ? `汇总 ${formatCurrency(
+        expenseQuery.expenseType ? selectedExpenseAmount || 0 : stats.totalAmount,
+      )} · 共 ${expenseTotal} 条`
+    : `共 ${expenseTotal} 条`;
+  const hasExpenseFilters = Boolean(expenseQuery.expenseType || expenseQuery.startDate || expenseQuery.endDate);
+  const expenseDateRangeLabel = expenseQuery.startDate || expenseQuery.endDate
+    ? `${expenseQuery.startDate || '起'} 至 ${expenseQuery.endDate || '今'}`
+    : '全部日期';
+  const expenseHeaderLabel = hasExpenseFilters
+    ? `${currentExpenseTypeLabel} · ${expenseDateRangeLabel}`
+    : '费用明细';
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <Car className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Vehicle Usage
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          用车记录与费用
+        </h1>
+      </div>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-600">
-                <Calendar size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-500">{timeLabel}</span>
+      <TablePageLayout
+        className="gap-4"
+        filters={(
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('usage')}
+                  className={[
+                    'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                    activeTab === 'usage'
+                      ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100'
+                      : 'text-slate-500 dark:text-slate-400',
+                  ].join(' ')}
+                >
+                  用车记录
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('expense')}
+                  className={[
+                    'rounded-md px-3 py-1.5 text-xs font-medium transition-colors',
+                    activeTab === 'expense'
+                      ? 'bg-white text-slate-900 shadow-sm dark:bg-slate-950 dark:text-slate-100'
+                      : 'text-slate-500 dark:text-slate-400',
+                  ].join(' ')}
+                >
+                  费用明细
+                </button>
+              </div>
+
+              {activeTab === 'usage' ? (
+                <>
+                  <div className="w-full sm:w-[170px]">
+                    <Select
+                      value={usageQuery.status || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setUsageQuery((prev) => ({
+                          ...prev,
+                          status: value === ALL_FILTER_VALUE ? '' : value,
+                          pageNum: 1,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="全部状态" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
+                        {USAGE_STATUS_OPTIONS.filter((item) => item.value).map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">{usageSummaryText}</div>
+                </>
+              ) : (
+                <>
+                  <div className="w-full sm:w-[170px]">
+                    <Select
+                      value={expenseQuery.expenseType || ALL_FILTER_VALUE}
+                      onValueChange={(value) =>
+                        setExpenseQuery((prev) => ({
+                          ...prev,
+                          expenseType: value === ALL_FILTER_VALUE ? '' : value,
+                          pageNum: 1,
+                        }))
+                      }
+                    >
+                      <SelectTrigger className="h-10">
+                        <SelectValue placeholder="全部类型" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
+                        {EXPENSE_TYPE_OPTIONS.filter((item) => item.value).map((item) => (
+                          <SelectItem key={item.value} value={item.value}>
+                            {item.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <DatePicker
+                    type="date"
+                    value={expenseQuery.startDate}
+                    onChange={(event) =>
+                      setExpenseQuery((prev) => ({
+                        ...prev,
+                        startDate: event.target.value,
+                        pageNum: 1,
+                      }))
+                    }
+                    className="h-10 w-full sm:w-[156px]"
+                  />
+                  <DatePicker
+                    type="date"
+                    value={expenseQuery.endDate}
+                    onChange={(event) =>
+                      setExpenseQuery((prev) => ({
+                        ...prev,
+                        endDate: event.target.value,
+                        pageNum: 1,
+                      }))
+                    }
+                    className="h-10 w-full sm:w-[156px]"
+                  />
+                  <div className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
+                    {expenseSummaryText}
+                  </div>
+                </>
+              )}
             </div>
-          )}
-          title="用车记录与费用"
-          actions={(
-            <div className="flex flex-wrap gap-2 xl:justify-end">
-              <Button size="lg" onClick={() => navigate('/admin/vehicle/booking')}>
-                <Plus size={15} className="mr-2" />
+
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
+              {activeTab === 'usage' && usageQuery.status ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setUsageQuery((prev) => ({
+                      ...prev,
+                      status: '',
+                      pageNum: 1,
+                    }))
+                  }
+                >
+                  清空筛选
+                </Button>
+              ) : null}
+              {activeTab === 'expense' && hasExpenseFilters ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setExpenseQuery((prev) => ({
+                      ...prev,
+                      expenseType: '',
+                      startDate: '',
+                      endDate: '',
+                      pageNum: 1,
+                    }))
+                  }
+                >
+                  清空筛选
+                </Button>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={() => void refreshCurrentView()} disabled={loading || expenseLoading}>
+                <RotateCcw size={14} className={loading || expenseLoading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={() => navigate('/admin/vehicle/booking')}>
+                <Plus size={14} className="mr-1.5" />
                 新建申请
               </Button>
-              <Button variant="outline" size="lg" onClick={handleRefreshCurrentTab}>
-                <RotateCcw size={15} className="mr-2" />
-                刷新数据
-              </Button>
             </div>
-          )}
-          contentClassName="p-4 sm:p-5"
-          metrics={heroMetrics}
-        />
+          </div>
+        )}
+        table={(
+          <div className="flex min-h-[40rem] flex-col">
+            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {activeTab === 'usage' ? currentStatusLabel : expenseHeaderLabel}
+                </div>
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  {activeTab === 'usage'
+                    ? `${usageTotal} 条 · 第 ${usageQuery.pageNum} / ${usageTotalPages} 页`
+                    : `${expenseTotal} 条 · 第 ${expenseQuery.pageNum} / ${expenseTotalPages} 页`}
+                </div>
+              </div>
+            </div>
 
-        <Card className={`${workspaceGlassSurfaceClassName} p-3.5`}>
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'usage' | 'expense')}>
-            <div className="flex flex-col gap-3">
-              <WorkspaceWorkbenchCard
-                eyebrow={activeTab === 'usage' ? '记录' : '费用'}
-                title={workspaceTitle}
-                total={activeTab === 'usage' ? usageTotal : expenseTotal}
-                hasActiveFilters={activeTab === 'usage' ? hasUsageFilters : false}
-                overviewItems={workspaceOverviewItems}
-                headerBadges={(
-                  <>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                      {activeTab === 'usage' ? (hasUsageFilters ? '已应用筛选' : '默认视图') : '费用追踪'}
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                      共 {activeTab === 'usage' ? usageTotal : expenseTotal} 条
-                    </span>
-                  </>
-                )}
-                filterBar={(
-                  <div className="flex flex-col gap-3">
-                    <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                      <TabsList className="inline-flex h-auto flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1">
-                        <TabsTrigger
-                          value="usage"
-                          className="rounded-lg px-3 py-1.5 text-[11px] font-medium text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
-                        >
-                          <Car size={14} className="mr-1.5" />
-                          用车记录
-                        </TabsTrigger>
-                        <TabsTrigger
-                          value="expense"
-                          className="rounded-lg px-3 py-1.5 text-[11px] font-medium text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm"
-                        >
-                          <DollarSign size={14} className="mr-1.5" />
-                          费用明细
-                        </TabsTrigger>
-                      </TabsList>
-
-                      {activeTab === 'usage' ? (
-                        hasUsageFilters ? (
-                          <Button variant="outline" size="sm" onClick={resetUsageFilters}>
-                            <RotateCcw size={15} className="mr-2" />
-                            清空所有条件
-                          </Button>
-                        ) : (
-                          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-medium text-slate-400">
-                            当前未应用额外筛选
-                          </span>
-                        )
-                      ) : (
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500">
-                          {expenseTypeSummary.length > 0 ? `覆盖 ${expenseTypeSummary.length} 类费用` : '当前暂无费用分布'}
-                        </span>
-                      )}
-                    </div>
-
-                    {activeTab === 'usage' ? (
-                      <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1">
-                        {STATUS_QUICK_FILTERS.map((item) => {
-                          const active = usageQuery.status === item.value;
-                          return (
-                            <button
-                              key={item.value || 'ALL'}
-                              type="button"
-                              onClick={() => applyStatusFilter(item.value)}
-                              className={[
-                                'rounded-lg px-3 py-1.5 text-[11px] font-medium transition',
-                                active
-                                  ? 'bg-white text-slate-900 shadow-sm'
-                                  : 'text-slate-500 hover:text-slate-900',
-                              ].join(' ')}
-                            >
-                              {item.label}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : expenseTypeSummary.length > 0 ? (
-                      <div className="flex flex-wrap gap-2">
-                        {expenseTypeSummary.map((item) => (
-                          <div
-                            key={item.type}
-                            className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-600"
-                          >
-                            <span className={item.color}>{item.icon}</span>
-                            <span>{item.label}</span>
-                            <span className="font-semibold text-slate-900">{formatCurrency(item.amount)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="rounded-xl border border-slate-200 bg-white px-3.5 py-3 text-[12px] text-slate-400">
-                        录入车辆费用后，这里会自动汇总类型分布。
-                      </div>
-                    )}
-                  </div>
-                )}
-              />
-              <TabsContent value="usage" className="mt-0">
-                <WorkspaceResultCard total={usageTotal} description="展示车辆使用记录、审批状态与当前可执行操作">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="bg-slate-50">
-                        <TableRow className="border-slate-200 hover:bg-transparent">
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">车辆</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">申请人</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">用车时间</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">目的地</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">事由</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                          <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
-                        </TableRow>
-                      </TableHeader>
-                        <TableBody>
-                          {loading ? (
-                            <WorkspaceTableStateRow
-                              type="loading"
-                              colSpan={7}
-                              title="正在加载用车记录..."
-                              icon={<Loader2 className="animate-spin" size={18} />}
-                            />
-                          ) : usages.length === 0 ? (
-                            <WorkspaceTableStateRow
-                              colSpan={7}
-                              icon={<Car size={26} />}
-                              title="暂无用车记录"
-                              description="新建用车申请后，这里会显示审批状态、归还动作和费用录入入口。"
-                            />
-                          ) : (
-                            usages.map((usage) => (
-                              <TableRow key={usage.usageId} className="border-slate-100 transition hover:bg-slate-50">
-                                <TableCell className="px-4 py-4 align-top">
-                                  <div className="text-sm font-semibold text-slate-900">
-                                    {usage.vehiclePlate || `车辆#${usage.vehicleId}`}
-                                  </div>
-                                  <div className="mt-1 text-[11px] text-slate-400">用车编号 #{usage.usageId}</div>
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                                  {usage.applicantName || `用户${usage.applicantId}`}
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                                  <div>{usage.startTime}</div>
-                                  <div className="mt-1 text-[11px] text-slate-400">至 {usage.endTime}</div>
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                                  <span className="inline-flex items-center gap-1">
-                                    <MapPin size={12} className="text-slate-400" />
-                                    {usage.destination}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                                  <span className="line-clamp-1 max-w-[180px]">{usage.reason || '-'}</span>
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top">
-                                  <UsageStatusBadge status={usage.status || '0'} />
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top">
-                                  <TableRowActions
-                                    align="center"
-                                    actions={[
-                                      {
-                                        label: '详情',
-                                        icon: <Eye size={14} />,
-                                        onClick: () => handleViewDetail(usage),
-                                        tone: 'info',
-                                      },
-                                      {
-                                        label: '审批',
-                                        icon: <CheckCircle size={14} />,
-                                        onClick: () => handleOpenApprove(usage),
-                                        tone: 'primary',
-                                        hidden: usage.status !== '0',
-                                      },
-                                      {
-                                        label: '归还',
-                                        icon: <CornerDownLeft size={14} />,
-                                        onClick: () => handleOpenReturn(usage),
-                                        tone: 'success',
-                                        hidden: usage.status !== '1' && usage.status !== '3',
-                                      },
-                                      {
-                                        label: '费用',
-                                        icon: <DollarSign size={14} />,
-                                        onClick: () => handleOpenExpense(usage),
-                                        tone: 'info',
-                                        hidden: usage.status !== '3' && usage.status !== '4',
-                                      },
-                                      {
-                                        label: '取消',
-                                        icon: <Ban size={14} />,
-                                        onClick: () => handleCancel(usage),
-                                        tone: 'danger',
-                                        hidden: usage.status !== '0',
-                                      },
-                                    ]}
-                                  />
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    {usageTotal > 0 ? (
-                      <WorkspacePaginationBar
-                        total={usageTotal}
-                        pageNum={usageQuery.pageNum}
-                        totalPages={usageTotalPages}
-                        onPrev={() => setUsageQuery({ ...usageQuery, pageNum: usageQuery.pageNum - 1 })}
-                        onNext={() => setUsageQuery({ ...usageQuery, pageNum: usageQuery.pageNum + 1 })}
-                        prevDisabled={usageQuery.pageNum <= 1}
-                        nextDisabled={usageQuery.pageNum >= usageTotalPages}
+            {activeTab === 'usage' ? (
+              <div className="overflow-x-auto">
+                <Table className="min-w-[1100px]">
+                  <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                    <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">车辆</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">申请人</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">用车时间</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">目的地</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">事由</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
+                      <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {loading ? (
+                      <TableStateRow colSpan={7} title="正在加载用车记录" loading />
+                    ) : usages.length === 0 ? (
+                      <TableStateRow
+                        colSpan={7}
+                        title="暂无用车记录"
+                        description="新建申请后会显示在这里。"
                       />
-                    ) : null}
-                </WorkspaceResultCard>
-              </TabsContent>
-
-              <TabsContent value="expense" className="mt-0">
-                <WorkspaceResultCard total={expenseTotal} title="费用记录" description="展示每笔车辆费用的类型、金额、日期与录入说明">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="bg-slate-50">
-                        <TableRow className="border-slate-200 hover:bg-transparent">
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">车辆</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">费用类型</TableHead>
-                          <TableHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">金额</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">日期</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">说明</TableHead>
-                          <TableHead className="px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">录入时间</TableHead>
+                    ) : (
+                      usages.map((usage) => (
+                        <TableRow
+                          key={usage.usageId}
+                          className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                        >
+                          <TableCell className="px-4 py-3 align-top">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {usage.vehiclePlate || `车辆#${usage.vehicleId}`}
+                            </div>
+                            <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                              申请 #{usage.usageId}
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            {usage.applicantName || `用户${usage.applicantId}`}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            <div>{formatDateTime(usage.startTime)}</div>
+                            <div className="mt-1 text-[11px] text-slate-400 dark:text-slate-500">
+                              至 {formatDateTime(usage.endTime)}
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            <span className="inline-flex items-center gap-1">
+                              <MapPin size={12} className="text-slate-400 dark:text-slate-500" />
+                              {usage.destination}
+                            </span>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            <span className="line-clamp-1 max-w-[220px]">{usage.reason || '-'}</span>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top">
+                            <UsageStatusBadge status={usage.status || '0'} />
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-right">
+                            <TableRowActions
+                              align="end"
+                              iconOnly
+                              actions={[
+                                {
+                                  label: '详情',
+                                  icon: <Eye size={14} />,
+                                  onClick: () => handleViewDetail(usage),
+                                  tone: 'neutral',
+                                },
+                                ...(usagePrimaryAction(usage) ? [usagePrimaryAction(usage)!] : []),
+                              ]}
+                            />
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {expenseLoading ? (
-                          <WorkspaceTableStateRow
-                            type="loading"
-                            colSpan={6}
-                            title="正在加载费用明细..."
-                            icon={<Loader2 className="animate-spin" size={18} />}
-                          />
-                        ) : expenses.length === 0 ? (
-                          <WorkspaceTableStateRow
-                            colSpan={6}
-                            icon={<DollarSign size={26} />}
-                            title="暂无费用记录"
-                            description="在用车完成或进行中录入费用后，这里会按轻玻璃表格自动汇总展示。"
-                          />
-                        ) : (
-                          expenses.map((expense) => {
-                            const typeConfig = EXPENSE_TYPES[expense.expenseType] || {
-                              label: '未知',
-                              icon: <MoreHorizontal size={14} />,
-                              color: 'text-slate-600',
-                            };
-                            return (
-                              <TableRow key={expense.expenseId} className="border-slate-100 transition hover:bg-slate-50">
-                                <TableCell className="px-4 py-4 align-top">
-                                  <div className="text-sm font-semibold text-slate-900">
-                                    {expense.vehiclePlate || `车辆#${expense.vehicleId}`}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top">
-                                  <span className={`inline-flex items-center gap-1 text-sm ${typeConfig.color}`}>
-                                    {typeConfig.icon}
-                                    {typeConfig.label}
-                                  </span>
-                                </TableCell>
-                                <TableCell className="px-4 py-4 text-right align-top text-sm font-semibold text-slate-900">
-                                  {formatCurrency(expense.amount)}
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                                  {expense.expenseDate}
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top text-sm text-slate-600">
-                                  {expense.description || '-'}
-                                </TableCell>
-                                <TableCell className="px-4 py-4 align-top text-[12px] text-slate-400">
-                                  {expense.createTime || '-'}
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-
-                  {expenseTotal > 0 ? (
-                    <WorkspacePaginationBar
-                      total={expenseTotal}
-                      pageNum={expenseQuery.pageNum}
-                      totalPages={expenseTotalPages}
-                      onPrev={() => setExpenseQuery({ ...expenseQuery, pageNum: expenseQuery.pageNum - 1 })}
-                      onNext={() => setExpenseQuery({ ...expenseQuery, pageNum: expenseQuery.pageNum + 1 })}
-                      prevDisabled={expenseQuery.pageNum <= 1}
-                      nextDisabled={expenseQuery.pageNum >= expenseTotalPages}
-                    />
-                  ) : null}
-                </WorkspaceResultCard>
-              </TabsContent>
-            </div>
-          </Tabs>
-        </Card>
-      </WorkspacePageContent>
-
-      {/* ==================== 详情弹窗 ==================== */}
-      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className={`${glassModalShellClass} max-w-3xl`}>
-          <DialogHeader className={glassModalHeaderClass}>
-            <div>
-              <DialogTitle className="flex items-center gap-2 text-[1.5rem] font-bold tracking-tight text-slate-950">
-                <Eye size={18} className="text-slate-500" />
-                用车详情
-              </DialogTitle>
-              <p className="mt-2 text-sm text-slate-500">查看车辆信息、申请行程、审批备注和里程情况。</p>
-            </div>
-          </DialogHeader>
-          {currentUsage && (
-            <>
-              <div className="space-y-4 px-6 py-5">
-                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                  <div>
-                    <div className="text-[1.25rem] font-semibold tracking-tight text-slate-950">
-                      {currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-500">
-                      申请人：{currentUsage.applicantName || `用户${currentUsage.applicantId}`}
-                    </div>
-                  </div>
-                  <UsageStatusBadge status={currentUsage.status || '0'} />
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className={glassDetailCardClass}>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">时间安排</div>
-                    <div className="mt-3 space-y-3 text-sm text-slate-600">
-                      <div>
-                        <div className="text-slate-400">开始时间</div>
-                        <div className="mt-1 font-medium text-slate-900">{currentUsage.startTime}</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-400">结束时间</div>
-                        <div className="mt-1 font-medium text-slate-900">{currentUsage.endTime}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={glassDetailCardClass}>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">行程摘要</div>
-                    <div className="mt-3 space-y-3 text-sm text-slate-600">
-                      <div>
-                        <div className="text-slate-400">目的地</div>
-                        <div className="mt-1 font-medium text-slate-900">{currentUsage.destination}</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-400">随行人数</div>
-                        <div className="mt-1 font-medium text-slate-900">{currentUsage.passengerCount || 0} 人</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className={`${glassDetailCardClass} md:col-span-2`}>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">申请说明</div>
-                    <div className="mt-3 grid gap-4 md:grid-cols-2">
-                      <div>
-                        <div className="text-sm text-slate-400">用车事由</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">{currentUsage.reason || '-'}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-400">随行人员</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">{currentUsage.passengers || '-'}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-400">出发里程</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">
-                          {currentUsage.startMileage != null ? `${currentUsage.startMileage} km` : '-'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-400">归还里程</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">
-                          {currentUsage.endMileage != null ? `${currentUsage.endMileage} km` : '-'}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-400">审批人</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">{currentUsage.approverName || '-'}</div>
-                      </div>
-                      <div>
-                        <div className="text-sm text-slate-400">审批意见</div>
-                        <div className="mt-1 text-sm font-medium text-slate-900">{currentUsage.approveRemark || '-'}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-
-              <DialogFooter className={glassModalFooterClass}>
-                <Button variant="outline" className="h-11 rounded-xl" onClick={() => setIsDetailDialogOpen(false)}>
-                  关闭
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ==================== 审批弹窗 ==================== */}
-      <Dialog open={isApproveDialogOpen} onOpenChange={setIsApproveDialogOpen}>
-        <DialogContent className={`${glassModalShellClass} max-w-xl`}>
-          <DialogHeader className={glassModalHeaderClass}>
-            <div>
-              <DialogTitle className="flex items-center gap-2 text-[1.35rem] font-bold tracking-tight text-slate-950">
-                <CheckCircle size={18} className="text-slate-500" />
-                审批用车申请
-              </DialogTitle>
-              <p className="mt-2 text-sm text-slate-500">确认是否批准本次用车，并按需填写审批意见。</p>
-            </div>
-          </DialogHeader>
-          {currentUsage && (
-            <>
-              <div className="space-y-4 px-6 py-5">
-                <div className={glassModalSectionClass}>
-                  <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
-                    <div>
-                      <div className="text-slate-400">车辆</div>
-                      <div className="mt-1 font-medium text-slate-900">{currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400">申请人</div>
-                      <div className="mt-1 font-medium text-slate-900">{currentUsage.applicantName || `用户${currentUsage.applicantId}`}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400">目的地</div>
-                      <div className="mt-1 font-medium text-slate-900">{currentUsage.destination}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400">用车时间</div>
-                      <div className="mt-1 font-medium text-slate-900">{currentUsage.startTime} 至 {currentUsage.endTime}</div>
-                    </div>
-                    <div className="md:col-span-2">
-                      <div className="text-slate-400">用车事由</div>
-                      <div className="mt-1 font-medium text-slate-900">{currentUsage.reason}</div>
-                    </div>
-                  </div>
-                </div>
-                <div className={glassModalSectionClass}>
-                  <Label className={glassModalLabelClass}>审批意见（可选）</Label>
-                  <Textarea
-                    className={`${glassModalTextareaClass} resize-none`}
-                    placeholder="请输入审批意见..."
-                    value={approveRemark}
-                    onChange={(e) => setApproveRemark(e.target.value)}
-                  />
-                </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table className="min-w-[980px]">
+                  <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                    <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">车辆</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">费用类型</TableHead>
+                      <TableHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">金额</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">日期</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">说明</TableHead>
+                      <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">录入时间</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {expenseLoading ? (
+                      <TableStateRow colSpan={6} title="正在加载费用记录" loading />
+                    ) : expenses.length === 0 ? (
+                      <TableStateRow
+                        colSpan={6}
+                        title="暂无费用记录"
+                        description="录入费用后会显示在这里。"
+                        icon={<DollarSign className="h-4 w-4" />}
+                      />
+                    ) : (
+                      expenses.map((expense) => (
+                        <TableRow
+                          key={expense.expenseId}
+                          className="transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/60"
+                        >
+                          <TableCell className="px-4 py-3 align-top">
+                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {expense.vehiclePlate || `车辆#${expense.vehicleId}`}
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top">
+                            <ExpenseTypeBadge expenseType={expense.expenseType} />
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-right text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            {formatCurrency(expense.amount)}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            {renderText(expense.expenseDate)}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-600 dark:text-slate-300">
+                            {renderText(expense.description)}
+                          </TableCell>
+                          <TableCell className="px-4 py-3 align-top text-sm text-slate-500 dark:text-slate-400">
+                            {renderText(expense.createTime)}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
               </div>
-              <DialogFooter className={glassModalFooterClass}>
-                <Button variant="outline" className="h-11 rounded-xl" onClick={() => setIsApproveDialogOpen(false)}>
-                  取消
-                </Button>
-                <Button variant="destructive" className="h-11 rounded-xl" onClick={() => handleApprove(false)}>
-                  <XCircle size={14} className="mr-2" />
-                  驳回
-                </Button>
-                <Button className="h-11 rounded-xl" onClick={() => handleApprove(true)}>
-                  <CheckCircle size={14} className="mr-2" />
-                  批准
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+            )}
+          </div>
+        )}
+        pagination={(
+          activeTab === 'usage'
+            ? (usageTotal > 0 ? (
+                <Pagination
+                  total={usageTotal}
+                  page={usageQuery.pageNum}
+                  pageSize={usageQuery.pageSize}
+                  showPageSizeSelector={false}
+                  showJump={false}
+                  onPageChange={(page) =>
+                    setUsageQuery((prev) => ({
+                      ...prev,
+                      pageNum: page,
+                    }))
+                  }
+                  onPageSizeChange={() => {}}
+                />
+              ) : null)
+            : (expenseTotal > 0 ? (
+                <Pagination
+                  total={expenseTotal}
+                  page={expenseQuery.pageNum}
+                  pageSize={expenseQuery.pageSize}
+                  showPageSizeSelector={false}
+                  showJump={false}
+                  onPageChange={(page) =>
+                    setExpenseQuery((prev) => ({
+                      ...prev,
+                      pageNum: page,
+                    }))
+                  }
+                  onPageSizeChange={() => {}}
+                />
+              ) : null)
+        )}
+      />
 
-      {/* ==================== 归还弹窗 ==================== */}
-      <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
-        <DialogContent className={`${glassModalShellClass} max-w-xl`}>
-          <DialogHeader className={glassModalHeaderClass}>
-            <div>
-              <DialogTitle className="flex items-center gap-2 text-[1.35rem] font-bold tracking-tight text-slate-950">
-                <CornerDownLeft size={18} className="text-slate-500" />
-                归还车辆
-              </DialogTitle>
-              <p className="mt-2 text-sm text-slate-500">录入当前里程表读数，完成本次用车归还。</p>
-            </div>
-          </DialogHeader>
-          {currentUsage && (
-            <>
-              <div className="space-y-4 px-6 py-5">
-                <div className={glassModalSectionClass}>
-                  <div className="grid gap-3 text-sm text-slate-600 md:grid-cols-2">
-                    <div>
-                      <div className="text-slate-400">车辆</div>
-                      <div className="mt-1 font-medium text-slate-900">{currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`}</div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400">目的地</div>
-                      <div className="mt-1 font-medium text-slate-900">{currentUsage.destination}</div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className={glassModalSectionClass}>
-                  <Label className={glassModalLabelClass}>归还里程 (km) <span className="text-rose-500">*</span></Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    placeholder="请输入当前里程表读数"
-                    value={returnMileage || ''}
-                    onChange={(e) => setReturnMileage(parseFloat(e.target.value) || 0)}
-                    className={glassModalInputClass}
-                  />
-                </div>
-              </div>
-              <DialogFooter className={glassModalFooterClass}>
-                <Button variant="outline" className="h-11 rounded-xl" onClick={() => setIsReturnDialogOpen(false)}>
-                  取消
-                </Button>
-                <Button className="h-11 rounded-xl" onClick={handleReturn}>
-                  <CornerDownLeft size={14} className="mr-2" />
-                  确认归还
-                </Button>
-              </DialogFooter>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
-
-      {/* ==================== 录入费用弹窗 ==================== */}
-      <Dialog open={isExpenseDialogOpen} onOpenChange={setIsExpenseDialogOpen}>
-        <DialogContent className={`${glassModalShellClass} max-w-xl`}>
-          <DialogHeader className={glassModalHeaderClass}>
-            <div>
-              <DialogTitle className="flex items-center gap-2 text-[1.35rem] font-bold tracking-tight text-slate-950">
-                <DollarSign size={18} className="text-slate-500" />
+      <BaseDialog
+        open={showDetailDialog && Boolean(currentUsage)}
+        title="用车详情"
+        onClose={() => {
+          setShowDetailDialog(false);
+          setCurrentUsage(null);
+        }}
+        maxWidthClassName="max-w-3xl"
+        bodyClassName="space-y-4"
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDetailDialog(false);
+                setCurrentUsage(null);
+              }}
+            >
+              关闭
+            </Button>
+            {currentUsage?.status === '0' ? (
+              <Button
+                variant="destructive"
+                onClick={() => {
+                  if (!currentUsage) {
+                    return;
+                  }
+                  setShowDetailDialog(false);
+                  openCancelConfirm(currentUsage);
+                }}
+              >
+                取消申请
+              </Button>
+            ) : null}
+            {currentUsage?.status === '3' ? (
+              <Button
+                onClick={() => {
+                  if (!currentUsage) {
+                    return;
+                  }
+                  setShowDetailDialog(false);
+                  handleOpenExpense(currentUsage);
+                }}
+              >
                 录入费用
-              </DialogTitle>
-              <p className="mt-2 text-sm text-slate-500">为当前用车记录补充油费、过路费、停车费等费用信息。</p>
+              </Button>
+            ) : null}
+          </>
+        )}
+      >
+        {currentUsage ? (
+          <>
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+              <div className="min-w-0">
+                <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`}
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  申请人 {currentUsage.applicantName || `用户${currentUsage.applicantId}`}
+                </div>
+              </div>
+              <div className="ml-auto">
+                <UsageStatusBadge status={currentUsage.status || '0'} />
+              </div>
             </div>
-          </DialogHeader>
-          <div className="space-y-4 px-6 py-5">
-            <div className={glassModalSectionClass}>
-              <Label className={glassModalLabelClass}>费用类型</Label>
+
+            <div className="grid gap-4 lg:grid-cols-2">
+              <DetailSection title="行程信息">
+                <DetailField label="开始时间" value={formatDateTime(currentUsage.startTime)} />
+                <DetailField label="结束时间" value={formatDateTime(currentUsage.endTime)} />
+                <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+                <DetailField label="还车地点" value={renderText(currentUsage.returnLocation)} />
+                <DetailField label="行程类型" value={currentUsage.isRoundTrip ? '往返' : '单程'} />
+                <DetailField label="随行人数" value={`${currentUsage.passengerCount || 0} 人`} />
+              </DetailSection>
+
+              <DetailSection title="执行信息">
+                <DetailField label="随行人员" value={renderText(currentUsage.passengers)} />
+                <DetailField label="出发里程" value={currentUsage.startMileage != null ? `${currentUsage.startMileage} km` : '-'} />
+                <DetailField label="归还里程" value={currentUsage.endMileage != null ? `${currentUsage.endMileage} km` : '-'} />
+                <DetailField label="审批人" value={renderText(currentUsage.approverName)} />
+                <DetailField label="审批意见" value={renderText(currentUsage.approveRemark)} />
+                <DetailField label="创建时间" value={renderText(currentUsage.createTime)} />
+              </DetailSection>
+            </div>
+
+            <DetailSection title="用车事由">
+              <div className="px-4 py-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {currentUsage.reason || '-'}
+              </div>
+            </DetailSection>
+          </>
+        ) : null}
+      </BaseDialog>
+
+      <BaseDialog
+        open={showApproveDialog && Boolean(currentUsage)}
+        title="审批申请"
+        onClose={() => {
+          setShowApproveDialog(false);
+          setCurrentUsage(null);
+        }}
+        maxWidthClassName="max-w-2xl"
+        bodyClassName="space-y-4"
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowApproveDialog(false);
+                setCurrentUsage(null);
+              }}
+            >
+              取消
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => void handleApprove(false)}
+            >
+              驳回
+            </Button>
+            <Button onClick={() => void handleApprove(true)}>
+              批准
+            </Button>
+          </>
+        )}
+      >
+        {currentUsage ? (
+          <>
+            <DetailSection title="申请信息">
+              <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
+              <DetailField label="申请人" value={currentUsage.applicantName || `用户${currentUsage.applicantId}`} />
+              <DetailField label="用车时间" value={`${formatDateTime(currentUsage.startTime)} 至 ${formatDateTime(currentUsage.endTime)}`} />
+              <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+            </DetailSection>
+
+            <DetailSection title="用车事由">
+              <div className="px-4 py-4 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {currentUsage.reason || '-'}
+              </div>
+            </DetailSection>
+
+            <div className="space-y-2">
+              <Label>审批意见</Label>
+              <Textarea
+                className="min-h-[120px] resize-none"
+                placeholder="可选"
+                value={approveRemark}
+                onChange={(event) => setApproveRemark(event.target.value)}
+              />
+            </div>
+          </>
+        ) : null}
+      </BaseDialog>
+
+      <BaseDialog
+        open={showReturnDialog && Boolean(currentUsage)}
+        title="归还车辆"
+        onClose={() => {
+          setShowReturnDialog(false);
+          setCurrentUsage(null);
+        }}
+        maxWidthClassName="max-w-xl"
+        bodyClassName="space-y-4"
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowReturnDialog(false);
+                setCurrentUsage(null);
+              }}
+            >
+              取消
+            </Button>
+            <Button onClick={() => void handleReturn()}>
+              确认归还
+            </Button>
+          </>
+        )}
+      >
+        {currentUsage ? (
+          <>
+            <DetailSection title="当前申请">
+              <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
+              <DetailField label="目的地" value={renderText(currentUsage.destination)} />
+            </DetailSection>
+
+            <div className="space-y-2">
+              <Label>归还里程 (km)</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="请输入当前里程"
+                value={returnMileage || ''}
+                onChange={(event) => setReturnMileage(parseFloat(event.target.value) || 0)}
+                className="h-11"
+              />
+            </div>
+          </>
+        ) : null}
+      </BaseDialog>
+
+      <BaseDialog
+        open={showExpenseDialog && Boolean(currentUsage)}
+        title="录入费用"
+        onClose={() => {
+          setShowExpenseDialog(false);
+          setCurrentUsage(null);
+        }}
+        maxWidthClassName="max-w-xl"
+        bodyClassName="space-y-4"
+        footer={(
+          <>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowExpenseDialog(false);
+                setCurrentUsage(null);
+              }}
+            >
+              取消
+            </Button>
+            <Button onClick={() => void handleSubmitExpense()}>
+              提交
+            </Button>
+          </>
+        )}
+      >
+        {currentUsage ? (
+          <>
+            <DetailSection title="当前申请">
+              <DetailField label="车辆" value={currentUsage.vehiclePlate || `车辆#${currentUsage.vehicleId}`} />
+              <DetailField label="申请" value={`#${currentUsage.usageId}`} />
+            </DetailSection>
+
+            <div className="space-y-2">
+              <Label>费用类型</Label>
               <Select
                 value={expenseForm.expenseType || '1'}
-                onValueChange={(value) => setExpenseForm({ ...expenseForm, expenseType: value as VehicleExpense['expenseType'] })}
+                onValueChange={(value) =>
+                  setExpenseForm((prev) => ({ ...prev, expenseType: value as VehicleExpense['expenseType'] }))
+                }
               >
-                <SelectTrigger className={glassModalInputClass}>
+                <SelectTrigger className="h-11">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-200 bg-white">
+                <SelectContent>
                   <SelectItem value="1">油费</SelectItem>
                   <SelectItem value="2">过路费</SelectItem>
                   <SelectItem value="3">停车费</SelectItem>
@@ -1038,54 +1124,59 @@ const VehicleUsageList: React.FC = () => {
             </div>
 
             <div className="grid gap-4 md:grid-cols-2">
-              <div className={glassModalSectionClass}>
-                <Label className={glassModalLabelClass}>金额 (元) <span className="text-rose-500">*</span></Label>
+              <div className="space-y-2">
+                <Label>金额 (元)</Label>
                 <Input
                   type="number"
                   min={0}
                   step={0.01}
                   placeholder="0.00"
                   value={expenseForm.amount || ''}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, amount: parseFloat(e.target.value) || 0 })}
-                  className={glassModalInputClass}
+                  onChange={(event) =>
+                    setExpenseForm((prev) => ({ ...prev, amount: parseFloat(event.target.value) || 0 }))
+                  }
+                  className="h-11"
                 />
               </div>
-
-              <div className={glassModalSectionClass}>
-                <Label className={glassModalLabelClass}>日期</Label>
+              <div className="space-y-2">
+                <Label>日期</Label>
                 <DatePicker
-                  className={glassModalInputClass}
                   type="date"
                   value={expenseForm.expenseDate || ''}
-                  onChange={(e) => setExpenseForm({ ...expenseForm, expenseDate: e.target.value })}
+                  onChange={(event) =>
+                    setExpenseForm((prev) => ({ ...prev, expenseDate: event.target.value }))
+                  }
+                  className="h-11"
                 />
               </div>
             </div>
 
-            <div className={glassModalSectionClass}>
-              <Label className={glassModalLabelClass}>说明</Label>
+            <div className="space-y-2">
+              <Label>说明</Label>
               <Input
-                placeholder="费用说明..."
+                placeholder="可选"
                 value={expenseForm.description || ''}
-                onChange={(e) => setExpenseForm({ ...expenseForm, description: e.target.value })}
-                className={glassModalInputClass}
+                onChange={(event) =>
+                  setExpenseForm((prev) => ({ ...prev, description: event.target.value }))
+                }
+                className="h-11"
               />
             </div>
-          </div>
-          <DialogFooter className={glassModalFooterClass}>
-            <Button variant="outline" className="h-11 rounded-xl" onClick={() => setIsExpenseDialogOpen(false)}>
-              取消
-            </Button>
-            <Button className="h-11 rounded-xl" onClick={handleSubmitExpense}>
-              <DollarSign size={14} className="mr-2" />
-              提交
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </>
+        ) : null}
+      </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(cancelState)}
+        title="取消申请"
+        message={cancelState?.message || ''}
+        confirmText="确认取消"
+        danger
+        onConfirm={() => void handleCancelConfirm()}
+        onCancel={() => setCancelState(null)}
+      />
     </div>
   );
 };
 
 export default VehicleUsageList;
-

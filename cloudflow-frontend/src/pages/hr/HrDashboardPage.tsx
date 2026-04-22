@@ -1,28 +1,79 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRightLeft, BadgePlus, BriefcaseBusiness, FileSearch, Landmark, Layers3, LogOut, Send, ShieldCheck, UserCog, UserRoundCheck, UserRoundPlus, Users, Wallet } from 'lucide-react';
-import { Card, Button, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui';
-import { WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceBackdrop, WorkspacePageContent, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
+import {
+  ArrowRightLeft,
+  BadgePlus,
+  BriefcaseBusiness,
+  FileSearch,
+  Landmark,
+  Layers3,
+  LogOut,
+  Send,
+  ShieldCheck,
+  UserCog,
+  UserRoundCheck,
+  UserRoundPlus,
+  Users,
+  Wallet,
+} from 'lucide-react';
+import {
+  Button,
+  Card,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
-import { HrEmployee, RecruitmentRequest, Candidate, Interview, Offer, OnboardingApplication, listEmployees, listRecruitmentRequests, listCandidates, listInterviews, listOffers, listOnboardingApplications } from '@/services/api/hr';
+import {
+  HrEmployee,
+  RecruitmentRequest,
+  Candidate,
+  Interview,
+  Offer,
+  OnboardingApplication,
+  listEmployees,
+  listRecruitmentRequests,
+  listCandidates,
+  listInterviews,
+  listOffers,
+  listOnboardingApplications,
+} from '@/services/api/hr';
 
-const normalizeRows = <T,>(data: any): T[] => {
+// 兼容后端不同分页返回结构，统一转成前端表格直接消费的数组。
+const normalizeRows = <T,>(data: unknown): T[] => {
   if (!data) return [];
   if (Array.isArray(data)) return data as T[];
-  if (Array.isArray(data.records)) return data.records as T[];
-  if (Array.isArray(data.rows)) return data.rows as T[];
+  if (Array.isArray((data as { records?: unknown[] }).records)) {
+    return (data as { records: T[] }).records;
+  }
+  if (Array.isArray((data as { rows?: unknown[] }).rows)) {
+    return (data as { rows: T[] }).rows;
+  }
   return [];
 };
 
-const statusPill = (text: string, tone: 'teal' | 'emerald' | 'slate' | 'amber' = 'slate') => {
+const statusPill = (
+  text: string,
+  tone: 'teal' | 'emerald' | 'slate' | 'amber' = 'slate',
+) => {
   const toneClass = {
-    teal: 'bg-cyan-50 text-cyan-700 border-cyan-100',
-    emerald: 'bg-emerald-50 text-emerald-700 border-emerald-100',
-    slate: 'bg-slate-100 text-slate-700 border-slate-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-100',
+    teal: 'border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+    emerald:
+      'border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    slate:
+      'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+    amber:
+      'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
   }[tone];
-  return <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass}`}>{text}</span>;
+
+  return (
+    <span className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${toneClass}`}>
+      {text}
+    </span>
+  );
 };
 
 const employeeStatusTone = (status?: string) => {
@@ -59,10 +110,11 @@ const onboardingStatusPriority = (status?: string | null) => {
   return 0;
 };
 
+// Offer 接受后不一定立刻入职，这里统一找到候选人最近一条有效入职申请。
 const buildOnboardingMap = (applications: OnboardingApplication[]) => {
   const result = new Map<number, OnboardingApplication>();
 
-  applications.forEach(application => {
+  applications.forEach((application) => {
     if (!application.candidateId || application.status === 'REJECTED') return;
 
     const current = result.get(application.candidateId);
@@ -73,12 +125,69 @@ const buildOnboardingMap = (applications: OnboardingApplication[]) => {
 
     const nextPriority = onboardingStatusPriority(application.status);
     const currentPriority = onboardingStatusPriority(current.status);
-    if (nextPriority > currentPriority || (nextPriority === currentPriority && application.id > current.id)) {
+    if (
+      nextPriority > currentPriority
+      || (nextPriority === currentPriority && application.id > current.id)
+    ) {
       result.set(application.candidateId, application);
     }
   });
 
   return result;
+};
+
+const InlineState = ({
+  title,
+  description,
+  className,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+}) => (
+  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      <Users className="h-4 w-4" />
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const TableStateRow = ({
+  colSpan,
+  title,
+  description,
+  loading = false,
+}: {
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}) => (
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          <Users className={`h-4 w-4 ${loading ? 'animate-pulse' : ''}`} />
+        </div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+        ) : null}
+      </div>
+    </td>
+  </tr>
+);
+
+type DashboardMetric = {
+  label: string;
+  value: number;
+  hint: string;
+  icon: React.ReactNode;
+  tone: 'cyan' | 'amber' | 'emerald' | 'slate';
 };
 
 export const HrDashboardPage: React.FC = () => {
@@ -96,7 +205,14 @@ export const HrDashboardPage: React.FC = () => {
     const load = async () => {
       setLoading(true);
       try {
-        const [employeeRes, requestRes, candidateRes, interviewRes, offerRes, onboardingRes] = await Promise.all([
+        const [
+          employeeRes,
+          requestRes,
+          candidateRes,
+          interviewRes,
+          offerRes,
+          onboardingRes,
+        ] = await Promise.all([
           listEmployees(),
           listRecruitmentRequests({ pageNum: 1, pageSize: 50 }),
           listCandidates({ pageNum: 1, pageSize: 50 }),
@@ -122,228 +238,337 @@ export const HrDashboardPage: React.FC = () => {
     [onboardingApplications],
   );
 
-  const metrics = useMemo(() => {
-    const regularCount = employees.filter(item => item.employeeStatus === 'REGULAR').length;
-    const probationCount = employees.filter(item => item.employeeStatus === 'PROBATION').length;
-    const recruitingCount = requests.filter(item => ['DRAFT', 'APPROVING', 'RECRUITING'].includes(item.status)).length;
-    const interviewingCount = candidates.filter(item => ['SCREENING', 'INTERVIEW', 'OFFER'].includes(item.status)).length;
-    const activeOfferCount = offers.filter(item =>
+  const metrics = useMemo<DashboardMetric[]>(() => {
+    const regularCount = employees.filter((item) => item.employeeStatus === 'REGULAR').length;
+    const probationCount = employees.filter((item) => item.employeeStatus === 'PROBATION').length;
+    const recruitingCount = requests.filter((item) => ['DRAFT', 'APPROVING', 'RECRUITING'].includes(item.status)).length;
+    const interviewingCount = candidates.filter((item) => ['SCREENING', 'INTERVIEW', 'OFFER'].includes(item.status)).length;
+    const activeOfferCount = offers.filter((item) =>
       ['APPROVING', 'APPROVED', 'SENT'].includes(item.status)
-      || (item.status === 'ACCEPTED' && !onboardingMap.has(item.candidateId)),
+      || (item.status === 'ACCEPTED' && !onboardingMap.has(item.candidateId))).length;
+    const convertedOfferCount = offers.filter(
+      (item) => item.status === 'ACCEPTED' && onboardingMap.has(item.candidateId),
     ).length;
-    const convertedOfferCount = offers.filter(item => item.status === 'ACCEPTED' && onboardingMap.has(item.candidateId)).length;
+
     return [
-      { label: '员工总数', value: employees.length, icon: <Users size={20} />, hint: `${regularCount} 名正式员工`, tone: 'teal' as const },
-      { label: '试用期员工', value: probationCount, icon: <UserCog size={20} />, hint: '重点关注转正与带教', tone: 'amber' as const },
-      { label: '招聘需求', value: recruitingCount, icon: <BriefcaseBusiness size={20} />, hint: '正在推进中的招聘岗位', tone: 'emerald' as const },
-      { label: '候选人 / 面试', value: interviewingCount, icon: <FileSearch size={20} />, hint: `${interviews.length} 场面试记录`, tone: 'slate' as const },
-      { label: '待推进 Offer', value: activeOfferCount, icon: <Send size={20} />, hint: `已转入职 ${convertedOfferCount} 条`, tone: 'amber' as const },
+      {
+        label: '员工总数',
+        value: employees.length,
+        hint: `${regularCount} 名正式员工`,
+        icon: <Users size={18} />,
+        tone: 'cyan',
+      },
+      {
+        label: '试用期员工',
+        value: probationCount,
+        hint: '重点关注转正与带教',
+        icon: <UserCog size={18} />,
+        tone: 'amber',
+      },
+      {
+        label: '招聘需求',
+        value: recruitingCount,
+        hint: '正在推进中的招聘岗位',
+        icon: <BriefcaseBusiness size={18} />,
+        tone: 'emerald',
+      },
+      {
+        label: '候选人 / 面试',
+        value: interviewingCount,
+        hint: `${interviews.length} 场面试记录`,
+        icon: <FileSearch size={18} />,
+        tone: 'slate',
+      },
+      {
+        label: '待推进 Offer',
+        value: activeOfferCount,
+        hint: `已转入职 ${convertedOfferCount} 条`,
+        icon: <Send size={18} />,
+        tone: 'amber',
+      },
     ];
   }, [employees, requests, candidates, interviews, offers, onboardingMap]);
 
-  const workflowCards = [
+  const quickLinks = [
+    {
+      title: '员工档案',
+      description: '查看员工台账、状态和部门归属',
+      path: '/hr/employees',
+      icon: <BadgePlus size={16} />,
+      tone: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
+    },
+    {
+      title: '招聘中心',
+      description: '推进需求、候选人和面试安排',
+      path: '/hr/recruitment',
+      icon: <BriefcaseBusiness size={16} />,
+      tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200',
+    },
     {
       title: '编制管理',
-      description: '维护部门和岗位的核定编制、空缺人数与超编风险',
+      description: '维护编制、空缺和超编风险',
       path: '/hr/headcount',
-      icon: <Layers3 size={18} />,
-      tone: 'bg-sky-50 text-sky-600',
+      icon: <Layers3 size={16} />,
+      tone: 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-200',
     },
     {
       title: '薪酬管理',
-      description: '联调薪资项目、薪资结构、员工现薪和调薪申请的桌面端入口',
+      description: '处理薪资、调薪和结构配置',
       path: '/hr/salary',
-      icon: <Landmark size={18} />,
-      tone: 'bg-amber-50 text-amber-600',
+      icon: <Landmark size={16} />,
+      tone: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200',
     },
     {
       title: '假期额度',
-      description: '统一查看员工年度额度、调休额度桶和手工调整入口，适合做跨年调休和余额校准。',
+      description: '查看额度桶与手工调整入口',
       path: '/hr/leave/quota',
-      icon: <Wallet size={18} />,
-      tone: 'bg-emerald-50 text-emerald-600',
+      icon: <Wallet size={16} />,
+      tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200',
     },
     {
       title: 'Offer 管理',
-      description: '创建 Offer、推进审批和发送，并在候选人接受后转入入职流程',
+      description: '推进审批、发送并转入入职流程',
       path: '/hr/offer',
-      icon: <Send size={18} />,
-      tone: 'bg-emerald-50 text-emerald-600',
+      icon: <Send size={16} />,
+      tone: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200',
     },
     {
       title: '入职办理',
-      description: '按申请列表持续办理入职、完成任务并确认入职',
+      description: '按申请列表办理入职和任务',
       path: '/hr/onboarding',
-      icon: <UserRoundPlus size={18} />,
-      tone: 'bg-sky-50 text-sky-600',
+      icon: <UserRoundPlus size={16} />,
+      tone: 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-200',
     },
     {
       title: '转正申请',
-      description: '围绕员工连续处理转正申请、审批和驳回',
+      description: '围绕员工连续处理转正申请',
       path: '/hr/probation',
-      icon: <UserRoundCheck size={18} />,
-      tone: 'bg-amber-50 text-amber-600',
+      icon: <UserRoundCheck size={16} />,
+      tone: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200',
     },
     {
       title: '调岗管理',
-      description: '围绕员工连续推进调岗申请、审批和生效',
+      description: '推进调岗审批与生效',
       path: '/hr/transfer',
-      icon: <ArrowRightLeft size={18} />,
-      tone: 'bg-violet-50 text-violet-600',
+      icon: <ArrowRightLeft size={16} />,
+      tone: 'bg-violet-50 text-violet-700 dark:bg-violet-950/30 dark:text-violet-200',
     },
     {
       title: '离职办理',
-      description: '围绕员工处理离职申请、面谈、交接和确认离职',
+      description: '处理离职申请、交接和确认离职',
       path: '/hr/resignation',
-      icon: <LogOut size={18} />,
-      tone: 'bg-rose-50 text-rose-600',
+      icon: <LogOut size={16} />,
+      tone: 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-200',
     },
   ];
 
-  return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-      <WorkspacePageContent className="space-y-6">
-      <WorkspaceHeroCard
-        badge={(
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
-            <ShieldCheck size={14} className="text-cyan-600" />
-            HR Desktop
-          </div>
-        )}
-        title="人力资源工作台"
-        description={user?.name ? `${user.name}，先把 HR 桌面端的核心数据和工作流真正接起来。` : '先把 HR 桌面端的核心数据和工作流真正接起来。'}
-        actions={(
-          <>
-            <Button size="lg" className="rounded-lg px-4" onClick={() => navigate('/hr/employees')}>
-              <BadgePlus size={18} className="mr-2" />
-              员工档案
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-lg px-4" onClick={() => navigate('/hr/offer')}>
-              <Send size={18} className="mr-2" />
-              Offer 管理
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-lg px-4" onClick={() => navigate('/hr/recruitment')}>
-              <BriefcaseBusiness size={18} className="mr-2" />
-              招聘中心
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-lg px-4" onClick={() => navigate('/hr/headcount')}>
-              <Layers3 size={18} className="mr-2" />
-              编制管理
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-lg px-4" onClick={() => navigate('/hr/salary')}>
-              <Landmark size={18} className="mr-2" />
-              薪酬管理
-            </Button>
-            <Button variant="outline" size="lg" className="rounded-lg px-4" onClick={() => navigate('/hr/leave/quota')}>
-              <Wallet size={18} className="mr-2" />
-              假期额度
-            </Button>
-          </>
-        )}
-      />
+  const currentEmployeeRows = employees.slice(0, 6);
+  const currentRequestRows = requests.slice(0, 6);
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {metrics.map(metric => (
-          <WorkspaceMetricCard
-            key={metric.label}
-            label={metric.label}
-            value={loading ? '--' : metric.value}
-            hint={metric.hint}
-            aside={(
-              <div className={`rounded-xl p-3 ${
-                metric.tone === 'teal'
-                  ? 'bg-cyan-50 text-cyan-600'
-                  : metric.tone === 'amber'
-                    ? 'bg-amber-50 text-amber-500'
-                    : metric.tone === 'emerald'
-                      ? 'bg-emerald-50 text-emerald-500'
-                      : 'bg-slate-100 text-slate-500'
-              }`}>
-                {metric.icon}
-              </div>
-            )}
-          />
-        ))}
+  return (
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <ShieldCheck className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          HR Dashboard
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          人力资源工作台
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          {user?.name
+            ? `${user.name}，这里统一查看 HR 核心数据和高频入口，不再保留旧的 Workspace 仪表盘壳层。`
+            : '这里统一查看 HR 核心数据和高频入口，不再保留旧的 Workspace 仪表盘壳层。'}
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
-        {workflowCards.map(item => (
-          <Card key={item.title} className="rounded-xl border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex h-full flex-col">
-              <div className={`inline-flex w-fit rounded-xl p-2.5 ${item.tone}`}>
-                {item.icon}
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          员工 {loading ? '--' : employees.length}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          招聘需求 {loading ? '--' : requests.length}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          候选人 {loading ? '--' : candidates.length}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          Offer {loading ? '--' : offers.length}
+        </span>
+
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate('/hr/employees')}>
+            员工档案
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => navigate('/hr/recruitment')}>
+            招聘中心
+          </Button>
+          <Button size="sm" onClick={() => navigate('/hr/offer')}>
+            Offer 管理
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {metrics.map((metric) => (
+          <Card key={metric.label} className="rounded-xl border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex items-start gap-3">
+              <div
+                className={[
+                  'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl',
+                  metric.tone === 'cyan'
+                    ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200'
+                    : metric.tone === 'amber'
+                      ? 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200'
+                      : metric.tone === 'emerald'
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
+                        : 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-300',
+                ].join(' ')}
+              >
+                {metric.icon}
               </div>
-              <h2 className="mt-4 text-lg font-semibold text-slate-900">{item.title}</h2>
-              <p className="mt-2 flex-1 text-sm leading-6 text-slate-500">{item.description}</p>
-              <Button className="mt-4 rounded-lg" variant="outline" onClick={() => navigate(item.path)}>
-                进入流程
-              </Button>
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                  {metric.label}
+                </div>
+                <div className="mt-1 text-2xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+                  {loading ? '--' : metric.value}
+                </div>
+                <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                  {metric.hint}
+                </div>
+              </div>
             </div>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <WorkspaceSectionCard
-          title="最新员工变更"
-          description="当前员工状态一眼可见"
-          headerAside={<Button variant="outline" onClick={() => navigate('/hr/employees')}>查看员工</Button>}
-        >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>工号</TableHead>
-                <TableHead>姓名</TableHead>
-                <TableHead>部门</TableHead>
-                <TableHead>状态</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.slice(0, 6).map(item => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium text-slate-800">{item.employeeNo}</TableCell>
-                  <TableCell>{item.name}</TableCell>
-                  <TableCell>{item.deptName || '-'}</TableCell>
-                  <TableCell>{statusPill(item.employeeStatus || 'UNKNOWN', employeeStatusTone(item.employeeStatus) as any)}</TableCell>
-                </TableRow>
-              ))}
-              {loading && <WorkspaceTableStateRow colSpan={4} type="loading" title="正在加载员工数据..." />}
-              {!employees.length && !loading && <WorkspaceTableStateRow colSpan={4} title="暂无员工数据" />}
-            </TableBody>
-          </Table>
-        </WorkspaceSectionCard>
-
-        <WorkspaceSectionCard
-          title="招聘推进看板"
-          description="需求和候选人推进节奏"
-          headerAside={<Button variant="outline" onClick={() => navigate('/hr/recruitment')}>查看招聘</Button>}
-        >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>需求编号</TableHead>
-                <TableHead>岗位</TableHead>
-                <TableHead>人数</TableHead>
-                <TableHead>状态</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {requests.slice(0, 6).map(item => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium text-slate-800">{item.requestNo}</TableCell>
-                  <TableCell>{item.positionName || '-'}</TableCell>
-                  <TableCell>{item.headcount}</TableCell>
-                  <TableCell>{statusPill(item.statusDesc || item.status, requestStatusTone(item.status) as any)}</TableCell>
-                </TableRow>
-              ))}
-              {loading && <WorkspaceTableStateRow colSpan={4} type="loading" title="正在加载招聘需求..." />}
-              {!requests.length && !loading && <WorkspaceTableStateRow colSpan={4} title="暂无招聘需求" />}
-            </TableBody>
-          </Table>
-        </WorkspaceSectionCard>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        {quickLinks.map((item) => (
+          <button
+            key={item.title}
+            type="button"
+            onClick={() => navigate(item.path)}
+            className="rounded-xl border border-slate-200 bg-white p-4 text-left shadow-sm transition hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:bg-slate-900/70"
+          >
+            <div className={`inline-flex rounded-xl p-2.5 ${item.tone}`}>
+              {item.icon}
+            </div>
+            <div className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">
+              {item.title}
+            </div>
+            <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              {item.description}
+            </div>
+          </button>
+        ))}
       </div>
-      </WorkspacePageContent>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <Card className="overflow-hidden rounded-xl border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">最新员工变更</div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前员工状态一眼可见</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate('/hr/employees')}>
+                查看员工
+              </Button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <Table className="min-w-[640px]">
+              <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
+                <TableRow>
+                  <TableHead>工号</TableHead>
+                  <TableHead>姓名</TableHead>
+                  <TableHead>部门</TableHead>
+                  <TableHead>状态</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableStateRow colSpan={4} title="正在加载员工数据..." loading />
+                ) : currentEmployeeRows.length === 0 ? (
+                  <TableStateRow colSpan={4} title="暂无员工数据" />
+                ) : (
+                  currentEmployeeRows.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium text-slate-800 dark:text-slate-200">
+                        {item.employeeNo}
+                      </TableCell>
+                      <TableCell>{item.name}</TableCell>
+                      <TableCell>{item.deptName || '-'}</TableCell>
+                      <TableCell>
+                        {statusPill(item.employeeStatus || 'UNKNOWN', employeeStatusTone(item.employeeStatus) as 'teal' | 'emerald' | 'slate' | 'amber')}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+
+        <Card className="overflow-hidden rounded-xl border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">招聘推进看板</div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">需求和候选人推进节奏</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => navigate('/hr/recruitment')}>
+                查看招聘
+              </Button>
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <Table className="min-w-[640px]">
+              <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
+                <TableRow>
+                  <TableHead>需求编号</TableHead>
+                  <TableHead>岗位</TableHead>
+                  <TableHead>人数</TableHead>
+                  <TableHead>状态</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableStateRow colSpan={4} title="正在加载招聘需求..." loading />
+                ) : currentRequestRows.length === 0 ? (
+                  <TableStateRow colSpan={4} title="暂无招聘需求" />
+                ) : (
+                  currentRequestRows.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium text-slate-800 dark:text-slate-200">
+                        {item.requestNo}
+                      </TableCell>
+                      <TableCell>{item.positionName || '-'}</TableCell>
+                      <TableCell>{item.headcount}</TableCell>
+                      <TableCell>
+                        {statusPill(item.statusDesc || item.status, requestStatusTone(item.status) as 'teal' | 'emerald' | 'slate' | 'amber')}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </Card>
+      </div>
+
+      {!loading && employees.length === 0 && requests.length === 0 ? (
+        <Card className="rounded-xl border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <InlineState
+            title="HR 数据尚未准备完成"
+            description="员工、招聘和 Offer 数据接入后，这里会显示核心统计和高频入口。"
+            className="py-14"
+          />
+        </Card>
+      ) : null}
     </div>
   );
 };

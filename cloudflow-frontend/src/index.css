@@ -113,6 +113,10 @@ html.dark *:focus-within::-webkit-scrollbar-thumb {
       background-color 0.2s ease;
   }
 
+  body.modal-open {
+    overflow: hidden;
+  }
+
   html.dark body {
     background:
       radial-gradient(circle at top left, rgba(20, 184, 166, 0.08), transparent 28%),

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Edit, Eye, Pin, Trash2, X } from 'lucide-react';
 import type { Announcement } from '@/types';
+import { AnnouncementScope } from '@/types';
 import { TableActionHead, TableHead, TableHeader, TableRowActions } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import {
@@ -19,6 +20,26 @@ interface AnnouncementManageTableProps {
   embedded?: boolean;
 }
 
+const formatScopeLabel = (announcement: Announcement) => {
+  if (announcement.scopeType === AnnouncementScope.DEPT) {
+    return '部门';
+  }
+
+  if (announcement.scopeType === AnnouncementScope.ROLE) {
+    return '角色';
+  }
+
+  return '全员';
+};
+
+const formatScopeValue = (announcement: Announcement) => {
+  if (announcement.scopeType === AnnouncementScope.ALL) {
+    return '所有可见范围';
+  }
+
+  return announcement.scopeValue || '已设置定向范围';
+};
+
 export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = ({
   announcements,
   onEdit,
@@ -30,14 +51,14 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
 }) => {
   const table = (
     <div className="overflow-x-auto">
-      <table className="min-w-[1100px] w-full">
+      <table className="min-w-[1180px] w-full">
         <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-950/95">
           <tr>
-            <TableHead className="w-[34%] px-4 py-3 text-left">标题</TableHead>
-            <TableHead className="px-4 py-3 text-left">类型</TableHead>
-            <TableHead className="px-4 py-3 text-left">状态</TableHead>
-            <TableHead className="px-4 py-3 text-left">优先级</TableHead>
-            <TableHead className="w-44 px-4 py-3 text-left">发布时间</TableHead>
+            <TableHead className="w-[30%] px-4 py-3 text-left">标题</TableHead>
+            <TableHead className="w-[18%] px-4 py-3 text-left">类型 / 优先级</TableHead>
+            <TableHead className="w-[14%] px-4 py-3 text-left">状态</TableHead>
+            <TableHead className="w-[18%] px-4 py-3 text-left">发布范围</TableHead>
+            <TableHead className="w-[20%] px-4 py-3 text-left">时间</TableHead>
             <TableActionHead className="w-[220px] px-4 py-3">操作</TableActionHead>
           </tr>
         </TableHeader>
@@ -48,13 +69,21 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
             const priorityMeta = getAnnouncementPriorityMeta(item.priority);
 
             return (
-              <tr key={item.announcementId} className="hover:bg-cyan-50/40 dark:hover:bg-cyan-950/20">
-                <td className="w-[34%] px-4 py-3">
+              <tr key={item.announcementId} className="hover:bg-cyan-50/30 dark:hover:bg-cyan-950/10">
+                <td className="px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
-                      {item.isTop === 1 ? <Pin size={14} className="text-amber-600 dark:text-amber-300" /> : null}
-                      <span className="truncate font-medium text-slate-900 dark:text-slate-100">{item.title}</span>
+                      <span className="truncate font-medium text-slate-900 dark:text-slate-100">
+                        {item.title}
+                      </span>
+                      {item.isTop === 1 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                          <Pin size={10} />
+                          置顶
+                        </span>
+                      ) : null}
                     </div>
+
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span>#{item.announcementId}</span>
                       <span className="text-slate-300 dark:text-slate-700">·</span>
@@ -62,17 +91,29 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                     </div>
                   </div>
                 </td>
+
                 <td className="px-4 py-3">
-                  <span
-                    className={cn(
-                      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
-                      typeMeta.className,
-                    )}
-                  >
-                    {typeMeta.icon}
-                    {typeMeta.label}
-                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold',
+                        typeMeta.className,
+                      )}
+                    >
+                      {typeMeta.icon}
+                      {typeMeta.label}
+                    </span>
+                    <span
+                      className={cn(
+                        'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
+                        priorityMeta.className,
+                      )}
+                    >
+                      {priorityMeta.label}
+                    </span>
+                  </div>
                 </td>
+
                 <td className="px-4 py-3">
                   <span
                     className={cn(
@@ -83,19 +124,25 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                     {statusMeta.label}
                   </span>
                 </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={cn(
-                      'inline-flex rounded-full px-2.5 py-1 text-xs font-semibold',
-                      priorityMeta.className,
-                    )}
-                  >
-                    {priorityMeta.label}
-                  </span>
+
+                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                  <div className="font-medium text-slate-900 dark:text-slate-100">
+                    {formatScopeLabel(item)}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {formatScopeValue(item)}
+                  </div>
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                  {item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
+
+                <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                  <div>
+                    发布时间：{item.publishTime ? new Date(item.publishTime).toLocaleString() : '-'}
+                  </div>
+                  <div className="mt-1">
+                    失效时间：{item.expireTime ? new Date(item.expireTime).toLocaleString() : '长期有效'}
+                  </div>
                 </td>
+
                 <td className="whitespace-nowrap px-4 py-3">
                   <TableRowActions
                     align="start"

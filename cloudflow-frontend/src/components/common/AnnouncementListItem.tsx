@@ -24,6 +24,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
   const timeText = formatAnnouncementRelativeTime(
     announcement.publishTime || announcement.createTime,
   );
+  const excerpt = getAnnouncementExcerpt(announcement.content, variant === 'compact' ? 72 : 110);
 
   if (variant === 'compact') {
     return (
@@ -31,52 +32,63 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         type="button"
         onClick={onClick}
         className={cn(
-          `group relative flex min-h-[72px] w-full items-center gap-4 border-b border-slate-100 px-5 py-4 text-left transition-colors dark:border-slate-800 ${
+          `group flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors dark:border-slate-800 ${
             unread
-              ? 'bg-cyan-50 hover:bg-cyan-100 dark:bg-cyan-950/20 dark:hover:bg-cyan-950/30'
-              : 'bg-white hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900'
+              ? 'bg-cyan-50/40 hover:bg-cyan-50 dark:bg-cyan-950/10 dark:hover:bg-cyan-950/20'
+              : 'bg-white hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900/70'
           }`,
           className,
         )}
       >
-        {unread ? <div className="absolute left-0 top-0 h-full w-1 bg-cyan-500" /> : null}
-
         <div
           className={cn(
-            'flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border',
+            'mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border',
             unread
               ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
               : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
           )}
         >
-          {unread ? <Bell size={16} /> : <CheckCircle2 size={16} />}
+          {unread ? <Bell size={14} /> : <CheckCircle2 size={14} />}
         </div>
 
-        <div className="flex min-w-0 flex-1 items-center justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                {announcement.title}
-              </h3>
-              {unread ? (
-                <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-                  未读
-                </span>
-              ) : null}
-            </div>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <time>{timeText}</time>
-              {announcement.isTop === 1 ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                  <Pin size={10} />
-                  置顶
-                </span>
-              ) : null}
-            </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+              {announcement.title}
+            </h3>
+            {announcement.isTop === 1 ? (
+              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                <Pin size={10} />
+                置顶
+              </span>
+            ) : null}
+            <span
+              className={cn(
+                'inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium',
+                priorityMeta.className,
+              )}
+            >
+              {priorityMeta.label}
+            </span>
+            {unread ? (
+              <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+                未读
+              </span>
+            ) : null}
           </div>
 
-          <ChevronRight className="h-5 w-5 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
+          <p className="mt-1 line-clamp-1 text-sm text-slate-500 dark:text-slate-400">
+            {excerpt}
+          </p>
+
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <span>#{announcement.announcementId}</span>
+            <span className="text-slate-300 dark:text-slate-700">·</span>
+            <time>{timeText}</time>
+          </div>
         </div>
+
+        <ChevronRight className="mt-1 h-4 w-4 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
       </button>
     );
   }
@@ -140,7 +152,7 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         </h3>
 
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
-          {getAnnouncementExcerpt(announcement.content, 110)}
+          {excerpt}
         </p>
       </div>
 

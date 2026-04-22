@@ -584,6 +584,33 @@ INSERT INTO sys_role_menu VALUES(5, 4, 100000);
 
 INSERT INTO sys_role_menu VALUES(5, 401, 100000);
 
+-- HR salary sidebar split: keep /hr/salary, add 4 foundation entries and reorder siblings
+UPDATE sys_menu SET order_num = 10 WHERE menu_id = 727;
+UPDATE sys_menu SET order_num = 11 WHERE menu_id = 723;
+UPDATE sys_menu SET order_num = 12 WHERE menu_id = 724;
+UPDATE sys_menu SET order_num = 13 WHERE menu_id = 725;
+UPDATE sys_menu SET order_num = 14 WHERE menu_id = 726;
+UPDATE sys_menu SET order_num = 15 WHERE menu_id = 202;
+UPDATE sys_menu SET order_num = 16 WHERE menu_id = 505;
+UPDATE sys_menu SET order_num = 17 WHERE menu_id = 203;
+UPDATE sys_menu SET order_num = 18 WHERE menu_id = 204;
+UPDATE sys_menu SET order_num = 19 WHERE menu_id = 207;
+UPDATE sys_menu SET remark = '员工现薪与调薪管理' WHERE menu_id = 729;
+
+INSERT INTO sys_menu VALUES(730, '薪资项目',   7, 6, '/hr/salary/items',      'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:item:list',      'FileText',    'admin', NOW(), '', null, '薪资项目配置');
+INSERT INTO sys_menu VALUES(731, '薪资结构',   7, 7, '/hr/salary/structures', 'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:structure:list', 'Layers3',     'admin', NOW(), '', null, '薪资结构配置');
+INSERT INTO sys_menu VALUES(732, '薪资等级',   7, 8, '/hr/salary/grades',     'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:grade:list',     'Landmark',    'admin', NOW(), '', null, '薪资等级配置');
+INSERT INTO sys_menu VALUES(733, '社保方案',   7, 9, '/hr/salary/insurance',  'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:insurance:list', 'ShieldCheck', 'admin', NOW(), '', null, '社保方案配置');
+
+INSERT INTO sys_role_menu VALUES(1, 730, 100000);
+INSERT INTO sys_role_menu VALUES(1, 731, 100000);
+INSERT INTO sys_role_menu VALUES(1, 732, 100000);
+INSERT INTO sys_role_menu VALUES(1, 733, 100000);
+INSERT INTO sys_role_menu VALUES(4, 730, 100000);
+INSERT INTO sys_role_menu VALUES(4, 731, 100000);
+INSERT INTO sys_role_menu VALUES(4, 732, 100000);
+INSERT INTO sys_role_menu VALUES(4, 733, 100000);
+
 -- 10. 初始化字典类型数据
 INSERT INTO `sys_dict_type` (`dict_name`, `dict_type`, `remark`) VALUES
 ('用户性别', 'sys_user_sex', '用户性别列表'),

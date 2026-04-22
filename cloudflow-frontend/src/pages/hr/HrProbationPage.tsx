@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BellRing, FilePlus2, RefreshCcw, Search, ShieldCheck, Users } from 'lucide-react';
+import {
+  BellRing,
+  FilePlus2,
+  RefreshCcw,
+  Search,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import { toast } from 'sonner';
+import { BaseDialog } from '@/components/common/BaseDialog';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -12,8 +21,6 @@ import {
   SelectValue,
   Textarea,
 } from '@/components/ui';
-import { WorkspaceDialogShell, WorkspaceHeroCard, WorkspaceMetricCard, WorkspaceSectionCard } from '@/components/workspace/WorkspacePanels';
-import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import {
   HrEmployee,
   ProbationConfirmation,
@@ -27,7 +34,13 @@ import {
   sendProbationReminders,
   submitProbationConfirmation,
 } from '@/services/api/hr';
-import { buildEmployeeLabel, hasWorkflowStatus, matchEmployeeKeyword, normalizeRows, toDateInputValue } from './hrShared';
+import {
+  buildEmployeeLabel,
+  hasWorkflowStatus,
+  matchEmployeeKeyword,
+  normalizeRows,
+  toDateInputValue,
+} from './hrShared';
 
 const defaultForm: ProbationConfirmationPayload = {
   employeeId: 0,
@@ -39,12 +52,22 @@ const defaultForm: ProbationConfirmationPayload = {
 };
 
 const probationStatusClass = (status?: string) => {
-  if (!status) return 'bg-slate-100 text-slate-700';
-  if (/(EXTENDED|EXTEND)/i.test(status)) return 'bg-amber-50 text-amber-700';
-  if (/(APPROV|REGULAR|COMPLETE|PASS)/i.test(status)) return 'bg-emerald-50 text-emerald-700';
-  if (/(DRAFT|PENDING|SUBMIT)/i.test(status)) return 'bg-amber-50 text-amber-700';
-  if (/(REJECT|FAIL)/i.test(status)) return 'bg-rose-50 text-rose-700';
-  return 'bg-slate-100 text-slate-700';
+  if (!status) {
+    return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  }
+  if (/(EXTENDED|EXTEND)/i.test(status)) {
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
+  }
+  if (/(APPROV|REGULAR|COMPLETE|PASS)/i.test(status)) {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
+  }
+  if (/(DRAFT|PENDING|SUBMIT)/i.test(status)) {
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
+  }
+  if (/(REJECT|FAIL)/i.test(status)) {
+    return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
+  }
+  return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
 };
 
 const isProbationEmployee = (employee?: HrEmployee | null) =>
@@ -87,17 +110,83 @@ const getPreferredApplicationId = (
   preferredId?: number,
   currentDetailId?: number,
 ) => {
-  if (preferredId && rows.some(item => item.id === preferredId)) {
+  if (preferredId && rows.some((item) => item.id === preferredId)) {
     return preferredId;
   }
 
-  if (currentDetailId && rows.some(item => item.id === currentDetailId)) {
+  if (currentDetailId && rows.some((item) => item.id === currentDetailId)) {
     return currentDetailId;
   }
 
-  return rows.find(item => ['DRAFT', 'APPROVING'].includes(String(item.status || '').toUpperCase()))?.id
-    || rows[0]?.id;
+  return (
+    rows.find((item) => ['DRAFT', 'APPROVING'].includes(String(item.status || '').toUpperCase()))
+      ?.id || rows[0]?.id
+  );
 };
+
+const formatDateTime = (value?: string | null) => {
+  if (!value) return '-';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    return value;
+  }
+  return parsed.toLocaleString('zh-CN');
+};
+
+const InlineState = ({
+  title,
+  description,
+  className,
+}: {
+  title: string;
+  description?: string;
+  className?: string;
+}) => (
+  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      <ShieldCheck className="h-4 w-4" />
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const DetailRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+      {label}
+    </div>
+    <div className="text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  </div>
+);
+
+const DialogSection = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+      {description ? (
+        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      ) : null}
+    </div>
+    <div className="p-4">{children}</div>
+  </section>
+);
 
 export const HrProbationPage: React.FC = () => {
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
@@ -106,6 +195,7 @@ export const HrProbationPage: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [listLoading, setListLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [createForm, setCreateForm] = useState<ProbationConfirmationPayload>(defaultForm);
   const [applications, setApplications] = useState<ProbationConfirmation[]>([]);
@@ -182,6 +272,7 @@ export const HrProbationPage: React.FC = () => {
   };
 
   const handleApprove = async (id: number) => {
+    setPendingAction('approve');
     try {
       await approveProbationConfirmation(id);
       toast.success('转正申请已审批通过');
@@ -192,6 +283,8 @@ export const HrProbationPage: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '审批转正申请失败');
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -201,6 +294,7 @@ export const HrProbationPage: React.FC = () => {
       return;
     }
 
+    setPendingAction('reject');
     try {
       await rejectProbationConfirmation(
         id,
@@ -215,6 +309,8 @@ export const HrProbationPage: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '驳回转正申请失败');
+    } finally {
+      setPendingAction(null);
     }
   };
 
@@ -223,7 +319,7 @@ export const HrProbationPage: React.FC = () => {
   }, []);
 
   const filteredEmployees = useMemo(
-    () => employees.filter(employee => matchEmployeeKeyword(employee, employeeKeyword)),
+    () => employees.filter((employee) => matchEmployeeKeyword(employee, employeeKeyword)),
     [employees, employeeKeyword],
   );
 
@@ -235,9 +331,13 @@ export const HrProbationPage: React.FC = () => {
       return;
     }
 
-    // 搜索结果变化后自动聚焦第一位员工，减少桌面端每次都要再点一次下拉框。
-    if (!selectedEmployeeId || !filteredEmployees.some(item => String(item.id) === selectedEmployeeId)) {
-      const preferredEmployee = filteredEmployees.find(item => isProbationEmployee(item)) || filteredEmployees[0];
+    // 搜索结果变化后自动聚焦第一位员工，减少桌面端每次都要再点一次列表。
+    if (
+      !selectedEmployeeId
+      || !filteredEmployees.some((item) => String(item.id) === selectedEmployeeId)
+    ) {
+      const preferredEmployee =
+        filteredEmployees.find((item) => isProbationEmployee(item)) || filteredEmployees[0];
       setSelectedEmployeeId(String(preferredEmployee.id));
     }
   }, [filteredEmployees, selectedEmployeeId]);
@@ -253,28 +353,31 @@ export const HrProbationPage: React.FC = () => {
   }, [selectedEmployeeId]);
 
   const selectedEmployee = useMemo(
-    () => employees.find(item => String(item.id) === selectedEmployeeId) || null,
+    () => employees.find((item) => String(item.id) === selectedEmployeeId) || null,
     [employees, selectedEmployeeId],
   );
 
   const creatableEmployees = useMemo(
-    () => employees.filter(item => isProbationEmployee(item)),
+    () => employees.filter((item) => isProbationEmployee(item)),
     [employees],
   );
 
   const draftOrApprovingCount = useMemo(
-    () => applications.filter(item => ['DRAFT', 'APPROVING'].includes(String(item.status || '').toUpperCase())).length,
+    () =>
+      applications.filter((item) =>
+        ['DRAFT', 'APPROVING'].includes(String(item.status || '').toUpperCase()),
+      ).length,
     [applications],
   );
 
   const approvedCount = useMemo(
-    () => applications.filter(item => hasWorkflowStatus(item.status, 'APPROVED')).length,
+    () => applications.filter((item) => hasWorkflowStatus(item.status, 'APPROVED')).length,
     [applications],
   );
 
   const detailHistoryTone = hasWorkflowStatus(detail?.status, 'EXTENDED')
-    ? 'border-amber-100 bg-amber-50 text-amber-700'
-    : 'border-rose-100 bg-rose-50 text-rose-700';
+    ? 'border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200'
+    : 'border-rose-100 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
 
   const canSubmitDetail = hasWorkflowStatus(detail?.status, 'DRAFT');
   const canApproveDetail = hasWorkflowStatus(detail?.status, 'APPROVING');
@@ -283,11 +386,17 @@ export const HrProbationPage: React.FC = () => {
   const canOpenCreate = creatableEmployees.length > 0;
 
   const resetCreateDialog = () => {
+    const defaultEmployee =
+      selectedEmployeeCanCreate && selectedEmployee
+        ? selectedEmployee
+        : creatableEmployees[0] || null;
+
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployeeCanCreate
-        ? selectedEmployee!.id
-        : creatableEmployees[0]?.id || 0,
+      employeeId: defaultEmployee?.id || 0,
+      probationStartDate: toDateInputValue(defaultEmployee?.hireDate) || '',
+      probationEndDate: toDateInputValue(defaultEmployee?.regularDate) || '',
+      expectedRegularDate: toDateInputValue(defaultEmployee?.regularDate) || '',
     });
     setCreateDialogOpen(false);
   };
@@ -298,16 +407,44 @@ export const HrProbationPage: React.FC = () => {
       return;
     }
 
+    const defaultEmployee =
+      selectedEmployeeCanCreate && selectedEmployee
+        ? selectedEmployee
+        : creatableEmployees[0] || null;
+
     setCreateForm({
       ...defaultForm,
-      employeeId: selectedEmployeeCanCreate
-        ? selectedEmployee!.id
-        : creatableEmployees[0]?.id || 0,
+      employeeId: defaultEmployee?.id || 0,
+      probationStartDate: toDateInputValue(defaultEmployee?.hireDate) || '',
+      probationEndDate: toDateInputValue(defaultEmployee?.regularDate) || '',
+      expectedRegularDate: toDateInputValue(defaultEmployee?.regularDate) || '',
     });
     setCreateDialogOpen(true);
   };
 
   const handleCreate = async () => {
+    if (!createForm.employeeId) {
+      toast.error('请先选择员工');
+      return;
+    }
+    if (!createForm.probationStartDate || !createForm.probationEndDate) {
+      toast.error('请填写完整的试用周期');
+      return;
+    }
+    if (!createForm.expectedRegularDate) {
+      toast.error('请填写预计转正日期');
+      return;
+    }
+    if (createForm.probationEndDate < createForm.probationStartDate) {
+      toast.error('试用结束日期不能早于试用开始日期');
+      return;
+    }
+    if (createForm.expectedRegularDate < createForm.probationStartDate) {
+      toast.error('预计转正日期不能早于试用开始日期');
+      return;
+    }
+
+    setPendingAction('create');
     try {
       const id = await createProbationConfirmation(createForm);
       toast.success(`转正申请已创建，申请 ID：${id}`);
@@ -328,10 +465,13 @@ export const HrProbationPage: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '创建转正申请失败');
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleSubmit = async (id: number) => {
+    setPendingAction(`submit-${id}`);
     try {
       await submitProbationConfirmation(id);
       toast.success('转正申请已提交');
@@ -342,380 +482,493 @@ export const HrProbationPage: React.FC = () => {
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '提交转正申请失败');
+    } finally {
+      setPendingAction(null);
     }
   };
 
   const handleSendReminders = async () => {
+    setPendingAction('remind');
     try {
       await sendProbationReminders();
       toast.success('转正提醒已发送');
     } catch (error: any) {
       console.error(error);
       toast.error(error?.message || '发送提醒失败');
+    } finally {
+      setPendingAction(null);
     }
   };
 
   return (
-    <div className="space-y-6">
-      <WorkspaceHeroCard
-        badge={(
-          <div className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
-            <ShieldCheck size={14} />
-            Probation Flow
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <ShieldCheck className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Probation Flow
+        </div>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          转正申请
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          左侧锁定员工，中间切换申请，右侧持续办理审批与驳回动作，整体结构直接收敛到参考后台页语法。
+        </p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          命中员工 {loading ? '--' : filteredEmployees.length}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          当前员工申请 {selectedEmployee ? applications.length : '--'}
+        </span>
+        <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+          待推进申请 {selectedEmployee ? draftOrApprovingCount : '--'}
+        </span>
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          已完成转正 {selectedEmployee ? approvedCount : '--'}
+        </span>
+
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            size="sm"
+            disabled={!canOpenCreate}
+            onClick={handleOpenCreate}
+          >
+            <FilePlus2 size={14} className="mr-1.5" />
+            新建转正申请
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={Boolean(pendingAction)}
+            onClick={() => void handleSendReminders()}
+          >
+            <BellRing size={14} className="mr-1.5" />
+            {pendingAction === 'remind' ? '发送中...' : '发送转正提醒'}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={Boolean(pendingAction)}
+            onClick={() => void handleRefreshCurrentEmployee()}
+          >
+            <RefreshCcw
+              size={14}
+              className={`mr-1.5 ${loading || listLoading || detailLoading ? 'animate-spin' : ''}`}
+            />
+            刷新当前数据
+          </Button>
+        </div>
+      </div>
+
+      <TablePageLayout
+        filters={(
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Input
+                  className="pl-10"
+                  placeholder="搜索姓名、工号、部门"
+                  value={employeeKeyword}
+                  onChange={(event) => setEmployeeKeyword(event.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto">
+              <Button
+                variant="outline"
+                onClick={() => setEmployeeKeyword('')}
+              >
+                重置搜索
+              </Button>
+            </div>
           </div>
         )}
-        title="转正申请中心"
-        description="左侧锁定员工，右侧持续办理转正申请，减少桌面端来回切换与手动查找。"
-        actions={(
-          <>
-            <Button className="rounded-2xl" disabled={!canOpenCreate} onClick={handleOpenCreate}>
-              <FilePlus2 size={16} className="mr-2" />
-              新建转正申请
-            </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => void handleSendReminders()}>
-              <BellRing size={16} className="mr-2" />
-              发送转正提醒
-            </Button>
-            <Button variant="outline" className="rounded-2xl" onClick={() => void handleRefreshCurrentEmployee()}>
-              <RefreshCcw size={16} className="mr-2" />
-              刷新当前数据
-            </Button>
-          </>
+        table={(
+          <div className="grid min-h-[720px] grid-cols-1 xl:grid-cols-[280px_320px_minmax(0,1fr)]">
+            <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
+                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                  先定位员工，再连续处理该员工的转正单据。
+                </div>
+              </div>
+              <div className="space-y-3 overflow-y-auto p-4">
+                {loading ? (
+                  <InlineState title="正在加载员工列表..." className="py-12" />
+                ) : filteredEmployees.length === 0 ? (
+                  <InlineState title="当前搜索条件下没有匹配员工" className="py-12" />
+                ) : (
+                  filteredEmployees.map((employee) => {
+                    const active = String(employee.id) === selectedEmployeeId;
+
+                    return (
+                      <button
+                        key={employee.id}
+                        type="button"
+                        className={[
+                          'w-full rounded-xl border px-4 py-4 text-left transition',
+                          active
+                            ? 'border-amber-200 bg-amber-50 shadow-sm dark:border-amber-900 dark:bg-amber-950/20'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:bg-slate-900/70',
+                        ].join(' ')}
+                        onClick={() => setSelectedEmployeeId(String(employee.id))}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {employee.name}
+                            </div>
+                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                              {buildEmployeeLabel(employee)}
+                            </div>
+                          </div>
+                          <span className="shrink-0 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                            {getEmployeeStatusLabel(employee.employeeStatus)}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500 dark:text-slate-400">
+                          <div>
+                            <div className="text-slate-400 dark:text-slate-500">入职日期</div>
+                            <div className="mt-1">{toDateInputValue(employee.hireDate) || '-'}</div>
+                          </div>
+                          <div>
+                            <div className="text-slate-400 dark:text-slate-500">转正日期</div>
+                            <div className="mt-1">{toDateInputValue(employee.regularDate) || '-'}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+
+            <aside className="min-w-0 border-b border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-900/10 xl:border-b-0 xl:border-r">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请列表</div>
+                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                      优先展示当前员工最近的转正记录，并默认聚焦可推进申请。
+                    </div>
+                  </div>
+                  <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                    {selectedEmployee ? `${applications.length} 条` : '等待选择员工'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 overflow-y-auto p-4">
+                {selectedEmployee ? (
+                  <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {selectedEmployee.name}
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {[selectedEmployee.employeeNo, selectedEmployee.deptName, selectedEmployee.postName]
+                        .filter(Boolean)
+                        .join(' / ') || '-'}
+                    </div>
+                    <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
+                      {selectedEmployee.phone || '未维护手机号'}
+                    </div>
+                    {!selectedEmployeeCanCreate ? (
+                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+                        当前员工不是试用期，仅建议查看历史转正记录；新建申请时会自动切换到可发起的试用期员工。
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {listLoading ? (
+                  <InlineState title="正在加载转正申请..." className="py-12" />
+                ) : applications.length === 0 ? (
+                  <InlineState
+                    title={selectedEmployee ? '该员工暂无转正申请' : '先从左侧选择员工'}
+                    className="py-12"
+                  />
+                ) : (
+                  applications.map((item) => {
+                    const active = detail?.id === item.id;
+
+                    return (
+                      <div
+                        key={item.id}
+                        role="button"
+                        tabIndex={0}
+                        className={[
+                          'w-full rounded-xl border px-4 py-4 text-left transition',
+                          active
+                            ? 'border-cyan-200 bg-cyan-50 shadow-sm dark:border-cyan-900 dark:bg-cyan-950/20'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:bg-slate-900/70',
+                        ].join(' ')}
+                        onClick={() => void loadDetail(item.id)}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            void loadDetail(item.id);
+                          }
+                        }}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {item.applicationNo}
+                            </div>
+                            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              {item.employeeName || '-'} / {item.employeeNo || '-'}
+                            </div>
+                          </div>
+                          <span
+                            className={[
+                              'shrink-0 rounded-full border px-2 py-0.5 text-xs font-medium',
+                              probationStatusClass(item.status),
+                            ].join(' ')}
+                          >
+                            {item.statusDesc || item.status}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500 dark:text-slate-400">
+                          <div>
+                            <div className="text-slate-400 dark:text-slate-500">试用周期</div>
+                            <div className="mt-1">
+                              {toDateInputValue(item.probationStartDate) || '-'} ~ {toDateInputValue(item.probationEndDate) || '-'}
+                            </div>
+                          </div>
+                          <div>
+                            <div className="text-slate-400 dark:text-slate-500">预计转正</div>
+                            <div className="mt-1">{toDateInputValue(item.expectedRegularDate) || '-'}</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between gap-3">
+                          <div className="text-xs text-slate-400 dark:text-slate-500">
+                            {getProbationActionHint(item.status)}
+                          </div>
+                          <Button
+                            size="sm"
+                            type="button"
+                            disabled={!hasWorkflowStatus(item.status, 'DRAFT') || Boolean(pendingAction)}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleSubmit(item.id);
+                            }}
+                          >
+                            {pendingAction === `submit-${item.id}` ? '提交中...' : '提交'}
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+
+            <div className="flex min-h-0 flex-col">
+              <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请详情</div>
+                  <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                    详情区保留真实接口字段，并直接办理提交、审批和驳回动作。
+                  </div>
+                </div>
+                {detail ? (
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={!canSubmitDetail || Boolean(pendingAction)}
+                      onClick={() => void handleSubmit(detail.id)}
+                    >
+                      {pendingAction === `submit-${detail.id}` ? '提交中...' : '提交当前申请'}
+                    </Button>
+                    <Button
+                      size="sm"
+                      disabled={!canApproveDetail || Boolean(pendingAction)}
+                      onClick={() => void handleApprove(detail.id)}
+                    >
+                      {pendingAction === 'approve' ? '处理中...' : '审批通过'}
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+
+              {!detail ? (
+                <InlineState
+                  title="请选择一条转正申请"
+                  description="先在中间列表选择一条转正申请，这里会展示完整评价信息与办理动作。"
+                  className="py-20"
+                />
+              ) : (
+                <div className="flex flex-1 flex-col gap-4 p-4">
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                    <DetailRow label="申请编号" value={detail.applicationNo} />
+                    <DetailRow
+                      label="员工"
+                      value={`${detail.employeeName || '-'} / ${detail.employeeNo || '-'}`}
+                    />
+                    <DetailRow
+                      label="状态"
+                      value={(
+                        <span
+                          className={[
+                            'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                            probationStatusClass(detail.status),
+                          ].join(' ')}
+                        >
+                          {detail.statusDesc || detail.status}
+                        </span>
+                      )}
+                    />
+                    <DetailRow label="状态提示" value={getProbationActionHint(detail.status)} />
+                    <DetailRow
+                      label="试用开始"
+                      value={toDateInputValue(detail.probationStartDate) || '-'}
+                    />
+                    <DetailRow
+                      label="试用结束"
+                      value={toDateInputValue(detail.probationEndDate) || '-'}
+                    />
+                    <DetailRow
+                      label="预计转正日期"
+                      value={toDateInputValue(detail.expectedRegularDate) || '-'}
+                    />
+                    <DetailRow
+                      label="创建时间"
+                      value={formatDateTime(detail.createTime)}
+                    />
+                    <DetailRow
+                      label="流程实例 ID"
+                      value={detail.processInstanceId || '-'}
+                    />
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">评价信息</div>
+                    </div>
+                    <div className="grid grid-cols-1 gap-4 p-4">
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+                        <div className="text-xs text-slate-400 dark:text-slate-500">自我评价</div>
+                        <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                          {detail.selfEvaluation || '-'}
+                        </div>
+                      </div>
+                      <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+                        <div className="text-xs text-slate-400 dark:text-slate-500">主管评价</div>
+                        <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-300">
+                          {detail.managerEvaluation || '-'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">驳回处理</div>
+                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        审批中申请可以直接填写驳回原因，并可选延长试用期。
+                      </div>
+                    </div>
+
+                    <div className="space-y-4 p-4">
+                      <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                        填写正整数延长天数时，后端会把申请置为“延长试用期”，员工继续保持试用期；留空则走“已拒绝”，当前后端实现会同步把员工主档更新为离职。
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
+                        <div className="space-y-2">
+                          <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">驳回原因</Label>
+                          <Textarea
+                            rows={5}
+                            value={rejectReason}
+                            onChange={(event) => setRejectReason(event.target.value)}
+                            placeholder="例如：试用期目标未达成，建议延长观察期"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <div className="space-y-2">
+                            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">延长天数</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              placeholder="留空则不延长"
+                              value={rejectExtensionDays}
+                              onChange={(event) => setRejectExtensionDays(event.target.value)}
+                              className="h-11"
+                            />
+                          </div>
+                          <Button
+                            className="w-full"
+                            disabled={!canRejectDetail || Boolean(pendingAction)}
+                            onClick={() => void handleReject(detail.id)}
+                          >
+                            {pendingAction === 'reject' ? '处理中...' : '驳回申请'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {detail.rejectReason || detail.extensionDays ? (
+                        <div className={`rounded-xl border px-4 py-3 text-sm ${detailHistoryTone}`}>
+                          {hasWorkflowStatus(detail.status, 'EXTENDED') ? '历史延长信息：' : '历史驳回信息：'}
+                          {detail.rejectReason || '未填写原因'}
+                          {detail.extensionDays ? `，延长 ${detail.extensionDays} 天` : ''}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  {detailLoading ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                      正在加载申请详情...
+                    </div>
+                  ) : null}
+                </div>
+              )}
+            </div>
+          </div>
         )}
       />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <WorkspaceMetricCard
-          label="命中员工"
-          value={loading ? '--' : filteredEmployees.length}
-          hint="当前关键词筛出的员工数量"
-        />
-        <WorkspaceMetricCard
-          label="当前员工申请"
-          value={selectedEmployee ? applications.length : '--'}
-          hint={selectedEmployee ? `${selectedEmployee.name} 的转正记录` : '先从左侧选择员工'}
-        />
-        <WorkspaceMetricCard
-          label="待推进申请"
-          value={selectedEmployee ? draftOrApprovingCount : '--'}
-          hint={selectedEmployee ? `已完成 ${approvedCount} 条转正` : '等待选择员工'}
-        />
-      </div>
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[320px_360px_minmax(0,1fr)]">
-        <WorkspaceSectionCard
-          title="员工列表"
-          description="先定位员工，再连续处理该员工的转正单据。"
-        >
-          <div className="space-y-4">
-            <div className="relative">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="pl-10"
-                placeholder="搜索姓名、工号、部门"
-                value={employeeKeyword}
-                onChange={event => setEmployeeKeyword(event.target.value)}
-              />
-            </div>
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-              搜索结果会自动选中首位员工，适合开发阶段快速轮询真实数据。
-            </div>
-            <div className="space-y-3">
-              {filteredEmployees.map(employee => {
-                const active = String(employee.id) === selectedEmployeeId;
-
-                return (
-                  <button
-                    key={employee.id}
-                    type="button"
-                    className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                      active
-                        ? 'border-amber-200 bg-amber-50 shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                    }`}
-                    onClick={() => setSelectedEmployeeId(String(employee.id))}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-slate-900">{employee.name}</div>
-                        <div className="mt-1 truncate text-xs text-slate-500">{buildEmployeeLabel(employee)}</div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600">
-                        {getEmployeeStatusLabel(employee.employeeStatus)}
-                      </span>
-                    </div>
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500">
-                      <div>
-                        <div className="text-slate-400">入职日期</div>
-                        <div className="mt-1">{toDateInputValue(employee.hireDate) || '-'}</div>
-                      </div>
-                      <div>
-                        <div className="text-slate-400">转正日期</div>
-                        <div className="mt-1">{toDateInputValue(employee.regularDate) || '-'}</div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-              {!loading && !filteredEmployees.length && (
-                <WorkspaceInlineState title="当前搜索条件下没有匹配员工" />
-              )}
-              {loading && (
-                <WorkspaceInlineState type="loading" title="正在加载员工列表..." />
-              )}
-            </div>
+      <BaseDialog
+        open={createDialogOpen}
+        title="新建转正申请"
+        description="直接按后端 DTO 字段提交试用期和评价信息。"
+        onClose={resetCreateDialog}
+        maxWidthClassName="max-w-3xl"
+        footer={(
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={resetCreateDialog}>
+              取消
+            </Button>
+            <Button disabled={pendingAction === 'create'} onClick={() => void handleCreate()}>
+              {pendingAction === 'create' ? '创建中...' : '创建申请'}
+            </Button>
           </div>
-        </WorkspaceSectionCard>
-
-        <WorkspaceSectionCard
-          title="申请列表"
-          description="优先展示当前员工最近的转正记录，并默认聚焦可推进申请。"
-          headerAside={(
-            <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-500">
-              <Users size={14} />
-              {selectedEmployee ? `${applications.length} 条记录` : '等待选择员工'}
-            </div>
-          )}
-        >
-
-          {selectedEmployee && (
-            <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-              <div className="text-sm font-semibold text-slate-900">{selectedEmployee.name}</div>
-              <div className="mt-1 text-xs text-slate-500">
-                {[selectedEmployee.employeeNo, selectedEmployee.deptName, selectedEmployee.postName].filter(Boolean).join(' / ') || '-'}
-              </div>
-              <div className="mt-3 text-xs text-slate-500">{selectedEmployee.phone || '未维护手机号'}</div>
-              {!selectedEmployeeCanCreate && (
-                <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
-                  当前员工不是试用期，仅建议查看历史转正记录；新建申请时会自动切换到可发起的试用期员工。
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="space-y-3">
-            {applications.map(item => {
-              const active = detail?.id === item.id;
-
-              return (
-                <div
-                  key={item.id}
-                  role="button"
-                  tabIndex={0}
-                  className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
-                    active
-                      ? 'border-sky-200 bg-sky-50 shadow-sm'
-                      : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
-                  }`}
-                  onClick={() => void loadDetail(item.id)}
-                  onKeyDown={event => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      void loadDetail(item.id);
-                    }
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-semibold text-slate-900">{item.applicationNo}</div>
-                      <div className="mt-1 text-xs text-slate-500">{item.employeeName || '-'} / {item.employeeNo || '-'}</div>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${probationStatusClass(item.status)}`}>
-                      {item.statusDesc || item.status}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-500">
-                    <div>
-                      <div className="text-slate-400">试用周期</div>
-                      <div className="mt-1">
-                        {toDateInputValue(item.probationStartDate) || '-'} ~ {toDateInputValue(item.probationEndDate) || '-'}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="text-slate-400">预计转正</div>
-                      <div className="mt-1">{toDateInputValue(item.expectedRegularDate) || '-'}</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between gap-3">
-                    <div className="text-xs text-slate-400">{getProbationActionHint(item.status)}</div>
-                    <Button
-                      size="sm"
-                      type="button"
-                      disabled={!hasWorkflowStatus(item.status, 'DRAFT')}
-                      onClick={event => {
-                        event.stopPropagation();
-                        void handleSubmit(item.id);
-                      }}
-                    >
-                      提交
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-
-            {!applications.length && !listLoading && (
-              <WorkspaceInlineState title={selectedEmployee ? '该员工暂无转正申请' : '先从左侧选择员工'} />
-            )}
-            {listLoading && (
-              <WorkspaceInlineState type="loading" title="正在加载转正申请..." />
-            )}
-          </div>
-        </WorkspaceSectionCard>
-
-        <WorkspaceSectionCard
-          title="申请详情"
-          description="详情区保留真实接口字段，并直接办理提交、审批和驳回动作。"
-          headerAside={detail ? (
-            <>
-              <Button variant="outline" disabled={!canSubmitDetail} onClick={() => void handleSubmit(detail.id)}>
-                提交当前申请
-              </Button>
-              <Button disabled={!canApproveDetail} onClick={() => void handleApprove(detail.id)}>
-                审批通过
-              </Button>
-            </>
-          ) : undefined}
-        >
-
-          {!detail && (
-            <div className="rounded-xl border border-dashed border-slate-200 bg-slate-50/80 px-6 py-14 text-center text-sm text-slate-500">
-              先在中间列表选择一条转正申请，这里会展示完整评价信息与办理动作。
-            </div>
-          )}
-
-          {detail && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">申请编号</div>
-                  <div className="mt-2 font-semibold text-slate-900">{detail.applicationNo}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">员工</div>
-                  <div className="mt-2 font-semibold text-slate-900">{detail.employeeName || '-'}</div>
-                  <div className="mt-1 text-sm text-slate-500">{detail.employeeNo || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">状态</div>
-                  <div className={`mt-2 inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${probationStatusClass(detail.status)}`}>
-                    {detail.statusDesc || detail.status}
-                  </div>
-                  <div className="mt-2 text-xs text-slate-400">{getProbationActionHint(detail.status)}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">试用开始</div>
-                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.probationStartDate) || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">试用结束</div>
-                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.probationEndDate) || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">预计转正日期</div>
-                  <div className="mt-2 font-semibold text-slate-900">{toDateInputValue(detail.expectedRegularDate) || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                  <div className="text-xs text-slate-400">创建时间</div>
-                  <div className="mt-2 font-semibold text-slate-900">
-                    {detail.createTime ? new Date(detail.createTime).toLocaleString('zh-CN') : '-'}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2">
-                  <div className="text-xs text-slate-400">流程实例 ID</div>
-                  <div className="mt-2 break-all font-mono text-sm text-slate-700">{detail.processInstanceId || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
-                  <div className="text-xs text-slate-400">自我评价</div>
-                  <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.selfEvaluation || '-'}</div>
-                </div>
-                <div className="rounded-2xl border border-slate-200 bg-white p-4 md:col-span-2 xl:col-span-3">
-                  <div className="text-xs text-slate-400">主管评价</div>
-                  <div className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{detail.managerEvaluation || '-'}</div>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <h3 className="text-base font-semibold text-slate-900">驳回处理</h3>
-                    <p className="mt-1 text-sm text-slate-500">审批中申请可以直接填写驳回原因，并可选延长试用期。</p>
-                  </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                    {canRejectDetail ? '可驳回' : '当前状态不可驳回'}
-                  </span>
-                </div>
-
-                {/* 真实联调发现：是否填写延长天数会直接决定申请终态和员工主档状态。 */}
-                <div className="mb-4 rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800">
-                  填写正整数延长天数时，后端会把申请置为“延长试用期”，员工继续保持试用期；
-                  留空则走“已拒绝”，当前后端实现会同步把员工主档更新为离职。
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
-                  <div>
-                    <Label>驳回原因</Label>
-                    <Textarea
-                      className="mt-2"
-                      rows={5}
-                      value={rejectReason}
-                      onChange={event => setRejectReason(event.target.value)}
-                      placeholder="例如：试用期目标未达成，建议延长观察期"
-                    />
-                  </div>
-                  <div className="space-y-4">
-                    <div>
-                      <Label>延长天数</Label>
-                      <Input
-                        className="mt-2"
-                        type="number"
-                        min={0}
-                        placeholder="留空则不延长"
-                        value={rejectExtensionDays}
-                        onChange={event => setRejectExtensionDays(event.target.value)}
-                      />
-                    </div>
-                    <Button className="w-full" disabled={!canRejectDetail} onClick={() => void handleReject(detail.id)}>
-                      驳回申请
-                    </Button>
-                  </div>
-                </div>
-
-                {(detail.rejectReason || detail.extensionDays) && (
-                  <div className={`mt-4 rounded-2xl border px-4 py-3 text-sm ${detailHistoryTone}`}>
-                    {hasWorkflowStatus(detail.status, 'EXTENDED') ? '历史延长信息：' : '历史驳回信息：'}
-                    {detail.rejectReason || '未填写原因'}
-                    {detail.extensionDays ? `，延长 ${detail.extensionDays} 天` : ''}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {detailLoading && <WorkspaceInlineState type="loading" title="正在加载申请详情..." className="mt-4 py-4" />}
-        </WorkspaceSectionCard>
-      </div>
-
-      {createDialogOpen && (
-        <WorkspaceDialogShell
-          title="新建转正申请"
-          description="直接按后端 DTO 字段提交试用期和评价信息。"
-          onClose={resetCreateDialog}
-          maxWidthClassName="max-w-3xl"
-        >
-
+        )}
+      >
+        <div className="space-y-4">
+          <DialogSection
+            title="员工与周期"
+            description="直接按后端 DTO 字段提交员工和试用周期。"
+          >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="md:col-span-2">
-                <Label>员工</Label>
+              <div className="space-y-2 md:col-span-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工</Label>
                 <Select
                   value={createForm.employeeId ? String(createForm.employeeId) : undefined}
-                  onValueChange={value => setCreateForm(prev => ({ ...prev, employeeId: Number(value) }))}
+                  onValueChange={(value) =>
+                    setCreateForm((prev) => ({ ...prev, employeeId: Number(value) }))
+                  }
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="h-11">
                     <SelectValue placeholder="请选择员工" />
                   </SelectTrigger>
                   <SelectContent>
-                    {creatableEmployees.map(item => (
+                    {creatableEmployees.map((item) => (
                       <SelectItem key={item.id} value={String(item.id)}>
                         {buildEmployeeLabel(item)}
                       </SelectItem>
@@ -723,54 +976,71 @@ export const HrProbationPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <Label>试用开始日期</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">试用开始日期</Label>
                 <Input
                   type="date"
                   value={createForm.probationStartDate}
-                  onChange={event => setCreateForm(prev => ({ ...prev, probationStartDate: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, probationStartDate: event.target.value }))
+                  }
+                  className="h-11"
                 />
               </div>
-              <div>
-                <Label>试用结束日期</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">试用结束日期</Label>
                 <Input
                   type="date"
                   value={createForm.probationEndDate}
-                  onChange={event => setCreateForm(prev => ({ ...prev, probationEndDate: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, probationEndDate: event.target.value }))
+                  }
+                  className="h-11"
                 />
               </div>
-              <div className="md:col-span-2">
-                <Label>预计转正日期</Label>
+              <div className="space-y-2 md:col-span-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计转正日期</Label>
                 <Input
                   type="date"
                   value={createForm.expectedRegularDate}
-                  onChange={event => setCreateForm(prev => ({ ...prev, expectedRegularDate: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, expectedRegularDate: event.target.value }))
+                  }
+                  className="h-11"
                 />
               </div>
-              <div className="md:col-span-2">
-                <Label>自我评价</Label>
+            </div>
+          </DialogSection>
+
+          <DialogSection
+            title="评价信息"
+            description="用于直接联调自评与主管评价字段。"
+          >
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">自我评价</Label>
                 <Textarea
                   rows={4}
                   value={createForm.selfEvaluation || ''}
-                  onChange={event => setCreateForm(prev => ({ ...prev, selfEvaluation: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, selfEvaluation: event.target.value }))
+                  }
                 />
               </div>
-              <div className="md:col-span-2">
-                <Label>主管评价</Label>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">主管评价</Label>
                 <Textarea
                   rows={4}
                   value={createForm.managerEvaluation || ''}
-                  onChange={event => setCreateForm(prev => ({ ...prev, managerEvaluation: event.target.value }))}
+                  onChange={(event) =>
+                    setCreateForm((prev) => ({ ...prev, managerEvaluation: event.target.value }))
+                  }
                 />
               </div>
             </div>
-
-            <div className="mt-6 flex justify-end gap-3">
-              <Button variant="outline" onClick={resetCreateDialog}>取消</Button>
-              <Button onClick={() => void handleCreate()}>创建申请</Button>
-            </div>
-        </WorkspaceDialogShell>
-      )}
+          </DialogSection>
+        </div>
+      </BaseDialog>
     </div>
   );
 };

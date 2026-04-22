@@ -5,6 +5,7 @@ import { AnnouncementContent } from '@/components/common/AnnouncementContent';
 import { Button } from '@/components/ui';
 import { useAnnouncementStore } from '@/stores/announcementStore';
 import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
+import { lockBodyScroll } from '@/utils/bodyScrollLock';
 import './announcement-overlays.css';
 
 export const AnnouncementPopup: React.FC = () => {
@@ -22,12 +23,11 @@ export const AnnouncementPopup: React.FC = () => {
       }
     };
 
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
+    const unlockBodyScroll = lockBodyScroll();
     window.addEventListener('keydown', handleEscape);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      unlockBodyScroll();
       window.removeEventListener('keydown', handleEscape);
     };
   }, [currentPopup, dismissPopup]);

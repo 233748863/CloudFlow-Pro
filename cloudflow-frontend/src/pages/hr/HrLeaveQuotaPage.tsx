@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CalendarRange, Coins, Hourglass, RefreshCcw, Search, Wallet } from 'lucide-react';
+import { CalendarRange, Coins, RefreshCcw, Search, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { BaseDialog } from '@/components/common/BaseDialog';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -19,28 +21,23 @@ import {
   Textarea,
 } from '@/components/ui';
 import {
-  WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspaceSectionCard,
-} from '@/components/workspace/WorkspacePanels';
-import {
-  WorkspaceInlineState,
-  WorkspaceTableStateRow,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
+  adjustHrLeaveQuota,
   HrEmployee,
   HrLeaveQuotaInitResult,
   HrLeaveQuotaVO,
   HrLeaveTypeOption,
-  adjustHrLeaveQuota,
   initHrLeaveQuota,
   listEmployees,
   listHrLeaveQuotaBuckets,
   listHrLeaveQuotas,
   listHrLeaveTypes,
 } from '@/services/api/hr';
-import { buildEmployeeLabel, matchEmployeeKeyword, normalizeRows, toDateInputValue } from './hrShared';
+import {
+  buildEmployeeLabel,
+  matchEmployeeKeyword,
+  normalizeRows,
+  toDateInputValue,
+} from './hrShared';
 
 const NEW_BUCKET_VALUE = '__new__';
 const COMPENSATORY_CODE = 'COMPENSATORY';
@@ -56,6 +53,7 @@ type AdjustFormState = {
 };
 
 const getCurrentYear = () => new Date().getFullYear();
+
 const getCurrentDateInputValue = () => {
   const now = new Date();
   const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
@@ -78,7 +76,9 @@ const getUnitLabel = (unit?: string | null) => {
 const formatQuotaNumber = (value?: number | string | null) => {
   const numericValue = Number(value ?? 0);
   if (!Number.isFinite(numericValue)) return '-';
-  return numericValue.toFixed(Number.isInteger(numericValue) ? 0 : 2).replace(/\.?0+$/, '');
+  return numericValue
+    .toFixed(Number.isInteger(numericValue) ? 0 : 2)
+    .replace(/\.?0+$/, '');
 };
 
 const formatQuotaValue = (value?: number | string | null, unit?: string | null) =>
@@ -102,7 +102,7 @@ const readSessionStorageRecord = <T,>(storageKey: string): Record<string, T> => 
     if (!rawValue) return {};
     const parsedValue = JSON.parse(rawValue);
     return parsedValue && typeof parsedValue === 'object'
-      ? parsedValue as Record<string, T>
+      ? (parsedValue as Record<string, T>)
       : {};
   } catch {
     return {};
@@ -128,7 +128,7 @@ const bucketStatusToneClassName = (bucket: HrLeaveQuotaVO) => {
   const frozenQuota = Number(bucket.frozenQuota ?? 0);
 
   if (!expiryDate) {
-    return 'bg-slate-100 text-slate-700 border-slate-200';
+    return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
   }
 
   const diffDays = Math.ceil(
@@ -137,12 +137,12 @@ const bucketStatusToneClassName = (bucket: HrLeaveQuotaVO) => {
   );
 
   if (availableQuota > 0 && diffDays <= 30) {
-    return 'bg-amber-50 text-amber-700 border-amber-100';
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
   }
   if (frozenQuota > 0) {
-    return 'bg-violet-50 text-violet-700 border-violet-100';
+    return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
   }
-  return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+  return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
 };
 
 const bucketStatusLabel = (bucket: HrLeaveQuotaVO) => {
@@ -171,12 +171,12 @@ const bucketStatusLabel = (bucket: HrLeaveQuotaVO) => {
 const initActionToneClassName = (action?: string | null) => {
   switch (String(action || '').toUpperCase()) {
     case 'CREATED':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+      return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
     case 'REFRESHED':
-      return 'bg-sky-50 text-sky-700 border-sky-100';
+      return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
     case 'SKIPPED':
     default:
-      return 'bg-amber-50 text-amber-700 border-amber-100';
+      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
   }
 };
 
@@ -191,6 +191,78 @@ const initActionLabel = (action?: string | null) => {
       return '跳过';
   }
 };
+
+const InlineState = ({
+  title,
+  description,
+  actions,
+  className,
+}: {
+  title: string;
+  description?: string;
+  actions?: React.ReactNode;
+  className?: string;
+}) => (
+  <div
+    className={[
+      'flex flex-col items-center justify-center px-6 py-10 text-center',
+      className,
+    ]
+      .filter(Boolean)
+      .join(' ')}
+  >
+    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      <Wallet className="h-4 w-4" />
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+    {actions ? <div className="mt-4">{actions}</div> : null}
+  </div>
+);
+
+const TableStateRow = ({
+  colSpan,
+  title,
+  description,
+  loading = false,
+}: {
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}) => (
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-14">
+      <InlineState
+        title={title}
+        description={description}
+        className={loading ? 'py-6' : 'py-4'}
+      />
+    </td>
+  </tr>
+);
+
+const DialogSection = ({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children: React.ReactNode;
+}) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+      {description ? (
+        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+      ) : null}
+    </div>
+    <div className="p-4">{children}</div>
+  </section>
+);
 
 export const HrLeaveQuotaPage: React.FC = () => {
   const currentYear = getCurrentYear();
@@ -216,166 +288,149 @@ export const HrLeaveQuotaPage: React.FC = () => {
   );
   const [bulkInitDialogOpen, setBulkInitDialogOpen] = useState(false);
   const [adjustDialogOpen, setAdjustDialogOpen] = useState(false);
-  const [adjustForm, setAdjustForm] = useState<AdjustFormState>(createDefaultAdjustForm(String(currentYear)));
+  const [adjustForm, setAdjustForm] = useState<AdjustFormState>(
+    createDefaultAdjustForm(String(currentYear)),
+  );
 
   const yearOptions = useMemo(() => buildYearOptions(currentYear), [currentYear]);
 
   const quotaEnabledLeaveTypes = useMemo(
-    () => leaveTypes.filter(item => item.needQuota !== false && item.status !== 0),
+    () => leaveTypes.filter((item) => item.needQuota !== false && item.status !== 0),
     [leaveTypes],
   );
 
   const leaveTypeMap = useMemo(
-    () => new Map(quotaEnabledLeaveTypes.map(item => [item.id, item])),
+    () => new Map(quotaEnabledLeaveTypes.map((item) => [item.id, item])),
     [quotaEnabledLeaveTypes],
   );
 
   const selectedEmployee = useMemo(
-    () => employees.find(item => String(item.id) === selectedEmployeeId) || null,
+    () => employees.find((item) => String(item.id) === selectedEmployeeId) || null,
     [employees, selectedEmployeeId],
   );
+
   const currentInitResultKey = useMemo(
     () => (selectedEmployeeId && selectedYear ? `${selectedEmployeeId}-${selectedYear}` : ''),
     [selectedEmployeeId, selectedYear],
   );
+
   const visibleInitResult = useMemo(
-    () => (currentInitResultKey && !dismissedInitResultKeys[currentInitResultKey]
-      ? initResultHistory[currentInitResultKey] || null
-      : null),
+    () =>
+      currentInitResultKey && !dismissedInitResultKeys[currentInitResultKey]
+        ? initResultHistory[currentInitResultKey] || null
+        : null,
     [currentInitResultKey, dismissedInitResultKeys, initResultHistory],
   );
+
   const hiddenInitResult = useMemo(
-    () => (currentInitResultKey && dismissedInitResultKeys[currentInitResultKey]
-      ? initResultHistory[currentInitResultKey] || null
-      : null),
+    () =>
+      currentInitResultKey && dismissedInitResultKeys[currentInitResultKey]
+        ? initResultHistory[currentInitResultKey] || null
+        : null,
     [currentInitResultKey, dismissedInitResultKeys, initResultHistory],
   );
 
   const filteredEmployees = useMemo(() => {
-    const rows = employees.filter(item => matchEmployeeKeyword(item, employeeKeyword));
+    const rows = employees.filter((item) => matchEmployeeKeyword(item, employeeKeyword));
     if (!selectedEmployee) return rows;
-    if (rows.some(item => item.id === selectedEmployee.id)) return rows;
+    if (rows.some((item) => item.id === selectedEmployee.id)) return rows;
     return [selectedEmployee, ...rows];
   }, [employeeKeyword, employees, selectedEmployee]);
 
   const selectedLeaveType = useMemo(
-    () => quotaEnabledLeaveTypes.find(item => String(item.id) === selectedLeaveTypeId) || null,
+    () => quotaEnabledLeaveTypes.find((item) => String(item.id) === selectedLeaveTypeId) || null,
     [quotaEnabledLeaveTypes, selectedLeaveTypeId],
   );
 
   const selectedQuotaSummary = useMemo(
-    () => quotaSummary.find(item => String(item.leaveTypeId) === selectedLeaveTypeId) || null,
+    () => quotaSummary.find((item) => String(item.leaveTypeId) === selectedLeaveTypeId) || null,
     [quotaSummary, selectedLeaveTypeId],
   );
 
   const selectedBucket = useMemo(
-    () => quotaBuckets.find(item => String(item.id) === adjustForm.bucketId) || null,
+    () => quotaBuckets.find((item) => String(item.id) === adjustForm.bucketId) || null,
     [adjustForm.bucketId, quotaBuckets],
   );
+
   const newBucketMinExpiryDate = useMemo(() => {
     const bucketYear = Number(adjustForm.bucketYear);
-    const yearStart = Number.isInteger(bucketYear) && bucketYear > 0
-      ? `${bucketYear}-01-01`
-      : todayDateInputValue;
+    const yearStart =
+      Number.isInteger(bucketYear) && bucketYear > 0
+        ? `${bucketYear}-01-01`
+        : todayDateInputValue;
     return yearStart > todayDateInputValue ? yearStart : todayDateInputValue;
   }, [adjustForm.bucketYear, todayDateInputValue]);
 
   useEffect(() => {
-    writeSessionStorageRecord(INIT_RESULT_HISTORY_STORAGE_KEY, initResultHistory as Record<string, unknown>);
+    writeSessionStorageRecord(
+      INIT_RESULT_HISTORY_STORAGE_KEY,
+      initResultHistory as Record<string, unknown>,
+    );
   }, [initResultHistory]);
 
   useEffect(() => {
-    writeSessionStorageRecord(DISMISSED_INIT_RESULT_STORAGE_KEY, dismissedInitResultKeys as Record<string, unknown>);
+    writeSessionStorageRecord(
+      DISMISSED_INIT_RESULT_STORAGE_KEY,
+      dismissedInitResultKeys as Record<string, unknown>,
+    );
   }, [dismissedInitResultKeys]);
 
   const isCompensatorySelected = isCompensatoryLeaveType(selectedLeaveType);
   const selectedQuotaInitialized = selectedQuotaSummary?.id != null;
-  const selectedQuotaPendingInit = Boolean(selectedQuotaSummary && !selectedQuotaInitialized && !isCompensatorySelected);
+  const selectedQuotaPendingInit = Boolean(
+    selectedQuotaSummary && !selectedQuotaInitialized && !isCompensatorySelected,
+  );
+
   const initializedQuotaCount = useMemo(
-    () => quotaSummary.filter(item => item.id != null).length,
+    () => quotaSummary.filter((item) => item.id != null).length,
     [quotaSummary],
   );
+
   const pendingQuotaCount = useMemo(
-    () => quotaSummary.filter(item => {
-      const leaveType = leaveTypeMap.get(item.leaveTypeId);
-      return item.id == null && !isCompensatoryLeaveType(leaveType);
-    }).length,
+    () =>
+      quotaSummary.filter((item) => {
+        const leaveType = leaveTypeMap.get(item.leaveTypeId);
+        return item.id == null && !isCompensatoryLeaveType(leaveType);
+      }).length,
     [leaveTypeMap, quotaSummary],
   );
+
   const pendingAnnualQuotaSummaries = useMemo(
-    () => quotaSummary.filter(item => {
-      const leaveType = leaveTypeMap.get(item.leaveTypeId);
-      return item.id == null && !isCompensatoryLeaveType(leaveType);
-    }),
+    () =>
+      quotaSummary.filter((item) => {
+        const leaveType = leaveTypeMap.get(item.leaveTypeId);
+        return item.id == null && !isCompensatoryLeaveType(leaveType);
+      }),
     [leaveTypeMap, quotaSummary],
   );
+
   const canInitCurrentAnnualQuota = Boolean(
     selectedEmployeeId
-    && selectedYear
-    && selectedLeaveType
-    && !isCompensatorySelected
-    && !selectedQuotaInitialized,
+      && selectedYear
+      && selectedLeaveType
+      && !isCompensatorySelected
+      && !selectedQuotaInitialized,
   );
+
   const canInitAllAnnualQuota = Boolean(selectedEmployeeId && selectedYear && pendingQuotaCount > 0);
-  const showBulkInitButton = canInitAllAnnualQuota && (pendingQuotaCount > 1 || !canInitCurrentAnnualQuota);
 
-  const metrics = useMemo(() => {
-    const unit = selectedLeaveType?.unit;
-    const expiringBuckets = quotaBuckets.filter(item => {
-      const expiryDate = toDateInputValue(item.expiryDate);
-      const availableQuota = Number(item.availableQuota ?? 0);
-      if (!expiryDate || availableQuota <= 0) return false;
-      const diffDays = Math.ceil(
-        (new Date(`${expiryDate}T00:00:00`).getTime() - new Date().setHours(0, 0, 0, 0))
-          / (1000 * 60 * 60 * 24),
-      );
-      return diffDays <= 30;
-    });
+  const showBulkInitButton =
+    canInitAllAnnualQuota && (pendingQuotaCount > 1 || !canInitCurrentAnnualQuota);
 
-    return [
-      {
-        label: '可管理假种',
-        value: quotaSummary.length,
-        hint: pendingQuotaCount
-          ? `员工 ${selectedEmployee?.name || '--'} 在 ${selectedYear} 年共有 ${quotaSummary.length} 类可管理假种，已初始化 ${initializedQuotaCount} 类，待初始化 ${pendingQuotaCount} 类`
-          : `员工 ${selectedEmployee?.name || '--'} 在 ${selectedYear} 年已有 ${initializedQuotaCount} 类额度记录`,
-        iconTone: 'bg-slate-100 text-slate-600',
-        icon: <Wallet size={18} />,
-      },
-      {
-        label: '当前假种总额',
-        value: selectedQuotaPendingInit ? '待初始化' : selectedQuotaSummary ? formatQuotaValue(selectedQuotaSummary.totalQuota, unit) : '--',
-        hint: selectedQuotaPendingInit
-          ? `${selectedLeaveType?.leaveName || '当前假种'} 还没有年度额度记录，可先初始化再进行调整`
-          : selectedLeaveType ? `${selectedLeaveType.leaveName} 当前累计总额` : '先从右侧选择一个假种',
-        iconTone: 'bg-sky-50 text-sky-600',
-        icon: <Coins size={18} />,
-      },
-      {
-        label: '当前可用额度',
-        value: selectedQuotaSummary ? formatQuotaValue(selectedQuotaSummary.availableQuota, unit) : '--',
-        hint: selectedQuotaPendingInit
-          ? '初始化完成后，系统才会生成可用额度和冻结额度口径'
-          : selectedQuotaSummary
-          ? `已用 ${formatQuotaValue(selectedQuotaSummary.usedQuota, unit)}，冻结 ${formatQuotaValue(selectedQuotaSummary.frozenQuota, unit)}`
-          : '当前假种暂无额度汇总记录',
-        iconTone: 'bg-emerald-50 text-emerald-600',
-        icon: <CalendarRange size={18} />,
-      },
-      {
-        label: '快到期额度桶',
-        value: expiringBuckets.length,
-        hint: expiringBuckets.length
-          ? `${formatQuotaValue(
-            expiringBuckets.reduce((sum, item) => sum + Number(item.availableQuota ?? 0), 0),
-            unit,
-          )} 待优先消耗`
-          : '当前选中假种没有 30 天内到期的可用额度',
-        iconTone: 'bg-amber-50 text-amber-600',
-        icon: <Hourglass size={18} />,
-      },
-    ];
-  }, [initializedQuotaCount, pendingQuotaCount, quotaBuckets, quotaSummary.length, selectedEmployee?.name, selectedLeaveType, selectedQuotaPendingInit, selectedQuotaSummary, selectedYear]);
+  const expiringBucketCount = useMemo(
+    () =>
+      quotaBuckets.filter((item) => {
+        const expiryDate = toDateInputValue(item.expiryDate);
+        const availableQuota = Number(item.availableQuota ?? 0);
+        if (!expiryDate || availableQuota <= 0) return false;
+        const diffDays = Math.ceil(
+          (new Date(`${expiryDate}T00:00:00`).getTime() - new Date().setHours(0, 0, 0, 0))
+            / (1000 * 60 * 60 * 24),
+        );
+        return diffDays <= 30;
+      }).length,
+    [quotaBuckets],
+  );
 
   useEffect(() => {
     const bootstrap = async () => {
@@ -386,16 +441,22 @@ export const HrLeaveQuotaPage: React.FC = () => {
           listHrLeaveTypes(),
         ]);
         const employeeList = normalizeRows<HrEmployee>(employeeRes);
-        const leaveTypeList = (Array.isArray(leaveTypeRes) ? leaveTypeRes : []).filter(item => item.status !== 0);
+        const leaveTypeList = (Array.isArray(leaveTypeRes) ? leaveTypeRes : []).filter(
+          (item) => item.status !== 0,
+        );
 
         setEmployees(employeeList);
         setLeaveTypes(leaveTypeList);
-        setSelectedEmployeeId(prev => (prev && employeeList.some(item => String(item.id) === prev)
-          ? prev
-          : String(employeeList[0]?.id || '')));
-        setSelectedLeaveTypeId(prev => {
-          const quotaTypes = leaveTypeList.filter(item => item.needQuota !== false && item.status !== 0);
-          return prev && quotaTypes.some(item => String(item.id) === prev)
+        setSelectedEmployeeId((prev) =>
+          prev && employeeList.some((item) => String(item.id) === prev)
+            ? prev
+            : String(employeeList[0]?.id || ''),
+        );
+        setSelectedLeaveTypeId((prev) => {
+          const quotaTypes = leaveTypeList.filter(
+            (item) => item.needQuota !== false && item.status !== 0,
+          );
+          return prev && quotaTypes.some((item) => String(item.id) === prev)
             ? prev
             : String(quotaTypes[0]?.id || '');
         });
@@ -415,7 +476,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
       setSelectedEmployeeId('');
       return;
     }
-    if (selectedEmployeeId && employees.some(item => String(item.id) === selectedEmployeeId)) {
+    if (selectedEmployeeId && employees.some((item) => String(item.id) === selectedEmployeeId)) {
       return;
     }
     setSelectedEmployeeId(String(employees[0]?.id || ''));
@@ -426,7 +487,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
       setSelectedLeaveTypeId('');
       return;
     }
-    if (selectedLeaveTypeId && quotaEnabledLeaveTypes.some(item => String(item.id) === selectedLeaveTypeId)) {
+    if (
+      selectedLeaveTypeId
+      && quotaEnabledLeaveTypes.some((item) => String(item.id) === selectedLeaveTypeId)
+    ) {
       return;
     }
     setSelectedLeaveTypeId(String(quotaEnabledLeaveTypes[0]?.id || ''));
@@ -485,7 +549,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
   useEffect(() => {
     if (!quotaEnabledLeaveTypes.length) return;
-    if (selectedLeaveTypeId && quotaEnabledLeaveTypes.some(item => String(item.id) === selectedLeaveTypeId)) {
+    if (
+      selectedLeaveTypeId
+      && quotaEnabledLeaveTypes.some((item) => String(item.id) === selectedLeaveTypeId)
+    ) {
       return;
     }
     if (quotaSummary[0]?.leaveTypeId) {
@@ -496,13 +563,13 @@ export const HrLeaveQuotaPage: React.FC = () => {
   }, [quotaEnabledLeaveTypes, quotaSummary, selectedLeaveTypeId]);
 
   const handleRefresh = () => {
-    setReloadToken(value => value + 1);
+    setReloadToken((value) => value + 1);
   };
 
   const persistInitResult = (result: HrLeaveQuotaInitResult) => {
     const resultKey = `${result.employeeId}-${result.year}`;
-    setInitResultHistory(prev => ({ ...prev, [resultKey]: result }));
-    setDismissedInitResultKeys(prev => {
+    setInitResultHistory((prev) => ({ ...prev, [resultKey]: result }));
+    setDismissedInitResultKeys((prev) => {
       if (!prev[resultKey]) return prev;
       const next = { ...prev };
       delete next[resultKey];
@@ -512,12 +579,12 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
   const dismissVisibleInitResult = () => {
     if (!currentInitResultKey) return;
-    setDismissedInitResultKeys(prev => ({ ...prev, [currentInitResultKey]: true }));
+    setDismissedInitResultKeys((prev) => ({ ...prev, [currentInitResultKey]: true }));
   };
 
   const restoreVisibleInitResult = () => {
     if (!currentInitResultKey) return;
-    setDismissedInitResultKeys(prev => {
+    setDismissedInitResultKeys((prev) => {
       if (!prev[currentInitResultKey]) return prev;
       const next = { ...prev };
       delete next[currentInitResultKey];
@@ -539,7 +606,11 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
     setActionLoading(true);
     try {
-      const result = await initHrLeaveQuota({ employeeId, year, leaveTypeId: Number(selectedLeaveTypeId) });
+      const result = await initHrLeaveQuota({
+        employeeId,
+        year,
+        leaveTypeId: Number(selectedLeaveTypeId),
+      });
       persistInitResult(result);
       const item = result.items[0];
       toast.success(
@@ -547,7 +618,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
           ? `${item.leaveTypeName || selectedLeaveType.leaveName} ${year} 年度处理完成：${initActionLabel(item.action)}`
           : `${selectedLeaveType.leaveName} ${year} 年度处理完成`,
       );
-      setReloadToken(value => value + 1);
+      setReloadToken((value) => value + 1);
     } catch (error) {
       console.error(error);
       toast.error((error as Error)?.message || '补齐当前假种年度额度失败');
@@ -576,7 +647,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
         `${year} 年度处理完成：新建 ${result.createdCount}，刷新 ${result.refreshedCount}，跳过 ${result.skippedCount}`,
       );
       setBulkInitDialogOpen(false);
-      setReloadToken(value => value + 1);
+      setReloadToken((value) => value + 1);
     } catch (error) {
       console.error(error);
       toast.error((error as Error)?.message || '批量补齐年度额度失败');
@@ -603,7 +674,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
       return;
     }
 
-    // 调休额度按“额度桶”管理：允许直接挂到已有桶，也允许新增一个新的过期桶。
+    // 调休额度按额度桶管理：允许命中已有桶，也允许新增一个新的过期桶。
     const nextBucket = isCompensatorySelected && quotaBuckets.length ? quotaBuckets[0] : null;
     setAdjustForm({
       adjustmentAmount: '',
@@ -616,8 +687,8 @@ export const HrLeaveQuotaPage: React.FC = () => {
   };
 
   const handleAdjustBucketChange = (value: string) => {
-    const matchedBucket = quotaBuckets.find(item => String(item.id) === value);
-    setAdjustForm(prev => ({
+    const matchedBucket = quotaBuckets.find((item) => String(item.id) === value);
+    setAdjustForm((prev) => ({
       ...prev,
       bucketId: value,
       bucketYear: String(matchedBucket?.year || selectedYear),
@@ -666,7 +737,9 @@ export const HrLeaveQuotaPage: React.FC = () => {
         return;
       }
 
-      expiryDate = isNewBucket ? adjustForm.expiryDate : toDateInputValue(selectedBucket?.expiryDate);
+      expiryDate = isNewBucket
+        ? adjustForm.expiryDate
+        : toDateInputValue(selectedBucket?.expiryDate);
       if (!expiryDate) {
         toast.error('调休额度必须指定过期日期');
         return;
@@ -696,7 +769,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
       });
       toast.success('额度调整已保存');
       setAdjustDialogOpen(false);
-      setReloadToken(value => value + 1);
+      setReloadToken((value) => value + 1);
     } catch (error) {
       console.error(error);
       toast.error((error as Error)?.message || '额度调整失败');
@@ -707,26 +780,40 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
   if (pageLoading) {
     return (
-      <div className="space-y-6">
-        <WorkspaceHeroCard
-          badge={<div className="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">Leave Quota</div>}
-          title="假期额度管理"
-          description="正在加载员工、假种和额度配置..."
-        />
-        <WorkspaceInlineState type="loading" title="正在准备额度管理工作台..." />
+      <div className="space-y-4">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+            <Wallet className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+            Leave Quota
+          </div>
+          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            假期额度
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            正在加载员工、假种和额度配置。
+          </p>
+        </div>
+        <InlineState title="正在准备假期额度页面..." />
       </div>
     );
   }
 
   if (!employees.length) {
     return (
-      <div className="space-y-6">
-        <WorkspaceHeroCard
-          badge={<div className="inline-flex rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">Leave Quota</div>}
-          title="假期额度管理"
-          description="当前租户还没有 HR 员工档案，暂时无法进入额度管理。"
-        />
-        <WorkspaceInlineState
+      <div className="space-y-4">
+        <div className="min-w-0">
+          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+            <Wallet className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+            Leave Quota
+          </div>
+          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+            假期额度
+          </h1>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+            当前租户还没有 HR 员工档案，暂时无法进入额度管理。
+          </p>
+        </div>
+        <InlineState
           title="暂无可管理员工"
           description="先在 HR 员工档案里补齐员工资料，再回来查看假期额度。"
         />
@@ -735,582 +822,719 @@ export const HrLeaveQuotaPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
-      <WorkspaceHeroCard
-        badge={(
-          <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-xs font-semibold text-cyan-700">
-            <Wallet size={14} />
-            Leave Quota
-          </div>
-        )}
-        title="假期额度管理"
-        description={`围绕员工年度额度、调休额度桶和人工加减做统一管理。当前查看：${selectedEmployee?.name || '--'} / ${selectedYear} 年`}
-        actions={(
-          <>
-            <Button variant="outline" className="rounded-2xl" onClick={handleRefresh} disabled={summaryLoading || bucketLoading}>
-              <RefreshCcw size={16} className="mr-2" />
-              刷新额度
-            </Button>
-            {canInitCurrentAnnualQuota ? (
-              <Button
-                variant="outline"
-                className="rounded-2xl"
-                onClick={() => void handleInitAnnualQuota()}
-                disabled={actionLoading}
-              >
-                <CalendarRange size={16} className="mr-2" />
-                补齐当前假种额度
-              </Button>
-            ) : null}
-            {showBulkInitButton ? (
-              <Button
-                variant="outline"
-                className="rounded-2xl"
-                onClick={handleOpenBulkInitDialog}
-                disabled={actionLoading}
-              >
-                <CalendarRange size={16} className="mr-2" />
-                批量补齐待初始化
-              </Button>
-            ) : null}
-            <Button className="rounded-2xl" onClick={handleOpenAdjustDialog} disabled={!selectedLeaveTypeId}>
-              <Coins size={16} className="mr-2" />
-              手工调整
-            </Button>
-          </>
-        )}
-      >
-        <div className="grid grid-cols-1 gap-4 pt-2 lg:grid-cols-[1.1fr_1.3fr_220px]">
-          <div>
-            <Label className="text-slate-500">员工筛选</Label>
-            <div className="relative mt-2">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                className="pl-9"
-                placeholder="按工号、姓名、部门筛选"
-                value={employeeKeyword}
-                onChange={event => setEmployeeKeyword(event.target.value)}
-              />
-            </div>
-          </div>
-
-          <div>
-            <Label className="text-slate-500">员工档案</Label>
-            <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="选择员工" />
-              </SelectTrigger>
-              <SelectContent>
-                {filteredEmployees.map(item => (
-                  <SelectItem key={item.id} value={String(item.id)}>
-                    {buildEmployeeLabel(item)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label className="text-slate-500">年度口径</Label>
-            <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="mt-2">
-                <SelectValue placeholder="选择年份" />
-              </SelectTrigger>
-              <SelectContent>
-                {yearOptions.map(item => (
-                  <SelectItem key={item} value={String(item)}>
-                    {item} 年
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="space-y-4">
+      <div className="min-w-0">
+        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
+          <Wallet className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
+          Leave Quota
         </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-3">
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <div className="text-xs text-slate-400">当前员工</div>
-            <div className="mt-2 font-semibold text-slate-900">{selectedEmployee?.name || '-'}</div>
-            <div className="mt-1 text-sm text-slate-500">{selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}</div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <div className="text-xs text-slate-400">当前假种</div>
-            <div className="mt-2 font-semibold text-slate-900">{selectedLeaveType?.leaveName || '未选择'}</div>
-            <div className="mt-1 text-sm text-slate-500">
-              {selectedLeaveType
-                ? `${getUnitLabel(selectedLeaveType.unit)} / ${isCompensatorySelected ? '按过期桶管理' : '按年度汇总管理'}`
-                : '先从下方选择需要查看的假种'}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-            <div className="text-xs text-slate-400">操作提醒</div>
-            <div className="mt-2 font-semibold text-slate-900">
-              {isCompensatorySelected ? '调休调整需要落到具体额度桶' : '普通假种直接按年度额度调整'}
-            </div>
-            <div className="mt-1 text-sm text-slate-500">
-              调休支持跨年有效，减少额度时必须指定已有桶，避免把冻结或已使用额度冲坏。
-            </div>
-          </div>
-        </div>
-      </WorkspaceHeroCard>
-
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {metrics.map(metric => (
-          <WorkspaceMetricCard
-            key={metric.label}
-            label={metric.label}
-            value={metric.value}
-            hint={metric.hint}
-            aside={<div className={`rounded-2xl p-3 ${metric.iconTone}`}>{metric.icon}</div>}
-          />
-        ))}
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          假期额度
+        </h1>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
+          围绕员工年度额度、调休额度桶和人工加减做统一管理，页面结构直接压回参考后台列表页语法。
+        </p>
       </div>
 
-      {!visibleInitResult && hiddenInitResult ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-slate-50/80 px-5 py-4 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="text-sm font-medium text-slate-900">最近一次补齐结果已隐藏</div>
-            <div className="mt-1 text-xs leading-6 text-slate-500">
-              {`${hiddenInitResult.employeeName || selectedEmployee?.name || '--'} / ${hiddenInitResult.year} 年 / ${hiddenInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'} / 共处理 ${hiddenInitResult.requestedCount} 类假种`}
-            </div>
-          </div>
-          <Button variant="outline" size="sm" className="w-full md:w-auto" onClick={restoreVisibleInitResult}>
-            重新显示
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          可管理假种 {quotaSummary.length || '--'}
+        </span>
+        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+          已初始化 {initializedQuotaCount}
+        </span>
+        <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          待初始化 {pendingQuotaCount}
+        </span>
+        <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
+          当前可用 {selectedQuotaSummary ? formatQuotaValue(selectedQuotaSummary.availableQuota, selectedLeaveType?.unit) : '--'}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          快到期额度桶 {selectedLeaveType ? expiringBucketCount : '--'}
+        </span>
+
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRefresh}
+            disabled={summaryLoading || bucketLoading || actionLoading}
+          >
+            <RefreshCcw
+              size={14}
+              className={`mr-1.5 ${summaryLoading || bucketLoading ? 'animate-spin' : ''}`}
+            />
+            刷新额度
+          </Button>
+          {canInitCurrentAnnualQuota ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => void handleInitAnnualQuota()}
+              disabled={actionLoading}
+            >
+              <CalendarRange size={14} className="mr-1.5" />
+              补齐当前假种
+            </Button>
+          ) : null}
+          {showBulkInitButton ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleOpenBulkInitDialog}
+              disabled={actionLoading}
+            >
+              <CalendarRange size={14} className="mr-1.5" />
+              批量补齐
+            </Button>
+          ) : null}
+          <Button size="sm" onClick={handleOpenAdjustDialog} disabled={!selectedLeaveTypeId || actionLoading}>
+            <Coins size={14} className="mr-1.5" />
+            手工调整
           </Button>
         </div>
-      ) : null}
-
-      {visibleInitResult ? (
-        <WorkspaceSectionCard
-          title="最近一次补齐结果"
-          description={`${visibleInitResult.employeeName || selectedEmployee?.name || '--'} / ${visibleInitResult.year} 年 / ${visibleInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'}`}
-          eyebrow="Init Result"
-          headerAside={(
-            <Button variant="outline" size="sm" onClick={dismissVisibleInitResult}>
-              关闭结果
-            </Button>
-          )}
-        >
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-              <div className="text-xs text-slate-400">纳入处理</div>
-              <div className="mt-2 text-xl font-semibold text-slate-900">{visibleInitResult.requestedCount}</div>
-            </div>
-            <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3">
-              <div className="text-xs text-emerald-700">新建</div>
-              <div className="mt-2 text-xl font-semibold text-emerald-900">{visibleInitResult.createdCount}</div>
-            </div>
-            <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3">
-              <div className="text-xs text-sky-700">刷新</div>
-              <div className="mt-2 text-xl font-semibold text-sky-900">{visibleInitResult.refreshedCount}</div>
-            </div>
-            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
-              <div className="text-xs text-amber-700">跳过</div>
-              <div className="mt-2 text-xl font-semibold text-amber-900">{visibleInitResult.skippedCount}</div>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>假种</TableHead>
-                  <TableHead>处理结果</TableHead>
-                  <TableHead>处理后总额</TableHead>
-                  <TableHead>过期日期</TableHead>
-                  <TableHead>说明</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {visibleInitResult.items.map(item => {
-                  const leaveType = leaveTypeMap.get(item.leaveTypeId);
-                  return (
-                    <TableRow key={`init-result-${item.leaveTypeId}-${item.action}`}>
-                      <TableCell className="font-medium text-slate-900">
-                        {item.leaveTypeName || leaveType?.leaveName || `假种#${item.leaveTypeId}`}
-                      </TableCell>
-                      <TableCell>
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${initActionToneClassName(item.action)}`}>
-                          {initActionLabel(item.action)}
-                        </span>
-                      </TableCell>
-                      <TableCell>{formatQuotaValue(item.totalQuota, leaveType?.unit)}</TableCell>
-                      <TableCell>{toDateInputValue(item.expiryDate) || '长期有效'}</TableCell>
-                      <TableCell className="text-slate-600">{item.message || '-'}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </WorkspaceSectionCard>
-      ) : null}
-
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.1fr_1fr]">
-        <WorkspaceSectionCard
-          title="年度额度总览"
-          description="按员工和年度查看所有需要额度控制的假种汇总，点击行即可切到右侧额度桶明细。"
-          eyebrow="Summary"
-        >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>假种</TableHead>
-                <TableHead>管理方式</TableHead>
-                <TableHead>总额度</TableHead>
-                <TableHead>已用</TableHead>
-                <TableHead>冻结</TableHead>
-                <TableHead>可用</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {quotaSummary.map(item => {
-                const leaveType = leaveTypeMap.get(item.leaveTypeId);
-                const selected = String(item.leaveTypeId) === selectedLeaveTypeId;
-                const pendingInit = !isCompensatoryLeaveType(leaveType) && item.id == null;
-                return (
-                  <TableRow
-                    key={`${item.leaveTypeId}-${item.year}`}
-                    className={selected
-                      ? pendingInit
-                        ? 'bg-amber-100 cursor-pointer'
-                        : 'bg-cyan-50 cursor-pointer'
-                      : pendingInit
-                        ? 'bg-amber-50 cursor-pointer'
-                        : 'cursor-pointer'}
-                    onClick={() => setSelectedLeaveTypeId(String(item.leaveTypeId))}
-                  >
-                    <TableCell className="font-medium text-slate-900">{item.leaveTypeName || leaveType?.leaveName || '-'}</TableCell>
-                    <TableCell>{pendingInit ? '按年度 / 待初始化' : isCompensatoryLeaveType(leaveType) ? '按过期桶' : '按年度'}</TableCell>
-                    <TableCell>{formatQuotaValue(item.totalQuota, leaveType?.unit)}</TableCell>
-                    <TableCell>{formatQuotaValue(item.usedQuota, leaveType?.unit)}</TableCell>
-                    <TableCell>{formatQuotaValue(item.frozenQuota, leaveType?.unit)}</TableCell>
-                    <TableCell className="font-medium text-emerald-700">{formatQuotaValue(item.availableQuota, leaveType?.unit)}</TableCell>
-                  </TableRow>
-                );
-              })}
-              {summaryLoading && (
-                <WorkspaceTableStateRow
-                  colSpan={6}
-                  type="loading"
-                  title="正在加载年度额度汇总..."
-                />
-              )}
-              {!summaryLoading && !quotaSummary.length && (
-                <WorkspaceTableStateRow
-                  colSpan={6}
-                  title="当前年度没有额度记录"
-                  description="如果是普通假种，先补齐当前假种的本年度额度；如果是调休，等加班审批入账或手工新增额度桶后，这里就会出现记录。"
-                />
-              )}
-            </TableBody>
-          </Table>
-        </WorkspaceSectionCard>
-
-        <WorkspaceSectionCard
-          title="额度桶明细"
-          description={isCompensatorySelected
-            ? '调休会按额度桶展示，便于查看不同过期日的可用余额。'
-            : '普通假种默认只有年度汇总记录，这里会显示当前年度对应的单条额度。'}
-          eyebrow="Buckets"
-          headerAside={(
-            <div className="flex flex-wrap items-center gap-3">
-              <Select value={selectedLeaveTypeId} onValueChange={setSelectedLeaveTypeId}>
-                <SelectTrigger className="w-[220px] bg-white">
-                  <SelectValue placeholder="选择假种" />
-                </SelectTrigger>
-                <SelectContent>
-                  {quotaEnabledLeaveTypes.map(item => (
-                    <SelectItem key={item.id} value={String(item.id)}>
-                      {item.leaveName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {canInitCurrentAnnualQuota ? (
-                <Button variant="outline" onClick={() => void handleInitAnnualQuota()} disabled={actionLoading}>
-                  补齐当前假种额度
-                </Button>
-              ) : null}
-              {showBulkInitButton ? (
-                <Button variant="outline" onClick={handleOpenBulkInitDialog} disabled={actionLoading}>
-                  批量补齐待初始化
-                </Button>
-              ) : null}
-              <Button variant="outline" onClick={handleOpenAdjustDialog} disabled={!selectedLeaveTypeId}>
-                手工调整
-              </Button>
-            </div>
-          )}
-        >
-          {!selectedLeaveType && (
-            <WorkspaceInlineState
-              title="还没有可查看的假种"
-              description="先在左侧选择员工，或者确认假种配置里已开启额度管理。"
-            />
-          )}
-          {selectedLeaveType && (
-            <div className="space-y-4">
-              {canInitCurrentAnnualQuota || showBulkInitButton ? (
-                <div className="flex flex-col gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 md:flex-row md:items-center md:justify-between">
-                  <div>
-                    <div className="font-medium">
-                      {canInitCurrentAnnualQuota ? '当前假种还没有年度额度记录' : '当前员工还有待初始化年度额度'}
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-amber-800">
-                      {canInitCurrentAnnualQuota
-                        ? `可以先补齐 ${selectedLeaveType?.leaveName || '当前假种'} 在 ${selectedYear} 年的年度额度，再继续做人工调整或核对。`
-                        : `当前员工在 ${selectedYear} 年还有 ${pendingQuotaCount} 类普通假种待初始化，可直接批量补齐，调休额度不会受影响。`}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {canInitCurrentAnnualQuota ? (
-                      <Button variant="outline" className="border-amber-200 bg-white" onClick={() => void handleInitAnnualQuota()} disabled={actionLoading}>
-                        补齐当前假种额度
-                      </Button>
-                    ) : null}
-                    {showBulkInitButton ? (
-                      <Button variant="outline" className="border-amber-200 bg-white" onClick={handleOpenBulkInitDialog} disabled={actionLoading}>
-                        批量补齐待初始化
-                      </Button>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>归属年度</TableHead>
-                    <TableHead>总额度</TableHead>
-                    <TableHead>已用</TableHead>
-                    <TableHead>冻结</TableHead>
-                    <TableHead>可用</TableHead>
-                    <TableHead>过期日期</TableHead>
-                    <TableHead>状态</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {quotaBuckets.map(item => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium text-slate-900">{item.year} 年</TableCell>
-                      <TableCell>{formatQuotaValue(item.totalQuota, selectedLeaveType.unit)}</TableCell>
-                      <TableCell>{formatQuotaValue(item.usedQuota, selectedLeaveType.unit)}</TableCell>
-                      <TableCell>{formatQuotaValue(item.frozenQuota, selectedLeaveType.unit)}</TableCell>
-                      <TableCell className="font-medium text-emerald-700">{formatQuotaValue(item.availableQuota, selectedLeaveType.unit)}</TableCell>
-                      <TableCell>{toDateInputValue(item.expiryDate) || '长期有效'}</TableCell>
-                      <TableCell>
-                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${bucketStatusToneClassName(item)}`}>
-                          {bucketStatusLabel(item)}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {bucketLoading && (
-                    <WorkspaceTableStateRow
-                      colSpan={7}
-                      type="loading"
-                      title="正在加载额度桶明细..."
-                    />
-                  )}
-                  {!bucketLoading && !quotaBuckets.length && (
-                    <WorkspaceTableStateRow
-                      colSpan={7}
-                      title="当前假种没有额度桶明细"
-                      description={isCompensatorySelected
-                        ? '调休还没有入账或手工新增额度桶。'
-                        : '当前年度还没有对应的年度额度记录。'}
-                    />
-                  )}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </WorkspaceSectionCard>
       </div>
 
-      {bulkInitDialogOpen && (
-        <WorkspaceDialogShell
-          title={`批量补齐 ${selectedYear} 年度额度`}
-          description="执行后会一次性为当前员工补齐所有待初始化的普通假种年度额度，调休等按额度桶管理的假种不会受影响。"
-          onClose={() => setBulkInitDialogOpen(false)}
-          maxWidthClassName="max-w-3xl"
-        >
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs text-slate-400">当前员工</div>
-                <div className="mt-2 font-semibold text-slate-900">{selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs text-slate-400">年度口径</div>
-                <div className="mt-2 font-semibold text-slate-900">{selectedYear} 年</div>
-              </div>
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <div className="text-xs text-amber-700">待补齐假种</div>
-                <div className="mt-2 font-semibold text-amber-900">{pendingAnnualQuotaSummaries.length} 类</div>
-              </div>
-            </div>
-
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-              <div className="text-sm font-medium text-slate-900">本次会补齐以下普通假种</div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {pendingAnnualQuotaSummaries.map(item => {
-                  const leaveType = leaveTypeMap.get(item.leaveTypeId);
-                  const isCurrentSelection = String(item.leaveTypeId) === selectedLeaveTypeId;
-                  return (
-                    <div
-                      key={`bulk-init-${item.leaveTypeId}`}
-                      className={isCurrentSelection
-                        ? 'rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm text-cyan-700'
-                        : 'rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700'}
-                    >
-                      {item.leaveTypeName || leaveType?.leaveName || `假种#${item.leaveTypeId}`}
-                      {leaveType?.unit ? ` / ${getUnitLabel(leaveType.unit)}` : ''}
-                      {isCurrentSelection ? ' / 当前选中' : ''}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-              批量补齐只会创建或刷新普通按年控额假种的年度额度记录，不会改动调休额度桶，也不会自动触发请假申请或加班申请的状态变化。
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setBulkInitDialogOpen(false)} disabled={actionLoading}>
-                取消
-              </Button>
-              <Button onClick={() => void handleInitAllAnnualQuota()} disabled={actionLoading}>
-                {actionLoading ? '补齐中...' : `确认补齐 ${pendingAnnualQuotaSummaries.length} 类假种`}
-              </Button>
-            </div>
-          </div>
-        </WorkspaceDialogShell>
-      )}
-
-      {adjustDialogOpen && selectedLeaveType && (
-        <WorkspaceDialogShell
-          title={`调整 ${selectedLeaveType.leaveName} 额度`}
-          description={isCompensatorySelected
-            ? '调休会精确落到某个额度桶。增加可以新建额度桶，减少时必须指定已有桶。'
-            : '普通假种按当前年度汇总额度直接加减。'}
-          onClose={() => setAdjustDialogOpen(false)}
-          maxWidthClassName="max-w-3xl"
-        >
-          <div className="space-y-5">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs text-slate-400">当前员工</div>
-                <div className="mt-2 font-semibold text-slate-900">{selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}</div>
-              </div>
-              <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-                <div className="text-xs text-slate-400">当前假种</div>
-                <div className="mt-2 font-semibold text-slate-900">{selectedLeaveType.leaveName}</div>
-                <div className="mt-1 text-sm text-slate-500">{getUnitLabel(selectedLeaveType.unit)} / {selectedYear} 年视角</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-              <div>
-                <Label>调整额度</Label>
+      <TablePageLayout
+        filters={(
+          <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
-                  className="mt-2"
-                  type="number"
-                  step="0.5"
-                  placeholder="正数增加，负数减少，例如 1 或 -0.5"
-                  value={adjustForm.adjustmentAmount}
-                  onChange={event => setAdjustForm(prev => ({ ...prev, adjustmentAmount: event.target.value }))}
+                  className="pl-10"
+                  placeholder="搜索姓名、工号、部门"
+                  value={employeeKeyword}
+                  onChange={(event) => setEmployeeKeyword(event.target.value)}
                 />
               </div>
-
-              {!isCompensatorySelected && (
-                <div>
-                  <Label>年度口径</Label>
-                  <Input className="mt-2" value={`${selectedYear} 年`} disabled />
-                </div>
-              )}
-
-              {isCompensatorySelected && (
-                <>
-                  <div>
-                    <Label>额度桶</Label>
-                    <Select value={adjustForm.bucketId} onValueChange={handleAdjustBucketChange}>
-                      <SelectTrigger className="mt-2">
-                        <SelectValue placeholder="选择额度桶" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NEW_BUCKET_VALUE}>新增一个额度桶</SelectItem>
-                        {quotaBuckets.map(item => (
-                          <SelectItem key={item.id} value={String(item.id)}>
-                            {`${item.year} 年 / ${toDateInputValue(item.expiryDate) || '长期有效'} / 可用 ${formatQuotaValue(item.availableQuota, selectedLeaveType.unit)}`}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label>额度归属年度</Label>
-                    <Input
-                      className="mt-2"
-                      type="number"
-                      min={2000}
-                      value={adjustForm.bucketYear}
-                      disabled={adjustForm.bucketId !== NEW_BUCKET_VALUE}
-                      onChange={event => setAdjustForm(prev => ({ ...prev, bucketYear: event.target.value }))}
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <Label>过期日期</Label>
-                    <Input
-                      className="mt-2"
-                      type="date"
-                      min={adjustForm.bucketId === NEW_BUCKET_VALUE ? newBucketMinExpiryDate : undefined}
-                      value={adjustForm.expiryDate}
-                      disabled={adjustForm.bucketId !== NEW_BUCKET_VALUE}
-                      onChange={event => setAdjustForm(prev => ({ ...prev, expiryDate: event.target.value }))}
-                    />
-                    <div className="mt-2 text-xs leading-6 text-slate-500">
-                      {adjustForm.bucketId === NEW_BUCKET_VALUE
-                        ? '新增调休额度桶时，需要明确它属于哪一年、什么时候到期。'
-                        : `当前操作会直接命中已选额度桶：${selectedBucket?.year || '-'} 年 / ${toDateInputValue(selectedBucket?.expiryDate) || '长期有效'}`}
-                    </div>
-                  </div>
-                </>
-              )}
+              <div className="w-full sm:w-40">
+                <Select value={selectedYear} onValueChange={setSelectedYear}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="选择年份" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {yearOptions.map((item) => (
+                      <SelectItem key={item} value={String(item)}>
+                        {item} 年
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full sm:w-56">
+                <Select value={selectedLeaveTypeId} onValueChange={setSelectedLeaveTypeId}>
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="选择假种" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {quotaEnabledLeaveTypes.map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.leaveName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div>
-              <Label>调整原因</Label>
-              <Textarea
-                className="mt-2 min-h-[120px]"
-                placeholder="例如：补录历史调休、核销误发额度、员工离职前人工校准余额"
-                value={adjustForm.reason}
-                onChange={event => setAdjustForm(prev => ({ ...prev, reason: event.target.value }))}
-              />
-            </div>
-
-            {/* 这里把调休与普通假种的提示拆开，避免 HR 在弹窗里误把“年度”与“额度桶”当成一回事。 */}
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600">
-              {isCompensatorySelected
-                ? '调休是按额度桶管理的，正数可以补一个新桶，负数只能从已有桶扣减。这样才能保证冻结和已使用额度不会被误冲掉。'
-                : '普通假种直接调年度汇总额度，系统会自动重算可用额度 = 总额度 - 已用 - 冻结。'}
-            </div>
-
-            <div className="flex justify-end gap-3">
-              <Button variant="outline" onClick={() => setAdjustDialogOpen(false)} disabled={actionLoading}>
-                取消
-              </Button>
-              <Button onClick={() => void handleSubmitAdjustment()} disabled={actionLoading}>
-                {actionLoading ? '保存中...' : '保存调整'}
+            <div className="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto">
+              <Button variant="outline" onClick={() => setEmployeeKeyword('')}>
+                重置搜索
               </Button>
             </div>
           </div>
-        </WorkspaceDialogShell>
-      )}
+        )}
+        table={(
+          <div className="grid min-h-[760px] grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
+                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                  先定位员工，再核对该员工在当前年度下的额度配置。
+                </div>
+              </div>
+
+              <div className="space-y-3 overflow-y-auto p-4">
+                {filteredEmployees.length === 0 ? (
+                  <InlineState title="当前搜索条件下没有匹配员工" className="py-12" />
+                ) : (
+                  filteredEmployees.map((employee) => {
+                    const active = String(employee.id) === selectedEmployeeId;
+
+                    return (
+                      <button
+                        key={employee.id}
+                        type="button"
+                        className={[
+                          'w-full rounded-xl border px-4 py-4 text-left transition',
+                          active
+                            ? 'border-amber-200 bg-amber-50 shadow-sm dark:border-amber-900 dark:bg-amber-950/20'
+                            : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:bg-slate-900/70',
+                        ].join(' ')}
+                        onClick={() => setSelectedEmployeeId(String(employee.id))}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {employee.name}
+                            </div>
+                            <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                              {buildEmployeeLabel(employee)}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="mt-3 space-y-2 text-xs text-slate-500 dark:text-slate-400">
+                          <div>
+                            <span className="text-slate-400 dark:text-slate-500">当前组织</span>
+                            <div className="mt-1">
+                              {[employee.deptName, employee.postName, employee.positionName]
+                                .filter(Boolean)
+                                .join(' / ') || '-'}
+                            </div>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 dark:text-slate-500">工号</span>
+                            <div className="mt-1">{employee.employeeNo || '-'}</div>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </aside>
+
+            <div className="flex min-h-0 flex-col">
+              <div className="grid gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:grid-cols-[1.2fr_1fr_1fr]">
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/30">
+                  <div className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+                    当前员工
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedEmployee?.name || '-'}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/30">
+                  <div className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+                    当前假种
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedLeaveType?.leaveName || '未选择'}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {selectedLeaveType
+                      ? `${getUnitLabel(selectedLeaveType.unit)} / ${isCompensatorySelected ? '按额度桶管理' : '按年度汇总管理'}`
+                      : '先从下方选择一个假种'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/30">
+                  <div className="text-xs uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
+                    当前提示
+                  </div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedQuotaPendingInit
+                      ? '当前假种待初始化'
+                      : isCompensatorySelected
+                        ? '调休调整命中额度桶'
+                        : '普通假种按年度调整'}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {selectedQuotaPendingInit
+                      ? `可以先补齐 ${selectedLeaveType?.leaveName || '当前假种'} 在 ${selectedYear} 年的年度额度。`
+                      : isCompensatorySelected
+                        ? '增加调休可新建额度桶，减少调休必须指定已有桶。'
+                        : '系统会按总额、已用和冻结自动重算可用额度。'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+                {!visibleInitResult && hiddenInitResult ? (
+                  <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 md:flex-row md:items-center md:justify-between dark:border-slate-800 dark:bg-slate-900/30">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        最近一次补齐结果已隐藏
+                      </div>
+                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        {`${hiddenInitResult.employeeName || selectedEmployee?.name || '--'} / ${hiddenInitResult.year} 年 / ${hiddenInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'} / 共处理 ${hiddenInitResult.requestedCount} 类假种`}
+                      </div>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={restoreVisibleInitResult}>
+                      重新显示
+                    </Button>
+                  </div>
+                ) : null}
+
+                {visibleInitResult ? (
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                    <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                      <div>
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">最近一次补齐结果</div>
+                        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                          {`${visibleInitResult.employeeName || selectedEmployee?.name || '--'} / ${visibleInitResult.year} 年 / ${visibleInitResult.mode === 'BATCH' ? '批量补齐' : '单假种补齐'}`}
+                        </div>
+                      </div>
+                      <Button variant="outline" size="sm" onClick={dismissVisibleInitResult}>
+                        关闭结果
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-px bg-slate-200 dark:bg-slate-800 lg:grid-cols-4">
+                      <div className="bg-white px-4 py-3 dark:bg-slate-950/88">
+                        <div className="text-xs text-slate-400 dark:text-slate-500">纳入处理</div>
+                        <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {visibleInitResult.requestedCount}
+                        </div>
+                      </div>
+                      <div className="bg-white px-4 py-3 dark:bg-slate-950/88">
+                        <div className="text-xs text-emerald-600 dark:text-emerald-300">新建</div>
+                        <div className="mt-2 text-lg font-semibold text-emerald-700 dark:text-emerald-200">
+                          {visibleInitResult.createdCount}
+                        </div>
+                      </div>
+                      <div className="bg-white px-4 py-3 dark:bg-slate-950/88">
+                        <div className="text-xs text-cyan-600 dark:text-cyan-300">刷新</div>
+                        <div className="mt-2 text-lg font-semibold text-cyan-700 dark:text-cyan-200">
+                          {visibleInitResult.refreshedCount}
+                        </div>
+                      </div>
+                      <div className="bg-white px-4 py-3 dark:bg-slate-950/88">
+                        <div className="text-xs text-amber-600 dark:text-amber-300">跳过</div>
+                        <div className="mt-2 text-lg font-semibold text-amber-700 dark:text-amber-200">
+                          {visibleInitResult.skippedCount}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>假种</TableHead>
+                            <TableHead>处理结果</TableHead>
+                            <TableHead>处理后总额</TableHead>
+                            <TableHead>过期日期</TableHead>
+                            <TableHead>说明</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {visibleInitResult.items.map((item) => {
+                            const leaveType = leaveTypeMap.get(item.leaveTypeId);
+                            return (
+                              <TableRow key={`init-result-${item.leaveTypeId}-${item.action}`}>
+                                <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                                  {item.leaveTypeName || leaveType?.leaveName || `假种#${item.leaveTypeId}`}
+                                </TableCell>
+                                <TableCell>
+                                  <span
+                                    className={[
+                                      'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                                      initActionToneClassName(item.action),
+                                    ].join(' ')}
+                                  >
+                                    {initActionLabel(item.action)}
+                                  </span>
+                                </TableCell>
+                                <TableCell>{formatQuotaValue(item.totalQuota, leaveType?.unit)}</TableCell>
+                                <TableCell>{toDateInputValue(item.expiryDate) || '长期有效'}</TableCell>
+                                <TableCell className="text-slate-600 dark:text-slate-300">
+                                  {item.message || '-'}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                ) : null}
+
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                  <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">年度额度总览</div>
+                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        点击某一行后，右下区域会切到该假种的额度桶明细。
+                      </div>
+                    </div>
+                    {canInitCurrentAnnualQuota || showBulkInitButton ? (
+                      <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                        {canInitCurrentAnnualQuota
+                          ? `当前假种还没有年度额度记录，可以先补齐 ${selectedLeaveType?.leaveName || '当前假种'} 在 ${selectedYear} 年的年度额度。`
+                          : `当前员工在 ${selectedYear} 年还有 ${pendingQuotaCount} 类普通假种待初始化。`}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>假种</TableHead>
+                          <TableHead>管理方式</TableHead>
+                          <TableHead>总额度</TableHead>
+                          <TableHead>已用</TableHead>
+                          <TableHead>冻结</TableHead>
+                          <TableHead>可用</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {quotaSummary.map((item) => {
+                          const leaveType = leaveTypeMap.get(item.leaveTypeId);
+                          const selected = String(item.leaveTypeId) === selectedLeaveTypeId;
+                          const pendingInit =
+                            !isCompensatoryLeaveType(leaveType) && item.id == null;
+                          return (
+                            <TableRow
+                              key={`${item.leaveTypeId}-${item.year}`}
+                              className={[
+                                'cursor-pointer',
+                                selected && pendingInit
+                                  ? 'bg-amber-100/70 dark:bg-amber-950/20'
+                                  : '',
+                                selected && !pendingInit
+                                  ? 'bg-cyan-50 dark:bg-cyan-950/20'
+                                  : '',
+                                !selected && pendingInit
+                                  ? 'bg-amber-50/70 dark:bg-amber-950/10'
+                                  : '',
+                              ]
+                                .filter(Boolean)
+                                .join(' ')}
+                              onClick={() => setSelectedLeaveTypeId(String(item.leaveTypeId))}
+                            >
+                              <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                                {item.leaveTypeName || leaveType?.leaveName || '-'}
+                              </TableCell>
+                              <TableCell>
+                                {pendingInit
+                                  ? '按年度 / 待初始化'
+                                  : isCompensatoryLeaveType(leaveType)
+                                    ? '按过期桶'
+                                    : '按年度'}
+                              </TableCell>
+                              <TableCell>{formatQuotaValue(item.totalQuota, leaveType?.unit)}</TableCell>
+                              <TableCell>{formatQuotaValue(item.usedQuota, leaveType?.unit)}</TableCell>
+                              <TableCell>{formatQuotaValue(item.frozenQuota, leaveType?.unit)}</TableCell>
+                              <TableCell className="font-medium text-emerald-700 dark:text-emerald-300">
+                                {formatQuotaValue(item.availableQuota, leaveType?.unit)}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                        {summaryLoading ? (
+                          <TableStateRow
+                            colSpan={6}
+                            loading
+                            title="正在加载年度额度汇总..."
+                          />
+                        ) : null}
+                        {!summaryLoading && !quotaSummary.length ? (
+                          <TableStateRow
+                            colSpan={6}
+                            title="当前年度没有额度记录"
+                            description="如果是普通假种，先补齐本年度额度；如果是调休，等加班入账或手工新增额度桶后，这里就会出现记录。"
+                          />
+                        ) : null}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                  <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+                    <div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">额度桶明细</div>
+                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        {isCompensatorySelected
+                          ? '调休会按额度桶展示，便于核对不同过期日的可用余额。'
+                          : '普通假种通常只有当前年度的一条汇总额度。'}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
+                      {selectedLeaveType
+                        ? `${selectedLeaveType.leaveName} / ${getUnitLabel(selectedLeaveType.unit)} / ${selectedYear} 年`
+                        : '先选择假种'}
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>归属年度</TableHead>
+                          <TableHead>总额度</TableHead>
+                          <TableHead>已用</TableHead>
+                          <TableHead>冻结</TableHead>
+                          <TableHead>可用</TableHead>
+                          <TableHead>过期日期</TableHead>
+                          <TableHead>状态</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {quotaBuckets.map((item) => (
+                          <TableRow key={item.id}>
+                            <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                              {item.year} 年
+                            </TableCell>
+                            <TableCell>{formatQuotaValue(item.totalQuota, selectedLeaveType?.unit)}</TableCell>
+                            <TableCell>{formatQuotaValue(item.usedQuota, selectedLeaveType?.unit)}</TableCell>
+                            <TableCell>{formatQuotaValue(item.frozenQuota, selectedLeaveType?.unit)}</TableCell>
+                            <TableCell className="font-medium text-emerald-700 dark:text-emerald-300">
+                              {formatQuotaValue(item.availableQuota, selectedLeaveType?.unit)}
+                            </TableCell>
+                            <TableCell>{toDateInputValue(item.expiryDate) || '长期有效'}</TableCell>
+                            <TableCell>
+                              <span
+                                className={[
+                                  'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                                  bucketStatusToneClassName(item),
+                                ].join(' ')}
+                              >
+                                {bucketStatusLabel(item)}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {bucketLoading ? (
+                          <TableStateRow
+                            colSpan={7}
+                            loading
+                            title="正在加载额度桶明细..."
+                          />
+                        ) : null}
+                        {!bucketLoading && !quotaBuckets.length ? (
+                          <TableStateRow
+                            colSpan={7}
+                            title="当前假种没有额度桶明细"
+                            description={
+                              isCompensatorySelected
+                                ? '调休还没有入账或手工新增额度桶。'
+                                : '当前年度还没有对应的年度额度记录。'
+                            }
+                          />
+                        ) : null}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      />
+
+      <BaseDialog
+        open={bulkInitDialogOpen}
+        title={`批量补齐 ${selectedYear} 年度额度`}
+        description="执行后会一次性为当前员工补齐所有待初始化的普通假种年度额度，调休等按额度桶管理的假种不会受影响。"
+        onClose={() => setBulkInitDialogOpen(false)}
+        maxWidthClassName="max-w-3xl"
+        footer={(
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setBulkInitDialogOpen(false)} disabled={actionLoading}>
+              取消
+            </Button>
+            <Button onClick={() => void handleInitAllAnnualQuota()} disabled={actionLoading}>
+              {actionLoading ? '补齐中...' : `确认补齐 ${pendingAnnualQuotaSummaries.length} 类假种`}
+            </Button>
+          </div>
+        )}
+      >
+        <div className="space-y-4">
+          <DialogSection title="本次处理范围" description="这里只会处理普通按年控额假种，不会改动调休额度桶。">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
+                <div className="text-xs text-slate-400 dark:text-slate-500">当前员工</div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}
+                </div>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
+                <div className="text-xs text-slate-400 dark:text-slate-500">年度口径</div>
+                <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {selectedYear} 年
+                </div>
+              </div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-4 dark:border-amber-900 dark:bg-amber-950/30">
+                <div className="text-xs text-amber-700 dark:text-amber-300">待补齐假种</div>
+                <div className="mt-2 text-sm font-semibold text-amber-900 dark:text-amber-100">
+                  {pendingAnnualQuotaSummaries.length} 类
+                </div>
+              </div>
+            </div>
+          </DialogSection>
+
+          <DialogSection title="待补齐假种" description="以下假种会在本次操作里被批量创建或刷新额度。">
+            <div className="flex flex-wrap gap-2">
+              {pendingAnnualQuotaSummaries.map((item) => {
+                const leaveType = leaveTypeMap.get(item.leaveTypeId);
+                const isCurrentSelection = String(item.leaveTypeId) === selectedLeaveTypeId;
+                return (
+                  <div
+                    key={`bulk-init-${item.leaveTypeId}`}
+                    className={isCurrentSelection
+                      ? 'rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-sm text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
+                      : 'rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300'}
+                  >
+                    {item.leaveTypeName || leaveType?.leaveName || `假种#${item.leaveTypeId}`}
+                    {leaveType?.unit ? ` / ${getUnitLabel(leaveType.unit)}` : ''}
+                    {isCurrentSelection ? ' / 当前选中' : ''}
+                  </div>
+                );
+              })}
+            </div>
+          </DialogSection>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={adjustDialogOpen && Boolean(selectedLeaveType)}
+        title={`调整 ${selectedLeaveType?.leaveName || ''} 额度`}
+        description={
+          isCompensatorySelected
+            ? '调休会精确落到某个额度桶。增加可以新建额度桶，减少时必须指定已有桶。'
+            : '普通假种按当前年度汇总额度直接加减。'
+        }
+        onClose={() => setAdjustDialogOpen(false)}
+        maxWidthClassName="max-w-3xl"
+        footer={(
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setAdjustDialogOpen(false)} disabled={actionLoading}>
+              取消
+            </Button>
+            <Button onClick={() => void handleSubmitAdjustment()} disabled={actionLoading}>
+              {actionLoading ? '保存中...' : '保存调整'}
+            </Button>
+          </div>
+        )}
+      >
+        {selectedLeaveType ? (
+          <div className="space-y-4">
+            <DialogSection title="当前上下文" description="调整会直接命中当前员工、当前假种和当前年度。">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
+                  <div className="text-xs text-slate-400 dark:text-slate-500">当前员工</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedEmployee ? buildEmployeeLabel(selectedEmployee) : '-'}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
+                  <div className="text-xs text-slate-400 dark:text-slate-500">当前假种</div>
+                  <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {selectedLeaveType.leaveName}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {getUnitLabel(selectedLeaveType.unit)} / {selectedYear} 年视角
+                  </div>
+                </div>
+              </div>
+            </DialogSection>
+
+            <DialogSection title="调整内容" description="正数表示增加，负数表示减少。">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">调整额度</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    placeholder="正数增加，负数减少，例如 1 或 -0.5"
+                    value={adjustForm.adjustmentAmount}
+                    onChange={(event) =>
+                      setAdjustForm((prev) => ({ ...prev, adjustmentAmount: event.target.value }))
+                    }
+                    className="h-11"
+                  />
+                </div>
+
+                {!isCompensatorySelected ? (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">年度口径</Label>
+                    <Input className="h-11" value={`${selectedYear} 年`} disabled />
+                  </div>
+                ) : null}
+
+                {isCompensatorySelected ? (
+                  <>
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">额度桶</Label>
+                      <Select value={adjustForm.bucketId} onValueChange={handleAdjustBucketChange}>
+                        <SelectTrigger className="h-11">
+                          <SelectValue placeholder="选择额度桶" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={NEW_BUCKET_VALUE}>新增一个额度桶</SelectItem>
+                          {quotaBuckets.map((item) => (
+                            <SelectItem key={item.id} value={String(item.id)}>
+                              {`${item.year} 年 / ${toDateInputValue(item.expiryDate) || '长期有效'} / 可用 ${formatQuotaValue(item.availableQuota, selectedLeaveType.unit)}`}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">额度归属年度</Label>
+                      <Input
+                        type="number"
+                        min={2000}
+                        value={adjustForm.bucketYear}
+                        disabled={adjustForm.bucketId !== NEW_BUCKET_VALUE}
+                        onChange={(event) =>
+                          setAdjustForm((prev) => ({ ...prev, bucketYear: event.target.value }))
+                        }
+                        className="h-11"
+                      />
+                    </div>
+
+                    <div className="space-y-2 md:col-span-2">
+                      <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">过期日期</Label>
+                      <Input
+                        type="date"
+                        min={adjustForm.bucketId === NEW_BUCKET_VALUE ? newBucketMinExpiryDate : undefined}
+                        value={adjustForm.expiryDate}
+                        disabled={adjustForm.bucketId !== NEW_BUCKET_VALUE}
+                        onChange={(event) =>
+                          setAdjustForm((prev) => ({ ...prev, expiryDate: event.target.value }))
+                        }
+                        className="h-11"
+                      />
+                      <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
+                        {adjustForm.bucketId === NEW_BUCKET_VALUE
+                          ? '新增调休额度桶时，需要明确它属于哪一年、什么时候到期。'
+                          : `当前操作会直接命中已选额度桶：${selectedBucket?.year || '-'} 年 / ${toDateInputValue(selectedBucket?.expiryDate) || '长期有效'}`}
+                      </div>
+                    </div>
+                  </>
+                ) : null}
+              </div>
+            </DialogSection>
+
+            <DialogSection title="调整原因" description="建议记录补录、核销或人工校准的业务原因。">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">原因说明</Label>
+                <Textarea
+                  rows={5}
+                  placeholder="例如：补录历史调休、核销误发额度、员工离职前人工校准余额"
+                  value={adjustForm.reason}
+                  onChange={(event) =>
+                    setAdjustForm((prev) => ({ ...prev, reason: event.target.value }))
+                  }
+                />
+              </div>
+              <div className="mt-4 rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-300">
+                {isCompensatorySelected
+                  ? '调休是按额度桶管理的，正数可以补一个新桶，负数只能从已有桶扣减。这样可以避免把冻结或已使用额度误冲掉。'
+                  : '普通假种直接调年度汇总额度，系统会自动重算可用额度 = 总额度 - 已用 - 冻结。'}
+              </div>
+            </DialogSection>
+          </div>
+        ) : null}
+      </BaseDialog>
     </div>
   );
 };

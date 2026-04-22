@@ -907,7 +907,7 @@ const desktopRoutes = [
             ),
           },
           {
-            path: "/hr/salary",
+            path: "/hr/salary/*",
             element: (
               <Suspense fallback={<Loading />}>
                 <HrSalaryPage />
