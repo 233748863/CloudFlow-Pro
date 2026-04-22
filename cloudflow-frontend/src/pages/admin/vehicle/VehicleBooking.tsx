@@ -57,7 +57,7 @@ const VehicleCard: React.FC<{
     className={[
       'w-full rounded-xl border px-4 py-3 text-left transition-colors',
       selected
-        ? 'border-cyan-300 bg-cyan-50 dark:border-cyan-800 dark:bg-cyan-950/20'
+        ? 'border-slate-300 bg-slate-50 dark:border-slate-700 dark:bg-slate-900'
         : 'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:border-slate-700',
     ].join(' ')}
   >
@@ -75,37 +75,64 @@ const VehicleCard: React.FC<{
           {vehicle.color ? ` · ${vehicle.color}` : ''}
         </div>
       </div>
-      {selected ? <CheckCircle size={16} className="shrink-0 text-cyan-600 dark:text-cyan-300" /> : null}
+      {selected ? <CheckCircle size={16} className="shrink-0 text-slate-600 dark:text-slate-300" /> : null}
     </div>
   </button>
 );
 
-const StepPills: React.FC<{ current: number; steps: string[] }> = ({ current, steps }) => (
-  <div className="flex flex-wrap gap-2">
+const StepStrip: React.FC<{ current: number; steps: string[] }> = ({ current, steps }) => (
+  <div className="flex flex-wrap items-center gap-3">
     {steps.map((step, index) => (
-      <div
-        key={step}
-        className={[
-          'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs',
-          index === current
-            ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
-            : index < current
-              ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
-              : 'border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-500',
-        ].join(' ')}
-      >
-        <span className="font-medium">{index + 1}</span>
-        <span>{step}</span>
+      <div key={step} className="flex items-center gap-3">
+        <div
+          className={[
+            'inline-flex items-center gap-2 text-sm',
+            index === current
+              ? 'text-slate-900 dark:text-slate-100'
+              : index < current
+                ? 'text-cyan-700 dark:text-cyan-200'
+                : 'text-slate-400 dark:text-slate-500',
+          ].join(' ')}
+        >
+          <span
+            className={[
+              'inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs font-medium',
+              index === current
+                ? 'border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900'
+                : index < current
+                  ? 'border-cyan-200 bg-cyan-50 dark:border-cyan-900 dark:bg-cyan-950/30'
+                  : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
+            ].join(' ')}
+          >
+            {index + 1}
+          </span>
+          <span className="font-medium">{step}</span>
+        </div>
+        {index < steps.length - 1 ? (
+          <span className="hidden h-px w-6 bg-slate-200 dark:bg-slate-800 sm:block" />
+        ) : null}
       </div>
     ))}
   </div>
 );
 
 const SummaryField: React.FC<SummaryFieldProps> = ({ label, value }) => (
-  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-    <div className="text-xs font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+    <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{label}</div>
+    <div className="max-w-[65%] text-right text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
   </div>
+);
+
+const SummarySection: React.FC<{
+  title: string;
+  children: React.ReactNode;
+}> = ({ title, children }) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+    </div>
+    <div>{children}</div>
+  </section>
 );
 
 export const VehicleBooking: React.FC = () => {
@@ -221,7 +248,7 @@ export const VehicleBooking: React.FC = () => {
 
   const currentStepTitle = steps[step];
   const currentStepMeta = loading
-    ? '同步当前可预约车辆'
+    ? '同步可预约车辆'
     : loadError
       ? '车辆资源加载失败'
       : vehicles.length === 0
@@ -231,8 +258,8 @@ export const VehicleBooking: React.FC = () => {
               ? `已筛出 ${filteredVehicles.length} / ${vehicles.length} 辆`
               : `可预约 ${vehicles.length} 辆`)
           : step === 1
-            ? `已选 ${selectedVehicle?.licensePlate || '--'} · 附件 ${attachmentCount}`
-            : `已选 ${selectedVehicle?.licensePlate || '--'} · 提交后进入审批`;
+            ? `已选 ${selectedVehicle?.licensePlate || '--'}`
+            : `已选 ${selectedVehicle?.licensePlate || '--'} · 确认后进入审批`;
   const selectedVehicleSummary = selectedVehicle
     ? `${selectedVehicle.brand} ${selectedVehicle.model || ''} · ${selectedVehicle.capacity} 座${selectedVehicle.location ? ` · ${selectedVehicle.location}` : ''}`
     : '--';
@@ -240,29 +267,25 @@ export const VehicleBooking: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <Car className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Vehicle Booking
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           公务车预约申请
         </h1>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:px-6 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{currentStepTitle}</div>
             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{currentStepMeta}</div>
           </div>
-          {!loading && !loadError && vehicles.length > 0 ? <StepPills current={step} steps={steps} /> : null}
+          {!loading && !loadError && vehicles.length > 0 ? <StepStrip current={step} steps={steps} /> : null}
         </div>
 
         <div className="px-4 py-4 sm:px-6 sm:py-5">
           {loading ? (
             <InlineState
               title="正在加载可用车辆"
-              description="同步当前时段可预约的车辆资源。"
+              description="同步当前时段可预约车辆。"
               icon={<Loader2 className="animate-spin text-slate-500" size={18} />}
             />
           ) : loadError ? (
@@ -275,7 +298,7 @@ export const VehicleBooking: React.FC = () => {
           ) : vehicles.length === 0 ? (
             <InlineState
               title="暂无可用车辆"
-              description="所有车辆当前均已被预约或暂不可用。"
+              description="当前时段暂无可预约车辆。"
               action={<Button variant="outline" onClick={() => navigate('/admin/vehicle')}>查看车辆列表</Button>}
             />
           ) : (
@@ -322,7 +345,6 @@ export const VehicleBooking: React.FC = () => {
                   {filteredVehicles.length === 0 ? (
                     <InlineState
                       title="没有匹配的车辆"
-                      description="调整搜索条件后重试。"
                     />
                   ) : (
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
@@ -394,7 +416,6 @@ export const VehicleBooking: React.FC = () => {
                     <div className="space-y-2">
                       <Label>目的地</Label>
                       <Input
-                        placeholder="请输入目的地"
                         value={formData.destination}
                         onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
                         className="h-11"
@@ -403,7 +424,6 @@ export const VehicleBooking: React.FC = () => {
                     <div className="space-y-2">
                       <Label>还车地点</Label>
                       <Input
-                        placeholder="默认原地还车"
                         value={formData.returnLocation}
                         onChange={(e) => setFormData({ ...formData, returnLocation: e.target.value })}
                         className="h-11"
@@ -445,7 +465,6 @@ export const VehicleBooking: React.FC = () => {
                     <Label>用车事由</Label>
                     <Textarea
                       className="min-h-[100px] resize-none"
-                      placeholder="请输入用车事由"
                       value={formData.reason}
                       onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
                     />
@@ -476,7 +495,6 @@ export const VehicleBooking: React.FC = () => {
                     <div className="space-y-2">
                       <Label>随行人员</Label>
                       <Input
-                        placeholder="如：张三, 李四"
                         value={formData.passengers}
                         onChange={(e) => setFormData({ ...formData, passengers: e.target.value })}
                         className="h-11"
@@ -498,20 +516,23 @@ export const VehicleBooking: React.FC = () => {
 
               {step === 2 ? (
                 <div className="space-y-5">
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <SummaryField label="车辆" value={selectedVehicle?.licensePlate || '--'} />
-                    <SummaryField label="目的地" value={formData.destination} />
-                    <SummaryField label="行程 / 人数" value={`${formData.isRoundTrip ? '往返' : '单程'} · ${formData.passengerCount} 人`} />
-                    <SummaryField label="开始时间" value={formData.startTime.replace('T', ' ')} />
-                    <SummaryField label="结束时间" value={formData.endTime.replace('T', ' ')} />
-                    <SummaryField label="还车地点" value={formData.returnLocation || '原地还车'} />
-                  </div>
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)]">
+                    <SummarySection title="申请信息">
+                      <SummaryField label="车辆" value={selectedVehicle?.licensePlate || '--'} />
+                      <SummaryField label="开始时间" value={formData.startTime.replace('T', ' ')} />
+                      <SummaryField label="结束时间" value={formData.endTime.replace('T', ' ')} />
+                      <SummaryField label="目的地" value={formData.destination} />
+                      <SummaryField label="还车地点" value={formData.returnLocation || '原地还车'} />
+                      <SummaryField label="行程 / 人数" value={`${formData.isRoundTrip ? '往返' : '单程'} · ${formData.passengerCount} 人`} />
+                      <SummaryField label="随行人员" value={formData.passengers || '-'} />
+                      <SummaryField label="附件" value={`${attachmentCount} 个`} />
+                    </SummarySection>
 
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                    <div className="text-xs font-medium text-slate-400 dark:text-slate-500">用车事由</div>
-                    <div className="mt-2 whitespace-pre-wrap text-sm text-slate-900 dark:text-slate-100">
-                      {formData.reason}
-                    </div>
+                    <SummarySection title="用车事由">
+                      <div className="px-4 py-3 whitespace-pre-wrap text-sm leading-6 text-slate-900 dark:text-slate-100">
+                        {formData.reason}
+                      </div>
+                    </SummarySection>
                   </div>
 
                   <div className="flex justify-between">
