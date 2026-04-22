@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookOpen, Edit, Plus, RefreshCw, Search, Tag, Trash2 } from 'lucide-react';
+import { Edit, Plus, RefreshCw, RotateCcw, Search, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
@@ -50,6 +50,8 @@ type DeleteTarget =
   | { type: 'dictType'; item: SysDictType }
   | { type: 'dictData'; item: SysDictData };
 
+const DEFAULT_STATUS_VALUE = '__all__';
+const DEFAULT_LIST_CLASS_VALUE = '__default__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const createTypeForm = (): DictTypeFormState => ({
@@ -87,7 +89,7 @@ const getListClassBadgeClassName = (listClass: string) => {
     case 'info':
       return 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/30 dark:text-sky-200';
     default:
-      return 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+      return 'border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
   }
 };
 
@@ -135,12 +137,13 @@ const RowActionButton: React.FC<{
   </button>
 );
 
-const DictTypeCardState: React.FC<{
+const InlineState: React.FC<{
   title: string;
   description?: string;
   loading?: boolean;
-}> = ({ title, description, loading = false }) => (
-  <div className="flex min-h-[220px] flex-col items-center justify-center px-6 py-10 text-center">
+  className?: string;
+}> = ({ title, description, loading = false, className }) => (
+  <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
     {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
     {description ? (
@@ -151,13 +154,14 @@ const DictTypeCardState: React.FC<{
   </div>
 );
 
-const DictDataTableStateRow: React.FC<{
+const TableStateRow: React.FC<{
+  colSpan: number;
   title: string;
   description?: string;
   loading?: boolean;
-}> = ({ title, description, loading = false }) => (
+}> = ({ colSpan, title, description, loading = false }) => (
   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={9} className="px-4 py-16">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
@@ -200,12 +204,49 @@ export const DictPage: React.FC = () => {
     [dictTypes, selectedTypeId],
   );
 
+  const filteredTypes = useMemo(
+    () =>
+      dictTypes.filter((item) => {
+        const keyword = query.keyword.trim();
+        const matchesKeyword =
+          !keyword || item.dictName.includes(keyword) || item.dictType.includes(keyword);
+        const matchesStatus = !query.status || (item.status || '0') === query.status;
+        return matchesKeyword && matchesStatus;
+      }),
+    [dictTypes, query.keyword, query.status],
+  );
+
+  const activeTypeCount = useMemo(
+    () => dictTypes.filter((item) => (item.status || '0') === '0').length,
+    [dictTypes],
+  );
+
+  const activeDataCount = useMemo(
+    () => dictDataList.filter((item) => (item.status || '0') === '0').length,
+    [dictDataList],
+  );
+
+  const defaultDataCount = useMemo(
+    () => dictDataList.filter((item) => item.isDefault === 'Y').length,
+    [dictDataList],
+  );
+
+  const hasActiveFilters = Boolean(query.keyword || query.status);
+  const isTypeEdit = Boolean(editingType);
+  const isDataEdit = Boolean(editingData);
+
+  const filterSummary = useMemo(() => {
+    const keywordLabel = query.keyword || '全部关键字';
+    const statusLabel = !query.status ? '全部状态' : query.status === '0' ? '正常' : '停用';
+    return `${keywordLabel} / ${statusLabel}`;
+  }, [query.keyword, query.status]);
+
   useEffect(() => {
     void loadDictTypes();
   }, []);
 
   useEffect(() => {
-    if (!selectedType) {
+    if (!selectedType?.dictType) {
       setDictDataList([]);
       setDataError(null);
       return;
@@ -214,7 +255,20 @@ export const DictPage: React.FC = () => {
     void loadDictData(selectedType.dictType);
   }, [selectedType?.dictType]);
 
-  const loadDictTypes = async () => {
+  useEffect(() => {
+    if (filteredTypes.length === 0) {
+      if (hasActiveFilters) {
+        setSelectedTypeId(null);
+      }
+      return;
+    }
+
+    if (!selectedTypeId || !filteredTypes.some((item) => item.dictId === selectedTypeId)) {
+      setSelectedTypeId(filteredTypes[0]?.dictId ?? null);
+    }
+  }, [filteredTypes, hasActiveFilters, selectedTypeId]);
+
+  const loadDictTypes = async (preferredDictType?: string) => {
     setTypeLoading(true);
     setTypeError(null);
 
@@ -223,16 +277,28 @@ export const DictPage: React.FC = () => {
       const nextTypes = Array.isArray(response) ? response : [];
       setDictTypes(nextTypes);
 
-      // 保证类型被删除后，右侧联动不会继续指向无效条目。
-      if (selectedTypeId && !nextTypes.some((item) => item.dictId === selectedTypeId)) {
-        setSelectedTypeId(null);
-      }
+      setSelectedTypeId((current) => {
+        const preferred = preferredDictType
+          ? nextTypes.find((item) => item.dictType === preferredDictType)?.dictId ?? null
+          : null;
+
+        if (preferred !== null) {
+          return preferred;
+        }
+
+        if (current && nextTypes.some((item) => item.dictId === current)) {
+          return current;
+        }
+
+        return nextTypes[0]?.dictId ?? null;
+      });
     } catch (error) {
       console.error('获取字典类型失败:', error);
       const message = '获取字典类型失败，请稍后重试';
       setTypeError(message);
       setDictTypes([]);
       setSelectedTypeId(null);
+      setDictDataList([]);
       toast.error(message);
     } finally {
       setTypeLoading(false);
@@ -258,9 +324,10 @@ export const DictPage: React.FC = () => {
   };
 
   const handleRefresh = async () => {
-    await loadDictTypes();
-    if (selectedType?.dictType) {
-      await loadDictData(selectedType.dictType);
+    const currentDictType = selectedType?.dictType;
+    await loadDictTypes(currentDictType);
+    if (currentDictType) {
+      await loadDictData(currentDictType);
     }
   };
 
@@ -291,7 +358,14 @@ export const DictPage: React.FC = () => {
       setEditingType(null);
       setTypeForm(createTypeForm());
     }
+
     setTypeModalOpen(true);
+  };
+
+  const closeTypeModal = () => {
+    setTypeModalOpen(false);
+    setEditingType(null);
+    setTypeForm(createTypeForm());
   };
 
   const openDataModal = (item?: SysDictData) => {
@@ -319,12 +393,6 @@ export const DictPage: React.FC = () => {
     setDataModalOpen(true);
   };
 
-  const closeTypeModal = () => {
-    setTypeModalOpen(false);
-    setEditingType(null);
-    setTypeForm(createTypeForm());
-  };
-
   const closeDataModal = () => {
     setDataModalOpen(false);
     setEditingData(null);
@@ -344,20 +412,25 @@ export const DictPage: React.FC = () => {
       return;
     }
 
+    const payload: SysDictType = {
+      ...(editingType || {}),
+      dictName: typeForm.dictName.trim(),
+      dictType: typeForm.dictType.trim(),
+      status: typeForm.status,
+      remark: typeForm.remark.trim(),
+    };
+
     try {
       if (editingType) {
-        await dictTypeApi.edit({
-          ...editingType,
-          ...typeForm,
-        });
-        toast.success('字典类型更新成功');
+        await dictTypeApi.edit(payload);
+        toast.success('字典类型已更新');
       } else {
-        await dictTypeApi.add(typeForm as SysDictType);
-        toast.success('字典类型创建成功');
+        await dictTypeApi.add(payload);
+        toast.success('字典类型已创建');
       }
 
       closeTypeModal();
-      await loadDictTypes();
+      await loadDictTypes(payload.dictType);
     } catch (error) {
       console.error('保存字典类型失败:', error);
       toast.error('保存字典类型失败');
@@ -367,7 +440,9 @@ export const DictPage: React.FC = () => {
   const handleSaveData = async (event: React.FormEvent) => {
     event.preventDefault();
 
-    if (!selectedType && !editingData) {
+    const currentType = editingData?.dictType || selectedType?.dictType;
+
+    if (!currentType) {
       toast.error('请先选择字典类型');
       return;
     }
@@ -382,25 +457,29 @@ export const DictPage: React.FC = () => {
       return;
     }
 
+    const payload: SysDictData = {
+      ...(editingData || {}),
+      dictType: currentType,
+      dictLabel: dataForm.dictLabel.trim(),
+      dictValue: dataForm.dictValue.trim(),
+      dictSort: Number(dataForm.dictSort || 0),
+      listClass: dataForm.listClass,
+      isDefault: dataForm.isDefault,
+      status: dataForm.status,
+      remark: dataForm.remark.trim(),
+    };
+
     try {
       if (editingData) {
-        await dictDataApi.edit({
-          ...editingData,
-          ...dataForm,
-        });
-        toast.success('字典数据更新成功');
-      } else if (selectedType) {
-        await dictDataApi.add({
-          ...dataForm,
-          dictType: selectedType.dictType,
-        } as SysDictData);
-        toast.success('字典数据创建成功');
+        await dictDataApi.edit(payload);
+        toast.success('字典数据已更新');
+      } else {
+        await dictDataApi.add(payload);
+        toast.success('字典数据已创建');
       }
 
       closeDataModal();
-      if (selectedType?.dictType) {
-        await loadDictData(selectedType.dictType);
-      }
+      await loadDictData(currentType);
     } catch (error) {
       console.error('保存字典数据失败:', error);
       toast.error('保存字典数据失败');
@@ -408,25 +487,21 @@ export const DictPage: React.FC = () => {
   };
 
   const confirmDelete = async () => {
-    if (!deleteTarget) return;
+    if (!deleteTarget) {
+      return;
+    }
 
     try {
       if (deleteTarget.type === 'dictType' && deleteTarget.item.dictId) {
         await dictTypeApi.remove([deleteTarget.item.dictId]);
-        toast.success('字典类型删除成功');
-        if (selectedTypeId === deleteTarget.item.dictId) {
-          setSelectedTypeId(null);
-          setDictDataList([]);
-        }
+        toast.success('字典类型已删除');
         await loadDictTypes();
       }
 
       if (deleteTarget.type === 'dictData' && deleteTarget.item.dictCode) {
         await dictDataApi.remove([deleteTarget.item.dictCode]);
-        toast.success('字典数据删除成功');
-        if (selectedType?.dictType) {
-          await loadDictData(selectedType.dictType);
-        }
+        toast.success('字典数据已删除');
+        await loadDictData(deleteTarget.item.dictType);
       }
     } catch (error) {
       console.error('删除字典内容失败:', error);
@@ -436,76 +511,61 @@ export const DictPage: React.FC = () => {
     }
   };
 
-  const filteredTypes = useMemo(
-    () =>
-      dictTypes.filter((item) => {
-        const matchesKeyword =
-          !query.keyword ||
-          item.dictName.includes(query.keyword) ||
-          item.dictType.includes(query.keyword);
-        const matchesStatus = !query.status || (item.status || '0') === query.status;
-        return matchesKeyword && matchesStatus;
-      }),
-    [dictTypes, query.keyword, query.status],
-  );
-
-  const activeTypeCount = useMemo(
-    () => dictTypes.filter((item) => (item.status || '0') === '0').length,
-    [dictTypes],
-  );
-
-  const activeDataCount = useMemo(
-    () => dictDataList.filter((item) => (item.status || '0') === '0').length,
-    [dictDataList],
-  );
-
-  const defaultDataCount = useMemo(
-    () => dictDataList.filter((item) => item.isDefault === 'Y').length,
-    [dictDataList],
-  );
-
-  const hasActiveFilters = Boolean(query.keyword || query.status);
-  const isTypeEdit = Boolean(editingType);
-  const isDataEdit = Boolean(editingData);
-
   return (
     <>
       <TablePageLayout
-        className="gap-4"
-        filters={
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <form
-              onSubmit={handleSearch}
-              className="flex flex-1 flex-wrap items-center gap-3"
-            >
+        className="gap-3"
+        actions={(
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+              <span className="font-medium text-slate-900 dark:text-slate-100">
+                类型 {dictTypes.length}
+              </span>
+              <span className="text-slate-500 dark:text-slate-400">启用 {activeTypeCount}</span>
+              <span className="text-slate-500 dark:text-slate-400">数据 {dictDataList.length}</span>
+              <span className="text-slate-500 dark:text-slate-400">默认 {defaultDataCount}</span>
+            </div>
+
+            {selectedType ? (
+              <div className="ml-auto text-xs text-slate-500 dark:text-slate-400">
+                当前类型 <span className="font-mono">{selectedType.dictType}</span>
+              </div>
+            ) : null}
+          </div>
+        )}
+        filters={(
+          <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative w-full sm:w-64">
                 <Search
                   size={16}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"
                 />
                 <Input
-                  type="text"
-                  placeholder="按字典名称或类型标识搜索"
-                  className="h-10 pl-10"
                   value={filters.keyword}
                   onChange={(event) =>
                     setFilters((current) => ({ ...current, keyword: event.target.value }))
                   }
+                  placeholder="搜索字典名称或类型"
+                  className="h-10 pl-10"
                 />
               </div>
 
               <div className="w-full sm:w-36">
                 <Select
-                  value={filters.status}
+                  value={filters.status || DEFAULT_STATUS_VALUE}
                   onValueChange={(value) =>
-                    setFilters((current) => ({ ...current, status: value }))
+                    setFilters((current) => ({
+                      ...current,
+                      status: value === DEFAULT_STATUS_VALUE ? '' : value,
+                    }))
                   }
                 >
                   <SelectTrigger className="h-10">
                     <SelectValue placeholder="全部状态" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">全部状态</SelectItem>
+                    <SelectItem value={DEFAULT_STATUS_VALUE}>全部状态</SelectItem>
                     <SelectItem value="0">正常</SelectItem>
                     <SelectItem value="1">停用</SelectItem>
                   </SelectContent>
@@ -518,12 +578,17 @@ export const DictPage: React.FC = () => {
 
               {hasActiveFilters ? (
                 <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                  <RotateCcw size={14} />
                   重置
                 </Button>
               ) : null}
             </form>
 
             <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden text-xs text-slate-500 dark:text-slate-400 xl:block">
+                {filterSummary}
+              </div>
+
               <Button
                 variant="outline"
                 size="sm"
@@ -533,101 +598,105 @@ export const DictPage: React.FC = () => {
                 <RefreshCw size={15} className={cn((typeLoading || dataLoading) && 'animate-spin')} />
                 刷新
               </Button>
+
               <Button variant="outline" size="sm" onClick={() => openTypeModal()}>
                 <Plus size={15} />
                 新增类型
               </Button>
+
               <Button size="sm" onClick={() => openDataModal()} disabled={!selectedType}>
                 <Tag size={15} />
                 新增数据
               </Button>
             </div>
           </div>
-        }
-        table={
-          <div className="grid min-h-[680px] lg:grid-cols-[320px_minmax(0,1fr)]">
-            <div className="border-b border-slate-200 dark:border-slate-800 lg:border-b-0 lg:border-r">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    字典类型
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    轻量双栏结构保留左侧类型列表，靠近源码后台管理页的密度和比例。
-                  </div>
+        )}
+        table={(
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  字典管理
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    总数 {dictTypes.length}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    正常 {activeTypeCount}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    筛选 {filteredTypes.length}
-                  </span>
+                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                  {selectedType
+                    ? `${selectedType.dictName} / ${selectedType.dictType}`
+                    : hasActiveFilters
+                      ? filterSummary
+                      : '共用一套类型列表和字典数据表'}
                 </div>
               </div>
 
-              <div className="max-h-[calc(100vh-320px)] overflow-y-auto p-3">
-                {typeLoading ? (
-                  <DictTypeCardState title="正在加载字典类型..." loading />
-                ) : typeError ? (
-                  <DictTypeCardState title="字典类型加载失败" description={typeError} />
-                ) : filteredTypes.length === 0 ? (
-                  <DictTypeCardState
-                    title="暂无字典类型"
-                    description="可以先新增一个字典类型，再继续维护对应的字典数据。"
-                  />
-                ) : (
-                  <div className="space-y-3">
-                    {filteredTypes.map((item) => {
-                      const isSelected = selectedTypeId === item.dictId;
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span>筛选后 {filteredTypes.length} 个类型</span>
+                <span>当前 {dictDataList.length} 条数据</span>
+                {selectedType ? <span>启用 {activeDataCount}</span> : null}
+              </div>
+            </div>
 
-                      return (
-                        <div
-                          key={item.dictId}
-                          role="button"
-                          tabIndex={0}
-                          onClick={() => setSelectedTypeId(item.dictId ?? null)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault();
-                              setSelectedTypeId(item.dictId ?? null);
-                            }
-                          }}
-                          className={cn(
-                            'group w-full rounded-2xl border px-4 py-3 text-left transition',
-                            isSelected
-                              ? 'border-cyan-200 bg-cyan-50 shadow-sm dark:border-cyan-900/70 dark:bg-cyan-950/20'
-                              : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:border-slate-700 dark:hover:bg-slate-900/70',
-                          )}
-                        >
-                          <div className="flex items-start justify-between gap-3">
+            <div className="grid min-h-[660px] lg:grid-cols-[280px_minmax(0,1fr)]">
+              <div className="border-b border-slate-200 dark:border-slate-800 lg:border-b-0 lg:border-r">
+                <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    字典类型
+                  </div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">
+                    共 {filteredTypes.length} 条
+                  </div>
+                </div>
+
+                <div className="max-h-[calc(100vh-336px)] overflow-y-auto">
+                  {typeLoading ? (
+                    <InlineState title="正在加载字典类型..." loading />
+                  ) : typeError ? (
+                    <InlineState title="字典类型加载失败" description={typeError} />
+                  ) : filteredTypes.length === 0 ? (
+                    <InlineState
+                      title={hasActiveFilters ? '当前筛选无结果' : '暂无字典类型'}
+                      description={hasActiveFilters ? '请调整筛选条件后重试' : '请先新增字典类型'}
+                    />
+                  ) : (
+                    <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                      {filteredTypes.map((item) => {
+                        const isSelected = item.dictId === selectedTypeId;
+
+                        return (
+                          <div
+                            key={item.dictId}
+                            role="button"
+                            tabIndex={0}
+                            onClick={() => setSelectedTypeId(item.dictId ?? null)}
+                            onKeyDown={(event) => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                setSelectedTypeId(item.dictId ?? null);
+                              }
+                            }}
+                            className={cn(
+                              'group flex items-start justify-between gap-3 px-4 py-3 transition-colors focus:outline-none',
+                              isSelected
+                                ? 'bg-slate-50 dark:bg-slate-900/70'
+                                : 'hover:bg-slate-50 dark:hover:bg-slate-900/50',
+                            )}
+                          >
                             <div className="min-w-0 flex-1">
-                              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                                 {item.dictName}
                               </div>
-                              <div className="mt-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400">
-                                {item.dictType}
-                              </div>
-                              <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                <span className="font-mono">{item.dictType}</span>
                                 <span
                                   className={cn(
-                                    'rounded-full px-2.5 py-1 text-xs font-medium',
+                                    'rounded-full px-2 py-0.5 font-medium',
                                     getStatusBadgeClassName(item.status || '0'),
                                   )}
                                 >
                                   {(item.status || '0') === '0' ? '正常' : '停用'}
                                 </span>
-                                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                                  {item.createTime || '未记录时间'}
-                                </span>
                               </div>
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100">
+                            <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
                               <RowActionButton
                                 label="编辑类型"
                                 icon={<Edit size={15} />}
@@ -647,191 +716,181 @@ export const DictPage: React.FC = () => {
                               />
                             </div>
                           </div>
-                        </div>
-                      );
-                    })}
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                      {selectedType ? selectedType.dictName : '字典数据'}
+                    </div>
+                    {selectedType ? (
+                      <div className="mt-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400">
+                        {selectedType.dictType}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  {selectedType ? (
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                      <span>共 {dictDataList.length} 条</span>
+                      <span>启用 {activeDataCount}</span>
+                      <span>默认 {defaultDataCount}</span>
+                    </div>
+                  ) : null}
+                </div>
+
+                {!selectedType ? (
+                  <InlineState
+                    title={hasActiveFilters ? '当前筛选无可用类型' : '请选择字典类型'}
+                    description={hasActiveFilters ? '左侧列表无结果' : '左侧选中后即可查看字典数据'}
+                    className="min-h-[560px]"
+                  />
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[860px]">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-20">排序</TableHead>
+                          <TableHead>标签</TableHead>
+                          <TableHead>键值</TableHead>
+                          <TableHead>样式</TableHead>
+                          <TableHead>默认</TableHead>
+                          <TableHead>状态</TableHead>
+                          <TableHead>备注</TableHead>
+                          <TableActionHead className="w-28">操作</TableActionHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {dataLoading ? (
+                          <TableStateRow colSpan={8} title="正在加载字典数据..." loading />
+                        ) : dataError ? (
+                          <TableStateRow colSpan={8} title="字典数据加载失败" description={dataError} />
+                        ) : dictDataList.length === 0 ? (
+                          <TableStateRow colSpan={8} title="暂无字典数据" />
+                        ) : (
+                          dictDataList.map((item) => (
+                            <TableRow key={item.dictCode}>
+                              <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">
+                                {item.dictSort ?? 0}
+                              </TableCell>
+                              <TableCell className="py-4">
+                                <div className="min-w-0">
+                                  <div className="truncate font-medium text-slate-900 dark:text-slate-100">
+                                    {item.dictLabel}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                    {item.createTime || '-'}
+                                  </div>
+                                </div>
+                              </TableCell>
+                              <TableCell className="py-4">
+                                <span className="font-mono text-xs text-slate-700 dark:text-slate-200">
+                                  {item.dictValue}
+                                </span>
+                              </TableCell>
+                              <TableCell className="py-4">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                                    getListClassBadgeClassName(item.listClass || ''),
+                                  )}
+                                >
+                                  {getListClassLabel(item.listClass || '')}
+                                </span>
+                              </TableCell>
+                              <TableCell className="py-4">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                                    getDefaultBadgeClassName(item.isDefault || 'N'),
+                                  )}
+                                >
+                                  {item.isDefault === 'Y' ? '是' : '否'}
+                                </span>
+                              </TableCell>
+                              <TableCell className="py-4">
+                                <span
+                                  className={cn(
+                                    'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
+                                    getStatusBadgeClassName(item.status || '0'),
+                                  )}
+                                >
+                                  {(item.status || '0') === '0' ? '正常' : '停用'}
+                                </span>
+                              </TableCell>
+                              <TableCell
+                                className="max-w-[220px] truncate py-4 text-sm text-slate-500 dark:text-slate-400"
+                                title={item.remark || '-'}
+                              >
+                                {item.remark || '-'}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex items-center justify-end gap-1">
+                                  <RowActionButton
+                                    label="编辑数据"
+                                    icon={<Edit size={15} />}
+                                    onClick={() => openDataModal(item)}
+                                  />
+                                  <RowActionButton
+                                    label="删除数据"
+                                    icon={<Trash2 size={15} />}
+                                    onClick={() => setDeleteTarget({ type: 'dictData', item })}
+                                    tone="danger"
+                                  />
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>
             </div>
-
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {selectedType ? `${selectedType.dictName} 的字典数据` : '字典数据'}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {selectedType
-                      ? `当前类型标识：${selectedType.dictType}`
-                      : '先从左侧选择一个字典类型，再查看或维护对应的字典数据。'}
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    数据 {dictDataList.length} 条
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    启用 {activeDataCount} 条
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    默认 {defaultDataCount} 条
-                  </span>
-                </div>
-              </div>
-
-              {!selectedType ? (
-                <div className="flex min-h-[540px] items-center justify-center px-6 py-10">
-                  <div className="text-center">
-                    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
-                      <BookOpen size={20} />
-                    </div>
-                    <div className="mt-4 text-sm font-medium text-slate-900 dark:text-slate-100">
-                      请先选择一个字典类型
-                    </div>
-                    <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      选中左侧类型后，这里会展示对应的字典数据与维护动作。
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                <Table className="min-w-[980px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>排序</TableHead>
-                      <TableHead>标签</TableHead>
-                      <TableHead>键值</TableHead>
-                      <TableHead>样式</TableHead>
-                      <TableHead>默认项</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>创建时间</TableHead>
-                      <TableHead>备注</TableHead>
-                      <TableActionHead className="w-28">操作</TableActionHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {dataLoading ? (
-                      <DictDataTableStateRow title="正在加载字典数据..." loading />
-                    ) : dataError ? (
-                      <DictDataTableStateRow title="字典数据加载失败" description={dataError} />
-                    ) : dictDataList.length === 0 ? (
-                      <DictDataTableStateRow
-                        title="暂无字典数据"
-                        description="可以先新增一条字典数据，再逐步补齐默认项和显示样式。"
-                      />
-                    ) : (
-                      dictDataList.map((item) => (
-                        <TableRow key={item.dictCode}>
-                          <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">
-                            {item.dictSort ?? 0}
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-xs font-medium',
-                                getListClassBadgeClassName(item.listClass || ''),
-                              )}
-                            >
-                              {item.dictLabel}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-4 font-mono text-xs text-slate-700 dark:text-slate-200">
-                            {item.dictValue}
-                          </TableCell>
-                          <TableCell className="py-4 text-sm text-slate-500 dark:text-slate-400">
-                            {getListClassLabel(item.listClass || '')}
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-xs font-medium',
-                                getDefaultBadgeClassName(item.isDefault || 'N'),
-                              )}
-                            >
-                              {item.isDefault === 'Y' ? '默认' : '否'}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-4">
-                            <span
-                              className={cn(
-                                'rounded-full px-2.5 py-1 text-xs font-medium',
-                                getStatusBadgeClassName(item.status || '0'),
-                              )}
-                            >
-                              {(item.status || '0') === '0' ? '正常' : '停用'}
-                            </span>
-                          </TableCell>
-                          <TableCell className="py-4 whitespace-nowrap text-sm text-slate-500 dark:text-slate-400">
-                            {item.createTime || '-'}
-                          </TableCell>
-                          <TableCell
-                            className="max-w-[180px] truncate py-4 text-sm text-slate-500 dark:text-slate-400"
-                            title={item.remark || '-'}
-                          >
-                            {item.remark || '-'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center justify-end gap-1">
-                              <RowActionButton
-                                label="编辑数据"
-                                icon={<Edit size={15} />}
-                                onClick={() => openDataModal(item)}
-                              />
-                              <RowActionButton
-                                label="删除数据"
-                                icon={<Trash2 size={15} />}
-                                onClick={() => setDeleteTarget({ type: 'dictData', item })}
-                                tone="danger"
-                              />
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              )}
-            </div>
-          </div>
-        }
+          </>
+        )}
       />
 
       <BaseDialog
         open={typeModalOpen}
         title={isTypeEdit ? '编辑字典类型' : '新增字典类型'}
-        description="维护字典名称、类型标识、启停状态和备注信息。"
         onClose={closeTypeModal}
         maxWidthClassName="max-w-2xl"
-        footer={
-          <div className="flex justify-end gap-3">
+        footer={(
+          <>
             <Button variant="outline" onClick={closeTypeModal}>
               取消
             </Button>
             <Button type="submit" form="dict-type-form">
               {isTypeEdit ? '保存修改' : '创建类型'}
             </Button>
-          </div>
-        }
+          </>
+        )}
       >
         <form id="dict-type-form" onSubmit={handleSaveType} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className={fieldLabelClassName}>
-                字典名称 <span className="text-red-500">*</span>
+                字典名称 <span className="text-rose-500">*</span>
               </label>
               <Input
                 value={typeForm.dictName}
                 onChange={(event) =>
                   setTypeForm((current) => ({ ...current, dictName: event.target.value }))
                 }
-                placeholder="如：用户性别"
               />
             </div>
 
             <div>
               <label className={fieldLabelClassName}>
-                类型标识 <span className="text-red-500">*</span>
+                类型标识 <span className="text-rose-500">*</span>
               </label>
               <Input
                 className="font-mono"
@@ -839,7 +898,6 @@ export const DictPage: React.FC = () => {
                 onChange={(event) =>
                   setTypeForm((current) => ({ ...current, dictType: event.target.value }))
                 }
-                placeholder="如：sys_user_sex"
               />
             </div>
 
@@ -871,7 +929,6 @@ export const DictPage: React.FC = () => {
               onChange={(event) =>
                 setTypeForm((current) => ({ ...current, remark: event.target.value }))
               }
-              placeholder="备注说明"
             />
           </div>
         </form>
@@ -880,38 +937,36 @@ export const DictPage: React.FC = () => {
       <BaseDialog
         open={dataModalOpen}
         title={isDataEdit ? '编辑字典数据' : '新增字典数据'}
-        description="维护字典标签、键值、默认项和显示样式。"
         onClose={closeDataModal}
-        maxWidthClassName="max-w-3xl"
-        footer={
-          <div className="flex justify-end gap-3">
+        maxWidthClassName="max-w-2xl"
+        footer={(
+          <>
             <Button variant="outline" onClick={closeDataModal}>
               取消
             </Button>
             <Button type="submit" form="dict-data-form">
               {isDataEdit ? '保存修改' : '创建数据'}
             </Button>
-          </div>
-        }
+          </>
+        )}
       >
         <form id="dict-data-form" onSubmit={handleSaveData} className="space-y-4">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <label className={fieldLabelClassName}>
-                数据标签 <span className="text-red-500">*</span>
+                数据标签 <span className="text-rose-500">*</span>
               </label>
               <Input
                 value={dataForm.dictLabel}
                 onChange={(event) =>
                   setDataForm((current) => ({ ...current, dictLabel: event.target.value }))
                 }
-                placeholder="如：男"
               />
             </div>
 
             <div>
               <label className={fieldLabelClassName}>
-                数据键值 <span className="text-red-500">*</span>
+                数据键值 <span className="text-rose-500">*</span>
               </label>
               <Input
                 className="font-mono"
@@ -919,12 +974,11 @@ export const DictPage: React.FC = () => {
                 onChange={(event) =>
                   setDataForm((current) => ({ ...current, dictValue: event.target.value }))
                 }
-                placeholder="如：0"
               />
             </div>
 
             <div>
-              <label className={fieldLabelClassName}>排序号</label>
+              <label className={fieldLabelClassName}>排序</label>
               <Input
                 type="number"
                 value={dataForm.dictSort}
@@ -938,18 +992,21 @@ export const DictPage: React.FC = () => {
             </div>
 
             <div>
-              <label className={fieldLabelClassName}>显示样式</label>
+              <label className={fieldLabelClassName}>样式</label>
               <Select
-                value={dataForm.listClass}
+                value={dataForm.listClass || DEFAULT_LIST_CLASS_VALUE}
                 onValueChange={(value) =>
-                  setDataForm((current) => ({ ...current, listClass: value }))
+                  setDataForm((current) => ({
+                    ...current,
+                    listClass: value === DEFAULT_LIST_CLASS_VALUE ? '' : value,
+                  }))
                 }
               >
                 <SelectTrigger>
                   <SelectValue placeholder="默认" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">默认</SelectItem>
+                  <SelectItem value={DEFAULT_LIST_CLASS_VALUE}>默认</SelectItem>
                   <SelectItem value="primary">主要</SelectItem>
                   <SelectItem value="success">成功</SelectItem>
                   <SelectItem value="warning">警告</SelectItem>
@@ -978,7 +1035,7 @@ export const DictPage: React.FC = () => {
             </div>
 
             <div>
-              <label className={fieldLabelClassName}>是否默认</label>
+              <label className={fieldLabelClassName}>默认</label>
               <Select
                 value={dataForm.isDefault}
                 onValueChange={(value) =>
@@ -1005,7 +1062,6 @@ export const DictPage: React.FC = () => {
               onChange={(event) =>
                 setDataForm((current) => ({ ...current, remark: event.target.value }))
               }
-              placeholder="备注说明"
             />
           </div>
         </form>
@@ -1016,12 +1072,12 @@ export const DictPage: React.FC = () => {
         title={deleteTarget?.type === 'dictType' ? '确认删除字典类型' : '确认删除字典数据'}
         message={
           deleteTarget?.type === 'dictType'
-            ? `确定要删除字典类型“${deleteTarget.item.dictName}”吗？该类型下的关联字典数据也会一起删除。`
-            : `确定要删除字典数据“${deleteTarget?.item.dictLabel || ''}”吗？该操作不可恢复。`
+            ? `确认删除字典类型“${deleteTarget.item.dictName}”？关联字典数据会一并删除。`
+            : `确认删除字典数据“${deleteTarget?.item.dictLabel || ''}”？`
         }
         confirmText="确认删除"
         cancelText="取消"
-        danger={true}
+        danger
         onCancel={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
       />
