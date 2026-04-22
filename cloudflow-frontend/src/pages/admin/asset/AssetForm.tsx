@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { addAsset, updateAsset, Asset } from '@/services/api/admin';
 import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 interface AssetFormProps {
   /** 编辑时传入已有资产数据 */
@@ -43,58 +45,62 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) return;
+    if (!formData.name.trim() || !formData.assetCode?.trim()) {
+      toast.error('请填写资产名称和资产编码');
+      return;
+    }
 
     setLoading(true);
     try {
       if (isEdit) {
         await updateAsset(formData);
+        toast.success('保存成功');
       } else {
         await addAsset(formData);
+        toast.success('创建成功');
       }
       onSuccess();
     } catch (error) {
-      console.error("操作失败", error);
+      toast.error(getErrorMessage(error, '保存资产失败'));
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {/* 资产名称 */}
-      <div className="grid gap-2">
-        <Label htmlFor="name">资产名称 <span className="text-red-500">*</span></Label>
-        <Input
-          id="name"
-          value={formData.name}
-          onChange={(e) => handleChange('name', e.target.value)}
-          placeholder="请输入资产名称"
-          required
-        />
+    <form onSubmit={handleSubmit} className="space-y-5">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-2">
+          <Label htmlFor="name">资产名称 <span className="text-red-500">*</span></Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => handleChange('name', e.target.value)}
+            required
+            className="h-11"
+          />
+        </div>
+
+        <div className="grid gap-2">
+          <Label htmlFor="assetCode">资产编码 <span className="text-red-500">*</span></Label>
+          <Input
+            id="assetCode"
+            value={formData.assetCode}
+            onChange={(e) => handleChange('assetCode', e.target.value)}
+            required
+            className="h-11"
+          />
+        </div>
       </div>
 
-      {/* 资产编码 */}
-      <div className="grid gap-2">
-        <Label htmlFor="assetCode">资产编码 <span className="text-red-500">*</span></Label>
-        <Input
-          id="assetCode"
-          value={formData.assetCode}
-          onChange={(e) => handleChange('assetCode', e.target.value)}
-          placeholder="请输入资产编码"
-          required
-        />
-      </div>
-
-      {/* 分类 + 规格型号 */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="category">分类</Label>
           <Input
             id="category"
             value={formData.category}
             onChange={(e) => handleChange('category', e.target.value)}
-            placeholder="如：电子设备、办公家具"
+            className="h-11"
           />
         </div>
         <div className="grid gap-2">
@@ -103,20 +109,19 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
             id="model"
             value={formData.model}
             onChange={(e) => handleChange('model', e.target.value)}
-            placeholder="如：MacBook Pro 14"
+            className="h-11"
           />
         </div>
       </div>
 
-      {/* 状态 + 价格 */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="status">状态</Label>
           <Select
             value={formData.status}
             onValueChange={(val) => handleChange('status', val)}
           >
-            <SelectTrigger>
+            <SelectTrigger className="h-11">
               <SelectValue placeholder="选择状态" />
             </SelectTrigger>
             <SelectContent>
@@ -136,19 +141,19 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
             step="0.01"
             value={formData.price}
             onChange={(e) => handleChange('price', Number(e.target.value))}
+            className="h-11"
           />
         </div>
       </div>
 
-      {/* 存放位置 + 购入日期 */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <div className="grid gap-2">
           <Label htmlFor="location">存放位置</Label>
           <Input
             id="location"
             value={formData.location || ''}
             onChange={(e) => handleChange('location', e.target.value)}
-            placeholder="如：3楼A区"
+            className="h-11"
           />
         </div>
         <div className="grid gap-2">
@@ -157,25 +162,26 @@ const AssetForm: React.FC<AssetFormProps> = ({ initialData, onSuccess }) => {
             type="date"
             value={formData.purchaseDate || ''}
             onChange={(e) => handleChange('purchaseDate', e.target.value)}
+            className="h-11"
           />
         </div>
       </div>
 
-      {/* 备注 */}
       <div className="grid gap-2">
         <Label htmlFor="remark">备注</Label>
         <Textarea
           id="remark"
           value={formData.remark || ''}
           onChange={(e) => handleChange('remark', e.target.value)}
-          placeholder="可选备注信息"
           rows={3}
         />
       </div>
 
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? '提交中...' : isEdit ? '保存修改' : '确认新增'}
-      </Button>
+      <div className="flex justify-end">
+        <Button type="submit" disabled={loading}>
+          {loading ? '提交中...' : isEdit ? '保存修改' : '确认新增'}
+        </Button>
+      </div>
     </form>
   );
 };
