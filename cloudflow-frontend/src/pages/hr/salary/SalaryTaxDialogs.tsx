@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -173,7 +174,7 @@ export const TaxConfigDialog: React.FC<DialogProps> = ({ components, viewModel }
               </div>
               <div>
                 <Label>生效日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={taxConfigForm.effectiveDate}
                   max={getTodayValue()}
@@ -531,7 +532,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
             </div>
             <div>
               <Label>开始日期</Label>
-              <Input
+              <DatePicker
                 type="date"
                 value={taxDeductionForm.startDate}
                 onChange={event => setTaxDeductionForm((prev: any) => ({ ...prev, startDate: event.target.value }))}
@@ -539,7 +540,7 @@ export const TaxDeductionDialog: React.FC<DialogProps> = ({ components, viewMode
             </div>
             <div>
               <Label>结束日期</Label>
-              <Input
+              <DatePicker
                 type="date"
                 value={taxDeductionForm.endDate}
                 min={taxDeductionForm.startDate || undefined}

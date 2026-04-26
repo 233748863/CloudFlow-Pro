@@ -5,6 +5,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -557,11 +558,7 @@ export const HrTransferPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <ArrowRightLeft className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Transfer Flow
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           调岗申请
         </h1>
       </div>
@@ -630,9 +627,6 @@ export const HrTransferPage: React.FC = () => {
             <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  先定位员工，再持续处理该员工的调岗流程。
-                </div>
               </div>
               <div className="space-y-3 overflow-y-auto p-4">
                 {loading ? (
@@ -694,9 +688,6 @@ export const HrTransferPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请列表</div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      默认聚焦最近且仍可推进的调岗记录。
-                    </div>
                   </div>
                   <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                     {selectedEmployee ? `${applications.length} 条` : '等待选择员工'}
@@ -828,9 +819,6 @@ export const HrTransferPage: React.FC = () => {
               <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请详情</div>
-                  <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    详情区直接核对原组织、目标组织和流程状态，并原位办理审批与生效。
-                  </div>
                 </div>
                 {detail ? (
                   <div className="flex flex-wrap gap-2">
@@ -937,21 +925,6 @@ export const HrTransferPage: React.FC = () => {
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">调岗信息</div>
                     </div>
                     <div className="space-y-4 p-4">
-                      {hasWorkflowStatus(detail.status, 'APPROVED') ? (
-                        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                          当前申请已审批通过，但还未执行生效；只有点击“调岗生效”后，员工组织信息才会真正更新。
-                        </div>
-                      ) : null}
-
-                      {detail.salaryChange ? (
-                        <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm leading-6 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-                          当前记录标记为“涉及调薪”。调岗生效后不会自动创建调薪申请，仍需到薪酬链路继续处理。
-                        </div>
-                      ) : (
-                        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
-                          当前记录不涉及调薪，只会更新组织任职信息。
-                        </div>
-                      )}
 
                       <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-900/40">
                         <div className="text-xs text-slate-400 dark:text-slate-500">调岗原因</div>
@@ -1105,7 +1078,7 @@ export const HrTransferPage: React.FC = () => {
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">生效日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.effectiveDate}
                   onChange={(event) =>
@@ -1125,9 +1098,6 @@ export const HrTransferPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">涉及调薪</div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      打开后会按真实布尔字段提交 `salaryChange`，后续仍需到薪酬模块继续处理。
-                    </div>
                   </div>
                   <Switch
                     checked={Boolean(createForm.salaryChange)}

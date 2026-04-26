@@ -52,22 +52,20 @@ export const parseTemplateDefinition = (definition: unknown): ParsedTemplateGrap
     };
   });
 
-  const edges: PreviewEdge[] = graph.edges
-    .map((item) => {
+  const edges: PreviewEdge[] = graph.edges.flatMap((item) => {
       if (!item?.source || !item?.target) {
-        return null;
+        return [];
       }
 
-      return {
+      return [{
         source: String(item.source),
         target: String(item.target),
         condition:
           typeof item.condition === "string" && item.condition.trim()
             ? item.condition.trim()
             : undefined,
-      } satisfies PreviewEdge;
-    })
-    .filter((item): item is PreviewEdge => Boolean(item));
+      } satisfies PreviewEdge];
+    });
 
   return { nodes, edges };
 };

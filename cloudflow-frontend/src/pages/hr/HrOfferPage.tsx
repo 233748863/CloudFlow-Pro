@@ -13,6 +13,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -615,16 +616,6 @@ export const HrOfferPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <ShieldCheck className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Offer Flow
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          Offer 管理
-        </h1>
-      </div>
-
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
         <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
           Offer 总量 {loading ? '--' : summary.total}
@@ -717,15 +708,11 @@ export const HrOfferPage: React.FC = () => {
           <div className="grid min-h-[680px] grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)]">
             <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 列表</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  按候选人、状态和关键词筛选后，直接点选进入详情联调。
-                </div>
-              </div>
-
-              <div className="space-y-3 border-b border-slate-200 p-4 dark:border-slate-800">
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
-                  当前可直接创建 Offer 的候选人 {availableCandidates.length} 名，仅展示面试中且尚未生成 Offer / 入职申请的候选人。
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 列表</div>
+                  <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
+                    可建 {availableCandidates.length}
+                  </span>
                 </div>
               </div>
 
@@ -793,12 +780,7 @@ export const HrOfferPage: React.FC = () => {
 
             <div className="flex min-h-0 flex-col">
               <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 详情</div>
-                  <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    详情与动作都走真实接口，适合直接验证状态流转和入职衔接。
-                  </div>
-                </div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 详情</div>
                 {currentOffer ? (
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -977,24 +959,9 @@ export const HrOfferPage: React.FC = () => {
                   <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer 内容</div>
-                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                        内容会在创建时自动结合候选人、部门、岗位和日期回填。
-                      </div>
                     </div>
                     <div className="whitespace-pre-wrap px-4 py-4 text-sm leading-6 text-slate-700 dark:text-slate-300">
                       {currentOffer.offerContent || '当前 Offer 未填写正文内容。'}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
-                      建议链路：创建 Offer → 提交审批 → 审批通过 → 发送 → 接受 → 转入职。
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
-                      如果发送或接受时报过期，优先检查 Offer 有效期是否早于当前日期。
-                    </div>
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
-                      如果右侧已经出现入职申请编号，说明这条 Offer 已完成转入职，页面会自动禁止再次建单。
                     </div>
                   </div>
                 </div>
@@ -1115,7 +1082,7 @@ export const HrOfferPage: React.FC = () => {
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计入职日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.expectedDate}
                   onChange={(event) =>
@@ -1127,7 +1094,7 @@ export const HrOfferPage: React.FC = () => {
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Offer 有效期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.expiryDate}
                   onChange={(event) =>

@@ -2,6 +2,7 @@ import React from 'react';
 import { BadgePlus, FileText, RefreshCcw, Search, ShieldCheck } from 'lucide-react';
 import {
   Button,
+  DatePicker,
   Input,
   Select,
   SelectContent,
@@ -1318,12 +1319,12 @@ export const SalaryAdjustmentsSection: React.FC<SectionProps> = ({ components, v
           </div>
 
           <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <Input
+            <DatePicker
               type="date"
               value={adjustmentEffectiveStart}
               onChange={event => setAdjustmentEffectiveStart(event.target.value)}
             />
-            <Input
+            <DatePicker
               type="date"
               value={adjustmentEffectiveEnd}
               onChange={event => setAdjustmentEffectiveEnd(event.target.value)}

@@ -12,6 +12,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -862,7 +863,7 @@ export const HrHeadcountPage: React.FC = () => {
             <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               生效日期
             </Label>
-            <Input
+            <DatePicker
               type="date"
               value={createForm.effectiveDate || ''}
               onChange={(event) =>
@@ -876,7 +877,7 @@ export const HrHeadcountPage: React.FC = () => {
             <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
               失效日期
             </Label>
-            <Input
+            <DatePicker
               type="date"
               value={createForm.expiryDate || ''}
               onChange={(event) =>

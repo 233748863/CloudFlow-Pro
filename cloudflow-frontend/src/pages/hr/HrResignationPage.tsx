@@ -5,6 +5,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -1121,7 +1122,7 @@ export const HrResignationPage: React.FC = () => {
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计离职日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.expectedDate}
                   onChange={(event) =>

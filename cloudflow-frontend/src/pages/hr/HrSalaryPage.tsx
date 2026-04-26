@@ -816,9 +816,8 @@ const SalaryAmountEditor: React.FC<{
       {fields.map(field => (
         <div key={field.key} className="rounded-2xl border border-slate-200 bg-white p-4">
           <div className="font-medium text-slate-900">{field.label}</div>
-          <div className="mt-1 text-xs text-slate-400">{field.description}</div>
           <Input
-            className="mt-3"
+            className="mt-4"
             type="number"
             min={0}
             step="0.01"
@@ -856,7 +855,6 @@ const SalaryDiffTable: React.FC<{ rows: SalaryDiffField[] }> = ({ rows }) => {
             <TableRow key={row.key}>
               <TableCell>
                 <div className="font-medium text-slate-900">{row.label}</div>
-                <div className="text-xs text-slate-400">{row.description}</div>
               </TableCell>
               <TableCell>{formatCurrency(row.beforeAmount)}</TableCell>
               <TableCell>{formatCurrency(row.afterAmount)}</TableCell>
@@ -879,7 +877,7 @@ const WorkspaceInlineState: React.FC<{
   description?: string;
   type?: 'loading' | 'default';
   className?: string;
-}> = ({ title, description, type = 'default', className }) => (
+}> = ({ title, type = 'default', className }) => (
   <div
     className={cn(
       'flex flex-col items-center justify-center px-4 py-8 text-center',
@@ -894,9 +892,6 @@ const WorkspaceInlineState: React.FC<{
       )}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -905,12 +900,11 @@ const WorkspaceTableStateRow: React.FC<{
   title: string;
   description?: string;
   type?: 'loading' | 'default';
-}> = ({ colSpan, title, description, type = 'default' }) => (
+}> = ({ colSpan, title, type = 'default' }) => (
   <TableRow className="hover:bg-transparent">
     <TableCell colSpan={colSpan} className="px-4 py-14">
       <WorkspaceInlineState
         title={title}
-        description={description}
         type={type}
         className={type === 'loading' ? 'py-6' : 'py-4'}
       />
@@ -925,7 +919,7 @@ const WorkspaceSectionCard: React.FC<{
   eyebrow?: React.ReactNode;
   className?: string;
   children: React.ReactNode;
-}> = ({ title, description, headerAside, eyebrow, className, children }) => (
+}> = ({ title, headerAside, className, children }) => (
   <section
     className={cn(
       'overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
@@ -934,17 +928,7 @@ const WorkspaceSectionCard: React.FC<{
   >
     <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
-        {eyebrow ? (
-          <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            {eyebrow}
-          </div>
-        ) : null}
         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? (
-          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            {description}
-          </div>
-        ) : null}
       </div>
       {headerAside ? <div className="flex flex-wrap items-center gap-2">{headerAside}</div> : null}
     </div>
@@ -1034,11 +1018,6 @@ const WorkspaceMetricStrip: React.FC<{
             <div className={cn('mt-1.5 text-sm font-semibold', tone.value, item.valueClassName)}>
               {item.value}
             </div>
-            {item.hint ? (
-              <div className={cn('mt-1 text-xs leading-5', tone.hint)}>
-                {item.hint}
-              </div>
-            ) : null}
           </div>
         );
       })}
@@ -1175,7 +1154,6 @@ const WorkspaceDialogShell: React.FC<{
   bodyClassName?: string;
 }> = ({
   title,
-  description,
   onClose,
   children,
   width = 'wide',
@@ -1187,7 +1165,6 @@ const WorkspaceDialogShell: React.FC<{
   <BaseDialog
     open
     title={title}
-    description={description}
     onClose={onClose}
     width={width}
     maxWidthClassName={maxWidthClassName}
@@ -7581,7 +7558,14 @@ export const HrSalaryPage: React.FC = () => {
     cancelText = '取消',
     danger = false,
     onConfirm,
-  }: Omit<ConfirmDialogState, 'open'>) => {
+  }: {
+    title: string;
+    message: string;
+    confirmText?: string;
+    cancelText?: string;
+    danger?: boolean;
+    onConfirm: () => void | Promise<void>;
+  }) => {
     setConfirmDialogState({
       open: true,
       title,

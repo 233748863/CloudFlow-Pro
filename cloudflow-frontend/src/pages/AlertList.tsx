@@ -24,6 +24,11 @@ import {
 import { cn } from '@/utils/cn';
 
 type AlertType = 'timeout' | 'anomaly';
+type AlertFilters = {
+  alertLevel: '' | 'REMIND' | 'WARNING' | 'CRITICAL';
+  severity: '' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  resolved: '' | 'true' | 'false';
+};
 
 const getAnomalyMessage = (alert: AnomalyAlert) =>
   alert.errorMessage || alert.description || '暂无异常说明';
@@ -91,7 +96,7 @@ const InlineState: React.FC<{
   description?: string;
   icon?: React.ReactNode;
   loading?: boolean;
-}> = ({ title, description, icon, loading = false }) => (
+}> = ({ title, icon, loading = false }) => (
   <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
     {loading ? (
       <RefreshCw className="mb-3 h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
@@ -99,9 +104,6 @@ const InlineState: React.FC<{
       <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
     ) : null}
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -234,7 +236,7 @@ const AlertList: React.FC = () => {
   const [detailAlert, setDetailAlert] = useState<AnomalyAlert | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert | null>(null);
   const [resolveNote, setResolveNote] = useState('');
-  const [filters, setFilters] = useState({
+  const [filters, setFilters] = useState<AlertFilters>({
     alertLevel: '',
     severity: '',
     resolved: '',
@@ -244,7 +246,7 @@ const AlertList: React.FC = () => {
     try {
       setLoading(true);
 
-      const timeoutParams: { pageNum: number; pageSize: number; alertLevel?: string; resolved?: boolean } = {
+      const timeoutParams: NonNullable<Parameters<typeof getTimeoutAlerts>[0]> = {
         pageNum: 1,
         pageSize: 100,
       };
@@ -404,7 +406,7 @@ const AlertList: React.FC = () => {
                     onValueChange={(value) =>
                       setFilters((prev) => ({
                         ...prev,
-                        alertLevel: value === 'all' ? '' : value,
+                        alertLevel: value === 'all' ? '' : value as AlertFilters['alertLevel'],
                       }))
                     }
                   >
@@ -426,7 +428,7 @@ const AlertList: React.FC = () => {
                     onValueChange={(value) =>
                       setFilters((prev) => ({
                         ...prev,
-                        severity: value === 'all' ? '' : value,
+                        severity: value === 'all' ? '' : value as AlertFilters['severity'],
                       }))
                     }
                   >
@@ -450,7 +452,7 @@ const AlertList: React.FC = () => {
                   onValueChange={(value) =>
                     setFilters((prev) => ({
                       ...prev,
-                      resolved: value === 'all' ? '' : value,
+                      resolved: value === 'all' ? '' : value as AlertFilters['resolved'],
                     }))
                   }
                 >
@@ -491,15 +493,11 @@ const AlertList: React.FC = () => {
                 <span className="mx-2 text-slate-300 dark:text-slate-600">/</span>
                 <span>重点 {currentFocusCount} 条</span>
               </div>
-              <div className="text-xs text-slate-400 dark:text-slate-500">
-                {hasActiveFilters ? '已启用筛选' : '默认视图'}
-              </div>
             </div>
 
             {loading ? (
               <InlineState
                 title={activeTab === 'timeout' ? '正在加载超时告警' : '正在加载异常告警'}
-                description="系统正在同步当前筛选条件下的告警数据。"
                 loading
               />
             ) : currentList.length === 0 ? (
@@ -512,16 +510,9 @@ const AlertList: React.FC = () => {
                   )
                 }
                 title={activeTab === 'timeout' ? '暂无超时告警' : '暂无异常告警'}
-                description="当前筛选条件下没有待处理的结果。"
               />
             ) : (
               <div>
-                <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 lg:grid lg:grid-cols-[minmax(0,1.35fr)_minmax(0,0.95fr)_minmax(0,0.8fr)_auto] lg:items-center lg:gap-4">
-                  <span>告警信息</span>
-                  <span>对象上下文</span>
-                  <span>状态时间</span>
-                  <span>操作</span>
-                </div>
 
                 {activeTab === 'timeout'
                   ? filteredTimeoutAlerts.map((alert) => {

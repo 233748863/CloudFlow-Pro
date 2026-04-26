@@ -406,7 +406,7 @@ export const HrEmployeePage: React.FC = () => {
           </div>
         )}
         table={(
-          <div className="grid h-full min-h-[720px] xl:grid-cols-[minmax(0,1.22fr)_minmax(420px,1fr)]">
+          <div className="grid h-full min-h-[720px] xl:grid-cols-[minmax(0,1.3fr)_minmax(400px,0.94fr)]">
             <div className="min-w-0 xl:border-r xl:border-slate-200 dark:xl:border-slate-800">
               <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
                 <div>
@@ -433,7 +433,7 @@ export const HrEmployeePage: React.FC = () => {
                         <TableHead>员工信息</TableHead>
                         <TableHead>组织岗位</TableHead>
                         <TableHead>状态</TableHead>
-                        <TableHead>入职日期</TableHead>
+                        <TableHead className="whitespace-nowrap">入职日期</TableHead>
                         <TableHead className="text-right">操作</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -497,7 +497,7 @@ export const HrEmployeePage: React.FC = () => {
                                   </span>
                                 </div>
                               </TableCell>
-                              <TableCell>{toDateInputValue(item.hireDate) || '-'}</TableCell>
+                              <TableCell className="whitespace-nowrap">{toDateInputValue(item.hireDate) || '-'}</TableCell>
                               <TableCell className="text-right">
                                 <div className="flex justify-end gap-2 whitespace-nowrap">
                                   <Button

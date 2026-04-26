@@ -1,7 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
+  CalendarDays,
+  Clock3,
   Edit3,
   FileText,
+  MapPin,
+  Paperclip,
   Phone,
   Plus,
   RefreshCcw,
@@ -22,12 +26,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
   Tabs,
   TabsContent,
   TabsList,
@@ -187,6 +185,9 @@ const mergeAttachmentValue = (attachmentUrls?: string[] | null) => {
 const getAttachmentList = (attachmentUrls?: string[] | null) =>
   splitAttachmentValue(mergeAttachmentValue(attachmentUrls));
 
+const getAttachmentCount = (attachmentUrls?: string[] | null) =>
+  getAttachmentList(attachmentUrls).length;
+
 const AttachmentLinks = ({
   attachmentUrls,
 }: {
@@ -250,22 +251,6 @@ const InlineState = ({
   </div>
 );
 
-const TableStateRow = ({
-  colSpan,
-  title,
-  loading = false,
-}: {
-  colSpan: number;
-  title: string;
-  loading?: boolean;
-}) => (
-  <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-14">
-      <InlineState title={title} className={loading ? 'py-6' : 'py-4'} />
-    </td>
-  </tr>
-);
-
 const DialogSection = ({
   title,
   children,
@@ -293,6 +278,122 @@ const DetailField = ({
     <div className="mt-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
   </div>
 );
+
+const ArchiveCardField = ({
+  label,
+  value,
+  icon,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon?: React.ReactNode;
+}) => (
+  <div className="min-w-0 rounded-2xl border border-slate-200/80 bg-white/80 px-3.5 py-3 shadow-[0_8px_24px_-20px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-950/30">
+    <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
+      {icon}
+      <span>{label}</span>
+    </div>
+    <div className="mt-2 break-words text-sm font-medium leading-5 text-slate-900 dark:text-slate-100">
+      {value}
+    </div>
+  </div>
+);
+
+const contractDateRangeLabel = (contract: EmployeeContract) =>
+  `${toDateInputValue(contract.startDate) || '-'} \u81f3 ${toDateInputValue(contract.endDate) || '-'}`;
+
+const contractRemainingTone = (contract: EmployeeContract) => {
+  if (contract.status === 'ACTIVE' && contract.remainingDays != null) {
+    if (contract.remainingDays <= 30) {
+      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
+    }
+    return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
+  }
+
+  if (contract.status === 'EXPIRED') {
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
+  }
+
+  if (contract.status === 'TERMINATED') {
+    return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
+  }
+
+  return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+};
+
+const contractRemainingLabel = (contract: EmployeeContract) => {
+  if (contract.status === 'EXPIRED') {
+    return '\u5df2\u5230\u671f';
+  }
+  if (contract.status === 'TERMINATED') {
+    return '\u5df2\u7ec8\u6b62';
+  }
+  if (contract.remainingDays == null) {
+    return '\u672a\u8ba1\u7b97\u5269\u4f59\u5929\u6570';
+  }
+  return `\u5269\u4f59 ${contract.remainingDays} \u5929`;
+};
+
+const getDateRemainingDays = (value?: string | null) => {
+  const normalizedDate = toDateInputValue(value);
+  if (!normalizedDate) {
+    return null;
+  }
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const target = new Date(`${normalizedDate}T00:00:00`).getTime();
+  if (Number.isNaN(target)) {
+    return null;
+  }
+
+  return Math.floor((target - today) / 86400000);
+};
+
+const documentExpiryTone = (document: EmployeeDocument) => {
+  const remainingDays = getDateRemainingDays(document.expiryDate);
+  if (remainingDays == null) {
+    return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+  }
+  if (remainingDays < 0) {
+    return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
+  }
+  if (remainingDays <= 30) {
+    return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
+  }
+  return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
+};
+
+const documentExpiryLabel = (document: EmployeeDocument) => {
+  const expiryDate = toDateInputValue(document.expiryDate);
+  const remainingDays = getDateRemainingDays(document.expiryDate);
+  if (!expiryDate) {
+    return '\u672a\u8bbe\u7f6e\u6709\u6548\u671f';
+  }
+  if (remainingDays == null) {
+    return `\u6709\u6548\u671f\u81f3 ${expiryDate}`;
+  }
+  if (remainingDays < 0) {
+    return `\u5df2\u8fc7\u671f ${Math.abs(remainingDays)} \u5929`;
+  }
+  if (remainingDays === 0) {
+    return '\u4eca\u65e5\u5230\u671f';
+  }
+  return `\u8ddd\u5230\u671f ${remainingDays} \u5929`;
+};
+
+const contactPriorityTone = (priority?: number | null) => {
+  if (priority === 1) {
+    return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
+  }
+  if (priority === 2) {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
+  }
+  return 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+};
+
+const contactPriorityLabel = (priority?: number | null) =>
+  priority ? `P${priority} \u4f18\u5148\u8054\u7cfb` : '\u672a\u8bbe\u7f6e\u4f18\u5148\u7ea7';
 
 const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   employees,
@@ -847,77 +948,108 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[1080px]">
-                    <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                      <TableRow>
-                        <TableHead>合同编号</TableHead>
-                        <TableHead>类型</TableHead>
-                        <TableHead>签订日期</TableHead>
-                        <TableHead>合同周期</TableHead>
-                        <TableHead>状态</TableHead>
-                        <TableHead>剩余天数</TableHead>
-                        <TableHead>合同附件</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {contractsLoading ? (
-                        <TableStateRow colSpan={8} title="正在加载员工合同..." loading />
-                      ) : contracts.length === 0 ? (
-                        <TableStateRow colSpan={8} title="当前员工还没有合同档案" />
-                      ) : (
-                        contracts.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                              {item.contractNo}
-                            </TableCell>
-                            <TableCell>
-                              {item.contractTypeName || contractTypeLabel[item.contractType] || item.contractType}
-                            </TableCell>
-                            <TableCell>{toDateInputValue(item.signDate) || '-'}</TableCell>
-                            <TableCell>
-                              {`${toDateInputValue(item.startDate) || '-'} 至 ${toDateInputValue(item.endDate) || '-'}`}
-                            </TableCell>
-                            <TableCell>
-                              <span
-                                className={[
-                                  'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                                  contractStatusTone(item.status),
-                                ].join(' ')}
-                              >
-                                {item.statusName || contractStatusLabel[item.status || ''] || textValue(item.status)}
-                              </span>
-                            </TableCell>
-                            <TableCell>{item.remainingDays == null ? '-' : `${item.remainingDays} 天`}</TableCell>
-                            <TableCell>
-                              <AttachmentLinks attachmentUrls={item.attachmentUrls} />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleEditContract(item.id)}>
-                                  <Edit3 size={14} className="mr-1.5" />
-                                  编辑
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  className="h-8"
-                                  disabled={!canDeleteContract(item)}
-                                  onClick={() => requestDeleteContract(item)}
-                                >
-                                  <Trash2 size={14} className="mr-1.5" />
-                                  删除
-                                </Button>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/50 px-4 py-4 dark:bg-slate-950/10">
+                {contractsLoading ? (
+                  <InlineState
+                    title={'\u6b63\u5728\u52a0\u8f7d\u5458\u5de5\u5408\u540c...'}
+                    icon={<FileText className="h-4 w-4" />}
+                    className="min-h-[260px]"
+                  />
+                ) : contracts.length === 0 ? (
+                  <InlineState
+                    title={'\u5f53\u524d\u5458\u5de5\u8fd8\u6ca1\u6709\u5408\u540c\u6863\u6848'}
+                    icon={<FileText className="h-4 w-4" />}
+                    className="min-h-[260px]"
+                  />
+                ) : (
+                  <div className="flex flex-col gap-3 pb-4">
+                    {contracts.map((item) => (
+                      <article
+                        key={item.id}
+                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition hover:border-cyan-200 hover:shadow-[0_20px_44px_-28px_rgba(8,145,178,0.35)] dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-cyan-900"
+                      >
+                        <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
+                                  {item.contractTypeName || contractTypeLabel[item.contractType] || item.contractType}
+                                </span>
+                                <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
+                                  {item.contractNo}
+                                </div>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <span
+                                  className={[
+                                    'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    contractStatusTone(item.status),
+                                  ].join(' ')}
+                                >
+                                  {item.statusName || contractStatusLabel[item.status || ''] || textValue(item.status)}
+                                </span>
+                                <span
+                                  className={[
+                                    'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    contractRemainingTone(item),
+                                  ].join(' ')}
+                                >
+                                  {contractRemainingLabel(item)}
+                                </span>
+                                {item.duration != null ? (
+                                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                    {`${item.duration} \u4e2a\u6708`}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 sm:justify-end">
+                              <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => void handleEditContract(item.id)}>
+                                <Edit3 size={14} className="mr-1.5" />
+                                {'\u7f16\u8f91'}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 rounded-full px-3"
+                                disabled={!canDeleteContract(item)}
+                                onClick={() => requestDeleteContract(item)}
+                              >
+                                <Trash2 size={14} className="mr-1.5" />
+                                {'\u5220\u9664'}
+                              </Button>
+                            </div>
+                          </div>
+
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <ArchiveCardField
+                            label={'\u7b7e\u8ba2\u65e5\u671f'}
+                            value={toDateInputValue(item.signDate) || '-'}
+                            icon={<CalendarDays className="h-3.5 w-3.5" />}
+                          />
+                          <ArchiveCardField
+                            label={'\u5408\u540c\u5468\u671f'}
+                            value={contractDateRangeLabel(item)}
+                            icon={<Clock3 className="h-3.5 w-3.5" />}
+                          />
+                          <ArchiveCardField
+                            label={'\u5269\u4f59\u5929\u6570'}
+                            value={item.remainingDays == null ? '-' : `${item.remainingDays} \u5929`}
+                            icon={<Clock3 className="h-3.5 w-3.5" />}
+                          />
+                          <ArchiveCardField
+                            label={'\u5408\u540c\u9644\u4ef6'}
+                            value={<AttachmentLinks attachmentUrls={item.attachmentUrls} />}
+                            icon={<Paperclip className="h-3.5 w-3.5" />}
+                          />
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -947,54 +1079,95 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[860px]">
-                    <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                      <TableRow>
-                        <TableHead>证件类型</TableHead>
-                        <TableHead>证件号码</TableHead>
-                        <TableHead>签发日期</TableHead>
-                        <TableHead>有效期至</TableHead>
-                        <TableHead>扫描件</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {documentsLoading ? (
-                        <TableStateRow colSpan={6} title="正在加载员工证件..." loading />
-                      ) : documents.length === 0 ? (
-                        <TableStateRow colSpan={6} title="当前员工还没有证件档案" />
-                      ) : (
-                        documents.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                              {item.documentTypeName || documentTypeLabel[item.documentType] || item.documentType}
-                            </TableCell>
-                            <TableCell>{item.documentNo}</TableCell>
-                            <TableCell>{toDateInputValue(item.issueDate) || '-'}</TableCell>
-                            <TableCell>{toDateInputValue(item.expiryDate) || '-'}</TableCell>
-                            <TableCell>
-                              <AttachmentLinks attachmentUrls={item.attachmentUrls} />
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleEditDocument(item.id)}>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/50 px-4 py-4 dark:bg-slate-950/10">
+                {documentsLoading ? (
+                  <InlineState
+                    title="正在加载员工证件..."
+                    icon={<ShieldCheck className="h-4 w-4" />}
+                    className="min-h-[260px]"
+                  />
+                ) : documents.length === 0 ? (
+                  <InlineState
+                    title="当前员工还没有证件档案"
+                    icon={<ShieldCheck className="h-4 w-4" />}
+                    className="min-h-[260px]"
+                  />
+                ) : (
+                  <div className="flex flex-col gap-3 pb-4">
+                    {documents.map((item) => {
+                      const attachmentCount = getAttachmentCount(item.attachmentUrls);
+
+                      return (
+                        <article
+                          key={item.id}
+                          className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition hover:border-cyan-200 hover:shadow-[0_20px_44px_-28px_rgba(8,145,178,0.35)] dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-cyan-900"
+                        >
+                          <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
+                                    {item.documentTypeName || documentTypeLabel[item.documentType] || item.documentType}
+                                  </span>
+                                  <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
+                                    {item.documentNo}
+                                  </div>
+                                </div>
+                                <div className="mt-2 flex flex-wrap gap-2">
+                                  <span
+                                    className={[
+                                      'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                      documentExpiryTone(item),
+                                    ].join(' ')}
+                                  >
+                                    {documentExpiryLabel(item)}
+                                  </span>
+                                  <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                    {attachmentCount ? `${attachmentCount} 个附件` : '无附件'}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-wrap gap-2 sm:justify-end">
+                                <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => void handleEditDocument(item.id)}>
                                   <Edit3 size={14} className="mr-1.5" />
                                   编辑
                                 </Button>
-                                <Button size="sm" variant="outline" className="h-8" onClick={() => requestDeleteDocument(item)}>
+                                <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => requestDeleteDocument(item)}>
                                   <Trash2 size={14} className="mr-1.5" />
                                   删除
                                 </Button>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <ArchiveCardField
+                              label="证件号码"
+                              value={item.documentNo}
+                              icon={<FileText className="h-3.5 w-3.5" />}
+                            />
+                            <ArchiveCardField
+                              label="签发日期"
+                              value={toDateInputValue(item.issueDate) || '-'}
+                              icon={<CalendarDays className="h-3.5 w-3.5" />}
+                            />
+                            <ArchiveCardField
+                              label="有效期至"
+                              value={toDateInputValue(item.expiryDate) || '-'}
+                              icon={<Clock3 className="h-3.5 w-3.5" />}
+                            />
+                            <ArchiveCardField
+                              label="扫描件"
+                              value={<AttachmentLinks attachmentUrls={item.attachmentUrls} />}
+                              icon={<Paperclip className="h-3.5 w-3.5" />}
+                            />
+                          </div>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </TabsContent>
 
@@ -1024,52 +1197,91 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 </div>
               </div>
 
-              <div className="min-h-0 flex-1 overflow-auto">
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[860px]">
-                    <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
-                      <TableRow>
-                        <TableHead>联系人</TableHead>
-                        <TableHead>关系</TableHead>
-                        <TableHead>电话</TableHead>
-                        <TableHead>优先级</TableHead>
-                        <TableHead>地址</TableHead>
-                        <TableHead className="text-right">操作</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {contactsLoading ? (
-                        <TableStateRow colSpan={6} title="正在加载紧急联系人..." loading />
-                      ) : contacts.length === 0 ? (
-                        <TableStateRow colSpan={6} title="当前员工还没有紧急联系人" />
-                      ) : (
-                        contacts.map((item) => (
-                          <TableRow key={item.id}>
-                            <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                              {item.contactName}
-                            </TableCell>
-                            <TableCell>{item.relationshipName || relationshipLabel[item.relationship] || item.relationship}</TableCell>
-                            <TableCell>{item.phone}</TableCell>
-                            <TableCell>{item.priority ? `P${item.priority}` : '-'}</TableCell>
-                            <TableCell>{textValue(item.address)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleEditContact(item.id)}>
-                                  <Edit3 size={14} className="mr-1.5" />
-                                  编辑
-                                </Button>
-                                <Button size="sm" variant="outline" className="h-8" onClick={() => requestDeleteContact(item)}>
-                                  <Trash2 size={14} className="mr-1.5" />
-                                  删除
-                                </Button>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-slate-50/50 px-4 py-4 dark:bg-slate-950/10">
+                {contactsLoading ? (
+                  <InlineState
+                    title="正在加载紧急联系人..."
+                    icon={<Phone className="h-4 w-4" />}
+                    className="min-h-[260px]"
+                  />
+                ) : contacts.length === 0 ? (
+                  <InlineState
+                    title="当前员工还没有紧急联系人"
+                    icon={<Phone className="h-4 w-4" />}
+                    className="min-h-[260px]"
+                  />
+                ) : (
+                  <div className="flex flex-col gap-3 pb-4">
+                    {contacts.map((item) => (
+                      <article
+                        key={item.id}
+                        className="rounded-3xl border border-slate-200/80 bg-white/95 p-4 shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] transition hover:border-cyan-200 hover:shadow-[0_20px_44px_-28px_rgba(8,145,178,0.35)] dark:border-slate-800 dark:bg-slate-950/50 dark:hover:border-cyan-900"
+                      >
+                        <div className="flex flex-col gap-3 border-b border-slate-200/80 pb-3 dark:border-slate-800">
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex rounded-full bg-slate-900 px-2.5 py-1 text-[11px] font-semibold tracking-[0.08em] text-white dark:bg-slate-100 dark:text-slate-900">
+                                  {item.relationshipName || relationshipLabel[item.relationship] || item.relationship}
+                                </span>
+                                <div className="break-all text-base font-semibold text-slate-900 dark:text-slate-100">
+                                  {item.contactName}
+                                </div>
                               </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                <span
+                                  className={[
+                                    'inline-flex rounded-full border px-2.5 py-1 text-xs font-medium',
+                                    contactPriorityTone(item.priority),
+                                  ].join(' ')}
+                                >
+                                  {contactPriorityLabel(item.priority)}
+                                </span>
+                                <span className="inline-flex rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                  {item.phone}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 sm:justify-end">
+                              <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => void handleEditContact(item.id)}>
+                                <Edit3 size={14} className="mr-1.5" />
+                                编辑
+                              </Button>
+                              <Button size="sm" variant="outline" className="h-8 rounded-full px-3" onClick={() => requestDeleteContact(item)}>
+                                <Trash2 size={14} className="mr-1.5" />
+                                删除
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <ArchiveCardField
+                            label="联系电话"
+                            value={item.phone}
+                            icon={<Phone className="h-3.5 w-3.5" />}
+                          />
+                          <ArchiveCardField
+                            label="关系"
+                            value={item.relationshipName || relationshipLabel[item.relationship] || item.relationship}
+                            icon={<Users className="h-3.5 w-3.5" />}
+                          />
+                          <ArchiveCardField
+                            label="优先级"
+                            value={item.priority ? `P${item.priority}` : '-'}
+                            icon={<Clock3 className="h-3.5 w-3.5" />}
+                          />
+                          <ArchiveCardField
+                            label="联系地址"
+                            value={textValue(item.address)}
+                            icon={<MapPin className="h-3.5 w-3.5" />}
+                          />
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>

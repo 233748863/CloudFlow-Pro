@@ -1,17 +1,17 @@
 const BODY_SCROLL_LOCK_CLASS = 'modal-open';
 const BODY_SCROLL_LOCK_ATTR = 'data-cf-scroll-lock-count';
 
-function getLockCount(body: HTMLBodyElement) {
+function getLockCount(body: HTMLElement) {
   const rawValue = body.getAttribute(BODY_SCROLL_LOCK_ATTR);
   const parsedValue = Number(rawValue || '0');
   return Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 0;
 }
 
-function applyBodyScrollLock(body: HTMLBodyElement) {
+function applyBodyScrollLock(body: HTMLElement) {
   body.classList.add(BODY_SCROLL_LOCK_CLASS);
 }
 
-function releaseBodyScrollLock(body: HTMLBodyElement) {
+function releaseBodyScrollLock(body: HTMLElement) {
   body.classList.remove(BODY_SCROLL_LOCK_CLASS);
   if (body.style.overflow === 'hidden') {
     body.style.removeProperty('overflow');

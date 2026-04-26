@@ -11,6 +11,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -589,11 +590,7 @@ export const HrOnboardingPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <UserRoundPlus className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Onboarding Flow
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           入职办理
         </h1>
       </div>
@@ -683,9 +680,6 @@ export const HrOnboardingPage: React.FC = () => {
             <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请列表</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  左侧按真实接口筛选与切换申请，右侧持续办理当前单据。
-                </div>
               </div>
 
               <div className="space-y-3 overflow-y-auto p-4">
@@ -751,9 +745,6 @@ export const HrOnboardingPage: React.FC = () => {
               <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请详情</div>
-                  <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    查看当前申请的状态、组织归属和入职结果，并在这里继续推进审批与确认入职。
-                  </div>
                 </div>
                 {currentApplication ? (
                   <div className="flex flex-wrap gap-2">
@@ -781,7 +772,7 @@ export const HrOnboardingPage: React.FC = () => {
                     >
                       {pendingAction === 'reject' ? '处理中...' : '驳回申请'}
                     </Button>
-                    <Input
+                    <DatePicker
                       type="date"
                       value={confirmDate}
                       onChange={(event) => setConfirmDate(event.target.value)}
@@ -848,10 +839,6 @@ export const HrOnboardingPage: React.FC = () => {
                       正在加载申请详情...
                     </div>
                   ) : null}
-
-                  <div className="rounded-xl border border-cyan-200 bg-cyan-50 px-4 py-3 text-sm leading-6 text-cyan-800 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-                    审批通过后后端会自动生成 4 项入职任务；任务全部完成后才能确认入职。确认入职时会新建员工档案，员工初始状态为试用期，并回写申请上的员工 ID。
-                  </div>
 
                   {hasWorkflowStatus(currentApplication.status, 'APPROVED') && pendingTaskCount > 0 ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
@@ -1005,9 +992,6 @@ export const HrOnboardingPage: React.FC = () => {
                   ))}
                 </SelectContent>
               </Select>
-              <div className="text-xs text-slate-500 dark:text-slate-400">
-                已存在未拒绝入职单的候选人会自动从这里剔除，避免重复建单。
-              </div>
             </div>
           </DialogSection>
 
@@ -1072,7 +1056,7 @@ export const HrOnboardingPage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计入职日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.expectedDate}
                   onChange={(event) =>
@@ -1151,9 +1135,6 @@ export const HrOnboardingPage: React.FC = () => {
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  职位选项会随岗位联动，避免提交无效的岗位与职位组合。
-                </div>
               </div>
             </div>
           </DialogSection>

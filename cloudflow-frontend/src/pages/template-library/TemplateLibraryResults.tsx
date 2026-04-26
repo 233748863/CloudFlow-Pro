@@ -3,7 +3,7 @@ import { Eye, Layers3, Plus, Search, Workflow } from "lucide-react";
 import { Button, EmptyState, SkeletonCard } from "@/components/common";
 import { Pagination } from "@/components/common";
 import { TEXT } from "./config";
-import { EMPTY_GRAPH, getTemplateMetrics, normalizeTags } from "./utils";
+import { EMPTY_GRAPH, normalizeTags } from "./utils";
 import type { ParsedTemplateGraph, TemplateItem } from "./types";
 
 interface TemplateLibraryResultsProps {
@@ -45,15 +45,6 @@ const TemplateCard: React.FC<{
   onPreview: (template: TemplateItem) => void;
   onUseTemplate: (templateId: string) => void;
 }> = ({ template, graph, userLoggedIn, onPreview, onUseTemplate }) => {
-  const metrics = getTemplateMetrics(
-    template,
-    graph,
-    TEXT.uncategorized,
-    TEXT.tags,
-    TEXT.category,
-    TEXT.nodeCount,
-    TEXT.edgeCount,
-  );
   const tags = normalizeTags(template.tags);
 
   return (
@@ -80,51 +71,41 @@ const TemplateCard: React.FC<{
           </p>
         </div>
 
-        <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 rounded-xl bg-slate-50 px-3 py-3">
-          {metrics.map((metric) => (
-            <div key={metric.label}>
-              <div className="mb-0.5 text-xs text-slate-400">{metric.label}</div>
-              <div className="truncate text-sm font-medium text-slate-700" title={metric.value}>
-                {metric.value}
-              </div>
-            </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-600">
+            {TEXT.nodeCount} {graph.nodes.length}
+          </span>
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-600">
+            {TEXT.edgeCount} {graph.edges.length}
+          </span>
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-600">
+            {TEXT.templateUsage} {template.usageCount || 0}
+          </span>
+          {tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
+            >
+              {tag}
+            </span>
           ))}
         </div>
-
-        {tags.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-2">
-            {tags.slice(0, 3).map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-              >
-                {tag}
-              </span>
-            ))}
-          </div>
-        ) : null}
       </div>
 
-      <div className="flex items-center justify-between border-t border-slate-200 px-4 py-3">
-        <div className="text-xs text-slate-500">
-          {TEXT.templateUsage}{" "}
-          <span className="font-semibold text-slate-700">{template.usageCount || 0}</span>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => onPreview(template)}>
-            <Eye className="mr-1.5 h-3.5 w-3.5" />
-            {TEXT.preview}
-          </Button>
-          <Button
-            size="sm"
-            disabled={!userLoggedIn}
-            onClick={() => onUseTemplate(template.id)}
-            title={!userLoggedIn ? TEXT.loginRequired : TEXT.useTemplateTitle}
-          >
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            {TEXT.useTemplate}
-          </Button>
-        </div>
+      <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-4 py-3">
+        <Button variant="outline" size="sm" onClick={() => onPreview(template)}>
+          <Eye className="mr-1.5 h-3.5 w-3.5" />
+          {TEXT.preview}
+        </Button>
+        <Button
+          size="sm"
+          disabled={!userLoggedIn}
+          onClick={() => onUseTemplate(template.id)}
+          title={!userLoggedIn ? TEXT.loginRequired : TEXT.useTemplateTitle}
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          {TEXT.useTemplate}
+        </Button>
       </div>
     </div>
   );
@@ -155,35 +136,28 @@ const TemplateRow: React.FC<{
           {template.description || TEXT.noDescription}
         </p>
 
-        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
-          <div className="flex items-center gap-1.5">
-            <Layers3 className="h-4 w-4 text-slate-400" />
+        <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
+            <Layers3 className="mr-1.5 h-4 w-4 text-slate-400" />
             {template.categoryName || TEXT.uncategorized}
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">{TEXT.templateUsage}:</span>
-            <span className="font-medium">{template.usageCount || 0}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">{TEXT.nodeCount}:</span>
-            <span className="font-medium">{graph.nodes.length}</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <span className="text-slate-400">{TEXT.edgeCount}:</span>
-            <span className="font-medium">{graph.edges.length}</span>
-          </div>
-          {tags.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1.5">
-              {tags.slice(0, 3).map((tag) => (
-                <span
-                  key={tag}
-                  className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
-                >
-                  {tag}
-                </span>
-              ))}
-            </div>
-          ) : null}
+          </span>
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
+            {TEXT.nodeCount} {graph.nodes.length}
+          </span>
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
+            {TEXT.edgeCount} {graph.edges.length}
+          </span>
+          <span className="inline-flex items-center rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1">
+            {TEXT.templateUsage} {template.usageCount || 0}
+          </span>
+          {tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag}
+              className="inline-flex items-center rounded-md border border-slate-200 bg-white px-2 py-1 text-xs text-slate-500"
+            >
+              {tag}
+            </span>
+          ))}
         </div>
       </div>
 
@@ -233,7 +207,11 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
             icon={<Workflow className="h-12 w-12 text-slate-300" />}
             title={TEXT.loadTemplatesFailed}
             description={TEXT.emptyDescription}
-            action={{ label: TEXT.retry, onClick: onRetry }}
+            action={
+              <Button variant="outline" onClick={onRetry}>
+                {TEXT.retry}
+              </Button>
+            }
           />
         </div>
       ) : templates.length === 0 ? (
@@ -244,7 +222,11 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
             description={TEXT.emptyDescription}
             action={
               hasActiveFilters
-                ? { label: TEXT.clearFilters, onClick: onClearFilters }
+                ? (
+                  <Button variant="outline" onClick={onClearFilters}>
+                    {TEXT.clearFilters}
+                  </Button>
+                )
                 : undefined
             }
           />

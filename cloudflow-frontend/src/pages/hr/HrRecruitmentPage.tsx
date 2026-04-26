@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -892,7 +893,7 @@ export const HrRecruitmentPage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">期望到岗日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={requestForm.expectedDate || ''}
                   onChange={(event) =>
@@ -1166,7 +1167,7 @@ export const HrRecruitmentPage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">面试时间</Label>
-                <Input
+                <DatePicker
                   type="datetime-local"
                   value={interviewForm.interviewTime}
                   onChange={(event) =>

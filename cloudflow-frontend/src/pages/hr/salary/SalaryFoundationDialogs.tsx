@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
 
 type DialogComponents = {
@@ -449,7 +449,7 @@ export const InsuranceSchemeDialog: React.FC<DialogProps> = ({ components, viewM
         </div>
         <div>
           <Label>生效日期</Label>
-          <Input
+          <DatePicker
             type="date"
             value={insuranceSchemeForm.effectiveDate}
             onChange={event => setInsuranceSchemeForm((prev: any) => ({ ...prev, effectiveDate: event.target.value }))}

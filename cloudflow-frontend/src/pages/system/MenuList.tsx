@@ -35,7 +35,7 @@ import {
 import { addMenu, deleteMenu, getMenuList, updateMenu, type SysMenu } from '../../services/api/auth';
 import { cn } from '@/utils/cn';
 
-type MenuNode = SysMenu & {
+type MenuNode = Omit<SysMenu, 'menuId' | 'parentId' | 'menuType' | 'menuName' | 'orderNum' | 'status' | 'children'> & {
   menuId: number;
   parentId: number;
   menuType: 'M' | 'C' | 'F';
@@ -105,17 +105,12 @@ const TableStateRow: React.FC<{
   title: string;
   description?: string;
   loading?: boolean;
-}> = ({ colSpan, title, description, loading = false }) => (
+}> = ({ colSpan, title, loading = false }) => (
   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
     <TableCell colSpan={colSpan} className="px-4 py-16">
       <div className="flex flex-col items-center justify-center text-center">
         {loading ? <LoadingSpinner size="lg" className="mb-3" /> : null}
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-            {description}
-          </div>
-        ) : null}
       </div>
     </TableCell>
   </TableRow>
@@ -150,20 +145,18 @@ const filterMenuTree = (nodes: MenuNode[], keyword: string): MenuNode[] => {
   const normalized = keyword.trim().toLowerCase();
   if (!normalized) return nodes;
 
-  return nodes
-    .map((node) => {
+  return nodes.flatMap((node) => {
       const children = node.children ? filterMenuTree(node.children, normalized) : [];
       const matched = [node.menuName, node.path, node.component, node.perms, node.icon]
         .filter(Boolean)
         .some((value) => String(value).toLowerCase().includes(normalized));
 
       if (matched || children.length > 0) {
-        return { ...node, children };
+        return [{ ...node, children }];
       }
 
-      return null;
-    })
-    .filter((item): item is MenuNode => Boolean(item));
+      return [];
+    });
 };
 
 const collectDescendantIds = (node?: MenuNode | null): Set<number> => {
@@ -393,18 +386,13 @@ export const MenuList = () => {
                   <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                     {node.menuName}
                   </div>
-                  <div className="mt-1 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    {node.path ? (
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 dark:border-slate-800 dark:bg-slate-900/70">
-                        路由 {node.path}
-                      </span>
-                    ) : null}
-                    {node.component ? (
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 dark:border-slate-800 dark:bg-slate-900/70">
-                        组件 {node.component}
-                      </span>
-                    ) : null}
-                  </div>
+                  {node.path || node.component ? (
+                    <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                      {[node.path ? `路由 ${node.path}` : '', node.component ? `组件 ${node.component}` : '']
+                        .filter(Boolean)
+                        .join(' / ')}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </TableCell>
@@ -540,7 +528,7 @@ export const MenuList = () => {
             <Table className="min-w-[1080px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[360px]">菜单名称</TableHead>
+                  <TableHead className="w-[420px]">菜单名称</TableHead>
                   <TableHead>图标</TableHead>
                   <TableHead>排序</TableHead>
                   <TableHead>权限标识</TableHead>

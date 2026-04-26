@@ -370,7 +370,7 @@ export const CopyListPage: React.FC = () => {
           icon={<Mail className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />}
         title="正在加载抄送记录..."
         description="系统正在整理你的流程抄送和已读状态，请稍候。"
-        actions={
+        action={
           <Button variant="outline" onClick={handleRefresh}>
             <RefreshCw size={16} className="mr-2" />
             刷新状态
@@ -389,7 +389,7 @@ export const CopyListPage: React.FC = () => {
         icon={<Mail className="h-4 w-4 text-rose-500 dark:text-rose-300" />}
         title="抄送记录加载失败"
         description={error}
-        actions={
+        action={
           <Button onClick={() => void fetchList()}>
             重试加载
           </Button>

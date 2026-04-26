@@ -12,6 +12,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -494,15 +495,6 @@ export const HrProbationPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <ShieldCheck className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Probation Flow
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          转正申请
-        </h1>
-      </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
         <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
@@ -581,9 +573,6 @@ export const HrProbationPage: React.FC = () => {
             <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  先定位员工，再连续处理该员工的转正单据。
-                </div>
               </div>
               <div className="space-y-3 overflow-y-auto p-4">
                 {loading ? (
@@ -641,9 +630,6 @@ export const HrProbationPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请列表</div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      优先展示当前员工最近的转正记录，并默认聚焦可推进申请。
-                    </div>
                   </div>
                   <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                     {selectedEmployee ? `${applications.length} 条` : '等待选择员工'}
@@ -665,11 +651,6 @@ export const HrProbationPage: React.FC = () => {
                     <div className="mt-3 text-xs text-slate-500 dark:text-slate-400">
                       {selectedEmployee.phone || '未维护手机号'}
                     </div>
-                    {!selectedEmployeeCanCreate ? (
-                      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
-                        当前员工不是试用期，仅建议查看历史转正记录；新建申请时会自动切换到可发起的试用期员工。
-                      </div>
-                    ) : null}
                   </div>
                 ) : null}
 
@@ -760,9 +741,6 @@ export const HrProbationPage: React.FC = () => {
               <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请详情</div>
-                  <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    详情区保留真实接口字段，并直接办理提交、审批和驳回动作。
-                  </div>
                 </div>
                 {detail ? (
                   <div className="flex flex-wrap gap-2">
@@ -857,15 +835,9 @@ export const HrProbationPage: React.FC = () => {
                   <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">驳回处理</div>
-                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                        审批中申请可以直接填写驳回原因，并可选延长试用期。
-                      </div>
                     </div>
 
                     <div className="space-y-4 p-4">
-                      <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                        填写正整数延长天数时，后端会把申请置为“延长试用期”，员工继续保持试用期；留空则走“已拒绝”，当前后端实现会同步把员工主档更新为离职。
-                      </div>
 
                       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_220px]">
                         <div className="space-y-2">
@@ -964,7 +936,7 @@ export const HrProbationPage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">试用开始日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.probationStartDate}
                   onChange={(event) =>
@@ -975,7 +947,7 @@ export const HrProbationPage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">试用结束日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.probationEndDate}
                   onChange={(event) =>
@@ -986,7 +958,7 @@ export const HrProbationPage: React.FC = () => {
               </div>
               <div className="space-y-2 md:col-span-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计转正日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={createForm.expectedRegularDate}
                   onChange={(event) =>

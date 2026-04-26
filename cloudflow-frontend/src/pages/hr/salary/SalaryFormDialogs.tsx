@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/common';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/common';
 import { buildEmployeeLabel, toDateInputValue } from '../hrShared';
 
 type DialogComponents = {
@@ -84,7 +84,7 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
         </div>
         <div>
           <Label>生效日期</Label>
-          <Input
+          <DatePicker
             type="date"
             value={assignForm.effectiveDate}
             max={getTodayValue()}
@@ -207,7 +207,7 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
         </div>
         <div>
           <Label>生效日期</Label>
-          <Input
+          <DatePicker
             type="date"
             value={adjustForm.effectiveDate}
             onChange={event => setAdjustForm((prev: any) => ({ ...prev, effectiveDate: event.target.value }))}
@@ -354,7 +354,7 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
         </div>
         <div>
           <Label>生效日期</Label>
-          <Input
+          <DatePicker
             type="date"
             value={insuranceForm.effectiveDate}
             max={getTodayValue()}

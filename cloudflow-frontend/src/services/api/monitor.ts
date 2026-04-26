@@ -123,6 +123,7 @@ export interface ProcessTrend {
   completed: number;
   timeout: number;
   anomaly: number;
+  running?: number;
 }
 
 // ==================== 流程监控 API ====================

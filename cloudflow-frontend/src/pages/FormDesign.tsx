@@ -17,7 +17,7 @@ const NEW_FORM_NAME = '新表单';
 const StatusPanel: React.FC<{
   icon: React.ReactNode;
   title: string;
-  description: React.ReactNode;
+  description?: React.ReactNode;
   actions?: React.ReactNode;
 }> = ({ icon, title, description, actions }) => (
   <div className="rounded-xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -25,7 +25,9 @@ const StatusPanel: React.FC<{
       {icon}
     </div>
     <div className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    {description ? (
+      <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
     {actions ? <div className="mt-5 flex justify-center gap-3">{actions}</div> : null}
   </div>
 );

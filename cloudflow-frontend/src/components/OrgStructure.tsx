@@ -150,8 +150,7 @@ const filterDeptTree = (depts: DeptItem[], keyword: string): DeptItem[] => {
 
   const normalized = keyword.trim().toLowerCase();
 
-  return depts
-    .map((dept) => {
+  return depts.flatMap((dept) => {
       const children = filterDeptTree(dept.children || [], keyword);
       const matchesSelf =
         dept.deptName.toLowerCase().includes(normalized) ||
@@ -159,15 +158,14 @@ const filterDeptTree = (depts: DeptItem[], keyword: string): DeptItem[] => {
         String(dept.leader || '').toLowerCase().includes(normalized);
 
       if (!matchesSelf && children.length === 0) {
-        return null;
+        return [];
       }
 
-      return {
+      return [{
         ...dept,
         children,
-      };
-    })
-    .filter((dept): dept is DeptItem => dept !== null);
+      }];
+    });
 };
 
 const DepartmentSelect: React.FC<{
