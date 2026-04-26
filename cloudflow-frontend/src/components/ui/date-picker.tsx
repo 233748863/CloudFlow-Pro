@@ -1,69 +1,51 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronLeft, ChevronRight, Calendar, Clock, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { Calendar, ChevronLeft, ChevronRight, Clock, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { Button } from './button';
 
-// ==================== 类型定义 ====================
-
-/** 选择器模式：仅日期、仅时间、日期+时间 */
 type PickerMode = 'date' | 'time' | 'datetime-local';
 type QuickDateKind = 'today' | 'tomorrow' | 'weekend' | 'nextMonday' | 'monthEnd';
 
 interface DatePickerProps {
-  /** 选择器模式 */
   type?: PickerMode;
-  /** 当前值（格式：date='YYYY-MM-DD', time='HH:mm', datetime-local='YYYY-MM-DDTHH:mm'） */
   value?: string;
-  /** 值变化回调，模拟原生 input 的 onChange 事件 */
   onChange?: (e: { target: { value: string } }) => void;
-  /** 占位文本 */
   placeholder?: string;
-  /** 是否禁用 */
   disabled?: boolean;
-  /** 是否必填 */
   required?: boolean;
-  /** 自定义类名 */
   className?: string;
-  /** 最小值 */
   min?: string;
-  /** 最大值 */
   max?: string;
-  /** input 的 id */
   id?: string;
-  /** input 的 name */
   name?: string;
-  /** 视觉风格 */
   variant?: 'default' | 'glass';
 }
 
-// ==================== 工具函数 ====================
+const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
+const WEEKDAY_NAMES = ['一', '二', '三', '四', '五', '六', '日'];
 
-/** 获取某月的天数 */
-function getDaysInMonth(year: number, month: number): number {
-  return new Date(year, month + 1, 0).getDate();
-}
-
-/** 获取某月第一天是星期几（0=周日，转换为周一开始） */
-function getFirstDayOfMonth(year: number, month: number): number {
-  const day = new Date(year, month, 1).getDay();
-  return day === 0 ? 6 : day - 1; // 转换为周一=0
-}
-
-/** 补零 */
 function pad(n: number): string {
   return n < 10 ? `0${n}` : `${n}`;
 }
 
-/** 格式化日期为 YYYY-MM-DD */
+function getDaysInMonth(year: number, month: number): number {
+  return new Date(year, month + 1, 0).getDate();
+}
+
+function getFirstDayOfMonth(year: number, month: number): number {
+  const day = new Date(year, month, 1).getDay();
+  return day === 0 ? 6 : day - 1;
+}
+
 function formatDate(year: number, month: number, day: number): string {
   return `${year}-${pad(month + 1)}-${pad(day)}`;
 }
 
-/** 格式化时间为 HH:mm */
 function formatTime(hour: number, minute: number): string {
   return `${pad(hour)}:${pad(minute)}`;
 }
 
-/** 解析日期字符串 */
 function parseDate(str: string): { year: number; month: number; day: number } | null {
   if (!str) return null;
   const parts = str.split('-');
@@ -71,26 +53,25 @@ function parseDate(str: string): { year: number; month: number; day: number } | 
   const year = parseInt(parts[0], 10);
   const month = parseInt(parts[1], 10) - 1;
   const day = parseInt(parts[2], 10);
-  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return null;
   return { year, month, day };
 }
 
-/** 解析时间字符串 */
 function parseTime(str: string): { hour: number; minute: number } | null {
   if (!str) return null;
   const parts = str.split(':');
   if (parts.length < 2) return null;
   const hour = parseInt(parts[0], 10);
   const minute = parseInt(parts[1], 10);
-  if (isNaN(hour) || isNaN(minute)) return null;
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return null;
   return { hour, minute };
 }
 
-/** 月份名称 */
-const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
-const WEEKDAY_NAMES = ['一', '二', '三', '四', '五', '六', '日'];
-
-// ==================== 日历面板组件 ====================
+function toDisplayDate(value?: string) {
+  const parsed = parseDate(value || '');
+  if (!parsed) return '';
+  return `${parsed.year}/${pad(parsed.month + 1)}/${pad(parsed.day)}`;
+}
 
 interface CalendarPanelProps {
   year: number;
@@ -99,95 +80,74 @@ interface CalendarPanelProps {
   onSelectDate: (year: number, month: number, day: number) => void;
   onChangeMonth: (year: number, month: number) => void;
   onQuickDate?: (kind: QuickDateKind) => void;
-  variant?: 'default' | 'glass';
 }
 
-function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth, onQuickDate, variant = 'default' }: CalendarPanelProps) {
+function CalendarPanel({
+  year,
+  month,
+  selectedDate,
+  onSelectDate,
+  onChangeMonth,
+  onQuickDate,
+}: CalendarPanelProps) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
   const today = new Date();
   const todayStr = formatDate(today.getFullYear(), today.getMonth(), today.getDate());
-  const isGlass = variant === 'glass';
-  const quickDateButtonClass = isGlass
-    ? "shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900"
-    : "shrink-0 rounded-md border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900";
 
-  // 上个月的尾部天数
-  const prevMonthDays = getDaysInMonth(year, month - 1 < 0 ? 11 : month - 1);
+  const prevMonthDays = getDaysInMonth(year, month === 0 ? 11 : month - 1);
   const prevDays: number[] = [];
-  for (let i = firstDay - 1; i >= 0; i--) {
+  for (let i = firstDay - 1; i >= 0; i -= 1) {
     prevDays.push(prevMonthDays - i);
   }
 
-  // 当月天数
-  const currentDays: number[] = [];
-  for (let i = 1; i <= daysInMonth; i++) {
-    currentDays.push(i);
-  }
-
-  // 下个月的头部天数（补满6行）
+  const currentDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
   const totalCells = prevDays.length + currentDays.length;
   const nextDaysCount = totalCells <= 35 ? 35 - totalCells : 42 - totalCells;
-  const nextDays: number[] = [];
-  for (let i = 1; i <= nextDaysCount; i++) {
-    nextDays.push(i);
-  }
+  const nextDays = Array.from({ length: nextDaysCount }, (_, i) => i + 1);
 
-  /** 切换到上个月 */
   const goToPrevMonth = () => {
     if (month === 0) onChangeMonth(year - 1, 11);
     else onChangeMonth(year, month - 1);
   };
 
-  /** 切换到下个月 */
   const goToNextMonth = () => {
     if (month === 11) onChangeMonth(year + 1, 0);
     else onChangeMonth(year, month + 1);
   };
 
-  /** 回到今天 */
-  const goToToday = () => {
-    const now = new Date();
-    onChangeMonth(now.getFullYear(), now.getMonth());
-    onSelectDate(now.getFullYear(), now.getMonth(), now.getDate());
-  };
-
   return (
-    <div className="bg-white p-3">
-      {/* 月份导航 */}
-      <div className="flex items-center justify-between mb-2.5">
+    <div className="bg-white p-3 dark:bg-slate-950">
+      <div className="mb-2.5 flex items-center justify-between">
         <button
           type="button"
           onClick={goToPrevMonth}
-          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
+          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
         >
           <ChevronLeft size={16} />
         </button>
-        <span className="text-sm font-bold text-slate-800">
+        <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
           {year}年 {MONTH_NAMES[month]}
         </span>
         <button
           type="button"
           onClick={goToNextMonth}
-          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700"
+          className="grid h-7 w-7 place-items-center rounded-lg border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-slate-100"
         >
           <ChevronRight size={16} />
         </button>
       </div>
 
-      {/* 星期标题 */}
-      <div className="grid grid-cols-7 gap-1 mb-1">
-        {WEEKDAY_NAMES.map(name => (
-          <div key={name} className="text-center text-xs font-medium text-slate-400 py-1">
+      <div className="mb-1 grid grid-cols-7 gap-1">
+        {WEEKDAY_NAMES.map((name) => (
+          <div key={name} className="py-1 text-center text-xs font-medium text-slate-400">
             {name}
           </div>
         ))}
       </div>
 
-      {/* 日期网格 */}
       <div className="grid grid-cols-7 gap-1">
-        {/* 上月尾部 */}
-        {prevDays.map(day => (
+        {prevDays.map((day) => (
           <button
             key={`prev-${day}`}
             type="button"
@@ -196,43 +156,40 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
               else onSelectDate(year, month - 1, day);
               goToPrevMonth();
             }}
-            className="h-8 rounded-lg text-[11px] text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-400"
+            className="h-8 rounded-lg text-[11px] text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400"
           >
             {day}
           </button>
         ))}
 
-        {/* 当月 */}
-        {currentDays.map(day => {
+        {currentDays.map((day) => {
           const dateStr = formatDate(year, month, day);
           const isToday = dateStr === todayStr;
-          const isSelected = selectedDate &&
-            selectedDate.year === year &&
-            selectedDate.month === month &&
-            selectedDate.day === day;
+          const isSelected = selectedDate
+            && selectedDate.year === year
+            && selectedDate.month === month
+            && selectedDate.day === day;
 
           return (
             <button
               key={`cur-${day}`}
               type="button"
               onClick={() => onSelectDate(year, month, day)}
-              className={`
-                h-8 rounded-lg text-[11px] font-medium transition-all
-                ${isSelected
-                  ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
+              className={cn(
+                'h-8 rounded-lg text-[11px] font-medium transition-all',
+                isSelected
+                  ? 'bg-[color:var(--cf-primary-500)] text-white font-semibold shadow-[0_10px_20px_rgba(20,184,166,0.18)]'
                   : isToday
-                    ? 'bg-cyan-50 text-cyan-700 font-semibold ring-1 ring-cyan-100'
-                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900'
-                }
-              `}
+                    ? 'bg-[rgba(240,253,250,0.96)] text-[color:var(--cf-primary-700)] font-semibold ring-1 ring-[rgba(153,246,228,0.96)] dark:bg-[rgba(20,184,166,0.18)] dark:text-[rgb(204,251,241)] dark:ring-[rgba(20,184,166,0.28)]'
+                    : 'text-slate-700 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-200 dark:hover:bg-slate-900 dark:hover:text-slate-100',
+              )}
             >
               {day}
             </button>
           );
         })}
 
-        {/* 下月头部 */}
-        {nextDays.map(day => (
+        {nextDays.map((day) => (
           <button
             key={`next-${day}`}
             type="button"
@@ -241,85 +198,74 @@ function CalendarPanel({ year, month, selectedDate, onSelectDate, onChangeMonth,
               else onSelectDate(year, month + 1, day);
               goToNextMonth();
             }}
-            className="h-8 rounded-lg text-[11px] text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-400"
+            className="h-8 rounded-lg text-[11px] text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400"
           >
             {day}
           </button>
         ))}
       </div>
 
-      {/* 底部快捷日期（同一行展示） */}
-      <div className="mt-2.5 border-t border-slate-100 pt-2.5">
-        <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto hide-scrollbar">
+      <div className="mt-2.5 border-t border-slate-100 pt-2.5 dark:border-slate-800">
+        <div className="hide-scrollbar flex flex-nowrap items-center gap-1.5 overflow-x-auto">
           <button
             type="button"
-            onClick={() => (onQuickDate ? onQuickDate('today') : goToToday())}
-            className={quickDateButtonClass}
+            onClick={() => (onQuickDate ? onQuickDate('today') : undefined)}
+            className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
           >
             今天
           </button>
-          {onQuickDate && (
+          {onQuickDate ? (
             <>
               <button
                 type="button"
                 onClick={() => onQuickDate('tomorrow')}
-                className={quickDateButtonClass}
+                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
               >
                 明天
               </button>
               <button
                 type="button"
                 onClick={() => onQuickDate('weekend')}
-                className={quickDateButtonClass}
+                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
               >
                 本周末
               </button>
               <button
                 type="button"
                 onClick={() => onQuickDate('nextMonday')}
-                className={quickDateButtonClass}
+                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
               >
                 下周一
               </button>
               <button
                 type="button"
                 onClick={() => onQuickDate('monthEnd')}
-                className={quickDateButtonClass}
+                className="shrink-0 rounded-md border border-slate-200 bg-white px-2 py-1 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
               >
                 本月末
               </button>
             </>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
-// ==================== 时间选择面板组件 ====================
-
 interface TimePanelProps {
   hour: number;
   minute: number;
   onChangeTime: (hour: number, minute: number) => void;
   layout?: 'row' | 'col';
-  variant?: 'default' | 'glass';
 }
 
 function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProps) {
   const hourRef = useRef<HTMLDivElement>(null);
   const minuteRef = useRef<HTMLDivElement>(null);
 
-  // 滚动到选中项
   useEffect(() => {
-    if (hourRef.current) {
-      const selected = hourRef.current.querySelector('[data-selected="true"]');
-      if (selected) selected.scrollIntoView({ block: 'center', behavior: 'auto' });
-    }
-    if (minuteRef.current) {
-      const selected = minuteRef.current.querySelector('[data-selected="true"]');
-      if (selected) selected.scrollIntoView({ block: 'center', behavior: 'auto' });
-    }
+    hourRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'center' });
+    minuteRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'center' });
   }, [hour, minute]);
 
   const isRow = layout === 'row';
@@ -327,23 +273,15 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
   return (
     <div
       className={cn(
-        'flex bg-white',
-        isRow
-          ? 'h-64 w-max flex-row'
-          : 'h-52 w-full flex-col border-t border-slate-100 md:h-[300px] md:border-l md:border-t-0',
+        'flex bg-white dark:bg-slate-950',
+        isRow ? 'h-64 w-max flex-row' : 'h-52 w-full flex-col border-t border-slate-100 md:h-[300px] md:border-l md:border-t-0 dark:border-slate-800',
       )}
     >
-      {/* 小时列 */}
-      <div
-        className={cn(
-          'flex flex-col min-h-0',
-          isRow ? 'w-[5.25rem] border-r border-slate-100' : 'flex-1 border-b border-slate-100',
-        )}
-      >
-        <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500">
+      <div className={cn('flex min-h-0 flex-col', isRow ? 'w-[5.25rem] border-r border-slate-100 dark:border-slate-800' : 'flex-1 border-b border-slate-100 dark:border-slate-800')}>
+        <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
           时
         </div>
-        <div ref={hourRef} className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar">
+        <div ref={hourRef} className="hide-scrollbar flex-1 overflow-y-auto overflow-x-hidden">
           {Array.from({ length: 24 }, (_, i) => (
             <button
               key={i}
@@ -354,8 +292,8 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
                 'mx-1 my-0.5 rounded-md py-1.5 text-center text-[11px] transition-colors',
                 isRow ? 'w-[calc(100%-0.5rem)]' : 'w-full',
                 i === hour
-                  ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  ? 'bg-[color:var(--cf-primary-500)] text-white font-semibold shadow-[0_10px_20px_rgba(20,184,166,0.18)]'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
               )}
             >
               {pad(i)}
@@ -364,12 +302,11 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
         </div>
       </div>
 
-      {/* 分钟列 */}
-      <div className={cn('flex flex-col min-h-0', isRow ? 'w-[5.25rem]' : 'flex-1')}>
-        <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500">
+      <div className={cn('flex min-h-0 flex-col', isRow ? 'w-[5.25rem]' : 'flex-1')}>
+        <div className="shrink-0 bg-slate-50 py-2 text-center text-[11px] font-semibold text-slate-500 dark:bg-slate-900 dark:text-slate-400">
           分
         </div>
-        <div ref={minuteRef} className="flex-1 overflow-y-auto overflow-x-hidden hide-scrollbar">
+        <div ref={minuteRef} className="hide-scrollbar flex-1 overflow-y-auto overflow-x-hidden">
           {Array.from({ length: 60 }, (_, i) => (
             <button
               key={i}
@@ -380,8 +317,8 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
                 'mx-1 my-0.5 rounded-md py-1.5 text-center text-[11px] transition-colors',
                 isRow ? 'w-[calc(100%-0.5rem)]' : 'w-full',
                 i === minute
-                  ? 'bg-cyan-600 text-white font-semibold shadow-sm shadow-cyan-500/20'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900',
+                  ? 'bg-[color:var(--cf-primary-500)] text-white font-semibold shadow-[0_10px_20px_rgba(20,184,166,0.18)]'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
               )}
             >
               {pad(i)}
@@ -393,29 +330,27 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
   );
 }
 
-// ==================== 主组件 ====================
-
 export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
-  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', min, max, id, name, required, variant = 'default' }, ref) => {
+  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', id, name, required }, ref) => {
     const [open, setOpen] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const [alignRight, setAlignRight] = useState(false);
+    const [placement, setPlacement] = useState({
+      top: 0,
+      left: 0,
+      width: 288,
+      maxHeight: 380,
+    });
 
-    // 解析当前值
     const now = new Date();
-    let currentDate = parseDate(type === 'datetime-local' ? value?.split('T')[0] || '' : type === 'date' ? value : '');
-    let currentTime = parseTime(type === 'datetime-local' ? value?.split('T')[1] || '' : type === 'time' ? value : '');
+    const currentDate = parseDate(type === 'datetime-local' ? value?.split('T')[0] || '' : type === 'date' ? value : '');
+    const currentTime = parseTime(type === 'datetime-local' ? value?.split('T')[1] || '' : type === 'time' ? value : '');
 
-    // 日历浏览的年月（不影响选中值）
     const [viewYear, setViewYear] = useState(currentDate?.year ?? now.getFullYear());
     const [viewMonth, setViewMonth] = useState(currentDate?.month ?? now.getMonth());
-
-    // 临时时间状态（用于 datetime-local 模式下独立调整时间）
     const [tempHour, setTempHour] = useState(currentTime?.hour ?? now.getHours());
     const [tempMinute, setTempMinute] = useState(currentTime?.minute ?? now.getMinutes());
 
-    // 同步外部值变化到内部状态
     useEffect(() => {
       const d = parseDate(type === 'datetime-local' ? value?.split('T')[0] || '' : type === 'date' ? value : '');
       const t = parseTime(type === 'datetime-local' ? value?.split('T')[1] || '' : type === 'time' ? value : '');
@@ -427,73 +362,91 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
         setTempHour(t.hour);
         setTempMinute(t.minute);
       }
-    }, [value, type]);
+    }, [type, value]);
 
-    // 点击外部关闭
+    const emitChange = useCallback((newValue: string) => {
+      onChange?.({ target: { value: newValue } });
+    }, [onChange]);
+
     useEffect(() => {
-      function handleClickOutside(e: MouseEvent) {
-        if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (!open) return;
+
+      const handleClickOutside = (event: MouseEvent) => {
+        const target = event.target as Node;
+        if (containerRef.current?.contains(target)) return;
+        if (dropdownRef.current?.contains(target)) return;
+        setOpen(false);
+      };
+
+      const handleEscape = (event: KeyboardEvent) => {
+        if (event.key === 'Escape') {
           setOpen(false);
         }
-      }
-      if (open) {
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-      }
+      };
+
+      document.addEventListener('mousedown', handleClickOutside, true);
+      window.addEventListener('keydown', handleEscape);
+
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside, true);
+        window.removeEventListener('keydown', handleEscape);
+      };
     }, [open]);
 
-    // 弹出方向与水平对齐检测
-    const [dropUp, setDropUp] = useState(false);
     useEffect(() => {
-      if (!(open && containerRef.current)) {
-        return;
-      }
+      if (!(open && containerRef.current)) return;
 
       const updatePlacement = () => {
         if (!containerRef.current) return;
 
         const rect = containerRef.current.getBoundingClientRect();
-        const dropdownWidth = dropdownRef.current?.offsetWidth
-          ?? (type === 'time' ? 184 : type === 'datetime-local' ? 420 : Math.max(rect.width, 288));
-        const dropdownHeight = dropdownRef.current?.offsetHeight ?? 380;
         const viewportPadding = 16;
-        const spaceBelow = window.innerHeight - rect.bottom;
+        const defaultWidth = type === 'time' ? 184 : type === 'datetime-local' ? 420 : Math.max(rect.width, 288);
+        const dropdownWidth = dropdownRef.current?.offsetWidth ?? defaultWidth;
+        const dropdownHeight = dropdownRef.current?.offsetHeight ?? 380;
+        const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
+        const spaceAbove = rect.top - viewportPadding;
+        const dropUp = spaceBelow < Math.min(dropdownHeight, 380) && spaceAbove > spaceBelow;
+        const maxHeight = Math.max(180, (dropUp ? spaceAbove : spaceBelow) - 6);
+        const renderedHeight = Math.min(dropdownHeight, maxHeight);
 
-        setDropUp(spaceBelow < dropdownHeight + 12 && rect.top > dropdownHeight + 12);
+        let left = rect.left;
+        if (left + dropdownWidth > window.innerWidth - viewportPadding) {
+          left = Math.max(viewportPadding, window.innerWidth - dropdownWidth - viewportPadding);
+        }
 
-        const overflowRight = rect.left + dropdownWidth > window.innerWidth - viewportPadding;
-        const canAlignRight = rect.right - dropdownWidth >= viewportPadding;
-        setAlignRight(overflowRight && canAlignRight);
+        const top = dropUp
+          ? Math.max(viewportPadding, rect.top - renderedHeight - 6)
+          : rect.bottom + 6;
+
+        setPlacement({
+          top,
+          left,
+          width: defaultWidth,
+          maxHeight,
+        });
       };
 
       const rafId = window.requestAnimationFrame(updatePlacement);
       window.addEventListener('resize', updatePlacement);
+      window.addEventListener('scroll', updatePlacement, true);
 
       return () => {
         window.cancelAnimationFrame(rafId);
         window.removeEventListener('resize', updatePlacement);
+        window.removeEventListener('scroll', updatePlacement, true);
       };
     }, [open, type]);
 
-    /** 触发 onChange */
-    const emitChange = useCallback((newValue: string) => {
-      if (onChange) {
-        onChange({ target: { value: newValue } });
-      }
-    }, [onChange]);
-
-    /** 选择日期 */
     const handleSelectDate = (year: number, month: number, day: number) => {
       if (type === 'date') {
         emitChange(formatDate(year, month, day));
         setOpen(false);
       } else if (type === 'datetime-local') {
-        // 日期+时间模式：选日期后保持面板打开，等用户调时间
         emitChange(`${formatDate(year, month, day)}T${formatTime(tempHour, tempMinute)}`);
       }
     };
 
-    /** 选择时间 */
     const handleChangeTime = (hour: number, minute: number) => {
       setTempHour(hour);
       setTempMinute(minute);
@@ -504,7 +457,6 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       }
     };
 
-    // 快捷时间按钮：基于“当前选中时间”进行计算，例如 14:25 +30min => 14:55
     const applyQuickDateTime = useCallback((kind: 'now' | 'round' | 'add15' | 'add30' | 'add60') => {
       const base = new Date();
       if (currentDate) {
@@ -515,12 +467,9 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       base.setHours(baseHour, baseMinute, 0, 0);
 
       if (kind === 'now') {
-        // “此刻”直接使用当前系统时间
         base.setTime(Date.now());
       } else if (kind === 'round') {
-        // “整点”默认进位到下一个整点，例如 14:25 => 15:00
-        const needsCarry = base.getMinutes() > 0 || base.getSeconds() > 0;
-        if (needsCarry) {
+        if (base.getMinutes() > 0 || base.getSeconds() > 0) {
           base.setHours(base.getHours() + 1, 0, 0, 0);
         } else {
           base.setMinutes(0, 0, 0);
@@ -540,37 +489,31 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       setTempHour(h);
       setTempMinute(min);
       emitChange(`${formatDate(y, m, d)}T${formatTime(h, min)}`);
-    }, [currentDate, currentTime, tempHour, tempMinute, emitChange]);
+    }, [currentDate, currentTime, emitChange, tempHour, tempMinute]);
 
-    // 快捷日期按钮：只改日期，时间保持“当前选中时间”
-    // 例：2026/03/10 14:25 -> 明天 14:25
-    // 本周末定义：周六为周末起点；若今天是周日，则取下周六
-    const applyQuickDate = useCallback((kind: 'today' | 'tomorrow' | 'weekend' | 'nextMonday' | 'monthEnd') => {
+    const applyQuickDate = useCallback((kind: QuickDateKind) => {
       const base = new Date();
-      const ref = currentDate
+      const refDate = currentDate
         ? new Date(currentDate.year, currentDate.month, currentDate.day)
         : new Date();
       const baseHour = currentTime?.hour ?? tempHour ?? base.getHours();
       const baseMinute = currentTime?.minute ?? tempMinute ?? base.getMinutes();
 
-      let target = new Date(ref);
+      let target = new Date(refDate);
       if (kind === 'today') {
         target = new Date();
       } else if (kind === 'tomorrow') {
-        target = new Date(ref);
-        target.setDate(ref.getDate() + 1);
+        target.setDate(refDate.getDate() + 1);
       } else if (kind === 'weekend') {
-        const day = ref.getDay(); // 0=周日, 6=周六
+        const day = refDate.getDay();
         const diff = day === 0 ? 6 : 6 - day;
-        target = new Date(ref);
-        target.setDate(ref.getDate() + diff);
+        target.setDate(refDate.getDate() + diff);
       } else if (kind === 'nextMonday') {
-        const day = ref.getDay(); // 0=周日, 1=周一
+        const day = refDate.getDay();
         const diff = day === 1 ? 7 : (8 - day) % 7;
-        target = new Date(ref);
-        target.setDate(ref.getDate() + diff);
+        target.setDate(refDate.getDate() + diff);
       } else if (kind === 'monthEnd') {
-        target = new Date(ref.getFullYear(), ref.getMonth() + 1, 0);
+        target = new Date(refDate.getFullYear(), refDate.getMonth() + 1, 0);
       }
 
       target.setHours(baseHour, baseMinute, 0, 0);
@@ -583,195 +526,176 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       setViewMonth(m);
       setTempHour(h);
       setTempMinute(min);
+
       if (type === 'date') {
         emitChange(formatDate(y, m, d));
         setOpen(false);
       } else if (type === 'datetime-local') {
         emitChange(`${formatDate(y, m, d)}T${formatTime(h, min)}`);
       }
-    }, [currentDate, currentTime, tempHour, tempMinute, emitChange, type, setOpen]);
+    }, [currentDate, currentTime, emitChange, tempHour, tempMinute, type]);
 
-    /** 清空值 */
     const handleClear = (e: React.MouseEvent) => {
       e.stopPropagation();
       emitChange('');
       setOpen(false);
     };
 
-    /** 显示文本 */
     const displayText = (() => {
       if (!value) return '';
-      if (type === 'date' && currentDate) {
-        return `${currentDate.year}/${pad(currentDate.month + 1)}/${pad(currentDate.day)}`;
-      }
-      if (type === 'time' && currentTime) {
-        return `${pad(currentTime.hour)}:${pad(currentTime.minute)}`;
-      }
+      if (type === 'date') return toDisplayDate(value);
+      if (type === 'time' && currentTime) return formatTime(currentTime.hour, currentTime.minute);
       if (type === 'datetime-local' && currentDate) {
         const t = currentTime || { hour: 0, minute: 0 };
-        return `${currentDate.year}/${pad(currentDate.month + 1)}/${pad(currentDate.day)} ${pad(t.hour)}:${pad(t.minute)}`;
+        return `${toDisplayDate(formatDate(currentDate.year, currentDate.month, currentDate.day))} ${formatTime(t.hour, t.minute)}`;
       }
       return value;
     })();
 
-    /** 默认占位文本 */
     const defaultPlaceholder = type === 'date' ? '选择日期' : type === 'time' ? '选择时间' : '选择日期和时间';
-    const isGlass = variant === 'glass';
-    const quickTimeButtonClass = isGlass
-      ? "rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50"
-      : "rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50";
+    const dropdownWidth = type === 'time' ? Math.min(placement.width, 184) : placement.width;
 
     return (
-      <div ref={containerRef} className={`relative ${open ? 'z-[120]' : 'z-0'}`}>
-        {/* 隐藏的原生 input，用于表单提交 */}
+      <div ref={(node) => {
+        containerRef.current = node;
+        if (typeof ref === 'function') ref(node);
+        else if (ref) ref.current = node;
+      }} className={`relative ${open ? 'z-[120]' : 'z-0'}`}>
         <input type="hidden" id={id} name={name} value={value} required={required} />
 
-        {/* 触发按钮 */}
         <button
           type="button"
           disabled={disabled}
           onClick={() => !disabled && setOpen(!open)}
           className={cn(
-            'group flex h-11 w-full items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-700 shadow-sm transition-all hover:border-slate-300 focus-visible:border-cyan-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/20 focus-visible:ring-offset-1 focus-visible:ring-offset-white disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:border-slate-200 disabled:hover:shadow-none',
-            open && 'border-cyan-500 ring-2 ring-cyan-500/20 shadow-sm',
+            'cf-control group flex h-11 w-full items-center gap-2 rounded-xl px-4 text-left text-sm',
+            open && 'cf-control-active',
             className,
           )}
         >
-          {type !== 'time' && (
-            <Calendar
-              size={14}
-              className={`shrink-0 ${open ? 'text-cyan-600' : 'text-slate-400 group-hover:text-slate-600'}`}
-            />
-          )}
-          {type === 'time' && (
+          {type === 'time' ? (
             <Clock
               size={14}
-              className={`shrink-0 ${open ? 'text-cyan-600' : 'text-slate-400 group-hover:text-slate-600'}`}
+              className={cn(
+                'shrink-0',
+                open
+                  ? 'text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]'
+                  : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300',
+              )}
+            />
+          ) : (
+            <Calendar
+              size={14}
+              className={cn(
+                'shrink-0',
+                open
+                  ? 'text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]'
+                  : 'text-slate-400 group-hover:text-slate-600 dark:text-slate-500 dark:group-hover:text-slate-300',
+              )}
             />
           )}
 
-          <span className={`flex-1 truncate ${displayText ? 'text-slate-700' : 'text-slate-400'}`}>
+          <span className={cn('flex-1 truncate', displayText ? 'text-slate-700 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500')}>
             {displayText || placeholder || defaultPlaceholder}
           </span>
 
-          {value && !disabled && (
+          {value && !disabled ? (
             <X
               size={14}
-              className="text-slate-300 hover:text-slate-600 shrink-0 cursor-pointer transition-colors"
+              className="shrink-0 cursor-pointer text-slate-300 transition-colors hover:text-slate-600"
               onClick={handleClear}
             />
-          )}
+          ) : null}
         </button>
 
-        {/* 弹出面板 */}
-        {open && (
-          <div
-            ref={dropdownRef}
-            className={cn(
-              'absolute z-[130] flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_22px_46px_rgba(15,23,42,0.14)] animate-in fade-in-0 zoom-in-95 duration-150',
-              alignRight ? 'right-0' : 'left-0',
-              type === 'date' && 'w-full min-w-[18rem]',
-              type === 'time' && 'w-auto min-w-0',
-              type === 'datetime-local' && 'w-auto min-w-[18rem]',
-              dropUp ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
-            )}
-          >
-            <div className="flex flex-col md:flex-row items-stretch">
-              {/* 日期面板 */}
-              {(type === 'date' || type === 'datetime-local') && (
-                <div className={`shrink-0 ${type === 'date' ? 'w-full' : 'md:basis-[82%] md:max-w-[82%]'}`}>
-                  <CalendarPanel
-                    year={viewYear}
-                    month={viewMonth}
-                    selectedDate={currentDate}
-                    onSelectDate={handleSelectDate}
-                    onChangeMonth={(y, m) => { setViewYear(y); setViewMonth(m); }}
-                    onQuickDate={applyQuickDate}
-                    variant={variant}
-                  />
-                </div>
-              )}
+        {open && typeof document !== 'undefined'
+          ? createPortal(
+              <div
+                ref={dropdownRef}
+                className="fixed z-[160] flex max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_22px_46px_rgba(15,23,42,0.14)] animate-in fade-in-0 zoom-in-95 duration-150 dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_22px_46px_rgba(2,6,23,0.52)]"
+                style={{
+                  top: placement.top,
+                  left: placement.left,
+                  width: dropdownWidth,
+                  maxHeight: placement.maxHeight,
+                }}
+              >
+                <div className="flex items-stretch">
+                  {type === 'date' || type === 'datetime-local' ? (
+                    <div className={cn('shrink-0', type === 'date' ? 'w-full' : 'basis-[82%]')}>
+                      <CalendarPanel
+                        year={viewYear}
+                        month={viewMonth}
+                        selectedDate={currentDate}
+                        onSelectDate={handleSelectDate}
+                        onChangeMonth={(y, m) => {
+                          setViewYear(y);
+                          setViewMonth(m);
+                        }}
+                        onQuickDate={type === 'date' || type === 'datetime-local' ? applyQuickDate : undefined}
+                      />
+                    </div>
+                  ) : null}
 
-              {/* 时间面板 */}
-              {(type === 'time' || type === 'datetime-local') && (
-                <div className={`shrink-0 ${type === 'time' ? 'w-full' : 'md:basis-[18%] md:max-w-[18%]'}`}>
-                  <TimePanel
-                    hour={tempHour}
-                    minute={tempMinute}
-                    onChangeTime={handleChangeTime}
-                    layout={type === 'time' ? 'row' : 'col'}
-                    variant={variant}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* datetime-local 模式的确认按钮 */}
-            {type === 'datetime-local' && (
-              <div className="w-full border-t border-slate-100 bg-slate-50 p-2.5">
-                {/* 快捷时间按钮：恢复为文字按钮 */}
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => applyQuickDateTime('now')}
-                    className={quickTimeButtonClass}
-                  >
-                    此刻
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => applyQuickDateTime('round')}
-                    className={quickTimeButtonClass}
-                  >
-                    整点
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => applyQuickDateTime('add15')}
-                    className={quickTimeButtonClass}
-                  >
-                    +15min
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => applyQuickDateTime('add30')}
-                    className={quickTimeButtonClass}
-                  >
-                    +30min
-                  </button>
-                  <button
-                    type="button"
-                    disabled={disabled}
-                    onClick={() => applyQuickDateTime('add60')}
-                    className={quickTimeButtonClass}
-                  >
-                    +1h
-                  </button>
+                  {type === 'time' || type === 'datetime-local' ? (
+                    <div className={cn('shrink-0', type === 'time' ? 'w-full' : 'basis-[18%] border-l border-slate-100 dark:border-slate-800')}>
+                      <TimePanel
+                        hour={tempHour}
+                        minute={tempMinute}
+                        onChangeTime={handleChangeTime}
+                        layout={type === 'time' ? 'row' : 'col'}
+                      />
+                    </div>
+                  ) : null}
                 </div>
 
-                <div className="flex justify-between items-center mt-2">
-                  <span className="text-xs text-slate-600 font-medium">
-                    {currentDate ? `${currentDate.year}/${pad(currentDate.month + 1)}/${pad(currentDate.day)} ${pad(tempHour)}:${pad(tempMinute)}` : '请选择日期'}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(false); }}
-                    className="rounded-lg bg-cyan-600 px-3 py-1.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-cyan-700"
-                  >
-                    确定
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+                {type === 'datetime-local' ? (
+                  <div className="w-full border-t border-slate-100 bg-slate-50 p-2.5 dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      {[
+                        { key: 'now', label: '此刻' },
+                        { key: 'round', label: '整点' },
+                        { key: 'add15', label: '+15min' },
+                        { key: 'add30', label: '+30min' },
+                        { key: 'add60', label: '+1h' },
+                      ].map((item) => (
+                        <button
+                          key={item.key}
+                          type="button"
+                          disabled={disabled}
+                          onClick={() => applyQuickDateTime(item.key as 'now' | 'round' | 'add15' | 'add30' | 'add60')}
+                          className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="mt-2 flex items-center justify-between gap-3">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">
+                        {currentDate ? `${toDisplayDate(formatDate(currentDate.year, currentDate.month, currentDate.day))} ${formatTime(tempHour, tempMinute)}` : '请选择日期'}
+                      </span>
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setOpen(false);
+                        }}
+                      >
+                        确定
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>,
+              document.body,
+            )
+          : null}
       </div>
     );
-  }
+  },
 );
 
 DatePicker.displayName = 'DatePicker';

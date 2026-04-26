@@ -429,20 +429,7 @@ const adjustmentStatusLabel = (status?: string | null) => {
 };
 
 const adjustmentStatusClass = (status?: string | null) => {
-  switch ((status || '').toUpperCase()) {
-    case 'DRAFT':
-      return 'bg-slate-100 text-slate-700 border-slate-200';
-    case 'APPROVING':
-      return 'bg-amber-50 text-amber-700 border-amber-100';
-    case 'APPROVED':
-      return 'bg-sky-50 text-sky-700 border-sky-100';
-    case 'EFFECTIVE':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-    case 'REJECTED':
-      return 'bg-rose-50 text-rose-700 border-rose-100';
-    default:
-      return 'bg-slate-100 text-slate-700 border-slate-200';
-  }
+  return 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300';
 };
 
 const salaryArchiveStatusLabel = (status?: string | null, statusDesc?: string | null) => {
@@ -459,20 +446,11 @@ const salaryArchiveStatusLabel = (status?: string | null, statusDesc?: string | 
 };
 
 const salaryArchiveStatusClass = (status?: string | null) => {
-  switch ((status || '').toUpperCase()) {
-    case 'ACTIVE':
-      return 'bg-emerald-50 text-emerald-700 border-emerald-100';
-    case 'EXPIRED':
-      return 'bg-slate-100 text-slate-700 border-slate-200';
-    default:
-      return 'bg-sky-50 text-sky-700 border-sky-100';
-  }
+  return 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300';
 };
 
 const structureStatusClass = (status?: number | null) =>
-  status === 1
-    ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
-    : 'bg-slate-100 text-slate-700 border-slate-200';
+  'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300';
 
 const deductionTypeLabel = (value?: string | null) =>
   deductionTypeOptions.find(option => option.value === value)?.label || value || '-';
@@ -489,14 +467,7 @@ const taxDeductionStatusLabel = (status?: string | null) => {
 };
 
 const taxDeductionStatusClass = (status?: string | null) => {
-  switch ((status || '').toUpperCase()) {
-    case 'ACTIVE':
-      return 'border-emerald-100 bg-emerald-50 text-emerald-700';
-    case 'EXPIRED':
-      return 'border-slate-200 bg-slate-100 text-slate-600';
-    default:
-      return 'border-slate-200 bg-slate-100 text-slate-600';
-  }
+  return 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300';
 };
 
 const compactTaxDeductionRemark = (remark?: string | null) => {
@@ -1003,25 +974,42 @@ const workspaceMetricToneClassMap: Record<WorkspaceMetricStripTone, {
     hint: 'text-slate-500 dark:text-slate-400',
   },
   emerald: {
-    label: 'text-emerald-600 dark:text-emerald-300',
-    value: 'text-emerald-700 dark:text-emerald-200',
-    hint: 'text-emerald-700/90 dark:text-emerald-200/90',
+    label: 'text-slate-400 dark:text-slate-500',
+    value: 'text-slate-900 dark:text-slate-100',
+    hint: 'text-slate-500 dark:text-slate-400',
   },
   amber: {
-    label: 'text-amber-600 dark:text-amber-300',
-    value: 'text-amber-700 dark:text-amber-200',
-    hint: 'text-amber-700/90 dark:text-amber-200/90',
+    label: 'text-slate-400 dark:text-slate-500',
+    value: 'text-slate-900 dark:text-slate-100',
+    hint: 'text-slate-500 dark:text-slate-400',
   },
   sky: {
-    label: 'text-sky-600 dark:text-sky-300',
-    value: 'text-sky-700 dark:text-sky-200',
-    hint: 'text-sky-700/90 dark:text-sky-200/90',
+    label: 'text-slate-400 dark:text-slate-500',
+    value: 'text-slate-900 dark:text-slate-100',
+    hint: 'text-slate-500 dark:text-slate-400',
   },
   rose: {
-    label: 'text-rose-600 dark:text-rose-300',
-    value: 'text-rose-700 dark:text-rose-200',
-    hint: 'text-rose-700/90 dark:text-rose-200/90',
+    label: 'text-slate-400 dark:text-slate-500',
+    value: 'text-slate-900 dark:text-slate-100',
+    hint: 'text-slate-500 dark:text-slate-400',
   },
+};
+
+type WorkspaceSummaryTone = 'default' | 'success' | 'warning' | 'danger';
+
+const resolveWorkspaceSummaryTone = (className?: string): WorkspaceSummaryTone => {
+  const normalized = String(className || '');
+  if (normalized.includes('rose')) return 'danger';
+  if (normalized.includes('amber')) return 'warning';
+  if (normalized.includes('emerald') || normalized.includes('sky') || normalized.includes('teal')) return 'success';
+  return 'default';
+};
+
+const workspaceSummaryDotClassMap: Record<WorkspaceSummaryTone, string> = {
+  default: 'bg-slate-400 dark:bg-slate-500',
+  success: 'bg-teal-500 dark:bg-teal-400',
+  warning: 'bg-amber-500 dark:bg-amber-400',
+  danger: 'bg-rose-500 dark:bg-rose-400',
 };
 
 const WorkspaceMetricStrip: React.FC<{
@@ -1082,11 +1070,16 @@ const WorkspaceDiagnosticSummary: React.FC<{
     <div className="flex flex-col gap-2 px-3.5 py-2.5 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          {items.length ? '状态校验' : '状态'}
+          {items.length ? '校验' : '状态'}
         </div>
-        <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{summary.hint}</div>
       </div>
-      <span className={cn('inline-flex w-fit rounded-full border px-2.5 py-1 text-xs font-medium', summary.className)}>
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
+        <span
+          className={cn(
+            'h-1.5 w-1.5 rounded-full',
+            workspaceSummaryDotClassMap[resolveWorkspaceSummaryTone(summary.className)],
+          )}
+        />
         {summary.label}
       </span>
     </div>
@@ -1135,12 +1128,7 @@ const WorkspaceInlineRiskList: React.FC<{
       {items.map(item => (
         <div
           key={item.key}
-          className={cn(
-            'flex items-start gap-3 rounded-lg border px-3 py-2',
-            item.severity === 'danger'
-              ? 'border-rose-200/80 bg-rose-50/45 dark:border-rose-900 dark:bg-rose-950/15'
-              : 'border-amber-200/80 bg-amber-50/40 dark:border-amber-900 dark:bg-amber-950/15',
-          )}
+          className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950/80"
         >
           <span
             className={cn(
@@ -2281,9 +2269,9 @@ export const HrSalaryPage: React.FC = () => {
           ...item,
           coverage,
           missing,
-          cardClassName: 'border-emerald-200 bg-emerald-50',
-          textClassName: 'text-emerald-700',
-          barClassName: 'bg-emerald-500',
+          cardClassName: 'border-slate-200 bg-white',
+          textClassName: 'text-slate-900 dark:text-slate-100',
+          barClassName: 'bg-slate-400',
         };
       }
 
@@ -2292,9 +2280,9 @@ export const HrSalaryPage: React.FC = () => {
           ...item,
           coverage,
           missing,
-          cardClassName: 'border-rose-200 bg-rose-50',
-          textClassName: 'text-rose-700',
-          barClassName: 'bg-rose-500',
+          cardClassName: 'border-slate-200 bg-white',
+          textClassName: 'text-slate-900 dark:text-slate-100',
+          barClassName: 'bg-slate-400',
         };
       }
 
@@ -2302,9 +2290,9 @@ export const HrSalaryPage: React.FC = () => {
         ...item,
         coverage,
         missing,
-        cardClassName: 'border-amber-200 bg-amber-50',
-        textClassName: 'text-amber-700',
-        barClassName: 'bg-amber-500',
+        cardClassName: 'border-slate-200 bg-white',
+        textClassName: 'text-slate-900 dark:text-slate-100',
+        barClassName: 'bg-slate-400',
       };
     }),
     [gradeSeriesSummary],

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@/components/ui';
+import { Button, FilterChip } from '@/components/ui';
 import { SearchInput } from '@/components/common';
 
 interface WorkflowCategoryOption {
@@ -70,18 +70,13 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
         {categoryOptions.map((option) => {
           const active = selectedCategory === option.value;
           return (
-            <button
+            <FilterChip
               key={option.value || 'ALL'}
-              type="button"
+              active={active}
               onClick={() => onCategoryChange(option.value)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                active
-                  ? 'bg-cyan-500 text-white shadow-sm shadow-cyan-500/20'
-                  : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-cyan-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-cyan-200'
-              }`}
             >
               {option.label}
-            </button>
+            </FilterChip>
           );
         })}
       </div>
@@ -92,18 +87,13 @@ export const WorkflowCatalogFilters: React.FC<WorkflowCatalogFiltersProps> = ({
           {allTags.map((tag) => {
             const active = selectedTags.includes(tag);
             return (
-              <button
+              <FilterChip
                 key={tag}
-                type="button"
+                active={active}
                 onClick={() => onTagToggle(tag)}
-                className={`rounded-full px-3 py-1.5 text-xs font-medium transition ${
-                  active
-                    ? 'bg-cyan-500 text-white shadow-sm shadow-cyan-500/20'
-                    : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-cyan-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-cyan-200'
-                }`}
               >
                 {tag}
-              </button>
+              </FilterChip>
             );
           })}
         </div>

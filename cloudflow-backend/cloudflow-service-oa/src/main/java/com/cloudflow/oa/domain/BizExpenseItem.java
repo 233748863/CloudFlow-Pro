@@ -38,7 +38,7 @@ public class BizExpenseItem implements Serializable {
     /** 费用说明 */
     private String description;
 
-    /** 票据图片URL */
+    /** 凭证附件URL（多个用逗号分隔） */
     private String receiptUrl;
 
     /** 关联车辆费用ID */

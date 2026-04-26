@@ -146,7 +146,6 @@ const interviewFormDefault: InterviewSchedulePayload = {
 
 const InlineState = ({
   title,
-  description,
   className,
 }: {
   title: string;
@@ -158,9 +157,6 @@ const InlineState = ({
       <BriefcaseBusiness className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -179,7 +175,6 @@ const TableStateRow = ({
     <td colSpan={colSpan} className="px-4 py-14">
       <InlineState
         title={title}
-        description={description}
         className={loading ? 'py-6' : 'py-4'}
       />
     </td>
@@ -188,7 +183,6 @@ const TableStateRow = ({
 
 const DialogSection = ({
   title,
-  description,
   children,
 }: {
   title: string;
@@ -198,9 +192,6 @@ const DialogSection = ({
   <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      ) : null}
     </div>
     <div className="p-4">{children}</div>
   </section>
@@ -479,9 +470,6 @@ export const HrRecruitmentPage: React.FC = () => {
         <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           招聘与候选人
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          把招聘需求、候选人推进和面试安排收敛到参考后台页的统一列表语法，不再额外叠加工作台壳层。
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -588,14 +576,12 @@ export const HrRecruitmentPage: React.FC = () => {
                     <TableStateRow
                       colSpan={7}
                       title="正在加载招聘需求..."
-                      description="稍后会展示当前搜索范围内的需求记录。"
                       loading
                     />
                   ) : filteredRequests.length === 0 ? (
                     <TableStateRow
                       colSpan={7}
                       title="暂无招聘需求"
-                      description="可以先新建一条招聘需求，再进入提交和审批流程。"
                     />
                   ) : (
                     filteredRequests.map((item) => (
@@ -693,14 +679,12 @@ export const HrRecruitmentPage: React.FC = () => {
                     <TableStateRow
                       colSpan={6}
                       title="正在加载候选人记录..."
-                      description="稍后会展示当前搜索范围内的候选人。"
                       loading
                     />
                   ) : filteredCandidates.length === 0 ? (
                     <TableStateRow
                       colSpan={6}
                       title="暂无候选人记录"
-                      description="可以先录入候选人，再继续推进筛选和面试。"
                     />
                   ) : (
                     filteredCandidates.map((item) => (
@@ -793,14 +777,12 @@ export const HrRecruitmentPage: React.FC = () => {
                     <TableStateRow
                       colSpan={6}
                       title="正在加载面试安排..."
-                      description="稍后会展示当前招聘链路下的面试排期。"
                       loading
                     />
                   ) : interviews.length === 0 ? (
                     <TableStateRow
                       colSpan={6}
                       title="暂无面试安排"
-                      description="可以从右上角直接安排新的面试。"
                     />
                   ) : (
                     interviews.map((item) => (
@@ -835,7 +817,6 @@ export const HrRecruitmentPage: React.FC = () => {
       <BaseDialog
         open={requestDialog}
         title="新建招聘需求"
-        description="先明确部门、职位和招聘人数，后续候选人和面试都会挂在这条需求下。"
         onClose={closeRequestDialog}
         maxWidthClassName="max-w-3xl"
         footer={(
@@ -852,7 +833,6 @@ export const HrRecruitmentPage: React.FC = () => {
         <div className="space-y-4">
           <DialogSection
             title="需求信息"
-            description="维护部门、职位、招聘人数和预计到岗时间。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2">
@@ -967,7 +947,6 @@ export const HrRecruitmentPage: React.FC = () => {
       <BaseDialog
         open={candidateDialog}
         title="录入候选人"
-        description="候选人会绑定到招聘需求，后续面试、Offer 和入职会沿用这条主线。"
         onClose={closeCandidateDialog}
         maxWidthClassName="max-w-3xl"
         footer={(
@@ -992,7 +971,6 @@ export const HrRecruitmentPage: React.FC = () => {
           ) : null}
           <DialogSection
             title="候选人信息"
-            description="候选人必须关联到一条处于招聘中的需求。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2 xl:col-span-3">
@@ -1099,7 +1077,6 @@ export const HrRecruitmentPage: React.FC = () => {
       <BaseDialog
         open={interviewDialog}
         title="安排面试"
-        description="只对当前可推进的候选人开放排期，时间和地点会直接进入面试记录。"
         onClose={closeInterviewDialog}
         maxWidthClassName="max-w-3xl"
         footer={(
@@ -1129,7 +1106,6 @@ export const HrRecruitmentPage: React.FC = () => {
           ) : null}
           <DialogSection
             title="面试信息"
-            description="维护候选人、轮次、形式、时间和地点。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2 xl:col-span-3">
@@ -1218,7 +1194,6 @@ export const HrRecruitmentPage: React.FC = () => {
       <BaseDialog
         open={rejectCandidateId !== null}
         title="填写拒绝原因"
-        description="候选人标记为“已拒绝”时，后端要求必须填写原因。"
         onClose={() => {
           setRejectCandidateId(null);
           setRejectReason('');

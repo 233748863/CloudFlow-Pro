@@ -11,7 +11,6 @@ import {
   Trash2,
   ChevronRight,
   GitBranch,
-  GitMerge,
   FileText,
   CheckCircle2,
   ArrowDown,
@@ -26,7 +25,6 @@ import {
   Maximize2,
   Flag,
   Layers,
-  Sparkles,
   FileCheck,
   DollarSign,
   Calendar,
@@ -81,7 +79,7 @@ import {
 import { getRoleList, getUserList, getDeptTree } from "../services/api/auth";
 import { toast } from "sonner";
 import { downloadBlob } from "../utils/download";
-import { ConfirmDialog } from "./ui/ConfirmDialog";
+import { ConfirmDialog } from "./common/ConfirmDialog";
 import {
   Select,
   SelectTrigger,
@@ -198,128 +196,78 @@ const BRANCH_STRATEGY_LABELS: Record<string, string> = {
   RACE: "竞争模式",
 };
 
+const neutralNodeVisual = {
+  bg: "bg-white dark:bg-slate-950/88",
+  iconBg: "bg-cyan-50 dark:bg-cyan-950/30",
+  iconColor: "text-cyan-700 dark:text-cyan-200",
+  border: "border-slate-200 dark:border-slate-800",
+};
+
 // 节点类型视觉配置
 const NODE_VISUAL: Record<
   string,
   {
     icon: React.FC<{ size?: number; className?: string }>;
-    color: string;
     bg: string;
     iconBg: string;
     iconColor: string;
     border: string;
-    hoverBorder: string;
     label: string;
   }
 > = {
   [NodeType.START]: {
+    ...neutralNodeVisual,
     icon: PlayCircle,
-    color: "bg-emerald-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-emerald-100 dark:bg-emerald-950/60",
-    iconColor: "text-emerald-600 dark:text-emerald-200",
-    border: "border-emerald-200 dark:border-emerald-900/70",
-    hoverBorder: "hover:border-emerald-400 dark:hover:border-emerald-700",
     label: "开始",
   },
   [NodeType.APPROVAL]: {
+    ...neutralNodeVisual,
     icon: UserCheck,
-    color: "bg-cyan-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-cyan-50 dark:bg-cyan-950/50",
-    iconColor: "text-cyan-700 dark:text-cyan-200",
-    border: "border-cyan-200 dark:border-cyan-900/70",
-    hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-700",
     label: "审批",
   },
   [NodeType.CONDITION]: {
+    ...neutralNodeVisual,
     icon: GitBranch,
-    color: "bg-amber-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-amber-100 dark:bg-amber-950/60",
-    iconColor: "text-amber-600 dark:text-amber-200",
-    border: "border-amber-200 dark:border-amber-900/70",
-    hoverBorder: "hover:border-amber-400 dark:hover:border-amber-700",
     label: "条件",
   },
   [NodeType.PARALLEL]: {
+    ...neutralNodeVisual,
     icon: Layers,
-    color: "bg-sky-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-sky-100 dark:bg-sky-950/60",
-    iconColor: "text-sky-600 dark:text-sky-200",
-    border: "border-sky-200 dark:border-sky-900/70",
-    hoverBorder: "hover:border-sky-400 dark:hover:border-sky-700",
     label: "并行",
   },
   [NodeType.END]: {
+    ...neutralNodeVisual,
     icon: Flag,
-    color: "bg-slate-700",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-slate-200 dark:bg-slate-900",
-    iconColor: "text-slate-600 dark:text-slate-200",
-    border: "border-slate-300 dark:border-slate-700",
-    hoverBorder: "hover:border-slate-500 dark:hover:border-slate-600",
     label: "完成",
   },
   [NodeType.NOTIFICATION]: {
+    ...neutralNodeVisual,
     icon: Bell,
-    color: "bg-cyan-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-cyan-50 dark:bg-cyan-950/50",
-    iconColor: "text-cyan-700 dark:text-cyan-200",
-    border: "border-cyan-200 dark:border-cyan-900/70",
-    hoverBorder: "hover:border-cyan-300 dark:hover:border-cyan-700",
     label: "通知",
   },
   [NodeType.SCRIPT]: {
+    ...neutralNodeVisual,
     icon: Code,
-    color: "bg-green-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-green-100 dark:bg-green-950/60",
-    iconColor: "text-green-600 dark:text-green-200",
-    border: "border-green-200 dark:border-green-900/70",
-    hoverBorder: "hover:border-green-400 dark:hover:border-green-700",
     label: "脚本",
   },
   [NodeType.TIMER]: {
+    ...neutralNodeVisual,
     icon: Clock,
-    color: "bg-orange-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-orange-100 dark:bg-orange-950/60",
-    iconColor: "text-orange-600 dark:text-orange-200",
-    border: "border-orange-200 dark:border-orange-900/70",
-    hoverBorder: "hover:border-orange-400 dark:hover:border-orange-700",
     label: "定时",
   },
   [NodeType.SUBPROCESS]: {
+    ...neutralNodeVisual,
     icon: Workflow,
-    color: "bg-teal-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-teal-100 dark:bg-teal-950/60",
-    iconColor: "text-teal-600 dark:text-teal-200",
-    border: "border-teal-200 dark:border-teal-900/70",
-    hoverBorder: "hover:border-teal-400 dark:hover:border-teal-700",
     label: "子流程",
   },
   [NodeType.MANUAL]: {
+    ...neutralNodeVisual,
     icon: ClipboardCheck,
-    color: "bg-cyan-500",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-cyan-100 dark:bg-cyan-950/60",
-    iconColor: "text-cyan-600 dark:text-cyan-200",
-    border: "border-cyan-200 dark:border-cyan-900/70",
-    hoverBorder: "hover:border-cyan-400 dark:hover:border-cyan-700",
     label: "人工",
   },
   [NodeType.COPY]: {
+    ...neutralNodeVisual,
     icon: Send,
-    color: "bg-cyan-600",
-    bg: "bg-white dark:bg-slate-950/88",
-    iconBg: "bg-cyan-100 dark:bg-cyan-950/60",
-    iconColor: "text-cyan-700 dark:text-cyan-200",
-    border: "border-cyan-200 dark:border-cyan-900/70",
-    hoverBorder: "hover:border-cyan-400 dark:hover:border-cyan-700",
     label: "抄送",
   },
 };
@@ -373,28 +321,25 @@ const getNodeAssigneeSummary = (node: EditableWorkflowNode): string => {
 };
 
 const studioSidePanelClassName =
-  "fixed right-0 top-0 z-50 flex h-full w-[22rem] flex-col border-l border-slate-200 bg-white shadow-[0_12px_28px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_16px_32px_rgba(2,6,23,0.34)] animate-in slide-in-from-right duration-300 ease-out";
-
-const studioHintBoxClassName =
-  "border-l-2 border-cyan-200 pl-3 text-[11px] text-slate-500 dark:border-cyan-800 dark:text-slate-300";
+  "fixed right-0 top-0 z-50 flex h-full w-[20rem] flex-col border-l border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950";
 
 const studioSubtleBlockClassName =
-  "rounded-lg border border-slate-200/70 bg-slate-50/60 p-2 dark:border-slate-800 dark:bg-slate-900/50";
+  "border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-950";
 
 const studioQuickAddMenuClassName =
-  "workflow-quick-add-menu absolute left-1/2 z-[100] min-w-[184px] -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 shadow-[0_10px_22px_rgba(15,23,42,0.1)] dark:border-slate-800 dark:bg-slate-950 animate-in fade-in duration-200";
+  "workflow-quick-add-menu absolute left-1/2 z-[100] min-w-[176px] -translate-x-1/2 rounded-md border border-cyan-100 bg-white p-2 dark:border-cyan-950/40 dark:bg-slate-950";
+
+const studioSectionTitleClassName =
+  "text-[11px] font-medium text-cyan-700 dark:text-cyan-300";
 
 interface QuickAddOption {
   type: NodeType;
   icon: React.FC<{ size?: number; className?: string }>;
   label: string;
-  desc: string;
-  color: string;
-  bg: string;
-  border: string;
-  preview: string;
   isBranch?: boolean;
 }
+
+const quickAddOptionIconClassName = "text-slate-500 dark:text-slate-300";
 
 const buildQuickAddOptions = (
   canAddBranch: boolean,
@@ -405,81 +350,41 @@ const buildQuickAddOptions = (
       type: NodeType.APPROVAL,
       icon: UserCheck,
       label: "审批节点",
-      desc: "需要审批人处理",
-      color: "text-cyan-600 dark:text-cyan-200",
-      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
-      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
-      preview: "bg-cyan-50 dark:bg-cyan-950/50",
     },
     {
       type: NodeType.PARALLEL,
       icon: Layers,
       label: "会签节点",
-      desc: "多人同时审批",
-      color: "text-sky-600 dark:text-sky-200",
-      bg: "hover:bg-sky-50 dark:hover:bg-sky-950/40",
-      border: "hover:border-sky-200 dark:hover:border-sky-800",
-      preview: "bg-sky-50 dark:bg-sky-950/50",
     },
     {
       type: NodeType.NOTIFICATION,
       icon: Bell,
       label: "通知节点",
-      desc: "发送通知消息",
-      color: "text-cyan-600 dark:text-cyan-200",
-      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
-      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
-      preview: "bg-cyan-50 dark:bg-cyan-950/50",
     },
     {
       type: NodeType.SCRIPT,
       icon: Code,
       label: "脚本节点",
-      desc: "执行自动化脚本",
-      color: "text-emerald-600 dark:text-emerald-200",
-      bg: "hover:bg-emerald-50 dark:hover:bg-emerald-950/40",
-      border: "hover:border-emerald-200 dark:hover:border-emerald-800",
-      preview: "bg-emerald-50 dark:bg-emerald-950/50",
     },
     {
       type: NodeType.TIMER,
       icon: Clock,
       label: "定时节点",
-      desc: "延迟或定时触发",
-      color: "text-orange-500 dark:text-orange-200",
-      bg: "hover:bg-orange-50 dark:hover:bg-orange-950/40",
-      border: "hover:border-orange-200 dark:hover:border-orange-800",
-      preview: "bg-orange-50 dark:bg-orange-950/50",
     },
     {
       type: NodeType.SUBPROCESS,
       icon: Workflow,
       label: "子流程节点",
-      desc: "调用其他流程",
-      color: "text-teal-600 dark:text-teal-200",
-      bg: "hover:bg-teal-50 dark:hover:bg-teal-950/40",
-      border: "hover:border-teal-200 dark:hover:border-teal-800",
-      preview: "bg-teal-50 dark:bg-teal-950/50",
     },
     {
       type: NodeType.MANUAL,
       icon: ClipboardCheck,
       label: "人工任务",
-      desc: "需要人工处理",
-      color: "text-cyan-600 dark:text-cyan-200",
-      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
-      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
-      preview: "bg-cyan-50 dark:bg-cyan-950/50",
     },
     {
       type: NodeType.COPY,
       icon: Send,
       label: "抄送节点",
-      desc: "发送流程副本",
-      color: "text-cyan-700 dark:text-cyan-200",
-      bg: "hover:bg-cyan-50 dark:hover:bg-cyan-950/40",
-      border: "hover:border-cyan-200 dark:hover:border-cyan-800",
-      preview: "bg-cyan-50 dark:bg-cyan-950/50",
     },
   ];
 
@@ -488,11 +393,6 @@ const buildQuickAddOptions = (
       type: NodeType.CONDITION,
       icon: GitBranch,
       label: "条件分支",
-      desc: "根据条件分流",
-      color: "text-amber-500 dark:text-amber-200",
-      bg: "hover:bg-amber-50 dark:hover:bg-amber-950/40",
-      border: "hover:border-amber-200 dark:hover:border-amber-800",
-      preview: "bg-amber-50 dark:bg-amber-950/50",
       isBranch: true,
     });
   }
@@ -502,11 +402,6 @@ const buildQuickAddOptions = (
       type: NodeType.END,
       icon: Flag,
       label: "结束节点",
-      desc: "流程终点",
-      color: "text-slate-500 dark:text-slate-300",
-      bg: "hover:bg-slate-50 dark:hover:bg-slate-900/80",
-      border: "hover:border-slate-200 dark:hover:border-slate-700",
-      preview: "bg-slate-100 dark:bg-slate-900",
     });
   }
 
@@ -610,7 +505,7 @@ const LazyTextarea = ({ value, onChange, className, ...props }: any) => {
   return (
     <textarea
       {...props}
-      className={`min-h-[88px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/10 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:placeholder:text-slate-500 ${className || ""}`}
+      className={`min-h-[88px] w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm text-slate-700 outline-none transition-all placeholder:text-slate-400 focus:border-slate-400 focus:ring-2 focus:ring-slate-200 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:placeholder:text-slate-500 dark:focus:border-slate-500 dark:focus:ring-slate-800 ${className || ""}`}
       value={val || ""}
       onChange={(e: any) => setVal(e.target.value)}
       onBlur={() => onChange(val)}
@@ -788,19 +683,19 @@ const ApproverValueSelector = ({
                       onClick={() => toggleValue(r.roleKey)}
                         className={`flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-[11px] transition-colors ${
                           isSelected
-                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200"
+                            ? "bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-100"
                             : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/80"
                         }`}
                       >
                         <div
                           className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
                             isSelected
-                              ? "bg-cyan-500 border-cyan-500"
+                              ? "border-slate-700 bg-slate-700 dark:border-slate-200 dark:bg-slate-200"
                               : "border-slate-300 dark:border-slate-700"
                           }`}
                         >
                         {isSelected && (
-                          <span className="text-white text-[10px]">✓</span>
+                          <span className="text-[10px] text-white dark:text-slate-900">✓</span>
                         )}
                       </div>
                       <span className="font-medium">{r.roleName}</span>
@@ -881,19 +776,19 @@ const ApproverValueSelector = ({
                       onClick={() => toggleValue(uid)}
                         className={`flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-[11px] transition-colors ${
                           isSelected
-                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200"
+                            ? "bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-100"
                             : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/80"
                         }`}
                       >
                         <div
                           className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
                             isSelected
-                              ? "bg-cyan-500 border-cyan-500"
+                              ? "border-slate-700 bg-slate-700 dark:border-slate-200 dark:bg-slate-200"
                               : "border-slate-300 dark:border-slate-700"
                           }`}
                         >
                         {isSelected && (
-                          <span className="text-white text-[10px]">✓</span>
+                          <span className="text-[10px] text-white dark:text-slate-900">✓</span>
                         )}
                       </div>
                       <span className="font-medium">
@@ -975,19 +870,19 @@ const ApproverValueSelector = ({
                       onClick={() => toggleValue(did)}
                         className={`flex cursor-pointer items-center gap-2 px-2.5 py-1.5 text-[11px] transition-colors ${
                           isSelected
-                            ? "bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200"
+                            ? "bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-100"
                             : "text-slate-600 hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900/80"
                         }`}
                       >
                         <div
                           className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
                             isSelected
-                              ? "bg-cyan-500 border-cyan-500"
+                              ? "border-slate-700 bg-slate-700 dark:border-slate-200 dark:bg-slate-200"
                               : "border-slate-300 dark:border-slate-700"
                           }`}
                         >
                         {isSelected && (
-                          <span className="text-white text-[10px]">✓</span>
+                          <span className="text-[10px] text-white dark:text-slate-900">✓</span>
                         )}
                       </div>
                       <span className="font-medium">{d.deptName}</span>
@@ -1060,8 +955,6 @@ const PropertyPanel = ({
     setFormData((prev) => ({ ...prev, [field]: value }));
     onUpdate(node.id, { [field]: value });
   };
-  const visual = getNodeVisual(node.type);
-  const PIcon = visual.icon;
   const branchStrategyOptions =
     node.type === NodeType.PARALLEL
       ? (Object.entries(BRANCH_STRATEGY_LABELS).filter(([key]) =>
@@ -1082,19 +975,7 @@ const PropertyPanel = ({
   return (
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
       <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
-        <div className="flex items-center gap-3">
-          <div
-            className={`flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 dark:border-slate-800 ${visual.iconBg}`}
-          >
-            <PIcon size={16} className={visual.iconColor} />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">节点设置</h3>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-              配置 {NODE_TYPE_LABELS[node.type] || node.type} 的属性
-            </p>
-          </div>
-        </div>
+        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">节点设置</div>
         <button
           onClick={onClose}
           className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
@@ -1104,26 +985,22 @@ const PropertyPanel = ({
       </div>
       <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
         <div className="mb-4 flex items-center justify-between border-b border-slate-200 pb-3 dark:border-slate-800">
-          <span
-            className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${visual.iconBg} ${visual.iconColor}`}
-          >
+          <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
             {NODE_TYPE_LABELS[node.type] || node.type}
           </span>
           {node.type !== NodeType.START && node.type !== NodeType.END && (
             <button
               onClick={() => onDelete(node.id)}
-              className="flex items-center gap-1 rounded-lg px-2 py-1 text-[11px] font-medium text-red-500 transition-colors hover:bg-red-50 hover:text-red-600 dark:text-red-300 dark:hover:bg-red-950/40 dark:hover:text-red-200"
+              className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-rose-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-rose-300 dark:hover:bg-rose-950/30 dark:hover:text-rose-200"
               title="删除节点"
             >
               <Trash2 size={14} /> 删除节点
             </button>
           )}
         </div>
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="space-y-2.5">
-            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-              <Settings size={12} /> 基础信息
-            </label>
+            <div className={studioSectionTitleClassName}>基础信息</div>
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">名称</span>
               <LazyInput
@@ -1134,10 +1011,8 @@ const PropertyPanel = ({
             </div>
           </div>
           {node.type === NodeType.APPROVAL && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <UserCheck size={12} /> 审批人设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>审批人设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   审批方式
@@ -1211,39 +1086,11 @@ const PropertyPanel = ({
                   }
                 />
               )}
-              {formData.approverType === "DIRECT_LEADER" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">直属上级</p>
-                  <p className="hidden">
-                    系统将自动查找流程发起人的直属上级作为审批人。无需手动指定。
-                  </p>
-                </div>
-              )}
-              {formData.approverType === "INITIATOR" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">发起人</p>
-                  <p className="hidden">
-                    系统将自动把当前节点分配给流程发起人本人处理。
-                  </p>
-                </div>
-              )}
-              {formData.approverType === "DEPT_MANAGER" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">
-                    部门负责人
-                  </p>
-                  <p className="hidden">
-                    系统将自动查找流程发起人所在部门的负责人作为审批人。无需手动指定。
-                  </p>
-                </div>
-              )}
             </div>
           )}
           {node.type === NodeType.PARALLEL && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Layers size={12} /> 会签设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>会签设置</div>
               {/* 会签类型选择 */}
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
@@ -1284,9 +1131,6 @@ const PropertyPanel = ({
                       handleChange("passPercent", parseInt(val) || 0)
                     }
                   />
-                  <p className="hidden">
-                    💡 当同意人数达到该比例时流程通过
-                  </p>
                 </div>
               )}
               {/* 审批人选择 - 会签场景下隐藏"指定多人"选项，因为会签本身就是多人审批 */}
@@ -1336,38 +1180,20 @@ const PropertyPanel = ({
                   multiple={true}
                 />
               )}
-              {/* 根据会签类型显示不同提示 */}
-              <p className="hidden">
-                {formData.signType === "ANY" &&
-                  "💡 任意一人同意即可通过，一人拒绝则整体拒绝"}
-                {formData.signType === "PERCENT" &&
-                  `💡 同意人数 ≥ ${formData.passPercent || 0}% 时通过`}
-                {formData.signType === "SEQUENTIAL" &&
-                  "💡 按审批人顺序逐个签署，前一人通过后才轮到下一人"}
-                {(!formData.signType || formData.signType === "ALL") &&
-                  "💡 所有审批人都同意才能通过，任一人拒绝则整体拒绝"}
-              </p>
             </div>
           )}
           {/* P2-12: 表单编辑权限 — 适用于审批节点和人工任务节点 */}
           {(node.type === NodeType.APPROVAL ||
             node.type === NodeType.MANUAL) && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <FileCheck size={12} /> 表单权限
-              </label>
-              <div className="flex items-start justify-between gap-3 rounded-lg border border-slate-200/80 bg-slate-50 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/70">
-                <div>
-                  <span className="text-xs text-slate-700 font-medium">
-                    允许编辑表单
-                  </span>
-                <p className="hidden">
-                    开启后，处理人可以修改流程表单数据
-                  </p>
-                </div>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>表单权限</div>
+              <div className="flex items-center justify-between gap-3 border border-slate-200 px-3 py-2 dark:border-slate-800">
+                <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                  允许编辑表单
+                </span>
                 <input
                   type="checkbox"
-                  className="h-4 w-4 cursor-pointer rounded border-slate-300 text-cyan-600 focus:ring-cyan-400"
+                  className="h-4 w-4 cursor-pointer rounded border-slate-300 text-slate-700 focus:ring-slate-400 dark:text-slate-200 dark:focus:ring-slate-600"
                   checked={formData.allowEdit || false}
                   onChange={(e) => handleChange("allowEdit", e.target.checked)}
                 />
@@ -1377,10 +1203,8 @@ const PropertyPanel = ({
           {/* P2-11: SLA 超时配置 — 适用于审批节点和人工任务节点 */}
           {(node.type === NodeType.APPROVAL ||
             node.type === NodeType.MANUAL) && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Clock size={12} /> SLA 超时设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>SLA 超时设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   超时时间（小时）
@@ -1393,9 +1217,6 @@ const PropertyPanel = ({
                     handleChange("slaHours", val ? parseInt(val) : undefined)
                   }
                 />
-                <p className="hidden">
-                  💡 设置后，超时未处理将自动触发超时动作。留空表示不限时。
-                </p>
               </div>
               {formData.slaHours && formData.slaHours > 0 && (
                 <div>
@@ -1419,10 +1240,8 @@ const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.NOTIFICATION && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Bell size={12} /> 通知设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>通知设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   接收人类型
@@ -1481,7 +1300,7 @@ const PropertyPanel = ({
                   通知内容
                 </span>
                 <LazyTextarea
-                  className="min-h-[88px] rounded-lg bg-slate-50/50 dark:bg-slate-950"
+                  className="min-h-[88px]"
                   placeholder="支持变量: ${initiator}, ${amount}, ${days} 等"
                   value={formData.props?.notificationContent || ""}
                   onChange={(val: any) =>
@@ -1491,17 +1310,12 @@ const PropertyPanel = ({
                     })
                   }
                 />
-                <p className="hidden">
-                  💡 可使用 ${"{"}变量名{"}"} 引用流程数据
-                </p>
               </div>
             </div>
           )}
           {node.type === NodeType.SCRIPT && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Code size={12} /> 脚本设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>脚本设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   脚本类型
@@ -1529,7 +1343,7 @@ const PropertyPanel = ({
                     脚本内容
                   </span>
                   <LazyTextarea
-                    className="min-h-[112px] rounded-lg bg-slate-50/60 font-mono text-[11px] dark:bg-slate-950"
+                    className="min-h-[112px] font-mono text-[11px]"
                     placeholder={
                       formData.props?.scriptType === "GROOVY"
                         ? "def result = amount * 1.1\nreturn result"
@@ -1543,9 +1357,6 @@ const PropertyPanel = ({
                       })
                     }
                   />
-                  <p className="hidden">
-                    💡 可访问流程变量: amount, days, initiator 等
-                  </p>
                 </div>
               )}
               {formData.props?.scriptType === "API" && (
@@ -1621,9 +1432,6 @@ const PropertyPanel = ({
                         })
                       }
                     />
-                    <p className="hidden">
-                      💡 可使用 ${"{"}变量名{"}"} 引用流程数据
-                    </p>
                   </div>
                 </>
               )}
@@ -1650,10 +1458,8 @@ const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.TIMER && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Clock size={12} /> 定时设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>定时设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   定时类型
@@ -1690,9 +1496,6 @@ const PropertyPanel = ({
                       })
                     }
                   />
-                  <p className="hidden">
-                    💡 流程将在指定时间后自动继续
-                  </p>
                 </div>
               )}
               {formData.props?.timerType === "SCHEDULE" && (
@@ -1710,18 +1513,13 @@ const PropertyPanel = ({
                       })
                     }
                   />
-                  <p className="hidden">
-                    💡 流程将在指定时间点自动继续
-                  </p>
                 </div>
               )}
             </div>
           )}
           {node.type === NodeType.SUBPROCESS && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Workflow size={12} /> 子流程设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>子流程设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   子流程ID
@@ -1736,16 +1534,13 @@ const PropertyPanel = ({
                     })
                   }
                 />
-                <p className="hidden">
-                  💡 将调用指定的子流程
-                </p>
               </div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   变量映射 (JSON)
                 </span>
                 <LazyTextarea
-                  className="min-h-[88px] rounded-lg bg-slate-50/60 font-mono text-[11px] dark:bg-slate-950"
+                  className="min-h-[88px] font-mono text-[11px]"
                   placeholder='{"subAmount": "${amount}", "subDays": "${days}"}'
                   value={formData.props?.variableMapping || ""}
                   onChange={(val: any) =>
@@ -1755,9 +1550,6 @@ const PropertyPanel = ({
                     })
                   }
                 />
-                <p className="hidden">
-                  💡 定义父流程变量到子流程的映射关系
-                </p>
               </div>
               <div className="flex items-center gap-2">
                 <input
@@ -1782,10 +1574,8 @@ const PropertyPanel = ({
             </div>
           )}
           {node.type === NodeType.COPY && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Send size={12} /> 抄送设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>抄送设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   抄送人类型
@@ -1860,40 +1650,17 @@ const PropertyPanel = ({
                   }
                 />
               )}
-              {formData.approverType === "DIRECT_LEADER" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">直属上级</p>
-                  <p className="hidden">
-                    系统将自动抄送给流程发起人的直属上级。
-                  </p>
-                </div>
-              )}
-              {formData.approverType === "DEPT_MANAGER" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">
-                    部门负责人
-                  </p>
-                  <p className="hidden">
-                    系统将自动抄送给流程发起人所在部门的负责人。
-                  </p>
-                </div>
-              )}
-              <p className="hidden">
-                💡 抄送节点仅发送通知副本，不阻塞流程推进
-              </p>
             </div>
           )}
           {node.type === NodeType.MANUAL && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <ClipboardCheck size={12} /> 人工任务设置
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>人工任务设置</div>
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   任务描述
                 </span>
                 <LazyTextarea
-                  className="min-h-[88px] rounded-lg bg-slate-50/50 dark:bg-slate-950"
+                  className="min-h-[88px]"
                   placeholder="描述需要人工处理的任务内容"
                   value={formData.props?.taskDescription || ""}
                   onChange={(val: any) =>
@@ -1977,32 +1744,6 @@ const PropertyPanel = ({
                   }
                 />
               )}
-              {formData.approverType === "DIRECT_LEADER" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">直属上级</p>
-                  <p className="hidden">
-                    系统将自动查找流程发起人的直属上级作为处理人。无需手动指定。
-                  </p>
-                </div>
-              )}
-              {formData.approverType === "INITIATOR" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">发起人</p>
-                  <p className="hidden">
-                    系统将自动把人工任务分配给流程发起人本人处理。
-                  </p>
-                </div>
-              )}
-              {formData.approverType === "DEPT_MANAGER" && (
-                <div className={`${studioHintBoxClassName} py-0.5`}>
-                  <p className="text-xs font-medium text-cyan-700">
-                    部门负责人
-                  </p>
-                  <p className="hidden">
-                    系统将自动查找流程发起人所在部门的负责人作为处理人。无需手动指定。
-                  </p>
-                </div>
-              )}
               <div>
                 <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                   任务优先级
@@ -2026,10 +1767,8 @@ const PropertyPanel = ({
             </div>
           )}
           {branchCount > 0 && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <GitBranch size={12} /> 分支规则
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80">
+              <div className={studioSectionTitleClassName}>分支规则</div>
               <Select
                 value={normalizedBranchStrategy}
                 onValueChange={(v) => handleChange("branchStrategy", v)}
@@ -2047,24 +1786,18 @@ const PropertyPanel = ({
               </Select>
             </div>
           )}
-          <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-              <FileText size={12} /> 条件设置
-            </label>
+          <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className={studioSectionTitleClassName}>条件设置</div>
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 触发条件
               </span>
               <LazyInput
-                className="bg-slate-50/60 font-mono text-[11px] dark:bg-slate-950"
+                className="font-mono text-[11px]"
                 placeholder="例如: amount > 5000"
                 value={formData.condition || ""}
                 onChange={(val: any) => handleChange("condition", val)}
               />
-              <p className="hidden">
-                💡 示例：amount {">"} 5000 或 days {">="} 3<br />
-                可用字段：amount(金额)、days(天数)、deptId(部门)
-              </p>
             </div>
           </div>
           {/* P2-9 & P2-10: 高级设置 (重试与数据流) — 适用于自动执行类节点 */}
@@ -2075,10 +1808,8 @@ const PropertyPanel = ({
             NodeType.SUBPROCESS,
             NodeType.COPY,
           ].includes(node.type as NodeType) && (
-            <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80 pb-3.5">
-              <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-                <Settings size={12} /> 高级设置 (重试与数据映射)
-              </label>
+            <div className="space-y-2 pt-3 border-t border-slate-100/80 pb-3">
+              <div className={studioSectionTitleClassName}>高级设置</div>
 
               <div className={studioSubtleBlockClassName}>
                 <span className="text-xs text-slate-600 font-medium">
@@ -2120,23 +1851,12 @@ const PropertyPanel = ({
                     />
                   </div>
                 </div>
-                <p className="hidden">
-                  💡 节点执行失败时自动重试。设为 0 表示不重试。
-                </p>
               </div>
 
               <div className={studioSubtleBlockClassName}>
                 <span className="text-xs text-slate-600 font-medium mb-1 block">
                   输入映射 (Inputs JSON)
                 </span>
-                <p className="hidden">
-                  节点执行前，从流程变量提取到节点局部变量。
-                  <br />
-                  格式:{" "}
-                  <code className="bg-slate-200 px-1 rounded text-[9px]">
-                    {'{"localVar": "processVar"}'}
-                  </code>
-                </p>
                 <LazyTextarea
                   className="min-h-[64px] rounded-lg bg-white font-mono text-[11px] dark:bg-slate-950"
                   placeholder='{"orderId": "formData.id"}'
@@ -2161,14 +1881,6 @@ const PropertyPanel = ({
                 <span className="text-xs text-slate-600 font-medium mb-1 block">
                   输出映射 (Outputs JSON)
                 </span>
-                <p className="hidden">
-                  节点执行后，将节点产出写回全局流程变量。
-                  <br />
-                  格式:{" "}
-                  <code className="bg-slate-200 px-1 rounded text-[9px]">
-                    {'{"processVar": "localVar"}'}
-                  </code>
-                </p>
                 <LazyTextarea
                   className="min-h-[64px] rounded-lg bg-white font-mono text-[11px] dark:bg-slate-950"
                   placeholder='{"formData.status": "resultStatus"}'
@@ -2217,10 +1929,10 @@ const ConnectorDropZone = ({
   if (!isDraggingGlobal) {
     return (
       <div className="flex flex-col items-center">
-        <div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400 dark:bg-slate-700 dark:group-hover/node:bg-slate-500"></div>
+        <div className="h-8 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
         <ArrowDown
           size={14}
-          className="-mb-1 -mt-1 text-slate-300 transition-colors duration-300 group-hover/node:text-slate-400 dark:text-slate-700 dark:group-hover/node:text-slate-500"
+          className="-mb-1 -mt-1 text-slate-300 dark:text-slate-700"
         />
       </div>
     );
@@ -2233,10 +1945,10 @@ const ConnectorDropZone = ({
   if (isInvalidSelfDrop) {
     return (
       <div className="flex flex-col items-center">
-        <div className="h-8 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400 opacity-50"></div>
+        <div className="h-8 w-0.5 bg-slate-300 opacity-50 dark:bg-slate-700"></div>
         <ArrowDown
           size={14}
-          className="text-slate-300 -mt-1 mb-1 transition-colors duration-300 group-hover/node:text-slate-400 opacity-50"
+          className="text-slate-300 -mt-1 mb-1 opacity-50 dark:text-slate-700"
         />
       </div>
     );
@@ -2245,13 +1957,13 @@ const ConnectorDropZone = ({
   return (
     <div className="flex flex-col items-center relative py-1">
       <div
-        className={`h-10 w-0.5 transition-all ${isOver ? "bg-cyan-500" : "bg-slate-300 dark:bg-slate-700"}`}
+        className={`h-10 w-0.5 transition-all ${isOver ? "bg-slate-500 dark:bg-slate-300" : "bg-slate-300 dark:bg-slate-700"}`}
       ></div>
       <div
-        className={`workflow-studio-dropzone absolute left-1/2 top-1/2 z-20 flex h-8 w-28 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed transition-all ${
+        className={`workflow-studio-dropzone absolute left-1/2 top-1/2 z-20 flex h-8 w-28 -translate-x-1/2 -translate-y-1/2 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-dashed transition-colors ${
           isOver
-            ? "border-cyan-400 bg-cyan-50 dark:bg-cyan-950/40"
-            : "border-slate-300 bg-white hover:border-cyan-300 hover:bg-cyan-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/30"
+            ? "border-cyan-300 bg-cyan-50 dark:border-cyan-700 dark:bg-cyan-950/20"
+            : "border-slate-300 bg-white hover:border-cyan-200 hover:bg-cyan-50 dark:border-slate-700 dark:bg-slate-950 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/20"
         }`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -2269,7 +1981,7 @@ const ConnectorDropZone = ({
       >
         <Move
           size={14}
-          className={isOver ? "text-cyan-500 dark:text-cyan-200" : "text-slate-400 dark:text-slate-500"}
+          className={isOver ? "text-cyan-700 dark:text-cyan-200" : "text-slate-400 dark:text-slate-500"}
         />
         <span
           className={`text-[11px] font-medium ${isOver ? "text-cyan-700 dark:text-cyan-200" : "text-slate-400 dark:text-slate-500"}`}
@@ -2279,7 +1991,7 @@ const ConnectorDropZone = ({
       </div>
       <ArrowDown
         size={14}
-        className={`-mb-1 -mt-1 ${isOver ? "text-cyan-500 dark:text-cyan-200" : "text-slate-300 dark:text-slate-700"}`}
+        className={`-mb-1 -mt-1 ${isOver ? "text-cyan-500 dark:text-cyan-300" : "text-slate-300 dark:text-slate-700"}`}
       />
     </div>
   );
@@ -2378,29 +2090,19 @@ const FlowNode = ({
   const nodeAssigneeSummary = getNodeAssigneeSummary(displayNode);
 
   return (
-    <div className="flex flex-col items-center relative group/node animate-in fade-in zoom-in-95 duration-300 ease-out">
+    <div className="flex flex-col items-center relative group/node">
       {/* 节点卡片容器 - 独立的相对定位容器 */}
       <div className={`relative group ${showQuickAdd ? "z-50" : ""}`}>
-        {/* 错误提示框 */}
-        {isInvalid && (
-          <div
-            className="absolute -top-3 -right-3 w-6 h-6 bg-red-500 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-md z-40 animate-pulse border-2 border-white"
-            title="节点配置不完整"
-          >
-            !
-          </div>
-        )}
-
         {/* 节点卡片 */}
         <div
-          className={`workflow-node-card relative z-10 w-[14rem] cursor-pointer rounded-lg border shadow-[0_4px_14px_rgba(15,23,42,0.04)] transition-all duration-200 ${visual.bg} ${
+          className={`workflow-node-card relative z-10 w-[13rem] cursor-pointer rounded-md border transition-colors duration-150 ${visual.bg} ${
             isDragging
               ? "scale-[0.98] border-slate-300 opacity-40"
-              : isInvalid
-                ? "border-red-400 ring-2 ring-red-100 dark:border-red-500 dark:ring-red-950/40"
+                : isInvalid
+                  ? "border-rose-400 bg-rose-50/40 dark:border-rose-500 dark:bg-rose-950/10"
                 : isSelected
-                  ? `border-cyan-500 ring-2 ring-cyan-100 dark:ring-cyan-950/40 ${visual.bg}`
-                  : `${visual.border} ${visual.hoverBorder} hover:border-slate-300 hover:shadow-[0_8px_20px_rgba(15,23,42,0.06)] dark:hover:border-slate-700`
+                  ? "border-cyan-300 bg-cyan-50/60 dark:border-cyan-700 dark:bg-cyan-950/20"
+                  : `${visual.border} hover:border-cyan-200 dark:hover:border-cyan-800`
           } active:scale-[0.99]`}
           onClick={(e) => {
             e.stopPropagation();
@@ -2423,22 +2125,20 @@ const FlowNode = ({
             actions.setDraggingNodeId(null);
           }}
         >
-          {/* 顶部颜色条 */}
-          <div className={`absolute inset-y-3 left-0.5 w-0.5 rounded-full ${visual.color}`}></div>
-          <div className="p-3 pl-3.5">
+          <div className="p-3">
             <div className="flex items-start gap-2">
               <div
-                className={`mt-0.5 flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-md ${visual.iconBg}`}
+                className="mt-0.5 flex h-6.5 w-6.5 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950"
               >
                 <NIcon size={14} className={visual.iconColor} />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13px] font-semibold text-slate-700 dark:text-slate-100">
+                    <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-100">
                       {displayNode.title}
                     </div>
-                    <div className="mt-0.5 truncate text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                    <div className="mt-0.5 truncate text-[11px] text-slate-400 dark:text-slate-500">
                       {nodeMetaText}
                     </div>
                   </div>
@@ -2492,10 +2192,10 @@ const FlowNode = ({
                   !showQuickAdd &&
                   actions.setHoveredNodeId(null)
                 }
-                className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${
+                className={`flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                   showQuickAdd
-                    ? "border-cyan-600 bg-cyan-600 text-white"
-                    : "border-slate-200 bg-white text-slate-500 hover:border-cyan-300 hover:text-cyan-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+                    ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500 dark:text-white"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
                 }`}
                 title={showQuickAdd ? "关闭菜单" : "在此之前添加节点"}
               >
@@ -2503,7 +2203,7 @@ const FlowNode = ({
               </button>
               {showQuickAdd && (
                 <div
-                  className={`${studioQuickAddMenuClassName} bottom-9 slide-in-from-bottom-2`}
+                  className={`${studioQuickAddMenuClassName} bottom-9`}
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();
@@ -2519,16 +2219,12 @@ const FlowNode = ({
                   }}
                   style={{ pointerEvents: "auto" }}
                 >
-                  <div className="mb-1 flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    <Sparkles size={12} className="text-cyan-500 dark:text-cyan-300" />
-                    选择节点类型
-                  </div>
                   {buildQuickAddOptions(canAddBranch, false).map((item) => {
                     const ItemIcon = item.icon;
                     return (
                       <button
                         key={item.type}
-                        className={`mb-1 flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-all ${item.bg} ${item.border}`}
+                        className="mb-1 flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-950/20"
                         onClick={(e) => {
                           e.stopPropagation();
                           if ("isBranch" in item && item.isBranch) {
@@ -2539,8 +2235,8 @@ const FlowNode = ({
                           actions.setActiveQuickAddId(null);
                         }}
                       >
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${item.preview}`}>
-                          <ItemIcon size={14} className={item.color} />
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-cyan-100 bg-cyan-50 dark:border-cyan-950/40 dark:bg-cyan-950/20">
+                          <ItemIcon size={14} className={quickAddOptionIconClassName} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium text-slate-700 dark:text-slate-100">
@@ -2578,10 +2274,10 @@ const FlowNode = ({
                   !showQuickAdd &&
                   actions.setHoveredNodeId(null)
                 }
-                className={`flex h-7 w-7 items-center justify-center rounded-full border transition-all duration-200 ${
+                className={`flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
                   showQuickAdd
-                    ? "border-cyan-600 bg-cyan-600 text-white"
-                    : "border-slate-200 bg-white text-slate-500 hover:border-cyan-300 hover:text-cyan-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+                    ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500 dark:text-white"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
                 }`}
                 title={showQuickAdd ? "关闭菜单" : "添加节点"}
               >
@@ -2589,7 +2285,7 @@ const FlowNode = ({
               </button>
               {showQuickAdd && (
                 <div
-                  className={`${studioQuickAddMenuClassName} top-9 slide-in-from-top-2`}
+                  className={`${studioQuickAddMenuClassName} top-9`}
                   onClick={(e) => e.stopPropagation()}
                   onMouseEnter={(e) => {
                     e.stopPropagation();
@@ -2605,16 +2301,12 @@ const FlowNode = ({
                   }}
                   style={{ pointerEvents: "auto" }}
                 >
-                  <div className="mb-1 flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                    <Sparkles size={12} className="text-cyan-500 dark:text-cyan-300" />
-                    选择节点类型
-                  </div>
                   {buildQuickAddOptions(canAddBranch, true).map((item) => {
                     const ItemIcon = item.icon;
                     return (
                       <button
                         key={item.type}
-                        className={`mb-1 flex w-full items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-left transition-all ${item.bg} ${item.border}`}
+                        className="mb-1 flex w-full items-center gap-2 rounded-md border border-transparent px-2 py-1.5 text-left transition-colors hover:bg-cyan-50 dark:hover:bg-cyan-950/20"
                         onClick={(e) => {
                           e.stopPropagation();
                           if ("isBranch" in item && item.isBranch) {
@@ -2625,8 +2317,8 @@ const FlowNode = ({
                           actions.setActiveQuickAddId(null);
                         }}
                       >
-                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ${item.preview}`}>
-                          <ItemIcon size={14} className={item.color} />
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-cyan-100 bg-cyan-50 dark:border-cyan-950/40 dark:bg-cyan-950/20">
+                          <ItemIcon size={14} className={quickAddOptionIconClassName} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="text-xs font-medium text-slate-700 dark:text-slate-100">
@@ -2638,7 +2330,7 @@ const FlowNode = ({
                   })}
                   <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-800">
                     <button
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs text-slate-600 transition-colors hover:bg-slate-50 dark:text-slate-300 dark:hover:bg-slate-900"
+                      className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs text-slate-600 transition-colors hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-300 dark:hover:bg-cyan-950/20 dark:hover:text-cyan-200"
                       onClick={(e) => {
                         e.stopPropagation();
                         actions.onCopy(nodeId);
@@ -2659,16 +2351,16 @@ const FlowNode = ({
       {branchChildIds.length > 0 && (
         <div className="flex flex-col items-center w-full mt-6 flex-none">
           {/* 从父节点到分支点的垂直连接线 */}
-          <div className="h-6 w-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
+          <div className="h-6 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
 
           {/* 分支点 - 菱形指示器 */}
-          <div className="z-10 -mb-[1px] h-2.5 w-2.5 rotate-45 border border-amber-300 bg-amber-100 dark:border-amber-800 dark:bg-amber-900/50"></div>
+          <div className="z-10 -mb-[1px] h-2.5 w-2.5 rotate-45 border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900"></div>
 
           {/* 分支容器 */}
           <div className="flex gap-12 relative pt-6 text-center w-full justify-center">
             {/* 顶部的水平连接线 - 连接所有分支的开始端 */}
             <div
-              className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"
+              className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 dark:bg-slate-700"
               style={{
                 left: `${100 / branchChildIds.length / 2}%`,
                 right: `${100 / branchChildIds.length / 2}%`,
@@ -2681,12 +2373,11 @@ const FlowNode = ({
                 className="flex flex-col items-center relative w-full"
               >
                 {/* 从顶部水平线往下的垂线 */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400 -mt-6"></div>
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-slate-300 dark:bg-slate-700 -mt-6"></div>
 
                 {/* 分支入口小标签 */}
                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-10">
-                  <div className="flex items-center gap-1 whitespace-nowrap rounded-full border border-amber-200 bg-white px-2.5 py-1 text-[10px] font-medium text-amber-700 dark:border-amber-800 dark:bg-slate-950 dark:text-amber-200">
-                    <GitBranch size={10} />
+                  <div className="whitespace-nowrap text-[10px] font-medium text-slate-500 dark:text-slate-400">
                     分支 {index + 1}
                   </div>
                 </div>
@@ -2706,13 +2397,13 @@ const FlowNode = ({
                 </div>
 
                 {/* 关键修复：底部自动填充延长线，利用 flex-1。如果本分支内容较短，这就自动把剩下的高度拉满，延展下垂线以合并入底部主干横线！ */}
-                <div className="w-0.5 min-h-[40px] bg-slate-300 flex-1 transition-colors duration-300 group-hover/node:bg-slate-400"></div>
+                <div className="w-0.5 min-h-[40px] bg-slate-300 flex-1 dark:bg-slate-700"></div>
               </div>
             ))}
 
             {/* 底部的闭合水平连接线 - 同步汇合所有的下边沿延长线 */}
             <div
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-300 transition-colors duration-300 group-hover/node:bg-slate-400"
+              className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-300 dark:bg-slate-700"
               style={{
                 left: `${100 / branchChildIds.length / 2}%`,
                 right: `${100 / branchChildIds.length / 2}%`,
@@ -2721,7 +2412,7 @@ const FlowNode = ({
           </div>
 
           {/* 汇合点：表示所有并行支路收束为一，完美接上后方的流程 */}
-          <div className="w-3 h-3 bg-white border-2 border-slate-300 rounded-full shadow-sm z-10 -mt-1.5 transition-colors duration-300 group-hover/node:border-slate-400"></div>
+          <div className="w-3 h-3 bg-white border-2 border-slate-300 rounded-full z-10 -mt-1.5 dark:border-slate-700 dark:bg-slate-950"></div>
         </div>
       )}
 
@@ -3095,17 +2786,7 @@ const GlobalPropertyPanel = ({
   return (
     <div className={`workflow-studio-panel ${studioSidePanelClassName}`}>
       <div className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
-            <Settings size={16} className="text-cyan-600 dark:text-cyan-200" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-100">全局属性</h3>
-            <p className="mt-0.5 text-[11px] text-slate-500 dark:text-slate-400">
-              配置流程的全局属性和元数据
-            </p>
-          </div>
-        </div>
+        <div className="text-sm font-semibold text-slate-800 dark:text-slate-100">全局属性</div>
         <button
           onClick={onClose}
           className="rounded-lg border border-slate-200 bg-white p-1.5 text-slate-400 transition-colors hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
@@ -3114,18 +2795,16 @@ const GlobalPropertyPanel = ({
         </button>
       </div>
       <div className="custom-scrollbar flex-1 overflow-y-auto p-4">
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="space-y-2.5">
-            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-              <FileText size={12} /> 基础信息
-            </label>
+            <div className={studioSectionTitleClassName}>基础信息</div>
 
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 流程描述
               </span>
               <LazyTextarea
-                className="min-h-[88px] rounded-lg bg-slate-50/50 dark:bg-slate-950"
+                className="min-h-[88px]"
                 placeholder="请输入流程描述"
                 value={formData.description || ""}
                 onChange={(val: string) => handleChange("description", val)}
@@ -3166,9 +2845,6 @@ const GlobalPropertyPanel = ({
                   value={formData.formId || ""}
                   onChange={(val: string) => handleChange("formId", val)}
                 />
-                <p className="hidden">
-                  💡 后续将支持从表单列表中选择
-                </p>
               </div>
             </div>
 
@@ -3184,10 +2860,8 @@ const GlobalPropertyPanel = ({
             </div>
           </div>
 
-          <div className="space-y-2.5 pt-3.5 border-t border-slate-100/80">
-            <label className="text-xs font-semibold text-slate-600 flex items-center gap-1.5">
-              <ShieldCheck size={12} /> 发起权限
-            </label>
+          <div className="space-y-2 pt-3 border-t border-slate-100/80">
+            <div className={studioSectionTitleClassName}>发起权限</div>
             <div>
               <span className="mb-1 block text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 谁可以发起此流程
@@ -3277,28 +2951,20 @@ const WorkflowToolbar = ({
   saving: boolean;
 }) => {
   return (
-    <div className="workflow-studio-toolbar relative z-20 flex min-h-[68px] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-slate-800 dark:bg-slate-950">
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2.5">
+    <div className="workflow-studio-toolbar relative z-20 flex min-h-[56px] shrink-0 flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2 dark:border-slate-800 dark:bg-slate-950">
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
         <div className="flex min-w-0 items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900">
-            <GitMerge size={18} className="text-cyan-700 dark:text-cyan-200" />
-          </div>
           <Input
-            className="h-10 w-64 max-w-full rounded-lg border-slate-200 bg-white px-3 text-base font-semibold shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+            className="h-8 w-48 max-w-full rounded-md border-slate-200 bg-white px-3 text-sm font-medium shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
             value={workflowName}
             onChange={(e) => onNameChange(e.target.value)}
-            placeholder="未命名流程"
+            placeholder="流程名称"
           />
-        </div>
-        <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            KEY
-          </span>
           <Input
-            className="h-7 w-40 border-0 bg-transparent px-0 text-xs font-mono shadow-none focus-visible:ring-0 dark:bg-transparent dark:text-slate-100"
+            className="h-8 w-36 max-w-full rounded-md border-slate-200 bg-white px-3 font-mono text-[11px] shadow-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
             value={workflowKey}
             onChange={(e) => onKeyChange(e.target.value)}
-            placeholder="process_key"
+            placeholder="流程 Key"
           />
         </div>
       </div>
@@ -3307,18 +2973,16 @@ const WorkflowToolbar = ({
           variant="outline"
           size="sm"
           onClick={onOpenSettings}
-          className="h-8 shrink-0 gap-2 whitespace-nowrap rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:border-cyan-200 hover:text-cyan-600 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+          className="shrink-0 whitespace-nowrap"
         >
-          <FileText size={14} className="text-cyan-600 dark:text-cyan-200" />
           流程设置
         </Button>
         <Button
           variant="outline"
           size="sm"
           onClick={onOpenGlobalConfig}
-          className="h-8 shrink-0 gap-2 whitespace-nowrap rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:border-cyan-200 hover:text-cyan-700 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+          className="shrink-0 whitespace-nowrap"
         >
-          <Settings size={14} className="text-cyan-600 dark:text-cyan-200" />
           全局属性
         </Button>
         {/* 版本历史按钮 - 仅在流程已保存时显示 */}
@@ -3329,10 +2993,9 @@ const WorkflowToolbar = ({
               variant="outline"
               size="sm"
               onClick={onViewVersionHistory}
-              className="h-8 shrink-0 gap-2 whitespace-nowrap rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:border-cyan-200 hover:text-cyan-700 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+              className="shrink-0 whitespace-nowrap"
               title="查看版本历史"
             >
-              <Clock size={14} className="text-cyan-600 dark:text-cyan-200" />
               版本历史
             </Button>
           )}
@@ -3342,20 +3005,19 @@ const WorkflowToolbar = ({
             variant="outline"
             size="sm"
             onClick={onExport}
-            className="h-8 shrink-0 gap-2 whitespace-nowrap rounded-lg px-2.5 text-xs font-medium text-slate-600 hover:border-cyan-200 hover:text-cyan-700 dark:text-slate-300 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+            className="shrink-0 whitespace-nowrap"
             title="导出流程"
           >
-            <FileDown size={14} className="text-cyan-600 dark:text-cyan-200" />
             导出
           </Button>
         )}
-        <div className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+        <div className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950">
           <Button
             variant="ghost"
             size="icon"
             onClick={onUndo}
             disabled={!canUndo}
-            className={`h-7 w-7 rounded-md p-0 ${!canUndo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"}`}
+            className={`h-7 w-7 rounded-md p-0 ${!canUndo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
             title="撤销 (Ctrl+Z)"
           >
             <Undo2 size={16} />
@@ -3365,7 +3027,7 @@ const WorkflowToolbar = ({
             size="icon"
             onClick={onRedo}
             disabled={!canRedo}
-            className={`h-7 w-7 rounded-md p-0 ${!canRedo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-white"}`}
+            className={`h-7 w-7 rounded-md p-0 ${!canRedo ? "cursor-not-allowed text-slate-300 dark:text-slate-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"}`}
             title="重做 (Ctrl+Y)"
           >
             <Redo2 size={16} />
@@ -3376,26 +3038,22 @@ const WorkflowToolbar = ({
           size="sm"
           onClick={onSave}
           disabled={saving}
-          className="h-8 shrink-0 gap-2 whitespace-nowrap rounded-lg border-slate-300 px-3 text-xs font-medium text-slate-700 hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-900"
+          className="shrink-0 gap-1.5 whitespace-nowrap"
         >
           {saving ? (
             <div className="h-4 w-4 animate-spin rounded-full border-2 border-slate-700 border-t-transparent dark:border-slate-200 dark:border-t-transparent"></div>
-          ) : (
-            <Save size={16} />
-          )}
+          ) : null}
           {saving ? "保存中..." : "保存"}
         </Button>
         <Button
           size="sm"
           onClick={onDeploy}
           disabled={saving}
-          className="h-8 shrink-0 gap-2 whitespace-nowrap rounded-lg bg-cyan-600 px-3 text-xs font-semibold text-white hover:bg-cyan-700 disabled:opacity-70"
+          className="shrink-0 gap-1.5 whitespace-nowrap"
         >
           {saving ? (
             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-          ) : (
-            <UploadCloud size={16} />
-          )}
+          ) : null}
           {saving ? "发布中..." : "发布"}
         </Button>
       </div>
@@ -4495,7 +4153,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
           {/* 拖拽全局提示 */}
           {isDraggingGlobal && (
-            <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-[11px] text-cyan-700 dark:border-cyan-900 dark:bg-slate-950 dark:text-cyan-200">
+            <div className="absolute left-1/2 top-4 z-20 flex -translate-x-1/2 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-[11px] text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
               <Move size={14} /> 拖拽节点到连接线上的"拖到这里"区域即可移动
             </div>
           )}
@@ -4572,8 +4230,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           message={confirmDialog.message}
           confirmText="确定"
           cancelText="取消"
-          variant="warning"
-          onConfirm={confirmDialog.onConfirm}
+          onConfirm={() => {
+            confirmDialog.onConfirm();
+            setConfirmDialog({ open: false, message: "", onConfirm: () => {} });
+          }}
           onCancel={() =>
             setConfirmDialog({ open: false, message: "", onConfirm: () => {} })
           }

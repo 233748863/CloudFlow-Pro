@@ -5,6 +5,7 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 员工证件VO
@@ -70,7 +71,7 @@ public class EmployeeDocumentVO implements Serializable {
     /**
      * 证件扫描件URL
      */
-    private String fileUrl;
+    private List<String> attachmentUrls;
 
     /**
      * 创建时间

@@ -135,7 +135,6 @@ const formatDateTime = (value?: string | null) => {
 
 const InlineState = ({
   title,
-  description,
   className,
 }: {
   title: string;
@@ -147,9 +146,6 @@ const InlineState = ({
       <ShieldCheck className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -170,7 +166,6 @@ const DetailRow = ({
 
 const DialogSection = ({
   title,
-  description,
   children,
 }: {
   title: string;
@@ -180,9 +175,6 @@ const DialogSection = ({
   <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      ) : null}
     </div>
     <div className="p-4">{children}</div>
   </section>
@@ -510,9 +502,6 @@ export const HrProbationPage: React.FC = () => {
         <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           转正申请
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          左侧锁定员工，中间切换申请，右侧持续办理审批与驳回动作，整体结构直接收敛到参考后台页语法。
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -799,7 +788,6 @@ export const HrProbationPage: React.FC = () => {
               {!detail ? (
                 <InlineState
                   title="请选择一条转正申请"
-                  description="先在中间列表选择一条转正申请，这里会展示完整评价信息与办理动作。"
                   className="py-20"
                 />
               ) : (
@@ -936,7 +924,6 @@ export const HrProbationPage: React.FC = () => {
       <BaseDialog
         open={createDialogOpen}
         title="新建转正申请"
-        description="直接按后端 DTO 字段提交试用期和评价信息。"
         onClose={resetCreateDialog}
         maxWidthClassName="max-w-3xl"
         footer={(
@@ -953,7 +940,6 @@ export const HrProbationPage: React.FC = () => {
         <div className="space-y-4">
           <DialogSection
             title="员工与周期"
-            description="直接按后端 DTO 字段提交员工和试用周期。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
@@ -1014,7 +1000,6 @@ export const HrProbationPage: React.FC = () => {
 
           <DialogSection
             title="评价信息"
-            description="用于直接联调自评与主管评价字段。"
           >
             <div className="grid grid-cols-1 gap-4">
               <div className="space-y-2">

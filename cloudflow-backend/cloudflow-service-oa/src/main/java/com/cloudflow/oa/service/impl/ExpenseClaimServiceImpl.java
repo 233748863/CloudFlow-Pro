@@ -14,6 +14,7 @@ import com.cloudflow.oa.mapper.BizExpenseItemMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.IExpenseClaimService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -62,6 +63,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Audit(name = "创建报销申请", spel = "#claim")
     @Transactional(rollbackFor = Exception.class)
     public boolean createClaim(BizExpenseClaim claim) {
+        normalizeClaimItems(claim);
         // 从当前登录用户上下文中填充用户信息
         claim.setUserId(UserContext.getUserId());
         claim.setUserName(UserContext.getUserName());
@@ -93,6 +95,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Audit(name = "更新报销申请", spel = "#claim", oldVal = "@expenseClaimServiceImpl.getById(#claim.id)")
     @Transactional(rollbackFor = Exception.class)
     public boolean updateClaim(BizExpenseClaim claim) {
+        normalizeClaimItems(claim);
         // 更新报销申请
         boolean result = updateById(claim);
         
@@ -231,7 +234,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                 item.setExpenseDate(ve.getExpenseDate());
             }
             item.setDescription(ve.getDescription());
-            item.setReceiptUrl(ve.getReceiptUrl());
+            item.setReceiptUrl(
+                    OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(ve.getReceiptUrl(), "报销明细凭证附件")
+            );
             item.setVehicleExpenseId(ve.getExpenseId()); // 关联原始车辆费用ID
             expenseItemMapper.insert(item);
         }
@@ -290,5 +295,19 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             return (String) data;
         }
         return null;
+    }
+
+    private void normalizeClaimItems(BizExpenseClaim claim) {
+        if (claim == null) {
+            throw new IllegalArgumentException("报销申请不能为空");
+        }
+        if (claim.getItems() == null || claim.getItems().isEmpty()) {
+            return;
+        }
+        for (BizExpenseItem item : claim.getItems()) {
+            item.setReceiptUrl(
+                    OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(item.getReceiptUrl(), "报销明细凭证附件")
+            );
+        }
     }
 }

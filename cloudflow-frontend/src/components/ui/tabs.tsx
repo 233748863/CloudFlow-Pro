@@ -4,6 +4,7 @@
  * 用于在多个内容面板之间切换
  */
 import React, { useState, createContext, useContext } from 'react';
+import { cn } from '@/utils/cn';
 
 // 创建 Tabs 上下文
 const TabsContext = createContext<{
@@ -53,7 +54,7 @@ export const Tabs = ({
  */
 export const TabsList = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
   return (
-    <div className={`inline-flex min-h-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 p-1 text-slate-500 shadow-sm ${className}`}>
+    <div className={cn('cf-tabs min-h-11', className)}>
       {children}
     </div>
   );
@@ -77,11 +78,11 @@ export const TabsTrigger = ({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center whitespace-nowrap rounded-lg px-3.5 py-2 text-sm font-medium ring-offset-white transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/30 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 ${
-        isActive 
-          ? 'border border-slate-200 bg-white text-cyan-700 shadow-sm' 
-          : 'text-slate-500 hover:bg-white hover:text-slate-900'
-      } ${className}`}
+      className={cn(
+        'cf-tab disabled:pointer-events-none disabled:opacity-50',
+        isActive ? 'cf-tab-active' : '',
+        className,
+      )}
       onClick={() => onValueChange(value)}
     >
       {children}
@@ -108,7 +109,7 @@ export const TabsContent = ({
   }
 
   return (
-    <div className={`mt-3 ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/30 focus-visible:ring-offset-2 ${className}`}>
+    <div className={cn('mt-3', className)}>
       {children}
     </div>
   );

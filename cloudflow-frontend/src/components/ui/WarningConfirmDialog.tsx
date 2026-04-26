@@ -76,13 +76,13 @@ export const WarningConfirmDialog: React.FC<WarningConfirmDialogProps> = ({
       bg: 'bg-yellow-50',
       border: 'border-yellow-200',
       icon: 'text-yellow-400',
-      button: 'bg-yellow-600 hover:bg-yellow-700',
+      buttonVariant: 'warning' as const,
     },
     danger: {
       bg: 'bg-red-50',
       border: 'border-red-200',
       icon: 'text-red-400',
-      button: 'bg-red-600 hover:bg-red-700',
+      buttonVariant: 'destructive' as const,
     },
   };
 
@@ -148,7 +148,7 @@ export const WarningConfirmDialog: React.FC<WarningConfirmDialogProps> = ({
               {cancelText}
             </Button>
             <Button
-              className={`${colors.button} text-white`}
+              variant={colors.buttonVariant}
               onClick={handleConfirm}
               disabled={requireDoubleConfirm && !isDoubleConfirmed}
             >

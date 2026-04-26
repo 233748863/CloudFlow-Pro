@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button } from '@/components/ui';
+import { Button, SegmentedControl, SegmentedControlItem } from '@/components/ui';
 import { cn } from '@/utils/cn';
 
 interface WorkspaceControlGroupProps {
@@ -81,35 +81,19 @@ export function WorkspaceSegmentedControl<T extends string>({
   className,
 }: WorkspaceSegmentedControlProps<T>) {
   return (
-    <div
-      className={cn(
-        'inline-flex h-10 items-center rounded-xl border border-slate-200 bg-slate-100 p-1',
-        'dark:border-slate-800 dark:bg-slate-900/80',
-        className,
-      )}
-    >
-      {items.map((item) => {
-        const active = item.value === value;
-
-        return (
-          <button
-            key={item.value}
-            type="button"
-            onClick={() => onChange(item.value)}
-            disabled={item.disabled}
-            className={cn(
-              'flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition',
-              active
-                ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-100',
-              item.disabled && 'cursor-not-allowed opacity-50',
-            )}
-          >
-            {item.icon}
-            {item.label}
-          </button>
-        );
-      })}
-    </div>
+    <SegmentedControl className={cn('min-h-10', className)}>
+      {items.map((item) => (
+        <SegmentedControlItem
+          key={item.value}
+          active={item.value === value}
+          onClick={() => onChange(item.value)}
+          disabled={item.disabled}
+          className={cn(item.disabled && 'cursor-not-allowed opacity-50')}
+        >
+          {item.icon}
+          {item.label}
+        </SegmentedControlItem>
+      ))}
+    </SegmentedControl>
   );
 }

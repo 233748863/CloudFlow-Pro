@@ -9,6 +9,7 @@ import {
   LoadingSpinner,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -70,22 +71,8 @@ const getRemainingClassName = (seconds?: number) => {
   return 'text-slate-600 dark:text-slate-300';
 };
 
-const RowActionButton: React.FC<{
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-}> = ({ label, onClick, disabled = false }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-40 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300 dark:focus-visible:ring-offset-slate-950"
-    title={label}
-    aria-label={label}
-  >
-    <LogOut size={15} />
-  </button>
-);
+const checkboxClassName =
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -228,55 +215,14 @@ export const OnlineUserPage: React.FC = () => {
     }
   };
 
-  const currentLoginCount = records.filter((item) => item.currentLogin).length;
-  const expiringSoonCount = records.filter(
-    (item) => (item.remainingSeconds ?? 0) > 0 && (item.remainingSeconds ?? 0) <= 1800,
-  ).length;
-
   const hasActiveFilters = Boolean(
     query.username || query.nickName || query.deptName || query.tenantId,
   );
-
-  const filterSummary = useMemo(() => {
-    const usernameLabel = query.username || '全部账号';
-    const nicknameLabel = query.nickName || '全部昵称';
-    const deptLabel = query.deptName || '全部部门';
-    const tenantLabel = query.tenantId ? `租户 ${query.tenantId}` : '全部租户';
-    return `${usernameLabel} / ${nicknameLabel} / ${deptLabel} / ${tenantLabel}`;
-  }, [query.deptName, query.nickName, query.tenantId, query.username]);
 
   return (
     <>
       <TablePageLayout
         className="gap-3"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 个</span>
-              <span className="text-slate-500 dark:text-slate-400">当前页 {records.length} 个</span>
-              <span className="text-slate-500 dark:text-slate-400">可操作 {selectableRecords.length} 个</span>
-              <span className="text-slate-500 dark:text-slate-400">当前登录 {currentLoginCount} 个</span>
-              <span className="text-slate-500 dark:text-slate-400">即将过期 {expiringSoonCount} 个</span>
-              <span className="text-slate-500 dark:text-slate-400">已选 {selectedTokens.length} 个</span>
-            </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={() => handleForceLogout(selectedTokens)}
-                disabled={!selectedTokens.length}
-              >
-                <LogOut size={15} />
-                批量强退
-              </Button>
-            </div>
-          </div>
-        )}
         filters={(
           <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
@@ -341,24 +287,25 @@ export const OnlineUserPage: React.FC = () => {
               ) : null}
             </form>
 
-            <div className="text-xs text-slate-500 dark:text-slate-400">{filterSummary}</div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => handleForceLogout(selectedTokens)}
+                disabled={!selectedTokens.length}
+              >
+                <LogOut size={15} />
+                批量强退
+              </Button>
+            </div>
           </div>
         )}
         table={(
           <>
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  在线用户
-                </div>
-                {hasActiveFilters ? (
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {filterSummary}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <Table className="min-w-[1120px]">
                 <TableHeader>
@@ -368,7 +315,7 @@ export const OnlineUserPage: React.FC = () => {
                         type="checkbox"
                         checked={allSelected}
                         onChange={toggleSelectAll}
-                        className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                        className={checkboxClassName}
                       />
                     </TableHead>
                     <TableHead>用户</TableHead>
@@ -397,7 +344,7 @@ export const OnlineUserPage: React.FC = () => {
                             disabled={item.currentLogin}
                             checked={selectedTokens.includes(item.token)}
                             onChange={() => toggleSelect(item.token)}
-                            className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 disabled:opacity-40 dark:border-slate-700 dark:bg-slate-950"
+                            className={cn(checkboxClassName, 'disabled:opacity-40')}
                           />
                         </TableCell>
                         <TableCell className="py-4">
@@ -458,13 +405,19 @@ export const OnlineUserPage: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <RowActionButton
-                              label="强制下线"
-                              onClick={() => handleForceLogout([item.token])}
-                              disabled={Boolean(item.currentLogin)}
-                            />
-                          </div>
+                          <TableRowActions
+                            align="end"
+                            iconOnly
+                            actions={[
+                              {
+                                label: '强制下线',
+                                icon: <LogOut size={15} />,
+                                onClick: () => handleForceLogout([item.token]),
+                                disabled: Boolean(item.currentLogin),
+                                tone: 'danger',
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     ))

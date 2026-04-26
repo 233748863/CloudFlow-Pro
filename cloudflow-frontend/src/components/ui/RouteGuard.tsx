@@ -2,6 +2,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAppStore } from '../../stores/workflowStore';
 import { Role } from '../../types';
+import { Button } from './button';
 
 interface RouteGuardProps {
   children: React.ReactNode;
@@ -44,12 +45,9 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
             </div>
             <h2 className="text-lg font-semibold text-slate-800">权限不足</h2>
             <p className="text-sm text-slate-500">您没有访问此页面的权限</p>
-            <button
-              onClick={() => window.history.back()}
-              className="rounded-xl bg-cyan-600 px-4 py-2 text-sm text-white transition-colors hover:bg-cyan-700"
-            >
+            <Button onClick={() => window.history.back()}>
               返回上一页
-            </button>
+            </Button>
           </div>
         );
       }
@@ -69,12 +67,9 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
           </div>
           <h2 className="text-lg font-semibold text-slate-800">角色不匹配</h2>
           <p className="text-sm text-slate-500">此页面需要特定角色才能访问</p>
-          <button
-            onClick={() => window.history.back()}
-            className="rounded-xl bg-cyan-600 px-4 py-2 text-sm text-white transition-colors hover:bg-cyan-700"
-          >
+          <Button onClick={() => window.history.back()}>
             返回上一页
-          </button>
+          </Button>
         </div>
       );
     }

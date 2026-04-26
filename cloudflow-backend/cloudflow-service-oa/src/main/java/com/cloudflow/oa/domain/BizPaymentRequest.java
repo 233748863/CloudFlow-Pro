@@ -62,7 +62,7 @@ public class BizPaymentRequest implements Serializable {
 
     private LocalDateTime expectedDate;
 
-    /** 附件URL */
+    /** 附件URL（多个用逗号分隔） */
     private String attachmentUrl;
 
     /** 状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/PAID已打款) */

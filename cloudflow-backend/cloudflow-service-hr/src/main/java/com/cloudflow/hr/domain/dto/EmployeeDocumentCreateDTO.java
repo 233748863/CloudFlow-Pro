@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 员工证件创建DTO
@@ -49,5 +50,5 @@ public class EmployeeDocumentCreateDTO implements Serializable {
     /**
      * 证件扫描件URL
      */
-    private String fileUrl;
+    private List<String> attachmentUrls;
 }

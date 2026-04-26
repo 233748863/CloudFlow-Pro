@@ -9,6 +9,7 @@ import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -41,6 +42,20 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     @Override
+    @Audit(name = "创建付款申请", spel = "#payment")
+    public boolean createPayment(BizPaymentRequest payment) {
+        normalizePaymentAttachment(payment);
+        return save(payment);
+    }
+
+    @Override
+    @Audit(name = "更新付款申请", spel = "#payment", oldVal = "@paymentRequestServiceImpl.getById(#payment.id)")
+    public boolean updatePayment(BizPaymentRequest payment) {
+        normalizePaymentAttachment(payment);
+        return updateById(payment);
+    }
+
+    @Override
     @Audit(name = "提交付款申请", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)")
     @Transactional(rollbackFor = Exception.class)
     public boolean submitPayment(Long id) {
@@ -48,6 +63,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         if (payment == null) {
             return false;
         }
+        normalizePaymentAttachment(payment);
         
         // 补偿逻辑：历史数据可能缺少用户信息，从当前登录上下文补充
         if (!StringUtils.hasText(payment.getDeptName())) {
@@ -137,5 +153,14 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
             return (String) data;
         }
         return null;
+    }
+
+    private void normalizePaymentAttachment(BizPaymentRequest payment) {
+        if (payment == null) {
+            throw new IllegalArgumentException("付款申请不能为空");
+        }
+        payment.setAttachmentUrl(
+                OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(payment.getAttachmentUrl(), "付款申请附件")
+        );
     }
 }

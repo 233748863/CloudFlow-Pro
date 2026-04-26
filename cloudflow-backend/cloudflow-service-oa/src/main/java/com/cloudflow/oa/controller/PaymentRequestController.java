@@ -84,7 +84,11 @@ public class PaymentRequestController {
         payment.setUpdateTime(now);
         payment.setPaymentNo(paymentRequestService.generatePaymentNo());
         payment.setStatus("DRAFT");
-        return paymentRequestService.save(payment) ? R.ok() : R.fail("创建失败");
+        try {
+            return paymentRequestService.createPayment(payment) ? R.ok() : R.fail("创建失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /**
@@ -93,7 +97,11 @@ public class PaymentRequestController {
     @SysLog("修改付款申请")
     @PutMapping
     public R<Void> edit(@RequestBody BizPaymentRequest payment) {
-        return paymentRequestService.updateById(payment) ? R.ok() : R.fail("更新失败");
+        try {
+            return paymentRequestService.updatePayment(payment) ? R.ok() : R.fail("更新失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /**
@@ -117,7 +125,11 @@ public class PaymentRequestController {
     @SysLog("提交付款申请")
     @PostMapping("/submit/{id}")
     public R<Void> submit(@PathVariable Long id) {
-        return paymentRequestService.submitPayment(id) ? R.ok() : R.fail("提交失败");
+        try {
+            return paymentRequestService.submitPayment(id) ? R.ok() : R.fail("提交失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /**

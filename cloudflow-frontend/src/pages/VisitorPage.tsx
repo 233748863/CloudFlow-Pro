@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Building2,
   CheckCircle,
@@ -228,11 +228,6 @@ export const VisitorPage: React.FC = () => {
     });
   };
 
-  const pendingCount = useMemo(() => list.filter((item) => item.status === 'PENDING').length, [list]);
-  const arrivedCount = useMemo(() => list.filter((item) => item.status === 'ARRIVED').length, [list]);
-  const completedCount = useMemo(() => list.filter((item) => item.status === 'COMPLETED').length, [list]);
-  const cancelledCount = useMemo(() => list.filter((item) => item.status === 'CANCELLED').length, [list]);
-
   const currentStatusLabel = searchParams.status
     ? STATUS_MAP[searchParams.status] || searchParams.status
     : '全部状态';
@@ -240,22 +235,12 @@ export const VisitorPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          访客预约
-        </h1>
-      </div>
-
       <TablePageLayout
         className="gap-3"
         actions={(
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">待确认 {pendingCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已到访 {arrivedCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已离场 {completedCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已取消 {cancelledCount}</span>
             </div>
 
             <div className="ml-auto flex flex-wrap gap-2">
@@ -340,20 +325,6 @@ export const VisitorPage: React.FC = () => {
         )}
         table={(
           <div className="flex min-h-[40rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">预约列表</div>
-                  {hasActiveFilters ? (
-                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      {currentStatusLabel} / {searchParams.visitorName || '全部访客'}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">共 {total} 条</div>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <Table className="min-w-[1020px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
@@ -365,7 +336,7 @@ export const VisitorPage: React.FC = () => {
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">来访事由</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">通行码</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
+                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
 
@@ -408,7 +379,7 @@ export const VisitorPage: React.FC = () => {
                             <span className="line-clamp-1">{item.visitReason}</span>
                           </TableCell>
 
-                          <TableCell className="px-4 py-3 align-top text-sm font-medium text-cyan-700 dark:text-cyan-300">
+                          <TableCell className="px-4 py-3 align-top text-sm font-medium text-slate-700 dark:text-slate-200">
                             {item.passCode || '-'}
                           </TableCell>
 

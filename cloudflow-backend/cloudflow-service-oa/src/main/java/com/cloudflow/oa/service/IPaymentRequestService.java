@@ -17,6 +17,16 @@ public interface IPaymentRequestService extends IService<BizPaymentRequest> {
     String generatePaymentNo();
 
     /**
+     * 创建付款申请
+     */
+    boolean createPayment(BizPaymentRequest payment);
+
+    /**
+     * 更新付款申请
+     */
+    boolean updatePayment(BizPaymentRequest payment);
+
+    /**
      * 提交付款申请（启动工作流）
      */
     boolean submitPayment(Long id);

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getRoles } from '../../services/api/workflow';
 import { Search, X, Check, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/utils/cn';
 
 // 角色信息类型（兼容 API 返回的 RoleInfo）
 interface RoleBrief {
@@ -88,12 +89,14 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
   };
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={cn('relative', className)}>
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`min-h-[44px] rounded-xl border bg-white px-3.5 py-2.5 transition-all ${
-          disabled ? 'cursor-not-allowed bg-slate-50' : 'cursor-pointer hover:border-slate-300'
-        } ${isOpen ? 'border-cyan-500 ring-2 ring-cyan-500/15' : 'border-slate-200'}`}
+        className={cn(
+          'cf-control min-h-[44px] rounded-xl px-3.5 py-2.5',
+          disabled ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-900' : 'cursor-pointer',
+          isOpen && 'cf-control-active',
+        )}
       >
         {selectedRoles.length === 0 ? (
           <span className="text-slate-400 text-sm">{placeholder}</span>
@@ -102,12 +105,12 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
             {selectedRoles.map((role) => (
               <span
                 key={getRoleKey(role)}
-                className="inline-flex items-center gap-1 rounded-lg border border-cyan-100 bg-cyan-50 px-2 py-1 text-xs font-medium text-cyan-700"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
               >
-                <Shield size={10} />
+                <Shield size={10} className="text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" />
                 {role.name}
                 {!disabled && (
-                  <button onClick={(e) => handleRemove(role, e)} className="rounded-full p-0.5 transition hover:bg-cyan-100">
+                  <button onClick={(e) => handleRemove(role, e)} className="rounded-full p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800">
                     <X size={12} />
                   </button>
                 )}
@@ -118,8 +121,8 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       </div>
 
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)]">
-          <div className="p-2 border-b border-slate-200">
+        <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]">
+          <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input
@@ -127,7 +130,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="搜索角色..."
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-8 pr-3 text-sm text-slate-700 outline-none transition focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/15"
+                className="cf-control h-10 w-full rounded-xl pl-8 pr-3 text-sm"
                 onClick={(e) => e.stopPropagation()}
               />
             </div>
@@ -146,20 +149,21 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                   <div
                     key={key}
                     onClick={() => handleToggle(role)}
-                    className={`flex items-center justify-between px-3 py-2 cursor-pointer transition-colors ${
-                      isSelected ? 'bg-cyan-50' : 'hover:bg-slate-50'
-                    }`}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-between px-3 py-2 transition-colors dark:hover:bg-slate-900',
+                      isSelected ? 'cf-option-active' : 'hover:bg-slate-50',
+                    )}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-cyan-50 text-cyan-600">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-[color:var(--cf-primary-600)] dark:bg-slate-900 dark:text-[rgb(204,251,241)]">
                         <Shield size={16} />
                       </div>
                       <div>
-                        <div className="text-sm font-medium text-slate-800">{role.name}</div>
-                        <div className="text-xs text-slate-500">{key}</div>
+                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{role.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{key}</div>
                       </div>
                     </div>
-                    {isSelected && <Check className="text-cyan-600" size={16} />}
+                    {isSelected && <Check className="text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" size={16} />}
                   </div>
                 );
               })

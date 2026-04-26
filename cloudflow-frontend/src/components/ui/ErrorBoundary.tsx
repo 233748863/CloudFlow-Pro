@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { errorReporter } from '@/services/errorReporter';
+import { Button } from './button';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -65,27 +66,27 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       const { showRetry = true, showHome = true, title = '页面出现了问题' } = this.props;
 
       return (
-        <div className="flex min-h-[400px] items-center justify-center p-6">
-          <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-[0_18px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-50">
-              <AlertTriangle className="text-red-500" size={32} />
+        <div className="flex min-h-[400px] items-center justify-center bg-slate-50/80 p-6 dark:bg-slate-950/70">
+          <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 text-center shadow-[0_18px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50/80 dark:border-cyan-900/70 dark:bg-cyan-950/30">
+              <AlertTriangle className="text-cyan-600 dark:text-cyan-300" size={32} />
             </div>
-            <h2 className="text-xl font-bold text-slate-800 mb-2">{title}</h2>
-            <p className="text-sm text-slate-500 mb-6">
+            <h2 className="mb-2 text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h2>
+            <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
               {this.state.error?.message || '发生了未知错误，请稍后重试'}
             </p>
             
             {/* 开发环境显示错误堆栈 */}
             {import.meta.env.DEV && this.state.error && (
               <details className="mb-6 text-left">
-                <summary className="text-xs text-slate-400 cursor-pointer hover:text-slate-600">
+                <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
                   查看错误详情
                 </summary>
-                <pre className="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-red-600">
+                <pre className="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                   {this.state.error.stack}
                 </pre>
                 {this.state.errorInfo?.componentStack && (
-                  <pre className="mt-2 max-h-32 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500">
+                  <pre className="mt-2 max-h-32 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
                     {this.state.errorInfo.componentStack}
                   </pre>
                 )}
@@ -94,22 +95,16 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
             <div className="flex items-center justify-center gap-3">
               {showRetry && (
-                <button
-                  onClick={this.handleRetry}
-                  className="flex items-center gap-2 rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-cyan-700"
-                >
+                <Button onClick={this.handleRetry}>
                   <RefreshCw size={14} />
                   重试
-                </button>
+                </Button>
               )}
               {showHome && (
-                <button
-                  onClick={this.handleGoHome}
-                  className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-600 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors"
-                >
+                <Button variant="outline" onClick={this.handleGoHome}>
                   <Home size={14} />
                   返回首页
-                </button>
+                </Button>
               )}
             </div>
           </div>

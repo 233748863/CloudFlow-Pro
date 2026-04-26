@@ -10,11 +10,12 @@ import {
   MapPin, Users, Monitor, CheckCircle2, XCircle, Plus, Pencil, Trash2,
   Settings, X, Clock, UserPlus, Calendar, ChevronRight, ChevronDown,
   Building2, User, Search, ChevronLeft, BarChart3, CalendarDays,
-  ArrowRight, LoaderCircle
+  LoaderCircle, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ConfirmDialog } from '@/components/common';
 import { toBackendDateString } from '../utils/dateFormat';
-import { Button, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/ui';
+import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/ui';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 
@@ -48,11 +49,6 @@ function getWeekStart(date: Date): Date {
   const day = d.getDay();
   const diff = d.getDate() - day + (day === 0 ? -6 : 1); // 调整到周一
   return new Date(d.setDate(diff));
-}
-
-function formatDateCN(date: Date): string {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
 }
 
 function buildDeptTreeWithUsers(deptTree: DeptTreeItem[], users: UserBrief[]): DeptNodeWithUsers[] {
@@ -394,15 +390,17 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
   }, [roomId, onBookingsLoaded]);
 
   if (loading) {
-    return <InlineState title="正在读取今日预订..." className="py-4" />;
+    return (
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+        正在读取今日预订...
+      </div>
+    );
   }
   if (bookings.length === 0) {
     return (
-      <InlineState
-        title="今日空闲"
-        icon={<Calendar size={14} />}
-        className="py-4"
-      />
+      <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50/80 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/50 dark:text-slate-400">
+        今日空闲
+      </div>
     );
   }
 
@@ -431,24 +429,24 @@ const RoomBookings: React.FC<RoomBookingsProps> = ({ roomId, onBookingsLoaded })
 
   return (
     <div className="space-y-2">
-      <div className="mb-2 flex items-center justify-between">
-        <div className="flex items-center gap-1 text-xs font-medium text-slate-500 dark:text-slate-400"><Calendar size={10} /> 今日预订</div>
-        <span className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">{bookings.length} 条</span>
+      <div className="mb-1 flex items-center justify-between">
+        <div className="flex items-center gap-1 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500"><Calendar size={10} /> 今日预订</div>
+        <span className="text-[11px] text-slate-400 dark:text-slate-500">{bookings.length} 条</span>
       </div>
       {bookings.slice(0, 3).map((b, i) => {
         const status = getBookingStatus(b);
         const style = statusStyles[status];
         return (
-          <div key={i} className={`flex items-center gap-2 rounded-xl border border-white px-2.5 py-2 text-xs dark:border-slate-800 ${style.bg}`}>
+          <div key={i} className={`flex items-center gap-2 rounded-lg border border-transparent px-2.5 py-2 text-xs dark:border-slate-800/40 ${style.bg}`}>
             <Clock size={10} className={`${status === 'ongoing' ? 'text-emerald-500 dark:text-emerald-300' : status === 'ended' ? 'text-slate-400 dark:text-slate-500' : 'text-sky-500 dark:text-sky-300'} shrink-0`} />
             <span className={`${style.text} whitespace-nowrap font-medium`}>{fmt(b.startTime)}-{fmt(b.endTime)}</span>
-            <span className={`${status === 'ended' ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'} truncate`}>{b.title}</span>
-            {status === 'ongoing' && <span className="text-emerald-600 dark:text-emerald-200 text-[10px] font-bold shrink-0">进行中</span>}
-            {status === 'ended' && <span className="text-slate-400 dark:text-slate-500 text-[10px] shrink-0">已结束</span>}
+            <span className={`${status === 'ended' ? 'text-slate-400 line-through dark:text-slate-500' : 'text-slate-600 dark:text-slate-300'} min-w-0 flex-1 truncate`}>{b.title}</span>
+            {status === 'ongoing' && <span className="shrink-0 text-[10px] font-bold text-emerald-600 dark:text-emerald-200">进行中</span>}
+            {status === 'ended' && <span className="shrink-0 text-[10px] text-slate-400 dark:text-slate-500">已结束</span>}
           </div>
         );
       })}
-      {bookings.length > 3 && <div className="text-xs text-slate-400 dark:text-slate-500 pl-5">还有 {bookings.length - 3} 条预订...</div>}
+      {bookings.length > 3 && <div className="pl-1 text-xs text-slate-400 dark:text-slate-500">还有 {bookings.length - 3} 条预订...</div>}
     </div>
   );
 };
@@ -623,19 +621,15 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]">
         <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                <CalendarDays size={14} />
-                周排期
-              </div>
-              <h3 className="mt-3 text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">{room.name}</h3>
+            <div className="min-w-0">
+              <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-100">周排期</h3>
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span className="font-medium text-slate-700 dark:text-slate-200">{room.name}</span>
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">{room.location}</span>
                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">容纳 {room.capacity} 人</span>
-                <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">拖动可连续选时段</span>
               </div>
             </div>
-            <ModalIconButton label="关闭会议室配置" onClick={onClose}>
+            <ModalIconButton label="关闭周排期" onClick={onClose}>
               <X size={18} />
             </ModalIconButton>
           </div>
@@ -643,42 +637,40 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
 
         <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
-              <button
-                type="button"
-                onClick={goToPrevWeek}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-200"
-                aria-label="上一周"
-                title="上一周"
-              >
-                <ChevronLeft size={18} />
-              </button>
-              <button
-                type="button"
-                onClick={goToNextWeek}
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-200"
-                aria-label="下一周"
-                title="下一周"
-              >
-                <ChevronRight size={18} />
-              </button>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
+                <button
+                  type="button"
+                  onClick={goToPrevWeek}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-200"
+                  aria-label="上一周"
+                  title="上一周"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <button
+                  type="button"
+                  onClick={goToNextWeek}
+                  className="inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-500 transition-colors hover:bg-white hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-200"
+                  aria-label="下一周"
+                  title="下一周"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                {currentWeekStart.getFullYear()}年{currentWeekStart.getMonth() + 1}月
+              </div>
+              <Button variant="outline" size="sm" onClick={goToToday}>
+                本周
+              </Button>
             </div>
-            <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-              {currentWeekStart.getFullYear()}年{currentWeekStart.getMonth() + 1}月
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
+              <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30"></span> 空闲可选</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-red-200 bg-red-100 dark:border-red-900 dark:bg-red-950/30"></span> 已预订</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"></span> 已过期</span>
+              <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-sky-300 bg-sky-100 dark:border-sky-900 dark:bg-sky-950/30"></span> 拖动选中</span>
             </div>
-            <Button variant="outline" size="lg" onClick={goToToday}>
-              今天
-            </Button>
-          </div>
-        </div>
-
-        <div className="border-b border-slate-100 px-6 py-3 dark:border-slate-800">
-          <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-emerald-200 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/30"></span> 空闲可选</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-red-200 bg-red-100 dark:border-red-900 dark:bg-red-950/30"></span> 已预订</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-900"></span> 已过期</span>
-            <span className="flex items-center gap-1.5"><span className="inline-block h-3 w-3 rounded border border-sky-300 bg-sky-100 dark:border-sky-900 dark:bg-sky-950/30"></span> 拖动选中</span>
-            <span className="ml-auto text-slate-400 dark:text-slate-500">按住鼠标拖动可快速选择连续时间段</span>
           </div>
         </div>
 
@@ -798,7 +790,7 @@ const RoomFormModal: React.FC<{
                 <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">保持预订信息一致</span>
               </div>
             </div>
-            <ModalIconButton label="关闭周排期" onClick={onClose}>
+            <ModalIconButton label="关闭会议室配置" onClick={onClose}>
               <X size={18} />
             </ModalIconButton>
           </div>
@@ -842,37 +834,6 @@ const RoomFormModal: React.FC<{
           </Button>
           <Button size="lg" onClick={handleSubmit}>
             <CheckCircle2 size={16} className="mr-2" />{isEdit ? '保存修改' : '确认新增'}
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// ==================== 删除确认弹窗 ====================
-const DeleteConfirmModal: React.FC<{
-  visible: boolean; roomName: string; onClose: () => void; onConfirm: () => void;
-}> = ({ visible, roomName, onClose, onConfirm }) => {
-  if (!visible) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
-      <div className="flex w-full max-w-sm flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)] animate-in fade-in zoom-in duration-200">
-        <div className="px-6 py-5">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-rose-600">
-              <Trash2 size={14} />
-              删除确认
-            </div>
-            <h3 className="mt-4 text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">确认删除</h3>
-            <p className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-400">确定要删除会议室 <span className="font-semibold text-red-600 dark:text-red-300">「{roomName}」</span> 吗？此操作不可撤销。</p>
-          </div>
-        </div>
-        <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-5 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <Button variant="outline" size="lg" onClick={onClose}>
-            取消
-          </Button>
-          <Button variant="destructive" size="lg" onClick={onConfirm}>
-            <Trash2 size={16} className="mr-2" />确认删除
           </Button>
         </div>
       </div>
@@ -1148,37 +1109,32 @@ export const MeetingRoomPage = () => {
   };
 
   const now = new Date();
-  const dateLabel = formatDateCN(now);
-  const timeLabel = now.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  const roomStatusList = rooms.map(room => ({
-    room,
-    realtimeStatus: getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []),
-  }));
-  const availableCount = roomStatusList.filter(item => item.realtimeStatus === 'available').length;
-  const inUseCount = roomStatusList.filter(item => item.realtimeStatus === 'in-use').length;
-  const maintenanceCount = roomStatusList.filter(item => item.realtimeStatus === 'maintenance').length;
-  const totalCapacity = rooms.reduce((sum, room) => sum + (room.capacity || 0), 0);
-  const todayBookingCount = Object.values(roomBookingsMap).reduce((sum, list) => sum + list.length, 0);
   const totalStatBookings = stats.reduce((sum, item) => sum + item.bookingCount, 0);
   const totalStatMinutes = stats.reduce((sum, item) => sum + item.totalMinutes, 0);
+  const totalStatUsedDays = stats.reduce((sum, item) => sum + item.usedDays, 0);
   const averageUtilization = stats.length > 0
     ? (stats.reduce((sum, item) => sum + parseFloat(getUtilizationRate(item)), 0) / stats.length).toFixed(1)
     : '0.0';
-  const topStatRoom = stats.length > 0 ? [...stats].sort((a, b) => b.bookingCount - a.bookingCount)[0] : null;
-  const usageSummary = activeTab === 'rooms'
-    ? `${availableCount} 间空闲，${todayBookingCount} 条今日预订。`
-    : activeTab === 'my-bookings'
-      ? `当前显示 ${myBookings.length} 条个人预订。`
-      : `累计 ${totalStatBookings} 次预订，使用 ${formatMinutes(totalStatMinutes)}。`;
-  const activeTabTitle = activeTab === 'rooms' ? '会议室列表' : activeTab === 'my-bookings' ? '我的预订' : '使用统计';
-  const activeTabCount = activeTab === 'rooms' ? filteredRooms.length : activeTab === 'my-bookings' ? myBookings.length : stats.length;
-  const statusFilterLabel = statusFilter === 'all' ? '全部状态' : statusFilter === 'available' ? '空闲' : statusFilter === 'in-use' ? '使用中' : '维护中';
-  const bookingFilterLabel = bookingsFilter === 'all' ? '全部预订' : bookingsFilter === 'upcoming' ? '待开始' : '已结束';
   const tabItems: Array<{ value: TabType; label: string; icon: React.ReactNode }> = [
     { value: 'rooms', label: '会议室列表', icon: <Monitor size={16} /> },
     { value: 'my-bookings', label: '我的预订', icon: <CalendarDays size={16} /> },
     { value: 'stats', label: '使用统计', icon: <BarChart3 size={16} /> },
   ];
+
+  const handleRefreshActiveTab = async () => {
+    if (activeTab === 'rooms') {
+      await fetchRooms();
+      setRefreshKey(prev => prev + 1);
+      return;
+    }
+
+    if (activeTab === 'my-bookings') {
+      await fetchMyBookings();
+      return;
+    }
+
+    await fetchStats();
+  };
 
   const openBookingModal = (room: MeetingRoom) => {
     setSelectedRoom(room);
@@ -1220,7 +1176,7 @@ export const MeetingRoomPage = () => {
 
     return (
       <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-        <div className="grid gap-px bg-slate-200 dark:bg-slate-800 xl:grid-cols-3">
+        <div className="grid gap-px bg-slate-200 dark:bg-slate-800 xl:grid-cols-2 2xl:grid-cols-3">
         {filteredRooms.map((room) => {
           const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
           const statusCfg = roomStatusConfig[realtimeStatus];
@@ -1274,7 +1230,7 @@ export const MeetingRoomPage = () => {
                     )}
                   </div>
 
-                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-2.5 dark:border-slate-800 dark:bg-slate-900/60">
+                  <div className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800">
                     <RoomBookings
                       key={`${room.roomId}-${refreshKey}`}
                       roomId={room.roomId.toString()}
@@ -1346,40 +1302,38 @@ export const MeetingRoomPage = () => {
           return (
             <article
               key={booking.eventId}
-              className="border-b border-slate-200 px-4 py-4 last:border-b-0 dark:border-slate-800 sm:px-5"
+              className="border-b border-slate-200 px-4 py-3 last:border-b-0 dark:border-slate-800 sm:px-5"
             >
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0 flex-1">
+              <div className="grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-4">
+                <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    <h3 className="min-w-0 truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {booking.title}
                     </h3>
                     {getBookingStatusBadge(booking)}
                   </div>
-
-                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
-                      <Clock size={12} />
-                      {formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
-                      <Monitor size={12} />
-                      {room?.name || `会议室 ${booking.roomId}`}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
-                      <MapPin size={12} />
-                      {room?.location || '未设置位置'}
-                    </span>
-                  </div>
-
                   {booking.description ? (
-                    <p className="mt-3 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    <p className="mt-1 line-clamp-2 text-xs leading-5 text-slate-500 dark:text-slate-400">
                       {booking.description}
                     </p>
                   ) : null}
                 </div>
 
-                <div className="shrink-0">
+                <div className="grid gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Clock size={12} className="shrink-0" />
+                    <span>{formatDateTime(booking.startTime)} - {formatDateTime(booking.endTime)}</span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Monitor size={12} className="shrink-0" />
+                    <span>{room?.name || `会议室 ${booking.roomId}`}</span>
+                    <span className="text-slate-300 dark:text-slate-700">/</span>
+                    <MapPin size={12} className="shrink-0" />
+                    <span>{room?.location || '未设置位置'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-start lg:justify-end">
                   {canCancel ? (
                     <Button variant="destructive" size="sm" onClick={() => handleCancelBooking(booking.eventId)}>
                       取消预订
@@ -1410,179 +1364,82 @@ export const MeetingRoomPage = () => {
     }
 
     return (
-      <div className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">累计预订</div>
-            <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{totalStatBookings} 次</div>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">使用时长</div>
-            <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{formatMinutes(totalStatMinutes)}</div>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">平均利用率</div>
-            <div className="mt-2 text-lg font-semibold text-slate-900 dark:text-slate-100">{averageUtilization}%</div>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">最高频会议室</div>
-            <div className="mt-2 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">{topStatRoom?.roomName || '暂无'}</div>
-          </div>
-        </div>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px]">
+            <TableHeader>
+              <tr>
+                <TableHead className="px-6 py-3 text-left">会议室</TableHead>
+                <TableHead className="px-6 py-3 text-left">预订次数</TableHead>
+                <TableHead className="px-6 py-3 text-left">使用时长</TableHead>
+                <TableHead className="px-6 py-3 text-left">使用天数</TableHead>
+                <TableHead className="px-6 py-3 text-left">利用率</TableHead>
+              </tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+              {stats.map((stat, index) => {
+                const utilizationRate = getUtilizationRate(stat);
 
-        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">会议室利用率</div>
-            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">按预订次数、使用时长与使用天数汇总。</div>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[680px]">
-              <TableHeader>
-                <tr>
-                  <TableHead className="px-6 py-3 text-left">会议室</TableHead>
-                  <TableHead className="px-6 py-3 text-left">预订次数</TableHead>
-                  <TableHead className="px-6 py-3 text-left">使用时长</TableHead>
-                  <TableHead className="px-6 py-3 text-left">使用天数</TableHead>
-                  <TableHead className="px-6 py-3 text-left">利用率</TableHead>
-                </tr>
-              </TableHeader>
-              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
-                {stats.map((stat, index) => {
-                  const utilizationRate = getUtilizationRate(stat);
-
-                  return (
-                    <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <Monitor size={14} className="text-slate-400 dark:text-slate-500" />
-                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{stat.roomName}</span>
+                return (
+                  <tr key={index} className="hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <Monitor size={14} className="text-slate-400 dark:text-slate-500" />
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{stat.roomName}</span>
+                      </div>
+                    </td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{stat.bookingCount} 次</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{formatMinutes(stat.totalMinutes)}</td>
+                    <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{stat.usedDays} 天</td>
+                    <td className="whitespace-nowrap px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <div className="h-2 max-w-[100px] flex-1 rounded-full bg-slate-100 dark:bg-slate-900">
+                          <div
+                            className="h-2 rounded-full bg-cyan-500 dark:bg-cyan-400"
+                            style={{ width: `${Math.min(parseFloat(utilizationRate), 100)}%` }}
+                          />
                         </div>
-                      </td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{stat.bookingCount} 次</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{formatMinutes(stat.totalMinutes)}</td>
-                      <td className="whitespace-nowrap px-6 py-4 text-sm text-slate-600 dark:text-slate-300">{stat.usedDays} 天</td>
-                      <td className="whitespace-nowrap px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <div className="h-2 max-w-[100px] flex-1 rounded-full bg-slate-100 dark:bg-slate-900">
-                            <div
-                              className="h-2 rounded-full bg-cyan-500 dark:bg-cyan-400"
-                              style={{ width: `${Math.min(parseFloat(utilizationRate), 100)}%` }}
-                            />
-                          </div>
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{utilizationRate}%</span>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                        <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{utilizationRate}%</span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot className="border-t border-slate-200 bg-slate-50/80 dark:border-slate-800 dark:bg-slate-900/40">
+              <tr>
+                <td className="px-6 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">汇总</td>
+                <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-300">{totalStatBookings} 次</td>
+                <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-300">{formatMinutes(totalStatMinutes)}</td>
+                <td className="px-6 py-3 text-sm text-slate-600 dark:text-slate-300">{totalStatUsedDays} 天</td>
+                <td className="px-6 py-3 text-sm font-medium text-slate-700 dark:text-slate-200">{averageUtilization}%</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
     );
   };
 
   return (
-    <div className="space-y-5">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            <CalendarDays className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-            Meeting Rooms
-          </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            会议室协同
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            {usageSummary}
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
-            {dateLabel}
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
-            {timeLabel}
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
-            {activeTabTitle}
-          </span>
-        </div>
-      </div>
-
+    <>
       <TablePageLayout
         className="gap-4"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              会议室 {rooms.length}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              空闲 {availableCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              使用中 {inUseCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              维护 {maintenanceCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              今日预订 {todayBookingCount}
-            </span>
-
-            <div className="ml-auto flex flex-wrap gap-2">
-              {activeTab === 'rooms' ? (
-                <>
-                  <Button
-                    variant={manageMode ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={() => setManageMode(!manageMode)}
-                  >
-                    <Settings size={14} className="mr-1.5" />
-                    {manageMode ? '退出管理' : '管理模式'}
-                  </Button>
-                  {manageMode ? (
-                    <Button size="sm" onClick={handleAddRoom}>
-                      <Plus size={14} className="mr-1.5" />
-                      新增会议室
-                    </Button>
-                  ) : null}
-                </>
-              ) : null}
-              {activeTab !== 'my-bookings' ? (
-                <Button variant="outline" size="sm" onClick={() => setActiveTab('my-bookings')}>
-                  我的预订
-                  <ArrowRight size={14} className="ml-1.5" />
-                </Button>
-              ) : null}
-            </div>
-          </div>
-        )}
         filters={(
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="inline-flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900">
-              {tabItems.map((item) => {
-                const active = item.value === activeTab;
-                return (
-                  <button
-                    key={item.value}
-                    type="button"
-                    onClick={() => setActiveTab(item.value)}
-                    className={cn(
-                      'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                      active
-                        ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                        : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200',
-                    )}
-                  >
-                    {item.icon}
-                    {item.label}
-                  </button>
-                );
-              })}
-            </div>
+            <SegmentedControl className="min-h-9">
+              {tabItems.map((item) => (
+                <SegmentedControlItem
+                  key={item.value}
+                  size="sm"
+                  active={item.value === activeTab}
+                  onClick={() => setActiveTab(item.value)}
+                >
+                  {item.icon}
+                  {item.label}
+                </SegmentedControlItem>
+              ))}
+            </SegmentedControl>
 
             {activeTab === 'rooms' ? (
               <>
@@ -1613,7 +1470,7 @@ export const MeetingRoomPage = () => {
             ) : null}
 
             {activeTab === 'my-bookings' ? (
-              <div className="w-full sm:w-[180px] sm:ml-auto">
+              <div className="w-full sm:w-[180px]">
                 <Select value={bookingsFilter} onValueChange={v => setBookingsFilter(v as 'all' | 'upcoming' | 'past')}>
                   <SelectTrigger className="h-11">
                     <SelectValue placeholder="请选择" />
@@ -1627,51 +1484,37 @@ export const MeetingRoomPage = () => {
               </div>
             ) : null}
 
-            {activeTab === 'stats' ? (
-              <div className="ml-auto text-sm text-slate-500 dark:text-slate-400">
-                累计 {totalStatBookings} 次预订，使用 {formatMinutes(totalStatMinutes)}
-              </div>
-            ) : null}
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => void handleRefreshActiveTab()}>
+                <RefreshCw size={14} className="mr-1.5" />
+                刷新
+              </Button>
+              {activeTab === 'rooms' ? (
+                <>
+                  <Button
+                    variant={manageMode ? 'secondary' : 'outline'}
+                    size="sm"
+                    onClick={() => setManageMode(!manageMode)}
+                  >
+                    <Settings size={14} className="mr-1.5" />
+                    {manageMode ? '退出管理' : '管理模式'}
+                  </Button>
+                  {manageMode ? (
+                    <Button size="sm" onClick={handleAddRoom}>
+                      <Plus size={14} className="mr-1.5" />
+                      新增会议室
+                    </Button>
+                  ) : null}
+                </>
+              ) : null}
+            </div>
           </div>
         )}
         table={(
-          <div className="flex min-h-[40rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {activeTabTitle}
-                    </div>
-                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      当前 {activeTabCount} 项
-                      {activeTab === 'rooms' ? ` · ${statusFilterLabel}` : ''}
-                      {activeTab === 'my-bookings' ? ` · ${bookingFilterLabel}` : ''}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                    {activeTab === 'rooms' ? (
-                      <>
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
-                          {manageMode ? '管理模式' : '预订模式'}
-                        </span>
-                        {searchQuery ? (
-                          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
-                            关键词: {searchQuery}
-                          </span>
-                        ) : null}
-                      </>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex-1 p-4 sm:p-5">
-              {activeTab === 'rooms' ? renderRoomsView() : null}
-              {activeTab === 'my-bookings' ? renderMyBookingsView() : null}
-              {activeTab === 'stats' ? renderStatsView() : null}
-            </div>
+          <div className="flex min-h-[40rem] flex-col p-4 sm:p-5">
+            {activeTab === 'rooms' ? renderRoomsView() : null}
+            {activeTab === 'my-bookings' ? renderMyBookingsView() : null}
+            {activeTab === 'stats' ? renderStatsView() : null}
           </div>
         )}
       />
@@ -1768,10 +1611,22 @@ export const MeetingRoomPage = () => {
       <RoomFormModal visible={roomFormVisible} room={editingRoom} onClose={() => { setRoomFormVisible(false); setEditingRoom(null); }} onSubmit={handleRoomFormSubmit} />
 
       {/* 删除确认弹窗 */}
-      <DeleteConfirmModal visible={deleteConfirmVisible} roomName={deletingRoom?.name || ''} onClose={() => { setDeleteConfirmVisible(false); setDeletingRoom(null); }} onConfirm={handleDeleteConfirm} />
+      <ConfirmDialog
+        open={deleteConfirmVisible}
+        title="确认删除"
+        message={`确定要删除会议室“${deletingRoom?.name || ''}”吗？此操作不可撤销。`}
+        confirmText="确认删除"
+        cancelText="取消"
+        danger
+        onConfirm={() => void handleDeleteConfirm()}
+        onCancel={() => {
+          setDeleteConfirmVisible(false);
+          setDeletingRoom(null);
+        }}
+      />
 
       {/* 周日历弹窗 */}
       {weekCalendarRoom && <WeekCalendar room={weekCalendarRoom} onClose={() => setWeekCalendarRoom(null)} onBookRoom={handleWeekCalendarBook} />}
-    </div>
+    </>
   );
 };

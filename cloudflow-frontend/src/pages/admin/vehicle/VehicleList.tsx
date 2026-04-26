@@ -388,21 +388,11 @@ const VehicleList: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          车辆管理
-        </h1>
-      </div>
-
       <TablePageLayout
         actions={(
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-medium text-slate-900 dark:text-slate-100">共 {stats?.total ?? total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">可用 {stats?.available ?? 0}</span>
-              <span className="text-slate-500 dark:text-slate-400">已预约 {stats?.booked ?? 0}</span>
-              <span className="text-slate-500 dark:text-slate-400">使用中 {stats?.inUse ?? 0}</span>
-              <span className="text-slate-500 dark:text-slate-400">维修中 {stats?.maintenance ?? 0}</span>
               <span className="text-slate-500 dark:text-slate-400">预警 {stats?.insuranceExpiringSoon ?? expiringCount}</span>
             </div>
 
@@ -470,22 +460,6 @@ const VehicleList: React.FC = () => {
         )}
         table={(
           <div className="flex min-h-[40rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">车辆列表</div>
-                  {hasActiveFilters ? (
-                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      {statusLabel} / {query.licensePlate || '全部车牌'}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  共 {total} 条
-                </div>
-              </div>
-            </div>
-
             <div className="px-4 pt-4">
               {selectedIds.length > 0 ? (
                 <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
@@ -495,7 +469,7 @@ const VehicleList: React.FC = () => {
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-8 justify-start px-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-200"
+                    className="h-8 justify-start px-2 text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100"
                     onClick={() => openDeleteConfirm(selectedIds, `确认删除选中的 ${selectedIds.length} 辆车？`)}
                   >
                     <Trash2 size={14} className="mr-1.5" />
@@ -522,7 +496,7 @@ const VehicleList: React.FC = () => {
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">里程 / 位置</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">保险到期</TableHead>
-                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
+                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -606,14 +580,14 @@ const VehicleList: React.FC = () => {
                                 label: '编辑',
                                 icon: <Edit2 size={14} />,
                                 onClick: () => handleEdit(vehicle),
-                                tone: 'primary',
+                                tone: 'neutral',
                                 className: 'rounded-lg',
                               },
                               {
                                 label: '删除',
                                 icon: <Trash2 size={14} />,
                                 onClick: () => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。'),
-                                tone: 'danger',
+                                tone: 'neutral',
                                 className: 'rounded-lg',
                               },
                             ]}

@@ -68,7 +68,6 @@ public class EmployeeContract implements Serializable {
     /**
      * 合同文件URL
      */
-    private String fileUrl;
 
     /**
      * 状态：DRAFT-草稿 ACTIVE-生效中 EXPIRED-已过期 TERMINATED-已终止

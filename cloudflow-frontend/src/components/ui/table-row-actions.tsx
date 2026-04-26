@@ -33,12 +33,18 @@ interface TableRowActionsProps {
 }
 
 const toneClassMap: Record<TableRowActionTone, string> = {
-  primary: 'border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100 hover:text-cyan-800',
-  neutral: 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-800',
-  success: 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800',
-  warning: 'border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800',
-  danger: 'border border-rose-200 bg-rose-50 text-rose-600 hover:bg-rose-100 hover:text-rose-700',
-  info: 'border border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100 hover:text-sky-800',
+  primary:
+    'text-slate-500 hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-400 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200',
+  neutral:
+    'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+  success:
+    'text-slate-500 hover:bg-emerald-50 hover:text-emerald-700 dark:text-slate-400 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-200',
+  warning:
+    'text-slate-500 hover:bg-amber-50 hover:text-amber-700 dark:text-slate-400 dark:hover:bg-amber-950/30 dark:hover:text-amber-200',
+  danger:
+    'text-slate-500 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-400 dark:hover:bg-rose-950/30 dark:hover:text-rose-300',
+  info:
+    'text-slate-500 hover:bg-sky-50 hover:text-sky-700 dark:text-slate-400 dark:hover:bg-sky-950/30 dark:hover:text-sky-200',
 };
 
 const alignClassMap: Record<NonNullable<TableRowActionsProps['align']>, string> = {
@@ -82,10 +88,9 @@ export function TableRowActions({
           aria-label={action.title ?? action.label}
           className={cn(
             iconOnly
-              ? 'h-8 w-8 rounded-full p-0 shadow-none'
-              : 'h-8 gap-1 rounded-full px-2.5 text-xs font-medium shadow-none',
-            'focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2',
-            'disabled:bg-transparent disabled:text-slate-300 disabled:ring-0 disabled:hover:bg-transparent',
+              ? 'h-8 w-8 rounded-lg p-0 shadow-none'
+              : 'gap-1 rounded-lg px-2.5 py-1.5 text-xs font-medium shadow-none',
+            'disabled:bg-transparent disabled:text-slate-300 disabled:hover:bg-transparent',
             toneClassMap[action.tone ?? 'primary'],
             action.className,
           )}

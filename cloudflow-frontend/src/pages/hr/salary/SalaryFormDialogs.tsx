@@ -64,11 +64,6 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
               ))}
             </SelectContent>
           </Select>
-          <div className="mt-1 text-xs text-slate-400">
-            {assignFormDiagnostics.selectedEmployee
-              ? `${assignFormDiagnostics.selectedEmployee.deptName || '未分配部门'} / 入职 ${assignFormDiagnostics.hireDate || '-'}`
-              : '-'}
-          </div>
         </div>
         <div>
           <Label>薪资结构</Label>
@@ -86,11 +81,6 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
               ))}
             </SelectContent>
           </Select>
-          <div className="mt-1 text-xs text-slate-400">
-            {assignFormDiagnostics.selectedStructureUsage
-              ? `${assignFormDiagnostics.selectedStructureUsage.employeeIds.size} 名员工 / ${assignFormDiagnostics.selectedStructureUsage.archiveCount} 条档案`
-              : '-'}
-          </div>
         </div>
         <div>
           <Label>生效日期</Label>
@@ -100,20 +90,10 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
             max={getTodayValue()}
             onChange={event => setAssignForm((prev: any) => ({ ...prev, effectiveDate: event.target.value }))}
           />
-          <div className="mt-1 text-xs text-slate-400">
-            {assignFormDiagnostics.hireDate && assignForm.effectiveDate
-              ? `${assignFormDiagnostics.hireDate === assignForm.effectiveDate ? '入职当天' : assignForm.effectiveDate < assignFormDiagnostics.hireDate ? '入职前' : '入职后'}`
-              : '-'}
-          </div>
         </div>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
-        <DetailRow
-          label="保存动作"
-          value={assignFormDiagnostics.modeLabel}
-          valueClassName="max-w-[72%] text-left text-slate-900 dark:text-slate-100"
-        />
         <DetailRow
           label="结构样本"
           value={assignFormDiagnostics.benchmarkStats.count
@@ -135,7 +115,7 @@ export const AssignSalaryDialog: React.FC<DialogProps> = ({ components, viewMode
           <div>
             <h3 className="text-base font-semibold text-slate-900">薪资明细</h3>
           </div>
-          <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-2 text-sm font-medium text-emerald-700">
+          <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200">
             合计 {formatCurrency(assignTotal)}
           </div>
         </div>
@@ -256,13 +236,11 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
             key: 'adjust-after-total',
             label: '调薪后总额',
             value: formatCurrency(adjustmentAfterTotal),
-            tone: 'emerald',
           },
           {
             key: 'adjust-delta',
             label: '调薪差额',
             value: formatCurrency(adjustmentAfterTotal - Number(adjustmentBaseline?.totalSalary || 0)),
-            tone: adjustmentAfterTotal >= Number(adjustmentBaseline?.totalSalary || 0) ? 'emerald' : 'rose',
           },
         ]}
       />
@@ -274,11 +252,6 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
             ? `${buildEmployeeLabel(adjustmentFormEmployee)}${adjustmentBaseline ? ` / ${toDateInputValue(adjustmentBaseline.effectiveDate) || '-'} / ${formatCurrency(adjustmentBaseline.totalSalary)}` : ''}`
             : '-'}
           valueClassName="max-w-[72%] text-left text-slate-900 dark:text-slate-100"
-        />
-        <DetailRow
-          label="创建动作"
-          value={adjustmentFormDiagnostics.modeLabel}
-          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
         />
         <DetailRow
           label="变更规模"
@@ -319,6 +292,8 @@ export const CreateAdjustmentDialog: React.FC<DialogProps> = ({ components, view
 export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewModel }) => {
   const {
     WorkspaceDialogShell,
+    WorkspaceInlineRiskList,
+    DetailRow,
   } = components;
   const {
     open,
@@ -388,93 +363,42 @@ export const InsuranceAssignDialog: React.FC<DialogProps> = ({ components, viewM
         </div>
       </div>
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-4">
-        <div className="font-semibold text-slate-900">{selectedInsuranceScheme?.schemeName || '请选择社保方案'}</div>
-        <div className="mt-2 grid grid-cols-1 gap-3 text-sm text-slate-600 md:grid-cols-3">
-          <div>
-            <div className="text-xs text-slate-400">适用城市</div>
-            <div className="mt-1">{selectedInsuranceScheme?.city || '-'}</div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400">基数范围</div>
-            <div className="mt-1">
-              {selectedInsuranceScheme
-                ? `${formatCurrency(selectedInsuranceScheme.baseMin)} - ${formatCurrency(selectedInsuranceScheme.baseMax)}`
-                : '-'}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs text-slate-400">方案生效</div>
-            <div className="mt-1">{toDateInputValue(selectedInsuranceScheme?.effectiveDate) || '-'}</div>
-          </div>
-        </div>
-        <div className="mt-3 text-xs text-slate-500">{selectedInsuranceScheme?.baseRule || '-'}</div>
-      </div>
-
-      <div className={`mt-4 rounded-2xl border p-4 ${insuranceAssignDiagnostics.riskSummary.className}`}>
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-          <div className="font-semibold text-current">
-            {selectedInsuranceScheme ? '分配校验' : '校验'}
-          </div>
-          <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${insuranceAssignDiagnostics.riskSummary.className}`}>
-            {insuranceAssignDiagnostics.riskSummary.label}
-          </span>
-        </div>
-
-        {insuranceAssignDiagnostics.riskItems.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {insuranceAssignDiagnostics.riskItems.map((item: any) => (
-              <span
-                key={item.key}
-                className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                  item.severity === 'danger'
-                    ? 'border-rose-200 bg-white text-rose-700'
-                    : 'border-amber-200 bg-white text-amber-700'
-                }`}
-              >
-                {item.title}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-xs text-slate-400">当前方案</div>
-          <div className="mt-2 font-semibold text-slate-900">
-            {insuranceAssignDiagnostics.currentActiveLedger?.schemeName || employeeInsuranceDetail?.schemeName || '-'}
-          </div>
-          <div className="mt-1 text-sm text-slate-500">
-            {insuranceAssignDiagnostics.currentActiveLedger
-              ? `${toDateInputValue(insuranceAssignDiagnostics.currentActiveLedger.effectiveDate) || '-'} / ${formatCurrency(insuranceAssignDiagnostics.currentActiveLedger.base)}`
-              : employeeInsuranceDetail
-                ? `${toDateInputValue(employeeInsuranceDetail.effectiveDate) || '-'} / ${formatCurrency(employeeInsuranceDetail.base)}`
-                : '-'}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-xs text-slate-400">保存动作</div>
-          <div className="mt-2 font-semibold text-slate-900">{insuranceAssignDiagnostics.modeLabel}</div>
-          <div className="mt-1 text-xs text-slate-400">
-            {insuranceAssignDiagnostics.sameDateRecords.length > 0
-              ? `同日 ${insuranceAssignDiagnostics.sameDateRecords.length} 条`
+      <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/72">
+        <DetailRow
+          label="选定方案"
+          value={selectedInsuranceScheme?.schemeName || '-'}
+          valueClassName="max-w-[72%] text-left text-slate-900 dark:text-slate-100"
+        />
+        <DetailRow
+          label="适用口径"
+          value={selectedInsuranceScheme
+            ? [
+              selectedInsuranceScheme.city || '-',
+              `${formatCurrency(selectedInsuranceScheme.baseMin)} - ${formatCurrency(selectedInsuranceScheme.baseMax)}`,
+              toDateInputValue(selectedInsuranceScheme.effectiveDate) || '-',
+            ].join(' / ')
+            : '-'}
+          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+        />
+        <DetailRow
+          label="当前台账"
+          value={insuranceAssignDiagnostics.currentActiveLedger
+            ? `${insuranceAssignDiagnostics.currentActiveLedger.schemeName || '-'} / ${toDateInputValue(insuranceAssignDiagnostics.currentActiveLedger.effectiveDate) || '-'} / ${formatCurrency(insuranceAssignDiagnostics.currentActiveLedger.base)}`
+            : employeeInsuranceDetail
+              ? `${employeeInsuranceDetail.schemeName || '-'} / ${toDateInputValue(employeeInsuranceDetail.effectiveDate) || '-'} / ${formatCurrency(employeeInsuranceDetail.base)}`
               : '-'}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-slate-200 bg-white p-4">
-          <div className="text-xs text-slate-400">预计缴纳合计</div>
-          <div className="mt-2 font-semibold text-slate-900">
-            {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.totalAmount) : '-'}
-          </div>
-          <div className="mt-1 text-sm text-slate-500">
-            个人 {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.personalTotal) : '-'}
-          </div>
-          <div className="mt-1 text-xs text-slate-400">
-            公司 {insuranceAssignPreview ? formatCurrency(insuranceAssignPreview.companyTotal) : '-'}
-          </div>
-        </div>
+          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+        />
+        <DetailRow
+          label="预计缴纳"
+          value={insuranceAssignPreview
+            ? `${formatCurrency(insuranceAssignPreview.totalAmount)} / 个人 ${formatCurrency(insuranceAssignPreview.personalTotal)} / 公司 ${formatCurrency(insuranceAssignPreview.companyTotal)}`
+            : '-'}
+          valueClassName="max-w-[72%] text-left text-slate-600 dark:text-slate-300"
+        />
       </div>
+
+      <WorkspaceInlineRiskList items={insuranceAssignDiagnostics.riskItems} className="mt-4" />
 
       {insuranceAssignPreview && (
         <div className="mt-4 overflow-hidden rounded-2xl border border-slate-200 bg-white">

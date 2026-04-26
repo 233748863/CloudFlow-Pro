@@ -263,7 +263,7 @@ CREATE TABLE sys_vehicle_expense (
   amount            DECIMAL(10,2)   NOT NULL COMMENT '金额',
   expense_date      DATE            NOT NULL COMMENT '费用发生日期',
   description       VARCHAR(500)    DEFAULT NULL COMMENT '费用说明',
-  receipt_url       VARCHAR(255)    DEFAULT NULL COMMENT '票据图片URL',
+  receipt_url       VARCHAR(1000)   DEFAULT NULL COMMENT '票据附件URL(多个用逗号分隔)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (expense_id),
@@ -315,7 +315,7 @@ CREATE TABLE biz_expense_item (
   amount            DECIMAL(10,2)   NOT NULL COMMENT '金额',
   expense_date      DATE            NOT NULL COMMENT '费用发生日期',
   description       VARCHAR(500)    DEFAULT NULL COMMENT '费用说明',
-  receipt_url       VARCHAR(255)    DEFAULT NULL COMMENT '票据图片URL',
+  receipt_url       VARCHAR(1000)   DEFAULT NULL COMMENT '凭证附件URL(多个用逗号分隔)',
   vehicle_expense_id BIGINT(20)     DEFAULT NULL COMMENT '关联车辆费用ID',
   PRIMARY KEY (id),
   KEY idx_item_claim (claim_id),
@@ -338,7 +338,7 @@ CREATE TABLE biz_payment_request (
   payment_type      VARCHAR(20)     NOT NULL COMMENT '付款类型(PURCHASE采购/SERVICE服务/RENT租金/OTHER其他)',
   reason            VARCHAR(500)    NOT NULL COMMENT '付款事由',
   expected_date     DATE            DEFAULT NULL COMMENT '期望付款日期',
-  attachment_url    VARCHAR(255)    DEFAULT NULL COMMENT '附件URL',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/PAID已打款)',
   dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
   dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
@@ -516,34 +516,5 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================
 -- 脚本执行完成
--- =========================================================
-
--- =========================================================
--- 五、展示环境高饱满模拟数据（原 05.cloudflow-demo-showcase.sql 已并入）
--- 说明：本段依赖 01、02、04 前文表结构与基础数据
--- =========================================================
--- =========================================================
--- CloudFlow Pro - 展示用高饱满模拟数据脚本
--- 说明：
--- 1. 本脚本依赖 01.cloudflow-common.sql、02.cloudflow-workflow.sql、04.cloudflow-oa.sql 已先执行
--- 2. 本脚本仅插入“用于演示”的关联数据，不创建表结构
--- 3. 所有用户、部门、角色引用均基于 01.cloudflow-common.sql 的初始化数据
--- 4. 建议在开发 / 演示环境使用
--- =========================================================
-
-SET NAMES utf8mb4;
-SET FOREIGN_KEY_CHECKS = 0;
-
-SET FOREIGN_KEY_CHECKS = 1;
-
--- =========================================================
--- 脚本说明
--- 1. 本脚本覆盖：
---    - OA：公告、会议室、日程、协作任务、资产、耗材、车辆、访客、值班、前端错误日志
---    - 业务申请：报销、付款、出差、用车
---    - 工作流：流程实例、待办、已办、附件、催办、抄送、加签、会签、快照、通知、事务消息
--- 2. 所有审批人与申请人都引用现有基础数据：
---    admin=1，李经理=2，王财务=3，赵HR=4，张三=5，刘法务=6，陈IT=7，前端测试=8，后端测试=9
--- 3. 可直接用于首页仪表盘、待办中心、已办中心、流程轨迹、OA 各子模块展示
 -- =========================================================
 

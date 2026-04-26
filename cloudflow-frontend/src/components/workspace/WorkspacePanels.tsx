@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
 import { BaseDialog } from '@/components/common';
+import { SegmentedControl, SegmentedControlItem } from '@/components/ui';
 
 export interface WorkspaceOverviewItem {
   label: string;
@@ -147,27 +148,20 @@ export const WorkspaceWorkbenchCard: React.FC<WorkspaceWorkbenchCardProps> = ({
           {quickFilters?.length || quickFilterAside ? (
             <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
               {quickFilters?.length ? (
-                <div className="inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
+                <SegmentedControl className="flex-wrap">
                   {quickFilters.map((item) => {
-                    const active = activeQuickFilter === item.value;
-
                     return (
-                      <button
+                      <SegmentedControlItem
                         key={item.value || 'ALL'}
-                        type="button"
+                        size="sm"
+                        active={activeQuickFilter === item.value}
                         onClick={() => onQuickFilterChange?.(item.value)}
-                        className={cn(
-                          'rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                          active
-                            ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-                        )}
                       >
                         {item.label}
-                      </button>
+                      </SegmentedControlItem>
                     );
                   })}
-                </div>
+                </SegmentedControl>
               ) : (
                 <div />
               )}

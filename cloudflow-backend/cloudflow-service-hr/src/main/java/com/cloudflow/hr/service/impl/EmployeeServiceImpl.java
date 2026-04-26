@@ -21,7 +21,9 @@ import com.cloudflow.hr.domain.dto.EmergencyContactCreateDTO;
 import com.cloudflow.hr.domain.dto.EmergencyContactUpdateDTO;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.EmployeeContract;
+import com.cloudflow.hr.domain.entity.EmployeeContractAttachment;
 import com.cloudflow.hr.domain.entity.EmployeeDocument;
+import com.cloudflow.hr.domain.entity.EmployeeDocumentAttachment;
 import com.cloudflow.hr.domain.entity.EmergencyContact;
 import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.vo.EmployeeContractVO;
@@ -36,14 +38,21 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 员工档案服务实现类
@@ -55,12 +64,16 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class EmployeeServiceImpl implements EmployeeService {
+
+    private static final int MAX_ARCHIVE_ATTACHMENT_COUNT = 5;
     
     private final EmployeeMapper employeeMapper;
     private final PositionMapper positionMapper;
     private final AuthServiceClient authServiceClient;
     private final EmployeeContractMapper employeeContractMapper;
+    private final EmployeeContractAttachmentMapper employeeContractAttachmentMapper;
     private final EmployeeDocumentMapper employeeDocumentMapper;
+    private final EmployeeDocumentAttachmentMapper employeeDocumentAttachmentMapper;
     private final EmergencyContactMapper emergencyContactMapper;
     private final EmployeeSalaryMapper employeeSalaryMapper;
     private final EmployeeInsuranceMapper employeeInsuranceMapper;
@@ -108,7 +121,6 @@ public class EmployeeServiceImpl implements EmployeeService {
                 throw HrBusinessException.positionNotFound(dto.getPositionId());
             }
         }
-
         validateHireDate(dto.getEmployeeStatus(), dto.getHireDate());
         
         // 4. 创建员工记录
@@ -496,6 +508,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employeeContractMapper.selectCount(wrapper) > 0) {
             throw HrBusinessException.duplicateContractNo(dto.getContractNo());
         }
+
+        List<String> attachmentUrls = normalizeAttachmentUrls(
+                dto.getAttachmentUrls(),
+                "员工合同附件"
+        );
         
         // 3. 创建合同记录
         EmployeeContract contract = new EmployeeContract();
@@ -508,6 +525,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         employeeContractMapper.insert(contract);
+        replaceContractAttachments(contract.getId(), tenantId, attachmentUrls);
         
         log.info("员工合同添加成功，合同ID：{}，合同编号：{}", contract.getId(), contract.getContractNo());
         return contract.getId();
@@ -526,7 +544,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         
         // 2. 验证合同编号唯一性（如果修改了合同编号）
         if (dto.getContractNo() != null && !dto.getContractNo().equals(contract.getContractNo())) {
-            Long tenantId = SecurityUtils.getTenantId();
+            Long tenantId = contract.getTenantId();
             LambdaQueryWrapper<EmployeeContract> wrapper = Wrappers.lambdaQuery(EmployeeContract.class);
             wrapper.eq(EmployeeContract::getTenantId, tenantId)
                    .eq(EmployeeContract::getContractNo, dto.getContractNo())
@@ -536,6 +554,11 @@ public class EmployeeServiceImpl implements EmployeeService {
                 throw HrBusinessException.duplicateContractNo(dto.getContractNo());
             }
         }
+
+        List<String> attachmentUrls = normalizeAttachmentUrls(
+                dto.getAttachmentUrls(),
+                "员工合同附件"
+        );
         
         // 3. 显式写入可空字段，保证附件地址、期限等字段可以被清空。
         LambdaUpdateWrapper<EmployeeContract> updateWrapper = Wrappers.lambdaUpdate(EmployeeContract.class);
@@ -546,10 +569,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .set(EmployeeContract::getStartDate, dto.getStartDate())
                 .set(EmployeeContract::getEndDate, dto.getEndDate())
                 .set(EmployeeContract::getDuration, dto.getDuration())
-                .set(EmployeeContract::getFileUrl, dto.getFileUrl())
                 .set(EmployeeContract::getStatus, dto.getStatus())
                 .set(EmployeeContract::getUpdateTime, LocalDateTime.now());
         employeeContractMapper.update(null, updateWrapper);
+        replaceContractAttachments(id, contract.getTenantId(), attachmentUrls);
         
         log.info("员工合同更新成功，合同ID：{}", id);
     }
@@ -572,9 +595,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                .orderByDesc(EmployeeContract::getStartDate);
         
         List<EmployeeContract> contracts = employeeContractMapper.selectList(wrapper);
+        Map<Long, List<String>> attachmentUrlMap = getContractAttachmentUrlMap(contracts);
         
         // 3. 转换为VO列表
-        return convertToVOList(contracts, employee);
+        return convertToVOList(contracts, employee, attachmentUrlMap);
     }
     
     @Override
@@ -597,11 +621,16 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         // 3. 转换为VO列表
+        Map<Long, List<String>> attachmentUrlMap = getContractAttachmentUrlMap(contracts);
         List<EmployeeContractVO> voList = new ArrayList<>();
         for (EmployeeContract contract : contracts) {
             Employee employee = employeeMap.get(contract.getEmployeeId());
             if (employee != null) {
-                EmployeeContractVO vo = convertToVO(contract, employee);
+                EmployeeContractVO vo = convertToVO(
+                        contract,
+                        employee,
+                        attachmentUrlMap.get(contract.getId())
+                );
                 voList.add(vo);
             }
         }
@@ -626,7 +655,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         // 3. 转换为VO
-        return convertToVO(contract, employee);
+        return convertToVO(contract, employee, getContractAttachmentUrls(contract));
     }
     
     @Override
@@ -646,6 +675,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         // 3. 删除合同
+        deleteContractAttachments(List.of(id));
         employeeContractMapper.deleteById(id);
         
         log.info("员工合同删除成功，合同ID：{}", id);
@@ -654,10 +684,18 @@ public class EmployeeServiceImpl implements EmployeeService {
     /**
      * 转换合同列表为VO列表
      */
-    private List<EmployeeContractVO> convertToVOList(List<EmployeeContract> contracts, Employee employee) {
+    private List<EmployeeContractVO> convertToVOList(
+            List<EmployeeContract> contracts,
+            Employee employee,
+            Map<Long, List<String>> attachmentUrlMap
+    ) {
         List<EmployeeContractVO> voList = new ArrayList<>();
         for (EmployeeContract contract : contracts) {
-            EmployeeContractVO vo = convertToVO(contract, employee);
+            EmployeeContractVO vo = convertToVO(
+                    contract,
+                    employee,
+                    attachmentUrlMap.get(contract.getId())
+            );
             voList.add(vo);
         }
         return voList;
@@ -666,9 +704,18 @@ public class EmployeeServiceImpl implements EmployeeService {
     /**
      * 转换合同为VO
      */
-    private EmployeeContractVO convertToVO(EmployeeContract contract, Employee employee) {
+    private EmployeeContractVO convertToVO(
+            EmployeeContract contract,
+            Employee employee,
+            List<String> attachmentUrls
+    ) {
         EmployeeContractVO vo = new EmployeeContractVO();
         BeanUtils.copyProperties(contract, vo);
+        List<String> normalizedAttachmentUrls = normalizeAttachmentUrls(
+                attachmentUrls,
+                "员工合同附件"
+        );
+        vo.setAttachmentUrls(normalizedAttachmentUrls);
         
         // 设置员工信息
         vo.setEmployeeName(employee.getName());
@@ -744,11 +791,17 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         // 2. 创建证件记录
+        List<String> attachmentUrls = normalizeAttachmentUrls(
+                dto.getAttachmentUrls(),
+                "员工证件附件"
+        );
+
         EmployeeDocument document = new EmployeeDocument();
         BeanUtils.copyProperties(dto, document);
         document.setTenantId(SecurityUtils.getTenantId());
         
         employeeDocumentMapper.insert(document);
+        replaceDocumentAttachments(document.getId(), document.getTenantId(), attachmentUrls);
         
         log.info("员工证件添加成功，证件ID：{}", document.getId());
         return document.getId();
@@ -764,6 +817,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (document == null) {
             throw HrBusinessException.documentNotFound(id);
         }
+
+        List<String> attachmentUrls = normalizeAttachmentUrls(
+                dto.getAttachmentUrls(),
+                "员工证件附件"
+        );
         
         // 2. 显式写入可空字段，保证扫描件地址等信息可被清空。
         LambdaUpdateWrapper<EmployeeDocument> updateWrapper = Wrappers.lambdaUpdate(EmployeeDocument.class);
@@ -772,9 +830,9 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .set(EmployeeDocument::getDocumentNo, dto.getDocumentNo())
                 .set(EmployeeDocument::getIssueDate, dto.getIssueDate())
                 .set(EmployeeDocument::getExpiryDate, dto.getExpiryDate())
-                .set(EmployeeDocument::getFileUrl, dto.getFileUrl())
                 .set(EmployeeDocument::getUpdateTime, LocalDateTime.now());
         employeeDocumentMapper.update(null, updateWrapper);
+        replaceDocumentAttachments(id, document.getTenantId(), attachmentUrls);
         
         log.info("员工证件更新成功，证件ID：{}", id);
     }
@@ -797,9 +855,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                .orderByDesc(EmployeeDocument::getCreateTime);
         
         List<EmployeeDocument> documents = employeeDocumentMapper.selectList(wrapper);
+        Map<Long, List<String>> attachmentUrlMap = getDocumentAttachmentUrlMap(documents);
         
         // 3. 转换为VO列表
-        return convertDocumentsToVOList(documents, employee);
+        return convertDocumentsToVOList(documents, employee, attachmentUrlMap);
     }
     
     @Override
@@ -819,7 +878,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         // 3. 转换为VO
-        return convertDocumentToVO(document, employee);
+        return convertDocumentToVO(document, employee, getDocumentAttachmentUrls(document));
     }
     
     @Override
@@ -834,6 +893,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         // 2. 删除证件
+        deleteDocumentAttachments(List.of(id));
         employeeDocumentMapper.deleteById(id);
         
         log.info("员工证件删除成功，证件ID：{}", id);
@@ -954,10 +1014,18 @@ public class EmployeeServiceImpl implements EmployeeService {
     /**
      * 转换证件列表为VO列表
      */
-    private List<EmployeeDocumentVO> convertDocumentsToVOList(List<EmployeeDocument> documents, Employee employee) {
+    private List<EmployeeDocumentVO> convertDocumentsToVOList(
+            List<EmployeeDocument> documents,
+            Employee employee,
+            Map<Long, List<String>> attachmentUrlMap
+    ) {
         List<EmployeeDocumentVO> voList = new ArrayList<>();
         for (EmployeeDocument document : documents) {
-            EmployeeDocumentVO vo = convertDocumentToVO(document, employee);
+            EmployeeDocumentVO vo = convertDocumentToVO(
+                    document,
+                    employee,
+                    attachmentUrlMap.get(document.getId())
+            );
             voList.add(vo);
         }
         return voList;
@@ -966,9 +1034,18 @@ public class EmployeeServiceImpl implements EmployeeService {
     /**
      * 转换证件为VO
      */
-    private EmployeeDocumentVO convertDocumentToVO(EmployeeDocument document, Employee employee) {
+    private EmployeeDocumentVO convertDocumentToVO(
+            EmployeeDocument document,
+            Employee employee,
+            List<String> attachmentUrls
+    ) {
         EmployeeDocumentVO vo = new EmployeeDocumentVO();
         BeanUtils.copyProperties(document, vo);
+        List<String> normalizedAttachmentUrls = normalizeAttachmentUrls(
+                attachmentUrls,
+                "员工证件附件"
+        );
+        vo.setAttachmentUrls(normalizedAttachmentUrls);
         
         // 设置员工信息
         vo.setEmployeeName(employee.getName());
@@ -999,6 +1076,186 @@ public class EmployeeServiceImpl implements EmployeeService {
             default:
                 return documentType;
         }
+    }
+
+    private Map<Long, List<String>> getContractAttachmentUrlMap(List<EmployeeContract> contracts) {
+        Map<Long, List<String>> attachmentUrlMap = new HashMap<>();
+        if (CollectionUtils.isEmpty(contracts)) {
+            return attachmentUrlMap;
+        }
+
+        List<Long> contractIds = new ArrayList<>();
+        for (EmployeeContract contract : contracts) {
+            contractIds.add(contract.getId());
+        }
+
+        LambdaQueryWrapper<EmployeeContractAttachment> wrapper = Wrappers.lambdaQuery(EmployeeContractAttachment.class);
+        wrapper.in(EmployeeContractAttachment::getContractId, contractIds)
+                .orderByAsc(EmployeeContractAttachment::getSortOrder)
+                .orderByAsc(EmployeeContractAttachment::getId);
+        List<EmployeeContractAttachment> attachments = employeeContractAttachmentMapper.selectList(wrapper);
+        for (EmployeeContractAttachment attachment : attachments) {
+            attachmentUrlMap.computeIfAbsent(attachment.getContractId(), key -> new ArrayList<>())
+                    .add(attachment.getFileUrl());
+        }
+
+        for (Long contractId : contractIds) {
+            attachmentUrlMap.put(
+                    contractId,
+                    normalizeAttachmentUrls(
+                            attachmentUrlMap.get(contractId),
+                            "员工合同附件"
+                    )
+            );
+        }
+        return attachmentUrlMap;
+    }
+
+    private List<String> getContractAttachmentUrls(EmployeeContract contract) {
+        if (contract == null || contract.getId() == null) {
+            return new ArrayList<>();
+        }
+        return getContractAttachmentUrlMap(List.of(contract)).getOrDefault(contract.getId(), new ArrayList<>());
+    }
+
+    private void replaceContractAttachments(Long contractId, Long tenantId, List<String> attachmentUrls) {
+        if (contractId == null) {
+            return;
+        }
+
+        deleteContractAttachments(List.of(contractId));
+        if (CollectionUtils.isEmpty(attachmentUrls)) {
+            return;
+        }
+
+        int sortOrder = 0;
+        for (String attachmentUrl : attachmentUrls) {
+            EmployeeContractAttachment attachment = new EmployeeContractAttachment();
+            attachment.setTenantId(tenantId);
+            attachment.setContractId(contractId);
+            attachment.setFileName(extractFileName(attachmentUrl));
+            attachment.setFileUrl(attachmentUrl);
+            attachment.setSortOrder(sortOrder++);
+            employeeContractAttachmentMapper.insert(attachment);
+        }
+    }
+
+    private void deleteContractAttachments(Collection<Long> contractIds) {
+        if (CollectionUtils.isEmpty(contractIds)) {
+            return;
+        }
+        LambdaQueryWrapper<EmployeeContractAttachment> wrapper = Wrappers.lambdaQuery(EmployeeContractAttachment.class);
+        wrapper.in(EmployeeContractAttachment::getContractId, contractIds);
+        employeeContractAttachmentMapper.delete(wrapper);
+    }
+
+    private Map<Long, List<String>> getDocumentAttachmentUrlMap(List<EmployeeDocument> documents) {
+        Map<Long, List<String>> attachmentUrlMap = new HashMap<>();
+        if (CollectionUtils.isEmpty(documents)) {
+            return attachmentUrlMap;
+        }
+
+        List<Long> documentIds = new ArrayList<>();
+        for (EmployeeDocument document : documents) {
+            documentIds.add(document.getId());
+        }
+
+        LambdaQueryWrapper<EmployeeDocumentAttachment> wrapper = Wrappers.lambdaQuery(EmployeeDocumentAttachment.class);
+        wrapper.in(EmployeeDocumentAttachment::getDocumentId, documentIds)
+                .orderByAsc(EmployeeDocumentAttachment::getSortOrder)
+                .orderByAsc(EmployeeDocumentAttachment::getId);
+        List<EmployeeDocumentAttachment> attachments = employeeDocumentAttachmentMapper.selectList(wrapper);
+        for (EmployeeDocumentAttachment attachment : attachments) {
+            attachmentUrlMap.computeIfAbsent(attachment.getDocumentId(), key -> new ArrayList<>())
+                    .add(attachment.getFileUrl());
+        }
+
+        for (Long documentId : documentIds) {
+            attachmentUrlMap.put(
+                    documentId,
+                    normalizeAttachmentUrls(
+                            attachmentUrlMap.get(documentId),
+                            "员工证件附件"
+                    )
+            );
+        }
+        return attachmentUrlMap;
+    }
+
+    private List<String> getDocumentAttachmentUrls(EmployeeDocument document) {
+        if (document == null || document.getId() == null) {
+            return new ArrayList<>();
+        }
+        return getDocumentAttachmentUrlMap(List.of(document)).getOrDefault(document.getId(), new ArrayList<>());
+    }
+
+    private void replaceDocumentAttachments(Long documentId, Long tenantId, List<String> attachmentUrls) {
+        if (documentId == null) {
+            return;
+        }
+
+        deleteDocumentAttachments(List.of(documentId));
+        if (CollectionUtils.isEmpty(attachmentUrls)) {
+            return;
+        }
+
+        int sortOrder = 0;
+        for (String attachmentUrl : attachmentUrls) {
+            EmployeeDocumentAttachment attachment = new EmployeeDocumentAttachment();
+            attachment.setTenantId(tenantId);
+            attachment.setDocumentId(documentId);
+            attachment.setFileName(extractFileName(attachmentUrl));
+            attachment.setFileUrl(attachmentUrl);
+            attachment.setSortOrder(sortOrder++);
+            employeeDocumentAttachmentMapper.insert(attachment);
+        }
+    }
+
+    private void deleteDocumentAttachments(Collection<Long> documentIds) {
+        if (CollectionUtils.isEmpty(documentIds)) {
+            return;
+        }
+        LambdaQueryWrapper<EmployeeDocumentAttachment> wrapper = Wrappers.lambdaQuery(EmployeeDocumentAttachment.class);
+        wrapper.in(EmployeeDocumentAttachment::getDocumentId, documentIds);
+        employeeDocumentAttachmentMapper.delete(wrapper);
+    }
+
+    private List<String> normalizeAttachmentUrls(
+            List<String> attachmentUrls,
+            String fieldLabel
+    ) {
+        Set<String> normalizedUrls = new LinkedHashSet<>();
+        if (!CollectionUtils.isEmpty(attachmentUrls)) {
+            for (String attachmentUrl : attachmentUrls) {
+                addAttachmentUrl(normalizedUrls, attachmentUrl);
+            }
+        }
+        if (normalizedUrls.size() > MAX_ARCHIVE_ATTACHMENT_COUNT) {
+            throw new IllegalArgumentException(fieldLabel + "最多上传 " + MAX_ARCHIVE_ATTACHMENT_COUNT + " 个文件");
+        }
+        return new ArrayList<>(normalizedUrls);
+    }
+
+    private void addAttachmentUrl(Set<String> normalizedUrls, String attachmentUrl) {
+        if (StringUtils.hasText(attachmentUrl)) {
+            normalizedUrls.add(attachmentUrl.trim());
+        }
+    }
+
+    private String extractFileName(String fileUrl) {
+        if (!StringUtils.hasText(fileUrl)) {
+            return null;
+        }
+
+        String normalizedUrl = fileUrl.trim();
+        int queryIndex = normalizedUrl.indexOf('?');
+        if (queryIndex >= 0) {
+            normalizedUrl = normalizedUrl.substring(0, queryIndex);
+        }
+
+        int slashIndex = normalizedUrl.lastIndexOf('/');
+        String fileName = slashIndex >= 0 ? normalizedUrl.substring(slashIndex + 1) : normalizedUrl;
+        return URLDecoder.decode(fileName, StandardCharsets.UTF_8);
     }
     
     /**

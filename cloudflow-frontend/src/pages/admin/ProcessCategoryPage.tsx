@@ -1,6 +1,4 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { processCategoryApi, ProcessCategory } from '../../services/api/processCategory';
-import { toast } from 'sonner';
 import {
   Briefcase,
   Building2,
@@ -17,17 +15,25 @@ import {
   Trash2,
   Users,
 } from 'lucide-react';
-import { Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
-import { WorkspaceBackdrop, WorkspaceInlineState, WorkspacePageContent } from '@/components/workspace/WorkspacePrimitives';
+import { toast } from 'sonner';
+import { BaseDialog, ConfirmDialog } from '@/components/common';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
-  WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspaceSectionCard,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
-import { ConfirmDialog } from '@/components/common';
+  Button,
+  Input,
+  LoadingSpinner,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
+} from '@/components/ui';
 import { cn } from '@/utils/cn';
+import { processCategoryApi, type ProcessCategory } from '../../services/api/processCategory';
+
+const STATUS_ALL_VALUE = '__all__';
+const EMPTY_ICON_VALUE = '__none__';
 
 const iconMap: Record<string, React.ElementType> = {
   'folder-tree': FolderTree,
@@ -39,6 +45,16 @@ const iconMap: Record<string, React.ElementType> = {
   layers: Layers,
 };
 
+const iconOptions = [
+  'briefcase',
+  'users',
+  'dollar-sign',
+  'building',
+  'folder-kanban',
+  'folder-tree',
+  'layers',
+];
+
 const emptyForm: ProcessCategory = {
   parentId: 0,
   categoryName: '',
@@ -49,14 +65,52 @@ const emptyForm: ProcessCategory = {
   remark: '',
 };
 
-const fieldLabelClassName = 'mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200';
-const infoBlockClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70';
+const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
-const formatDateCN = (date: Date) => {
-  const weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
-  return `${date.getMonth() + 1}月${date.getDate()}日 ${weekdays[date.getDay()]}`;
-};
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  loading?: boolean;
+  className?: string;
+}> = ({ title, description, loading = false, className }) => (
+  <div className={cn('flex flex-col items-center justify-center px-6 py-14 text-center', className)}>
+    {loading ? (
+      <LoadingSpinner size="lg" className="mb-3" />
+    ) : (
+      <FolderTree className="mb-3 h-5 w-5 text-slate-400 dark:text-slate-500" />
+    )}
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const DetailRow: React.FC<{
+  label: string;
+  value: React.ReactNode;
+  mono?: boolean;
+}> = ({ label, value, mono = false }) => (
+  <div className="flex flex-col gap-1 border-b border-slate-100 px-3.5 py-2.5 last:border-b-0 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+    <div className="text-xs font-medium text-slate-400 dark:text-slate-500 sm:min-w-[84px]">{label}</div>
+    <div className={cn('text-sm text-slate-900 dark:text-slate-100 sm:text-right', mono && 'font-mono')}>
+      {value}
+    </div>
+  </div>
+);
+
+const DetailSection: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+}> = ({ children, className }) => (
+  <div className={cn('overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800', className)}>
+    {children}
+  </div>
+);
+
+const getStatusLabel = (status?: string) => (status === '1' ? '停用' : '正常');
+const getParentLabel = (item?: ProcessCategory | null) =>
+  Number(item?.parentId || 0) === 0 ? '顶级分类' : item?.parentName || item?.parentId || '-';
 
 const renderIcon = (icon?: string, className = 'h-4 w-4 text-slate-400 dark:text-slate-500') => {
   const Icon = icon && iconMap[icon] ? iconMap[icon] : Layers;
@@ -65,14 +119,15 @@ const renderIcon = (icon?: string, className = 'h-4 w-4 text-slate-400 dark:text
 
 const flattenCategories = (items: ProcessCategory[]): ProcessCategory[] => {
   const result: ProcessCategory[] = [];
+
   const visit = (nodes: ProcessCategory[], parentName?: string) => {
     nodes.forEach((node) => {
-      const next: ProcessCategory = {
+      result.push({
         ...node,
         children: undefined,
         parentName: node.parentName || parentName,
-      };
-      result.push(next);
+      });
+
       if (node.children?.length) {
         visit(node.children, node.categoryName);
       }
@@ -90,9 +145,15 @@ const flattenCategories = (items: ProcessCategory[]): ProcessCategory[] => {
 
   return Array.from(deduped.values()).sort((a, b) => {
     const parentDiff = Number(a.parentId || 0) - Number(b.parentId || 0);
-    if (parentDiff !== 0) return parentDiff;
+    if (parentDiff !== 0) {
+      return parentDiff;
+    }
+
     const sortDiff = Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
-    if (sortDiff !== 0) return sortDiff;
+    if (sortDiff !== 0) {
+      return sortDiff;
+    }
+
     return String(a.categoryName || '').localeCompare(String(b.categoryName || ''));
   });
 };
@@ -101,7 +162,10 @@ const buildCategoryTree = (items: ProcessCategory[]): ProcessCategory[] => {
   const map = new Map<number, ProcessCategory>();
 
   items.forEach((item) => {
-    if (item.categoryId === undefined) return;
+    if (item.categoryId === undefined) {
+      return;
+    }
+
     map.set(item.categoryId, {
       ...item,
       children: [],
@@ -109,8 +173,10 @@ const buildCategoryTree = (items: ProcessCategory[]): ProcessCategory[] => {
   });
 
   const roots: ProcessCategory[] = [];
+
   map.forEach((item) => {
     const parentId = Number(item.parentId || 0);
+
     if (parentId && map.has(parentId) && parentId !== item.categoryId) {
       map.get(parentId)?.children?.push(item);
     } else {
@@ -121,9 +187,13 @@ const buildCategoryTree = (items: ProcessCategory[]): ProcessCategory[] => {
   const sortNodes = (nodes: ProcessCategory[]) => {
     nodes.sort((a, b) => {
       const sortDiff = Number(a.sortOrder || 0) - Number(b.sortOrder || 0);
-      if (sortDiff !== 0) return sortDiff;
+      if (sortDiff !== 0) {
+        return sortDiff;
+      }
+
       return String(a.categoryName || '').localeCompare(String(b.categoryName || ''));
     });
+
     nodes.forEach((node) => sortNodes(node.children || []));
   };
 
@@ -131,181 +201,262 @@ const buildCategoryTree = (items: ProcessCategory[]): ProcessCategory[] => {
   return roots;
 };
 
-const filterCategoryTree = (
-  nodes: ProcessCategory[],
-  keyword: string,
-  statusFilter: string,
-): ProcessCategory[] => {
-  const loweredKeyword = keyword.trim().toLowerCase();
+const filterCategoryTree = (nodes: ProcessCategory[], keyword: string, status: string): ProcessCategory[] => {
+  const normalizedKeyword = keyword.trim().toLowerCase();
 
   return nodes.reduce<ProcessCategory[]>((acc, node) => {
-    const filteredChildren = filterCategoryTree(node.children || [], keyword, statusFilter);
-    const statusMatch = !statusFilter || node.status === statusFilter;
-    const keywordMatch = !loweredKeyword
-      || [node.categoryName, node.categoryCode, node.remark]
+    const filteredChildren = filterCategoryTree(node.children || [], keyword, status);
+    const matchesStatus = !status || node.status === status;
+    const matchesKeyword =
+      !normalizedKeyword ||
+      [node.categoryName, node.categoryCode, node.remark]
         .filter(Boolean)
-        .some((value) => String(value).toLowerCase().includes(loweredKeyword));
+        .some((value) => String(value).toLowerCase().includes(normalizedKeyword));
 
-    if ((statusMatch && keywordMatch) || filteredChildren.length > 0) {
+    if ((matchesStatus && matchesKeyword) || filteredChildren.length > 0) {
       acc.push({
         ...node,
         children: filteredChildren,
       });
     }
+
     return acc;
   }, []);
 };
 
+const collectDescendantIds = (categoryId: number | undefined, items: ProcessCategory[]) => {
+  if (!categoryId) {
+    return new Set<number>();
+  }
+
+  const descendants = new Set<number>();
+  const queue = [categoryId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift() as number;
+    items.forEach((item) => {
+      if (Number(item.parentId || 0) === currentId && item.categoryId !== undefined && !descendants.has(item.categoryId)) {
+        descendants.add(item.categoryId);
+        queue.push(item.categoryId);
+      }
+    });
+  }
+
+  return descendants;
+};
+
 const ProcessCategoryPage: React.FC = () => {
   const [flatList, setFlatList] = useState<ProcessCategory[]>([]);
+  const [loading, setLoading] = useState(false);
   const [expandedKeys, setExpandedKeys] = useState<Set<number>>(new Set());
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [filters, setFilters] = useState({ keyword: '', status: '' });
+  const [query, setQuery] = useState({ keyword: '', status: '' });
   const [modalOpen, setModalOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
-  const [form, setForm] = useState<ProcessCategory>({ ...emptyForm });
-  const [pageLoading, setPageLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [keyword, setKeyword] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [form, setForm] = useState<ProcessCategory>({ ...emptyForm });
   const [deleteTarget, setDeleteTarget] = useState<ProcessCategory | null>(null);
-
-  const fetchData = async () => {
-    try {
-      setPageLoading(true);
-      const listRes = await processCategoryApi.list();
-      const normalizedFlat = flattenCategories(listRes || []);
-      setFlatList(normalizedFlat);
-
-      if (normalizedFlat.length > 0) {
-        setSelectedId((prev) => {
-          if (prev && normalizedFlat.some((item) => item.categoryId === prev)) {
-            return prev;
-          }
-          return normalizedFlat[0].categoryId || null;
-        });
-      } else {
-        setSelectedId(null);
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error('加载分类数据失败');
-    } finally {
-      setPageLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    void fetchData();
-  }, []);
 
   const treeData = useMemo(() => buildCategoryTree(flatList), [flatList]);
 
-  useEffect(() => {
-    setExpandedKeys(new Set(treeData.map((item) => item.categoryId!).filter(Boolean)));
-  }, [treeData.length]);
-
   const filteredTreeData = useMemo(
-    () => filterCategoryTree(treeData, keyword, statusFilter),
-    [keyword, statusFilter, treeData],
+    () => filterCategoryTree(treeData, query.keyword, query.status),
+    [query.keyword, query.status, treeData],
   );
 
   const filteredFlatList = useMemo(() => {
-    const loweredKeyword = keyword.trim().toLowerCase();
+    const normalizedKeyword = query.keyword.trim().toLowerCase();
+
     return flatList.filter((item) => {
-      const statusMatch = !statusFilter || item.status === statusFilter;
-      const keywordMatch = !loweredKeyword
-        || [item.categoryName, item.categoryCode, item.remark]
+      const matchesStatus = !query.status || item.status === query.status;
+      const matchesKeyword =
+        !normalizedKeyword ||
+        [item.categoryName, item.categoryCode, item.remark]
           .filter(Boolean)
-          .some((value) => String(value).toLowerCase().includes(loweredKeyword));
-      return statusMatch && keywordMatch;
+          .some((value) => String(value).toLowerCase().includes(normalizedKeyword));
+
+      return matchesStatus && matchesKeyword;
     });
-  }, [flatList, keyword, statusFilter]);
+  }, [flatList, query.keyword, query.status]);
 
   const selectedNode = useMemo(
-    () => flatList.find((item) => item.categoryId === selectedId),
+    () => flatList.find((item) => item.categoryId === selectedId) ?? null,
     [flatList, selectedId],
   );
 
   const selectedChildren = useMemo(
-    () => flatList.filter((item) => item.parentId === selectedNode?.categoryId),
+    () => flatList.filter((item) => Number(item.parentId || 0) === Number(selectedNode?.categoryId || 0)),
     [flatList, selectedNode?.categoryId],
   );
 
-  const activeCount = flatList.filter((item) => item.status === '0').length;
-  const rootCount = flatList.filter((item) => Number(item.parentId || 0) === 0).length;
-  const inactiveCount = flatList.filter((item) => item.status === '1').length;
+  const hasActiveFilters = Boolean(query.keyword || query.status);
 
-  const handleAdd = (parentId: number = 0) => {
+  const disabledParentIds = useMemo(() => {
+    const currentId = form.categoryId;
+    const descendants = collectDescendantIds(currentId, flatList);
+
+    if (currentId !== undefined) {
+      descendants.add(currentId);
+    }
+
+    return descendants;
+  }, [flatList, form.categoryId]);
+
+  const loadData = async () => {
+    setLoading(true);
+
+    try {
+      const listRes = await processCategoryApi.list();
+      const normalized = flattenCategories(listRes || []);
+      setFlatList(normalized);
+    } catch (error) {
+      console.error('加载流程分类失败:', error);
+      toast.error('加载流程分类失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void loadData();
+  }, []);
+
+  useEffect(() => {
+    setExpandedKeys(new Set(treeData.map((item) => item.categoryId!).filter(Boolean)));
+  }, [treeData]);
+
+  useEffect(() => {
+    if (filteredFlatList.length === 0) {
+      setSelectedId(null);
+      return;
+    }
+
+    setSelectedId((current) => {
+      if (current && filteredFlatList.some((item) => item.categoryId === current)) {
+        return current;
+      }
+
+      return filteredFlatList[0]?.categoryId ?? null;
+    });
+  }, [filteredFlatList]);
+
+  const handleSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    setQuery({
+      keyword: filters.keyword.trim(),
+      status: filters.status,
+    });
+  };
+
+  const handleReset = () => {
+    const next = { keyword: '', status: '' };
+    setFilters(next);
+    setQuery(next);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
     setIsEdit(false);
-    setForm({ ...emptyForm, parentId });
+    setForm({ ...emptyForm });
+  };
+
+  const handleAdd = (parentId = 0) => {
+    setIsEdit(false);
+    setForm({
+      ...emptyForm,
+      parentId,
+    });
     setModalOpen(true);
   };
 
-  const handleEdit = async (id: number) => {
+  const handleEdit = async (categoryId: number) => {
     try {
-      const data = await processCategoryApi.getInfo(id);
-      if (data) {
-        setIsEdit(true);
-        setForm(data);
-        setModalOpen(true);
-      }
-    } catch {
-      toast.error('获取分类详情失败');
+      const detail = await processCategoryApi.getInfo(categoryId);
+      setIsEdit(true);
+      setForm({
+        ...emptyForm,
+        ...detail,
+      });
+      setModalOpen(true);
+    } catch (error) {
+      console.error('加载分类详情失败:', error);
+      toast.error('加载分类详情失败');
     }
   };
 
-  const handleDelete = async (target: ProcessCategory | null) => {
-    if (!target?.categoryId) return;
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
 
-    try {
-      await processCategoryApi.remove(target.categoryId);
-      toast.success('删除成功');
-      if (selectedId === target.categoryId) setSelectedId(null);
-      setDeleteTarget(null);
-      await fetchData();
-    } catch (error: any) {
-      toast.error(error?.response?.data?.msg || '删除失败');
-    }
-  };
-
-  const handleSubmit = async () => {
     if (!form.categoryName?.trim()) {
       toast.error('请输入分类名称');
       return;
     }
+
     if (!form.categoryCode?.trim()) {
       toast.error('请输入分类编码');
       return;
     }
 
     setSubmitting(true);
+
     try {
+      const payload = {
+        ...form,
+        categoryName: form.categoryName.trim(),
+        categoryCode: form.categoryCode.trim(),
+        remark: form.remark?.trim() || '',
+      };
+
       if (isEdit) {
-        await processCategoryApi.edit(form);
-        toast.success('修改成功');
+        await processCategoryApi.edit(payload);
+        toast.success('分类已更新');
       } else {
-        await processCategoryApi.add(form);
-        toast.success('新增成功');
+        await processCategoryApi.add(payload);
+        toast.success('分类已创建');
       }
-      setModalOpen(false);
-      await fetchData();
+
+      closeModal();
+      await loadData();
     } catch (error: any) {
-      toast.error(error?.response?.data?.msg || '操作失败');
+      console.error('保存分类失败:', error);
+      toast.error(error?.response?.data?.msg || '保存分类失败');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const toggleExpand = (id: number) => {
-    setExpandedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+  const confirmDelete = async () => {
+    if (!deleteTarget?.categoryId) {
+      return;
+    }
+
+    try {
+      await processCategoryApi.remove(deleteTarget.categoryId);
+      toast.success('分类已删除');
+      setDeleteTarget(null);
+      await loadData();
+    } catch (error: any) {
+      console.error('删除分类失败:', error);
+      toast.error(error?.response?.data?.msg || '删除分类失败');
+    }
+  };
+
+  const toggleExpand = (categoryId: number) => {
+    setExpandedKeys((current) => {
+      const next = new Set(current);
+
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+
       return next;
     });
   };
 
-  const renderTreeNode = (node: ProcessCategory, level: number = 0): React.ReactNode => {
+  const renderTreeNode = (node: ProcessCategory, level = 0): React.ReactNode => {
     const hasChildren = Boolean(node.children?.length);
     const isExpanded = expandedKeys.has(node.categoryId!);
     const isSelected = selectedId === node.categoryId;
@@ -314,473 +465,375 @@ const ProcessCategoryPage: React.FC = () => {
       <div key={node.categoryId}>
         <div
           className={cn(
-            'group flex cursor-pointer items-center rounded-2xl border px-3 py-2 transition-all',
-            isSelected
-              ? 'border-cyan-200 bg-cyan-50 text-cyan-700 shadow-sm dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200'
-              : 'border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-50 dark:text-slate-200 dark:hover:border-slate-800 dark:hover:bg-slate-900/70',
+            'cf-side-link cf-side-link-sm group cursor-pointer',
+            isSelected && 'cf-side-link-active',
           )}
-          style={{ paddingLeft: `${level * 22 + 12}px` }}
-          onClick={() => setSelectedId(node.categoryId!)}
+          style={{ paddingLeft: `${level * 12 + 8}px` }}
+          onClick={() => setSelectedId(node.categoryId || null)}
         >
           <button
             type="button"
-            className="mr-1 flex h-5 w-5 items-center justify-center text-slate-400 dark:text-slate-500"
             onClick={(event) => {
               event.stopPropagation();
-              if (hasChildren) toggleExpand(node.categoryId!);
+              if (hasChildren && node.categoryId !== undefined) {
+                toggleExpand(node.categoryId);
+              }
             }}
+            className="flex h-4 w-4 items-center justify-center rounded text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             {hasChildren ? (
-              isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />
+              isExpanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />
             ) : (
-              <span className="w-4" />
+              <span className="h-3.5 w-3.5" />
             )}
           </button>
-          <span className="mr-2 text-cyan-600 dark:text-cyan-200">
-            {renderIcon(node.icon, 'h-4 w-4')}
+
+          <span className="flex h-4 w-4 items-center justify-center">
+            {renderIcon(node.icon, 'h-3.5 w-3.5 text-slate-400 dark:text-slate-500')}
           </span>
+
           <div className="min-w-0 flex-1">
-            <div className="truncate text-sm font-medium">{node.categoryName}</div>
-            <div className="mt-0.5 truncate text-xs text-slate-400 dark:text-slate-500">{node.categoryCode}</div>
-          </div>
-          <span
-            className={cn(
-              'mr-2 rounded-full px-2 py-0.5 text-xs font-medium',
-              node.status === '0'
-                ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200'
-                : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200',
-            )}
-          >
-            {node.status === '0' ? '正常' : '停用'}
-          </span>
-          <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-cyan-700 dark:text-slate-500 dark:hover:text-cyan-200"
-              onClick={(event) => {
-                event.stopPropagation();
-                handleAdd(node.categoryId!);
-              }}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:text-cyan-600 dark:text-slate-500 dark:hover:text-cyan-200"
-              onClick={(event) => {
-                event.stopPropagation();
-                void handleEdit(node.categoryId!);
-              }}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
-              onClick={(event) => {
-                event.stopPropagation();
-                setDeleteTarget(node);
-              }}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center gap-2 text-sm">
+              <span className="truncate font-medium">{node.categoryName}</span>
+              {node.categoryCode ? (
+                <span className="truncate font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                  {node.categoryCode}
+                </span>
+              ) : null}
+            </div>
           </div>
         </div>
-        {hasChildren && isExpanded ? node.children!.map((child) => renderTreeNode(child, level + 1)) : null}
+
+        {hasChildren && isExpanded ? node.children?.map((child) => renderTreeNode(child, level + 1)) : null}
       </div>
     );
   };
 
-  const todayLabel = formatDateCN(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-
-  const overviewItems = [
-    { label: '筛选结果', value: `${filteredFlatList.length} 条` },
-    { label: '正常分类', value: `${activeCount} 条` },
-    { label: '停用分类', value: `${inactiveCount} 条` },
-    { label: '当前选中', value: selectedNode?.categoryName || '未选择' },
-  ];
-
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-      <WorkspacePageContent className="space-y-4">
-        <WorkspaceHeroCard
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
-                <FolderTree className="h-3.5 w-3.5" />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950/90">
-                {timeLabel}
-              </span>
-            </div>
-          )}
-          title="流程分类管理"
-          description="统一流程分类树、详情面板和编辑弹窗，让流程治理页也进入同一套工作台结构。"
-          actions={(
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={() => void fetchData()}>
-                <RefreshCw className="h-4 w-4" />
-                刷新
-              </Button>
-              <Button onClick={() => handleAdd(0)}>
-                <Plus className="h-4 w-4" />
-                新增顶级分类
-              </Button>
-            </div>
-          )}
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="分类总数"
-              value={flatList.length}
-              hint="当前所有分类节点数"
-              aside={<FolderTree className="h-[18px] w-[18px] text-cyan-600 dark:text-cyan-200" />}
-            />
-            <WorkspaceMetricCard
-              label="正常分类"
-              value={activeCount}
-              hint="状态为正常的分类节点"
-              aside={<Layers className="h-[18px] w-[18px] text-emerald-500 dark:text-emerald-200" />}
-            />
-            <WorkspaceMetricCard
-              label="顶级分类"
-              value={rootCount}
-              hint="树结构中的一级分类数量"
-              aside={<FolderKanban className="h-[18px] w-[18px] text-amber-500 dark:text-amber-200" />}
-            />
-            <WorkspaceMetricCard
-              label="当前选中"
-              value={selectedNode?.categoryName || '未选择'}
-              hint="右侧详情面板展示的分类"
-              aside={<Briefcase className="h-[18px] w-[18px] text-sky-500 dark:text-sky-200" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
-
-        <WorkspaceWorkbenchCard
-          eyebrow="Category Filters"
-          title="分类筛选与治理"
-          total={filteredFlatList.length}
-          hasActiveFilters={Boolean(keyword || statusFilter)}
-          overviewItems={overviewItems}
-          quickFilters={[
-            { label: '全部状态', value: 'all' },
-            { label: '正常', value: '0' },
-            { label: '停用', value: '1' },
-          ]}
-          activeQuickFilter={statusFilter || 'all'}
-          onQuickFilterChange={(value) => setStatusFilter(value === 'all' ? '' : value)}
-          quickFilterAside={selectedNode ? (
-            <Button variant="outline" size="sm" onClick={() => void handleEdit(selectedNode.categoryId!)}>
-              <Pencil className="h-4 w-4" />
-              编辑当前分类
-            </Button>
-          ) : (
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
-              当前未选择分类
-            </span>
-          )}
-          filterBar={(
-            <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_220px_auto]">
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" size={16} />
+    <>
+      <TablePageLayout
+        className="gap-2.5"
+        filters={(
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
                 <Input
-                  value={keyword}
-                  onChange={(event) => setKeyword(event.target.value)}
-                  placeholder="按分类名称、编码或备注搜索"
-                  className="pl-10"
+                  value={filters.keyword}
+                  onChange={(event) => setFilters((current) => ({ ...current, keyword: event.target.value }))}
+                  placeholder="搜索分类名称或编码"
+                  className="h-10 pl-10"
                 />
               </div>
-              <Select value={statusFilter || 'all'} onValueChange={(value) => setStatusFilter(value === 'all' ? '' : value)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="全部状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">全部状态</SelectItem>
-                  <SelectItem value="0">正常</SelectItem>
-                  <SelectItem value="1">停用</SelectItem>
-                </SelectContent>
-              </Select>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setKeyword('');
-                  setStatusFilter('');
-                }}
-              >
-                <Search className="h-4 w-4" />
-                清空筛选
-              </Button>
-            </div>
-          )}
-        />
 
-        <div className="grid gap-4 xl:grid-cols-[460px_minmax(0,1fr)]">
-          <WorkspaceSectionCard title="分类结构" description="左侧按层级浏览流程分类树，支持快速展开、选择与增删改。">
-            {pageLoading ? (
-              <WorkspaceInlineState type="loading" title="正在加载分类树..." className="py-12" />
-            ) : filteredTreeData.length === 0 ? (
-              <WorkspaceInlineState icon={<FolderTree className="h-5 w-5" />} title="暂无分类数据" className="py-12" />
-            ) : (
-              <div className="space-y-1">{filteredTreeData.map((node) => renderTreeNode(node))}</div>
-            )}
-          </WorkspaceSectionCard>
-
-          <WorkspaceSectionCard
-            title={selectedNode ? selectedNode.categoryName || '分类详情' : '分类详情'}
-            description={selectedNode ? '查看当前分类的编码、层级、图标和备注。' : '在左侧选择一个分类查看详情。'}
-            headerAside={selectedNode ? (
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" onClick={() => void handleEdit(selectedNode.categoryId!)}>
-                  编辑分类
-                </Button>
-                <Button variant="secondary" onClick={() => handleAdd(selectedNode.categoryId!)}>
-                  添加子分类
-                </Button>
-              </div>
-            ) : undefined}
-            bodyClassName="space-y-4"
-          >
-            {selectedNode ? (
-              <>
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                  <div className={infoBlockClassName}>
-                    <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">分类编码</div>
-                    <div className="mt-2 font-mono text-sm text-slate-900 dark:text-slate-100">{selectedNode.categoryCode}</div>
-                  </div>
-                  <div className={infoBlockClassName}>
-                    <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">排序号</div>
-                    <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">{selectedNode.sortOrder}</div>
-                  </div>
-                  <div className={infoBlockClassName}>
-                    <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">状态</div>
-                    <div className="mt-2">
-                      <span
-                        className={cn(
-                          'inline-flex rounded-full px-2.5 py-1 text-xs font-medium',
-                          selectedNode.status === '0'
-                            ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200'
-                            : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200',
-                        )}
-                      >
-                        {selectedNode.status === '0' ? '正常' : '停用'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={infoBlockClassName}>
-                    <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">父分类</div>
-                    <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">
-                      {selectedNode.parentId === 0 ? '顶级分类' : selectedNode.parentName || selectedNode.parentId}
-                    </div>
-                  </div>
-                  <div className={infoBlockClassName}>
-                    <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">图标</div>
-                    <div className="mt-2 flex items-center gap-2 text-sm text-slate-900 dark:text-slate-100">
-                      {renderIcon(selectedNode.icon, 'h-4 w-4 text-cyan-600 dark:text-cyan-200')}
-                      <span>{selectedNode.icon || '无'}</span>
-                    </div>
-                  </div>
-                  <div className={infoBlockClassName}>
-                    <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">子分类数</div>
-                    <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">{selectedChildren.length}</div>
-                  </div>
-                </div>
-
-                <div className={infoBlockClassName}>
-                  <div className="text-xs uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">备注</div>
-                  <div className="mt-2 text-sm leading-7 text-slate-700 dark:text-slate-200">
-                    {selectedNode.remark || '暂无备注'}
-                  </div>
-                </div>
-
-                {selectedChildren.length > 0 ? (
-                  <div className="space-y-3">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">子分类</div>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      {selectedChildren.map((child) => (
-                        <div key={child.categoryId} className={infoBlockClassName}>
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                                {child.categoryName}
-                              </div>
-                              <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{child.categoryCode}</div>
-                            </div>
-                            <span
-                              className={cn(
-                                'inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium',
-                                child.status === '0'
-                                  ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200'
-                                  : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/40 dark:text-rose-200',
-                              )}
-                            >
-                              {child.status === '0' ? '正常' : '停用'}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-              </>
-            ) : (
-              <WorkspaceInlineState icon={<FolderTree className="h-5 w-5" />} title="请选择一个分类查看详情" className="py-16" />
-            )}
-          </WorkspaceSectionCard>
-        </div>
-
-        {modalOpen ? (
-          <WorkspaceDialogShell
-            title={isEdit ? '编辑分类' : '新增分类'}
-            description="维护分类层级、编码、图标、排序与状态，保持流程治理体系一致。"
-            onClose={() => setModalOpen(false)}
-            maxWidthClassName="max-w-3xl"
-          >
-            <div className="space-y-4">
-              <div>
-                <label className={fieldLabelClassName}>父分类</label>
-                <Select value={String(form.parentId || 0)} onValueChange={(value) => setForm({ ...form, parentId: Number(value) })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="请选择父分类" />
+              <div className="w-full sm:w-36">
+                <Select
+                  value={filters.status || STATUS_ALL_VALUE}
+                  onValueChange={(value) =>
+                    setFilters((current) => ({
+                      ...current,
+                      status: value === STATUS_ALL_VALUE ? '' : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="全部状态" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="0">顶级分类</SelectItem>
-                    {flatList
-                      .filter((item) => item.categoryId !== form.categoryId)
-                      .map((item) => (
-                        <SelectItem key={item.categoryId} value={String(item.categoryId)}>
-                          {item.categoryName} ({item.categoryCode})
-                        </SelectItem>
-                      ))}
+                    <SelectItem value={STATUS_ALL_VALUE}>全部状态</SelectItem>
+                    <SelectItem value="0">正常</SelectItem>
+                    <SelectItem value="1">停用</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className={fieldLabelClassName}>
-                    分类名称 <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    value={form.categoryName || ''}
-                    onChange={(e) => setForm({ ...form, categoryName: e.target.value })}
-                    placeholder="请输入分类名称"
-                  />
-                </div>
-                <div>
-                  <label className={fieldLabelClassName}>
-                    分类编码 <span className="text-red-500">*</span>
-                  </label>
-                  <Input
-                    className="font-mono"
-                    value={form.categoryCode || ''}
-                    onChange={(e) => setForm({ ...form, categoryCode: e.target.value })}
-                    placeholder="如：hr_leave"
-                  />
-                </div>
-              </div>
+              <Button type="submit" size="sm">
+                查询
+              </Button>
 
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className={fieldLabelClassName}>图标标识</label>
-                  <Select value={form.icon || ''} onValueChange={(value) => setForm({ ...form, icon: value })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="无" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="">无</SelectItem>
-                      <SelectItem value="briefcase">briefcase</SelectItem>
-                      <SelectItem value="users">users</SelectItem>
-                      <SelectItem value="dollar-sign">dollar-sign</SelectItem>
-                      <SelectItem value="building">building</SelectItem>
-                      <SelectItem value="folder-kanban">folder-kanban</SelectItem>
-                      <SelectItem value="folder-tree">folder-tree</SelectItem>
-                      <SelectItem value="layers">layers</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className={fieldLabelClassName}>排序号</label>
-                  <Input
-                    type="number"
-                    value={form.sortOrder ?? 0}
-                    onChange={(e) => setForm({ ...form, sortOrder: Number(e.target.value) })}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className={fieldLabelClassName}>状态</label>
-                <div className="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1 dark:border-slate-800 dark:bg-slate-900/80">
-                  {[
-                    { value: '0', label: '正常' },
-                    { value: '1', label: '停用' },
-                  ].map((item) => {
-                    const active = form.status === item.value;
-                    return (
-                      <button
-                        key={item.value}
-                        type="button"
-                        onClick={() => setForm({ ...form, status: item.value })}
-                        className={cn(
-                          'rounded-lg px-4 py-2 text-sm font-medium transition',
-                          active
-                            ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                            : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-                        )}
-                      >
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div>
-                <label className={fieldLabelClassName}>备注</label>
-                <Textarea
-                  rows={4}
-                  value={form.remark || ''}
-                  onChange={(e) => setForm({ ...form, remark: e.target.value })}
-                  placeholder="可选"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" onClick={() => setModalOpen(false)}>
-                  取消
+              {hasActiveFilters ? (
+                <Button type="button" variant="outline" size="sm" onClick={handleReset}>
+                  清空
                 </Button>
-                <Button onClick={handleSubmit} disabled={submitting}>
-                  {submitting ? '提交中...' : '确定'}
-                </Button>
+              ) : null}
+            </form>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => void loadData()} disabled={loading}>
+                <RefreshCw className={cn('h-4 w-4', loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button type="button" size="sm" onClick={() => handleAdd(0)}>
+                <Plus className="h-4 w-4" />
+                新建分类
+              </Button>
+            </div>
+          </div>
+        )}
+        table={(
+          <div className="grid min-h-[640px] grid-cols-1 xl:grid-cols-[232px_minmax(0,1fr)]">
+            <div className="border-b border-slate-200 xl:border-b-0 xl:border-r dark:border-slate-800">
+              <div className="flex items-center justify-between border-b border-slate-200 px-3.5 py-2.5 dark:border-slate-800">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">分类树</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">{filteredFlatList.length} 条</div>
+              </div>
+
+              <div className="max-h-[calc(100vh-324px)] overflow-y-auto px-1.5 py-1.5">
+                {loading ? (
+                  <InlineState title="正在加载分类树..." loading className="py-16" />
+                ) : filteredTreeData.length === 0 ? (
+                  <InlineState
+                    title={hasActiveFilters ? '当前筛选无结果' : '暂无分类'}
+                    className="py-16"
+                  />
+                ) : (
+                  <div className="space-y-1">{filteredTreeData.map((node) => renderTreeNode(node))}</div>
+                )}
               </div>
             </div>
-          </WorkspaceDialogShell>
-        ) : null}
 
-        <ConfirmDialog
-          open={Boolean(deleteTarget)}
-          title="确认删除分类"
-          message={
-            deleteTarget
-              ? `确定删除分类“${deleteTarget.categoryName}”吗？删除后将影响当前分类树中的流程归属。`
-              : '确定删除当前分类吗？'
-          }
-          confirmText="删除分类"
-          cancelText="取消"
-          danger
-          onConfirm={() => void handleDelete(deleteTarget)}
-          onCancel={() => setDeleteTarget(null)}
-        />
-      </WorkspacePageContent>
-    </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
+                <div className="min-w-0">
+                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {selectedNode?.categoryName || '分类详情'}
+                  </div>
+                  {selectedNode ? (
+                    <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                      <span className="font-mono">{selectedNode.categoryCode}</span>
+                      <span>{getParentLabel(selectedNode)}</span>
+                      <span>{getStatusLabel(selectedNode.status)}</span>
+                    </div>
+                  ) : null}
+                </div>
+
+                {selectedNode ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={() => void handleEdit(selectedNode.categoryId || 0)}>
+                      <Pencil className="h-4 w-4" />
+                      编辑
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleAdd(selectedNode.categoryId || 0)}>
+                      <Plus className="h-4 w-4" />
+                      新建子分类
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={() => setDeleteTarget(selectedNode)}>
+                      <Trash2 className="h-4 w-4" />
+                      删除
+                    </Button>
+                  </div>
+                ) : null}
+              </div>
+
+              {!selectedNode ? (
+                <InlineState
+                  title={hasActiveFilters ? '当前筛选无可查看分类' : '请选择分类'}
+                  className="min-h-[560px]"
+                />
+              ) : (
+                <div className="space-y-3 px-4 py-3">
+                  <DetailSection>
+                    <DetailRow label="分类名称" value={selectedNode.categoryName || '-'} />
+                    <DetailRow label="分类编码" value={selectedNode.categoryCode || '-'} mono />
+                    <DetailRow label="状态" value={getStatusLabel(selectedNode.status)} />
+                    <DetailRow label="父分类" value={getParentLabel(selectedNode)} />
+                    <DetailRow label="子分类" value={`${selectedChildren.length} 个`} />
+                    <DetailRow label="排序" value={selectedNode.sortOrder ?? 0} />
+                    <DetailRow
+                      label="图标"
+                      value={
+                        <span className="inline-flex items-center gap-2">
+                          {renderIcon(selectedNode.icon)}
+                          <span>{selectedNode.icon || '未设置'}</span>
+                        </span>
+                      }
+                    />
+                    <DetailRow label="备注" value={selectedNode.remark || '暂无备注'} />
+                  </DetailSection>
+
+                  <div className="space-y-3">
+                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">子分类</div>
+
+                    {selectedChildren.length > 0 ? (
+                      <DetailSection>
+                        {selectedChildren.map((child) => (
+                          <button
+                            key={child.categoryId}
+                            type="button"
+                            className="flex w-full items-center justify-between gap-3 border-b border-slate-100 px-3.5 py-2.5 text-left transition-colors hover:bg-slate-50 last:border-b-0 dark:border-slate-800 dark:hover:bg-slate-900/50"
+                            onClick={() => setSelectedId(child.categoryId || null)}
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              <span className="flex h-4 w-4 items-center justify-center">
+                                {renderIcon(child.icon, 'h-3.5 w-3.5 text-slate-400 dark:text-slate-500')}
+                              </span>
+                              <div className="min-w-0 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+                                <span className="truncate">{child.categoryName}</span>
+                                {child.categoryCode ? (
+                                  <span className="truncate font-mono text-[11px] text-slate-400 dark:text-slate-500">
+                                    {child.categoryCode}
+                                  </span>
+                                ) : null}
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              {child.status === '1' ? <span>停用</span> : null}
+                              <ChevronRight className="h-4 w-4" />
+                            </div>
+                          </button>
+                        ))}
+                      </DetailSection>
+                    ) : (
+                      <DetailSection>
+                        <div className="px-3.5 py-3 text-sm text-slate-500 dark:text-slate-400">暂无子分类</div>
+                      </DetailSection>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      />
+
+      <BaseDialog
+        open={modalOpen}
+        title={isEdit ? '编辑分类' : '新建分类'}
+        onClose={closeModal}
+        width="normal"
+        bodyClassName="px-4 py-3 sm:px-5 sm:py-4"
+        footerClassName="gap-2 px-4 py-2.5 sm:px-5 sm:py-3"
+        footer={(
+          <>
+            <Button variant="outline" onClick={closeModal}>
+              取消
+            </Button>
+            <Button type="submit" form="process-category-form" disabled={submitting}>
+              {submitting ? '保存中...' : isEdit ? '保存修改' : '创建分类'}
+            </Button>
+          </>
+        )}
+      >
+        <form id="process-category-form" onSubmit={handleSubmit} className="space-y-3.5">
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label className={fieldLabelClassName}>父分类</label>
+              <Select
+                value={String(form.parentId ?? 0)}
+                onValueChange={(value) => setForm((current) => ({ ...current, parentId: Number(value) }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="选择父分类" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">顶级分类</SelectItem>
+                  {flatList
+                    .filter((item) => item.categoryId !== undefined && !disabledParentIds.has(item.categoryId))
+                    .map((item) => (
+                      <SelectItem key={item.categoryId} value={String(item.categoryId)}>
+                        {item.categoryName} ({item.categoryCode})
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>
+                分类名称 <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                value={form.categoryName || ''}
+                onChange={(event) => setForm((current) => ({ ...current, categoryName: event.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>
+                分类编码 <span className="text-rose-500">*</span>
+              </label>
+              <Input
+                className="font-mono"
+                value={form.categoryCode || ''}
+                onChange={(event) => setForm((current) => ({ ...current, categoryCode: event.target.value }))}
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>图标</label>
+              <Select
+                value={form.icon || EMPTY_ICON_VALUE}
+                onValueChange={(value) => setForm((current) => ({ ...current, icon: value === EMPTY_ICON_VALUE ? '' : value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="未设置" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={EMPTY_ICON_VALUE}>未设置</SelectItem>
+                  {iconOptions.map((option) => (
+                    <SelectItem key={option} value={option}>
+                      {option}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>排序</label>
+              <Input
+                type="number"
+                value={form.sortOrder ?? 0}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    sortOrder: Number.parseInt(event.target.value, 10) || 0,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="md:col-span-2">
+              <label className={fieldLabelClassName}>状态</label>
+              <Select
+                value={form.status || '0'}
+                onValueChange={(value) => setForm((current) => ({ ...current, status: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="选择状态" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="0">正常</SelectItem>
+                  <SelectItem value="1">停用</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div>
+            <label className={fieldLabelClassName}>备注</label>
+            <Textarea
+              rows={4}
+              className="resize-none"
+              value={form.remark || ''}
+              onChange={(event) => setForm((current) => ({ ...current, remark: event.target.value }))}
+            />
+          </div>
+        </form>
+      </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="确认删除分类"
+        message={deleteTarget ? `确认删除分类“${deleteTarget.categoryName}”？` : '确认删除当前分类？'}
+        confirmText="删除"
+        cancelText="取消"
+        danger
+        onCancel={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+      />
+    </>
   );
 };
 

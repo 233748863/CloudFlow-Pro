@@ -14,6 +14,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -32,6 +33,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui';
+import { FileUpload } from '@/components/FileUpload';
 import {
   EmployeeContract,
   EmployeeDocument,
@@ -77,7 +79,7 @@ interface ContractFormState {
   startDate: string;
   endDate: string;
   duration: string;
-  fileUrl: string;
+  attachmentValue: string;
   status: string;
 }
 
@@ -86,7 +88,7 @@ interface DocumentFormState {
   documentNo: string;
   issueDate: string;
   expiryDate: string;
-  fileUrl: string;
+  attachmentValue: string;
 }
 
 interface ContactFormState {
@@ -146,7 +148,7 @@ const defaultContractForm: ContractFormState = {
   startDate: '',
   endDate: '',
   duration: '',
-  fileUrl: '',
+  attachmentValue: '',
   status: 'DRAFT',
 };
 
@@ -155,7 +157,7 @@ const defaultDocumentForm: DocumentFormState = {
   documentNo: '',
   issueDate: '',
   expiryDate: '',
-  fileUrl: '',
+  attachmentValue: '',
 };
 
 const defaultContactForm: ContactFormState = {
@@ -169,21 +171,54 @@ const defaultContactForm: ContactFormState = {
 const textValue = (value?: string | number | null) =>
   value == null || value === '' ? '-' : String(value);
 
+const splitAttachmentValue = (value?: string | null) =>
+  value?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+
+const mergeAttachmentValue = (attachmentUrls?: string[] | null) => {
+  const normalizedUrls = new Set<string>();
+  attachmentUrls?.forEach((url) => {
+    if (url?.trim()) {
+      normalizedUrls.add(url.trim());
+    }
+  });
+  return Array.from(normalizedUrls).join(',');
+};
+
+const getAttachmentList = (attachmentUrls?: string[] | null) =>
+  splitAttachmentValue(mergeAttachmentValue(attachmentUrls));
+
+const AttachmentLinks = ({
+  attachmentUrls,
+}: {
+  attachmentUrls?: string[] | null;
+}) => {
+  const attachmentList = getAttachmentList(attachmentUrls);
+  if (attachmentList.length === 0) {
+    return <span>-</span>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {attachmentList.slice(0, 2).map((url, index) => (
+        <a
+          key={`${url}-${index}`}
+          href={url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
+        >
+          {`附件${index + 1}`}
+        </a>
+      ))}
+      {attachmentList.length > 2 ? (
+        <span className="text-xs text-slate-500 dark:text-slate-400">{`+${attachmentList.length - 2}`}</span>
+      ) : null}
+    </div>
+  );
+};
+
 const canDeleteContract = (contract?: EmployeeContract | null) =>
   String(contract?.status || '').toUpperCase() === 'DRAFT';
-
-const employeeStatusTone = (status?: string | null) => {
-  switch (status) {
-    case 'REGULAR':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
-    case 'PROBATION':
-      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
-    case 'RESIGNED':
-      return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-    default:
-      return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
-  }
-};
 
 const contractStatusTone = (status?: string | null) => {
   switch (status) {
@@ -200,12 +235,10 @@ const contractStatusTone = (status?: string | null) => {
 
 const InlineState = ({
   title,
-  description,
   icon,
   className,
 }: {
   title: string;
-  description?: string;
   icon?: React.ReactNode;
   className?: string;
 }) => (
@@ -214,69 +247,51 @@ const InlineState = ({
       {icon || <Users className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
 const TableStateRow = ({
   colSpan,
   title,
-  description,
   loading = false,
 }: {
   colSpan: number;
   title: string;
-  description?: string;
   loading?: boolean;
 }) => (
   <tr className="hover:bg-transparent">
     <td colSpan={colSpan} className="px-4 py-14">
-      <InlineState
-        title={title}
-        description={description}
-        className={loading ? 'py-6' : 'py-4'}
-      />
+      <InlineState title={title} className={loading ? 'py-6' : 'py-4'} />
     </td>
   </tr>
 );
 
-const MetaPill = ({
-  children,
-  className,
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) => (
-  <span
-    className={[
-      'inline-flex items-center rounded-full border px-2.5 py-1 text-xs',
-      className || 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-    ].join(' ')}
-  >
-    {children}
-  </span>
-);
-
 const DialogSection = ({
   title,
-  description,
   children,
 }: {
   title: string;
-  description?: string;
   children: React.ReactNode;
 }) => (
   <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      ) : null}
     </div>
     <div className="p-4">{children}</div>
   </section>
+);
+
+const DetailField = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <div className="min-w-0">
+    <div className="text-[11px] font-medium text-slate-500 dark:text-slate-400">{label}</div>
+    <div className="mt-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+  </div>
 );
 
 const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
@@ -465,7 +480,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
 
   const handleEditContract = async (id: number) => {
     try {
-      // 编辑前先拉详情，避免列表字段裁剪导致表单回显不完整。
       const detail = await getEmployeeContract(id);
       setContractEditingId(id);
       setContractForm({
@@ -475,7 +489,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         startDate: toDateInputValue(detail.startDate),
         endDate: toDateInputValue(detail.endDate),
         duration: detail.duration == null ? '' : String(detail.duration),
-        fileUrl: detail.fileUrl || '',
+        attachmentValue: mergeAttachmentValue(detail.attachmentUrls),
         status: detail.status || 'DRAFT',
       });
       setTab('contracts');
@@ -495,7 +509,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         documentNo: detail.documentNo || '',
         issueDate: toDateInputValue(detail.issueDate),
         expiryDate: toDateInputValue(detail.expiryDate),
-        fileUrl: detail.fileUrl || '',
+        attachmentValue: mergeAttachmentValue(detail.attachmentUrls),
       });
       setTab('documents');
       setDocumentDialogOpen(true);
@@ -527,6 +541,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   const handleSubmitContract = async () => {
     if (!selectedEmployeeId || !validateContractForm()) return;
 
+    const attachmentUrls = splitAttachmentValue(contractForm.attachmentValue);
     const payload = {
       contractType: contractForm.contractType,
       contractNo: contractForm.contractNo.trim(),
@@ -534,7 +549,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       startDate: contractForm.startDate,
       endDate: contractForm.endDate,
       duration: contractForm.duration ? Number(contractForm.duration) : null,
-      fileUrl: contractForm.fileUrl.trim() || null,
+      attachmentUrls,
       status: contractForm.status || null,
     };
 
@@ -560,12 +575,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   const handleSubmitDocument = async () => {
     if (!selectedEmployeeId || !validateDocumentForm()) return;
 
+    const attachmentUrls = splitAttachmentValue(documentForm.attachmentValue);
     const payload = {
       documentType: documentForm.documentType,
       documentNo: documentForm.documentNo.trim(),
       issueDate: documentForm.issueDate || null,
       expiryDate: documentForm.expiryDate || null,
-      fileUrl: documentForm.fileUrl.trim() || null,
+      attachmentUrls,
     };
 
     setSaveKind('documents');
@@ -688,7 +704,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   };
 
   useEffect(() => {
-    // 切换员工时统一清空三类子档案表单和确认状态，避免把上一位员工的数据继续带到当前员工。
     closeContractDialog();
     closeDocumentDialog();
     closeContactDialog();
@@ -703,14 +718,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
     }
 
     void refreshWorkspace(selectedEmployeeId);
-  }, [selectedEmployeeId, employees]);
+  }, [employees, selectedEmployeeId]);
 
   if (!selectedEmployeeId) {
     return (
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="flex h-full min-h-[560px] items-center justify-center px-6">
         <InlineState
-          title={loading ? '正在准备员工工作区...' : '先选择一位员工'}
-          description={loading ? '稍后会自动同步员工详情和附属档案。' : '从上方列表选中员工后，这里会继续维护合同、证件和紧急联系人。'}
+          title={loading ? '正在准备员工档案...' : '先选择一位员工'}
           className="py-16"
         />
       </div>
@@ -727,105 +741,115 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       ]
         .filter(Boolean)
         .join(' / ') || '当前员工暂无完整组织信息');
+  const employeeSummaryFields = [
+    { label: '工号', value: textValue(displayEmployee?.employeeNo) },
+    { label: '部门', value: textValue(displayEmployee?.deptName) },
+    { label: '岗位', value: textValue(displayEmployee?.postName) },
+    { label: '职位', value: textValue(displayEmployee?.positionName) },
+    {
+      label: '状态',
+      value: employeeStatusLabel[displayEmployee?.employeeStatus || ''] || textValue(displayEmployee?.employeeStatus),
+    },
+    {
+      label: '类型',
+      value: employeeTypeLabel[displayEmployee?.employeeType || ''] || textValue(displayEmployee?.employeeType),
+    },
+    { label: '电话', value: textValue(displayEmployee?.phone) },
+    { label: '邮箱', value: textValue(displayEmployee?.email) },
+    { label: '入职', value: toDateInputValue(displayEmployee?.hireDate) || '-' },
+    { label: '转正', value: toDateInputValue(displayEmployee?.regularDate) || '-' },
+    { label: '合同', value: `${contracts.length} 条` },
+    { label: '证件 / 联系人', value: `${documents.length} / ${contacts.length}` },
+  ];
 
   return (
     <>
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-4 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
+      <div className="flex h-full min-h-0 flex-col">
+        <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-              <Users className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-              Employee Workspace
-            </div>
-            <h2 className="mt-1.5 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+            <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
               {employeeName}
-            </h2>
-            <p className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            </div>
+            <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
               {employeeMetaLine}
-            </p>
+            </div>
           </div>
 
           <div className="flex flex-wrap gap-2">
             <Button
               variant="outline"
               size="sm"
+              className="h-8"
               onClick={() => void refreshWorkspace(selectedEmployeeId)}
             >
               <RefreshCcw
                 size={14}
                 className={`mr-1.5 ${detailLoading || contractsLoading || documentsLoading || contactsLoading ? 'animate-spin' : ''}`}
               />
-              刷新档案
+              刷新
             </Button>
-            <Button size="sm" onClick={() => onEditEmployee(selectedEmployeeId)}>
+            <Button size="sm" className="h-8" onClick={() => onEditEmployee(selectedEmployeeId)}>
               <Edit3 size={14} className="mr-1.5" />
               编辑主档
             </Button>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-          <MetaPill className={employeeStatusTone(displayEmployee?.employeeStatus)}>
-            {employeeStatusLabel[displayEmployee?.employeeStatus || ''] || textValue(displayEmployee?.employeeStatus)}
-          </MetaPill>
-          <MetaPill>
-            类型 {employeeTypeLabel[displayEmployee?.employeeType || ''] || textValue(displayEmployee?.employeeType)}
-          </MetaPill>
-          <MetaPill>电话 {textValue(displayEmployee?.phone)}</MetaPill>
-          <MetaPill>邮箱 {textValue(displayEmployee?.email)}</MetaPill>
-          <MetaPill>入职 {toDateInputValue(displayEmployee?.hireDate) || '-'}</MetaPill>
-          <MetaPill>
-            档案 合同 {contracts.length} / 证件 {documents.length} / 联系人 {contacts.length}
-          </MetaPill>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 2xl:grid-cols-3">
+          {employeeSummaryFields.map((item) => (
+            <DetailField key={item.label} label={item.label} value={item.value} />
+          ))}
         </div>
 
-        <div className="p-4">
-          <Tabs value={tab} onValueChange={(value) => setTab(value as WorkspaceTab)} className="space-y-4">
-            <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
-              <TabsTrigger value="contracts" className="flex-1 lg:flex-none">
-                合同档案
-              </TabsTrigger>
-              <TabsTrigger value="documents" className="flex-1 lg:flex-none">
-                证件档案
-              </TabsTrigger>
-              <TabsTrigger value="contacts" className="flex-1 lg:flex-none">
-                紧急联系人
-              </TabsTrigger>
-            </TabsList>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <Tabs
+            value={tab}
+            onValueChange={(value) => setTab(value as WorkspaceTab)}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
+                <TabsTrigger value="contracts" className="flex-1 lg:flex-none">
+                  合同档案
+                </TabsTrigger>
+                <TabsTrigger value="documents" className="flex-1 lg:flex-none">
+                  证件档案
+                </TabsTrigger>
+                <TabsTrigger value="contacts" className="flex-1 lg:flex-none">
+                  紧急联系人
+                </TabsTrigger>
+              </TabsList>
+            </div>
 
-            <TabsContent value="contracts" className="space-y-0">
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-                <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      <FileText className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
-                      合同档案
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      当前员工已有 {contracts.length} 份合同。仅草稿合同允许删除，生效中合同请走续签或终止流程。
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void loadEmployeeContracts(selectedEmployeeId)}
-                    >
-                      <RefreshCcw
-                        size={14}
-                        className={`mr-1.5 ${contractsLoading ? 'animate-spin' : ''}`}
-                      />
-                      刷新
-                    </Button>
-                    <Button size="sm" onClick={handleOpenContractCreate}>
-                      <Plus size={14} className="mr-1.5" />
-                      新增合同
-                    </Button>
-                  </div>
+            <TabsContent value="contracts" className="mt-0 flex min-h-0 flex-1 flex-col">
+              <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <FileText className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  合同档案
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => void loadEmployeeContracts(selectedEmployeeId)}
+                  >
+                    <RefreshCcw
+                      size={14}
+                      className={`mr-1.5 ${contractsLoading ? 'animate-spin' : ''}`}
+                    />
+                    刷新
+                  </Button>
+                  <Button size="sm" className="h-8" onClick={handleOpenContractCreate}>
+                    <Plus size={14} className="mr-1.5" />
+                    新增合同
+                  </Button>
+                </div>
+              </div>
 
+              <div className="min-h-0 flex-1 overflow-auto">
                 <div className="overflow-x-auto">
-                  <Table className="min-w-[920px]">
+                  <Table className="min-w-[1080px]">
                     <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
                       <TableRow>
                         <TableHead>合同编号</TableHead>
@@ -834,23 +858,15 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                         <TableHead>合同周期</TableHead>
                         <TableHead>状态</TableHead>
                         <TableHead>剩余天数</TableHead>
+                        <TableHead>合同附件</TableHead>
                         <TableHead className="text-right">操作</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {contractsLoading ? (
-                        <TableStateRow
-                          colSpan={7}
-                          title="正在加载员工合同..."
-                          description="稍后会展示当前员工的合同列表。"
-                          loading
-                        />
+                        <TableStateRow colSpan={8} title="正在加载员工合同..." loading />
                       ) : contracts.length === 0 ? (
-                        <TableStateRow
-                          colSpan={7}
-                          title="当前员工还没有合同档案"
-                          description="可以先新增一份合同，再继续维护周期和状态。"
-                        />
+                        <TableStateRow colSpan={8} title="当前员工还没有合同档案" />
                       ) : (
                         contracts.map((item) => (
                           <TableRow key={item.id}>
@@ -875,15 +891,19 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                               </span>
                             </TableCell>
                             <TableCell>{item.remainingDays == null ? '-' : `${item.remainingDays} 天`}</TableCell>
+                            <TableCell>
+                              <AttachmentLinks attachmentUrls={item.attachmentUrls} />
+                            </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={() => void handleEditContract(item.id)}>
+                                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleEditContract(item.id)}>
                                   <Edit3 size={14} className="mr-1.5" />
                                   编辑
                                 </Button>
                                 <Button
                                   size="sm"
                                   variant="outline"
+                                  className="h-8"
                                   disabled={!canDeleteContract(item)}
                                   onClick={() => requestDeleteContract(item)}
                                 >
@@ -901,37 +921,33 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="documents" className="space-y-0">
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-                <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      <ShieldCheck className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
-                      证件档案
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      覆盖身份证、护照、学历和学位等证件信息，便于联调证件详情和删除接口。
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void loadEmployeeDocuments(selectedEmployeeId)}
-                    >
-                      <RefreshCcw
-                        size={14}
-                        className={`mr-1.5 ${documentsLoading ? 'animate-spin' : ''}`}
-                      />
-                      刷新
-                    </Button>
-                    <Button size="sm" onClick={handleOpenDocumentCreate}>
-                      <Plus size={14} className="mr-1.5" />
-                      新增证件
-                    </Button>
-                  </div>
+            <TabsContent value="documents" className="mt-0 flex min-h-0 flex-1 flex-col">
+              <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <ShieldCheck className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  证件档案
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => void loadEmployeeDocuments(selectedEmployeeId)}
+                  >
+                    <RefreshCcw
+                      size={14}
+                      className={`mr-1.5 ${documentsLoading ? 'animate-spin' : ''}`}
+                    />
+                    刷新
+                  </Button>
+                  <Button size="sm" className="h-8" onClick={handleOpenDocumentCreate}>
+                    <Plus size={14} className="mr-1.5" />
+                    新增证件
+                  </Button>
+                </div>
+              </div>
 
+              <div className="min-h-0 flex-1 overflow-auto">
                 <div className="overflow-x-auto">
                   <Table className="min-w-[860px]">
                     <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
@@ -946,18 +962,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     </TableHeader>
                     <TableBody>
                       {documentsLoading ? (
-                        <TableStateRow
-                          colSpan={6}
-                          title="正在加载员工证件..."
-                          description="稍后会展示当前员工的证件档案。"
-                          loading
-                        />
+                        <TableStateRow colSpan={6} title="正在加载员工证件..." loading />
                       ) : documents.length === 0 ? (
-                        <TableStateRow
-                          colSpan={6}
-                          title="当前员工还没有证件档案"
-                          description="可以先新增一份证件，再继续维护签发日期和附件。"
-                        />
+                        <TableStateRow colSpan={6} title="当前员工还没有证件档案" />
                       ) : (
                         documents.map((item) => (
                           <TableRow key={item.id}>
@@ -968,26 +975,15 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             <TableCell>{toDateInputValue(item.issueDate) || '-'}</TableCell>
                             <TableCell>{toDateInputValue(item.expiryDate) || '-'}</TableCell>
                             <TableCell>
-                              {item.fileUrl ? (
-                                <a
-                                  href={item.fileUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="text-sm font-medium text-cyan-600 hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-200"
-                                >
-                                  查看附件
-                                </a>
-                              ) : (
-                                '-'
-                              )}
+                              <AttachmentLinks attachmentUrls={item.attachmentUrls} />
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={() => void handleEditDocument(item.id)}>
+                                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleEditDocument(item.id)}>
                                   <Edit3 size={14} className="mr-1.5" />
                                   编辑
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => requestDeleteDocument(item)}>
+                                <Button size="sm" variant="outline" className="h-8" onClick={() => requestDeleteDocument(item)}>
                                   <Trash2 size={14} className="mr-1.5" />
                                   删除
                                 </Button>
@@ -1002,37 +998,33 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
             </TabsContent>
 
-            <TabsContent value="contacts" className="space-y-0">
-              <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-                <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
-                  <div>
-                    <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      <Phone className="h-4 w-4 text-cyan-600 dark:text-cyan-300" />
-                      紧急联系人
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      建议至少维护 1 位主联系人，便于覆盖优先级和联系人详情链路。
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => void loadEmployeeContacts(selectedEmployeeId)}
-                    >
-                      <RefreshCcw
-                        size={14}
-                        className={`mr-1.5 ${contactsLoading ? 'animate-spin' : ''}`}
-                      />
-                      刷新
-                    </Button>
-                    <Button size="sm" onClick={handleOpenContactCreate}>
-                      <Plus size={14} className="mr-1.5" />
-                      新增联系人
-                    </Button>
-                  </div>
+            <TabsContent value="contacts" className="mt-0 flex min-h-0 flex-1 flex-col">
+              <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  <Phone className="h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  紧急联系人
                 </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => void loadEmployeeContacts(selectedEmployeeId)}
+                  >
+                    <RefreshCcw
+                      size={14}
+                      className={`mr-1.5 ${contactsLoading ? 'animate-spin' : ''}`}
+                    />
+                    刷新
+                  </Button>
+                  <Button size="sm" className="h-8" onClick={handleOpenContactCreate}>
+                    <Plus size={14} className="mr-1.5" />
+                    新增联系人
+                  </Button>
+                </div>
+              </div>
 
+              <div className="min-h-0 flex-1 overflow-auto">
                 <div className="overflow-x-auto">
                   <Table className="min-w-[860px]">
                     <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
@@ -1047,18 +1039,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                     </TableHeader>
                     <TableBody>
                       {contactsLoading ? (
-                        <TableStateRow
-                          colSpan={6}
-                          title="正在加载紧急联系人..."
-                          description="稍后会展示当前员工的联系人档案。"
-                          loading
-                        />
+                        <TableStateRow colSpan={6} title="正在加载紧急联系人..." loading />
                       ) : contacts.length === 0 ? (
-                        <TableStateRow
-                          colSpan={6}
-                          title="当前员工还没有紧急联系人"
-                          description="可以先新增一位联系人，再继续维护优先级和地址。"
-                        />
+                        <TableStateRow colSpan={6} title="当前员工还没有紧急联系人" />
                       ) : (
                         contacts.map((item) => (
                           <TableRow key={item.id}>
@@ -1071,11 +1054,11 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                             <TableCell>{textValue(item.address)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex justify-end gap-2">
-                                <Button size="sm" variant="outline" onClick={() => void handleEditContact(item.id)}>
+                                <Button size="sm" variant="outline" className="h-8" onClick={() => void handleEditContact(item.id)}>
                                   <Edit3 size={14} className="mr-1.5" />
                                   编辑
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={() => requestDeleteContact(item)}>
+                                <Button size="sm" variant="outline" className="h-8" onClick={() => requestDeleteContact(item)}>
                                   <Trash2 size={14} className="mr-1.5" />
                                   删除
                                 </Button>
@@ -1096,7 +1079,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       <BaseDialog
         open={contractDialogOpen}
         title={contractEditingId ? '编辑员工合同' : '新增员工合同'}
-        description="直接写入合同档案，覆盖新增、续签和状态维护。"
         onClose={closeContractDialog}
         maxWidthClassName="max-w-4xl"
         footer={(
@@ -1111,10 +1093,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         )}
       >
         <div className="space-y-4">
-          <DialogSection
-            title="基础信息"
-            description="维护合同类型、编号和当前状态。"
-          >
+          <DialogSection title="基础信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同类型</Label>
@@ -1166,14 +1145,11 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
             </div>
           </DialogSection>
 
-          <DialogSection
-            title="时间与附件"
-            description="时间字段用于计算合同周期和剩余天数。"
-          >
+          <DialogSection title="时间与附件">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">签订日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={contractForm.signDate}
                   onChange={(event) =>
@@ -1184,7 +1160,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">开始日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={contractForm.startDate}
                   onChange={(event) =>
@@ -1195,7 +1171,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">结束日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={contractForm.endDate}
                   onChange={(event) =>
@@ -1217,14 +1193,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="space-y-2 xl:col-span-4">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">附件地址</Label>
-                <Input
-                  value={contractForm.fileUrl}
-                  placeholder="https://..."
-                  onChange={(event) =>
-                    setContractForm((prev) => ({ ...prev, fileUrl: event.target.value }))
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">合同附件</Label>
+                <FileUpload
+                  value={contractForm.attachmentValue}
+                  onChange={(value) =>
+                    setContractForm((prev) => ({ ...prev, attachmentValue: value }))
                   }
-                  className="h-11"
+                  maxCount={5}
                 />
               </div>
             </div>
@@ -1235,7 +1210,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       <BaseDialog
         open={documentDialogOpen}
         title={documentEditingId ? '编辑员工证件' : '新增员工证件'}
-        description="优先覆盖身份证、护照、学历和学位证书等真实业务证件。"
         onClose={closeDocumentDialog}
         maxWidthClassName="max-w-4xl"
         footer={(
@@ -1250,10 +1224,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         )}
       >
         <div className="space-y-4">
-          <DialogSection
-            title="证件信息"
-            description="维护证件类型、号码和时间字段。"
-          >
+          <DialogSection title="证件信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">证件类型</Label>
@@ -1286,7 +1257,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">签发日期</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={documentForm.issueDate}
                   onChange={(event) =>
@@ -1297,7 +1268,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">有效期至</Label>
-                <Input
+                <DatePicker
                   type="date"
                   value={documentForm.expiryDate}
                   onChange={(event) =>
@@ -1307,14 +1278,13 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
                 />
               </div>
               <div className="space-y-2 xl:col-span-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">扫描件地址</Label>
-                <Input
-                  value={documentForm.fileUrl}
-                  placeholder="https://..."
-                  onChange={(event) =>
-                    setDocumentForm((prev) => ({ ...prev, fileUrl: event.target.value }))
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">扫描件</Label>
+                <FileUpload
+                  value={documentForm.attachmentValue}
+                  onChange={(value) =>
+                    setDocumentForm((prev) => ({ ...prev, attachmentValue: value }))
                   }
-                  className="h-11"
+                  maxCount={5}
                 />
               </div>
             </div>
@@ -1325,7 +1295,6 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       <BaseDialog
         open={contactDialogOpen}
         title={contactEditingId ? '编辑紧急联系人' : '新增紧急联系人'}
-        description="建议至少维护 1 位主联系人，覆盖联系人详情、优先级和删除链路。"
         onClose={closeContactDialog}
         maxWidthClassName="max-w-4xl"
         footer={(
@@ -1340,10 +1309,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
         )}
       >
         <div className="space-y-4">
-          <DialogSection
-            title="联系人信息"
-            description="维护关系、电话、优先级和联系地址。"
-          >
+          <DialogSection title="联系人信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">联系人姓名</Label>

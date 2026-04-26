@@ -140,7 +140,6 @@ const formatDateTime = (value?: string | null) => {
 
 const InlineState = ({
   title,
-  description,
   className,
 }: {
   title: string;
@@ -159,9 +158,6 @@ const InlineState = ({
       <ArrowRightLeft className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -182,7 +178,6 @@ const DetailRow = ({
 
 const DialogSection = ({
   title,
-  description,
   children,
 }: {
   title: string;
@@ -192,9 +187,6 @@ const DialogSection = ({
   <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      ) : null}
     </div>
     <div className="p-4">{children}</div>
   </section>
@@ -572,9 +564,6 @@ export const HrTransferPage: React.FC = () => {
         <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           调岗申请
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          左侧锁定员工，中间切换申请，右侧连续推进提交、审批与生效动作，页面结构直接向参考后台列表页收敛。
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -875,7 +864,6 @@ export const HrTransferPage: React.FC = () => {
               {!detail ? (
                 <InlineState
                   title="请选择一条调岗申请"
-                  description="先在中间列表选择一条调岗申请，这里会展示完整详情与办理动作。"
                   className="py-20"
                 />
               ) : (
@@ -946,10 +934,7 @@ export const HrTransferPage: React.FC = () => {
 
                   <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请说明</div>
-                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                        保留调岗原因和薪资影响字段，避免再额外叠加无意义摘要卡。
-                      </div>
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">调岗信息</div>
                     </div>
                     <div className="space-y-4 p-4">
                       {hasWorkflowStatus(detail.status, 'APPROVED') ? (
@@ -992,7 +977,6 @@ export const HrTransferPage: React.FC = () => {
       <BaseDialog
         open={createDialogOpen}
         title="新建调岗申请"
-        description="直接按后端 DTO 字段提交目标组织、生效日期和薪资影响。"
         onClose={resetCreateDialog}
         maxWidthClassName="max-w-3xl"
         footer={(
@@ -1009,7 +993,6 @@ export const HrTransferPage: React.FC = () => {
         <div className="space-y-4">
           <DialogSection
             title="员工与目标组织"
-            description="保持和后端 DTO 一致，直接联调员工、部门、岗位和职位字段。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2 md:col-span-2">
@@ -1136,7 +1119,6 @@ export const HrTransferPage: React.FC = () => {
 
           <DialogSection
             title="流程补充"
-            description="这里只保留薪资影响和调岗原因，不再额外堆叠说明卡。"
           >
             <div className="space-y-4">
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">

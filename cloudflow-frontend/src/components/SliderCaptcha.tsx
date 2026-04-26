@@ -1,296 +1,455 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Loader2, RefreshCw, CheckCircle2, XCircle } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CheckCircle2, ChevronsRight, Loader2, RefreshCw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { getCaptcha, checkCaptcha } from '@/services/api/auth';
-import { useMount } from '@/hooks/useMount';
+import { checkCaptcha, getCaptcha, type CaptchaResponse } from '@/services/api/auth';
 import { SLIDER_KEYBOARD_STEP } from '@/constants/ui';
 import { logger } from '@/utils/logger';
 
-/** 后端生成的背景图原始尺寸 */
 const BG_ORIGIN_WIDTH = 300;
 const BG_ORIGIN_HEIGHT = 150;
-
-/** 滑块按钮宽度 */
 const SLIDER_BTN_WIDTH = 40;
+const HANDLE_VISUAL_WIDTH = 34;
+const HANDLE_INSET = (SLIDER_BTN_WIDTH - HANDLE_VISUAL_WIDTH) / 2;
 
-/**
- * 滑块验证码组件属性
- */
 interface SliderCaptchaProps {
-  /** 验证成功回调，返回验证 token */
   onVerify: (token: string) => void;
-  /** 验证码显示宽度，默认 300px */
   width?: number;
-  /** 验证码显示高度，默认 150px */
   height?: number;
 }
 
-/**
- * 滑块验证码组件
- * 支持鼠标、触摸和键盘操作
- */
-export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({ 
-  onVerify, 
-  width = 300, 
-  height = 150 
+type CaptchaStatus = 'idle' | 'verifying' | 'success' | 'fail';
+
+const STATUS_META: Record<
+  CaptchaStatus,
+  {
+    label: string;
+    assist: string;
+  }
+> = {
+  idle: {
+    label: '拖动滑块完成验证',
+    assist: '支持方向键操作',
+  },
+  verifying: {
+    label: '正在校验位置',
+    assist: '请稍候',
+  },
+  success: {
+    label: '验证通过',
+    assist: '即将继续',
+  },
+  fail: {
+    label: '位置不准确，请重试',
+    assist: '正在刷新拼图',
+  },
+};
+
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+
+export const SliderCaptcha: React.FC<SliderCaptchaProps> = ({
+  onVerify,
+  width = 300,
+  height = 150,
 }) => {
   const [loading, setLoading] = useState(true);
-  const [captchaData, setCaptchaData] = useState<any>(null);
+  const [captchaData, setCaptchaData] = useState<CaptchaResponse | null>(null);
   const [sliderLeft, setSliderLeft] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [status, setStatus] = useState<'idle' | 'verifying' | 'success' | 'fail'>('idle');
-  
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imageContainerRef = useRef<HTMLDivElement>(null);
+  const [status, setStatus] = useState<CaptchaStatus>('idle');
 
-  /** 前端显示宽度与后端原始图片宽度的缩放比例 */
+  const startXRef = useRef(0);
+  const originLeftRef = useRef(0);
+  const refreshTimerRef = useRef<number | null>(null);
+  const sliderLeftRef = useRef(0);
+  const trackRef = useRef<HTMLDivElement | null>(null);
+
   const scaleX = width / BG_ORIGIN_WIDTH;
   const scaleY = height / BG_ORIGIN_HEIGHT;
+  const maxSliderLeft = width - SLIDER_BTN_WIDTH;
 
-  const fetchCaptcha = async () => {
+  const clearRefreshTimer = useCallback(() => {
+    if (refreshTimerRef.current !== null) {
+      window.clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+  }, []);
+
+  const fetchCaptcha = useCallback(async () => {
+    clearRefreshTimer();
     setLoading(true);
+    setCaptchaData(null);
     setStatus('idle');
     setSliderLeft(0);
+    setIsDragging(false);
+
     try {
-      const res = await getCaptcha();
-      if (res) {
-        setCaptchaData(res);
-      }
-    } catch (e) {
-      logger.error('Failed to fetch captcha:', e);
+      const response = await getCaptcha();
+      setCaptchaData(response);
+    } catch (error) {
+      logger.error('Failed to fetch captcha:', error);
       toast.error('验证码加载失败，请重试');
     } finally {
       setLoading(false);
     }
-  };
+  }, [clearRefreshTimer]);
 
-  useMount(() => {
-    fetchCaptcha();
-  });
+  useEffect(() => {
+    void fetchCaptcha();
+    return clearRefreshTimer;
+  }, [clearRefreshTimer, fetchCaptcha]);
 
-  const handleStart = (clientX: number) => {
-    if (status === 'success' || status === 'verifying') return;
-    setIsDragging(true);
-    setStartX(clientX);
-  };
+  useEffect(() => {
+    if (!loading && captchaData) {
+      trackRef.current?.focus();
+    }
+  }, [captchaData, loading]);
 
-  const handleMove = useCallback((clientX: number) => {
-    if (!isDragging || !containerRef.current) return;
-    const diff = clientX - startX;
-    const max = width - SLIDER_BTN_WIDTH;
-    const newLeft = Math.max(0, Math.min(max, diff));
-    setSliderLeft(newLeft);
-  }, [isDragging, startX, width]);
+  const updateSliderPosition = useCallback(
+    (clientX: number) => {
+      const offset = clientX - startXRef.current;
+      const nextLeft = clamp(originLeftRef.current + offset, 0, maxSliderLeft);
+      sliderLeftRef.current = nextLeft;
+      setSliderLeft(nextLeft);
+    },
+    [maxSliderLeft],
+  );
 
-  const handleEnd = async () => {
-    if (!isDragging) return;
-    setIsDragging(false);
-    
-    if (sliderLeft < 5) return; // 忽略微小移动
-    
-    setStatus('verifying');
-    try {
-      // 将前端滑块位置转换为后端坐标系
-      // 前端滑块范围: [0, width - SLIDER_BTN_WIDTH]
-      // 后端 X 坐标范围: [0, BG_ORIGIN_WIDTH - SLIDER_BTN_WIDTH/scaleX]
-      // 简化：直接用 sliderLeft / scaleX 转换
-      const backendX = Math.round(sliderLeft / scaleX);
-      
-      const res = await checkCaptcha({
-        uuid: captchaData.uuid,
-        x: backendX
-      });
-      
-      if (res && res.passToken) {
-        setStatus('success');
-        onVerify(res.passToken);
-      } else {
+  useEffect(() => {
+    sliderLeftRef.current = sliderLeft;
+  }, [sliderLeft]);
+
+  const verifyPosition = useCallback(
+    async (currentLeft: number) => {
+      if (!captchaData || status === 'verifying' || status === 'success' || currentLeft < 5) {
+        return;
+      }
+
+      setStatus('verifying');
+
+      try {
+        const backendX = Math.round(currentLeft / scaleX);
+        const response = await checkCaptcha({
+          uuid: captchaData.uuid,
+          x: backendX,
+        });
+
+        if (response?.passToken) {
+          setStatus('success');
+          refreshTimerRef.current = window.setTimeout(() => {
+            onVerify(response.passToken);
+          }, 320);
+          return;
+        }
+
         setStatus('fail');
         toast.error('验证失败，请重试');
-        setTimeout(() => {
-          fetchCaptcha();
-        }, 1000);
+        refreshTimerRef.current = window.setTimeout(() => {
+          void fetchCaptcha();
+        }, 900);
+      } catch (error) {
+        logger.error('Captcha verification failed:', error);
+        setStatus('fail');
+        toast.error('验证失败，请重试');
+        refreshTimerRef.current = window.setTimeout(() => {
+          void fetchCaptcha();
+        }, 900);
       }
-    } catch (e) {
-      logger.error('Captcha verification failed:', e);
-      setStatus('fail');
-      toast.error('验证失败，请重试');
-      setTimeout(() => {
-        fetchCaptcha();
-      }, 1000);
+    },
+    [captchaData, fetchCaptcha, onVerify, scaleX, status],
+  );
+
+  useEffect(() => {
+    if (!isDragging) {
+      return undefined;
     }
+
+    const handleMouseMove = (event: MouseEvent) => updateSliderPosition(event.clientX);
+    const handleTouchMove = (event: TouchEvent) => updateSliderPosition(event.touches[0].clientX);
+    const handleDragEnd = () => {
+      setIsDragging(false);
+      void verifyPosition(sliderLeftRef.current);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleDragEnd);
+    window.addEventListener('touchmove', handleTouchMove, { passive: true });
+    window.addEventListener('touchend', handleDragEnd);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleDragEnd);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('touchend', handleDragEnd);
+    };
+  }, [isDragging, updateSliderPosition, verifyPosition]);
+
+  const handleStart = (clientX: number) => {
+    if (loading || status !== 'idle') {
+      return;
+    }
+
+    startXRef.current = clientX;
+    originLeftRef.current = sliderLeft;
+    setIsDragging(true);
   };
 
-  // Mouse Events
-  const onMouseDown = (e: React.MouseEvent) => handleStart(e.clientX);
-  const onMouseMove = (e: React.MouseEvent) => handleMove(e.clientX);
-  const onMouseUp = () => handleEnd();
-  const onMouseLeave = () => { if (isDragging) handleEnd(); };
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (loading || status !== 'idle') {
+      return;
+    }
 
-  // Touch Events
-  const onTouchStart = (e: React.TouchEvent) => handleStart(e.touches[0].clientX);
-  const onTouchMove = (e: React.TouchEvent) => handleMove(e.touches[0].clientX);
-  const onTouchEnd = () => handleEnd();
-
-  // Keyboard Events
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (status === 'success' || status === 'verifying') return;
-    
-    const max = width - SLIDER_BTN_WIDTH;
-    
-    switch (e.key) {
+    switch (event.key) {
       case 'ArrowLeft':
-        e.preventDefault();
-        setSliderLeft(prev => Math.max(0, prev - SLIDER_KEYBOARD_STEP));
+        event.preventDefault();
+        setSliderLeft((current) => clamp(current - SLIDER_KEYBOARD_STEP, 0, maxSliderLeft));
         break;
       case 'ArrowRight':
-        e.preventDefault();
-        setSliderLeft(prev => Math.min(max, prev + SLIDER_KEYBOARD_STEP));
-        break;
-      case 'Enter':
-      case ' ':
-        e.preventDefault();
-        if (sliderLeft > 0) {
-          setIsDragging(true);
-          handleEnd();
-        }
+        event.preventDefault();
+        setSliderLeft((current) => clamp(current + SLIDER_KEYBOARD_STEP, 0, maxSliderLeft));
         break;
       case 'Home':
-        e.preventDefault();
+        event.preventDefault();
         setSliderLeft(0);
         break;
       case 'End':
-        e.preventDefault();
-        setSliderLeft(max);
+        event.preventDefault();
+        setSliderLeft(maxSliderLeft);
+        break;
+      case 'Enter':
+      case ' ':
+        event.preventDefault();
+        void verifyPosition(sliderLeft);
+        break;
+      default:
         break;
     }
   };
 
-  // 计算滑块图片在前端的显示尺寸和位置
-  const getSliderStyle = (): React.CSSProperties => {
-    if (!captchaData) return {};
-    
-    const sliderW = (captchaData.sliderWidth || 52) * scaleX;
-    const sliderH = (captchaData.sliderHeight || 52) * scaleY;
-    const sliderY = (captchaData.y || 0) * scaleY;
-    
+  const pieceStyle = useMemo<React.CSSProperties>(() => {
+    if (!captchaData) {
+      return {};
+    }
+
     return {
       position: 'absolute',
-      top: sliderY,
+      top: (captchaData.y || 0) * scaleY,
       left: sliderLeft,
-      width: sliderW,
-      height: sliderH,
-      zIndex: 10,
-      filter: 'drop-shadow(0 0 4px rgba(0,0,0,0.5))',
-      pointerEvents: 'none' as const,
+      width: (captchaData.sliderWidth || 52) * scaleX,
+      height: (captchaData.sliderHeight || 52) * scaleY,
+      zIndex: 2,
+      pointerEvents: 'none',
+      filter: 'drop-shadow(0 10px 18px rgba(15, 23, 42, 0.24))',
+      transition: isDragging ? 'none' : 'left 120ms ease',
+      willChange: 'left',
     };
-  };
+  }, [captchaData, isDragging, scaleX, scaleY, sliderLeft]);
+
+  const progressWidth = Math.min(width, sliderLeft + SLIDER_BTN_WIDTH / 2);
+
+  const statusToneClass =
+    status === 'success'
+      ? 'text-emerald-600 dark:text-emerald-300'
+      : status === 'fail'
+        ? 'text-red-600 dark:text-red-300'
+        : status === 'verifying'
+          ? 'text-teal-700 dark:text-teal-300'
+          : 'text-slate-500 dark:text-slate-400';
+
+  const statusDotClass =
+    status === 'success'
+      ? 'bg-emerald-500'
+      : status === 'fail'
+        ? 'bg-red-500'
+        : status === 'verifying'
+          ? 'bg-teal-500'
+          : 'bg-slate-400';
+
+  const trackProgressClass =
+    status === 'success'
+      ? 'from-emerald-500/30 via-emerald-400/20 to-transparent'
+      : status === 'fail'
+        ? 'from-red-500/28 via-red-400/16 to-transparent'
+        : status === 'verifying'
+          ? 'from-teal-500/32 via-cyan-400/18 to-transparent'
+          : 'from-teal-500/26 via-cyan-400/14 to-transparent';
+
+  const handleClass =
+    status === 'success'
+      ? 'border-emerald-500 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white shadow-[0_12px_24px_rgba(34,197,94,0.3)]'
+      : status === 'fail'
+        ? 'border-red-500 bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-[0_12px_24px_rgba(239,68,68,0.28)]'
+        : isDragging || status === 'verifying'
+          ? 'border-teal-500 bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-[0_12px_24px_rgba(13,148,136,0.28)]'
+          : 'border-white/90 bg-white/96 text-slate-500 shadow-[0_10px_22px_rgba(15,23,42,0.14)] hover:text-teal-700 dark:border-dark-700 dark:bg-dark-800/96 dark:text-slate-200 dark:hover:text-teal-300';
 
   return (
-    <div className="w-full select-none" style={{ width }} onMouseLeave={onMouseLeave}>
-      {/* Image Area */}
-      <div 
-        ref={imageContainerRef}
-        className="relative overflow-hidden rounded-t-lg bg-slate-100" 
+    <div className="space-y-4" style={{ width }}>
+      <div
+        className={[
+          'relative overflow-hidden rounded-[1.4rem] border bg-slate-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.8)]',
+          'dark:bg-dark-900 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]',
+          status === 'success'
+            ? 'border-emerald-200 dark:border-emerald-900/40'
+            : status === 'fail'
+              ? 'border-red-200 dark:border-red-900/40'
+              : 'border-slate-200 dark:border-dark-700',
+        ]
+          .filter(Boolean)
+          .join(' ')}
         style={{ width, height }}
       >
-        {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-20">
-            <Loader2 className="animate-spin text-slate-400" />
-          </div>
-        )}
-        
-        {/* Status Overlay */}
-        {status === 'success' && (
-           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-emerald-500/20 transition-all">
-               <CheckCircle2 className="text-emerald-500 w-10 h-10 mb-2" />
-               <span className="text-emerald-600 font-bold text-sm">验证通过</span>
-           </div>
-        )}
-        {status === 'fail' && (
-           <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-red-500/20 transition-all">
-               <XCircle className="text-red-500 w-10 h-10 mb-2" />
-               <span className="text-red-600 font-bold text-sm">验证失败</span>
-           </div>
-        )}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.42),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.14),rgba(255,255,255,0))] dark:bg-[radial-gradient(circle_at_top_left,rgba(45,212,191,0.12),transparent_32%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))]" />
 
-        {/* Refresh Button */}
-        <button 
-           onClick={(e) => { e.preventDefault(); fetchCaptcha(); }}
-           className="absolute top-2 right-2 z-30 rounded-full border border-slate-200 bg-white p-1.5 text-slate-600 shadow-sm transition-colors hover:bg-slate-50"
-           title="刷新验证码"
+        <button
+          type="button"
+          className="absolute right-3 top-3 z-20 inline-flex h-8 w-8 items-center justify-center rounded-xl border border-white/80 bg-white/90 text-slate-500 shadow-sm transition hover:bg-white hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-60 dark:border-dark-700 dark:bg-dark-800/90 dark:text-slate-300 dark:hover:bg-dark-700 dark:hover:text-white"
+          onClick={() => {
+            void fetchCaptcha();
+          }}
+          disabled={loading || status === 'verifying'}
+          title="刷新验证码"
         >
-           <RefreshCw size={14} />
+          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
         </button>
 
-        {captchaData && (
+        {loading ? (
+          <div className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-2 bg-slate-100/85 text-sm text-slate-500 backdrop-blur-sm dark:bg-dark-900/82 dark:text-slate-400">
+            <Loader2 size={18} className="animate-spin" />
+            <span>正在载入拼图…</span>
+          </div>
+        ) : null}
+
+        {captchaData ? (
           <>
-            {/* 背景图：使用精确尺寸，不使用 object-cover 避免缩放偏移 */}
-            <img 
-              src={captchaData.bgImage} 
-              alt="bg" 
-              style={{ 
+            <img
+              src={captchaData.bgImage}
+              alt="captcha background"
+              style={{
                 position: 'absolute',
-                top: 0,
-                left: 0,
-                width: width,
-                height: height,
+                inset: 0,
+                width,
+                height,
               }}
               draggable={false}
             />
-            {/* 滑块拼图图片 */}
-            <img 
-              src={captchaData.sliderImage} 
-              alt="slider" 
-              style={getSliderStyle()}
+            <img
+              src={captchaData.sliderImage}
+              alt="captcha puzzle piece"
+              style={pieceStyle}
               draggable={false}
             />
           </>
-        )}
+        ) : null}
+
+        {(status === 'success' || status === 'fail') && !loading ? (
+          <div className="absolute inset-x-0 bottom-3 z-30 flex justify-center">
+            <div
+              className={[
+                'inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold shadow-lg backdrop-blur-md',
+                status === 'success'
+                  ? 'bg-emerald-500/88 text-white'
+                  : 'bg-red-500/88 text-white',
+              ]
+                .filter(Boolean)
+                .join(' ')}
+            >
+              {status === 'success' ? <CheckCircle2 size={14} /> : <XCircle size={14} />}
+              {status === 'success' ? '验证通过' : '位置不准确'}
+            </div>
+          </div>
+        ) : null}
       </div>
 
-      {/* Track Area */}
-      <div 
-        ref={containerRef}
-        className="relative h-10 bg-slate-100 rounded-b-lg border border-slate-200 flex items-center px-2"
-        onMouseMove={onMouseMove}
-        onMouseUp={onMouseUp}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-        onKeyDown={handleKeyDown}
-        tabIndex={0}
-        role="slider"
-        aria-valuemin={0}
-        aria-valuemax={width - SLIDER_BTN_WIDTH}
-        aria-valuenow={sliderLeft}
-        aria-label="拖动滑块完成验证，也可使用方向键操作"
-      >
-        <div className="text-xs text-slate-400 w-full text-center select-none">向右拖动滑块填充拼图</div>
-        
-        {/* Slider Button */}
-        <div 
-          className={`absolute top-0 h-10 flex items-center justify-center cursor-pointer shadow-sm border border-slate-200 transition-colors z-20 rounded-sm
-            ${isDragging ? 'bg-emerald-500 border-emerald-500 text-white' : 'bg-white hover:bg-slate-50 text-slate-500'}
-            ${status === 'success' ? '!bg-emerald-500 !border-emerald-500 !text-white' : ''}
-            ${status === 'fail' ? '!bg-red-500 !border-red-500 !text-white' : ''}
-          `}
-          style={{ left: sliderLeft, width: SLIDER_BTN_WIDTH }}
-          onMouseDown={onMouseDown}
-          onTouchStart={onTouchStart}
-        >
-          <div className="w-1 h-3 rounded-full bg-current opacity-50 mx-[1px]" />
-          <div className="w-1 h-3 rounded-full bg-current opacity-50 mx-[1px]" />
+      <div className="rounded-[1.3rem] border border-slate-200 bg-white/88 p-3 shadow-[0_18px_34px_rgba(15,23,42,0.08)] backdrop-blur-sm dark:border-dark-700 dark:bg-dark-900/84 dark:shadow-[0_20px_40px_rgba(2,6,23,0.34)]">
+        <div className="mb-3 flex items-center justify-between gap-3 px-1">
+          <div className={`inline-flex min-w-0 items-center gap-2 text-xs font-medium ${statusToneClass}`}>
+            {status === 'verifying' ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : status === 'success' ? (
+              <CheckCircle2 size={14} />
+            ) : status === 'fail' ? (
+              <XCircle size={14} />
+            ) : (
+              <span className={`h-2 w-2 rounded-full ${statusDotClass}`} />
+            )}
+            <span className="truncate">{STATUS_META[status].label}</span>
+          </div>
+          <span className="shrink-0 text-[11px] text-slate-400 dark:text-slate-500">
+            {STATUS_META[status].assist}
+          </span>
         </div>
-        
-        {/* Progress Bar */}
-        <div 
-          className={`absolute top-0 left-0 h-full bg-emerald-50 border-y border-emerald-100/60 transition-all rounded-bl-lg
-            ${status === 'success' ? '!bg-emerald-100 !border-emerald-200' : ''}
-            ${status === 'fail' ? '!bg-red-100 !border-red-200' : ''}
-          `}
-          style={{ width: sliderLeft }}
-        />
+
+        <div
+          ref={trackRef}
+          className={[
+            'relative h-14 overflow-hidden rounded-2xl border bg-slate-50 focus:outline-none focus:ring-2 focus:ring-teal-500/20',
+            'dark:bg-dark-950/78',
+            status === 'success'
+              ? 'border-emerald-200 dark:border-emerald-900/40'
+              : status === 'fail'
+                ? 'border-red-200 dark:border-red-900/40'
+                : 'border-slate-200 dark:border-dark-700',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+          tabIndex={0}
+          role="slider"
+          aria-valuemin={0}
+          aria-valuemax={maxSliderLeft}
+          aria-valuenow={Math.round(sliderLeft)}
+          aria-valuetext={STATUS_META[status].label}
+          aria-label="拖动滑块完成验证，也可使用方向键操作"
+          onKeyDown={handleKeyDown}
+        >
+          <div
+            className={`absolute inset-y-0 left-0 bg-gradient-to-r ${trackProgressClass} transition-[width] duration-200`}
+            style={{ width: progressWidth }}
+          />
+
+          <div
+            className={[
+              'pointer-events-none absolute inset-0 z-10 flex items-center justify-center px-14 text-center text-xs font-medium transition-opacity duration-200',
+              statusToneClass,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            style={{ opacity: sliderLeft > maxSliderLeft * 0.48 ? 0.35 : 1 }}
+          >
+            {status === 'idle' ? '向右拖动滑块' : STATUS_META[status].label}
+          </div>
+
+          <button
+            type="button"
+            className={[
+              'absolute bottom-[5px] top-[5px] z-20 inline-flex items-center justify-center rounded-xl border transition',
+              handleClass,
+            ]
+              .filter(Boolean)
+              .join(' ')}
+            style={{ left: sliderLeft + HANDLE_INSET, width: HANDLE_VISUAL_WIDTH }}
+            onMouseDown={(event) => {
+              event.preventDefault();
+              handleStart(event.clientX);
+            }}
+            onTouchStart={(event) => handleStart(event.touches[0].clientX)}
+            disabled={loading || status === 'verifying' || status === 'success'}
+            aria-hidden="true"
+          >
+            {status === 'verifying' ? (
+              <Loader2 size={15} className="animate-spin" />
+            ) : status === 'success' ? (
+              <CheckCircle2 size={15} />
+            ) : status === 'fail' ? (
+              <XCircle size={15} />
+            ) : (
+              <ChevronsRight size={16} />
+            )}
+          </button>
+        </div>
+
+        <div className="sr-only" aria-live="polite">
+          {STATUS_META[status].label}
+        </div>
       </div>
     </div>
   );

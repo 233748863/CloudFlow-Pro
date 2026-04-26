@@ -23,6 +23,8 @@ import {
 import {
   Button,
   Input,
+  SegmentedControl,
+  SegmentedControlItem,
   Table,
   TableBody,
   TableCell,
@@ -142,25 +144,6 @@ const InlineState: React.FC<{
       </div>
     ) : null}
   </div>
-);
-
-const CacheTabButton: React.FC<{
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}> = ({ active, label, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium transition-colors',
-      active
-        ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950'
-        : 'border border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
-    )}
-  >
-    {label}
-  </button>
 );
 
 const KeyTreeNode: React.FC<{
@@ -447,18 +430,14 @@ export const CacheMonitor = () => {
           )}
           filters={(
             <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-              <div className="flex flex-wrap items-center gap-2">
-                <CacheTabButton
-                  active={activeTab === 'overview'}
-                  label="概览"
-                  onClick={() => setActiveTab('overview')}
-                />
-                <CacheTabButton
-                  active={activeTab === 'browser'}
-                  label="Key 浏览器"
-                  onClick={() => setActiveTab('browser')}
-                />
-              </div>
+              <SegmentedControl className="min-h-9">
+                <SegmentedControlItem size="sm" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
+                  概览
+                </SegmentedControlItem>
+                <SegmentedControlItem size="sm" active={activeTab === 'browser'} onClick={() => setActiveTab('browser')}>
+                  Key 浏览器
+                </SegmentedControlItem>
+              </SegmentedControl>
 
               {activeTab === 'browser' ? (
                 <div className="flex flex-1 flex-wrap items-center justify-end gap-3">

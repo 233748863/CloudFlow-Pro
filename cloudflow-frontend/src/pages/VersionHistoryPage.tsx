@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { AlertTriangle } from 'lucide-react';
+import { ArrowLeft, History } from 'lucide-react';
 import request from '@/services/api/request';
 import { Button } from '@/components/ui';
-import { WorkspaceStatusPage } from '@/components/workspace/WorkspacePrimitives';
 import { VersionHistory } from './VersionHistory';
 
 interface WorkflowInfo {
@@ -14,6 +13,22 @@ interface WorkflowInfo {
   createBy?: string;
   createdBy?: string;
 }
+
+const InvalidState: React.FC<{ onBack: () => void }> = ({ onBack }) => (
+  <div className="rounded-lg border border-slate-200 bg-white px-6 py-9 text-center dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+      <History className="h-5 w-5" />
+    </div>
+    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">无效的流程 ID</div>
+    <div className="mt-1.5 text-xs leading-6 text-slate-500 dark:text-slate-400">未能从当前地址中识别流程编号。</div>
+    <div className="mt-4">
+      <Button type="button" variant="outline" size="sm" onClick={onBack}>
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        返回上一页
+      </Button>
+    </div>
+  </div>
+);
 
 export const VersionHistoryPage: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>();
@@ -36,28 +51,11 @@ export const VersionHistoryPage: React.FC = () => {
       }
     };
 
-    loadWorkflowInfo();
+    void loadWorkflowInfo();
   }, [workflowId]);
 
   if (!workflowId) {
-    return (
-      <WorkspaceStatusPage
-        icon={<AlertTriangle size={28} className="text-amber-500" />}
-        title="无效的流程 ID"
-        description="未能从当前地址中识别流程编号，请返回流程详情页后重试。"
-        actions={
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(-1)}
-            className="rounded-xl"
-          >
-            返回上一页
-          </Button>
-        }
-        iconWrapClassName="bg-amber-50 text-amber-500 dark:bg-amber-950/30 dark:text-amber-300"
-      />
-    );
+    return <InvalidState onBack={() => navigate(-1)} />;
   }
 
   return (

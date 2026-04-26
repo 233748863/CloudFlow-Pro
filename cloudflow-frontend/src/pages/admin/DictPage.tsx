@@ -14,6 +14,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -115,28 +116,6 @@ const getDefaultBadgeClassName = (isDefault: string) =>
     ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200'
     : 'border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
 
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
-
 const InlineState: React.FC<{
   title: string;
   description?: string;
@@ -216,30 +195,9 @@ export const DictPage: React.FC = () => {
     [dictTypes, query.keyword, query.status],
   );
 
-  const activeTypeCount = useMemo(
-    () => dictTypes.filter((item) => (item.status || '0') === '0').length,
-    [dictTypes],
-  );
-
-  const activeDataCount = useMemo(
-    () => dictDataList.filter((item) => (item.status || '0') === '0').length,
-    [dictDataList],
-  );
-
-  const defaultDataCount = useMemo(
-    () => dictDataList.filter((item) => item.isDefault === 'Y').length,
-    [dictDataList],
-  );
-
   const hasActiveFilters = Boolean(query.keyword || query.status);
   const isTypeEdit = Boolean(editingType);
   const isDataEdit = Boolean(editingData);
-
-  const filterSummary = useMemo(() => {
-    const keywordLabel = query.keyword || '全部关键字';
-    const statusLabel = !query.status ? '全部状态' : query.status === '0' ? '正常' : '停用';
-    return `${keywordLabel} / ${statusLabel}`;
-  }, [query.keyword, query.status]);
 
   useEffect(() => {
     void loadDictTypes();
@@ -515,24 +473,6 @@ export const DictPage: React.FC = () => {
     <>
       <TablePageLayout
         className="gap-3"
-        actions={(
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">
-                类型 {dictTypes.length}
-              </span>
-              <span className="text-slate-500 dark:text-slate-400">启用 {activeTypeCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">数据 {dictDataList.length}</span>
-              <span className="text-slate-500 dark:text-slate-400">默认 {defaultDataCount}</span>
-            </div>
-
-            {selectedType ? (
-              <div className="ml-auto text-xs text-slate-500 dark:text-slate-400">
-                当前类型 <span className="font-mono">{selectedType.dictType}</span>
-              </div>
-            ) : null}
-          </div>
-        )}
         filters={(
           <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
@@ -585,10 +525,6 @@ export const DictPage: React.FC = () => {
             </form>
 
             <div className="flex flex-wrap items-center gap-2">
-              <div className="hidden text-xs text-slate-500 dark:text-slate-400 xl:block">
-                {filterSummary}
-              </div>
-
               <Button
                 variant="outline"
                 size="sm"
@@ -612,49 +548,19 @@ export const DictPage: React.FC = () => {
           </div>
         )}
         table={(
-          <>
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  字典管理
-                </div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                  {selectedType
-                    ? `${selectedType.dictName} / ${selectedType.dictType}`
-                    : hasActiveFilters
-                      ? filterSummary
-                      : '共用一套类型列表和字典数据表'}
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>筛选后 {filteredTypes.length} 个类型</span>
-                <span>当前 {dictDataList.length} 条数据</span>
-                {selectedType ? <span>启用 {activeDataCount}</span> : null}
-              </div>
-            </div>
-
-            <div className="grid min-h-[660px] lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="grid min-h-[660px] lg:grid-cols-[280px_minmax(0,1fr)]">
               <div className="border-b border-slate-200 dark:border-slate-800 lg:border-b-0 lg:border-r">
-                <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                    字典类型
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    共 {filteredTypes.length} 条
-                  </div>
+                <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">
+                  字典类型
                 </div>
 
                 <div className="max-h-[calc(100vh-336px)] overflow-y-auto">
                   {typeLoading ? (
                     <InlineState title="正在加载字典类型..." loading />
                   ) : typeError ? (
-                    <InlineState title="字典类型加载失败" description={typeError} />
+                    <InlineState title="字典类型加载失败" />
                   ) : filteredTypes.length === 0 ? (
-                    <InlineState
-                      title={hasActiveFilters ? '当前筛选无结果' : '暂无字典类型'}
-                      description={hasActiveFilters ? '请调整筛选条件后重试' : '请先新增字典类型'}
-                    />
+                    <InlineState title={hasActiveFilters ? '当前筛选无结果' : '暂无字典类型'} />
                   ) : (
                     <div className="divide-y divide-slate-200 dark:divide-slate-800">
                       {filteredTypes.map((item) => {
@@ -696,25 +602,31 @@ export const DictPage: React.FC = () => {
                               </div>
                             </div>
 
-                            <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                              <RowActionButton
-                                label="编辑类型"
-                                icon={<Edit size={15} />}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  openTypeModal(item);
-                                }}
-                              />
-                              <RowActionButton
-                                label="删除类型"
-                                icon={<Trash2 size={15} />}
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  setDeleteTarget({ type: 'dictType', item });
-                                }}
-                                tone="danger"
-                              />
-                            </div>
+                            <TableRowActions
+                              align="end"
+                              iconOnly
+                              className="shrink-0 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100"
+                              actions={[
+                                {
+                                  label: '编辑类型',
+                                  icon: <Edit size={15} />,
+                                  onClick: (event) => {
+                                    event.stopPropagation();
+                                    openTypeModal(item);
+                                  },
+                                  tone: 'neutral',
+                                },
+                                {
+                                  label: '删除类型',
+                                  icon: <Trash2 size={15} />,
+                                  onClick: (event) => {
+                                    event.stopPropagation();
+                                    setDeleteTarget({ type: 'dictType', item });
+                                  },
+                                  tone: 'danger',
+                                },
+                              ]}
+                            />
                           </div>
                         );
                       })}
@@ -724,33 +636,21 @@ export const DictPage: React.FC = () => {
               </div>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                      {selectedType ? selectedType.dictName : '字典数据'}
-                    </div>
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                        {selectedType ? selectedType.dictName : '字典数据'}
+                      </div>
                     {selectedType ? (
                       <div className="mt-1 truncate font-mono text-xs text-slate-500 dark:text-slate-400">
                         {selectedType.dictType}
                       </div>
                     ) : null}
                   </div>
-
-                  {selectedType ? (
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                      <span>共 {dictDataList.length} 条</span>
-                      <span>启用 {activeDataCount}</span>
-                      <span>默认 {defaultDataCount}</span>
-                    </div>
-                  ) : null}
                 </div>
 
                 {!selectedType ? (
-                  <InlineState
-                    title={hasActiveFilters ? '当前筛选无可用类型' : '请选择字典类型'}
-                    description={hasActiveFilters ? '左侧列表无结果' : '左侧选中后即可查看字典数据'}
-                    className="min-h-[560px]"
-                  />
+                  <InlineState title={hasActiveFilters ? '当前筛选无可用类型' : '请选择字典类型'} className="min-h-[560px]" />
                 ) : (
                   <div className="overflow-x-auto">
                     <Table className="min-w-[860px]">
@@ -770,7 +670,7 @@ export const DictPage: React.FC = () => {
                         {dataLoading ? (
                           <TableStateRow colSpan={8} title="正在加载字典数据..." loading />
                         ) : dataError ? (
-                          <TableStateRow colSpan={8} title="字典数据加载失败" description={dataError} />
+                          <TableStateRow colSpan={8} title="字典数据加载失败" />
                         ) : dictDataList.length === 0 ? (
                           <TableStateRow colSpan={8} title="暂无字典数据" />
                         ) : (
@@ -831,19 +731,24 @@ export const DictPage: React.FC = () => {
                                 {item.remark || '-'}
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center justify-end gap-1">
-                                  <RowActionButton
-                                    label="编辑数据"
-                                    icon={<Edit size={15} />}
-                                    onClick={() => openDataModal(item)}
-                                  />
-                                  <RowActionButton
-                                    label="删除数据"
-                                    icon={<Trash2 size={15} />}
-                                    onClick={() => setDeleteTarget({ type: 'dictData', item })}
-                                    tone="danger"
-                                  />
-                                </div>
+                                <TableRowActions
+                                  align="end"
+                                  iconOnly
+                                  actions={[
+                                    {
+                                      label: '编辑数据',
+                                      icon: <Edit size={15} />,
+                                      onClick: () => openDataModal(item),
+                                      tone: 'neutral',
+                                    },
+                                    {
+                                      label: '删除数据',
+                                      icon: <Trash2 size={15} />,
+                                      onClick: () => setDeleteTarget({ type: 'dictData', item }),
+                                      tone: 'danger',
+                                    },
+                                  ]}
+                                />
                               </TableCell>
                             </TableRow>
                           ))
@@ -854,7 +759,6 @@ export const DictPage: React.FC = () => {
                 )}
               </div>
             </div>
-          </>
         )}
       />
 

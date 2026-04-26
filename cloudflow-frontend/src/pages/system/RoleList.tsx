@@ -27,6 +27,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -97,6 +98,9 @@ const getDsTypeClassName = (dsType: number) =>
     ? 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200'
     : 'border border-slate-200 bg-white text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
 
+const checkboxClassName =
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+
 const buildTree = (items: TreeNode[], parentId = 0): TreeNode[] =>
   items
     .filter((item) => item.parentId === parentId)
@@ -138,28 +142,6 @@ const normalizeScopeValue = (value: unknown): string => {
   return '';
 };
 
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
-
 const TableStateRow: React.FC<{
   colSpan: number;
   title: string;
@@ -195,16 +177,22 @@ const TreeCheckboxList: React.FC<{
 
       return (
         <div key={node.menuId} className="ml-3">
-          <div
+          <label
             className={cn(
-              'flex items-center gap-2 rounded-xl px-2 py-1.5 transition',
-              checked && 'bg-slate-50 dark:bg-slate-900/70',
+              'flex cursor-pointer items-center gap-2 rounded-xl px-2 py-1.5 transition',
+              checked
+                ? 'bg-slate-50 text-slate-900 dark:bg-slate-900/70 dark:text-slate-100'
+                : 'text-slate-700 hover:bg-white dark:text-slate-200 dark:hover:bg-slate-950/80',
             )}
           >
             {node.children && node.children.length > 0 ? (
               <button
                 type="button"
-                onClick={() => onToggleExpand(node.menuId)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  onToggleExpand(node.menuId);
+                }}
                 className="rounded-full p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
               >
                 {expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -217,10 +205,10 @@ const TreeCheckboxList: React.FC<{
               type="checkbox"
               checked={checked}
               onChange={() => onToggleCheck(node.menuId)}
-              className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+              className={checkboxClassName}
             />
-            <span className="text-sm text-slate-700 dark:text-slate-200">{node.menuName}</span>
-          </div>
+            <span className="text-sm font-medium">{node.menuName}</span>
+          </label>
           {expanded && node.children?.length ? renderNodes(node.children) : null}
         </div>
       );
@@ -371,20 +359,9 @@ export const RoleList = () => {
     void fetchTenants();
   }, []);
 
-  const activeCount = useMemo(() => roles.filter((role) => role.status === '0').length, [roles]);
-  const customScopeCount = useMemo(
-    () => roles.filter((role) => Number(role.dsType) === 1).length,
-    [roles],
-  );
-  const tenantCoverage = useMemo(
-    () => new Set(roles.map((role) => role.tenantId).filter(Boolean)).size,
-    [roles],
-  );
   const hasActiveFilters = Boolean(query.roleName || query.roleKey);
   const isEdit = Boolean(editingRole);
   const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
-  const selectedDeptCount = parseIds(formData.dsScope).length;
-
   const availableParents = flatMenus;
 
   const handleRefresh = () => {
@@ -613,38 +590,6 @@ export const RoleList = () => {
         }
         table={
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  角色列表
-                </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  轻量后台列表骨架，保留角色菜单树、部门树和租户归属配置能力。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {roles.length} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  正常 {activeCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  自定义范围 {customScopeCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  菜单节点 {flatMenus.length}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  租户覆盖 {tenantCoverage}
-                </span>
-              </div>
-            </div>
-
             <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>
@@ -664,11 +609,7 @@ export const RoleList = () => {
                 ) : error ? (
                   <TableStateRow colSpan={8} title="角色数据加载失败" description={error} />
                 ) : roles.length === 0 ? (
-                  <TableStateRow
-                    colSpan={8}
-                    title="暂无角色数据"
-                    description="可以先创建角色，再配置菜单和数据范围。"
-                  />
+                  <TableStateRow colSpan={8} title="暂无角色数据" />
                 ) : (
                   roles.map((role) => (
                     <TableRow key={role.roleId}>
@@ -723,19 +664,24 @@ export const RoleList = () => {
                         </span>
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <RowActionButton
-                            label="编辑角色"
-                            icon={<Edit size={15} />}
-                            onClick={() => handleOpenModal(role)}
-                          />
-                          <RowActionButton
-                            label="删除角色"
-                            icon={<Trash2 size={15} />}
-                            onClick={() => setPendingDeleteRole(role)}
-                            tone="danger"
-                          />
-                        </div>
+                        <TableRowActions
+                          align="end"
+                          iconOnly
+                          actions={[
+                            {
+                              label: '编辑角色',
+                              icon: <Edit size={15} />,
+                              onClick: () => handleOpenModal(role),
+                              tone: 'neutral',
+                            },
+                            {
+                              label: '删除角色',
+                              icon: <Trash2 size={15} />,
+                              onClick: () => setPendingDeleteRole(role),
+                              tone: 'danger',
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   ))
@@ -768,7 +714,6 @@ export const RoleList = () => {
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑角色' : '新增角色'}
-        description="维护角色基础信息、状态、数据范围、菜单授权和租户归属。"
         onClose={handleCloseModal}
         maxWidthClassName="max-w-5xl"
         footer={
@@ -899,12 +844,7 @@ export const RoleList = () => {
 
           {formData.dsType === 1 ? (
             <div>
-              <div className="mb-2 flex items-center justify-between">
-                <label className={fieldLabelClassName}>自定义部门范围</label>
-                <span className="text-xs text-slate-500 dark:text-slate-400">
-                  已选部门 {selectedDeptCount} 个
-                </span>
-              </div>
+              <label className={fieldLabelClassName}>自定义部门范围</label>
               <div className="max-h-64 overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
                 {deptTree.length > 0 ? (
                   <TreeCheckboxList
@@ -930,12 +870,7 @@ export const RoleList = () => {
           ) : null}
 
           <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className={fieldLabelClassName}>菜单权限</label>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                已选菜单 {formData.menuIds.length} 项
-              </span>
-            </div>
+            <label className={fieldLabelClassName}>菜单权限</label>
             <div className="max-h-[28rem] overflow-y-auto rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
               {menuTree.length > 0 ? (
                 <TreeCheckboxList

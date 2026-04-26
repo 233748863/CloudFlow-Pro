@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnnouncementDetailModal } from '@/components/common/AnnouncementDetailModal';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { AnnouncementListItem } from '@/components/common/AnnouncementListItem';
-import { Button } from '@/components/ui';
+import { Button, SegmentedControl, SegmentedControlItem } from '@/components/ui';
 import { useAuth } from '@/context/AuthContext';
 import { useAnnouncementStore, useAnnouncementUnreadCount } from '@/stores/announcementStore';
 import { Role, type Announcement } from '@/types';
@@ -99,13 +99,14 @@ export const AnnouncementBell: React.FC = () => {
         footer={
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex flex-wrap gap-2">
-              <Button
-                variant={showUnreadOnly ? 'soft' : 'outline'}
-                size="sm"
-                onClick={() => setShowUnreadOnly((previous) => !previous)}
-              >
-                {showUnreadOnly ? '显示全部' : '仅看未读'}
-              </Button>
+              <SegmentedControl className="min-h-9">
+                <SegmentedControlItem size="sm" active={!showUnreadOnly} onClick={() => setShowUnreadOnly(false)}>
+                  全部公告
+                </SegmentedControlItem>
+                <SegmentedControlItem size="sm" active={showUnreadOnly} onClick={() => setShowUnreadOnly(true)}>
+                  仅看未读
+                </SegmentedControlItem>
+              </SegmentedControl>
               {unreadCount > 0 ? (
                 <Button size="sm" onClick={() => void handleMarkAllAsRead()} disabled={loading}>
                   <Check size={14} />

@@ -10,7 +10,53 @@ interface Tenant {
   status: string;
 }
 
-function getTenantLabel(tenantName?: string, tenantId?: number) {
+type TenantListResponse =
+  | Tenant[]
+  | {
+      records?: Tenant[];
+      rows?: Tenant[];
+      list?: Tenant[];
+      data?: {
+        records?: Tenant[];
+        rows?: Tenant[];
+        list?: Tenant[];
+      };
+    };
+
+const pickTenantArray = (source?: {
+  records?: Tenant[];
+  rows?: Tenant[];
+  list?: Tenant[];
+}) => {
+  if (Array.isArray(source?.records)) {
+    return source.records;
+  }
+
+  if (Array.isArray(source?.rows)) {
+    return source.rows;
+  }
+
+  if (Array.isArray(source?.list)) {
+    return source.list;
+  }
+
+  return [];
+};
+
+const normalizeTenantListResponse = (response: TenantListResponse): Tenant[] => {
+  if (Array.isArray(response)) {
+    return response;
+  }
+
+  const directList = pickTenantArray(response);
+  if (directList.length > 0) {
+    return directList;
+  }
+
+  return pickTenantArray(response?.data);
+};
+
+const getTenantName = (tenantName?: string, tenantId?: number) => {
   const normalizedName = String(tenantName || '').trim();
   if (normalizedName) {
     return normalizedName;
@@ -21,7 +67,10 @@ function getTenantLabel(tenantName?: string, tenantId?: number) {
   }
 
   return '默认租户';
-}
+};
+
+const getTenantIdText = (tenantId?: number) =>
+  typeof tenantId === 'number' ? `ID ${tenantId}` : 'ID --';
 
 export const TenantSwitcher: React.FC = () => {
   const { user, switchTenant } = useAuth();
@@ -51,7 +100,7 @@ export const TenantSwitcher: React.FC = () => {
     setLoading(true);
     try {
       const response = await getTenantList({ status: '0' });
-      setTenants(Array.isArray(response) ? response : []);
+      setTenants(normalizeTenantListResponse(response as TenantListResponse));
     } catch (error) {
       console.error('获取租户列表失败:', error);
       if (!silent) {
@@ -101,7 +150,11 @@ export const TenantSwitcher: React.FC = () => {
   }
 
   const currentTenant = tenants.find((tenant) => tenant.tenantId === user.tenantId);
-  const currentTenantLabel = getTenantLabel(currentTenant?.tenantName, user.tenantId);
+  const currentTenantName = getTenantName(
+    currentTenant?.tenantName || user.tenantName,
+    user.tenantId,
+  );
+  const currentTenantIdText = getTenantIdText(user.tenantId);
 
   const handleSwitchTenant = async (tenantId: number) => {
     if (tenantId === user.tenantId) {
@@ -128,19 +181,26 @@ export const TenantSwitcher: React.FC = () => {
         disabled={switching}
         aria-expanded={isOpen}
         aria-haspopup="menu"
-        aria-label={`当前租户：${currentTenantLabel}`}
-        className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-100 disabled:cursor-wait disabled:opacity-70 dark:text-slate-300 dark:hover:bg-slate-800"
+        aria-label={`当前租户：${currentTenantName}`}
+        className="flex items-center gap-2 rounded-xl px-3 py-2 text-left text-sm transition-colors hover:bg-slate-100 disabled:cursor-wait disabled:opacity-70 dark:hover:bg-slate-800"
       >
-        <Building2 size={15} className="shrink-0 text-slate-400 dark:text-slate-500" />
-        <span className="hidden max-w-[5.75rem] truncate text-slate-700 dark:text-slate-200 sm:inline">
-          {currentTenantLabel}
-        </span>
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">
+          <Building2 size={15} />
+        </div>
+        <div className="hidden min-w-0 flex-1 sm:block">
+          <div className="truncate text-sm font-semibold text-slate-700 dark:text-slate-100">
+            {currentTenantName}
+          </div>
+          <div className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+            {currentTenantIdText}
+          </div>
+        </div>
         {switching ? (
-          <Loader2 size={14} className="animate-spin text-slate-400 dark:text-slate-500" />
+          <Loader2 size={14} className="shrink-0 animate-spin text-slate-400 dark:text-slate-500" />
         ) : (
           <ChevronDown
             size={14}
-            className={`text-slate-400 transition-transform duration-200 dark:text-slate-500 ${
+            className={`shrink-0 text-slate-400 transition-transform duration-200 dark:text-slate-500 ${
               isOpen ? 'rotate-180' : ''
             }`}
           />
@@ -148,26 +208,27 @@ export const TenantSwitcher: React.FC = () => {
       </button>
 
       <div
-        className={`absolute right-0 top-full z-50 mt-1 w-44 origin-top-right overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 transition-all duration-150 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/70 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)] ${
+        className={`absolute right-0 top-full z-50 mt-2 w-56 origin-top-right overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] ring-1 ring-slate-200/70 transition-all duration-150 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/70 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)] ${
           isOpen
             ? 'pointer-events-auto translate-y-0 scale-100 opacity-100'
             : 'pointer-events-none -translate-y-1 scale-95 opacity-0'
         }`}
       >
         {loading ? (
-          <div className="flex items-center justify-center gap-2 px-3 py-3 text-sm text-slate-500 dark:text-slate-400">
+          <div className="flex items-center justify-center gap-2 px-4 py-4 text-sm text-slate-500 dark:text-slate-400">
             <Loader2 size={14} className="animate-spin" />
             <span>正在加载</span>
           </div>
         ) : tenants.length === 0 ? (
-          <div className="px-3 py-3 text-center text-sm text-slate-500 dark:text-slate-400">
+          <div className="px-4 py-4 text-center text-sm text-slate-500 dark:text-slate-400">
             暂无租户
           </div>
         ) : (
-          <div className="py-1">
+          <div className="py-1.5">
             {tenants.map((tenant) => {
               const active = tenant.tenantId === user.tenantId;
-              const tenantLabel = getTenantLabel(tenant.tenantName, tenant.tenantId);
+              const tenantName = getTenantName(tenant.tenantName, tenant.tenantId);
+              const tenantIdText = getTenantIdText(tenant.tenantId);
 
               return (
                 <button
@@ -175,18 +236,40 @@ export const TenantSwitcher: React.FC = () => {
                   type="button"
                   onClick={() => void handleSwitchTenant(tenant.tenantId)}
                   disabled={switching}
-                  title={tenantLabel}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900 ${
-                    active ? 'bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-200' : ''
+                  title={`${tenantName} ${tenantIdText}`}
+                  className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-900 ${
+                    active ? 'bg-cyan-50 dark:bg-cyan-950/30' : ''
                   } ${switching ? 'cursor-not-allowed opacity-70' : ''}`}
                 >
-                  <Building2
-                    size={15}
-                    className={`shrink-0 ${
-                      active ? 'text-cyan-500 dark:text-cyan-300' : 'text-slate-400 dark:text-slate-500'
+                  <div
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${
+                      active
+                        ? 'border-cyan-200 bg-cyan-100 text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-300'
+                        : 'border-slate-200 bg-white text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500'
                     }`}
-                  />
-                  <span className="flex-1 truncate text-left">{tenantLabel}</span>
+                  >
+                    <Building2 size={15} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={`truncate text-sm font-medium ${
+                        active
+                          ? 'text-cyan-700 dark:text-cyan-200'
+                          : 'text-slate-700 dark:text-slate-200'
+                      }`}
+                    >
+                      {tenantName}
+                    </div>
+                    <div
+                      className={`mt-0.5 truncate text-[11px] ${
+                        active
+                          ? 'text-cyan-600/80 dark:text-cyan-300/80'
+                          : 'text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {tenantIdText}
+                    </div>
+                  </div>
                   {active ? <Check size={14} className="shrink-0 text-cyan-500 dark:text-cyan-300" /> : null}
                 </button>
               );

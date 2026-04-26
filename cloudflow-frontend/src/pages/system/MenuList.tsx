@@ -25,6 +25,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -98,30 +99,6 @@ const getMenuStatusBadgeClassName = (status: string) =>
   status === '0'
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
     : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
-
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger' | 'info';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : tone === 'info'
-          ? 'text-slate-400 hover:bg-cyan-50 hover:text-cyan-700 dark:text-slate-500 dark:hover:bg-cyan-950/30 dark:hover:text-cyan-200'
-          : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -265,19 +242,6 @@ export const MenuList = () => {
 
   const flatOptions = useMemo(() => flattenMenuOptions(menus), [menus]);
   const filteredMenus = useMemo(() => filterMenuTree(menus, searchTerm), [menus, searchTerm]);
-  const visibleTotal = useMemo(() => flattenMenuOptions(filteredMenus).length, [filteredMenus]);
-
-  const menuCounts = useMemo(() => {
-    const flat = flatOptions.map((option) => option.item);
-    return {
-      total: flat.length,
-      dir: flat.filter((item) => item.menuType === 'M').length,
-      page: flat.filter((item) => item.menuType === 'C').length,
-      button: flat.filter((item) => item.menuType === 'F').length,
-      active: flat.filter((item) => item.status === '0').length,
-    };
-  }, [flatOptions]);
-
   const editingDescendants = useMemo(() => collectDescendantIds(editingMenu), [editingMenu]);
   const availableParents = useMemo(
     () =>
@@ -440,7 +404,6 @@ export const MenuList = () => {
                         组件 {node.component}
                       </span>
                     ) : null}
-                    {!node.path && !node.component ? <span>未配置路由元数据</span> : null}
                   </div>
                 </div>
               </div>
@@ -494,27 +457,31 @@ export const MenuList = () => {
             </TableCell>
 
             <TableCell>
-              <div className="flex items-center justify-end gap-1">
-                <RowActionButton
-                  label="编辑菜单"
-                  icon={<Edit size={15} />}
-                  onClick={() => handleOpenModal(node)}
-                />
-                {node.menuType !== 'F' ? (
-                  <RowActionButton
-                    label="新增子节点"
-                    icon={<Plus size={15} />}
-                    onClick={() => handleOpenModal(undefined, node.menuId)}
-                    tone="info"
-                  />
-                ) : null}
-                <RowActionButton
-                  label="删除菜单"
-                  icon={<Trash2 size={15} />}
-                  onClick={() => setPendingDeleteMenu(node)}
-                  tone="danger"
-                />
-              </div>
+              <TableRowActions
+                align="end"
+                iconOnly
+                actions={[
+                  {
+                    label: '编辑菜单',
+                    icon: <Edit size={15} />,
+                    onClick: () => handleOpenModal(node),
+                    tone: 'neutral',
+                  },
+                  {
+                    label: '新增子节点',
+                    icon: <Plus size={15} />,
+                    onClick: () => handleOpenModal(undefined, node.menuId),
+                    hidden: node.menuType === 'F',
+                    tone: 'info',
+                  },
+                  {
+                    label: '删除菜单',
+                    icon: <Trash2 size={15} />,
+                    onClick: () => setPendingDeleteMenu(node),
+                    tone: 'danger',
+                  },
+                ]}
+              />
             </TableCell>
           </TableRow>
           {showChildren ? renderRows(node.children || [], level + 1) : null}
@@ -570,38 +537,6 @@ export const MenuList = () => {
         }
         table={
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  菜单树
-                </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  轻量树表格骨架，保留层级展开、搜索保留祖先链和子节点增量创建。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {menuCounts.total} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前结果 {visibleTotal} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  目录 {menuCounts.dir}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  菜单 {menuCounts.page}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  按钮 {menuCounts.button}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  启用 {menuCounts.active}
-                </span>
-              </div>
-            </div>
-
             <Table className="min-w-[1080px]">
               <TableHeader>
                 <TableRow>
@@ -620,11 +555,7 @@ export const MenuList = () => {
                 ) : error ? (
                   <TableStateRow colSpan={7} title="菜单数据加载失败" description={error} />
                 ) : filteredMenus.length === 0 ? (
-                  <TableStateRow
-                    colSpan={7}
-                    title="暂无菜单数据"
-                    description="可以先创建目录或菜单页，再逐步补充路由与权限信息。"
-                  />
+                  <TableStateRow colSpan={7} title="暂无菜单数据" />
                 ) : (
                   renderRows(filteredMenus)
                 )}
@@ -637,7 +568,6 @@ export const MenuList = () => {
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑菜单' : '新增菜单'}
-        description="按轻量配置顺序维护层级、类型、名称、路由与权限信息。"
         onClose={handleCloseModal}
         maxWidthClassName="max-w-4xl"
         footer={

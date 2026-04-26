@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowLeftRight, Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -16,6 +16,7 @@ import {
   LoadingSpinner,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -23,34 +24,15 @@ import {
   TableRow,
 } from '@/components/ui';
 
+const checkboxClassName =
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
+
 type AuditLogFilters = {
   auditName: string;
   createBy: string;
   startTime: string;
   endTime: string;
 };
-
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={[
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    ].join(' ')}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -92,31 +74,23 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
   >
     {log ? (
       <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="text-xs text-slate-400 dark:text-slate-500">业务名称</div>
-            <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-              {log.auditName || '-'}
+        <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+          {[
+            { label: '业务名称', value: log.auditName || '-' },
+            { label: '操作人', value: log.createBy || '-' },
+            { label: '操作时间', value: log.createTime || '-' },
+          ].map((item) => (
+            <div key={item.label} className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+              <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{item.label}</div>
+              <div className="mt-2 text-sm text-slate-900 dark:text-slate-100">{item.value}</div>
             </div>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-            <div className="text-xs text-slate-400 dark:text-slate-500">操作人</div>
-            <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-              {log.createBy || '-'}
-            </div>
-          </div>
-          <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70 md:col-span-2">
-            <div className="text-xs text-slate-400 dark:text-slate-500">操作时间</div>
-            <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-              {log.createTime || '-'}
-            </div>
-          </div>
+          ))}
         </div>
 
         <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
           <div className="grid grid-cols-[minmax(0,1fr)_56px_minmax(0,1fr)]">
-            <div className="bg-rose-50/70 dark:bg-rose-950/20">
-              <div className="border-b border-rose-100/80 px-4 py-3 text-xs font-semibold text-rose-600 dark:border-rose-900/40 dark:text-rose-200">
+            <div className="bg-slate-50/70 dark:bg-slate-900/40">
+              <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
                 变更前
               </div>
               <div className="min-h-[160px] p-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
@@ -128,8 +102,8 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
               <ArrowLeftRight size={18} className="text-slate-400 dark:text-slate-500" />
             </div>
 
-            <div className="bg-emerald-50/70 dark:bg-emerald-950/20">
-              <div className="border-b border-emerald-100/80 px-4 py-3 text-xs font-semibold text-emerald-600 dark:border-emerald-900/40 dark:text-emerald-200">
+            <div className="bg-slate-50/70 dark:bg-slate-900/40">
+              <div className="border-b border-slate-200 px-4 py-3 text-xs font-semibold text-slate-600 dark:border-slate-800 dark:text-slate-300">
                 变更后
               </div>
               <div className="min-h-[160px] p-4 text-sm leading-7 text-slate-700 dark:text-slate-200">
@@ -260,29 +234,7 @@ export const AuditLogPage: React.FC = () => {
     );
   };
 
-  const changedFieldCount = new Set(records.map((item) => item.auditField).filter(Boolean)).size;
-  const creatorCount = new Set(records.map((item) => item.createBy).filter(Boolean)).size;
-  const businessCount = new Set(records.map((item) => item.auditName).filter(Boolean)).size;
   const hasActiveFilters = Boolean(query.auditName || query.createBy || query.startTime || query.endTime);
-
-  const filterSummary = useMemo(() => {
-    const businessLabel = query.auditName || '全部业务';
-    const creatorLabel = query.createBy || '全部操作人';
-
-    if (query.startTime && query.endTime) {
-      return `${businessLabel} / ${creatorLabel} / ${query.startTime} 至 ${query.endTime}`;
-    }
-
-    if (query.startTime) {
-      return `${businessLabel} / ${creatorLabel} / ${query.startTime} 起`;
-    }
-
-    if (query.endTime) {
-      return `${businessLabel} / ${creatorLabel} / 截止 ${query.endTime}`;
-    }
-
-    return `${businessLabel} / ${creatorLabel}`;
-  }, [query.auditName, query.createBy, query.endTime, query.startTime]);
 
   return (
     <>
@@ -370,40 +322,6 @@ export const AuditLogPage: React.FC = () => {
         )}
         table={(
           <>
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  审计日志
-                </div>
-                {hasActiveFilters ? (
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {filterSummary}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {records.length} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  业务 {businessCount} 项
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  字段 {changedFieldCount} 项
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  操作人 {creatorCount} 人
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  已选 {selectedIds.length} 条
-                </span>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <Table className="min-w-[1080px]">
                 <TableHeader>
@@ -413,7 +331,7 @@ export const AuditLogPage: React.FC = () => {
                         type="checkbox"
                         checked={allSelected}
                         onChange={toggleAll}
-                        className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                        className={checkboxClassName}
                       />
                     </TableHead>
                     <TableHead>业务名称</TableHead>
@@ -440,7 +358,7 @@ export const AuditLogPage: React.FC = () => {
                             type="checkbox"
                             checked={selectedIds.includes(item.auditId)}
                             onChange={() => toggleOne(item.auditId)}
-                            className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                            className={checkboxClassName}
                           />
                         </TableCell>
                         <TableCell className="py-4 font-medium text-slate-900 dark:text-slate-100">
@@ -472,19 +390,24 @@ export const AuditLogPage: React.FC = () => {
                           {item.createTime || '-'}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <RowActionButton
-                              label="查看详情"
-                              icon={<Eye size={15} />}
-                              onClick={() => void handleViewDetail(item.auditId)}
-                            />
-                            <RowActionButton
-                              label="删除日志"
-                              icon={<Trash2 size={15} />}
-                              onClick={() => setPendingDeleteIds([item.auditId])}
-                              tone="danger"
-                            />
-                          </div>
+                          <TableRowActions
+                            align="end"
+                            iconOnly
+                            actions={[
+                              {
+                                label: '查看详情',
+                                icon: <Eye size={15} />,
+                                onClick: () => void handleViewDetail(item.auditId),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '删除日志',
+                                icon: <Trash2 size={15} />,
+                                onClick: () => setPendingDeleteIds([item.auditId]),
+                                tone: 'danger',
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     ))

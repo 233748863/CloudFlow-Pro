@@ -125,7 +125,6 @@ const formatDateTime = (value?: string | null) => {
 
 const InlineState = ({
   title,
-  description,
   className,
 }: {
   title: string;
@@ -137,9 +136,6 @@ const InlineState = ({
       <UserRoundPlus className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -158,7 +154,6 @@ const TableStateRow = ({
     <td colSpan={colSpan} className="px-4 py-14">
       <InlineState
         title={title}
-        description={description}
         className={loading ? 'py-6' : 'py-4'}
       />
     </td>
@@ -182,7 +177,6 @@ const DetailRow = ({
 
 const DialogSection = ({
   title,
-  description,
   children,
 }: {
   title: string;
@@ -192,9 +186,6 @@ const DialogSection = ({
   <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      ) : null}
     </div>
     <div className="p-4">{children}</div>
   </section>
@@ -605,9 +596,6 @@ export const HrOnboardingPage: React.FC = () => {
         <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           入职办理
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          按后端真实能力完成入职申请、任务办理和确认入职，页面结构直接收敛到参考后台页语法。
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -709,7 +697,6 @@ export const HrOnboardingPage: React.FC = () => {
                 ) : applications.length === 0 ? (
                   <InlineState
                     title="当前筛选条件下暂无入职申请"
-                    description="新建申请后会自动回到列表并选中当前单据。"
                     className="py-12"
                   />
                 ) : (
@@ -814,7 +801,6 @@ export const HrOnboardingPage: React.FC = () => {
               {!currentApplication ? (
                 <InlineState
                   title="请选择一条入职申请"
-                  description="从左侧列表选择申请后，这里会展示详情、任务办理动作和确认入职入口。"
                   className="py-20"
                 />
               ) : (
@@ -979,7 +965,6 @@ export const HrOnboardingPage: React.FC = () => {
       <BaseDialog
         open={createDialogOpen}
         title="新建入职申请"
-        description="支持手工创建，也支持从招聘候选人带入基础信息。"
         onClose={resetCreateForm}
         maxWidthClassName="max-w-4xl"
         footer={(
@@ -996,7 +981,6 @@ export const HrOnboardingPage: React.FC = () => {
         <div className="space-y-4">
           <DialogSection
             title="候选人来源"
-            description="也可以直接从招聘链路带入候选人基础信息。"
           >
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人来源</Label>
@@ -1029,7 +1013,6 @@ export const HrOnboardingPage: React.FC = () => {
 
           <DialogSection
             title="基础信息"
-            description="维护姓名、联系方式和预计入职日期。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2">
@@ -1103,7 +1086,6 @@ export const HrOnboardingPage: React.FC = () => {
 
           <DialogSection
             title="组织信息"
-            description="部门、岗位和职位需要保持匹配，避免提交无效组合。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-2">

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
@@ -14,6 +14,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -44,27 +45,8 @@ const getLoginStatusBadgeClassName = (logType: string) =>
     ? 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200'
     : 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200';
 
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
+const checkboxClassName =
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -110,49 +92,21 @@ const LoginDetailDialog: React.FC<{
     }
   >
     {log ? (
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="text-xs text-slate-400 dark:text-slate-500">用户</div>
-          <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-            {log.createBy || '-'}
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+        {[
+          { label: '用户', value: log.createBy || '-' },
+          { label: '客户端 IP', value: log.remoteAddr || '-' },
+          { label: '耗时', value: `${log.time ?? 0} ms` },
+          { label: '登录时间', value: log.createTime || '-' },
+          { label: '浏览器 / UA', value: log.userAgent || '-' },
+          { label: '请求参数', value: log.params || '-' },
+          { label: '异常信息', value: log.exception || '-' },
+        ].map((item) => (
+          <div key={item.label} className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800">
+            <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">{item.label}</div>
+            <div className="mt-2 break-all whitespace-pre-wrap text-sm text-slate-900 dark:text-slate-100">{item.value}</div>
           </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="text-xs text-slate-400 dark:text-slate-500">客户端 IP</div>
-          <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-            {log.remoteAddr || '-'}
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="text-xs text-slate-400 dark:text-slate-500">耗时</div>
-          <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-            {log.time ?? 0} ms
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="text-xs text-slate-400 dark:text-slate-500">登录时间</div>
-          <div className="mt-2 text-sm font-medium text-slate-900 dark:text-slate-100">
-            {log.createTime || '-'}
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70 md:col-span-2">
-          <div className="text-xs text-slate-400 dark:text-slate-500">浏览器 / UA</div>
-          <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
-            {log.userAgent || '-'}
-          </div>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70 md:col-span-2">
-          <div className="text-xs text-slate-400 dark:text-slate-500">请求参数</div>
-          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs text-slate-700 dark:text-slate-200">
-            {log.params || '-'}
-          </pre>
-        </div>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70 md:col-span-2">
-          <div className="text-xs text-slate-400 dark:text-slate-500">异常信息</div>
-          <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-all text-xs text-slate-700 dark:text-slate-200">
-            {log.exception || '-'}
-          </pre>
-        </div>
+        ))}
       </div>
     ) : null}
   </BaseDialog>
@@ -268,19 +222,6 @@ export const LoginLogPage: React.FC = () => {
     }
   };
 
-  const summary = useMemo(() => {
-    const successCount = records.filter((item) => item.logType !== '9').length;
-    const failCount = records.filter((item) => item.logType === '9').length;
-    const ipCount = new Set(records.map((item) => item.remoteAddr).filter(Boolean)).size;
-
-    return {
-      successCount,
-      failCount,
-      ipCount,
-      pageTotal: records.length,
-    };
-  }, [records]);
-
   const toggleSelect = (logId: number) => {
     setSelectedIds((current) =>
       current.includes(logId)
@@ -303,26 +244,6 @@ export const LoginLogPage: React.FC = () => {
   const hasActiveFilters = Boolean(
     query.createBy || query.remoteAddr || query.logType || query.startTime || query.endTime,
   );
-
-  const filterSummary = useMemo(() => {
-    const userLabel = query.createBy || '全部用户';
-    const ipLabel = query.remoteAddr || '全部 IP';
-    const statusLabel = !query.logType ? '全部状态' : query.logType === '9' ? '失败' : '成功';
-
-    if (query.startTime && query.endTime) {
-      return `${userLabel} / ${ipLabel} / ${statusLabel} / ${query.startTime} 至 ${query.endTime}`;
-    }
-
-    if (query.startTime) {
-      return `${userLabel} / ${ipLabel} / ${statusLabel} / ${query.startTime} 起`;
-    }
-
-    if (query.endTime) {
-      return `${userLabel} / ${ipLabel} / ${statusLabel} / 截止 ${query.endTime}`;
-    }
-
-    return `${userLabel} / ${ipLabel} / ${statusLabel}`;
-  }, [query.createBy, query.endTime, query.logType, query.remoteAddr, query.startTime]);
 
   return (
     <>
@@ -431,40 +352,6 @@ export const LoginLogPage: React.FC = () => {
         )}
         table={(
           <>
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  登录日志
-                </div>
-                {hasActiveFilters ? (
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {filterSummary}
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {summary.pageTotal} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  成功 {summary.successCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  失败 {summary.failCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  IP {summary.ipCount} 个
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  已选 {selectedIds.length} 条
-                </span>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <Table className="min-w-[1040px]">
                 <TableHeader>
@@ -474,7 +361,7 @@ export const LoginLogPage: React.FC = () => {
                         type="checkbox"
                         checked={allSelected}
                         onChange={toggleSelectAll}
-                        className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                        className={checkboxClassName}
                       />
                     </TableHead>
                     <TableHead>用户</TableHead>
@@ -501,7 +388,7 @@ export const LoginLogPage: React.FC = () => {
                             type="checkbox"
                             checked={selectedIds.includes(item.logId)}
                             onChange={() => toggleSelect(item.logId)}
-                            className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                            className={checkboxClassName}
                           />
                         </TableCell>
                         <TableCell className="py-4 font-medium text-slate-900 dark:text-slate-100">
@@ -535,19 +422,24 @@ export const LoginLogPage: React.FC = () => {
                           {item.createTime || '-'}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <RowActionButton
-                              label="查看详情"
-                              icon={<Eye size={15} />}
-                              onClick={() => void handleView(item.logId)}
-                            />
-                            <RowActionButton
-                              label="删除日志"
-                              icon={<Trash2 size={15} />}
-                              onClick={() => setPendingDeleteIds([item.logId])}
-                              tone="danger"
-                            />
-                          </div>
+                          <TableRowActions
+                            align="end"
+                            iconOnly
+                            actions={[
+                              {
+                                label: '查看详情',
+                                icon: <Eye size={15} />,
+                                onClick: () => void handleView(item.logId),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '删除日志',
+                                icon: <Trash2 size={15} />,
+                                onClick: () => setPendingDeleteIds([item.logId]),
+                                tone: 'danger',
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     ))

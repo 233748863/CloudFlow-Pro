@@ -196,7 +196,6 @@ const buildOfferContent = (
 
 const InlineState = ({
   title,
-  description,
   className,
 }: {
   title: string;
@@ -208,9 +207,6 @@ const InlineState = ({
       <ShieldCheck className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
@@ -231,7 +227,6 @@ const DetailRow = ({
 
 const DialogSection = ({
   title,
-  description,
   children,
 }: {
   title: string;
@@ -241,9 +236,6 @@ const DialogSection = ({
   <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      ) : null}
     </div>
     <div className="p-4">{children}</div>
   </section>
@@ -631,9 +623,6 @@ export const HrOfferPage: React.FC = () => {
         <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           Offer 管理
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          直接按真实后端状态机推进 Offer 的创建、审批、发送、接受和转入职，页面结构收敛到参考后台列表页语法。
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -749,7 +738,6 @@ export const HrOfferPage: React.FC = () => {
                 ) : filteredOffers.length === 0 ? (
                   <InlineState
                     title="当前筛选条件下没有 Offer 记录"
-                    description="可以先创建一条新的 Offer，或调整筛选条件。"
                     className="py-12"
                   />
                 ) : (
@@ -912,7 +900,6 @@ export const HrOfferPage: React.FC = () => {
               {!currentOffer ? (
                 <InlineState
                   title="请选择一条 Offer"
-                  description="从左侧选择一条 Offer，或者先创建一条新的 Offer 记录。"
                   className="py-20"
                 />
               ) : (
@@ -1020,7 +1007,6 @@ export const HrOfferPage: React.FC = () => {
       <BaseDialog
         open={createDialogOpen}
         title="新建 Offer"
-        description="优先从可用候选人自动回填，页面会自动排除已有 Offer 或入职申请的候选人。"
         onClose={resetCreateDialog}
         maxWidthClassName="max-w-4xl"
         footer={(
@@ -1037,7 +1023,6 @@ export const HrOfferPage: React.FC = () => {
         <div className="space-y-4">
           <DialogSection
             title="候选人"
-            description="只展示面试中且尚未生成 Offer / 入职申请的候选人。"
           >
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人</Label>
@@ -1067,7 +1052,6 @@ export const HrOfferPage: React.FC = () => {
 
           <DialogSection
             title="录用信息"
-            description="维护部门、岗位、薪资和日期字段。"
           >
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2">
@@ -1157,7 +1141,6 @@ export const HrOfferPage: React.FC = () => {
 
           <DialogSection
             title="Offer 内容"
-            description="会根据候选人信息自动生成，你也可以继续手动调整。"
           >
             <div className="space-y-2">
               <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">正文</Label>

@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import {
   Button,
+  FilterChip,
   Input,
   Select,
   SelectContent,
@@ -34,14 +35,8 @@ import {
   Textarea,
 } from '@/components/ui';
 import { TableRowActions } from '@/components/ui/table-row-actions';
-import { WorkspaceBackdrop, WorkspacePageContent, WorkspaceTableStateRow } from '@/components/workspace/WorkspacePrimitives';
-import {
-  WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspaceResultCard,
-  WorkspaceWorkbenchCard,
-} from '@/components/workspace/WorkspacePanels';
+import { BaseDialog } from '@/components/common/BaseDialog';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';
 import { 
   getProcessDefinitions, 
@@ -67,35 +62,74 @@ interface WorkflowDefinition extends Omit<BaseWorkflowDefinition, 'tags'> {
   workflowCreatorId: string; // 流程创建者ID（用于权限判断）
 }
 
-const fieldLabelClassName = 'mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200';
-const subtlePanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-const elevatedPanelClassName =
-  'rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/78';
-const previewChipClassName =
-  'inline-flex items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
+const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+const dialogSectionClassName =
+  'overflow-hidden rounded-md border border-slate-200 px-4 py-2.5 dark:border-slate-800';
+
+const ManagementTableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-14">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FolderOpen className="h-4 w-4" />}
+        </div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+        {description ? (
+          <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+        ) : null}
+      </div>
+    </TableCell>
+  </TableRow>
+);
+
+const DialogMetaRow: React.FC<{
+  label: string;
+  value: React.ReactNode;
+}> = ({ label, value }) => (
+  <div className="flex items-center justify-between gap-4 border-b border-slate-100 py-2 last:border-b-0 dark:border-slate-800">
+    <span className="text-xs text-slate-400 dark:text-slate-500">{label}</span>
+    <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{value}</span>
+  </div>
+);
 
 const getWorkflowStatusMeta = (status?: WorkflowDefinition['status']) => {
   switch (status) {
     case 'PUBLISHED':
       return {
         label: '已发布',
-        className:
-          'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200',
       };
     case 'ARCHIVED':
       return {
         label: '已归档',
-        className:
-          'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200',
       };
     default:
       return {
         label: '草稿',
-        className:
-          'border border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
       };
   }
+};
+
+const formatWorkflowTags = (tags: string[]) => {
+  if (tags.length === 0) {
+    return '-';
+  }
+
+  const visibleTags = tags.slice(0, 3).join(' / ');
+  return tags.length > 3 ? `${visibleTags} +${tags.length - 3}` : visibleTags;
+};
+
+const formatWorkflowPreview = (items: WorkflowDefinition[]) => {
+  if (items.length === 0) {
+    return '无';
+  }
+
+  const visible = items.slice(0, 2).map((workflow) => workflow.name).join(' / ');
+  return items.length > 2 ? `${visible} +${items.length - 2}` : visible;
 };
 
 /**
@@ -364,8 +398,8 @@ export const ProcessManagement = () => {
   ));
 
   const visibleWorkflowIds = filteredWorkflows.map((wf) => wf.id);
-  const selectedVisibleCount = visibleWorkflowIds.filter((id) => selectedIds.includes(id)).length;
-  const allVisibleSelected = visibleWorkflowIds.length > 0 && selectedVisibleCount === visibleWorkflowIds.length;
+  const allVisibleSelected =
+    visibleWorkflowIds.length > 0 && visibleWorkflowIds.every((id) => selectedIds.includes(id));
 
   // 全选/取消全选
   const handleSelectAll = () => {
@@ -705,24 +739,7 @@ export const ProcessManagement = () => {
     }
   };
 
-  const publishedCount = filteredWorkflows.filter((wf) => wf.status === 'PUBLISHED').length;
-  const archivedCount = filteredWorkflows.filter((wf) => wf.status === 'ARCHIVED').length;
-  const draftCount = filteredWorkflows.filter((wf) => !wf.status || wf.status === 'DRAFT').length;
-  const categoryCount = new Set(workflows.map((wf) => wf.category).filter(Boolean)).size;
   const hasActiveFilters = Boolean(searchTerm || selectedCategory || selectedTags.length > 0);
-  const now = new Date();
-  const todayLabel = `${now.getMonth() + 1}/${now.getDate()}`;
-  const timeLabel = now.toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-
-  const overviewItems = [
-    { label: '当前结果', value: `${filteredWorkflows.length} 个流程` },
-    { label: '分类', value: selectedCategory ? (getWorkflowCategoryLabel(selectedCategory) || selectedCategory) : '全部分类' },
-    { label: '标签', value: selectedTags.length > 0 ? `已选 ${selectedTags.length} 个` : '全部标签' },
-    { label: '批量选择', value: `${selectedIds.length} 个` },
-  ];
 
   const selectedWorkflows = workflows.filter((workflow) => selectedIds.includes(workflow.id));
   const selectedPublishedCount = selectedWorkflows.filter((workflow) => workflow.status === 'PUBLISHED').length;
@@ -738,6 +755,14 @@ export const ProcessManagement = () => {
     setSelectedTags([]);
   };
 
+  const handleToggleTagFilter = (tag: string) => {
+    setSelectedTags((prev) => (
+      prev.includes(tag)
+        ? prev.filter((item) => item !== tag)
+        : [...prev, tag]
+    ));
+  };
+
   const closeArchiveModal = () => {
     setShowArchiveModal(false);
     setShowSafetyWarning(false);
@@ -745,149 +770,52 @@ export const ProcessManagement = () => {
     setArchiveReason('');
   };
 
-  const renderWorkflowPreview = (items: WorkflowDefinition[]) => {
-    if (items.length === 0) {
-      return (
-        <div className="text-xs leading-6 text-slate-400 dark:text-slate-500">
-          当前没有可预览的流程。
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex flex-wrap gap-2">
-        {items.slice(0, 5).map((workflow) => (
-          <span key={workflow.id} className={previewChipClassName}>
-            {workflow.name}
-          </span>
-        ))}
-        {items.length > 5 ? (
-          <span className={previewChipClassName}>+{items.length - 5} 个流程</span>
-        ) : null}
-      </div>
-    );
-  };
-
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-      <WorkspacePageContent>
-        <WorkspaceHeroCard
-          badge={(
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
-                <FolderOpen size={14} />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {timeLabel}
-              </span>
-            </div>
-          )}
-          title="流程管理"
-          description="统一管理流程定义、分类、标签与批量治理动作，让复杂后台页也收口到同一套轻量桌面工作台语法。"
-          actions={(
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => navigate('/workflow/create')} className="gap-2">
-                <Plus size={16} />
-                新建流程
-              </Button>
-              <Button variant="outline" onClick={() => navigate('/templates')} className="gap-2">
-                <FolderOpen size={16} />
-                模板中心
-              </Button>
-              <Button
-                variant="soft"
-                onClick={() => navigate('/workflow/import')}
-                className="gap-2 border-cyan-200 bg-cyan-50 text-cyan-700 hover:border-cyan-300 hover:bg-cyan-100 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/60"
-              >
-                <Upload size={16} />
-                导入流程
-              </Button>
-              <Button variant="outline" onClick={loadWorkflows} disabled={loading} className="gap-2">
-                <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-                刷新
-              </Button>
-            </div>
-          )}
-          contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="流程总量"
-              value={workflows.length}
-              hint="当前系统中的全部流程定义数"
-              aside={<Plus size={18} className="text-cyan-600 dark:text-cyan-300" />}
-            />
-            <WorkspaceMetricCard
-              label="筛选结果"
-              value={filteredWorkflows.length}
-              hint={`已发布 ${publishedCount} 个 / 草稿 ${draftCount} 个`}
-              aside={<RefreshCw size={18} className="text-sky-500 dark:text-sky-300" />}
-            />
-            <WorkspaceMetricCard
-              label="分类数"
-              value={categoryCount}
-              hint={`可用标签 ${allTags.length} 个 / 已归档 ${archivedCount} 个`}
-              aside={<FolderOpen size={18} className="text-amber-500 dark:text-amber-300" />}
-            />
-            <WorkspaceMetricCard
-              label="批量选择"
-              value={selectedIds.length}
-              hint={isAdmin ? '管理员可执行全部治理动作' : '当前账号仅保留可见导出能力'}
-              aside={<Tag size={18} className="text-emerald-500 dark:text-emerald-300" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
-
-        <WorkspaceWorkbenchCard
-          title="流程工作台"
-          total={filteredWorkflows.length}
-          hasActiveFilters={hasActiveFilters}
-          overviewItems={overviewItems}
-          headerBadges={(
-            <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                {hasActiveFilters ? '已启用筛选' : '默认视图'}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                已发布 {publishedCount} 个
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                已归档 {archivedCount} 个
-              </span>
-            </div>
-          )}
-          quickFilterAside={hasActiveFilters ? (
-            <Button variant="outline" size="sm" onClick={handleClearFilters}>
-              清空筛选
-            </Button>
-          ) : (
-            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-slate-500">
-              当前展示全部流程
-            </span>
-          )}
-          filterBar={(
-            <div className="space-y-4">
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_240px]">
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    名称搜索
-                  </div>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                    <Input
-                      className="pl-10"
-                      placeholder="搜索流程名称"
-                      value={searchTerm}
-                      onChange={(event) => setSearchTerm(event.target.value)}
-                    />
-                  </div>
+    <>
+      <TablePageLayout
+        className="gap-2.5"
+        filters={(
+          <div className="space-y-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">流程管理</div>
+                <div className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+                  {filteredWorkflows.length} 个流程
                 </div>
-                <div className="space-y-2">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    分类筛选
-                  </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="outline" size="sm" onClick={loadWorkflows} disabled={loading} className="gap-2">
+                  <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                  刷新
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate('/templates')} className="gap-2">
+                  <FolderOpen size={16} />
+                  模板中心
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => navigate('/workflow/import')} className="gap-2">
+                  <Upload size={16} />
+                  导入流程
+                </Button>
+                <Button size="sm" onClick={() => navigate('/workflow/create')} className="gap-2">
+                  <Plus size={16} />
+                  新建流程
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
+              <div className="flex flex-1 flex-wrap items-center gap-2.5">
+                <div className="relative min-w-0 flex-1 xl:max-w-xl">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    className="pl-10"
+                    placeholder="搜索流程名称或 Key"
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                  />
+                </div>
+                <div className="w-full sm:w-60 xl:w-56">
                   <Select
                     value={selectedCategory || '__ALL__'}
                     onValueChange={(value) => setSelectedCategory(value === '__ALL__' ? '' : value)}
@@ -905,620 +833,480 @@ export const ProcessManagement = () => {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
-              <div className="space-y-3">
-                <div className="flex flex-wrap items-start gap-2">
-                  <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    <FolderOpen size={14} />
-                    分类
-                  </span>
-                  <div className="flex flex-wrap gap-2">
-                    {[{ value: '', label: '全部' }, ...WORKFLOW_CATEGORY_OPTIONS].map(({ value, label }) => (
-                      <Button
-                        key={value || 'ALL'}
-                        type="button"
-                        variant={selectedCategory === value ? 'soft' : 'outline'}
-                        size="sm"
-                        onClick={() => setSelectedCategory(value)}
-                        className={cn(
-                          'h-8 rounded-full px-3 text-xs',
-                          selectedCategory === value
-                            ? 'border-cyan-200 bg-cyan-50 text-cyan-700 shadow-none dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200'
-                            : '',
-                        )}
-                      >
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-                {allTags.length > 0 ? (
-                  <div className="flex flex-wrap items-start gap-2">
-                    <span className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                      <Tag size={14} />
-                      标签
-                    </span>
-                    <div className="flex flex-wrap gap-2">
-                      {allTags.map((tag) => {
-                        const isSelected = selectedTags.includes(tag);
-                        return (
-                          <Button
-                            key={tag}
-                            type="button"
-                            variant={isSelected ? 'default' : 'ghost'}
-                            size="sm"
-                            onClick={() => {
-                              if (isSelected) {
-                                setSelectedTags((prev) => prev.filter((item) => item !== tag));
-                                return;
-                              }
-                              setSelectedTags((prev) => [...prev, tag]);
-                            }}
-                            className={cn(
-                              'h-8 rounded-full px-3 text-xs',
-                              isSelected
-                                ? 'border-cyan-200 bg-cyan-50 text-cyan-700 shadow-none hover:border-cyan-300 hover:bg-cyan-100 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/60'
-                                : 'border border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50 hover:text-cyan-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-900 dark:hover:text-cyan-200',
-                            )}
-                          >
-                            {tag}
-                            {isSelected ? <X size={12} /> : null}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  </div>
+                {hasActiveFilters ? (
+                  <Button variant="outline" size="sm" onClick={handleClearFilters}>
+                    清空筛选
+                  </Button>
                 ) : null}
               </div>
             </div>
-          )}
-        />
-        <WorkspaceResultCard
-          total={filteredWorkflows.length}
-          title="流程列表"
-          description="批量动作、单项操作和状态表达统一收口到这里，保证治理页和业务页使用同一套桌面视觉语言。"
-        >
-          <div className="space-y-4 px-4 py-4">
-            <div className={elevatedPanelClassName}>
-              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div className="min-w-0 space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
+
+            {allTags.length > 0 ? (
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-slate-200 pt-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                <span className="text-xs text-slate-400 dark:text-slate-500">标签</span>
+                <FilterChip
+                  active={selectedTags.length === 0}
+                  onClick={() => setSelectedTags([])}
+                >
+                  全部
+                </FilterChip>
+                {allTags.map((tag) => {
+                  const isSelected = selectedTags.includes(tag);
+                  return (
+                    <FilterChip
+                      key={tag}
+                      active={isSelected}
+                      onClick={() => handleToggleTagFilter(tag)}
+                    >
+                      <span>{tag}</span>
+                      {isSelected ? <X size={12} /> : null}
+                    </FilterChip>
+                  );
+                })}
+              </div>
+            ) : null}
+          </div>
+        )}
+        table={(
+          <>
+            {selectedIds.length > 0 ? (
+              <div className="border-b border-slate-200 px-4 py-2 dark:border-slate-800">
+                <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="text-xs text-slate-500 dark:text-slate-400">已选 {selectedIds.length} 个</span>
+                    <Button size="sm" variant="ghost" onClick={() => setSelectedIds([])}>
+                      清空
+                    </Button>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5">
                     <Button
                       type="button"
-                      variant="ghost"
-                      onClick={handleSelectAll}
-                      className="h-9 rounded-full px-3 text-slate-600 hover:bg-slate-100 hover:text-cyan-600 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-cyan-200"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openBatchEdit('category')}
+                      disabled={!isAdmin}
+                      title={!isAdmin ? '仅管理员可批量修改分类' : '批量修改已选流程分类'}
                     >
-                      {allVisibleSelected ? (
-                        <CheckSquare size={18} className="text-cyan-600 dark:text-cyan-200" />
-                      ) : (
-                        <Square size={18} />
-                      )}
-                      全选当前结果 ({selectedVisibleCount}/{filteredWorkflows.length})
+                      <FolderOpen size={16} />
+                      分类
                     </Button>
-                    <span className={previewChipClassName}>已选流程 {selectedIds.length} 个</span>
-                    <span className={previewChipClassName}>已发布 {selectedPublishedCount} 个</span>
-                    <span className={previewChipClassName}>
-                      {isAdmin ? '管理员治理权限已开启' : '当前账号无批量治理权限'}
-                    </span>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openBatchEdit('tags')}
+                      disabled={!isAdmin}
+                      title={!isAdmin ? '仅管理员可批量添加标签' : '为已选流程追加标签'}
+                    >
+                      <Tag size={16} />
+                      标签
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={openBatchExportDialog}
+                      disabled={!canExportBatch}
+                      title={!canExportBatch ? '仅管理员可批量导出' : '批量导出已选流程'}
+                    >
+                      <Download size={16} />
+                      导出
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={openBatchArchiveDialog}
+                      disabled={!canBatchArchive}
+                      title={!canBatchArchive ? '仅管理员可批量归档' : '批量归档已选流程'}
+                    >
+                      <Archive size={16} />
+                      归档
+                    </Button>
                   </div>
-                  <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    这里统一承载批量分类、批量标签、导出与归档动作。未选中流程时会自动禁用对应操作，避免出现多套治理入口。
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="soft"
-                    onClick={() => openBatchEdit('category')}
-                    disabled={selectedIds.length === 0 || !isAdmin}
-                    title={!isAdmin ? '仅管理员可批量修改分类' : '批量修改已选流程分类'}
-                    className="border-cyan-200 bg-cyan-50 text-cyan-700 shadow-none hover:border-cyan-300 hover:bg-cyan-100 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200 dark:hover:border-cyan-800 dark:hover:bg-cyan-950/60"
-                  >
-                    <FolderOpen size={16} />
-                    批量改分类
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="soft"
-                    onClick={() => openBatchEdit('tags')}
-                    disabled={selectedIds.length === 0 || !isAdmin}
-                    title={!isAdmin ? '仅管理员可批量添加标签' : '为已选流程追加标签'}
-                    className="border-teal-200 bg-teal-50 text-teal-700 shadow-none hover:border-teal-300 hover:bg-teal-100 dark:border-teal-900/70 dark:bg-teal-950/40 dark:text-teal-200 dark:hover:border-teal-800 dark:hover:bg-teal-950/60"
-                  >
-                    <Tag size={16} />
-                    批量加标签
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={openBatchExportDialog}
-                    disabled={selectedIds.length === 0 || !canExportBatch}
-                    title={!canExportBatch ? '仅管理员可批量导出' : '批量导出已选流程'}
-                    className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:border-emerald-300 hover:bg-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/40 dark:text-emerald-200 dark:hover:border-emerald-800 dark:hover:bg-emerald-950/60"
-                  >
-                    <Download size={16} />
-                    批量导出
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={openBatchArchiveDialog}
-                    disabled={selectedIds.length === 0 || !canBatchArchive}
-                    title={!canBatchArchive ? '仅管理员可批量归档' : '批量归档已选流程'}
-                    className="border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:border-amber-800 dark:hover:bg-amber-950/60"
-                  >
-                    <Archive size={16} />
-                    批量归档
-                  </Button>
                 </div>
               </div>
-            </div>
-            <Table className="min-w-[1160px]">
-              <TableHeader>
-                <tr>
-                  <TableHead className="w-12">选择</TableHead>
-                  <TableHead className="w-[30%]">流程名称</TableHead>
-                  <TableHead>流程 Key</TableHead>
-                  <TableHead>分类</TableHead>
-                  <TableHead>标签</TableHead>
-                  <TableHead className="w-28">版本</TableHead>
-                  <TableActionHead className="w-72">操作</TableActionHead>
-                </tr>
-              </TableHeader>
-              <TableBody>
-                {loading ? (
-                  <WorkspaceTableStateRow colSpan={7} type="loading" title="正在加载流程数据..." />
-                ) : filteredWorkflows.length === 0 ? (
-                  <WorkspaceTableStateRow
-                    colSpan={7}
-                    title="暂无流程数据"
-                    description="可以先创建流程，或调整筛选条件查看其它流程定义。"
-                  />
-                ) : (
-                  filteredWorkflows.map((workflow) => {
-                    const selected = selectedIds.includes(workflow.id);
-                    const statusMeta = getWorkflowStatusMeta(workflow.status);
+            ) : null}
 
-                    return (
-                      <TableRow key={workflow.id} data-state={selected ? 'selected' : undefined} className="align-top">
-                        <TableCell className="w-12 py-3">
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-pressed={selected}
-                            aria-label={selected ? `取消选择 ${workflow.name}` : `选择 ${workflow.name}`}
-                            onClick={() => handleSelectOne(workflow.id)}
-                            className={cn(
-                              'h-8 w-8 rounded-full text-slate-400 hover:bg-transparent hover:text-cyan-600 dark:text-slate-500 dark:hover:text-cyan-200',
-                              selected && 'text-cyan-600 dark:text-cyan-200',
-                            )}
-                          >
-                            {selected ? <CheckSquare size={18} /> : <Square size={18} />}
-                          </Button>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          <div className="space-y-2">
-                            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {workflow.name}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', statusMeta.className)}>
-                                {statusMeta.label}
-                              </span>
-                              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                                ID {workflow.id}
-                              </span>
-                            </div>
-                            {workflow.description ? (
-                              <div className="max-w-xl text-xs leading-6 text-slate-500 dark:text-slate-400">
-                                {workflow.description}
-                              </div>
-                            ) : (
-                              <div className="text-xs text-slate-400 dark:text-slate-500">暂无流程描述</div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4">
-                          <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                            {workflow.key}
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-4">
-                          {workflow.category ? (
-                            <span className="inline-flex w-fit items-center gap-1 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200">
-                              <FolderOpen size={10} />
-                              {getWorkflowCategoryLabel(workflow.category) || workflow.category}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-slate-400 dark:text-slate-500">未分类</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="py-4">
-                          {workflow.tags.length > 0 ? (
-                            <div className="flex flex-wrap gap-1.5">
-                              {workflow.tags.slice(0, 3).map((tag) => (
-                                <span
-                                  key={tag}
-                                  className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                              {workflow.tags.length > 3 ? (
-                                <span className="rounded-full border border-slate-200 bg-slate-100 px-2.5 py-1 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-                                  +{workflow.tags.length - 3}
-                                </span>
-                              ) : null}
-                            </div>
-                          ) : (
-                            <span className="text-xs text-slate-400 dark:text-slate-500">无标签</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4">
-                          <span className="inline-flex rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300">
-                            v{workflow.version}
-                          </span>
-                        </TableCell>
-                        <TableCell className="whitespace-nowrap py-4 text-right">
-                          <TableRowActions
-                            align="end"
-                            wrap={false}
-                            className="whitespace-nowrap"
-                            actions={[
-                              {
-                                label: '编辑',
-                                icon: <Edit size={16} />,
-                                onClick: () => navigate(`/workflow/design?id=${workflow.id}`),
-                                disabled: !isAdmin,
-                                title: isAdmin ? '编辑流程' : '仅管理员可编辑流程',
-                                tone: 'info',
-                              },
-                              {
-                                label: '版本',
-                                icon: <RefreshCw size={16} />,
-                                onClick: () => navigate(`/workflow/versions/${workflow.id}`),
-                                title: '查看版本历史',
-                                tone: 'neutral',
-                              },
-                              {
-                                label: '导出',
-                                icon: <FileDown size={16} />,
-                                onClick: () => openExportDialog(workflow.id),
-                                disabled: !canExportSingleWorkflow(workflow),
-                                title: canExportSingleWorkflow(workflow) ? '导出流程' : '仅流程创建者或管理员可导出',
-                                tone: 'success',
-                              },
-                            ]}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </WorkspaceResultCard>
-        {showBatchEditModal ? (
-          <WorkspaceDialogShell
-            title={batchEditType === 'category' ? '批量修改分类' : '批量添加标签'}
-            description="批量动作只调整选中流程的元数据，不改动节点和连线结构。"
-            onClose={() => setShowBatchEditModal(false)}
-            maxWidthClassName="max-w-2xl"
-            headerAside={<span className={previewChipClassName}>{selectedIds.length} 个流程</span>}
-          >
-            <div className="space-y-4">
-              <div className={cn(subtlePanelClassName, 'space-y-3 border-cyan-200 bg-cyan-50/80 dark:border-cyan-900/70 dark:bg-cyan-950/30')}>
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      已选择 {selectedIds.length} 个流程
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      只会更新元数据，不会影响流程节点、连线和表单结构。
-                    </div>
-                  </div>
-                  <span className="rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-slate-950 dark:text-cyan-200">
-                    {batchEditType === 'category' ? '分类治理' : '标签治理'}
-                  </span>
-                </div>
-                {renderWorkflowPreview(selectedWorkflows)}
-              </div>
-              {batchEditType === 'category' ? (
-                <div className="space-y-2">
-                  <label className={fieldLabelClassName}>
-                    目标分类 <span className="text-red-500">*</span>
-                  </label>
-                  <Select value={batchCategory || '__EMPTY__'} onValueChange={(value) => setBatchCategory(value === '__EMPTY__' ? '' : value)}>
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="请选择分类" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__EMPTY__">请选择分类</SelectItem>
-                      {WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => (
-                        <SelectItem key={value} value={value}>
-                          {label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    分类修改后，已发布流程会沿用现有发布逻辑同步新版本元数据。
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className={fieldLabelClassName}>追加标签</label>
-                    <div className="flex flex-col gap-2 sm:flex-row">
-                      <Input
-                        value={batchTagInput}
-                        onChange={(event) => setBatchTagInput(event.target.value)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' && batchTagInput.trim()) {
-                            event.preventDefault();
-                            addBatchTag(batchTagInput.trim());
-                            setBatchTagInput('');
-                          }
-                        }}
-                        placeholder="输入标签后按回车"
-                      />
+            <div className="overflow-x-auto">
+              <Table className="min-w-[900px]">
+                <TableHeader>
+                  <tr>
+                    <TableHead className="w-12 px-2 text-center">
                       <Button
                         type="button"
-                        variant="soft"
-                        onClick={() => {
-                          if (batchTagInput.trim()) {
-                            addBatchTag(batchTagInput.trim());
-                            setBatchTagInput('');
-                          }
-                        }}
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleSelectAll}
+                        disabled={filteredWorkflows.length === 0}
+                        aria-label={allVisibleSelected ? '取消全选结果' : '全选结果'}
+                        className="mx-auto h-7 w-7 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200"
                       >
-                        添加
+                        {allVisibleSelected ? <CheckSquare size={16} /> : <Square size={16} />}
                       </Button>
-                    </div>
-                  </div>
-                  {batchTags.length > 0 ? (
-                    <div className="space-y-2">
-                      <div className={fieldLabelClassName}>已添加标签</div>
-                      <div className="flex flex-wrap gap-2">
-                        {batchTags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-medium text-cyan-600 dark:border-cyan-900/70 dark:bg-cyan-950/40 dark:text-cyan-200"
-                          >
-                            {tag}
-                            <button
+                    </TableHead>
+                    <TableHead className="w-[32%]">流程名称</TableHead>
+                    <TableHead>流程 Key</TableHead>
+                    <TableHead>分类</TableHead>
+                    <TableHead>标签</TableHead>
+                    <TableHead className="w-24">版本</TableHead>
+                    <TableActionHead className="w-48">操作</TableActionHead>
+                  </tr>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <ManagementTableStateRow colSpan={7} title="正在加载流程数据..." loading />
+                  ) : filteredWorkflows.length === 0 ? (
+                    <ManagementTableStateRow
+                      colSpan={7}
+                      title="暂无流程数据"
+                    />
+                  ) : (
+                    filteredWorkflows.map((workflow) => {
+                      const selected = selectedIds.includes(workflow.id);
+                      const statusMeta = getWorkflowStatusMeta(workflow.status);
+
+                      return (
+                        <TableRow key={workflow.id} data-state={selected ? 'selected' : undefined} className="align-top">
+                          <TableCell className="w-12 py-2.5">
+                            <Button
                               type="button"
-                              onClick={() => removeBatchTag(tag)}
-                              className="text-cyan-600 transition hover:text-cyan-700 dark:text-cyan-300 dark:hover:text-cyan-100"
+                              variant="ghost"
+                              size="icon"
+                              aria-pressed={selected}
+                              aria-label={selected ? `取消选择 ${workflow.name}` : `选择 ${workflow.name}`}
+                              onClick={() => handleSelectOne(workflow.id)}
+                              className={cn(
+                                'h-8 w-8 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-900 dark:hover:text-slate-200',
+                                selected && 'bg-slate-100 text-slate-700 dark:bg-slate-900 dark:text-slate-200',
+                              )}
                             >
-                              <X size={12} />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                  <div className="space-y-2">
-                    <div className={fieldLabelClassName}>常用标签</div>
-                    <div className="flex flex-wrap gap-2">
-                      {COMMON_TAGS.map((tag) => (
-                        <Button
-                          key={tag}
-                          type="button"
-                          variant={batchTags.includes(tag) ? 'soft' : 'secondary'}
-                          size="sm"
-                          onClick={() => addBatchTag(tag)}
-                          disabled={batchTags.includes(tag)}
-                          className="rounded-full"
-                        >
-                          {tag}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" type="button" onClick={() => setShowBatchEditModal(false)}>
-                  取消
-                </Button>
-                <Button
-                  type="button"
-                  onClick={batchEditType === 'category' ? handleBatchUpdateCategory : handleBatchAddTags}
-                  disabled={loading || (batchEditType === 'category' ? !batchCategory : batchTags.length === 0)}
-                >
-                  <Save size={16} />
-                  {loading ? '保存中...' : '保存'}
-                </Button>
-              </div>
+                              {selected ? <CheckSquare size={18} /> : <Square size={18} />}
+                            </Button>
+                          </TableCell>
+                          <TableCell className="py-2.5">
+                            <div className="space-y-1.5">
+                              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                {workflow.name}
+                              </div>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="text-xs text-slate-500 dark:text-slate-400">
+                                  {statusMeta.label}
+                                </span>
+                                <span className="text-xs text-slate-400 dark:text-slate-500">
+                                  ID {workflow.id}
+                                </span>
+                              </div>
+                              {workflow.description ? (
+                                <div className="max-w-lg truncate text-xs text-slate-500 dark:text-slate-400">
+                                  {workflow.description}
+                                </div>
+                              ) : null}
+                            </div>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap py-2.5">
+                            <div className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                              {workflow.key}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-2.5">
+                            {workflow.category ? (
+                              <span className="text-xs text-slate-700 dark:text-slate-200">
+                                {getWorkflowCategoryLabel(workflow.category) || workflow.category}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-slate-400 dark:text-slate-500">未分类</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-2.5">
+                            <span className="text-xs text-slate-600 dark:text-slate-300" title={workflow.tags.join(', ') || undefined}>
+                              {formatWorkflowTags(workflow.tags)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap py-2.5">
+                            <span className="text-xs text-slate-600 dark:text-slate-300">
+                              v{workflow.version}
+                            </span>
+                          </TableCell>
+                          <TableCell className="whitespace-nowrap py-2.5 text-right">
+                            <TableRowActions
+                              align="end"
+                              wrap={false}
+                              className="whitespace-nowrap"
+                              actions={[
+                                {
+                                  label: '编辑',
+                                  icon: <Edit size={16} />,
+                                  onClick: () => navigate(`/workflow/design?id=${workflow.id}`),
+                                  disabled: !isAdmin,
+                                  title: isAdmin ? '编辑流程' : '仅管理员可编辑流程',
+                                  tone: 'neutral',
+                                },
+                                {
+                                  label: '版本',
+                                  icon: <RefreshCw size={16} />,
+                                  onClick: () => navigate(`/workflow/versions/${workflow.id}`),
+                                  title: '查看版本历史',
+                                  tone: 'neutral',
+                                },
+                                {
+                                  label: '导出',
+                                  icon: <FileDown size={16} />,
+                                  onClick: () => openExportDialog(workflow.id),
+                                  disabled: !canExportSingleWorkflow(workflow),
+                                  title: canExportSingleWorkflow(workflow) ? '导出流程' : '仅流程创建者或管理员可导出',
+                                  tone: 'neutral',
+                                },
+                              ]}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
             </div>
-          </WorkspaceDialogShell>
-        ) : null}
-        {showExportModal ? (
-          <WorkspaceDialogShell
-            title={exportType === 'single' ? '导出流程' : '批量导出流程'}
-            description="导出文件会保留流程定义、节点和配置，可用于备份或迁移。"
-            onClose={() => {
-              if (!exporting) {
-                setShowExportModal(false);
-              }
-            }}
-            maxWidthClassName="max-w-2xl"
-            headerAside={(
-              <span className={previewChipClassName}>
-                {exportType === 'single' ? '单流程导出' : `批量导出 ${selectedIds.length} 个`}
-              </span>
-            )}
-          >
-            <div className="space-y-4">
-              <div
-                className={cn(
-                  subtlePanelClassName,
-                  exportType === 'batch'
-                    ? 'border-cyan-200 bg-cyan-50/80 dark:border-cyan-900/70 dark:bg-cyan-950/30'
-                    : 'border-emerald-200 bg-emerald-50/80 dark:border-emerald-900/70 dark:bg-emerald-950/30',
-                )}
-              >
-                {exportType === 'batch' ? (
-                  <div className="space-y-3">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      本次将批量导出 {selectedIds.length} 个流程
-                    </div>
-                    <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      批量导出会把当前选中的流程定义打包到同一份 JSON 文件中。
-                    </div>
-                    {renderWorkflowPreview(exportTargetWorkflows)}
-                  </div>
-                ) : currentExportWorkflow ? (
-                  <div className="space-y-3">
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">流程信息</div>
-                    <div className="grid gap-2 sm:grid-cols-3">
-                      <div className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-                        名称：{currentExportWorkflow.name}
-                      </div>
-                      <div className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-                        版本：v{currentExportWorkflow.version}
-                      </div>
-                      <div className="rounded-xl border border-white/70 bg-white/80 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-300">
-                        分类：{currentExportWorkflow.category ? (getWorkflowCategoryLabel(currentExportWorkflow.category) || currentExportWorkflow.category) : '未分类'}
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-sm text-slate-600 dark:text-slate-300">未找到要导出的流程信息。</div>
-                )}
-              </div>
-              <div className={elevatedPanelClassName}>
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">导出选项</div>
-                <label className="mt-3 flex items-start gap-3">
-                  <input
-                    type="checkbox"
-                    checked={includeSensitive}
-                    onChange={(event) => setIncludeSensitive(event.target.checked)}
-                    className="mt-1 h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+          </>
+        )}
+      />
+
+      <BaseDialog
+        open={showBatchEditModal}
+        title={batchEditType === 'category' ? '批量修改分类' : '批量添加标签'}
+        onClose={() => setShowBatchEditModal(false)}
+        maxWidthClassName="max-w-lg"
+        bodyClassName="px-4 py-3 sm:px-5 sm:py-4"
+        footerClassName="gap-2 px-4 py-2.5 sm:px-5 sm:py-3"
+        footer={(
+          <>
+            <Button variant="outline" type="button" onClick={() => setShowBatchEditModal(false)}>
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={batchEditType === 'category' ? handleBatchUpdateCategory : handleBatchAddTags}
+              disabled={loading || (batchEditType === 'category' ? !batchCategory : batchTags.length === 0)}
+            >
+              <Save size={16} />
+              {loading ? '保存中...' : '保存'}
+            </Button>
+          </>
+        )}
+      >
+        <div className="space-y-3.5">
+          <div className={dialogSectionClassName}>
+            <DialogMetaRow label="已选流程" value={`${selectedIds.length} 个`} />
+            <DialogMetaRow label="流程" value={formatWorkflowPreview(selectedWorkflows)} />
+          </div>
+          {batchEditType === 'category' ? (
+            <div className="space-y-2">
+              <label className={fieldLabelClassName}>
+                目标分类 <span className="text-red-500">*</span>
+              </label>
+              <Select value={batchCategory || '__EMPTY__'} onValueChange={(value) => setBatchCategory(value === '__EMPTY__' ? '' : value)}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="请选择分类" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__EMPTY__">请选择分类</SelectItem>
+                  {WORKFLOW_CATEGORY_OPTIONS.map(({ value, label }) => (
+                    <SelectItem key={value} value={value}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="space-y-3.5">
+              <div className="space-y-2">
+                <label className={fieldLabelClassName}>追加标签</label>
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <Input
+                    value={batchTagInput}
+                    onChange={(event) => setBatchTagInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter' && batchTagInput.trim()) {
+                        event.preventDefault();
+                        addBatchTag(batchTagInput.trim());
+                        setBatchTagInput('');
+                      }
+                    }}
+                    placeholder="输入标签后按回车"
                   />
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
-                      包含敏感配置信息
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      包括 API 密钥、连接配置等敏感字段。不勾选时会做脱敏处理，适合日常备份和跨环境流转。
-                    </div>
-                  </div>
-                </label>
-                {includeSensitive ? (
-                  <div className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
-                    导出文件将包含敏感配置，请仅在受控环境中使用并妥善保管。
-                  </div>
-                ) : null}
-              </div>
-              <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-xs leading-6 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
-                <div className="font-medium">导出说明</div>
-                <ul className="mt-2 list-disc space-y-1 pl-4">
-                  <li>导出文件为 JSON 格式，可用于备份、迁移或离线审阅。</li>
-                  <li>文件名会自动带上流程名称、版本和导出日期。</li>
-                  <li>批量导出会把已选流程打包成同一份文件。</li>
-                </ul>
-              </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  variant="outline"
-                  type="button"
-                  onClick={() => setShowExportModal(false)}
-                  disabled={exporting}
-                >
-                  取消
-                </Button>
-                <Button type="button" onClick={handleExport} disabled={exporting}>
-                  <Download size={16} />
-                  {exporting ? '导出中...' : '确认导出'}
-                </Button>
-              </div>
-            </div>
-          </WorkspaceDialogShell>
-        ) : null}
-        {showArchiveModal ? (
-          <WorkspaceDialogShell
-            title="批量归档流程"
-            description="归档会隐藏流程入口，但仍会保留历史数据和恢复能力。"
-            onClose={closeArchiveModal}
-            maxWidthClassName="max-w-2xl"
-            headerAside={<span className={previewChipClassName}>{selectedIds.length} 个流程</span>}
-          >
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 shadow-sm dark:border-amber-900/70 dark:bg-amber-950/30">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      已选择 {selectedIds.length} 个流程准备归档
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      其中包含 {selectedPublishedCount} 个已发布流程，请确认它们已经停止对外提供发起入口。
-                    </div>
-                  </div>
-                  <span className="rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs font-medium text-amber-700 dark:border-amber-900/70 dark:bg-slate-950 dark:text-amber-200">
-                    归档治理
-                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      if (batchTagInput.trim()) {
+                        addBatchTag(batchTagInput.trim());
+                        setBatchTagInput('');
+                      }
+                    }}
+                  >
+                    添加
+                  </Button>
                 </div>
-                <div className="mt-3">{renderWorkflowPreview(selectedWorkflows)}</div>
               </div>
-              {showSafetyWarning && safetyWarnings.length > 0 ? (
-                <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
-                  <div className="font-medium">安全警告</div>
-                  <ul className="mt-2 list-disc space-y-1 pl-4">
-                    {safetyWarnings.map((warning, index) => (
-                      <li key={index}>{warning}</li>
+              {batchTags.length > 0 ? (
+                <div className="space-y-2">
+                  <div className={fieldLabelClassName}>已添加标签</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {batchTags.map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => removeBatchTag(tag)}
+                        className="inline-flex items-center gap-1.5 rounded border border-slate-200 px-2 py-1 text-[11px] text-slate-600 dark:border-slate-800 dark:text-slate-300"
+                      >
+                        {tag}
+                        <X size={12} />
+                      </button>
                     ))}
-                  </ul>
-                  <div className="mt-2 border-t border-amber-200 pt-2 dark:border-amber-900/70">
-                    请确认这些流程仍可归档。归档后可在归档管理中恢复，但默认不会继续出现在流程列表中。
                   </div>
                 </div>
               ) : null}
               <div className="space-y-2">
-                <label className={fieldLabelClassName}>
-                  归档原因 <span className="text-red-500">*</span>
-                </label>
-                <Textarea
-                  rows={4}
-                  value={archiveReason}
-                  onChange={(event) => setArchiveReason(event.target.value)}
-                  placeholder="请输入归档原因，例如：流程已停用、已由新版流程替代"
-                />
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  归档原因会记录到审计日志，便于后续追溯。
+                <div className={fieldLabelClassName}>常用标签</div>
+                <div className="flex flex-wrap gap-2">
+                  {COMMON_TAGS.map((tag) => (
+                    <Button
+                      key={tag}
+                      type="button"
+                      variant={batchTags.includes(tag) ? 'secondary' : 'outline'}
+                      size="sm"
+                      onClick={() => addBatchTag(tag)}
+                      disabled={batchTags.includes(tag)}
+                      className="px-3"
+                    >
+                      {tag}
+                    </Button>
+                  ))}
                 </div>
               </div>
-              <div className="rounded-2xl border border-cyan-100 bg-cyan-50 px-4 py-3 text-xs leading-6 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
-                <div className="font-medium">归档说明</div>
-                <ul className="mt-2 list-disc space-y-1 pl-4">
-                  <li>归档后的流程会从当前列表中隐藏。</li>
-                  <li>流程历史数据仍会保留，可在归档管理中恢复。</li>
-                  <li>归档操作会写入审计日志，并通知对应创建者。</li>
-                </ul>
+            </div>
+          )}
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={showExportModal}
+        title={exportType === 'single' ? '导出流程' : '批量导出流程'}
+        onClose={() => {
+          if (!exporting) {
+            setShowExportModal(false);
+          }
+        }}
+        maxWidthClassName="max-w-lg"
+        bodyClassName="px-4 py-3 sm:px-5 sm:py-4"
+        footerClassName="gap-2 px-4 py-2.5 sm:px-5 sm:py-3"
+        footer={(
+          <>
+            <Button variant="outline" type="button" onClick={() => setShowExportModal(false)} disabled={exporting}>
+              取消
+            </Button>
+            <Button type="button" onClick={handleExport} disabled={exporting}>
+              <Download size={16} />
+              {exporting ? '导出中...' : '确认导出'}
+            </Button>
+          </>
+        )}
+      >
+        <div className="space-y-3.5">
+          <div className={dialogSectionClassName}>
+            {exportType === 'batch' ? (
+              <>
+                <DialogMetaRow label="已选流程" value={`${selectedIds.length} 个`} />
+                <DialogMetaRow label="流程" value={formatWorkflowPreview(exportTargetWorkflows)} />
+              </>
+            ) : currentExportWorkflow ? (
+              <>
+                <DialogMetaRow label="流程名称" value={currentExportWorkflow.name} />
+                <DialogMetaRow label="版本" value={`v${currentExportWorkflow.version}`} />
+                <DialogMetaRow
+                  label="分类"
+                  value={currentExportWorkflow.category ? (getWorkflowCategoryLabel(currentExportWorkflow.category) || currentExportWorkflow.category) : '未分类'}
+                />
+              </>
+            ) : (
+              <div className="text-sm text-slate-600 dark:text-slate-300">未找到要导出的流程信息。</div>
+            )}
+          </div>
+          <div className={dialogSectionClassName}>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={includeSensitive}
+                onChange={(event) => setIncludeSensitive(event.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+              />
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  包含敏感配置信息
+                </div>
+                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
+                  默认导出脱敏内容
+                </div>
               </div>
-              <div className="flex justify-end gap-2 pt-2">
-                <Button variant="outline" type="button" onClick={closeArchiveModal} disabled={archiving}>
-                  取消
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleBatchArchive}
-                  disabled={archiving || !archiveReason.trim()}
-                  className="border-amber-200 bg-amber-50 text-amber-700 hover:border-amber-300 hover:bg-amber-100 dark:border-amber-900/70 dark:bg-amber-950/40 dark:text-amber-200 dark:hover:border-amber-800 dark:hover:bg-amber-950/60"
-                >
-                  <Archive size={16} />
-                  {archiving ? '归档中...' : '确认归档'}
-                </Button>
+            </label>
+          </div>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={showArchiveModal}
+        title="批量归档流程"
+        onClose={closeArchiveModal}
+        maxWidthClassName="max-w-lg"
+        bodyClassName="px-4 py-3 sm:px-5 sm:py-4"
+        footerClassName="gap-2 px-4 py-2.5 sm:px-5 sm:py-3"
+        footer={(
+          <>
+            <Button variant="outline" type="button" onClick={closeArchiveModal} disabled={archiving}>
+              取消
+            </Button>
+            <Button
+              type="button"
+              onClick={handleBatchArchive}
+              disabled={archiving || !archiveReason.trim()}
+            >
+              <Archive size={16} />
+              {archiving ? '归档中...' : '确认归档'}
+            </Button>
+          </>
+        )}
+      >
+        <div className="space-y-3.5">
+          <div className={dialogSectionClassName}>
+            <DialogMetaRow label="已选流程" value={`${selectedIds.length} 个`} />
+            <DialogMetaRow label="已发布流程" value={`${selectedPublishedCount} 个`} />
+            <DialogMetaRow label="流程" value={formatWorkflowPreview(selectedWorkflows)} />
+          </div>
+          {showSafetyWarning && safetyWarnings.length > 0 ? (
+            <div className={dialogSectionClassName}>
+              <DialogMetaRow label="安全检查" value={`${safetyWarnings.length} 条提示`} />
+              <div className="mt-2 space-y-1.5 text-sm text-slate-600 dark:text-slate-300">
+                {safetyWarnings.map((warning, index) => (
+                  <div key={index}>{warning}</div>
+                ))}
               </div>
             </div>
-          </WorkspaceDialogShell>
-        ) : null}
-      </WorkspacePageContent>
-    </div>
+          ) : null}
+          <div className="space-y-2">
+            <label className={fieldLabelClassName}>
+              归档原因 <span className="text-red-500">*</span>
+            </label>
+            <Textarea
+              rows={4}
+              value={archiveReason}
+              onChange={(event) => setArchiveReason(event.target.value)}
+              placeholder="请输入归档原因，例如：流程已停用、已由新版流程替代"
+            />
+          </div>
+        </div>
+      </BaseDialog>
+    </>
   );
 };

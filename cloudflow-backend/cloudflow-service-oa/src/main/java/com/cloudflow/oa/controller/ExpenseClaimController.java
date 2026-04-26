@@ -72,7 +72,11 @@ public class ExpenseClaimController {
     @SysLog("新增报销申请")
     @PostMapping
     public R<Void> add(@RequestBody BizExpenseClaim claim) {
-        return expenseClaimService.createClaim(claim) ? R.ok() : R.fail("创建失败");
+        try {
+            return expenseClaimService.createClaim(claim) ? R.ok() : R.fail("创建失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /**
@@ -81,7 +85,11 @@ public class ExpenseClaimController {
     @SysLog("修改报销申请")
     @PutMapping
     public R<Void> edit(@RequestBody BizExpenseClaim claim) {
-        return expenseClaimService.updateClaim(claim) ? R.ok() : R.fail("更新失败");
+        try {
+            return expenseClaimService.updateClaim(claim) ? R.ok() : R.fail("更新失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /**

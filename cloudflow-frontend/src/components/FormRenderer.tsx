@@ -176,7 +176,7 @@ export const FormRenderer = ({
             className="py-12"
           />
           <div className="mt-5 flex justify-center">
-            <Button variant="outline" className="rounded-xl px-6" onClick={onCancel}>
+            <Button variant="outline" onClick={onCancel}>
               关闭
             </Button>
           </div>
@@ -224,10 +224,10 @@ export const FormRenderer = ({
       </div>
 
       <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50 px-6 py-4">
-        <Button variant="outline" className="rounded-xl" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel}>
           取消
         </Button>
-        <Button className="rounded-xl px-6" onClick={handleSubmit}>
+        <Button onClick={handleSubmit}>
           <Send size={16} className="mr-2" />
           提交申请
         </Button>

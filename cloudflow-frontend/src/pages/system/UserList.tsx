@@ -24,6 +24,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -129,27 +130,8 @@ const getUserStatusBadgeClassName = (status: string) =>
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
     : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
 
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
+const checkboxClassName =
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -322,9 +304,6 @@ export const UserList = () => {
   const startIndex = (query.pageNum - 1) * query.pageSize;
   const users = filteredUsers.slice(startIndex, startIndex + query.pageSize);
 
-  const activeCount = filteredUsers.filter((user) => user.status === '0').length;
-  const disabledCount = filteredUsers.length - activeCount;
-  const tenantCount = new Set(filteredUsers.map((user) => user.tenantId).filter(Boolean)).size;
   const hasActiveFilters = Boolean(query.keyword || query.status || query.roleId);
   const isEdit = Boolean(editingUser);
 
@@ -575,38 +554,6 @@ export const UserList = () => {
         }
         table={
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  用户列表
-                </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  轻量后台列表骨架，保留角色分配、部门归属、租户选择和密码哈希能力。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {users.length} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  正常 {activeCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  停用 {disabledCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  角色模板 {roles.length}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  租户覆盖 {tenantCount}
-                </span>
-              </div>
-            </div>
-
             <Table className="min-w-[1080px]">
               <TableHeader>
                 <TableRow>
@@ -626,11 +573,7 @@ export const UserList = () => {
                 ) : error ? (
                   <TableStateRow colSpan={8} title="用户数据加载失败" description={error} />
                 ) : users.length === 0 ? (
-                  <TableStateRow
-                    colSpan={8}
-                    title="暂无用户数据"
-                    description="可以先创建账号，再分配角色和组织信息。"
-                  />
+                  <TableStateRow colSpan={8} title="暂无用户数据" />
                 ) : (
                   users.map((user) => {
                     const roleNames = getRoleNames(user);
@@ -698,19 +641,24 @@ export const UserList = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <RowActionButton
-                              label="编辑用户"
-                              icon={<Edit size={15} />}
-                              onClick={() => handleOpenModal(user)}
-                            />
-                            <RowActionButton
-                              label="删除用户"
-                              icon={<Trash2 size={15} />}
-                              onClick={() => setPendingDeleteUser(user)}
-                              tone="danger"
-                            />
-                          </div>
+                          <TableRowActions
+                            align="end"
+                            iconOnly
+                            actions={[
+                              {
+                                label: '编辑用户',
+                                icon: <Edit size={15} />,
+                                onClick: () => handleOpenModal(user),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '删除用户',
+                                icon: <Trash2 size={15} />,
+                                onClick: () => setPendingDeleteUser(user),
+                                tone: 'danger',
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -744,7 +692,6 @@ export const UserList = () => {
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑用户' : '新增用户'}
-        description="维护用户基础资料、部门归属、租户信息、状态和角色授权。"
         onClose={handleCloseModal}
         maxWidthClassName="max-w-4xl"
         footer={
@@ -924,18 +871,12 @@ export const UserList = () => {
                 onChange={(event) =>
                   setFormData((current) => ({ ...current, remark: event.target.value }))
                 }
-                placeholder="补充用户说明或维护备注"
               />
             </div>
           </div>
 
           <div>
-            <div className="mb-2 flex items-center justify-between">
-              <label className={fieldLabelClassName}>角色分配</label>
-              <span className="text-xs text-slate-500 dark:text-slate-400">
-                已选角色 {selectedRoleIds.length} 个
-              </span>
-            </div>
+            <label className={fieldLabelClassName}>角色分配</label>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/70">
               {roles.length > 0 ? (
                 <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -955,7 +896,7 @@ export const UserList = () => {
                           type="checkbox"
                           checked={checked}
                           onChange={() => toggleRole(role.roleId)}
-                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                          className={checkboxClassName}
                         />
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{role.roleName}</div>

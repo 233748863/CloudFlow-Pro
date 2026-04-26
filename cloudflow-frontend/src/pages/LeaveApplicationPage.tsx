@@ -92,7 +92,6 @@ const unitMap: Record<string, string> = {
 
 const InlineState: React.FC<InlineStateProps> = ({
   title,
-  description,
   icon,
   className,
 }) => (
@@ -101,16 +100,12 @@ const InlineState: React.FC<InlineStateProps> = ({
       {icon || <ClipboardList className="h-4 w-4" />}
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
   </div>
 );
 
 const TableStateRow: React.FC<TableStateRowProps> = ({
   colSpan,
   title,
-  description,
   icon,
   loading = false,
 }) => (
@@ -121,9 +116,6 @@ const TableStateRow: React.FC<TableStateRowProps> = ({
           {loading ? <ClipboardList className="h-4 w-4 animate-pulse" /> : icon || <ClipboardList className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? (
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-        ) : null}
       </div>
     </td>
   </tr>
@@ -606,30 +598,9 @@ export const LeaveApplicationPage: React.FC = () => {
 
       <TablePageLayout
         className="gap-4"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">草稿 {draftCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">审批中 {pendingCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已通过 {approvedCount}</span>
-            </div>
-
-            <div className="ml-auto flex flex-wrap gap-2">
-              <Button size="sm" onClick={openCreateDialog} disabled={selfServiceLocked}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
-                <Download size={14} className="mr-1.5" />
-                导出结果
-              </Button>
-            </div>
-          </div>
-        )}
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
-            <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-1 flex-wrap items-center gap-2">
               {statusQuickFilters.map((filter) => (
                 <Button
                   key={filter.value || 'all'}
@@ -640,9 +611,6 @@ export const LeaveApplicationPage: React.FC = () => {
                   {filter.label}
                 </Button>
               ))}
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
               <div className="w-full sm:w-[220px]">
                 <Select
                   value={searchParams.leaveTypeId || ALL_FILTER_VALUE}
@@ -667,6 +635,12 @@ export const LeaveApplicationPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {`共 ${total} 条 · 草稿 ${draftCount} · 审批中 ${pendingCount} · 已通过 ${approvedCount}${hasActiveFilters ? ` · ${currentStatusLabel} · ${currentTypeLabel}` : ''}`}
+              </span>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -682,23 +656,19 @@ export const LeaveApplicationPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
+              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
+                <Download size={14} className="mr-1.5" />
+                导出
+              </Button>
+              <Button size="sm" onClick={openCreateDialog} disabled={selfServiceLocked}>
+                <Plus size={14} className="mr-1.5" />
+                新建申请
+              </Button>
             </div>
           </div>
         )}
         table={(
           <div className="flex min-h-[36rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  申请列表
-                  <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
-                    {hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部'}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">共 {total} 条</div>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">

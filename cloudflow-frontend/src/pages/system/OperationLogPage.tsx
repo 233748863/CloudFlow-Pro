@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Eye,
   RefreshCw,
@@ -29,6 +29,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -51,27 +52,8 @@ const getLogTypeBadgeClassName = (logType: string) =>
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
     : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
 
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={[
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    ].join(' ')}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
+const checkboxClassName =
+  'h-4 w-4 shrink-0 rounded border-slate-300 accent-cyan-600 text-cyan-600 focus:ring-2 focus:ring-cyan-400 focus:ring-offset-0 dark:border-slate-700 dark:bg-slate-950';
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -244,16 +226,16 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
     >
       {log ? (
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
             {items.map((item) => (
               <div
                 key={item.label}
-                className="rounded-xl border border-slate-200 bg-slate-50/90 p-4 dark:border-slate-800 dark:bg-slate-900/70"
+                className="border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800"
               >
-                <div className="text-xs font-medium text-slate-400 dark:text-slate-500">
+                <div className="text-xs font-medium uppercase tracking-[0.08em] text-slate-400 dark:text-slate-500">
                   {item.label}
                 </div>
-                <div className="mt-2 break-all text-sm font-medium text-slate-900 dark:text-slate-100">
+                <div className="mt-2 break-all text-sm text-slate-900 dark:text-slate-100">
                   {item.value || '-'}
                 </div>
               </div>
@@ -261,11 +243,9 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
           </div>
 
           {log.exception ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50/90 p-4 dark:border-rose-900/70 dark:bg-rose-950/30">
-              <div className="text-sm font-semibold text-rose-700 dark:text-rose-200">
-                异常信息
-              </div>
-              <div className="mt-3 break-all text-sm leading-7 text-rose-700 dark:text-rose-100">
+            <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/40">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">异常信息</div>
+              <div className="mt-3 break-all text-sm leading-7 text-slate-700 dark:text-slate-200">
                 {log.exception}
               </div>
             </div>
@@ -417,32 +397,7 @@ export const OperationLogPage: React.FC = () => {
     );
   };
 
-  const successCount = records.filter((item) => item.logType === '0').length;
-  const errorCount = records.filter((item) => item.logType === '9').length;
-  const totalTime = records.reduce((sum, item) => sum + Number(item.time || 0), 0);
-  const averageTime = records.length ? Math.round(totalTime / records.length) : 0;
-  const trendSuccess = trendData.reduce((sum, item) => sum + item.success, 0);
-  const trendFail = trendData.reduce((sum, item) => sum + item.fail, 0);
   const hasActiveFilters = Boolean(query.title || query.logType || query.startTime || query.endTime);
-
-  const filterSummary = useMemo(() => {
-    const typeLabel = !query.logType ? '全部类型' : query.logType === '0' ? '正常' : '错误';
-    const titleLabel = query.title || '全部标题';
-
-    if (query.startTime && query.endTime) {
-      return `${typeLabel} / ${titleLabel} / ${query.startTime} 至 ${query.endTime}`;
-    }
-
-    if (query.startTime) {
-      return `${typeLabel} / ${titleLabel} / ${query.startTime} 起`;
-    }
-
-    if (query.endTime) {
-      return `${typeLabel} / ${titleLabel} / 截止 ${query.endTime}`;
-    }
-
-    return `${typeLabel} / ${titleLabel}`;
-  }, [query.endTime, query.logType, query.startTime, query.title]);
 
   return (
     <>
@@ -546,18 +501,9 @@ export const OperationLogPage: React.FC = () => {
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                     近 30 天趋势
                   </div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    页面拆成上下结构，趋势图固定放在上半区，列表放在下半区。
-                  </div>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                    成功 {trendSuccess}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
-                    失败 {trendFail}
-                  </span>
                   <Button variant="outline" size="sm" onClick={handleRefreshTrend} disabled={trendLoading}>
                     <RefreshCw size={15} className={trendLoading ? 'animate-spin' : ''} />
                     刷新趋势
@@ -577,40 +523,6 @@ export const OperationLogPage: React.FC = () => {
             </section>
 
             <section className="min-h-[24rem]">
-              <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4 sm:px-6">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    操作日志
-                  </div>
-                  {hasActiveFilters ? (
-                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      {filterSummary}
-                    </div>
-                  ) : null}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    共 {total} 条
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    当前页 {records.length} 条
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    正常 {successCount}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    错误 {errorCount}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    平均耗时 {averageTime} ms
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                    已选 {selectedIds.length} 条
-                  </span>
-                </div>
-              </div>
-
               <div className="overflow-x-auto border-t border-slate-200 dark:border-slate-800">
                 <Table className="min-w-[1180px]">
                   <TableHeader>
@@ -620,7 +532,7 @@ export const OperationLogPage: React.FC = () => {
                           type="checkbox"
                           checked={allSelected}
                           onChange={toggleAll}
-                          className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                          className={checkboxClassName}
                         />
                       </TableHead>
                       <TableHead className="w-14">#</TableHead>
@@ -649,7 +561,7 @@ export const OperationLogPage: React.FC = () => {
                               type="checkbox"
                               checked={selectedIds.includes(log.logId)}
                               onChange={() => toggleOne(log.logId)}
-                              className="h-4 w-4 rounded border-slate-300 text-cyan-600 focus:ring-cyan-400 dark:border-slate-700 dark:bg-slate-950"
+                              className={checkboxClassName}
                             />
                           </TableCell>
                           <TableCell className="py-4 text-slate-400 dark:text-slate-500">
@@ -697,19 +609,24 @@ export const OperationLogPage: React.FC = () => {
                             {log.createBy || '-'}
                           </TableCell>
                           <TableCell>
-                            <div className="flex items-center justify-end gap-1">
-                              <RowActionButton
-                                label="查看详情"
-                                icon={<Eye size={15} />}
-                                onClick={() => void handleViewDetail(log.logId)}
-                              />
-                              <RowActionButton
-                                label="删除日志"
-                                icon={<Trash2 size={15} />}
-                                onClick={() => setPendingDeleteIds([log.logId])}
-                                tone="danger"
-                              />
-                            </div>
+                            <TableRowActions
+                              align="end"
+                              iconOnly
+                              actions={[
+                                {
+                                  label: '查看详情',
+                                  icon: <Eye size={15} />,
+                                  onClick: () => void handleViewDetail(log.logId),
+                                  tone: 'neutral',
+                                },
+                                {
+                                  label: '删除日志',
+                                  icon: <Trash2 size={15} />,
+                                  onClick: () => setPendingDeleteIds([log.logId]),
+                                  tone: 'danger',
+                                },
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       ))

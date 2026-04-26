@@ -5,6 +5,7 @@ import { BaseDialog, Pagination } from '@/components/common';
 import {
   Button,
   Input,
+  SideNavItem,
   Table,
   TableActionHead,
   TableBody,
@@ -17,7 +18,6 @@ import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/ui/table-row-actions';
 import { contactApi, Contact, DeptNode } from '../services/api/contact';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { cn } from '@/utils/cn';
 
 const PAGE_SIZE = 20;
 
@@ -59,13 +59,22 @@ const TableStateRow: React.FC<{
   </tr>
 );
 
-const DetailField: React.FC<{
+const DetailRows: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+}> = ({ children, className }) => (
+  <div className={['grid gap-x-6 gap-y-3 sm:grid-cols-2', className].filter(Boolean).join(' ')}>
+    {children}
+  </div>
+);
+
+const DetailRow: React.FC<{
   label: string;
   value: React.ReactNode;
 }> = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+  <div className="border-b border-slate-100 pb-3 dark:border-slate-800">
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -153,25 +162,14 @@ export const ContactPage: React.FC = () => {
     [depts],
   );
 
-  const hasActiveFilters = Boolean(keyword || selectedDeptId);
   const selectedDept = topDepts.find(dept => dept.dept_id === selectedDeptId);
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <BookUser className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Contacts
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          企业通讯录
-        </h1>
-      </div>
-
       <TablePageLayout
         className="gap-4"
         filters={
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
@@ -187,9 +185,15 @@ export const ContactPage: React.FC = () => {
                   className="h-10 pl-10"
                 />
               </div>
+
+              <div className="flex min-w-[220px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span>{selectedDept?.dept_name || '全部部门'}</span>
+                <span>{keyword || '全部关键字'}</span>
+                <span>共 {total} 条</span>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <Button variant="outline" size="sm" onClick={handleApplyFilters}>
                 <Search className="mr-1.5 h-4 w-4" />
                 应用
@@ -202,29 +206,23 @@ export const ContactPage: React.FC = () => {
           </div>
         }
         table={
-          <div className="grid min-h-[40rem] xl:grid-cols-[200px_minmax(0,1fr)]">
-            <aside className="border-b border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-950/20 xl:border-b-0 xl:border-r">
-              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">部门</div>
-              </div>
-
-              <div className="space-y-1.5 p-3">
-                <button
-                  type="button"
+          <div className="grid min-h-[40rem] xl:grid-cols-[184px_minmax(0,1fr)]">
+            <aside className="border-b border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-950/20 xl:border-b-0 xl:border-r">
+              <div className="space-y-1 p-3">
+                <div className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                  部门
+                </div>
+                <SideNavItem
+                  size="sm"
+                  active={!selectedDeptId}
                   onClick={() => {
                     setSelectedDeptId(undefined);
                     setPageNum(1);
                   }}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition',
-                    !selectedDeptId
-                      ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-200'
-                      : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-slate-100',
-                  )}
                 >
                   <BookUser className="h-4 w-4" />
                   全部部门
-                </button>
+                </SideNavItem>
 
                 {topDepts.length === 0 ? (
                   <InlineState
@@ -237,23 +235,18 @@ export const ContactPage: React.FC = () => {
                     const active = selectedDeptId === dept.dept_id;
 
                     return (
-                      <button
+                      <SideNavItem
                         key={dept.dept_id}
-                        type="button"
+                        size="sm"
+                        active={active}
                         onClick={() => {
                           setSelectedDeptId(dept.dept_id);
                           setPageNum(1);
                         }}
-                        className={cn(
-                          'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm transition',
-                          active
-                            ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-200'
-                            : 'text-slate-600 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-950 dark:hover:text-slate-100',
-                        )}
                       >
                         <Building2 className="h-4 w-4 opacity-70" />
                         <span className="truncate">{dept.dept_name}</span>
-                      </button>
+                      </SideNavItem>
                     );
                   })
                 )}
@@ -261,22 +254,6 @@ export const ContactPage: React.FC = () => {
             </aside>
 
             <div className="flex min-h-0 flex-col">
-              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">联系人列表</div>
-                    {hasActiveFilters ? (
-                      <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        {selectedDept?.dept_name || '全部部门'} / {keyword || '全部关键字'}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    共 {total} 条
-                  </div>
-                </div>
-              </div>
-
               <div className="overflow-x-auto">
                 <Table className="min-w-[860px]">
                   <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
@@ -392,14 +369,14 @@ export const ContactPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2">
-              <DetailField label="部门" value={selectedUser.dept_name || '-'} />
-              <DetailField label="岗位" value={selectedUser.post_name || '-'} />
-              <DetailField label="电话" value={selectedUser.phonenumber || '-'} />
-              <DetailField label="邮箱" value={selectedUser.email || '-'} />
-              <DetailField label="用户名" value={selectedUser.user_name || '-'} />
-              <DetailField label="用户 ID" value={selectedUser.user_id} />
-            </div>
+            <DetailRows>
+              <DetailRow label="部门" value={selectedUser.dept_name || '-'} />
+              <DetailRow label="岗位" value={selectedUser.post_name || '-'} />
+              <DetailRow label="电话" value={selectedUser.phonenumber || '-'} />
+              <DetailRow label="邮箱" value={selectedUser.email || '-'} />
+              <DetailRow label="用户名" value={selectedUser.user_name || '-'} />
+              <DetailRow label="用户 ID" value={selectedUser.user_id} />
+            </DetailRows>
           </div>
         ) : null}
       </BaseDialog>

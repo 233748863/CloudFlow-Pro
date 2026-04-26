@@ -92,7 +92,6 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
     <BaseDialog
       open={open}
       title="阅读状态"
-      description={announcementTitle ? `查看“${announcementTitle}”的已读用户明细` : '查看公告已读用户明细'}
       onClose={onClose}
       maxWidthClassName="max-w-5xl"
       panelClassName="max-h-[92vh]"
@@ -121,13 +120,8 @@ export const AnnouncementReadStatusDialog: React.FC<AnnouncementReadStatusDialog
       }
     >
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900">
-            已读 {statsData?.readCount ?? 0} 人
-          </span>
-          <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1 dark:border-slate-800 dark:bg-slate-950">
-            筛选结果 {filteredUsers.length} 人
-          </span>
+        <div className="text-xs text-slate-500 dark:text-slate-400">
+          {`${announcementTitle ? `${announcementTitle} · ` : ''}已读 ${statsData?.readCount ?? 0} 人 · 筛选结果 ${filteredUsers.length} 人`}
         </div>
 
         <div className="relative w-full lg:w-80">

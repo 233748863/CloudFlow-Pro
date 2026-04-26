@@ -58,7 +58,6 @@ public class EmployeeDocument implements Serializable {
     /**
      * 证件扫描件URL
      */
-    private String fileUrl;
 
     /**
      * 创建时间

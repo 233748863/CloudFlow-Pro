@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { cn } from '@/utils/cn';
+import { Button } from './button';
 
 interface EmptyStateProps {
   icon?: React.ReactNode;
@@ -40,12 +41,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         </p>
       )}
       {action && (
-        <button
-          onClick={action.onClick}
-          className="inline-flex items-center justify-center rounded-xl bg-cyan-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition-all hover:bg-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 active:scale-[0.98]"
-        >
+        <Button onClick={action.onClick}>
           {action.label}
-        </button>
+        </Button>
       )}
     </div>
   );

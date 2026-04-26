@@ -24,6 +24,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -144,28 +145,6 @@ const getFileIcon = (type: string) => {
 
 const getFileTypeBadgeClassName = () =>
   'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
-
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -361,38 +340,6 @@ export const FileList = () => {
     }
   };
 
-  const storagePercent = useMemo(() => {
-    if (!storageSummary?.storageLimit) {
-      return 0;
-    }
-
-    return Math.min(storageSummary.storageUsagePercent || 0, 100);
-  }, [storageSummary]);
-
-  const currentPageTotalSize = useMemo(
-    () => data.reduce((sum, file) => sum + Number(file.fileSize || 0), 0),
-    [data],
-  );
-
-  const imageCount = useMemo(
-    () => data.filter((file) => isImageFile(file.fileType)).length,
-    [data],
-  );
-
-  const docCount = useMemo(
-    () =>
-      data.filter(
-        (file) =>
-          isPdfFile(file.fileType) || isWordFile(file.fileType) || isExcelFile(file.fileType),
-      ).length,
-    [data],
-  );
-
-  const archiveCount = useMemo(
-    () => data.filter((file) => isZipFile(file.fileType)).length,
-    [data],
-  );
-
   const hasActiveFilters = Boolean(query.fileName || query.fileType);
 
   return (
@@ -452,6 +399,11 @@ export const FileList = () => {
             </form>
 
             <div className="flex flex-wrap items-center gap-2">
+              {storageSummary ? (
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {formatStorage(storageSummary.storageUsed)} / {formatStorage(storageSummary.storageLimit)}
+                </span>
+              ) : null}
               <Button variant="outline" size="sm" onClick={handleRefreshList} disabled={loading}>
                 <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
                 刷新
@@ -482,50 +434,6 @@ export const FileList = () => {
         }
         table={
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  文件列表
-                </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  按源码后台列表页骨架重组，上传、搜索、容量校准和结果表格统一收进轻量列表页语法。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {data.length} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  图片 {imageCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  文档 {docCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  压缩包 {archiveCount}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  本页大小 {formatSize(currentPageTotalSize)}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  上传上限 {maxFileSizeMB}MB
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  存储占用 {storageSummary ? `${storagePercent.toFixed(0)}%` : '--'}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  已使用{' '}
-                  {storageSummary
-                    ? `${formatStorage(storageSummary.storageUsed)} / ${formatStorage(storageSummary.storageLimit)}`
-                    : '--'}
-                </span>
-              </div>
-            </div>
-
             <Table className="min-w-[1040px]">
               <TableHeader>
                 <TableRow>
@@ -543,11 +451,7 @@ export const FileList = () => {
                 ) : error ? (
                   <TableStateRow colSpan={6} title="文件列表加载失败" description={error} />
                 ) : data.length === 0 ? (
-                  <TableStateRow
-                    colSpan={6}
-                    title="暂无文件数据"
-                    description="可以先上传文件，再按名称或类型进行管理。"
-                  />
+                  <TableStateRow colSpan={6} title="暂无文件数据" />
                 ) : (
                   data.map((file) => (
                     <TableRow key={file.fileId}>
@@ -592,19 +496,24 @@ export const FileList = () => {
                         {formatDateTime(file.createTime)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center justify-end gap-1">
-                          <RowActionButton
-                            label="下载文件"
-                            icon={<Download size={15} />}
-                            onClick={() => window.open(file.url, '_blank', 'noopener,noreferrer')}
-                          />
-                          <RowActionButton
-                            label="删除文件"
-                            icon={<Trash2 size={15} />}
-                            onClick={() => setPendingDeleteFile(file)}
-                            tone="danger"
-                          />
-                        </div>
+                        <TableRowActions
+                          align="end"
+                          iconOnly
+                          actions={[
+                            {
+                              label: '下载文件',
+                              icon: <Download size={15} />,
+                              onClick: () => window.open(file.url, '_blank', 'noopener,noreferrer'),
+                              tone: 'neutral',
+                            },
+                            {
+                              label: '删除文件',
+                              icon: <Trash2 size={15} />,
+                              onClick: () => setPendingDeleteFile(file),
+                              tone: 'danger',
+                            },
+                          ]}
+                        />
                       </TableCell>
                     </TableRow>
                   ))

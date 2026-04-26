@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   ArrowLeftCircle,
-  Briefcase,
   CheckCircle2,
   ChevronRight,
   Clock3,
@@ -12,8 +11,6 @@ import {
   FileText,
   GitBranch,
   GitMerge,
-  Image as ImageIcon,
-  Paperclip,
   UserPlus,
   UserMinus,
   Users,
@@ -21,8 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
-import { Button, Textarea } from '@/components/ui';
-import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/ui';
 import { cn } from '@/utils/cn';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { ProcessTrace } from './ProcessTrace';
@@ -96,7 +92,7 @@ const TaskModalBadge = ({
 }) => (
   <span
     className={cn(
-      'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-medium',
+      'inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11px] font-medium',
       className,
     )}
   >
@@ -117,7 +113,7 @@ const TaskModalPanel = ({
 }) => (
   <section
     className={cn(
-      'rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
+      'rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950',
       className,
     )}
   >
@@ -131,27 +127,44 @@ const TaskModalPanel = ({
   </section>
 );
 
-const SummaryMetric = ({
+const TaskField = ({
   label,
   value,
-  accent = false,
+  className,
+  valueClassName,
 }: {
   label: string;
   value: React.ReactNode;
-  accent?: boolean;
+  className?: string;
+  valueClassName?: string;
 }) => (
-  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+  <div className={cn('space-y-1', className)}>
     <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
       {label}
     </div>
-    <div
-      className={cn(
-        'mt-1.5 text-sm font-semibold',
-        accent ? 'text-cyan-700 dark:text-cyan-200' : 'text-slate-900 dark:text-slate-100',
-      )}
-    >
+    <div className={cn('break-words text-sm text-slate-900 dark:text-slate-100', valueClassName)}>
       {value}
     </div>
+  </div>
+);
+
+const TaskEmptyBlock = ({
+  title,
+  description,
+  loading = false,
+}: {
+  title: string;
+  description?: string;
+  loading?: boolean;
+}) => (
+  <div className="rounded-xl border border-dashed border-slate-200 px-4 py-10 text-center dark:border-slate-800">
+    {loading ? <LoadingSpinner size="sm" className="mx-auto" /> : null}
+    <div className={cn('text-sm font-medium text-slate-700 dark:text-slate-200', loading && 'mt-3')}>
+      {title}
+    </div>
+    {description ? (
+      <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{description}</div>
+    ) : null}
   </div>
 );
 
@@ -631,85 +644,58 @@ export const TaskHandleModal = ({
 
       <BaseDialog
         open={isOpen}
-        title={
-          <div className="flex items-center gap-2">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-              <Briefcase size={18} />
-            </span>
-            {headerTitle}
-          </div>
-        }
+        title={headerTitle}
         description={headerDescription}
         onClose={closeOrBack}
         maxWidthClassName="max-w-6xl"
-        panelClassName="max-h-[92vh] flex flex-col"
-        bodyClassName="!p-0 flex-1 overflow-hidden"
+        panelClassName="max-h-[92vh] min-h-0 flex flex-col"
+        bodyClassName="!p-0 min-h-0 flex flex-col overflow-hidden"
         headerAside={
           !delegationMode && !rejectMode ? (
-            <div className="hidden rounded-xl bg-slate-100 p-1 dark:bg-slate-900 sm:flex">
-              <button
-                type="button"
+            <SegmentedControl className="hidden min-h-9 sm:flex">
+              <SegmentedControlItem
+                size="sm"
+                active={activeTab === 'handle'}
                 onClick={() => setActiveTab('handle')}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                  activeTab === 'handle'
-                    ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-                )}
               >
                 {viewOnly ? '详情' : '处理'}
-              </button>
-              <button
-                type="button"
+              </SegmentedControlItem>
+              <SegmentedControlItem
+                size="sm"
+                active={activeTab === 'trace'}
                 onClick={() => setActiveTab('trace')}
-                className={cn(
-                  'rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                  activeTab === 'trace'
-                    ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-                )}
               >
                 审批记录
-              </button>
-            </div>
+              </SegmentedControlItem>
+            </SegmentedControl>
           ) : null
         }
       >
-        <div className="flex h-full flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           {!delegationMode && !rejectMode ? (
             <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800 sm:hidden">
-              <div className="inline-flex rounded-xl bg-slate-100 p-1 dark:bg-slate-900">
-                <button
-                  type="button"
+              <SegmentedControl className="min-h-9">
+                <SegmentedControlItem
+                  size="sm"
+                  active={activeTab === 'handle'}
                   onClick={() => setActiveTab('handle')}
-                  className={cn(
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                    activeTab === 'handle'
-                      ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-                  )}
                 >
                   {viewOnly ? '详情' : '处理'}
-                </button>
-                <button
-                  type="button"
+                </SegmentedControlItem>
+                <SegmentedControlItem
+                  size="sm"
+                  active={activeTab === 'trace'}
                   onClick={() => setActiveTab('trace')}
-                  className={cn(
-                    'rounded-lg px-3 py-1.5 text-xs font-medium transition',
-                    activeTab === 'trace'
-                      ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-                  )}
                 >
                   审批记录
-                </button>
-              </div>
+                </SegmentedControlItem>
+              </SegmentedControl>
             </div>
           ) : null}
 
-          <div className="flex-1 overflow-y-auto p-4 sm:p-5">
+          <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
             {activeTab === 'trace' && !delegationMode && !rejectMode ? (
-              <ProcessTrace instanceId={task.processInstanceId} variant="glass" />
+              <ProcessTrace instanceId={task.processInstanceId} variant="default" />
             ) : rejectMode ? (
               <div className="mx-auto max-w-3xl space-y-4">
                 <TaskModalPanel
@@ -717,19 +703,19 @@ export const TaskHandleModal = ({
                   description="只能选择历史上已处理过的节点作为驳回目标，驳回后流程将回退到该节点。"
                 >
                   {!historyNodesLoaded ? (
-                    <WorkspaceInlineState type="loading" title="正在加载历史节点..." className="py-10" />
+                    <TaskEmptyBlock title="正在加载历史节点..." loading />
                   ) : historyNodes.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
                       {historyNodes.map((node) => (
                         <button
                           key={node.key}
                           type="button"
                           onClick={() => setRejectTargetNode(node.key)}
                           className={cn(
-                            'flex w-full items-center gap-3 rounded-2xl border px-4 py-3 text-left transition',
+                            'flex w-full items-center gap-3 px-4 py-3 text-left transition first:pt-0 last:pb-0',
                             rejectTargetNode === node.key
-                              ? 'border-cyan-300 bg-cyan-50 shadow-sm dark:border-cyan-800 dark:bg-cyan-950/30'
-                              : 'border-slate-200 bg-white hover:border-cyan-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:border-cyan-900 dark:hover:bg-slate-900/70',
+                              ? 'rounded-lg bg-cyan-50 text-cyan-700 dark:bg-cyan-950/20 dark:text-cyan-200'
+                              : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900/60',
                           )}
                         >
                           <CornerUpLeft
@@ -740,33 +726,19 @@ export const TaskHandleModal = ({
                                 : 'text-slate-400 dark:text-slate-500',
                             )}
                           />
-                          <span
-                            className={cn(
-                              'font-medium',
-                              rejectTargetNode === node.key
-                                ? 'text-cyan-700 dark:text-cyan-200'
-                                : 'text-slate-700 dark:text-slate-200',
-                            )}
-                          >
-                            {node.name}
-                          </span>
+                          <span className="font-medium">{node.name}</span>
                         </button>
                       ))}
                     </div>
                   ) : (
-                    <WorkspaceInlineState
-                      type="info"
+                    <TaskEmptyBlock
                       title="当前没有可驳回的历史节点"
-                      description="若需终止流程，请返回详情页后使用“拒绝”操作。"
-                      className="py-10"
+                      description="若需终止流程，请在详情区直接执行拒绝。"
                     />
                   )}
                 </TaskModalPanel>
 
-                <TaskModalPanel
-                  title="驳回原因"
-                  description="驳回原因会写入审批日志，请尽量明确说明需要修改的内容。"
-                >
+                <TaskModalPanel title="驳回原因">
                   <Textarea
                     rows={5}
                     placeholder="请填写驳回原因..."
@@ -795,9 +767,9 @@ export const TaskHandleModal = ({
                   description="转办后当前待办会转交给新的处理人，原审批轨迹会保留本次操作记录。"
                 >
                   {visibleDelegateUsers.length === 0 ? (
-                    <WorkspaceInlineState type="info" title="暂无可转办用户" className="py-10" />
+                    <TaskEmptyBlock title="暂无可转办用户" />
                   ) : (
-                    <div className="grid gap-3 md:grid-cols-2">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
                       {visibleDelegateUsers.map((user) => {
                         const active = delegateUser === user.id;
                         return (
@@ -806,10 +778,10 @@ export const TaskHandleModal = ({
                             type="button"
                             onClick={() => setDelegateUser(user.id)}
                             className={cn(
-                              'flex items-center gap-3 rounded-[20px] border px-4 py-3 text-left transition',
+                              'flex w-full items-center gap-3 px-4 py-3 text-left transition first:pt-0 last:pb-0',
                               active
-                                ? 'border-cyan-300 bg-cyan-50 shadow-sm dark:border-cyan-800 dark:bg-cyan-950/30'
-                                : 'border-slate-200 bg-white hover:border-cyan-200 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/88 dark:hover:border-cyan-900 dark:hover:bg-slate-900/70',
+                                ? 'rounded-lg bg-cyan-50 dark:bg-cyan-950/20'
+                                : 'hover:bg-slate-50 dark:hover:bg-slate-900/60',
                             )}
                           >
                             {user.avatar ? (
@@ -852,13 +824,10 @@ export const TaskHandleModal = ({
               </div>
             ) : (
               <div className="space-y-4">
-                <TaskModalPanel
-                  title="任务概览"
-                  description="统一展示当前流程任务的申请信息、节点状态和核心业务摘要。"
-                >
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <TaskModalPanel title="基本信息" description="查看当前任务的节点状态、摘要和责任信息。">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-base font-semibold text-slate-900 dark:text-slate-100">
                         {task.workflowName}
                       </div>
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -866,104 +835,103 @@ export const TaskHandleModal = ({
                           {statusMeta.icon}
                           {statusMeta.label}
                         </TaskModalBadge>
-                        <TaskModalBadge className="border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                        <TaskModalBadge className="border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                           当前节点 {task.nodeName || task.currentNodeName || '-'}
                         </TaskModalBadge>
                       </div>
+                      {summaryParts.length > 0 ? (
+                        <div className="mt-3 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                          {summaryParts.join(' · ')}
+                        </div>
+                      ) : null}
                     </div>
-                    {summaryParts.length > 0 ? (
-                      <div className="flex flex-wrap justify-end gap-2">
-                        {summaryParts.map((part) => (
-                          <TaskModalBadge
-                            key={part}
-                            className="border border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
-                          >
-                            {part}
-                          </TaskModalBadge>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                    <SummaryMetric label="申请人" value={task.applicantName || '-'} />
-                    <SummaryMetric
-                      label="当前处理人"
-                      value={task.assigneeName || task.assigneeId || '待认领'}
-                      accent
-                    />
-                    <SummaryMetric label="创建时间" value={formatDateTime(task.createdTime)} />
-                    <SummaryMetric label="截止时间" value={formatDateTime(task.dueDate)} />
+                    <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:min-w-[340px]">
+                      <TaskField label="申请人" value={task.applicantName || '-'} />
+                      <TaskField
+                        label="当前处理人"
+                        value={task.assigneeName || task.assigneeId || '待认领'}
+                        valueClassName="font-medium text-cyan-700 dark:text-cyan-200"
+                      />
+                      <TaskField label="创建时间" value={formatDateTime(task.createdTime)} />
+                      <TaskField label="截止时间" value={formatDateTime(task.dueDate)} />
+                    </div>
                   </div>
 
                   {!canAct && !viewOnly && task.status === TaskStatus.PENDING ? (
-                    <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                    <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
                       您当前没有处理权限。当前待办归属：{task.assigneeRole || '指定人员'}。
                     </div>
                   ) : null}
                 </TaskModalPanel>
 
                 {task.totalSteps && task.totalSteps > 0 ? (
-                  <TaskModalPanel
-                    title="流程进度"
-                    description="展示当前流程推进位置以及各步骤的处理人、状态与会签信息。"
-                  >
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 dark:text-slate-400">进度</span>
-                      <span className="font-medium text-cyan-700 dark:text-cyan-200">
-                        {task.currentStepIndex || '-'} / {task.totalSteps} · {progressRate}%
-                      </span>
-                    </div>
-                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-                      <div
-                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 to-teal-500"
-                        style={{ width: `${progressRate}%` }}
-                      />
-                    </div>
-                    {task.stepsDetail && task.stepsDetail.length > 0 ? (
-                      <div className="mt-4 flex items-start gap-0 overflow-x-auto pb-1">
-                        {task.stepsDetail.map((step, index) =>
-                          renderStepNode(step, index, task.stepsDetail?.length || 0),
+                  <TaskModalPanel title="流程进度">
+                    <div className="grid gap-4 lg:grid-cols-[220px_minmax(0,1fr)]">
+                      <div className="space-y-4">
+                        <TaskField
+                          label="当前进度"
+                          value={`${task.currentStepIndex || '-'} / ${task.totalSteps}`}
+                          valueClassName="font-medium"
+                        />
+                        <TaskField label="当前节点" value={task.nodeName || task.currentNodeName || '-'} />
+                        <TaskField label="下一节点" value={task.nextNodeName || '-'} />
+                      </div>
+
+                      <div>
+                        <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
+                          <span>完成度</span>
+                          <span>{progressRate}%</span>
+                        </div>
+                        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                          <div
+                            className="h-full rounded-full bg-cyan-600 dark:bg-cyan-400"
+                            style={{ width: `${progressRate}%` }}
+                          />
+                        </div>
+                        {task.stepsDetail && task.stepsDetail.length > 0 ? (
+                          <div className="mt-4 flex items-start gap-0 overflow-x-auto pb-1">
+                            {task.stepsDetail.map((step, index) =>
+                              renderStepNode(step, index, task.stepsDetail?.length || 0),
+                            )}
+                          </div>
+                        ) : (
+                          <div className="mt-4 flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                            {task.previousNodeName ? (
+                              <span className="truncate max-w-[40%]">
+                                {task.previousOperatorName || task.previousNodeName}
+                              </span>
+                            ) : null}
+                            <ChevronRight size={12} />
+                            <span className="truncate font-medium text-slate-900 dark:text-slate-100">
+                              {task.nodeName || task.currentNodeName || '当前'}
+                            </span>
+                            {task.nextNodeName ? (
+                              <>
+                                <ChevronRight size={12} />
+                                <span className="truncate max-w-[30%]">{task.nextNodeName}</span>
+                              </>
+                            ) : null}
+                          </div>
                         )}
                       </div>
-                    ) : (
-                      <div className="mt-4 flex items-center gap-1 text-[10px] text-slate-400 dark:text-slate-500">
-                        {task.previousNodeName ? (
-                          <span className="truncate max-w-[40%]">
-                            {task.previousOperatorName || task.previousNodeName}
-                          </span>
-                        ) : null}
-                        <ChevronRight size={10} />
-                        <span className="truncate font-medium text-cyan-700 dark:text-cyan-200">
-                          {task.nodeName || task.currentNodeName || '当前'}
-                        </span>
-                        {task.nextNodeName ? (
-                          <>
-                            <ChevronRight size={10} />
-                            <span className="truncate max-w-[30%]">{task.nextNodeName}</span>
-                          </>
-                        ) : null}
-                      </div>
-                    )}
+                    </div>
                   </TaskModalPanel>
                 ) : null}
 
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.5fr)_360px]">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
                   <div className="space-y-4">
                     {task.formId && !currentFormDef ? (
-                      <TaskModalPanel
-                        title="表单定义缺失"
-                        description="未加载到该任务绑定的表单定义，当前已回退为原始业务字段展示。"
-                      >
-                        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
-                          建议后续补齐表单定义，以获得统一字段布局和编辑体验。
+                      <TaskModalPanel title="表单定义缺失">
+                        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/20 dark:text-amber-200">
+                          未加载到表单定义，当前显示原始业务字段。
                         </div>
                       </TaskModalPanel>
                     ) : null}
 
                     {currentFormDef && task.formData ? (
                       <TaskModalPanel
-                        title="动态表单"
+                        title="表单内容"
                         description={
                           canAct && !viewOnly && task.allowEdit
                             ? '当前字段允许编辑，保存审批操作时会一并提交变更。'
@@ -980,31 +948,20 @@ export const TaskHandleModal = ({
                         />
                       </TaskModalPanel>
                     ) : visibleBusinessEntries.length > 0 ? (
-                      <TaskModalPanel
-                        title="业务数据"
-                        description="直接展示表单原始字段，便于在没有动态表单定义时继续核对业务内容。"
-                      >
-                        <div className="grid gap-3 sm:grid-cols-2">
+                      <TaskModalPanel title="业务数据">
+                        <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
                           {visibleBusinessEntries.map(([key, value]) => {
                             const formData = task.formData as Record<string, unknown>;
                             const label = getWorkflowFieldLabel(key);
                             const displayValue = formatWorkflowFieldValue(key, value, formData);
 
                             return (
-                              <div
+                              <TaskField
                                 key={key}
-                                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
-                              >
-                                <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                                  {label}
-                                </div>
-                                <div
-                                  className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100"
-                                  title={String(displayValue)}
-                                >
-                                  {displayValue}
-                                </div>
-                              </div>
+                                label={label}
+                                value={displayValue}
+                                valueClassName="font-medium"
+                              />
                             );
                           })}
                         </div>
@@ -1012,213 +969,182 @@ export const TaskHandleModal = ({
                     ) : null}
 
                     {attachmentFiles.length > 0 ? (
-                      <TaskModalPanel
-                        title="附件"
-                        description="支持在线预览和下载，附件信息会跟随表单数据一起展示。"
-                      >
-                        <div className="space-y-2">
+                      <TaskModalPanel title="附件">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
                           {attachmentFiles.map((file, index) => (
                             <div
                               key={`${file.url}-${index}`}
-                              className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
+                              className="flex flex-col gap-3 py-3 first:pt-0 last:pb-0 sm:flex-row sm:items-center sm:justify-between"
                             >
-                              <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
-                                {file.isImg ? <ImageIcon size={16} /> : <FileText size={16} />}
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                                  {file.name}
+                              <div className="min-w-0 flex items-center gap-3">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                                  <FileText size={15} />
                                 </div>
-                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                  {file.isImg ? '图片附件' : '文件附件'}
+                                <div className="min-w-0">
+                                  <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                                    {file.name}
+                                  </div>
+                                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                                    {file.isImg ? '图片附件' : '文件附件'}
+                                  </div>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-1">
+                              <div className="flex items-center gap-2">
                                 <a
                                   href={file.url}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-cyan-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-cyan-200"
-                                  title={file.isImg ? '预览图片' : '查看文件'}
+                                  className="btn btn-secondary btn-sm"
                                 >
                                   <ExternalLink size={14} />
+                                  查看
                                 </a>
                                 <a
                                   href={file.url}
                                   download={file.name}
-                                  className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-emerald-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-emerald-200"
-                                  title="下载"
+                                  className="btn btn-secondary btn-sm"
                                 >
                                   <Download size={14} />
+                                  下载
                                 </a>
                               </div>
                             </div>
                           ))}
                         </div>
-
-                        {attachmentFiles.some((file) => file.isImg) ? (
-                          <div className="mt-4 flex flex-wrap gap-3">
-                            {attachmentFiles
-                              .filter((file) => file.isImg)
-                              .map((file, index) => (
-                                <a
-                                  key={`${file.url}-preview-${index}`}
-                                  href={file.url}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="block h-20 w-20 overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 transition hover:border-cyan-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
-                                  title={file.name}
-                                >
-                                  <img
-                                    src={file.url}
-                                    alt={file.name}
-                                    className="h-full w-full object-cover"
-                                    onError={(event) => {
-                                      (event.target as HTMLImageElement).style.display = 'none';
-                                    }}
-                                  />
-                                </a>
-                              ))}
-                          </div>
-                        ) : null}
                       </TaskModalPanel>
                     ) : null}
                   </div>
 
-                  <div className="space-y-4">
+                  <div className="space-y-4 xl:border-l xl:border-slate-200 xl:pl-5 dark:xl:border-slate-800">
                     {task.logs && task.logs.length > 0 ? (
-                      <TaskModalPanel
-                        title="流转记录"
-                        description="展示该任务在当前前端内累积的处理日志。"
-                      >
-                        <div className="space-y-2">
+                      <TaskModalPanel title="流转记录">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
                           {task.logs.map((log, index) => (
-                            <div
-                              key={`${log.time}-${index}`}
-                              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70"
-                            >
-                              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                {log.operator} · {log.action}
+                            <div key={`${log.time}-${index}`} className="py-3 first:pt-0 last:pb-0">
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                  {log.operator}
+                                  <span className="font-normal text-slate-500 dark:text-slate-400">
+                                    {' '}
+                                    · {log.action}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-400 dark:text-slate-500">
+                                  {log.time}
+                                </div>
                               </div>
                               {log.comment ? (
                                 <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                                   {log.comment}
                                 </div>
                               ) : null}
-                              <div className="mt-2 text-[11px] text-slate-400 dark:text-slate-500">
-                                {log.time}
-                              </div>
                             </div>
                           ))}
                         </div>
                       </TaskModalPanel>
                     ) : null}
-
-                    {canAct && !viewOnly ? (
-                      <TaskModalPanel
-                        title="审批操作"
-                        description="填写审批意见后执行同意、拒绝、转办、驳回或加减签等动作。"
-                      >
-                        <div className="space-y-4">
-                          <Textarea
-                            rows={4}
-                            placeholder="请输入审批意见..."
-                            value={comment}
-                            onChange={(event) => setComment(event.target.value)}
-                          />
-
-                          {hasBtn('ADD_SIGN') ? (
-                            <div className="grid gap-2 sm:grid-cols-2">
-                              <Button
-                                variant="soft"
-                                onClick={() => {
-                                  setSignatureMode('add');
-                                  setSignatureModalOpen(true);
-                                }}
-                                disabled={submitting}
-                              >
-                                <UserPlus size={14} />
-                                加签
-                              </Button>
-                              <Button
-                                variant="outline"
-                                onClick={() => {
-                                  setSignatureMode('reduce');
-                                  setSignatureModalOpen(true);
-                                }}
-                                disabled={submitting}
-                              >
-                                <UserMinus size={14} />
-                                减签
-                              </Button>
-                            </div>
-                          ) : null}
-
-                          <div className="flex flex-wrap justify-end gap-2">
-                            {hasBtn('RETURN') ? (
-                              <Button variant="outline" onClick={() => setRejectMode(true)} disabled={submitting}>
-                                <CornerUpLeft size={14} />
-                                驳回
-                              </Button>
-                            ) : null}
-                            {hasBtn('DELEGATE') ? (
-                              <Button variant="outline" onClick={() => setDelegationMode(true)} disabled={submitting}>
-                                转办
-                              </Button>
-                            ) : null}
-                            {hasBtn('REJECT') ? (
-                              <Button
-                                variant="destructive"
-                                onClick={() => setConfirmAction('REJECTED')}
-                                disabled={submitting}
-                              >
-                                拒绝
-                              </Button>
-                            ) : null}
-                            {hasBtn('APPROVE') ? (
-                              <Button onClick={() => setConfirmAction('APPROVED')} disabled={submitting}>
-                                {submitting ? '处理中...' : '同意'}
-                              </Button>
-                            ) : null}
-                          </div>
-
-                          {confirmAction ? (
-                            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
-                              <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-200">
-                                <AlertTriangle size={16} className="mt-0.5 shrink-0" />
-                                <div className="flex-1">
-                                  确认{confirmAction === 'APPROVED' ? '同意' : '拒绝'}此任务？
-                                </div>
-                              </div>
-                              <div className="mt-3 flex flex-wrap justify-end gap-2">
-                                <Button variant="ghost" size="sm" onClick={() => setConfirmAction(null)}>
-                                  取消
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant={confirmAction === 'APPROVED' ? 'default' : 'destructive'}
-                                  onClick={() => void handleAction(confirmAction)}
-                                  disabled={submitting}
-                                >
-                                  {submitting ? '处理中...' : '确认'}
-                                </Button>
-                              </div>
-                            </div>
-                          ) : null}
-                        </div>
-                      </TaskModalPanel>
-                    ) : viewOnly ? (
-                      <TaskModalPanel
-                        title="只读视图"
-                        description="当前页面来自“我的申请”，仅保留详情查看与流程轨迹能力。"
-                      >
-                        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-400">
-                          如需继续审批，请返回任务中心打开对应待办。
-                        </div>
-                      </TaskModalPanel>
-                    ) : null}
                   </div>
                 </div>
+
+                {canAct && !viewOnly ? (
+                  <TaskModalPanel title="审批操作">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
+                      <Textarea
+                        rows={5}
+                        placeholder="请输入审批意见..."
+                        value={comment}
+                        onChange={(event) => setComment(event.target.value)}
+                      />
+
+                      <div className="space-y-3 xl:border-l xl:border-slate-200 xl:pl-5 dark:xl:border-slate-800">
+                        {hasBtn('ADD_SIGN') ? (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <Button
+                              variant="soft"
+                              onClick={() => {
+                                setSignatureMode('add');
+                                setSignatureModalOpen(true);
+                              }}
+                              disabled={submitting}
+                            >
+                              <UserPlus size={14} />
+                              加签
+                            </Button>
+                            <Button
+                              variant="outline"
+                              onClick={() => {
+                                setSignatureMode('reduce');
+                                setSignatureModalOpen(true);
+                              }}
+                              disabled={submitting}
+                            >
+                              <UserMinus size={14} />
+                              减签
+                            </Button>
+                          </div>
+                        ) : null}
+
+                        {confirmAction ? (
+                          <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900 dark:bg-amber-950/20">
+                            <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-200">
+                              <AlertTriangle size={16} className="mt-0.5 shrink-0" />
+                              <div className="flex-1">
+                                确认{confirmAction === 'APPROVED' ? '同意' : '拒绝'}此任务？
+                              </div>
+                            </div>
+                            <div className="mt-3 flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => setConfirmAction(null)}>
+                                取消
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant={confirmAction === 'APPROVED' ? 'default' : 'destructive'}
+                                onClick={() => void handleAction(confirmAction)}
+                                disabled={submitting}
+                              >
+                                {submitting ? '处理中...' : '确认'}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        <div className="grid gap-2 sm:grid-cols-2">
+                          {hasBtn('RETURN') ? (
+                            <Button variant="outline" onClick={() => setRejectMode(true)} disabled={submitting}>
+                              <CornerUpLeft size={14} />
+                              驳回
+                            </Button>
+                          ) : null}
+                          {hasBtn('DELEGATE') ? (
+                            <Button variant="outline" onClick={() => setDelegationMode(true)} disabled={submitting}>
+                              转办
+                            </Button>
+                          ) : null}
+                          {hasBtn('REJECT') ? (
+                            <Button
+                              variant="destructive"
+                              onClick={() => setConfirmAction('REJECTED')}
+                              disabled={submitting}
+                            >
+                              拒绝
+                            </Button>
+                          ) : null}
+                          {hasBtn('APPROVE') ? (
+                            <Button onClick={() => setConfirmAction('APPROVED')} disabled={submitting}>
+                              {submitting ? '处理中...' : '同意'}
+                            </Button>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+                  </TaskModalPanel>
+                ) : viewOnly ? (
+                  <TaskModalPanel title="说明">
+                    <div className="text-sm leading-6 text-slate-500 dark:text-slate-400">
+                      当前页面来自“我的申请”，仅支持查看详情和流程轨迹。
+                    </div>
+                  </TaskModalPanel>
+                ) : null}
               </div>
             )}
           </div>

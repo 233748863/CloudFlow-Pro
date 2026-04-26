@@ -327,8 +327,8 @@ const HrResignationPage = React.lazy(() =>
 );
 
 const Loading = () => (
-  <div className="flex items-center justify-center h-full w-full min-h-[400px]">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-500"></div>
+  <div className="flex h-full min-h-[400px] w-full items-center justify-center">
+    <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-cyan-600 dark:border-slate-800 dark:border-t-cyan-400"></div>
   </div>
 );
 
@@ -343,23 +343,23 @@ const RouteStatusPage = ({
   title,
   description,
 }: RouteStatusPageProps) => (
-  <div className="flex min-h-[60vh] items-center justify-center px-6 py-12">
-    <div className="w-full max-w-2xl overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.25)]">
-      <div className="bg-[radial-gradient(circle_at_top_left,_rgba(244,114,182,0.16),_transparent_42%),linear-gradient(135deg,_rgba(248,250,252,0.98),_rgba(255,255,255,0.92))] px-8 py-10">
-        <div className="text-sm font-semibold uppercase tracking-[0.35em] text-pink-500">
+  <div className="flex min-h-[60vh] items-center justify-center bg-slate-50/80 px-6 py-12 dark:bg-slate-950/70">
+    <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.2)] dark:border-slate-800 dark:bg-slate-950">
+      <div className="bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.12),_transparent_40%),linear-gradient(135deg,_rgba(248,250,252,0.98),_rgba(255,255,255,0.92))] px-8 py-10 dark:bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_38%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))]">
+        <div className="text-sm font-semibold uppercase tracking-[0.35em] text-cyan-600 dark:text-cyan-300">
           {code}
         </div>
-        <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900">
+        <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
           {title}
         </h1>
-        <p className="mt-4 max-w-xl text-base leading-7 text-slate-600">
+        <p className="mt-4 max-w-xl text-base leading-7 text-slate-600 dark:text-slate-400">
           {description}
         </p>
         <div className="mt-8 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={() => window.history.back()}
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
           >
             返回上一页
           </button>
@@ -368,7 +368,7 @@ const RouteStatusPage = ({
             onClick={() => {
               window.location.href = "/";
             }}
-            className="rounded-2xl bg-pink-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-pink-600"
+            className="rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(13,148,136,0.22)] transition hover:from-cyan-500 hover:to-teal-500 dark:shadow-[0_12px_24px_rgba(6,182,212,0.18)]"
           >
             返回首页
           </button>
@@ -417,25 +417,99 @@ const RouteNotFoundPage = () => (
   />
 );
 
+const ModernRouteStatusPage = ({
+  code,
+  title,
+  description,
+}: RouteStatusPageProps) => (
+  <div className="flex min-h-[60vh] items-center justify-center bg-slate-50/80 px-6 py-12 dark:bg-slate-950/70">
+    <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_24px_80px_-32px_rgba(15,23,42,0.2)] dark:border-slate-800 dark:bg-slate-950">
+      <div className="bg-[radial-gradient(circle_at_top_left,_rgba(20,184,166,0.12),_transparent_40%),linear-gradient(135deg,_rgba(248,250,252,0.98),_rgba(255,255,255,0.92))] px-8 py-10 dark:bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_38%),linear-gradient(135deg,_rgba(2,6,23,0.96),_rgba(15,23,42,0.92))]">
+        <div className="text-sm font-semibold uppercase tracking-[0.35em] text-cyan-600 dark:text-cyan-300">
+          {code}
+        </div>
+        <h1 className="mt-4 text-3xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+          {title}
+        </h1>
+        <p className="mt-4 max-w-xl text-base leading-7 text-slate-600 dark:text-slate-400">
+          {description}
+        </p>
+        <div className="mt-8 flex flex-wrap gap-3">
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+          >
+            返回上一页
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = "/";
+            }}
+            className="rounded-2xl bg-gradient-to-r from-cyan-600 to-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-[0_12px_24px_rgba(13,148,136,0.22)] transition hover:from-cyan-500 hover:to-teal-500 dark:shadow-[0_12px_24px_rgba(6,182,212,0.18)]"
+          >
+            返回首页
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const ModernRouteErrorPage = () => {
+  const error = useRouteError();
+
+  if (isRouteErrorResponse(error)) {
+    return (
+      <ModernRouteStatusPage
+        code={String(error.status)}
+        title={error.status === 404 ? "页面不存在" : "页面加载失败"}
+        description={
+          error.status === 404
+            ? "当前地址没有对应页面，请返回首页或使用最新菜单重新进入。"
+            : error.statusText || "路由资源加载失败，请稍后重试。"
+        }
+      />
+    );
+  }
+
+  return (
+    <ModernRouteStatusPage
+      code="500"
+      title="页面加载失败"
+      description={error instanceof Error ? error.message : "发生了未知错误，请稍后重试。"}
+    />
+  );
+};
+
+const ModernRouteNotFoundPage = () => (
+  <ModernRouteStatusPage
+    code="404"
+    title="页面不存在"
+    description="这个地址在当前版本中没有对应页面，请返回首页后重新访问。"
+  />
+);
+
 // --- Desktop Routes (Unchanged) ---
 const desktopRoutes = [
   {
     path: "/login",
     element: <Login />,
-    errorElement: <RouteErrorPage />,
+    errorElement: <ModernRouteErrorPage />,
   },
   {
     path: "/register",
     element: <Register />,
-    errorElement: <RouteErrorPage />,
+    errorElement: <ModernRouteErrorPage />,
   },
   {
     element: <ProtectedRoute />,
-    errorElement: <RouteErrorPage />,
+    errorElement: <ModernRouteErrorPage />,
     children: [
       {
         element: <MainLayout />,
-        errorElement: <RouteErrorPage />,
+        errorElement: <ModernRouteErrorPage />,
         children: [
           {
             path: "/",
@@ -990,7 +1064,7 @@ const desktopRoutes = [
           // 统一兜底，避免 React Router 默认 404 错误页直接暴露给用户。
           {
             path: "*",
-            element: <RouteNotFoundPage />,
+            element: <ModernRouteNotFoundPage />,
           },
         ],
       },
@@ -1003,15 +1077,15 @@ const mobileRoutes = [
   {
     path: "/login",
     element: <Login />, // Can be replaced with MobileLogin if needed
-    errorElement: <RouteErrorPage />,
+    errorElement: <ModernRouteErrorPage />,
   },
   {
     element: <ProtectedRoute />,
-    errorElement: <RouteErrorPage />,
+    errorElement: <ModernRouteErrorPage />,
     children: [
       {
         element: <MobileLayout />,
-        errorElement: <RouteErrorPage />,
+        errorElement: <ModernRouteErrorPage />,
         children: [
           {
             path: "/",

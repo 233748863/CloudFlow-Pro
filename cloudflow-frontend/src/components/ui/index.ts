@@ -77,6 +77,8 @@ export { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '.
  * 包含：Tabs, TabsList, TabsTrigger, TabsContent
  */
 export { Tabs, TabsList, TabsTrigger, TabsContent } from './tabs'
+export { SegmentedControl, SegmentedControlItem } from './segmented-control'
+export { SideNavItem } from './side-nav'
 
 // ============================================
 // 数据展示组件
@@ -97,6 +99,7 @@ export * from './ConflictResolutionDialog'
 export * from './date-picker'
 export * from './EmptyState'
 export * from './ErrorBoundary'
+export { FilterChip } from './filter-chip'
 export { LoadingSpinner } from '../common/LoadingSpinner'
 export { Pagination } from '../common/Pagination'
 export { SearchInput } from '../common/SearchInput'

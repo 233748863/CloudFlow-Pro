@@ -509,22 +509,12 @@ const AssetList: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          固定资产管理
-        </h1>
-      </div>
-
       <TablePageLayout
         className="gap-3"
         actions={(
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-medium text-slate-900 dark:text-slate-100">共 {stats?.total ?? total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">闲置 {stats?.statusCount.idle ?? 0}</span>
-              <span className="text-slate-500 dark:text-slate-400">在用 {stats?.statusCount.inUse ?? 0}</span>
-              <span className="text-slate-500 dark:text-slate-400">维修 {stats?.statusCount.repair ?? 0}</span>
-              <span className="text-slate-500 dark:text-slate-400">报废 {stats?.statusCount.scrapped ?? 0}</span>
               <span className="text-slate-500 dark:text-slate-400">总价值 {formatAmount(stats?.totalValue ?? 0)}</span>
             </div>
 
@@ -616,22 +606,6 @@ const AssetList: React.FC = () => {
         )}
         table={(
           <div className="flex min-h-[40rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">资产列表</div>
-                  {hasActiveFilters ? (
-                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      {currentStatusLabel} / {currentCategoryLabel}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  共 {total} 条
-                </div>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <Table className="min-w-[980px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
@@ -640,7 +614,7 @@ const AssetList: React.FC = () => {
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">资产信息</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">价格 / 位置</TableHead>
-                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
+                    <TableActionHead className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
 
@@ -693,14 +667,14 @@ const AssetList: React.FC = () => {
                                 label: '编辑',
                                 icon: <Edit size={14} />,
                                 onClick: () => handleEdit(asset),
-                                tone: 'primary',
+                                tone: 'neutral',
                                 className: 'rounded-lg',
                               },
                               {
                                 label: '领用',
                                 icon: <UserCheck size={14} />,
                                 onClick: () => openBorrowDialog(asset),
-                                tone: 'info',
+                                tone: 'neutral',
                                 hidden: asset.status !== '1',
                                 className: 'rounded-lg',
                               },
@@ -708,7 +682,7 @@ const AssetList: React.FC = () => {
                                 label: '归还',
                                 icon: <RotateCcw size={14} />,
                                 onClick: () => openReturnConfirm(asset),
-                                tone: 'success',
+                                tone: 'neutral',
                                 hidden: asset.status !== '2',
                                 className: 'rounded-lg',
                               },

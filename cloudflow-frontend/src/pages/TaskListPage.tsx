@@ -1,9 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Calendar,
-  CheckCircle2,
-  Clock3,
-  ClipboardCheck,
   Kanban,
   LayoutList,
   RefreshCw,
@@ -16,12 +12,17 @@ import {
   Button,
   DatePicker,
   Input,
+  LoadingSpinner,
+  SegmentedControl,
+  SegmentedControlItem,
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui';
+import { Pagination } from '@/components/common/Pagination';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import { useAuth } from '../context/AuthContext';
 import { usePolling } from '../hooks/usePolling';
@@ -44,18 +45,6 @@ import {
   mapTaskToUnified,
   mapWorkTaskToUnified,
 } from '../utils/mappers';
-import {
-  WorkspaceBackdrop,
-  WorkspaceEmptyPanel,
-  WorkspacePageContent,
-  WorkspaceStatusPage,
-} from '@/components/workspace/WorkspacePrimitives';
-import {
-  WorkspacePaginationBar,
-  WorkspaceSectionCard,
-  workspaceGlassSurfaceClassName,
-} from '@/components/workspace/WorkspacePanels';
-import { WorkspaceHeroMetricsSection } from '@/components/workspace/WorkspaceHeroMetrics';
 
 const PAGE_SIZE = 12;
 
@@ -149,37 +138,14 @@ const TaskFilterBadge = ({ children }: { children: React.ReactNode }) => (
   </span>
 );
 
-const TaskFilterTab = ({
-  active,
-  children,
-  onClick,
-}: {
-  active: boolean;
-  children: React.ReactNode;
-  onClick: () => void;
-}) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'rounded-xl px-3.5 py-2 text-sm font-medium transition',
-      active
-        ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-950 dark:text-cyan-200'
-        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-    )}
-  >
-    {children}
-  </button>
-);
-
-const TaskWorkCard = ({
+const TaskCompactWorkCard = ({
   task,
   onOpen,
 }: {
   task: UnifiedTask;
   onOpen: (task: UnifiedTask) => void;
 }) => {
-  const dueLabel = task.dueDate ? new Date(task.dueDate).toLocaleDateString('zh-CN') : null;
+  const dueLabel = task.dueDate ? new Date(task.dueDate).toLocaleDateString('zh-CN') : '无截止时间';
   const createdLabel = task.createdTime
     ? new Date(task.createdTime).toLocaleDateString('zh-CN')
     : '暂无';
@@ -191,68 +157,49 @@ const TaskWorkCard = ({
       type="button"
       onClick={() => onOpen(task)}
       className={cn(
-        'group w-full rounded-[24px] border p-5 text-left shadow-sm transition hover:-translate-y-0.5',
-        'bg-white hover:border-cyan-200 hover:bg-cyan-50/30 dark:bg-slate-950/88 dark:hover:bg-slate-900/90',
+        'w-full px-4 py-4 text-left transition-colors hover:bg-slate-50',
         isOverdue
-          ? 'border-rose-200 dark:border-rose-900/40'
-          : 'border-slate-200 dark:border-slate-800',
+          ? 'text-rose-600 dark:text-rose-300'
+          : 'text-slate-500 dark:text-slate-400',
+        'dark:hover:bg-slate-900/40',
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100">
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.7fr)_160px_120px] lg:items-center">
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium leading-6 text-slate-900 dark:text-slate-100">
             {task.title}
           </div>
-          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-            协作待办会在看板中支持拖拽状态流转。
-          </div>
-        </div>
-        <span
-          className={cn(
-            'rounded-full px-2.5 py-1 text-[11px] font-medium',
-            isDone
-              ? 'border border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200'
-              : task.status === 'DOING'
-                ? 'border border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200'
-                : 'border border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
-          )}
-        >
-          {task.statusLabel}
-        </span>
-      </div>
-
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            当前负责人
-          </div>
-          <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {task.assigneeName || '待认领'}
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+            <span>负责人 {task.assigneeName || '待认领'}</span>
+            <span>创建 {createdLabel}</span>
+            <span className={cn(isOverdue && 'text-rose-600 dark:text-rose-300')}>
+              截止 {dueLabel}
+            </span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-          <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            创建时间
-          </div>
-          <div className="mt-1.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {createdLabel}
+        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800">
+          <div>状态</div>
+          <div
+            className={cn(
+              'text-sm font-medium',
+              isDone
+                ? 'text-emerald-700 dark:text-emerald-200'
+                : task.status === 'DOING'
+                  ? 'text-amber-700 dark:text-amber-200'
+                  : 'text-cyan-700 dark:text-cyan-200',
+            )}
+          >
+            {task.statusLabel}
           </div>
         </div>
-      </div>
 
-      <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-        <TaskFilterBadge>
-          {task.priority === 2 ? '高优先级' : task.priority === 1 ? '中优先级' : '低优先级'}
-        </TaskFilterBadge>
-        {dueLabel ? (
-          <TaskFilterBadge>
-            截止 {dueLabel}
-            {isOverdue ? ' · 已超期' : ''}
-          </TaskFilterBadge>
-        ) : (
-          <TaskFilterBadge>无截止时间</TaskFilterBadge>
-        )}
+        <div className="space-y-1 text-xs text-slate-500 dark:text-slate-400 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800">
+          <div>优先级</div>
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {task.priority === 2 ? '高' : task.priority === 1 ? '中' : '低'}
+          </div>
+        </div>
       </div>
     </button>
   );
@@ -611,7 +558,6 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
   };
 
   const processTasks = rawTasks;
-  const workTasks = tasks.filter((task) => task.type === 'WORK');
   const filteredUnifiedTasks = tasks.filter((task) => {
     if (filterType === 'process') return task.type === 'PROCESS';
     if (filterType === 'work') return task.type === 'WORK';
@@ -637,27 +583,6 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
     Boolean(todoStartTimeFrom) ||
     Boolean(todoStartTimeTo) ||
     Boolean(todoStartUserName);
-  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const pageNumbers = useMemo(() => {
-    const start = Math.max(1, pageNum - 2);
-    const end = Math.min(totalPages, start + 4);
-    const normalizedStart = Math.max(1, end - 4);
-    return Array.from(
-      { length: end - normalizedStart + 1 },
-      (_, index) => normalizedStart + index,
-    );
-  }, [pageNum, totalPages]);
-
-  const todayLabel = new Intl.DateTimeFormat('zh-CN', {
-    month: 'long',
-    day: 'numeric',
-    weekday: 'short',
-  }).format(new Date());
-  const timeLabel = new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  const headerTitle = type === 'pending' ? '任务中心' : '我的申请';
   const currentViewLabel = type === 'pending' ? (viewMode === 'list' ? '列表视图' : '看板视图') : '申请列表';
   const currentTypeLabel =
     filterType === 'process' ? '流程审批' : filterType === 'work' ? '协作待办' : '全部任务';
@@ -675,97 +600,6 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
     todoProcessDefOptions.find((item) => item.key === todoProcessDefKey)?.name || '全部流程';
   const currentApplicationProcessLabel =
     processDefOptions.find((item) => item.key === processDefKey)?.name || '全部流程';
-  const runningApplicationCount = processTasks.filter(
-    (task) => task.backendStatus === 'RUNNING' || task.status === TaskStatus.PENDING,
-  ).length;
-  const completedApplicationCount = processTasks.filter((task) =>
-    [
-      TaskStatus.APPROVED,
-      TaskStatus.REJECTED,
-      TaskStatus.RETURNED,
-      TaskStatus.TIMED_OUT,
-    ].includes(task.status),
-  ).length;
-  const dueSoonCount = filteredUnifiedTasks.filter((task) => {
-    if (!task.dueDate) return false;
-    const distance = new Date(task.dueDate).getTime() - Date.now();
-    return distance > 0 && distance <= 48 * 60 * 60 * 1000;
-  }).length;
-  const heroDescription =
-    type === 'pending'
-      ? `当前视图共展示 ${visibleTotalCount} 条任务，其中流程审批 ${visibleProcessTasks.length} 条、协作待办 ${visibleWorkTasks.length} 条。`
-      : `按状态、流程、关键词和时间范围筛选我的申请，当前页展示 ${visibleProcessTasks.length} 条，共 ${total} 条。`;
-
-  const heroMetrics =
-    type === 'pending'
-      ? [
-          {
-            label: '当前视图',
-            value: `${visibleTotalCount} 条`,
-            hint: currentTypeLabel,
-            icon: <ClipboardCheck size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-          },
-          {
-            label: '流程审批',
-            value: `${processTasks.length} 条`,
-            hint: currentPendingProcessLabel,
-            icon: <LayoutList size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-          },
-          {
-            label: '协作待办',
-            value: `${workTasks.length} 条`,
-            hint: dueSoonCount > 0 ? `${dueSoonCount} 条 48 小时内到期` : '暂无临近到期任务',
-            icon: <Kanban size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-          },
-          {
-            label: '当前模式',
-            value: currentViewLabel,
-            hint: '已接入统一任务工作台骨架',
-            icon: <RefreshCw size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200',
-          },
-        ]
-      : [
-          {
-            label: '申请总量',
-            value: `${total} 条`,
-            hint: currentStatusLabel,
-            icon: <ClipboardCheck size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-cyan-100 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-          },
-          {
-            label: '当前页',
-            value: `${visibleProcessTasks.length} 条`,
-            hint: `第 ${pageNum} / ${totalPages} 页`,
-            icon: <LayoutList size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-amber-100 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-          },
-          {
-            label: '进行中',
-            value: `${runningApplicationCount} 条`,
-            hint: `${completedApplicationCount} 条已结束`,
-            icon: <Clock3 size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-emerald-100 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-          },
-          {
-            label: '流程筛选',
-            value: currentApplicationProcessLabel,
-            hint: priorityFilter ? `优先级 ${priorityFilter}` : '未限制优先级',
-            icon: <CheckCircle2 size={16} />,
-            iconWrapClassName:
-              'stat-icon border border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-200',
-          },
-        ];
 
   const activeFilterBadges = [
     type === 'pending' && todoKeyword ? `关键词：${todoKeyword}` : null,
@@ -782,6 +616,8 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
       ? `时间：${startTimeFrom || '开始'} - ${startTimeTo || '结束'}`
       : null,
   ].filter((item): item is string => Boolean(item));
+  const pageTitle = type === 'pending' ? '审批待办' : '我的申请';
+  const resultTitle = type === 'pending' ? '当前待办内容' : '当前申请记录';
 
   if (!user) {
     return null;
@@ -789,418 +625,357 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
   if (loading) {
     return (
-      <WorkspaceStatusPage
-        icon={<LayoutList size={28} />}
-        title={`正在加载${headerTitle}...`}
-        description="正在同步当前用户可见的任务与申请记录，请稍候。"
-        actions={
-          <Button variant="outline" className="rounded-2xl" onClick={handleRefresh}>
-            <RefreshCw size={16} />
-            刷新状态
-          </Button>
-        }
-        panelClassName="py-14"
-      />
+      <div className="px-4 py-4 md:px-6">
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <LoadingSpinner size="lg" className="mx-auto mb-3" />
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            正在加载{pageTitle}
+          </div>
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            正在同步当前用户可见的任务与申请记录。
+          </div>
+        </div>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <WorkspaceStatusPage
-        icon={<LayoutList size={28} />}
-        title={`${headerTitle}加载失败`}
-        description={error}
-        actions={<Button onClick={() => void fetchTasks()}>重试加载</Button>}
-        panelClassName="py-14"
-      />
+      <div className="px-4 py-4 md:px-6">
+        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {pageTitle}加载失败
+          </div>
+          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
+            {error}
+          </div>
+          <div className="mt-4">
+            <Button onClick={() => void fetchTasks()}>
+              重试加载
+            </Button>
+          </div>
+        </div>
+      </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
+    <div className="px-4 py-4 md:px-6">
+      <TablePageLayout
+        filters={(
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <SegmentedControl className="min-h-10 flex-wrap">
+                  {(type === 'pending' ? filterTypeTabs : statusTabs).map((tab) => (
+                    <SegmentedControlItem
+                      key={tab.key}
+                      size="sm"
+                      active={type === 'pending' ? filterType === tab.key : statusFilter === tab.key}
+                      onClick={() => {
+                        if (type === 'pending') {
+                          setFilterType(tab.key as FilterType);
+                        } else {
+                          handleStatusChange(tab.key as ApplicationStatus);
+                        }
+                      }}
+                    >
+                      {tab.label}
+                    </SegmentedControlItem>
+                  ))}
+                </SegmentedControl>
 
-      <WorkspacePageContent>
-        <WorkspaceHeroMetricsSection
-          badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              <TaskFilterBadge>
-                <Calendar size={14} className="mr-1 inline" />
-                {todayLabel}
-              </TaskFilterBadge>
-              <TaskFilterBadge>{timeLabel}</TaskFilterBadge>
-              <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge>
-              <TaskFilterBadge>{type === 'pending' ? currentTypeLabel : currentStatusLabel}</TaskFilterBadge>
-            </div>
-          }
-          title={headerTitle}
-          description={heroDescription}
-          actions={
-            <div className="flex flex-wrap gap-2 xl:justify-end">
+                <div className="flex flex-wrap items-center gap-2">
+                  {type === 'pending' ? (
+                    <SegmentedControl className="min-h-10">
+                      <SegmentedControlItem size="sm" active={viewMode === 'list'} onClick={() => setViewMode('list')}>
+                        <LayoutList size={16} />
+                        列表
+                      </SegmentedControlItem>
+                      <SegmentedControlItem size="sm" active={viewMode === 'board'} onClick={() => setViewMode('board')}>
+                        <Kanban size={16} />
+                        看板
+                      </SegmentedControlItem>
+                    </SegmentedControl>
+                  ) : null}
+                  <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+                    <RefreshCw size={16} className={cn(refreshing && 'animate-spin')} />
+                    刷新
+                  </Button>
+                </div>
+              </div>
+
               {type === 'pending' ? (
-                <div className="inline-flex rounded-2xl border border-slate-200 bg-white p-1 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-                  <TaskFilterTab active={viewMode === 'list'} onClick={() => setViewMode('list')}>
-                    <LayoutList size={16} className="mr-1.5 inline" />
-                    列表
-                  </TaskFilterTab>
-                  <TaskFilterTab active={viewMode === 'board'} onClick={() => setViewMode('board')}>
-                    <Kanban size={16} className="mr-1.5 inline" />
-                    看板
-                  </TaskFilterTab>
-                </div>
-              ) : null}
-              <Button variant="outline" size="lg" onClick={handleRefresh} disabled={refreshing}>
-                <RefreshCw size={16} className={cn(refreshing && 'animate-spin')} />
-                刷新
-              </Button>
-            </div>
-          }
-          metrics={heroMetrics}
-          contentClassName="p-4 sm:p-5"
-        />
-
-        <WorkspaceSectionCard
-          eyebrow={type === 'pending' ? '筛选与分组' : '筛选与分页'}
-          title={type === 'pending' ? '任务筛选' : '申请筛选'}
-          description={
-            type === 'pending'
-              ? '在统一工作台里切换任务类型、流程范围和时间条件，快速聚焦当前待处理内容。'
-              : '按状态、流程、优先级和时间筛选我的申请，保持列表结果与分页同步。'
-          }
-          headerAside={
-            <div className="flex flex-wrap items-center gap-2">
-              <TaskFilterBadge>{type === 'pending' ? `共 ${visibleTotalCount} 条` : `总计 ${total} 条`}</TaskFilterBadge>
-              {activeFilterBadges.length > 0 ? <TaskFilterBadge>{`已启用 ${activeFilterBadges.length} 个条件`}</TaskFilterBadge> : null}
-            </div>
-          }
-          className={workspaceGlassSurfaceClassName}
-          bodyClassName="space-y-4"
-        >
-          {type === 'pending' ? (
-            <>
-              <div className="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
-                {filterTypeTabs.map((tab) => (
-                  <TaskFilterTab
-                    key={tab.key}
-                    active={filterType === tab.key}
-                    onClick={() => setFilterType(tab.key)}
-                  >
-                    {tab.label}
-                  </TaskFilterTab>
-                ))}
-              </div>
-
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.5fr)_minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(0,1.1fr)]">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <Input
-                    type="text"
-                    placeholder="搜索流程标题或编号"
-                    value={todoSearchInput}
-                    onChange={(event) => setTodoSearchInput(event.target.value)}
-                    onKeyDown={handleTodoSearchKeyDown}
-                    className="pl-10"
-                  />
-                </div>
-
-                <Select value={todoProcessDefKey || 'ALL_TYPES'} onValueChange={handleTodoProcessDefKeyChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="全部流程类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
-                    {todoProcessDefOptions.map((option) => (
-                      <SelectItem key={option.key} value={String(option.key)}>
-                        {option.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <div className="relative">
-                  <UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <Input
-                    type="text"
-                    placeholder="申请人姓名"
-                    value={todoStartUserName}
-                    onChange={(event) => setTodoStartUserName(event.target.value)}
-                    className="pl-10"
-                  />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <DatePicker
-                    type="date"
-                    value={todoStartTimeFrom}
-                    onChange={(event) => setTodoStartTimeFrom(event.target.value)}
-                  />
-                  <DatePicker
-                    type="date"
-                    value={todoStartTimeTo}
-                    onChange={(event) => setTodoStartTimeTo(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="soft" onClick={handleTodoSearch}>
-                  <Search size={16} />
-                  应用筛选
-                </Button>
-                {hasTodoActiveFilters ? (
-                  <Button variant="ghost" onClick={handleClearTodoFilters}>
-                    <X size={16} />
-                    清除条件
-                  </Button>
-                ) : null}
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="inline-flex flex-wrap items-center gap-1 rounded-2xl bg-slate-100 p-1 dark:bg-slate-900">
-                {statusTabs.map((tab) => (
-                  <TaskFilterTab
-                    key={tab.key}
-                    active={statusFilter === tab.key}
-                    onClick={() => handleStatusChange(tab.key)}
-                  >
-                    {tab.label}
-                  </TaskFilterTab>
-                ))}
-              </div>
-
-              <div className="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(220px,1fr)_minmax(150px,0.8fr)_minmax(0,1.1fr)]">
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-                  <Input
-                    type="text"
-                    placeholder="搜索流程标题、编号或摘要"
-                    value={searchInput}
-                    onChange={(event) => setSearchInput(event.target.value)}
-                    onKeyDown={handleSearchKeyDown}
-                    className="pl-10"
-                  />
-                </div>
-
-                <Select value={processDefKey || 'ALL_TYPES'} onValueChange={handleProcessDefKeyChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="全部流程类型" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
-                    {processDefOptions.map((option) => (
-                      <SelectItem key={option.key} value={String(option.key)}>
-                        {option.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <Select value={priorityFilter || 'ALL_PRIORITIES'} onValueChange={handlePriorityChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="全部优先级" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL_PRIORITIES">全部优先级</SelectItem>
-                    <SelectItem value="URGENT">紧急</SelectItem>
-                    <SelectItem value="HIGH">高</SelectItem>
-                    <SelectItem value="NORMAL">普通</SelectItem>
-                    <SelectItem value="LOW">低</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <DatePicker
-                    type="date"
-                    value={startTimeFrom}
-                    onChange={(event) => handleTimeRangeChange(event.target.value, startTimeTo)}
-                  />
-                  <DatePicker
-                    type="date"
-                    value={startTimeTo}
-                    onChange={(event) => handleTimeRangeChange(startTimeFrom, event.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="soft" onClick={handleSearch}>
-                  <Search size={16} />
-                  应用筛选
-                </Button>
-                {hasActiveFilters ? (
-                  <Button variant="ghost" onClick={handleClearFilters}>
-                    <X size={16} />
-                    清除条件
-                  </Button>
-                ) : null}
-              </div>
-            </>
-          )}
-
-          {activeFilterBadges.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-2 border-t border-slate-200 pt-4 dark:border-slate-800">
-              {activeFilterBadges.map((badge) => (
-                <TaskFilterBadge key={badge}>{badge}</TaskFilterBadge>
-              ))}
-            </div>
-          ) : null}
-        </WorkspaceSectionCard>
-
-        <WorkspaceSectionCard
-          eyebrow={type === 'pending' ? '任务结果' : '申请结果'}
-          title={type === 'pending' ? '当前任务内容' : '当前申请记录'}
-          description={
-            type === 'pending'
-              ? viewMode === 'board'
-                ? '流程审批与协作待办统一进入看板视图，流程任务只读打开，协作任务支持拖拽。'
-                : '列表视图聚合流程审批与协作待办，便于顺序处理和阅读摘要。'
-              : '申请列表保留审批详情弹层与撤回能力，分页结果与筛选条件联动。'
-          }
-          headerAside={
-            <div className="flex flex-wrap items-center gap-2">
-              <TaskFilterBadge>
-                {type === 'pending' ? currentTypeLabel : `第 ${pageNum} / ${totalPages} 页`}
-              </TaskFilterBadge>
-              {type === 'pending' ? <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge> : null}
-            </div>
-          }
-          className={workspaceGlassSurfaceClassName}
-          bodyClassName="space-y-6"
-        >
-          {viewMode === 'board' && type === 'pending' ? (
-            filteredUnifiedTasks.length > 0 ? (
-              <TaskBoard
-                tasks={filteredUnifiedTasks}
-                onTaskMove={handleTaskMove}
-                onTaskClick={(task) => {
-                  if (task.type === 'PROCESS') {
-                    setSelectedTask(task.sourceData as Task);
-                    setIsModalOpen(true);
-                    return;
-                  }
-
-                  logTask.debug('Open work task card from board', task);
-                }}
-              />
-            ) : (
-              <WorkspaceEmptyPanel
-                variant="glass"
-                icon={<Kanban size={24} />}
-                title="当前筛选条件下没有任务"
-                description="可以调整任务类型、流程范围或时间条件后再查看。"
-              />
-            )
-          ) : visibleTotalCount === 0 ? (
-            <WorkspaceEmptyPanel
-              variant="glass"
-              icon={<ClipboardCheck size={24} />}
-              title={type === 'pending' ? '暂无待处理任务' : '暂无申请记录'}
-              description={
-                type === 'pending'
-                  ? '当前筛选条件下没有可处理的流程审批或协作待办。'
-                  : '当前筛选条件下没有匹配的申请记录。'
-              }
-            />
-          ) : (
-            <>
-              {visibleProcessTasks.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        流程审批
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        {type === 'applications'
-                          ? `当前页 ${visibleProcessTasks.length} 条，总计 ${total} 条`
-                          : `当前筛选下 ${visibleProcessTasks.length} 条流程待办`}
-                      </div>
-                    </div>
-                    <TaskFilterBadge>
-                      {type === 'applications' ? currentStatusLabel : currentPendingProcessLabel}
-                    </TaskFilterBadge>
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(0,1.05fr)]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input
+                      type="text"
+                      placeholder="搜索流程标题或编号"
+                      value={todoSearchInput}
+                      onChange={(event) => setTodoSearchInput(event.target.value)}
+                      onKeyDown={handleTodoSearchKeyDown}
+                      className="pl-10"
+                    />
                   </div>
 
-                  <TaskList
-                    tasks={visibleProcessTasks}
+                  <Select value={todoProcessDefKey || 'ALL_TYPES'} onValueChange={handleTodoProcessDefKeyChange}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="全部流程类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
+                      {todoProcessDefOptions.map((option) => (
+                        <SelectItem key={option.key} value={String(option.key)}>
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="relative">
+                    <UserRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input
+                      type="text"
+                      placeholder="申请人姓名"
+                      value={todoStartUserName}
+                      onChange={(event) => setTodoStartUserName(event.target.value)}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DatePicker
+                      type="date"
+                      value={todoStartTimeFrom}
+                      onChange={(event) => setTodoStartTimeFrom(event.target.value)}
+                      placeholder="开始日期"
+                      className="h-10"
+                    />
+                    <DatePicker
+                      type="date"
+                      value={todoStartTimeTo}
+                      onChange={(event) => setTodoStartTimeTo(event.target.value)}
+                      placeholder="结束日期"
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="grid gap-3 xl:grid-cols-[minmax(0,1.3fr)_minmax(220px,1fr)_minmax(150px,0.8fr)_minmax(0,1.1fr)]">
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                    <Input
+                      type="text"
+                      placeholder="搜索流程标题、编号或摘要"
+                      value={searchInput}
+                      onChange={(event) => setSearchInput(event.target.value)}
+                      onKeyDown={handleSearchKeyDown}
+                      className="pl-10"
+                    />
+                  </div>
+
+                  <Select value={processDefKey || 'ALL_TYPES'} onValueChange={handleProcessDefKeyChange}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="全部流程类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL_TYPES">全部流程类型</SelectItem>
+                      {processDefOptions.map((option) => (
+                        <SelectItem key={option.key} value={String(option.key)}>
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={priorityFilter || 'ALL_PRIORITIES'} onValueChange={handlePriorityChange}>
+                    <SelectTrigger className="h-10">
+                      <SelectValue placeholder="全部优先级" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL_PRIORITIES">全部优先级</SelectItem>
+                      <SelectItem value="URGENT">紧急</SelectItem>
+                      <SelectItem value="HIGH">高</SelectItem>
+                      <SelectItem value="NORMAL">普通</SelectItem>
+                      <SelectItem value="LOW">低</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <DatePicker
+                      type="date"
+                      value={startTimeFrom}
+                      onChange={(event) => handleTimeRangeChange(event.target.value, startTimeTo)}
+                      placeholder="开始日期"
+                      className="h-10"
+                    />
+                    <DatePicker
+                      type="date"
+                      value={startTimeTo}
+                      onChange={(event) => handleTimeRangeChange(startTimeFrom, event.target.value)}
+                      placeholder="结束日期"
+                      className="h-10"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-2 border-t border-slate-200 pt-3 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-wrap gap-2">
+                  {activeFilterBadges.map((badge) => (
+                    <TaskFilterBadge key={badge}>{badge}</TaskFilterBadge>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button size="sm" onClick={type === 'pending' ? handleTodoSearch : handleSearch}>
+                    <Search size={16} />
+                    应用筛选
+                  </Button>
+                  {(type === 'pending' ? hasTodoActiveFilters : hasActiveFilters) ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={type === 'pending' ? handleClearTodoFilters : handleClearFilters}
+                    >
+                      <X size={16} />
+                      清空
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        table={(
+          <div className="flex flex-col">
+            <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
+              <div>
+                <div className="text-sm font-semibold text-slate-950 dark:text-slate-100">
+                  {resultTitle}
+                </div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                  {type === 'pending' ? `共 ${visibleTotalCount} 条` : `共 ${total} 条`}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <TaskFilterBadge>{type === 'pending' ? currentTypeLabel : currentStatusLabel}</TaskFilterBadge>
+                {type === 'pending' ? <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge> : null}
+                {type === 'applications' && processDefKey ? (
+                  <TaskFilterBadge>{currentApplicationProcessLabel}</TaskFilterBadge>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="px-4 py-4">
+              {viewMode === 'board' && type === 'pending' ? (
+                filteredUnifiedTasks.length > 0 ? (
+                  <TaskBoard
+                    tasks={filteredUnifiedTasks}
+                    onTaskMove={handleTaskMove}
                     onTaskClick={(task) => {
-                      setSelectedTask(task);
-                      setIsModalOpen(true);
+                      if (task.type === 'PROCESS') {
+                        setSelectedTask(task.sourceData as Task);
+                        setIsModalOpen(true);
+                        return;
+                      }
+
+                      logTask.debug('Open work task card from board', task);
                     }}
-                    showRecallButton={type === 'applications'}
-                    onRecallSuccess={() => void fetchTasks(false)}
                   />
-                </div>
-              ) : null}
-
-              {visibleWorkTasks.length > 0 ? (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        协作待办
-                      </div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        看板模式下可直接拖拽状态，列表模式下用于快速查看摘要。
-                      </div>
-                    </div>
-                    <TaskFilterBadge>{`${visibleWorkTasks.length} 条`}</TaskFilterBadge>
+                ) : (
+                  <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+                    当前筛选条件下暂无待办任务
                   </div>
+                )
+              ) : visibleTotalCount === 0 ? (
+                <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
+                  {type === 'pending' ? '当前筛选条件下暂无待处理任务' : '当前筛选条件下暂无申请记录'}
+                </div>
+              ) : (
+                <div className="divide-y divide-slate-200 dark:divide-slate-800">
+                  {visibleProcessTasks.length > 0 ? (
+                    <section className="space-y-3 py-5 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            流程审批
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            {type === 'applications'
+                              ? `当前页 ${visibleProcessTasks.length} 条，总计 ${total} 条`
+                              : `当前筛选下 ${visibleProcessTasks.length} 条流程待办`}
+                          </div>
+                        </div>
+                        <TaskFilterBadge>
+                          {type === 'applications' ? currentStatusLabel : currentPendingProcessLabel}
+                        </TaskFilterBadge>
+                      </div>
 
-                  <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-                    {visibleWorkTasks.map((task) => (
-                      <TaskWorkCard
-                        key={task.id}
-                        task={task}
-                        onOpen={(openedTask) => logTask.debug('Open work task card', openedTask)}
+                      <TaskList
+                        tasks={visibleProcessTasks}
+                        onTaskClick={(task) => {
+                          setSelectedTask(task);
+                          setIsModalOpen(true);
+                        }}
+                        showRecallButton={type === 'applications'}
+                        onRecallSuccess={() => void fetchTasks(false)}
                       />
-                    ))}
-                  </div>
+                    </section>
+                  ) : null}
+
+                  {visibleWorkTasks.length > 0 ? (
+                    <section className="space-y-3 py-5 first:pt-0 last:pb-0">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            协作待办
+                          </div>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                            当前筛选下 {visibleWorkTasks.length} 条协作待办
+                          </div>
+                        </div>
+                        <TaskFilterBadge>协作待办</TaskFilterBadge>
+                      </div>
+
+                      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {visibleWorkTasks.map((task) => (
+                          <TaskCompactWorkCard
+                            key={task.id}
+                            task={task}
+                            onOpen={(openedTask) => logTask.debug('Open work task card', openedTask)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  ) : null}
                 </div>
-              ) : null}
-            </>
-          )}
-
-          {type === 'applications' && totalPages > 1 ? (
-            <div className="space-y-3 border-t border-slate-200 pt-5 dark:border-slate-800">
-              <WorkspacePaginationBar
-                total={total}
-                pageNum={pageNum}
-                totalPages={totalPages}
-                onPrev={() => setPageNum((previous) => Math.max(1, previous - 1))}
-                onNext={() => setPageNum((previous) => Math.min(totalPages, previous + 1))}
-                prevDisabled={pageNum <= 1}
-                nextDisabled={pageNum >= totalPages}
-              />
-
-              <div className="flex flex-wrap items-center justify-center gap-2">
-                {pageNumbers.map((page) => (
-                  <Button
-                    key={page}
-                    type="button"
-                    size="sm"
-                    variant={page === pageNum ? 'default' : 'outline'}
-                    onClick={() => setPageNum(page)}
-                  >
-                    {page}
-                  </Button>
-                ))}
-              </div>
+              )}
             </div>
-          ) : null}
-        </WorkspaceSectionCard>
-
-        <TaskHandleModal
-          isOpen={isModalOpen}
-          task={selectedTask}
-          availableForms={savedForms}
-          currentUser={user}
-          onClose={() => setIsModalOpen(false)}
-          onComplete={handleTaskUpdate}
-          viewOnly={type === 'applications'}
-        />
-      </WorkspacePageContent>
+          </div>
+        )}
+        pagination={
+          type === 'applications' && total > PAGE_SIZE ? (
+            <Pagination
+              total={total}
+              page={pageNum}
+              pageSize={PAGE_SIZE}
+              showPageSizeSelector={false}
+              onPageChange={setPageNum}
+              onPageSizeChange={() => undefined}
+            />
+          ) : null
+        }
+      />
+      <TaskHandleModal
+        isOpen={isModalOpen}
+        task={selectedTask}
+        availableForms={savedForms}
+        currentUser={user}
+        onClose={() => setIsModalOpen(false)}
+        onComplete={handleTaskUpdate}
+        viewOnly={type === 'applications'}
+      />
     </div>
   );
 };

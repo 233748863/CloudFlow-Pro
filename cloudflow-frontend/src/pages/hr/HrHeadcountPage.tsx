@@ -101,7 +101,6 @@ const targetTypeTone = (targetType?: HeadcountTargetType | string | null) =>
 
 const InlineState = ({
   title,
-  description,
   actions,
   className,
 }: {
@@ -115,9 +114,6 @@ const InlineState = ({
       <Layers3 className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
     {actions ? <div className="mt-4">{actions}</div> : null}
   </div>
 );
@@ -137,7 +133,6 @@ const TableStateRow = ({
     <td colSpan={colSpan} className="px-4 py-14">
       <InlineState
         title={title}
-        description={description}
         className={loading ? 'py-6' : 'py-4'}
       />
     </td>
@@ -443,9 +438,6 @@ export const HrHeadcountPage: React.FC = () => {
         <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           编制管理
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          围绕部门和岗位维护核定编制、实际在职与空缺情况，页面直接收敛到参考后台列表页语法，不再保留额外工作台卡片。
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -548,12 +540,7 @@ export const HrHeadcountPage: React.FC = () => {
           <div className="grid min-h-[580px] grid-cols-1 xl:grid-cols-[minmax(0,1fr)_340px]">
             <div className="min-w-0 xl:border-r xl:border-slate-200 dark:xl:border-slate-800">
               <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">编制列表</div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    当前筛选结果 {filteredHeadcounts.length} 条，先选中一条记录再查看右侧详情。
-                  </div>
-                </div>
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">编制列表</div>
               </div>
 
               <div className="overflow-x-auto">
@@ -574,14 +561,12 @@ export const HrHeadcountPage: React.FC = () => {
                       <TableStateRow
                         colSpan={7}
                         title="正在加载编制列表..."
-                        description="稍后会展示当前筛选范围内的部门和岗位编制。"
                         loading
                       />
                     ) : filteredHeadcounts.length === 0 ? (
                       <TableStateRow
                         colSpan={7}
                         title="当前筛选条件下没有编制记录"
-                        description="可以调整筛选条件，或直接新增一条编制记录。"
                       />
                     ) : (
                       filteredHeadcounts.map((item) => {
@@ -675,7 +660,6 @@ export const HrHeadcountPage: React.FC = () => {
               {!selectedHeadcount ? (
                 <InlineState
                   title="请选择一条编制记录"
-                  description="左侧选中目标后，右侧会展示使用率、有效期和实际人数维护入口。"
                   className="flex-1 py-16"
                 />
               ) : (
@@ -793,11 +777,6 @@ export const HrHeadcountPage: React.FC = () => {
       <BaseDialog
         open={createDialogOpen}
         title={isEditMode ? '编辑编制' : '新增编制'}
-        description={
-          isEditMode
-            ? '编辑模式会预填当前编制，目标类型和目标不可修改；失效日期留空表示长期有效。'
-            : '如果当前目标已有有效编制，后端会直接更新已有记录。'
-        }
         onClose={resetCreateDialog}
         maxWidthClassName="max-w-3xl"
         footer={(

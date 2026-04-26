@@ -1,7 +1,7 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { User } from '@/types';
-import { getInfo, logout as logoutApi, switchTenant as switchTenantApi } from '@/services/api/auth';
+import { getInfo, logout as logoutApi, switchTenant as switchTenantApi, type UserInfo } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import { clearAuthSession } from '@/utils/sessionCleanup';
 
@@ -15,6 +15,22 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const buildAuthUser = (userInfo: UserInfo): User => ({
+  id: String(userInfo.userId),
+  name: userInfo.nickName || userInfo.userName,
+  username: userInfo.userName,
+  email: userInfo.email || '',
+  role: userInfo.role,
+  deptId: userInfo.deptId,
+  deptName: userInfo.deptName,
+  tenantId: userInfo.tenantId,
+  tenantName: userInfo.tenantName,
+  position: userInfo.position,
+  phone: userInfo.phone,
+  status: 'ACTIVE',
+  avatar: userInfo.avatar,
+});
+
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,63 +42,34 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         try {
           const userInfo = await getInfo();
           if (userInfo) {
-            const user = {
-              id: String(userInfo.userId),
-              name: userInfo.nickName || userInfo.userName,
-              username: userInfo.userName,
-              email: userInfo.email || '',
-              role: userInfo.role,
-              deptId: userInfo.deptId,
-              deptName: userInfo.deptName,
-              tenantId: userInfo.tenantId,
-              position: userInfo.position,
-              phone: userInfo.phone,
-              status: 'ACTIVE' as const,
-              avatar: userInfo.avatar
-            };
-            setUser(user);
-            // 保存用户信息到 localStorage，供 axios 拦截器使用
-            localStorage.setItem('user', JSON.stringify(user));
+            const currentUser = buildAuthUser(userInfo);
+            setUser(currentUser);
+            localStorage.setItem('user', JSON.stringify(currentUser));
           }
-        } catch (e) {
-          logger.error('Failed to get user info:', e);
+        } catch (error) {
+          logger.error('Failed to get user info:', error);
           clearAuthSession();
           toast.error('登录状态已过期，请重新登录');
         }
       }
+
       setLoading(false);
     };
-    initAuth();
+
+    void initAuth();
   }, []);
 
   const login = async (token: string) => {
-    // 先保存 token
     localStorage.setItem('token', token);
-    
+
     try {
-      // 调用 getInfo 获取用户信息
       const userInfo = await getInfo();
       if (userInfo) {
-        const user = {
-          id: String(userInfo.userId),
-          name: userInfo.nickName || userInfo.userName,
-          username: userInfo.userName,
-          email: userInfo.email || '',
-          role: userInfo.role,
-          deptId: userInfo.deptId,
-          deptName: userInfo.deptName,
-          tenantId: userInfo.tenantId,
-          position: userInfo.position,
-          phone: userInfo.phone,
-          status: 'ACTIVE' as const,
-          avatar: userInfo.avatar
-        };
-        setUser(user);
-        // 保存用户信息到 localStorage，供 axios 拦截器使用
-        localStorage.setItem('user', JSON.stringify(user));
+        const currentUser = buildAuthUser(userInfo);
+        setUser(currentUser);
+        localStorage.setItem('user', JSON.stringify(currentUser));
       }
     } catch (error) {
-      // 如果获取用户信息失败，清除 token 和用户信息
       logger.error('获取用户信息失败:', error);
       clearAuthSession();
       throw error;
@@ -93,11 +80,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const token = localStorage.getItem('token');
     if (token) {
       try {
-        // 先通知后端清理 token/缓存，再做本地清理
         await logoutApi();
       } catch (error) {
-        // 登出接口失败不阻塞本地退出，避免用户被“卡住”
-        logger.warn('调用登出接口失败，继续执行本地退出:', error);
+        logger.warn('调用登出接口失败，继续执行本地退出', error);
       }
     }
 
@@ -107,36 +92,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const switchTenant = async (tenantId: number) => {
     try {
-      // 调用租户切换API
       const response = await switchTenantApi(tenantId);
-      
-      // 更新token
       localStorage.setItem('token', response.token);
-      
-      // 重新获取用户信息
+
       const userInfo = await getInfo();
       if (userInfo) {
-        const updatedUser = {
-          id: String(userInfo.userId),
-          name: userInfo.nickName || userInfo.userName,
-          username: userInfo.userName,
-          email: userInfo.email || '',
-          role: userInfo.role,
-          deptId: userInfo.deptId,
-          deptName: userInfo.deptName,
-          tenantId: userInfo.tenantId,
-          position: userInfo.position,
-          phone: userInfo.phone,
-          status: 'ACTIVE' as const,
-          avatar: userInfo.avatar
-        };
+        const updatedUser = buildAuthUser(userInfo);
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
+        toast.success(`已切换到${updatedUser.tenantName || `租户 ${tenantId}`}`);
+      } else {
+        toast.success(`已切换到租户 ${tenantId}`);
       }
-      
-      toast.success(`已切换到租户 ${tenantId}`);
-      
-      // 刷新页面以重新加载数据
+
       window.location.reload();
     } catch (error) {
       logger.error('租户切换失败:', error);

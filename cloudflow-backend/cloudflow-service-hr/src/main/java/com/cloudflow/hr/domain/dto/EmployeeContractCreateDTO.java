@@ -6,6 +6,7 @@ import lombok.Data;
 
 import java.io.Serializable;
 import java.time.LocalDate;
+import java.util.List;
 
 /**
  * 员工合同创建DTO
@@ -62,7 +63,7 @@ public class EmployeeContractCreateDTO implements Serializable {
     /**
      * 合同文件URL
      */
-    private String fileUrl;
+    private List<String> attachmentUrls;
 
     /**
      * 状态：DRAFT-草稿 ACTIVE-生效中

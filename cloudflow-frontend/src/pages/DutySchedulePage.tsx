@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Calendar,
   LogIn,
@@ -247,38 +247,15 @@ export const DutySchedulePage: React.FC = () => {
   };
 
   const hasActiveFilters = Boolean(searchParams.status || searchParams.scheduleType);
-  const summary = useMemo(() => {
-    const scheduledCount = list.filter((item) => item.status === 'SCHEDULED').length;
-    const checkedInCount = list.filter((item) => item.status === 'CHECKED_IN').length;
-    const completedCount = list.filter((item) => item.status === 'COMPLETED').length;
-    const swappedCount = list.filter((item) => item.status === 'SWAPPED').length;
-
-    return {
-      scheduledCount,
-      checkedInCount,
-      completedCount,
-      swappedCount,
-    };
-  }, [list]);
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          值班排班
-        </h1>
-      </div>
-
       <TablePageLayout
         className="gap-3"
         actions={(
           <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
               <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">待签到 {summary.scheduledCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">值班中 {summary.checkedInCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已完成 {summary.completedCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已换班 {summary.swappedCount}</span>
             </div>
 
             <div className="ml-auto flex flex-wrap gap-2">
@@ -356,20 +333,6 @@ export const DutySchedulePage: React.FC = () => {
         )}
         table={(
           <div className="flex min-h-[40rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">排班列表</div>
-                  {hasActiveFilters ? (
-                    <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                      {searchParams.status ? statusMap[searchParams.status] || searchParams.status : '全部状态'} / {searchParams.scheduleType ? typeMap[searchParams.scheduleType] || searchParams.scheduleType : '全部类型'}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">共 {total} 条</div>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <Table className="min-w-[1080px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
@@ -382,7 +345,7 @@ export const DutySchedulePage: React.FC = () => {
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">地点</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">签到 / 签退</TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
-                    <TableActionHead className="w-56 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">当前操作</TableActionHead>
+                    <TableActionHead className="w-56 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
                   </TableRow>
                 </TableHeader>
 
@@ -423,7 +386,7 @@ export const DutySchedulePage: React.FC = () => {
                         </TableCell>
                         <TableCell className="px-4 py-3">
                           <span
-                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${getStatusBadgeClassName(item.status || 'SCHEDULED')}`}
+                            className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${getStatusBadgeClassName(item.status || 'SCHEDULED')}`}
                           >
                             {statusMap[item.status || 'SCHEDULED'] || item.status}
                           </span>

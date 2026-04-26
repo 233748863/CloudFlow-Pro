@@ -89,9 +89,7 @@ const StepStrip: React.FC<{ current: number; steps: string[] }> = ({ current, st
             'inline-flex items-center gap-2 text-sm',
             index === current
               ? 'text-slate-900 dark:text-slate-100'
-              : index < current
-                ? 'text-cyan-700 dark:text-cyan-200'
-                : 'text-slate-400 dark:text-slate-500',
+              : 'text-slate-400 dark:text-slate-500',
           ].join(' ')}
         >
           <span
@@ -99,9 +97,7 @@ const StepStrip: React.FC<{ current: number; steps: string[] }> = ({ current, st
               'inline-flex h-6 w-6 items-center justify-center rounded-full border text-xs font-medium',
               index === current
                 ? 'border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900'
-                : index < current
-                  ? 'border-cyan-200 bg-cyan-50 dark:border-cyan-900 dark:bg-cyan-950/30'
-                  : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
+                : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
             ].join(' ')}
           >
             {index + 1}
@@ -259,24 +255,20 @@ export const VehicleBooking: React.FC = () => {
               : `可预约 ${vehicles.length} 辆`)
           : step === 1
             ? `已选 ${selectedVehicle?.licensePlate || '--'}`
-            : `已选 ${selectedVehicle?.licensePlate || '--'} · 确认后进入审批`;
+            : `已选 ${selectedVehicle?.licensePlate || '--'}`;
   const selectedVehicleSummary = selectedVehicle
     ? `${selectedVehicle.brand} ${selectedVehicle.model || ''} · ${selectedVehicle.capacity} 座${selectedVehicle.location ? ` · ${selectedVehicle.location}` : ''}`
     : '--';
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          公务车预约申请
-        </h1>
-      </div>
-
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
         <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:px-6 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{currentStepTitle}</div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{currentStepMeta}</div>
+            {currentStepMeta ? (
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{currentStepMeta}</div>
+            ) : null}
           </div>
           {!loading && !loadError && vehicles.length > 0 ? <StepStrip current={step} steps={steps} /> : null}
         </div>
@@ -285,20 +277,18 @@ export const VehicleBooking: React.FC = () => {
           {loading ? (
             <InlineState
               title="正在加载可用车辆"
-              description="同步当前时段可预约车辆。"
               icon={<Loader2 className="animate-spin text-slate-500" size={18} />}
             />
           ) : loadError ? (
             <InlineState
               title="加载车辆失败"
               description={loadError}
-              icon={<AlertCircle className="text-rose-500" size={18} />}
+              icon={<AlertCircle className="text-slate-500" size={18} />}
               action={<Button variant="outline" onClick={() => void loadVehicles()}>重试</Button>}
             />
           ) : vehicles.length === 0 ? (
             <InlineState
               title="暂无可用车辆"
-              description="当前时段暂无可预约车辆。"
               action={<Button variant="outline" onClick={() => navigate('/admin/vehicle')}>查看车辆列表</Button>}
             />
           ) : (

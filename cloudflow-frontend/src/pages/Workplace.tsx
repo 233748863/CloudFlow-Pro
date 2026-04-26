@@ -1,18 +1,16 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { FolderOpen, FormInput, GitMerge, Layers3 } from 'lucide-react';
+import { ArrowRight, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
 import { Role } from '@/types';
 import { useAuth } from '@/context/AuthContext';
 import {
-  WorkflowCatalogFilters,
-  WorkflowCatalogGrid,
-  WorkflowCatalogStats,
   WorkflowLaunchDialog,
   mapWorkflowBackendForm,
   normalizeWorkflowTags,
 } from '@/components/workflow/catalog';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   getFormDefinition,
   getFormDefinitions,
@@ -22,9 +20,11 @@ import {
 import { parseWorkflowGraphDefinition } from '@/utils/workflowGraph';
 import {
   WORKFLOW_CATEGORY_OPTIONS,
+  getWorkflowCategoryLabel,
   normalizeWorkflowCategory,
 } from '@/utils/workflowCategory';
-import { WorkspaceHeroMetricsSection, WorkspacePageContent } from '@/components/workspace';
+import { Button, EmptyState, FilterChip, Input, LoadingSpinner, SideNavItem } from '@/components/ui';
+import { cn } from '@/utils/cn';
 
 const parseWorkflowGraph = (
   rawModelJson: unknown,
@@ -214,14 +214,18 @@ export const Workplace = () => {
     () => [{ label: '全部', value: '' }, ...WORKFLOW_CATEGORY_OPTIONS],
     [],
   );
+  const selectedCategoryLabel = categoryFilters.find((item) => item.value === selectedCategory)?.label || '全部';
 
   const boundForm = targetWorkflow?.formId
     ? savedForms.find((form) => form.id === targetWorkflow.formId)
     : undefined;
 
   const hasActiveFilters = Boolean(searchTerm || selectedCategory || selectedTags.length > 0);
-  const boundFormCount = workflows.filter((workflow) => Boolean(workflow.formId)).length;
-  const categoryCount = new Set(workflows.map((workflow) => workflow.category).filter(Boolean)).size;
+  const toolbarSummary = hasActiveFilters
+    ? [selectedCategoryLabel, selectedTags.length > 0 ? `标签 ${selectedTags.join('、')}` : '', searchTerm ? `搜索 ${searchTerm}` : '']
+        .filter(Boolean)
+        .join(' · ')
+    : `已发布 ${workflows.length} 条流程`;
 
   const handleStartClick = (workflow: WorkflowDefinition) => {
     setBoundFormError(null);
@@ -252,8 +256,79 @@ export const Workplace = () => {
     }
   };
 
+  const renderResultContent = () => {
+    if (loading) {
+      return (
+        <div className="flex min-h-[24rem] items-center justify-center">
+          <LoadingSpinner size="lg" />
+        </div>
+      );
+    }
+
+    if (filteredWorkflows.length === 0) {
+      return (
+        <div className="p-6">
+          <EmptyState
+            title="没有匹配的流程"
+            description="可以调整搜索词、分类或标签条件后重新查看。"
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div className="divide-y divide-slate-100 dark:divide-slate-800">
+        {filteredWorkflows.map((workflow) => {
+          const workflowTags = normalizeWorkflowTags(workflow.tags);
+          const categoryLabel =
+            getWorkflowCategoryLabel(workflow.category) || workflow.category || '未分类';
+
+          return (
+            <div
+              key={workflow.id}
+              className="flex flex-col gap-4 px-4 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-900/40 lg:flex-row lg:items-center lg:justify-between"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {workflow.name}
+                  </h3>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                    {categoryLabel}
+                  </span>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                    v{workflow.version || 1}
+                  </span>
+                </div>
+
+                {workflow.description ? (
+                  <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                    {workflow.description}
+                  </p>
+                ) : null}
+
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                  <span>Key {workflow.key}</span>
+                  <span>{workflow.formId ? '已绑表单' : '未绑表单'}</span>
+                  <span>{workflowTags.length > 0 ? workflowTags.slice(0, 3).join(' · ') : '暂无标签'}</span>
+                </div>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <Button size="sm" onClick={() => handleStartClick(workflow)}>
+                  发起
+                  <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
-    <WorkspacePageContent className="space-y-6">
+    <div className="space-y-4">
       <WorkflowLaunchDialog
         open={isFormOpen}
         workflow={targetWorkflow}
@@ -264,96 +339,112 @@ export const Workplace = () => {
         onSubmit={handleStartProcess}
       />
 
-      <WorkspaceHeroMetricsSection
-        badge={<span className="badge badge-primary">流程目录</span>}
-        title="选择要发起的流程"
-        description="把高频流程入口、分类过滤、标签检索和表单准备统一放到一个目录页里，降低流程发起成本。"
-        actions={
-          <>
-            <button
-              type="button"
-              onClick={() => navigate('/workflow/design')}
-              className="inline-flex h-10 items-center rounded-xl border border-slate-200 bg-white px-4 text-sm font-medium text-slate-700 shadow-sm transition-colors hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900 dark:hover:text-white"
-            >
-              进入设计页
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/templates')}
-              className="inline-flex h-10 items-center rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 px-4 text-sm font-medium text-white shadow-[0_12px_24px_rgba(13,148,136,0.22)] transition hover:from-cyan-500 hover:to-teal-500"
-            >
-              浏览模板
-            </button>
-          </>
-        }
-        metrics={[
-          {
-            label: '已发布流程',
-            value: workflows.length.toLocaleString(),
-            hint: '按流程 key 收敛到最新可用版本',
-            icon: <GitMerge size={18} />,
-            iconWrapClassName: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
-          },
-          {
-            label: '当前结果',
-            value: filteredWorkflows.length.toLocaleString(),
-            hint: hasActiveFilters ? '已应用搜索、分类或标签' : '当前显示全部流程',
-            icon: <Layers3 size={18} />,
-            iconWrapClassName: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200',
-          },
-          {
-            label: '已绑表单',
-            value: boundFormCount.toLocaleString(),
-            hint: '支持直接进入表单发起',
-            icon: <FormInput size={18} />,
-            iconWrapClassName: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200',
-          },
-          {
-            label: '流程分类',
-            value: categoryCount.toLocaleString(),
-            hint: '用于目录归类与快速定位',
-            icon: <FolderOpen size={18} />,
-            iconWrapClassName: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200',
-          },
-        ]}
-      />
+      <TablePageLayout
+        className="gap-4"
+        filters={(
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Input
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  placeholder="按流程名称搜索"
+                  className="pl-10"
+                />
+              </div>
 
-      <WorkflowCatalogStats
-        workflowCount={workflows.length}
-        filteredCount={filteredWorkflows.length}
-        boundFormCount={boundFormCount}
-        categoryCount={categoryCount}
-        hasActiveFilters={hasActiveFilters}
-      />
+              <div className="flex min-w-[280px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span>{toolbarSummary}</span>
+                <span>当前 {filteredWorkflows.length} 条</span>
+              </div>
+            </div>
 
-      <WorkflowCatalogFilters
-        searchTerm={searchTerm}
-        selectedCategory={selectedCategory}
-        selectedTags={selectedTags}
-        allTags={allTags}
-        categoryOptions={categoryFilters}
-        savedFormsCount={savedForms.length}
-        hasActiveFilters={hasActiveFilters}
-        onSearchChange={setSearchTerm}
-        onCategoryChange={setSelectedCategory}
-        onTagToggle={(tag) => {
-          setSelectedTags((prev) =>
-            prev.includes(tag) ? prev.filter((item) => item !== tag) : [...prev, tag],
-          );
-        }}
-        onClearFilters={() => {
-          setSearchTerm('');
-          setSelectedCategory('');
-          setSelectedTags([]);
-        }}
-      />
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              {hasActiveFilters ? (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearchTerm('');
+                    setSelectedCategory('');
+                    setSelectedTags([]);
+                  }}
+                >
+                  清空筛选
+                </Button>
+              ) : null}
+              <Button variant="outline" size="sm" onClick={() => navigate('/workflow/design')}>
+                进入设计页
+              </Button>
+              <Button size="sm" onClick={() => navigate('/templates')}>
+                浏览模板
+              </Button>
+            </div>
+          </div>
+        )}
+        table={(
+          <div className="grid min-h-[40rem] xl:grid-cols-[220px_minmax(0,1fr)]">
+            <aside className="border-b border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-950/20 xl:border-b-0 xl:border-r">
+              <div className="space-y-5 p-4">
+                <section className="space-y-2">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    分类
+                  </div>
+                  <div className="space-y-1">
+                    {categoryFilters.map((option) => {
+                      const active = selectedCategory === option.value;
+                      return (
+                        <SideNavItem
+                          key={option.value || 'ALL'}
+                          size="sm"
+                          active={active}
+                          onClick={() => setSelectedCategory(option.value)}
+                        >
+                          <span className="truncate">{option.label}</span>
+                        </SideNavItem>
+                      );
+                    })}
+                  </div>
+                </section>
 
-      <WorkflowCatalogGrid
-        workflows={filteredWorkflows}
-        loading={loading}
-        onStart={handleStartClick}
+                <section className="space-y-2">
+                  <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                    标签
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {allTags.map((tag) => {
+                      const active = selectedTags.includes(tag);
+                      return (
+                        <FilterChip
+                          key={tag}
+                          active={active}
+                          onClick={() =>
+                            setSelectedTags((prev) =>
+                              prev.includes(tag)
+                                ? prev.filter((item) => item !== tag)
+                                : [...prev, tag],
+                            )
+                          }
+                        >
+                          {tag}
+                        </FilterChip>
+                      );
+                    })}
+                  </div>
+                </section>
+              </div>
+            </aside>
+
+            <section className="flex min-h-0 flex-col">
+              <div className="flex-1 overflow-y-auto">
+                {renderResultContent()}
+              </div>
+            </section>
+          </div>
+        )}
       />
-    </WorkspacePageContent>
+    </div>
   );
 };
 

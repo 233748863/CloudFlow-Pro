@@ -1,6 +1,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCcw } from 'lucide-react';
 import { errorReporter } from '@/services/errorReporter';
+import { Button } from '@/components/ui';
 
 interface Props {
   children?: ReactNode;
@@ -60,13 +61,10 @@ export class ErrorBoundary extends Component<Props, State> {
                 </div>
             )}
 
-            <button
-              onClick={this.handleReload}
-              className="inline-flex items-center gap-2 rounded-xl bg-cyan-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-cyan-700"
-            >
+            <Button onClick={this.handleReload}>
               <RefreshCcw size={18} />
               刷新页面
-            </button>
+            </Button>
           </div>
         </div>
       );

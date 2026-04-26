@@ -90,13 +90,13 @@ export const Pagination: React.FC<PaginationProps> = ({
   return (
     <div className="flex items-center justify-between border-t border-slate-200 bg-white px-4 py-3 sm:px-6 dark:border-slate-800 dark:bg-slate-950/88">
       <div className="flex flex-1 items-center justify-between sm:hidden">
-        <Button variant="outline" onClick={() => goToPage(page - 1)} disabled={page === 1}>
+        <Button variant="outline" size="sm" onClick={() => goToPage(page - 1)} disabled={page === 1}>
           上一页
         </Button>
         <span className="text-sm text-slate-600 dark:text-slate-300">
           第 {page} / {totalPages} 页
         </span>
-        <Button variant="outline" onClick={() => goToPage(page + 1)} disabled={page === totalPages}>
+        <Button variant="outline" size="sm" onClick={() => goToPage(page + 1)} disabled={page === totalPages}>
           下一页
         </Button>
       </div>
@@ -144,16 +144,17 @@ export const Pagination: React.FC<PaginationProps> = ({
                   }
                 }}
               />
-              <Button variant="outline" onClick={submitJump}>
+              <Button variant="ghost" size="sm" onClick={submitJump}>
                 前往
               </Button>
             </div>
           ) : null}
         </div>
 
-        <div className="flex items-center rounded-lg shadow-sm">
+        <div className="flex items-center rounded-xl">
           <Button
             variant="outline"
+            size="icon"
             className="rounded-r-none border-r-0"
             onClick={() => goToPage(page - 1)}
             disabled={page === 1}
@@ -170,7 +171,7 @@ export const Pagination: React.FC<PaginationProps> = ({
               return (
                 <span
                   key={key}
-                  className="inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 bg-white px-3 text-sm text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400"
+                  className="inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 bg-white px-3 text-sm text-slate-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-500"
                 >
                   {pageItem}
                 </span>
@@ -183,10 +184,10 @@ export const Pagination: React.FC<PaginationProps> = ({
                 type="button"
                 onClick={() => goToPage(pageItem)}
                 className={[
-                  'inline-flex h-10 min-w-10 items-center justify-center border border-slate-200 px-3 text-sm font-medium transition-colors',
+                  'inline-flex h-10 min-w-10 items-center justify-center border px-3 text-sm font-medium transition-colors',
                   active
-                    ? 'relative z-10 border-cyan-500 bg-cyan-50 text-cyan-600 dark:bg-cyan-950/40 dark:text-cyan-200'
-                    : 'bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900',
+                    ? 'relative z-10 border-cyan-500 bg-cyan-50 text-cyan-700 dark:border-cyan-800 dark:bg-cyan-950/40 dark:text-cyan-200'
+                    : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
                 ].join(' ')}
                 aria-current={active ? 'page' : undefined}
               >
@@ -197,6 +198,7 @@ export const Pagination: React.FC<PaginationProps> = ({
 
           <Button
             variant="outline"
+            size="icon"
             className="rounded-l-none border-l-0"
             onClick={() => goToPage(page + 1)}
             disabled={page === totalPages}

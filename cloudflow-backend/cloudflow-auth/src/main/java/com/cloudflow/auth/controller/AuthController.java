@@ -6,8 +6,10 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.LoginBody;
 import com.cloudflow.auth.domain.RegisterBody;
 import com.cloudflow.auth.domain.SysMenu;
+import com.cloudflow.auth.domain.SysTenant;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.UserInfo;
+import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
@@ -40,6 +42,9 @@ public class AuthController {
 
     @Autowired
     private SysUserMapper sysUserMapper;
+
+    @Autowired
+    private SysTenantMapper sysTenantMapper;
 
     @Autowired
     private ISysMenuService menuService;
@@ -157,6 +162,7 @@ public class AuthController {
             loginUser.put("deptName", dept != null ? dept.getDeptName() : null);
         }
         loginUser.put("tenantId", user.getTenantId());
+        loginUser.put("tenantName", resolveTenantName(user.getTenantId()));
         loginUser.put("avatar", user.getAvatar());
         loginUser.put("roles", userInfo.getRoles());
         loginUser.put("permissions", userInfo.getPermissions());
@@ -238,8 +244,10 @@ public class AuthController {
         user.setUserName(cachedUser.getUserName());
         user.setNickName(cachedUser.getNickName());
         user.setAvatar(cachedUser.getAvatar());
-        user.setTenantId(resolveTenantId(userMap, cachedUser));
+        Long tenantId = resolveTenantId(userMap, cachedUser);
+        user.setTenantId(tenantId);
         user.setDeptId(resolveDeptId(userMap, cachedUser));
+        user.setTenantName(resolveTenantName(userMap, tenantId));
 
         if (user.getAvatar() == null) {
             user.setAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.getUserName());
@@ -361,6 +369,23 @@ public class AuthController {
         return deptId != null ? deptId : cachedUser.getDeptId();
     }
 
+    private String resolveTenantName(Map<String, Object> userMap, Long tenantId) {
+        Object tenantName = userMap.get("tenantName");
+        if (tenantName != null && StringUtils.hasText(String.valueOf(tenantName))) {
+            return String.valueOf(tenantName);
+        }
+        return resolveTenantName(tenantId);
+    }
+
+    private String resolveTenantName(Long tenantId) {
+        if (tenantId == null) {
+            return null;
+        }
+
+        SysTenant tenant = TenantBroker.applyWithoutTenant(ignored -> sysTenantMapper.selectById(tenantId));
+        return tenant != null ? tenant.getTenantName() : null;
+    }
+
     private Collection<String> resolveStringCollection(Object tokenValue, Collection<String> fallback) {
         if (tokenValue instanceof Collection<?> collection) {
             List<String> values = new ArrayList<>();
@@ -432,6 +457,7 @@ public class AuthController {
         }
 
         userMap.put("tenantId", targetTenantId);
+        userMap.put("tenantName", resolveTenantName(targetTenantId));
 
         if (StringUtils.hasText(rawToken)) {
             tokenService.deleteToken(rawToken);

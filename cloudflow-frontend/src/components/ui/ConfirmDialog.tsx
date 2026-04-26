@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import { Button } from './button';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -28,17 +29,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
     warning: {
       icon: 'text-amber-700',
       iconBg: 'border border-amber-200 bg-amber-50',
-      confirmBtn: 'bg-amber-600 hover:bg-amber-700 text-white'
+      confirmVariant: 'warning' as const,
     },
     danger: {
       icon: 'text-rose-600',
       iconBg: 'border border-rose-200 bg-rose-50',
-      confirmBtn: 'bg-rose-600 hover:bg-rose-700 text-white'
+      confirmVariant: 'destructive' as const,
     },
     info: {
       icon: 'text-cyan-700',
       iconBg: 'border border-cyan-200 bg-cyan-50',
-      confirmBtn: 'bg-cyan-600 hover:bg-cyan-700 text-white'
+      confirmVariant: 'default' as const,
     }
   };
 
@@ -72,21 +73,18 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
 
         {/* 按钮 */}
         <div className="flex justify-end gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-4">
-          <button
-            onClick={onCancel}
-            className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:bg-slate-50"
-          >
+          <Button variant="outline" onClick={onCancel}>
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
             onClick={() => {
               onConfirm();
               onCancel();
             }}
-            className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${styles.confirmBtn}`}
+            variant={styles.confirmVariant}
           >
             {confirmText}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

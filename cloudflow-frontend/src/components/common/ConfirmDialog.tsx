@@ -34,10 +34,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         <Button variant="outline" onClick={onCancel}>
           {cancelText}
         </Button>
-        <Button
-          onClick={onConfirm}
-          className={danger ? 'bg-red-600 hover:bg-red-700 focus-visible:ring-red-500' : undefined}
-        >
+        <Button onClick={onConfirm} variant={danger ? 'destructive' : 'default'}>
           {confirmText}
         </Button>
       </div>

@@ -134,15 +134,11 @@ export const AnnouncementDetailModal: React.FC<AnnouncementDetailModalProps> = (
               {announcement.isRead ? footerReadText : footerUnreadText}
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="outline" size="lg" className="rounded-lg" onClick={onClose}>
+              <Button variant="outline" onClick={onClose}>
                 关闭
               </Button>
               {!announcement.isRead && onMarkAsRead ? (
-                <Button
-                  size="lg"
-                  className="rounded-lg px-5"
-                  onClick={() => void onMarkAsRead(announcement.announcementId)}
-                >
+                <Button onClick={() => void onMarkAsRead(announcement.announcementId)}>
                   <span className="flex items-center gap-2">
                     <Check size={16} />
                     标记已读

@@ -38,11 +38,11 @@ const StatusPanel: React.FC<{
   description: React.ReactNode;
   actions?: React.ReactNode;
 }> = ({ icon, title, description, actions }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white px-6 py-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
+  <div className="border border-slate-200 bg-white px-6 py-10 text-center dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
       {icon}
     </div>
-    <div className="mt-4 text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+    <div className="mt-4 text-base font-semibold text-slate-900 dark:text-slate-100">{title}</div>
     <div className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</div>
     {actions ? <div className="mt-5 flex justify-center gap-3">{actions}</div> : null}
   </div>
@@ -494,7 +494,7 @@ export const WorkflowDesign = () => {
   if (loading) {
     return renderStatusShell(
       <StatusPanel
-        icon={<Loader2 size={28} className="animate-spin text-cyan-600" />}
+        icon={<Loader2 size={28} className="animate-spin text-slate-600 dark:text-slate-200" />}
         title="正在加载流程设计器..."
         description="正在准备流程定义、表单列表和审批基础数据，请稍候。"
       />
@@ -504,14 +504,14 @@ export const WorkflowDesign = () => {
   if (error) {
     return renderStatusShell(
       <StatusPanel
-        icon={<AlertTriangle size={28} className="text-amber-500" />}
+        icon={<AlertTriangle size={28} className="text-slate-500 dark:text-slate-300" />}
         title="流程设计数据加载失败"
         description={error}
         actions={
           <Button
             type="button"
             onClick={loadData}
-            className="rounded-xl"
+            className="rounded-md"
           >
             重新加载
           </Button>
@@ -532,14 +532,14 @@ export const WorkflowDesign = () => {
               type="button"
               variant="outline"
               onClick={loadData}
-              className="rounded-xl"
+               className="rounded-md"
             >
               重新加载
             </Button>
             <Button
               type="button"
               onClick={() => navigate('/workflow/create?mode=blank')}
-              className="rounded-xl"
+              className="rounded-md"
             >
               新建流程
             </Button>
@@ -571,13 +571,13 @@ export const WorkflowDesign = () => {
           <Button variant="outline" onClick={loadData}>
             刷新设计器
           </Button>
-          <Button variant="soft" onClick={() => navigate('/workflow/create')}>
+          <Button variant="outline" onClick={() => navigate('/workflow/create')}>
             返回流程目录
           </Button>
         </div>
       </div>
 
-      <div className="min-h-[calc(100vh-238px)] overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
+      <div className="min-h-[calc(100vh-238px)] overflow-hidden border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950">
         <WorkflowBuilder
           workflow={workflow}
           onChange={handleWorkflowChange}

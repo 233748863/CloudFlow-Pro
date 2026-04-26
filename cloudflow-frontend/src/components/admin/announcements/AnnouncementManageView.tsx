@@ -275,7 +275,6 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
     setCurrentPage(1);
   };
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const hasActiveFilters = Boolean(searchTitle || filterType || filterStatus);
   const publishedCount = useMemo(
     () => manageList.filter((item) => item.status === '1').length,
@@ -294,59 +293,40 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
     (item) => item.announcementId === statsAnnouncementId,
   )?.title;
 
+  const currentTypeLabel = filterType
+    ? ({
+        [String(AnnouncementType.NOTIFICATION)]: '通知',
+        [String(AnnouncementType.ANNOUNCEMENT)]: '公告',
+        [String(AnnouncementType.URGENT)]: '紧急',
+      }[filterType] || filterType)
+    : '';
+
+  const currentStatusLabel = filterStatus
+    ? ({
+        '0': '草稿',
+        '1': '已发布',
+        '2': '已撤销',
+      }[filterStatus] || filterStatus)
+    : '';
+
+  const toolbarSummary = [
+    `共 ${total} 条`,
+    `当前页已发布 ${publishedCount}`,
+    `置顶 ${topCount}`,
+    `高优先级 ${urgentCount}`,
+    searchTitle ? `标题 ${searchTitle}` : null,
+    currentTypeLabel,
+    currentStatusLabel,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            <Megaphone className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-            Announcement Admin
-          </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            公告管理
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            按参考后台页语法统一维护公告发布、撤销、置顶和阅读明细，不再保留旧工作台壳层。
-          </p>
-        </div>
-
-        <Button variant="outline" size="sm" onClick={onExitManage}>
-          <ArrowLeft size={14} className="mr-1.5" />
-          返回公告
-        </Button>
-      </div>
-
       <TablePageLayout
         className="gap-4"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              总计 {total}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              已发布 {publishedCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              置顶 {topCount}
-            </span>
-            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              高优先级 {urgentCount}
-            </span>
-
-            <div className="ml-auto flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => void fetchManageList()} disabled={loading}>
-                <RefreshCw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={openCreateDialog}>
-                <Megaphone size={14} className="mr-1.5" />
-                发布公告
-              </Button>
-            </div>
-          </div>
-        )}
         filters={(
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="relative min-w-[220px] flex-1 lg:max-w-sm">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
@@ -402,9 +382,13 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+
+              <span className="text-xs text-slate-500 dark:text-slate-400">
+                {toolbarSummary}
+              </span>
             </div>
 
-            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
+            <div className="flex flex-wrap items-center justify-end gap-2">
               <Button variant="outline" size="sm" onClick={handleApplyFilters}>
                 <Search size={14} className="mr-1.5" />
                 搜索
@@ -412,31 +396,29 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
               <Button variant="outline" size="sm" onClick={handleResetFilters}>
                 清空筛选
               </Button>
+              <Button variant="outline" size="sm" onClick={() => void fetchManageList()} disabled={loading}>
+                <RefreshCw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
+                刷新
+              </Button>
+              <Button variant="outline" size="sm" onClick={onExitManage}>
+                <ArrowLeft size={14} className="mr-1.5" />
+                返回公告
+              </Button>
+              <Button size="sm" onClick={openCreateDialog}>
+                <Megaphone size={14} className="mr-1.5" />
+                发布公告
+              </Button>
             </div>
           </div>
         )}
         table={(
           <div className="flex min-h-[40rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">公告列表</div>
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {hasActiveFilters ? `标题：${searchTitle || '未设置'}，已应用筛选条件` : '当前显示全部公告记录'}
-                  </div>
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  第 {currentPage} / {totalPages} 页 · {total} 条
-                </div>
-              </div>
-            </div>
-
             {loading ? (
               <InlineState title="正在加载公告管理列表..." className="py-16" />
             ) : manageList.length === 0 ? (
               <InlineState
                 title="暂无公告记录"
-                description={hasActiveFilters ? '当前筛选条件下没有匹配的公告。' : '可以先发布一条公告，再继续维护。'}
+                description={hasActiveFilters ? '当前筛选条件下暂无记录。' : '可先发布公告。'}
                 className="py-16"
               />
             ) : (
@@ -470,7 +452,6 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
       <BaseDialog
         open={isEditorOpen}
         title={editorMode === 'create' ? '发布新公告' : '编辑公告'}
-        description="统一维护标题、类型、优先级、范围和正文内容。"
         onClose={closeEditor}
         maxWidthClassName="max-w-5xl"
         panelClassName="max-h-[92vh]"
@@ -573,12 +554,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
           </div>
 
           <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
-            <div className="mb-3">
-              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">发布范围</div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                统一在这里选择全员、部门或角色范围。
-              </div>
-            </div>
+            <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">发布范围</div>
 
             <AnnouncementTargetingEditor
               scopeType={(formData.scopeType as AnnouncementScope) || AnnouncementScope.ALL}

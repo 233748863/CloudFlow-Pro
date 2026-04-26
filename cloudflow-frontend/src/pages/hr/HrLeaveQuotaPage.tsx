@@ -194,7 +194,6 @@ const initActionLabel = (action?: string | null) => {
 
 const InlineState = ({
   title,
-  description,
   actions,
   className,
 }: {
@@ -215,9 +214,6 @@ const InlineState = ({
       <Wallet className="h-4 w-4" />
     </div>
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
     {actions ? <div className="mt-4">{actions}</div> : null}
   </div>
 );
@@ -237,7 +233,6 @@ const TableStateRow = ({
     <td colSpan={colSpan} className="px-4 py-14">
       <InlineState
         title={title}
-        description={description}
         className={loading ? 'py-6' : 'py-4'}
       />
     </td>
@@ -246,7 +241,6 @@ const TableStateRow = ({
 
 const DialogSection = ({
   title,
-  description,
   children,
 }: {
   title: string;
@@ -256,9 +250,6 @@ const DialogSection = ({
   <section className="overflow-hidden rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-      {description ? (
-        <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-      ) : null}
     </div>
     <div className="p-4">{children}</div>
   </section>
@@ -782,16 +773,9 @@ export const HrLeaveQuotaPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            <Wallet className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-            Leave Quota
-          </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
             假期额度
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            正在加载员工、假种和额度配置。
-          </p>
         </div>
         <InlineState title="正在准备假期额度页面..." />
       </div>
@@ -802,20 +786,12 @@ export const HrLeaveQuotaPage: React.FC = () => {
     return (
       <div className="space-y-4">
         <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            <Wallet className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-            Leave Quota
-          </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
             假期额度
           </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-            当前租户还没有 HR 员工档案，暂时无法进入额度管理。
-          </p>
         </div>
         <InlineState
           title="暂无可管理员工"
-          description="先在 HR 员工档案里补齐员工资料，再回来查看假期额度。"
         />
       </div>
     );
@@ -824,16 +800,9 @@ export const HrLeaveQuotaPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <Wallet className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Leave Quota
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           假期额度
         </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500 dark:text-slate-400">
-          围绕员工年度额度、调休额度桶和人工加减做统一管理，页面结构直接压回参考后台列表页语法。
-        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
@@ -1237,7 +1206,6 @@ export const HrLeaveQuotaPage: React.FC = () => {
                           <TableStateRow
                             colSpan={6}
                             title="当前年度没有额度记录"
-                            description="如果是普通假种，先补齐本年度额度；如果是调休，等加班入账或手工新增额度桶后，这里就会出现记录。"
                           />
                         ) : null}
                       </TableBody>
@@ -1249,11 +1217,6 @@ export const HrLeaveQuotaPage: React.FC = () => {
                   <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
                     <div>
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">额度桶明细</div>
-                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                        {isCompensatorySelected
-                          ? '调休会按额度桶展示，便于核对不同过期日的可用余额。'
-                          : '普通假种通常只有当前年度的一条汇总额度。'}
-                      </div>
                     </div>
                     <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs leading-6 text-slate-600 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-300">
                       {selectedLeaveType
@@ -1311,11 +1274,6 @@ export const HrLeaveQuotaPage: React.FC = () => {
                           <TableStateRow
                             colSpan={7}
                             title="当前假种没有额度桶明细"
-                            description={
-                              isCompensatorySelected
-                                ? '调休还没有入账或手工新增额度桶。'
-                                : '当前年度还没有对应的年度额度记录。'
-                            }
                           />
                         ) : null}
                       </TableBody>
@@ -1331,7 +1289,6 @@ export const HrLeaveQuotaPage: React.FC = () => {
       <BaseDialog
         open={bulkInitDialogOpen}
         title={`批量补齐 ${selectedYear} 年度额度`}
-        description="执行后会一次性为当前员工补齐所有待初始化的普通假种年度额度，调休等按额度桶管理的假种不会受影响。"
         onClose={() => setBulkInitDialogOpen(false)}
         maxWidthClassName="max-w-3xl"
         footer={(
@@ -1346,7 +1303,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
         )}
       >
         <div className="space-y-4">
-          <DialogSection title="本次处理范围" description="这里只会处理普通按年控额假种，不会改动调休额度桶。">
+          <DialogSection title="本次处理范围">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
                 <div className="text-xs text-slate-400 dark:text-slate-500">当前员工</div>
@@ -1369,7 +1326,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
             </div>
           </DialogSection>
 
-          <DialogSection title="待补齐假种" description="以下假种会在本次操作里被批量创建或刷新额度。">
+          <DialogSection title="待补齐假种">
             <div className="flex flex-wrap gap-2">
               {pendingAnnualQuotaSummaries.map((item) => {
                 const leaveType = leaveTypeMap.get(item.leaveTypeId);
@@ -1395,11 +1352,6 @@ export const HrLeaveQuotaPage: React.FC = () => {
       <BaseDialog
         open={adjustDialogOpen && Boolean(selectedLeaveType)}
         title={`调整 ${selectedLeaveType?.leaveName || ''} 额度`}
-        description={
-          isCompensatorySelected
-            ? '调休会精确落到某个额度桶。增加可以新建额度桶，减少时必须指定已有桶。'
-            : '普通假种按当前年度汇总额度直接加减。'
-        }
         onClose={() => setAdjustDialogOpen(false)}
         maxWidthClassName="max-w-3xl"
         footer={(
@@ -1415,7 +1367,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
       >
         {selectedLeaveType ? (
           <div className="space-y-4">
-            <DialogSection title="当前上下文" description="调整会直接命中当前员工、当前假种和当前年度。">
+            <DialogSection title="当前上下文">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 dark:border-slate-800 dark:bg-slate-950/88">
                   <div className="text-xs text-slate-400 dark:text-slate-500">当前员工</div>
@@ -1435,7 +1387,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
               </div>
             </DialogSection>
 
-            <DialogSection title="调整内容" description="正数表示增加，负数表示减少。">
+            <DialogSection title="调整内容">
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">调整额度</Label>
@@ -1514,7 +1466,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
               </div>
             </DialogSection>
 
-            <DialogSection title="调整原因" description="建议记录补录、核销或人工校准的业务原因。">
+            <DialogSection title="调整原因">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">原因说明</Label>
                 <Textarea

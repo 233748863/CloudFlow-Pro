@@ -84,6 +84,7 @@ export interface UserInfo {
   deptId?: string;
   deptName?: string; // 部门名称
   tenantId?: number;
+  tenantName?: string;
   position?: string;
   phone?: string; // 手机号
 }
@@ -165,6 +166,7 @@ export const getInfo = async (): Promise<UserInfo> => {
     deptId: user.deptId,
     deptName: user.deptName || user.dept?.deptName,
     tenantId: user.tenantId,
+    tenantName: user.tenantName,
     position: user.position,
     phone: user.phone || user.phonenumber,
   } as UserInfo;

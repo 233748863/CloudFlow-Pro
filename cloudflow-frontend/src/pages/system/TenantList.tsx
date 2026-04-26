@@ -26,6 +26,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -209,30 +210,6 @@ const getUsageBadgeClassName = (percent: number, high: number, medium: number) =
 
   return 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/70 dark:text-slate-300';
 };
-
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-  disabled?: boolean;
-}> = ({ label, icon, onClick, tone = 'neutral', disabled = false }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    disabled={disabled}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -534,35 +511,6 @@ export const TenantList: React.FC = () => {
         }
         table={
           <>
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  租户列表
-                </div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  按源码后台列表页骨架重组，风险摘要、治理动作和编辑表单统一回到轻量列表页语法。
-                </div>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  共 {summary.total} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  当前页 {pagedTenants.length} 条
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  正常运行 {summary.active}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  30 天内到期 {summary.expiringSoon}
-                </span>
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
-                  重点关注 {summary.warning}
-                </span>
-              </div>
-            </div>
-
             <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>
@@ -580,11 +528,7 @@ export const TenantList: React.FC = () => {
                 ) : error ? (
                   <TableStateRow colSpan={6} title="租户列表加载失败" description={error} />
                 ) : pagedTenants.length === 0 ? (
-                  <TableStateRow
-                    colSpan={6}
-                    title="暂无租户数据"
-                    description="可以先创建租户，再逐步维护配额、域名和有效期。"
-                  />
+                  <TableStateRow colSpan={6} title="暂无租户数据" />
                 ) : (
                   pagedTenants.map((tenant) => {
                     const userPercent = calcPercent(tenant.userCount, tenant.userLimit);
@@ -712,39 +656,42 @@ export const TenantList: React.FC = () => {
                         </TableCell>
 
                         <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <RowActionButton
-                              label="编辑租户"
-                              icon={<Edit size={15} />}
-                              onClick={() => handleOpenModal(tenant)}
-                            />
-                            <RowActionButton
-                              label={tenant.status === '0' ? '停用租户' : '启用租户'}
-                              icon={
-                                tenant.status === '0' ? <PowerOff size={15} /> : <Power size={15} />
-                              }
-                              onClick={() => void handleToggleStatus(tenant)}
-                            />
-                            <RowActionButton
-                              label="刷新存储"
-                              icon={
-                                <RefreshCw
-                                  size={15}
-                                  className={cn(
-                                    refreshingTenantId === tenant.tenantId && 'animate-spin',
-                                  )}
-                                />
-                              }
-                              onClick={() => void handleRefreshStorage(tenant.tenantId)}
-                              disabled={refreshingTenantId === tenant.tenantId}
-                            />
-                            <RowActionButton
-                              label="删除租户"
-                              icon={<Trash2 size={15} />}
-                              onClick={() => setPendingDeleteTenant(tenant)}
-                              tone="danger"
-                            />
-                          </div>
+                          <TableRowActions
+                            align="end"
+                            iconOnly
+                            actions={[
+                              {
+                                label: '编辑租户',
+                                icon: <Edit size={15} />,
+                                onClick: () => handleOpenModal(tenant),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: tenant.status === '0' ? '停用租户' : '启用租户',
+                                icon: tenant.status === '0' ? <PowerOff size={15} /> : <Power size={15} />,
+                                onClick: () => void handleToggleStatus(tenant),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '刷新存储',
+                                icon: (
+                                  <RefreshCw
+                                    size={15}
+                                    className={cn(refreshingTenantId === tenant.tenantId && 'animate-spin')}
+                                  />
+                                ),
+                                onClick: () => void handleRefreshStorage(tenant.tenantId),
+                                disabled: refreshingTenantId === tenant.tenantId,
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '删除租户',
+                                icon: <Trash2 size={15} />,
+                                onClick: () => setPendingDeleteTenant(tenant),
+                                tone: 'danger',
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     );
@@ -776,7 +723,6 @@ export const TenantList: React.FC = () => {
       <BaseDialog
         open={isModalOpen}
         title={isEdit ? '编辑租户' : '新增租户'}
-        description="维护租户基础资料、配额限制、有效期和状态。"
         onClose={handleCloseModal}
         maxWidthClassName="max-w-3xl"
         footer={

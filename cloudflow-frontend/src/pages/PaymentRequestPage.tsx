@@ -103,13 +103,28 @@ const TableStateRow: React.FC<{
   </tr>
 );
 
-const DetailField: React.FC<{
+const DetailRows: React.FC<{
+  children: React.ReactNode;
+  className?: string;
+}> = ({ children, className }) => (
+  <div className={['grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3', className].filter(Boolean).join(' ')}>
+    {children}
+  </div>
+);
+
+const DetailRow: React.FC<{
   label: string;
   value: React.ReactNode;
-}> = ({ label, value }) => (
-  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+  alignStart?: boolean;
+}> = ({ label, value, alignStart = false }) => (
+  <div
+    className={[
+      'border-b border-slate-100 pb-3 dark:border-slate-800',
+      alignStart ? 'md:col-span-2 xl:col-span-3' : '',
+    ].filter(Boolean).join(' ')}
+  >
     <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
-    <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">{value}</div>
+    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value}</div>
   </div>
 );
 
@@ -362,87 +377,67 @@ export const PaymentRequestPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <DollarSign className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Payment Requests
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          付款申请
-        </h1>
-      </div>
-
       <TablePageLayout
         className="gap-4"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">草稿 {draftCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">审批中 {pendingCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已通过 {approvedCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">已付款 {paidCount}</span>
-            </div>
-
-            <div className="ml-auto flex flex-wrap gap-2">
-              <Button size="sm" onClick={handleAdd}>
-                <Plus size={14} className="mr-1.5" />
-                新建申请
-              </Button>
-              <Button variant="outline" size="sm" onClick={handleExport}>
-                <Download size={14} className="mr-1.5" />
-                导出结果
-              </Button>
-            </div>
-          </div>
-        )}
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
-            <div className="w-full sm:w-[180px]">
-              <Select
-                value={searchParams.status || 'ALL'}
-                onValueChange={(value) =>
-                  setSearchParams((prev) => ({
-                    ...prev,
-                    status: value === 'ALL' ? '' : value,
-                    pageNum: 1,
-                  }))
-                }
-              >
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">全部状态</SelectItem>
-                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="w-full sm:w-[180px]">
+                <Select
+                  value={searchParams.status || 'ALL'}
+                  onValueChange={(value) =>
+                    setSearchParams((prev) => ({
+                      ...prev,
+                      status: value === 'ALL' ? '' : value,
+                      pageNum: 1,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">全部状态</SelectItem>
+                    {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                      <SelectItem key={value} value={value}>
+                        {label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="w-full sm:w-[180px]">
+                <Select
+                  value={paymentTypeDraft || 'ALL'}
+                  onValueChange={(value) => setPaymentTypeDraft(value === 'ALL' ? '' : value)}
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="付款类型" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">全部类型</SelectItem>
+                    {PAYMENT_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex min-w-[280px] flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span>{hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部'}</span>
+                <span>第 {searchParams.pageNum} / {totalPages} 页</span>
+                <span>共 {total} 条</span>
+                <span>草稿 {draftCount}</span>
+                <span>审批中 {pendingCount}</span>
+                <span>已通过 {approvedCount}</span>
+                <span>已付款 {paidCount}</span>
+              </div>
             </div>
 
-            <div className="w-full sm:w-[180px]">
-              <Select
-                value={paymentTypeDraft || 'ALL'}
-                onValueChange={(value) => setPaymentTypeDraft(value === 'ALL' ? '' : value)}
-              >
-                <SelectTrigger className="h-10">
-                  <SelectValue placeholder="付款类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">全部类型</SelectItem>
-                  {PAYMENT_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <Button variant="outline" size="sm" onClick={handleApplyFilters}>
                 应用
               </Button>
@@ -450,25 +445,19 @@ export const PaymentRequestPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
+              <Button variant="outline" size="sm" onClick={handleExport}>
+                <Download size={14} className="mr-1.5" />
+                导出结果
+              </Button>
+              <Button size="sm" onClick={handleAdd}>
+                <Plus size={14} className="mr-1.5" />
+                新建申请
+              </Button>
             </div>
           </div>
         )}
         table={(
           <div className="flex min-h-[40rem] flex-col">
-            <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  申请列表
-                  <span className="ml-2 text-xs font-normal text-slate-500 dark:text-slate-400">
-                    {hasActiveFilters ? `${currentStatusLabel} / ${currentTypeLabel}` : '全部'}
-                  </span>
-                </div>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  第 {searchParams.pageNum} / {totalPages} 页 · 共 {total} 条
-                </div>
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1180px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
@@ -739,28 +728,28 @@ export const PaymentRequestPage: React.FC = () => {
           <InlineState title="正在加载付款详情..." className="py-12" icon={<Clock3 className="h-4 w-4 animate-spin" />} />
         ) : detailPayment ? (
           <>
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              <DetailField label="收款方" value={renderDetailValue(detailPayment.payeeName)} />
-              <DetailField label="付款金额" value={formatAmount(detailPayment.amount)} />
-              <DetailField label="付款类型" value={getPaymentTypeLabel(detailPayment.paymentType)} />
-              <DetailField label="期望付款日期" value={renderDetailValue(detailPayment.expectedDate)} />
-              <DetailField label="收款账号" value={renderDetailValue(detailPayment.payeeAccount)} />
-              <DetailField label="开户银行" value={renderDetailValue(detailPayment.payeeBank)} />
-              <DetailField label="申请人" value={renderDetailValue(detailPayment.userName)} />
-              <DetailField label="所属部门" value={renderDetailValue(detailPayment.deptName)} />
-              <DetailField label="流程实例" value={renderDetailValue(detailPayment.instanceId)} />
-              <DetailField label="创建时间" value={renderDetailValue(detailPayment.createTime)} />
-              <DetailField label="更新时间" value={renderDetailValue(detailPayment.updateTime)} />
-            </div>
+            <DetailRows>
+              <DetailRow label="收款方" value={renderDetailValue(detailPayment.payeeName)} />
+              <DetailRow label="付款金额" value={formatAmount(detailPayment.amount)} />
+              <DetailRow label="付款类型" value={getPaymentTypeLabel(detailPayment.paymentType)} />
+              <DetailRow label="期望付款日期" value={renderDetailValue(detailPayment.expectedDate)} />
+              <DetailRow label="收款账号" value={renderDetailValue(detailPayment.payeeAccount)} />
+              <DetailRow label="开户银行" value={renderDetailValue(detailPayment.payeeBank)} />
+              <DetailRow label="申请人" value={renderDetailValue(detailPayment.userName)} />
+              <DetailRow label="所属部门" value={renderDetailValue(detailPayment.deptName)} />
+              <DetailRow label="流程实例" value={renderDetailValue(detailPayment.instanceId)} />
+              <DetailRow label="创建时间" value={renderDetailValue(detailPayment.createTime)} />
+              <DetailRow label="更新时间" value={renderDetailValue(detailPayment.updateTime)} />
+            </DetailRows>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
               <div className="text-sm font-medium text-slate-900 dark:text-slate-100">付款事由</div>
               <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">
                 {detailPayment.reason || '-'}
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
               <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
               {getAttachmentList(detailPayment.attachmentUrl).length ? (
                 <div className="space-y-2">

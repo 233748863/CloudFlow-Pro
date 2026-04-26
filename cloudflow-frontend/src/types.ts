@@ -16,6 +16,7 @@ export interface User {
   deptId?: string;
   deptName?: string; // 部门名称（由后端填充）
   tenantId?: number;
+  tenantName?: string;
   position?: string;
   phone?: string; // 手机号
   status?: string;

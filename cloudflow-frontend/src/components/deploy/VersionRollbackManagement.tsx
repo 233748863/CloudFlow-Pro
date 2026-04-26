@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
-import { Button, Textarea } from '@/components/ui';
+import { Button, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/ui';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/utils/cn';
 import { getProcessDefinitions } from '@/services/api/workflow';
@@ -111,11 +111,6 @@ const PanelCard: React.FC<{
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
       <div>
         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-        {description ? (
-          <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-            {description}
-          </div>
-        ) : null}
       </div>
       {aside ? <div className="flex items-center gap-2">{aside}</div> : null}
     </div>
@@ -156,31 +151,7 @@ const InlineState: React.FC<{
       <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div>
     ) : null}
     <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-        {description}
-      </div>
-    ) : null}
   </div>
-);
-
-const SegmentedButton: React.FC<{
-  active: boolean;
-  label: string;
-  onClick: () => void;
-}> = ({ active, label, onClick }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'rounded-lg px-4 py-2 text-sm font-medium transition',
-      active
-        ? 'bg-white text-cyan-700 shadow-sm dark:bg-slate-900 dark:text-cyan-200'
-        : 'text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-100',
-    )}
-  >
-    {label}
-  </button>
 );
 
 const SnapshotCodeBlock = ({
@@ -377,21 +348,21 @@ export const VersionRollbackManagement: React.FC = () => {
           </Select>
         </div>
 
-        <div className="inline-flex w-fit flex-wrap items-center gap-1 rounded-lg bg-slate-100 p-1 dark:bg-slate-900">
+        <SegmentedControl className="min-h-9">
           {[
             { key: 'versions', label: '版本列表' },
             { key: 'history', label: '回滚历史' },
           ].map((item) => (
-            <SegmentedButton
+            <SegmentedControlItem
               key={item.key}
+              size="sm"
               active={activeView === item.key}
-              label={item.label}
               onClick={() => setActiveView(item.key as 'versions' | 'history')}
-            />
+            >
+              {item.label}
+            </SegmentedControlItem>
           ))}
-        </div>
-
-        <div className="text-sm text-slate-500 dark:text-slate-400">{activeViewSummary}</div>
+        </SegmentedControl>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
@@ -438,7 +409,7 @@ export const VersionRollbackManagement: React.FC = () => {
           />
         ) : (
           <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 lg:grid lg:grid-cols-[minmax(0,1fr)_120px_180px_160px_220px] lg:items-center">
+            <div className="hidden bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 dark:bg-slate-900/70 dark:text-slate-400 lg:grid lg:grid-cols-[minmax(0,1fr)_120px_180px_160px_220px] lg:items-center">
               <span>版本</span>
               <span>部署</span>
               <span>创建时间</span>
@@ -497,7 +468,7 @@ export const VersionRollbackManagement: React.FC = () => {
         />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 lg:grid lg:grid-cols-[minmax(0,1fr)_180px_220px_160px] lg:items-center">
+          <div className="hidden bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 dark:bg-slate-900/70 dark:text-slate-400 lg:grid lg:grid-cols-[minmax(0,1fr)_180px_220px_160px] lg:items-center">
             <span>回滚链路</span>
             <span>状态</span>
             <span>时间与操作人</span>

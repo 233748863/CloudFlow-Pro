@@ -52,7 +52,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   const table = (
     <div className="overflow-x-auto">
       <table className="min-w-[1180px] w-full">
-        <TableHeader className="sticky top-0 z-10 bg-slate-50/95 backdrop-blur dark:bg-slate-950/95">
+        <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
           <tr>
             <TableHead className="w-[30%] px-4 py-3 text-left">标题</TableHead>
             <TableHead className="w-[18%] px-4 py-3 text-left">类型 / 优先级</TableHead>
@@ -69,7 +69,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
             const priorityMeta = getAnnouncementPriorityMeta(item.priority);
 
             return (
-              <tr key={item.announcementId} className="hover:bg-cyan-50/30 dark:hover:bg-cyan-950/10">
+              <tr key={item.announcementId} className="hover:bg-slate-50 dark:hover:bg-slate-900/60">
                 <td className="px-4 py-3">
                   <div className="min-w-0">
                     <div className="flex min-w-0 items-center gap-2">
@@ -153,7 +153,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                         label: '阅读状态',
                         icon: <Eye size={16} />,
                         onClick: () => onViewStats(item.announcementId),
-                        tone: 'info',
+                        tone: 'neutral',
                       },
                       {
                         label: '编辑',
@@ -165,7 +165,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                         label: item.isTop === 1 ? '取消置顶' : '置顶',
                         icon: <Pin size={16} />,
                         onClick: () => onToggleTop(item.announcementId),
-                        tone: item.isTop === 1 ? 'danger' : 'warning',
+                        tone: item.isTop === 1 ? 'warning' : 'neutral',
                       },
                       {
                         label: '撤销',

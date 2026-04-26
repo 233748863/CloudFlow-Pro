@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Edit, Plus, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { addPost, deletePost, getPostList, updatePost, type SysPost } from '../../services/api/system';
@@ -15,6 +15,7 @@ import {
   SelectValue,
   Table,
   TableActionHead,
+  TableRowActions,
   TableBody,
   TableCell,
   TableHead,
@@ -53,28 +54,6 @@ const getStatusBadgeClassName = (status: string) =>
   status === '0'
     ? 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200'
     : 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900/70 dark:bg-rose-950/30 dark:text-rose-200';
-
-const RowActionButton: React.FC<{
-  label: string;
-  icon: React.ReactNode;
-  onClick: () => void;
-  tone?: 'neutral' | 'danger';
-}> = ({ label, icon, onClick, tone = 'neutral' }) => (
-  <button
-    type="button"
-    onClick={onClick}
-    className={cn(
-      'inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-400 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950',
-      tone === 'danger'
-        ? 'text-slate-400 hover:bg-rose-50 hover:text-rose-600 dark:text-slate-500 dark:hover:bg-rose-950/30 dark:hover:text-rose-300'
-        : 'text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200',
-    )}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
 
 const TableStateRow: React.FC<{
   colSpan: number;
@@ -170,16 +149,6 @@ export const PostList = () => {
 
   const isEdit = Boolean(editingPost);
   const hasActiveFilters = Boolean(query.postCode || query.postName || query.status);
-
-  const activeCount = useMemo(() => posts.filter((item) => item.status === '0').length, [posts]);
-  const disabledCount = posts.length - activeCount;
-
-  const filterSummary = useMemo(() => {
-    const nameLabel = query.postName || '全部岗位';
-    const codeLabel = query.postCode || '全部编码';
-    const statusLabel = !query.status ? '全部状态' : query.status === '0' ? '正常' : '停用';
-    return `${nameLabel} / ${codeLabel} / ${statusLabel}`;
-  }, [query.postCode, query.postName, query.status]);
 
   const handleSearch = (event: React.FormEvent) => {
     event.preventDefault();
@@ -307,27 +276,6 @@ export const PostList = () => {
     <>
       <TablePageLayout
         className="gap-3"
-        actions={(
-          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-              <span className="font-medium text-slate-900 dark:text-slate-100">共 {total} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">当前页 {posts.length} 条</span>
-              <span className="text-slate-500 dark:text-slate-400">正常 {activeCount}</span>
-              <span className="text-slate-500 dark:text-slate-400">停用 {disabledCount}</span>
-            </div>
-
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
-                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
-                刷新
-              </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                新增岗位
-              </Button>
-            </div>
-          </div>
-        )}
         filters={(
           <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
             <form onSubmit={handleSearch} className="flex flex-1 flex-wrap items-center gap-3">
@@ -390,24 +338,20 @@ export const PostList = () => {
               ) : null}
             </form>
 
-            <div className="text-xs text-slate-500 dark:text-slate-400">{filterSummary}</div>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleRefresh} disabled={loading}>
+                <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={() => handleOpenModal()}>
+                <Plus size={15} />
+                新增岗位
+              </Button>
+            </div>
           </div>
         )}
         table={(
           <>
-            <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  岗位列表
-                </div>
-                {hasActiveFilters ? (
-                  <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                    {filterSummary}
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
             <div className="overflow-x-auto">
               <Table className="min-w-[920px]">
                 <TableHeader>
@@ -459,19 +403,24 @@ export const PostList = () => {
                           {post.createTime || '-'}
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            <RowActionButton
-                              label="编辑岗位"
-                              icon={<Edit size={15} />}
-                              onClick={() => handleOpenModal(post)}
-                            />
-                            <RowActionButton
-                              label="删除岗位"
-                              icon={<Trash2 size={15} />}
-                              onClick={() => setPendingDeletePost(post)}
-                              tone="danger"
-                            />
-                          </div>
+                          <TableRowActions
+                            align="end"
+                            iconOnly
+                            actions={[
+                              {
+                                label: '编辑岗位',
+                                icon: <Edit size={15} />,
+                                onClick: () => handleOpenModal(post),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '删除岗位',
+                                icon: <Trash2 size={15} />,
+                                onClick: () => setPendingDeletePost(post),
+                                tone: 'danger',
+                              },
+                            ]}
+                          />
                         </TableCell>
                       </TableRow>
                     ))
@@ -591,20 +540,19 @@ export const PostList = () => {
 
           <div>
             <label className={fieldLabelClassName}>备注</label>
-            <Textarea
-              rows={4}
-              className="resize-none"
-              value={formData.remark || ''}
-              onChange={(event) =>
-                setFormData((current) => ({
-                  ...current,
-                  remark: event.target.value,
-                }))
-              }
-              placeholder="补充岗位职责或适用范围"
-            />
-          </div>
-        </form>
+              <Textarea
+                rows={4}
+                className="resize-none"
+                value={formData.remark || ''}
+                onChange={(event) =>
+                  setFormData((current) => ({
+                    ...current,
+                    remark: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          </form>
       </BaseDialog>
 
       <ConfirmDialog

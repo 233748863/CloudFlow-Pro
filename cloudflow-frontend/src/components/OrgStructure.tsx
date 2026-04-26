@@ -6,16 +6,11 @@ import {
   ChevronRight,
   ChevronUp,
   Eye,
-  GitBranch,
   Loader2,
-  Mail,
-  Phone,
   Plus,
   Search,
-  ShieldCheck,
   Trash2,
   UserRound,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -23,6 +18,7 @@ import { ConfirmDialog } from '@/components/common';
 import {
   Button,
   Input,
+  SideNavItem,
   Select,
   SelectContent,
   SelectItem,
@@ -96,12 +92,6 @@ interface OrgStructureProps {
   onStatsChange?: (stats: OrgStructureStats) => void;
 }
 
-const surfaceChipClassName =
-  'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-[11px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300';
-const subtlePanelClassName =
-  'rounded-2xl border border-slate-200 bg-slate-50/90 p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900/70';
-const nestedPanelClassName =
-  'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const createDeptForm = (defaultParentId = 0): DeptFormState => ({
@@ -215,41 +205,31 @@ const DepartmentSelect: React.FC<{
       {open ? (
         <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_24px_48px_rgba(2,6,23,0.46)]">
           {showRoot ? (
-            <button
-              type="button"
+            <SideNavItem
+              size="sm"
+              active={value === 0}
               onClick={() => {
                 onChange(0);
                 setOpen(false);
               }}
-              className={cn(
-                'flex w-full items-center rounded-xl px-3 py-2 text-sm transition',
-                value === 0
-                  ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200'
-                  : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900',
-              )}
             >
               顶级部门
-            </button>
+            </SideNavItem>
           ) : null}
 
           {flatDepartments.map(({ dept, level }) => (
-            <button
+            <SideNavItem
               key={dept.deptId}
-              type="button"
+              size="sm"
+              active={value === dept.deptId}
               onClick={() => {
                 onChange(dept.deptId);
                 setOpen(false);
               }}
-              className={cn(
-                'flex w-full items-center rounded-xl px-3 py-2 text-sm transition',
-                value === dept.deptId
-                  ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200'
-                  : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-900',
-              )}
               style={{ paddingLeft: `${level * 18 + 12}px` }}
             >
               {dept.deptName}
-            </button>
+            </SideNavItem>
           ))}
         </div>
       ) : null}
@@ -257,29 +237,78 @@ const DepartmentSelect: React.FC<{
   );
 };
 
+const DepartmentPickerList: React.FC<{
+  deptTree: DeptItem[];
+  value?: number;
+  onChange: (value: number) => void;
+}> = ({ deptTree, value, onChange }) => {
+  const [keyword, setKeyword] = useState('');
+
+  const departments = useMemo(() => {
+    const normalized = keyword.trim().toLowerCase();
+    return flattenDepts(deptTree).filter(({ dept }) => {
+      if (!normalized) {
+        return true;
+      }
+
+      return (
+        dept.deptName.toLowerCase().includes(normalized) ||
+        String(dept.leader || '').toLowerCase().includes(normalized)
+      );
+    });
+  }, [deptTree, keyword]);
+
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        <Input
+          value={keyword}
+          onChange={(event) => setKeyword(event.target.value)}
+          className="pl-10"
+          placeholder="搜索目标部门"
+        />
+      </div>
+
+      <div className="max-h-[320px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-800 dark:bg-slate-900/30">
+        {departments.length === 0 ? (
+          <InlineState title="暂无匹配部门" description="请调整搜索条件后重试。" className="py-10" />
+        ) : (
+          <div className="space-y-1">
+            {departments.map(({ dept, level }) => {
+              const selected = value === dept.deptId;
+              return (
+                <SideNavItem
+                  key={dept.deptId}
+                  size="sm"
+                  active={selected}
+                  onClick={() => onChange(dept.deptId)}
+                  style={{ paddingLeft: `${level * 18 + 12}px` }}
+                >
+                  <Building2 size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                  <span className="truncate">{dept.deptName}</span>
+                  <span className={cn('ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
+                    {(dept.status || '0') === '0' ? '正常' : '停用'}
+                  </span>
+                </SideNavItem>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 const SectionCard: React.FC<{
   title: string;
-  description?: string;
-  eyebrow?: string;
   headerAside?: React.ReactNode;
   children: React.ReactNode;
-}> = ({ title, description, eyebrow, headerAside, children }) => (
-  <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800">
-      <div>
-        {eyebrow ? (
-          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-            {eyebrow}
-          </div>
-        ) : null}
-        <div className={cn('text-sm font-semibold text-slate-900 dark:text-slate-100', eyebrow ? 'mt-1' : '')}>
-          {title}
-        </div>
-        {description ? (
-          <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-            {description}
-          </div>
-        ) : null}
+}> = ({ title, headerAside, children }) => (
+  <section className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+        {title}
       </div>
       {headerAside ? <div className="flex items-center gap-2">{headerAside}</div> : null}
     </div>
@@ -351,14 +380,7 @@ const DeptFormDialog: React.FC<{
       open={open}
       onClose={onClose}
       title={editing ? '编辑部门' : '新增部门'}
-      description="统一维护部门名称、层级、负责人和联系方式，让组织结构页回到和其他 System 页面一致的弹层语法。"
-      maxWidthClassName="max-w-4xl"
-      headerAside={
-        <div className="flex flex-wrap gap-2">
-          <span className={surfaceChipClassName}>{editing ? '编辑模式' : '新增模式'}</span>
-          <span className={surfaceChipClassName}>状态：{form.status === '0' ? '正常' : '停用'}</span>
-        </div>
-      }
+      maxWidthClassName="max-w-3xl"
       footer={
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
@@ -380,111 +402,83 @@ const DeptFormDialog: React.FC<{
               });
             }}
           >
-            {editing ? '保存修改' : '立即创建'}
+            {editing ? '保存' : '创建'}
           </Button>
         </div>
       }
     >
-      <div className="space-y-4">
-        <section className={subtlePanelClassName}>
-          <div className="mb-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-              Hierarchy
-            </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">层级与基础信息</div>
-            <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-              先定义父级部门和部门名称，再补充负责人与联系方式，避免组织树层级和部门信息分散维护。
-            </div>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <label className={fieldLabelClassName}>上级部门</label>
-              <DepartmentSelect
-                value={form.parentId}
-                onChange={(value) => setForm((prev) => ({ ...prev, parentId: value }))}
-                deptTree={deptTree}
-                excludeId={editing?.deptId}
-              />
-            </div>
-            <div>
-              <label className={fieldLabelClassName}>
-                部门名称 <span className="text-red-500">*</span>
-              </label>
-              <Input
-                value={form.deptName}
-                onChange={(event) => setForm((prev) => ({ ...prev, deptName: event.target.value }))}
-                placeholder="请输入部门名称"
-              />
-            </div>
-            <div>
-              <label className={fieldLabelClassName}>排序</label>
-              <Input
-                type="number"
-                value={form.orderNum}
-                onChange={(event) =>
-                  setForm((prev) => ({
-                    ...prev,
-                    orderNum: Number.parseInt(event.target.value, 10) || 0,
-                  }))
-                }
-              />
-            </div>
-            <div>
-              <label className={fieldLabelClassName}>状态</label>
-              <Select
-                value={form.status}
-                onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}
-              >
-                <SelectTrigger className="h-11 rounded-2xl">
-                  <SelectValue placeholder="请选择状态" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="0">正常</SelectItem>
-                  <SelectItem value="1">停用</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </section>
-
-        <section className={subtlePanelClassName}>
-          <div className="mb-4">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-              Contact
-            </div>
-            <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">负责人和联系方式</div>
-          </div>
-
-          <div className={nestedPanelClassName}>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
-                <label className={fieldLabelClassName}>负责人</label>
-                <Input
-                  value={form.leader}
-                  onChange={(event) => setForm((prev) => ({ ...prev, leader: event.target.value }))}
-                  placeholder="负责人"
-                />
-              </div>
-              <div>
-                <label className={fieldLabelClassName}>电话</label>
-                <Input
-                  value={form.phone}
-                  onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-                  placeholder="联系电话"
-                />
-              </div>
-              <div>
-                <label className={fieldLabelClassName}>邮箱</label>
-                <Input
-                  value={form.email}
-                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                  placeholder="联系邮箱"
-                />
-              </div>
-            </div>
-          </div>
-        </section>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div>
+          <label className={fieldLabelClassName}>上级部门</label>
+          <DepartmentSelect
+            value={form.parentId}
+            onChange={(value) => setForm((prev) => ({ ...prev, parentId: value }))}
+            deptTree={deptTree}
+            excludeId={editing?.deptId}
+          />
+        </div>
+        <div>
+          <label className={fieldLabelClassName}>
+            部门名称 <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={form.deptName}
+            onChange={(event) => setForm((prev) => ({ ...prev, deptName: event.target.value }))}
+            placeholder="请输入部门名称"
+          />
+        </div>
+        <div>
+          <label className={fieldLabelClassName}>排序</label>
+          <Input
+            type="number"
+            value={form.orderNum}
+            onChange={(event) =>
+              setForm((prev) => ({
+                ...prev,
+                orderNum: Number.parseInt(event.target.value, 10) || 0,
+              }))
+            }
+          />
+        </div>
+        <div>
+          <label className={fieldLabelClassName}>状态</label>
+          <Select
+            value={form.status}
+            onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}
+          >
+            <SelectTrigger className="h-11 rounded-2xl">
+              <SelectValue placeholder="请选择状态" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="0">正常</SelectItem>
+              <SelectItem value="1">停用</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label className={fieldLabelClassName}>负责人</label>
+          <Input
+            value={form.leader}
+            onChange={(event) => setForm((prev) => ({ ...prev, leader: event.target.value }))}
+            placeholder="负责人"
+          />
+        </div>
+        <div>
+          <label className={fieldLabelClassName}>电话</label>
+          <Input
+            value={form.phone}
+            onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
+            placeholder="联系电话"
+          />
+        </div>
+        <div className="md:col-span-2">
+          <label className={fieldLabelClassName}>邮箱</label>
+          <Input
+            value={form.email}
+            onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+            placeholder="联系邮箱"
+          />
+        </div>
       </div>
     </BaseDialog>
   );
@@ -514,7 +508,6 @@ const UserDetailDialog: React.FC<{
       open={open}
       onClose={onClose}
       title="用户详情"
-      description="组织结构页内直接查看账号、归属部门和状态信息，减少跨页跳转。"
       maxWidthClassName="max-w-2xl"
       footer={
         <div className="flex justify-end">
@@ -526,30 +519,28 @@ const UserDetailDialog: React.FC<{
     >
       {user ? (
         <div className="space-y-4">
-          <div className={subtlePanelClassName}>
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-lg font-semibold text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
+          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/40">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
                 {(user.nickName || user.userName || '?')[0]}
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
                   {user.nickName || user.userName}
                 </div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">用户 ID：{user.userId}</div>
+                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">用户 ID {user.userId}</div>
               </div>
             </div>
-          </div>
 
-          <div className={nestedPanelClassName}>
-            <div className="grid gap-3 md:grid-cols-2">
+          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="grid gap-0 md:grid-cols-2">
               {fields.map((field) => (
-                <div key={field.label} className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                <div key={field.label} className="border-b border-slate-100 px-4 py-3 even:md:border-l dark:border-slate-800 dark:even:md:border-slate-800">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
                     {field.label}
                   </div>
                   <div className="mt-1.5 text-sm text-slate-900 dark:text-slate-100">
                     {field.type === 'role' && field.value !== '-' ? (
-                      <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
+                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                         {field.value}
                       </span>
                     ) : field.type === 'status' ? (
@@ -578,6 +569,10 @@ const ChangeDeptDialog: React.FC<{
   deptTree: DeptItem[];
 }> = ({ open, onClose, onSubmit, user, deptTree }) => {
   const [targetDeptId, setTargetDeptId] = useState<number | undefined>(undefined);
+  const targetDept = useMemo(
+    () => findDeptById(deptTree, targetDeptId ?? null),
+    [deptTree, targetDeptId],
+  );
 
   useEffect(() => {
     if (!open || !user) return;
@@ -589,8 +584,8 @@ const ChangeDeptDialog: React.FC<{
       open={open}
       onClose={onClose}
       title="调整部门"
-      description="直接在组织结构页内调整用户所属部门，确保树结构和成员归属保持一致。"
-      maxWidthClassName="max-w-xl"
+      maxWidthClassName="w-full sm:max-w-4xl"
+      bodyClassName="pb-10"
       footer={
         <div className="flex justify-end gap-3">
           <Button variant="outline" onClick={onClose}>
@@ -612,27 +607,37 @@ const ChangeDeptDialog: React.FC<{
       }
     >
       {user ? (
-        <div className="space-y-4">
-          <div className={subtlePanelClassName}>
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-sm font-semibold text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
+        <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
                 {(user.nickName || user.userName || '?')[0]}
               </div>
               <div>
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.nickName || user.userName}</div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前部门：{user.deptName || '-'}</div>
+                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前部门 {user.deptName || '-'}</div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                目标部门
+              </div>
+              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {targetDept?.deptName || '未选择'}
+              </div>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从右侧列表选择目标部门'}
               </div>
             </div>
           </div>
 
           <div>
             <label className={fieldLabelClassName}>目标部门</label>
-            <DepartmentSelect
+            <DepartmentPickerList
               value={targetDeptId}
               onChange={setTargetDeptId}
               deptTree={deptTree}
-              showRoot={false}
-              placeholder="请选择目标部门"
             />
           </div>
         </div>
@@ -646,10 +651,7 @@ const DeptNode: React.FC<{
   level?: number;
   selectedDeptId: number | null;
   onSelect: (dept: DeptItem) => void;
-  onEdit: (dept: DeptItem) => void;
-  onDelete: (dept: DeptItem) => void;
-  onAddChild: (dept: DeptItem) => void;
-}> = ({ dept, level = 0, selectedDeptId, onSelect, onEdit, onDelete, onAddChild }) => {
+}> = ({ dept, level = 0, selectedDeptId, onSelect }) => {
   const [expanded, setExpanded] = useState(true);
   const hasChildren = Boolean(dept.children?.length);
   const isSelected = selectedDeptId === dept.deptId;
@@ -658,10 +660,8 @@ const DeptNode: React.FC<{
     <div className="select-none">
       <div
         className={cn(
-          'group flex items-center gap-2 rounded-xl px-2 py-1.5 transition',
-          isSelected
-            ? 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/20 dark:text-cyan-200'
-            : 'text-slate-700 hover:bg-white dark:text-slate-200 dark:hover:bg-slate-950/78',
+          'cf-side-link cf-side-link-sm',
+          isSelected && 'cf-side-link-active',
         )}
         style={{ paddingLeft: `${level * 18 + 8}px` }}
       >
@@ -683,51 +683,12 @@ const DeptNode: React.FC<{
           onClick={() => onSelect(dept)}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
-          <Building2 size={15} className={isSelected ? 'text-cyan-600 dark:text-cyan-300' : 'text-slate-400 dark:text-slate-500'} />
+          <Building2 size={15} className="text-slate-400 dark:text-slate-500" />
           <span className="truncate text-sm font-medium">{dept.deptName}</span>
           <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
             {(dept.status || '0') === '0' ? '正常' : '停用'}
           </span>
         </button>
-
-        <div className="hidden items-center gap-1 opacity-0 transition group-hover:flex group-hover:opacity-100">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAddChild(dept);
-            }}
-            title="新增子部门"
-          >
-            <Plus size={13} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full"
-            onClick={(event) => {
-              event.stopPropagation();
-              onEdit(dept);
-            }}
-            title="编辑部门"
-          >
-            <UserRound size={13} />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 rounded-full text-rose-500 hover:text-rose-600"
-            onClick={(event) => {
-              event.stopPropagation();
-              onDelete(dept);
-            }}
-            title="删除部门"
-          >
-            <Trash2 size={13} />
-          </Button>
-        </div>
       </div>
 
       {expanded && hasChildren ? (
@@ -739,9 +700,6 @@ const DeptNode: React.FC<{
               level={level + 1}
               selectedDeptId={selectedDeptId}
               onSelect={onSelect}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onAddChild={onAddChild}
             />
           ))}
         </div>
@@ -933,14 +891,11 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   };
 
   return (
-    <div className="grid gap-4 xl:grid-cols-[360px_minmax(0,1fr)]">
+    <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
       <SectionCard
-        eyebrow="Departments"
-        title="部门树"
-        description="统一浏览部门层级、负责人和状态，并在同一入口完成新增、编辑和删除动作。"
+        title="部门"
         headerAside={
-          <div className="flex flex-wrap gap-2">
-            <span className={surfaceChipClassName}>部门 {totalDepartments} 个</span>
+          <>
             <Button
               variant="outline"
               size="sm"
@@ -951,33 +906,12 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               }}
             >
               <Plus size={14} />
-              新增部门
+              新增
             </Button>
-          </div>
+          </>
         }
       >
-        <div className="space-y-4">
-          <div className={subtlePanelClassName}>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  当前视图
-                </div>
-                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {selectedDept?.deptName || '全部部门'}
-                </div>
-              </div>
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                  活跃部门
-                </div>
-                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {activeDepartments} / {totalDepartments}
-                </div>
-              </div>
-            </div>
-          </div>
-
+        <div className="space-y-3">
           <div className="relative">
             <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
             <Input
@@ -988,7 +922,50 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             />
           </div>
 
-          <div className={cn(subtlePanelClassName, 'max-h-[72vh] overflow-y-auto')}>
+          {selectedDept ? (
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/40">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                  {selectedDept.deptName}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditingDept(null);
+                    setDefaultParentId(selectedDept.deptId);
+                    setDeptFormOpen(true);
+                  }}
+                >
+                  <Plus size={14} />
+                  新增子部门
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEditingDept(selectedDept);
+                    setDeptFormOpen(true);
+                  }}
+                >
+                  <UserRound size={14} />
+                  编辑
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPendingDeleteDept(selectedDept)}
+                >
+                  <Trash2 size={14} />
+                  删除
+                </Button>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="max-h-[72vh] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/30">
             {deptLoading ? (
               <InlineState title="正在加载部门树..." loading className="py-12" />
             ) : deptError ? (
@@ -1015,16 +992,6 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     onSelect={(item) =>
                       setSelectedDeptId((prev) => (prev === item.deptId ? null : item.deptId))
                     }
-                    onEdit={(item) => {
-                      setEditingDept(item);
-                      setDeptFormOpen(true);
-                    }}
-                    onDelete={setPendingDeleteDept}
-                    onAddChild={(item) => {
-                      setEditingDept(null);
-                      setDefaultParentId(item.deptId);
-                      setDeptFormOpen(true);
-                    }}
                   />
                 ))}
               </div>
@@ -1034,35 +1001,11 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       </SectionCard>
 
       <SectionCard
-        eyebrow="Members"
-        title={selectedDept ? `${selectedDept.deptName} 成员` : '全部成员'}
-        description="右侧统一查看成员信息、归属部门和组织调整动作，保持树结构与成员列表在同一工作区联动。"
-        headerAside={
-          <div className="flex flex-wrap gap-2">
-            <span className={surfaceChipClassName}>当前结果 {filteredUsers.length} 人</span>
-            <span className={surfaceChipClassName}>启用成员 {activeUsers} 人</span>
-          </div>
-        }
+        title={selectedDept ? `${selectedDept.deptName}` : '成员'}
       >
-        <div className="space-y-4">
-          <div className={subtlePanelClassName}>
-            <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-              <div className="space-y-2">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">成员视图概况</div>
-                <div className="flex flex-wrap gap-2">
-                  <span className={surfaceChipClassName}>范围：{selectedDept?.deptName || '全部用户'}</span>
-                  <span className={surfaceChipClassName}>已加载 {users.length} 人</span>
-                  <span className={surfaceChipClassName}>筛选后 {filteredUsers.length} 人</span>
-                </div>
-                <div className="text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  用户详情、部门调整和删除动作已经收口到统一的表格与弹层语法，后续组织与用户相关页面都应沿用这套结构。
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="grid gap-2.5 xl:grid-cols-[minmax(0,1fr)_auto]">
-            <div className="relative">
+        <div className="rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 xl:flex-row xl:items-center xl:justify-between">
+            <div className="relative min-w-0 flex-1">
               <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
               <Input
                 value={userSearch}
@@ -1078,6 +1021,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             ) : null}
           </div>
 
+          <div className="overflow-x-auto">
           <Table className="min-w-[1100px]">
             <TableHeader>
               <TableRow>
@@ -1107,15 +1051,12 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                   <TableRow key={user.userId}>
                     <TableCell className="py-4">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-cyan-200 bg-cyan-50 text-sm font-semibold text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                           {(user.nickName || user.userName || '?')[0]}
                         </div>
                         <div className="min-w-0">
                           <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                             {user.nickName || '-'}
-                          </div>
-                          <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                            {user.createTime || '未记录创建时间'}
                           </div>
                         </div>
                       </div>
@@ -1128,7 +1069,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     </TableCell>
                     <TableCell className="py-4">
                       {user.role ? (
-                        <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:border-cyan-900/70 dark:bg-cyan-950/30 dark:text-cyan-200">
+                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
                           {user.role}
                         </span>
                       ) : (
@@ -1142,25 +1083,26 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <TableRowActions
+                        iconOnly
                         align="end"
                         actions={[
                           {
                             label: '详情',
                             icon: <Eye size={14} />,
                             onClick: () => setDetailUser(user),
-                            tone: 'info',
+                            tone: 'neutral',
                           },
                           {
                             label: '调岗',
                             icon: <ArrowRightLeft size={14} />,
                             onClick: () => setChangeDeptUser(user),
-                            tone: 'warning',
+                            tone: 'neutral',
                           },
                           {
                             label: '删除',
                             icon: <Trash2 size={14} />,
                             onClick: () => setPendingDeleteUser(user),
-                            tone: 'danger',
+                            tone: 'neutral',
                           },
                         ]}
                       />
@@ -1170,6 +1112,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
               )}
             </TableBody>
           </Table>
+          </div>
         </div>
       </SectionCard>
 

@@ -168,7 +168,6 @@ CREATE TABLE hr_employee_contract (
     start_date DATE NOT NULL COMMENT '开始日期',
     end_date DATE NOT NULL COMMENT '结束日期',
     duration INT COMMENT '合同期限（月）',
-    file_url VARCHAR(500) COMMENT '合同文件URL',
     status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 ACTIVE-生效中 EXPIRED-已过期 TERMINATED-已终止',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -183,6 +182,26 @@ CREATE TABLE hr_employee_contract (
     KEY idx_end_date (end_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工合同表';
 
+-- 员工合同附件表
+DROP TABLE IF EXISTS hr_employee_contract_attachment;
+CREATE TABLE hr_employee_contract_attachment (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    contract_id BIGINT NOT NULL COMMENT '合同ID',
+    file_name VARCHAR(255) DEFAULT NULL COMMENT '附件名称',
+    file_url VARCHAR(500) NOT NULL COMMENT '附件URL',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_contract_id (contract_id),
+    KEY idx_tenant_contract_id (tenant_id, contract_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工合同附件表';
+
 -- 员工证件表
 DROP TABLE IF EXISTS hr_employee_document;
 CREATE TABLE hr_employee_document (
@@ -193,7 +212,6 @@ CREATE TABLE hr_employee_document (
     document_no VARCHAR(100) NOT NULL COMMENT '证件号码',
     issue_date DATE COMMENT '签发日期',
     expiry_date DATE COMMENT '有效期至',
-    file_url VARCHAR(500) COMMENT '证件扫描件URL',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
@@ -204,6 +222,26 @@ CREATE TABLE hr_employee_document (
     KEY idx_employee_id (employee_id),
     KEY idx_document_type (document_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工证件表';
+
+-- 员工证件附件表
+DROP TABLE IF EXISTS hr_employee_document_attachment;
+CREATE TABLE hr_employee_document_attachment (
+    id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    tenant_id BIGINT NOT NULL COMMENT '租户ID',
+    document_id BIGINT NOT NULL COMMENT '证件ID',
+    file_name VARCHAR(255) DEFAULT NULL COMMENT '附件名称',
+    file_url VARCHAR(500) NOT NULL COMMENT '附件URL',
+    sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+    update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+    deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+    PRIMARY KEY (id),
+    KEY idx_tenant_id (tenant_id),
+    KEY idx_document_id (document_id),
+    KEY idx_tenant_document_id (tenant_id, document_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工证件附件表';
 
 -- 紧急联系人表
 DROP TABLE IF EXISTS hr_emergency_contact;

@@ -5,6 +5,7 @@ import lombok.Data;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 员工合同VO
@@ -80,7 +81,7 @@ public class EmployeeContractVO implements Serializable {
     /**
      * 合同文件URL
      */
-    private String fileUrl;
+    private List<String> attachmentUrls;
 
     /**
      * 状态：DRAFT-草稿 ACTIVE-生效中 EXPIRED-已过期 TERMINATED-已终止

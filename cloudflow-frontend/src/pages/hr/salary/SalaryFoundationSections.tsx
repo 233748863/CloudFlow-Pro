@@ -71,24 +71,15 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
         </Button>
       )}
     >
-      <div className="mb-4 flex flex-wrap gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/30">
+      <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/30 dark:text-slate-400">
         <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-300">
           <span className="font-medium">已启用项目</span>
           <span className="font-semibold text-slate-900 dark:text-slate-100">{enabledSalaryItems.length}</span>
           <span className="text-slate-400 dark:text-slate-500">/ 总数 {salaryItems.length}</span>
         </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
-          <span className="font-medium">命中现薪联动</span>
-          <span className="font-semibold">{linkedSalaryItems.length}</span>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-          <span className="font-medium">孤立项目</span>
-          <span className="font-semibold">{orphanSalaryItems.length}</span>
-        </div>
-        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-          <span className="font-medium">带公式项目</span>
-          <span className="font-semibold">{formulaSalaryItems.length}</span>
-        </div>
+        <span>命中现薪联动 {linkedSalaryItems.length}</span>
+        <span>孤立项目 {orphanSalaryItems.length}</span>
+        <span>带公式项目 {formulaSalaryItems.length}</span>
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
@@ -112,7 +103,7 @@ export const SalaryItemsSection: React.FC<SalaryItemsSectionProps> = ({
                     <div className="font-medium text-slate-900">{item.itemName}</div>
                     {item.formula && String(item.formula).trim() && (
                       <div className="mt-2">
-                        <span className="inline-flex rounded-full border border-sky-200 bg-sky-50 px-2 py-0.5 text-xs font-medium text-sky-700">
+                        <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                           带公式
                         </span>
                       </div>
@@ -259,7 +250,7 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                 type="button"
                 className={`w-full rounded-2xl border px-4 py-4 text-left transition ${
                   isActive
-                    ? 'border-sky-200 bg-sky-50/80 shadow-sm'
+                    ? 'border-slate-300 bg-slate-50 shadow-sm'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                 }`}
                 onClick={() => setSelectedStructureId(String(item.id))}
@@ -352,7 +343,7 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                   valueClassName={cn(
                     'max-w-[72%] text-left',
                     selectedStructureDeleteDiagnostics?.riskItems.length
-                      ? 'text-amber-600 dark:text-amber-300'
+                      ? 'text-slate-600 dark:text-slate-300'
                       : 'text-slate-600 dark:text-slate-300',
                   )}
                 />
@@ -398,11 +389,11 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                             <div className="whitespace-nowrap">{toDateInputValue(item.effectiveDate) || '-'}</div>
                             <div className="mt-1 flex flex-wrap gap-2">
                               {isFutureDate(item.effectiveDate) ? (
-                                <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                                <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                                   未来生效
                                 </span>
                               ) : (
-                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                                <span className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300">
                                   已生效
                                 </span>
                               )}
@@ -462,8 +453,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                             <span className={cn(
                               'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
                               item.isTaxable
-                                ? 'border-sky-200 bg-sky-50 text-sky-700'
-                                : 'border-slate-200 bg-slate-50 text-slate-600',
+                                ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
+                                : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
                             )}>
                               {item.isTaxable ? '计税' : '不计税'}
                             </span>
@@ -472,8 +463,8 @@ export const SalaryStructuresSection: React.FC<SalaryStructuresSectionProps> = (
                             <span className={cn(
                               'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
                               Number(item.status ?? 1) === 1
-                                ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                                : 'border-amber-200 bg-amber-50 text-amber-700',
+                                ? 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300'
+                                : 'border-slate-200 bg-white text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300',
                             )}>
                               {Number(item.status ?? 1) === 1 ? '启用' : '禁用'}
                             </span>
@@ -674,11 +665,9 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
           <TableBody>
             {sortedSalaryGrades.map((item) => {
               const rowIssues = salaryGradeDiagnostics.rowIssueMap.get(item.id) || [];
-              const rowClassName = rowIssues.some((issue: any) => issue.severity === 'danger')
-                ? 'bg-rose-50/40'
-                : rowIssues.length
-                  ? 'bg-amber-50/40'
-                  : '';
+              const rowClassName = rowIssues.length
+                ? 'bg-slate-50/70 dark:bg-slate-900/40'
+                : '';
 
               return (
                 <TableRow key={item.id} className={rowClassName}>
@@ -698,11 +687,7 @@ export const SalaryGradesSection: React.FC<SalaryGradesSectionProps> = ({
                         {rowIssues.map((issue: any) => (
                           <span
                             key={issue.key}
-                            className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${
-                              issue.severity === 'danger'
-                                ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                : 'border-amber-200 bg-amber-50 text-amber-700'
-                            }`}
+                            className="inline-flex rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
                           >
                             {issue.label}
                           </span>
@@ -876,7 +861,7 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
 
         <div className="flex items-center justify-between gap-3 lg:justify-end">
           <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             onClick={() => {
               setInsuranceSchemeCityFilter(ALL_VALUE);
@@ -942,11 +927,9 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
                 rowIssues.push({ label: '仅历史台账', severity: 'warning' });
               }
               const quickAssignDisabled = !currentEmployeeRecord || Number(item.status ?? 1) === 0 || actionLoading;
-              const rowClassName = rowIssues.some((issue) => issue.severity === 'danger')
-                ? 'bg-rose-50/40'
-                : rowIssues.length
-                  ? 'bg-amber-50/40'
-                  : '';
+              const rowClassName = rowIssues.length
+                ? 'bg-slate-50/70 dark:bg-slate-900/40'
+                : '';
 
               return (
                 <TableRow key={item.id} className={rowClassName}>
@@ -958,11 +941,7 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
                         {rowIssues.map((issue) => (
                           <span
                             key={`${item.id}-${issue.label}`}
-                            className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-medium ${
-                              issue.severity === 'danger'
-                                ? 'border-rose-200 bg-rose-50 text-rose-700'
-                                : 'border-amber-200 bg-amber-50 text-amber-700'
-                            }`}
+                            className="inline-flex rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950/72 dark:text-slate-300"
                           >
                             {issue.label}
                           </span>
@@ -988,7 +967,7 @@ export const SalaryInsuranceSection: React.FC<SalaryInsuranceSectionProps> = ({
                             ? `${usage.activeRecordCount} 条 ACTIVE 台账 / ${usage.activeEmployeeIds.size} 名员工`
                             : '-'}
                         </div>
-                        <div className={`mt-1 text-xs ${usage.activeRecordCount ? 'text-slate-400' : 'text-amber-600'}`}>
+                        <div className="mt-1 text-xs text-slate-400">
                           {[
                             usage.futureRecordCount ? `未来 ${usage.futureRecordCount}` : '',
                             usage.expiredRecordCount ? `历史 ${usage.expiredRecordCount}` : '',

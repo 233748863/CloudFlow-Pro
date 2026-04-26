@@ -1,5 +1,5 @@
-import React from 'react';
-import { ArrowRight, ShieldCheck, X } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { ShieldCheck, X } from 'lucide-react';
 import { SliderCaptcha } from '@/components/SliderCaptcha';
 
 interface AuthCaptchaDialogProps {
@@ -17,46 +17,65 @@ export const AuthCaptchaDialog: React.FC<AuthCaptchaDialogProps> = ({
   onClose,
   onVerify,
 }) => {
+  useEffect(() => {
+    if (!open) {
+      return undefined;
+    }
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [onClose, open]);
+
   if (!open) {
     return null;
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-[2px]">
-      <div className="absolute inset-0" onClick={onClose} />
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+      <div className="absolute inset-0 bg-slate-950/42 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full max-w-[344px] overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 sm:p-6">
+      <div
+        role="dialog"
+        aria-modal="true"
+        className="relative w-full max-w-[24rem] overflow-hidden rounded-[1.75rem] border border-slate-200/85 bg-white/94 p-6 shadow-[0_28px_56px_rgba(15,23,42,0.16)] backdrop-blur-xl dark:border-dark-700 dark:bg-dark-900/94 dark:shadow-[0_32px_64px_rgba(2,6,23,0.48)]"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,0.16),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0))] dark:bg-[radial-gradient(circle_at_top_right,rgba(45,212,191,0.12),transparent_28%),linear-gradient(180deg,rgba(255,255,255,0.03),rgba(255,255,255,0))]" />
 
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-4 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+          className="absolute right-4 top-4 z-10 inline-flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:bg-dark-800 dark:text-slate-400 dark:hover:bg-dark-700 dark:hover:text-slate-100"
+          aria-label="关闭验证弹层"
         >
           <X size={16} />
         </button>
 
         <div className="relative">
-          <div className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-cyan-700">
+          <div className="inline-flex items-center gap-2 rounded-full border border-teal-200 bg-teal-50 px-3 py-1.5 text-[11px] font-semibold tracking-[0.08em] text-teal-700 dark:border-teal-900/50 dark:bg-teal-950/35 dark:text-teal-200">
             <ShieldCheck size={14} />
             安全验证
           </div>
 
-          <h3 className="mt-4 text-[1.45rem] font-bold tracking-tight text-slate-900">
+          <h3 className="mt-4 text-[1.45rem] font-bold tracking-tight text-slate-900 dark:text-white">
             {title}
           </h3>
-          <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{description}</p>
 
           <div className="mt-6">
-            <SliderCaptcha onVerify={onVerify} width={300} />
+            <SliderCaptcha onVerify={onVerify} width={300} height={150} />
           </div>
 
-          <div className="mt-5 flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 text-xs text-slate-500">
-            <span>完成拼图验证后继续下一步</span>
-            <span className="inline-flex items-center gap-1 font-semibold text-slate-700">
-              下一步
-              <ArrowRight size={12} />
-            </span>
-          </div>
+          <p className="mt-4 text-center text-xs text-slate-400 dark:text-slate-500">
+            验证通过后将自动继续当前流程
+          </p>
         </div>
       </div>
     </div>
