@@ -32,7 +32,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from '@/components/ui';
+} from '@/components/common';
 import { FileUpload } from '@/components/FileUpload';
 import {
   EmployeeContract,

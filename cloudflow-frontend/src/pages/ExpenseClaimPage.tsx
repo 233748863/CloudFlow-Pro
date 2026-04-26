@@ -23,8 +23,8 @@ import {
   TableHead,
   TableHeader,
   Textarea,
-} from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+} from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 
 const STATUS_OPTIONS = [
   { value: '', label: '全部状态' },

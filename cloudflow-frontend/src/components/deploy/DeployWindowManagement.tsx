@@ -3,9 +3,9 @@ import { Clock3, Edit2, Plus, Power, PowerOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { DeployActionButton } from '@/components/deploy/DeployActionButton';
-import { Button, Input, Textarea } from '@/components/ui';
-import { DatePicker } from '@/components/ui/date-picker';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button, Input, Textarea } from '@/components/common';
+import { DatePicker } from '@/components/common/date-picker';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
 import { cn } from '@/utils/cn';
 import {
   DeployWindow,

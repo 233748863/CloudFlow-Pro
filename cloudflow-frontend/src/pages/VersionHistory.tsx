@@ -10,7 +10,7 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { BaseDialog } from '@/components/common';
-import { Button, Textarea } from '@/components/ui';
+import { Button, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
 import request from '@/services/api/request';
 import { ApiErrorResponse, handleApiError, showSuccess, showWarning } from '@/utils/errorHandler';

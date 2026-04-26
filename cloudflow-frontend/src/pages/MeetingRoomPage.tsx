@@ -15,7 +15,7 @@ import {
 import { toast } from 'sonner';
 import { ConfirmDialog } from '@/components/common';
 import { toBackendDateString } from '../utils/dateFormat';
-import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/ui';
+import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowRight, Bell } from 'lucide-react';
-import { Button, EmptyState, LoadingSpinner } from '@/components/ui';
+import { Button, EmptyState, LoadingSpinner } from '@/components/common';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 
 interface UserDashboardAnnouncementsProps {

@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Input, Label, Textarea } from "@/components/ui";
+import { Button, Input, Label, Textarea } from "@/components/common";
 import { BaseDialog } from "@/components/common/BaseDialog";
 import { TEXT } from "./config";
 

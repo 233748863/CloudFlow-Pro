@@ -1,6 +1,6 @@
 import React from "react";
 import { ArrowRight, Plus, Sparkles, Workflow } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/common";
 import { BaseDialog } from "@/components/common/BaseDialog";
 import { TEXT } from "./config";
 import { formatNodeType } from "./utils";

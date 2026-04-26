@@ -12,8 +12,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
-import { Button, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
 import { cn } from '@/utils/cn';
 import { getProcessDefinitions } from '@/services/api/workflow';
 import {

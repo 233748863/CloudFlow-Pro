@@ -44,10 +44,10 @@ import {
   TableHeader,
   TableRow,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import { BaseDialog } from '@/components/common';
 import { Pagination } from '@/components/common/Pagination';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { useAuth } from '../context/AuthContext';
 import { createEvent, deleteEvent, getMeetingRooms, getMyEvents } from '../services/api/schedule';

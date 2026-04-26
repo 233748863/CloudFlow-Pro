@@ -7,6 +7,7 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 候选人详情VO
@@ -103,7 +104,7 @@ public class CandidateDetailVO implements Serializable {
     /**
      * 简历URL
      */
-    private String resumeUrl;
+    private List<String> resumeAttachmentUrls;
 
     /**
      * 来源：WEBSITE-官网 REFERRAL-内推 HEADHUNTER-猎头 CAMPUS-校招

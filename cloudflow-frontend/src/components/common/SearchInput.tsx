@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Search } from 'lucide-react';
-import { Input } from '@/components/ui';
+import { Input } from './input';
 import { cn } from '@/utils/cn';
 
 interface SearchInputProps
@@ -16,7 +16,7 @@ interface SearchInputProps
 
 export const SearchInput: React.FC<SearchInputProps> = ({
   value,
-  placeholder = '搜索',
+  placeholder = '鎼滅储',
   debounceMs = 300,
   onChange,
   onSearch,

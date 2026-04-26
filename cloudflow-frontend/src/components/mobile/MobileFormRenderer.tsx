@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { FormDefinition, FormField } from '../../types';
 import { ArrowLeft, AlertCircle } from 'lucide-react';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../ui/select';
-import { DatePicker } from '../ui/date-picker';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '../common/select';
+import { DatePicker } from '../common/date-picker';
 
 interface MobileFormRendererProps {
   formDef: FormDefinition;

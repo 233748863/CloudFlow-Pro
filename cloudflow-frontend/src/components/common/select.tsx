@@ -1,7 +1,62 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { Check, ChevronDown } from 'lucide-react';
 import { cn } from '@/utils/cn';
+
+const SELECT_ITEM_DISPLAY_NAME = 'CloudFlowSelectItem';
+
+const isSelectItemType = (type: unknown) => {
+  if (!type) {
+    return false;
+  }
+
+  if (type === SelectItem) {
+    return true;
+  }
+
+  const candidate = type as {
+    __CF_SELECT_ITEM__?: boolean;
+    displayName?: string;
+    type?: {
+      __CF_SELECT_ITEM__?: boolean;
+      displayName?: string;
+    };
+  };
+
+  if (candidate.__CF_SELECT_ITEM__ || candidate.displayName === SELECT_ITEM_DISPLAY_NAME) {
+    return true;
+  }
+
+  return Boolean(
+    candidate.type &&
+    (candidate.type.__CF_SELECT_ITEM__ || candidate.type.displayName === SELECT_ITEM_DISPLAY_NAME),
+  );
+};
+
+const collectSelectLabels = (
+  node: React.ReactNode,
+  next: Record<string, React.ReactNode> = {},
+): Record<string, React.ReactNode> => {
+  React.Children.forEach(node, (child) => {
+    if (!React.isValidElement<{ children?: React.ReactNode; value?: string }>(child)) {
+      return;
+    }
+
+    if (
+      isSelectItemType(child.type) &&
+      typeof child.props.value === 'string' &&
+      !Object.prototype.hasOwnProperty.call(next, child.props.value)
+    ) {
+      next[child.props.value] = child.props.children;
+    }
+
+    if (child.props.children) {
+      collectSelectLabels(child.props.children, next);
+    }
+  });
+
+  return next;
+};
 
 const SelectContext = React.createContext<{
   value?: string;
@@ -38,6 +93,11 @@ export const Select = ({
   const [labels, setLabels] = useState<Record<string, React.ReactNode>>({});
   const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const staticLabels = React.useMemo(() => collectSelectLabels(children), [children]);
+  const mergedLabels = React.useMemo(
+    () => ({ ...staticLabels, ...labels }),
+    [staticLabels, labels],
+  );
 
   const registerLabel = useCallback((val: string, label: React.ReactNode) => {
     setLabels((prev) => {
@@ -85,7 +145,7 @@ export const Select = ({
         disabled,
         open,
         setOpen,
-        labels,
+        labels: mergedLabels,
         registerLabel,
         containerRef,
         dropdownRef,
@@ -108,6 +168,8 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
     <button
       type="button"
       disabled={disabled}
+      aria-expanded={open}
+      aria-haspopup="listbox"
       className={cn(
         'cf-control flex h-11 items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm',
         !hasExplicitWidth && 'w-full',
@@ -117,6 +179,13 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
       onClick={() => {
         if (disabled) return;
         setOpen(!open);
+      }}
+      onKeyDown={(event) => {
+        if (disabled) return;
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          setOpen(true);
+        }
       }}
     >
       {children}
@@ -157,6 +226,8 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
     width: 192,
     maxHeight: 256,
   });
+  const [positionReady, setPositionReady] = useState(false);
+  const measurementPassRef = useRef(0);
 
   const explicitWidth = className
     .split(/\s+/)
@@ -166,15 +237,20 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
     });
 
   const updatePlacement = useCallback(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current) {
+      setPositionReady(false);
+      return;
+    }
 
     const rect = containerRef.current.getBoundingClientRect();
     const viewportPadding = 12;
     const defaultWidth = Math.max(rect.width, 192);
+    const measuredDropdownHeight = dropdownRef.current?.offsetHeight ?? 0;
+    const hasMeasuredDropdown = measuredDropdownHeight > 0;
     const dropdownWidth = explicitWidth
       ? (dropdownRef.current?.offsetWidth ?? defaultWidth)
       : defaultWidth;
-    const dropdownHeight = dropdownRef.current?.offsetHeight ?? 260;
+    const dropdownHeight = hasMeasuredDropdown ? measuredDropdownHeight : 260;
     const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
     const spaceAbove = rect.top - viewportPadding;
     const dropUp = spaceBelow < Math.min(dropdownHeight, 256) && spaceAbove > spaceBelow;
@@ -196,16 +272,29 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
       width: defaultWidth,
       maxHeight,
     });
+    measurementPassRef.current += 1;
+    setPositionReady(hasMeasuredDropdown && measurementPassRef.current >= 2);
   }, [containerRef, dropdownRef, explicitWidth]);
 
-  useEffect(() => {
-    if (!open) return;
+  useLayoutEffect(() => {
+    if (!open) {
+      measurementPassRef.current = 0;
+      setPositionReady(false);
+      return;
+    }
 
-    const rafId = window.requestAnimationFrame(updatePlacement);
+    measurementPassRef.current = 0;
+    setPositionReady(false);
+    updatePlacement();
+    let rafId = window.requestAnimationFrame(() => {
+      updatePlacement();
+      rafId = window.requestAnimationFrame(updatePlacement);
+    });
     window.addEventListener('resize', updatePlacement);
     window.addEventListener('scroll', updatePlacement, true);
 
     return () => {
+      measurementPassRef.current = 0;
       window.cancelAnimationFrame(rafId);
       window.removeEventListener('resize', updatePlacement);
       window.removeEventListener('scroll', updatePlacement, true);
@@ -219,6 +308,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
   return createPortal(
     <div
       ref={dropdownRef}
+      role="listbox"
       className={cn(
         'fixed z-[160] overflow-y-auto rounded-xl border border-slate-200 bg-white text-slate-900 shadow-[0_18px_36px_rgba(15,23,42,0.12)]',
         'dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
@@ -229,6 +319,8 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
         left: placement.left,
         width: explicitWidth ? undefined : placement.width,
         maxHeight: placement.maxHeight,
+        visibility: positionReady ? 'visible' : 'hidden',
+        pointerEvents: positionReady ? undefined : 'none',
       }}
     >
       <div className="p-1.5">{children}</div>
@@ -237,7 +329,17 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
   );
 };
 
-export const SelectItem: React.FC<{ children: React.ReactNode; value: string; className?: string }> = ({ children, value, className = '' }) => {
+type SelectItemProps = {
+  children: React.ReactNode;
+  value: string;
+  className?: string;
+};
+
+type SelectItemComponent = React.FC<SelectItemProps> & {
+  __CF_SELECT_ITEM__?: boolean;
+};
+
+export const SelectItem: SelectItemComponent = ({ children, value, className = '' }) => {
   const { value: selectedValue, onValueChange, setOpen, registerLabel } = React.useContext(SelectContext);
   const isSelected = selectedValue === value;
 
@@ -247,6 +349,8 @@ export const SelectItem: React.FC<{ children: React.ReactNode; value: string; cl
 
   return (
     <div
+      role="option"
+      aria-selected={isSelected}
       className={cn(
         'relative flex w-full cursor-pointer items-center rounded-lg py-2.5 pl-8 pr-3 text-sm transition-colors',
         isSelected
@@ -268,3 +372,6 @@ export const SelectItem: React.FC<{ children: React.ReactNode; value: string; cl
     </div>
   );
 };
+
+SelectItem.displayName = SELECT_ITEM_DISPLAY_NAME;
+SelectItem.__CF_SELECT_ITEM__ = true;

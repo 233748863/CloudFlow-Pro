@@ -17,6 +17,7 @@ import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   LoadingSpinner,
   Select,
@@ -33,7 +34,7 @@ import {
   TableHeader,
   TableRow,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import {
   addTenant,
   changeTenantStatus,
@@ -826,12 +827,13 @@ export const TenantList: React.FC = () => {
 
             <div>
               <label className={fieldLabelClassName}>到期时间</label>
-              <Input
+              <DatePicker
                 type="date"
                 value={formData.expireTime}
                 onChange={(event) =>
                   setFormData((current) => ({ ...current, expireTime: event.target.value }))
                 }
+                placeholder="选择到期日期"
               />
             </div>
 

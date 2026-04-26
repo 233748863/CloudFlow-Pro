@@ -21,7 +21,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { Button, Input } from '@/components/ui';
+import { Button, Input } from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
   Candidate,

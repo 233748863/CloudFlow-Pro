@@ -5,7 +5,7 @@ import { AnnouncementManageView } from '@/components/admin/announcements';
 import { AnnouncementDetailModal, AnnouncementListItem } from '@/components/common';
 import '@/components/common/announcement-overlays.css';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { Button, SegmentedControl, SegmentedControlItem } from '@/components/ui';
+import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import {
   useAnnouncementStore,

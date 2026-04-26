@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { AnnouncementScope } from '@/types';
 import { getRoleList } from '@/services/api/auth';
-import { Input } from '@/components/ui';
+import { Input } from '@/components/common';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { cn } from '@/utils/cn';
 

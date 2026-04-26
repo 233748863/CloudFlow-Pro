@@ -8,7 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
   Button,
-} from '@/components/ui';
+} from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { SourceCodeViewer } from '../components/SourceCodeViewer';
 import { getProcessDefinitions } from '../services/api/workflow';

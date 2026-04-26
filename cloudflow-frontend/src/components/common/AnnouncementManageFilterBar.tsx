@@ -9,7 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui';
+} from '@/components/common';
 
 interface AnnouncementManageFilterBarProps {
   searchTitle: string;

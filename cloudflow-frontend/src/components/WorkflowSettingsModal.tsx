@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BaseDialog } from '@/components/common';
-import { Button } from '@/components/ui';
-import { Input } from './ui/input';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
+import { Button } from '@/components/common';
+import { Input } from './common/input';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './common/select';
 import { getDeptTree } from '../services/api/auth';
 import { FormDefinition } from '../types';
 import { SysRole, SysUser, SysDept } from '../services/api/auth';

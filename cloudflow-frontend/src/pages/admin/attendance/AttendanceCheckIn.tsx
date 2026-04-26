@@ -9,7 +9,7 @@ import {
   MapPin,
   RefreshCw,
 } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/common';
 import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/admin';
 import { useAuth } from '@/context/AuthContext';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';

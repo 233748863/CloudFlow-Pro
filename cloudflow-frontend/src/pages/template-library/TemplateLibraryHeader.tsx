@@ -1,6 +1,6 @@
 import React from "react";
 import { ArrowLeft, FolderOpen, Plus } from "lucide-react";
-import { Button } from "@/components/ui";
+import { Button } from "@/components/common";
 import { TEXT } from "./config";
 
 interface TemplateLibraryHeaderProps {

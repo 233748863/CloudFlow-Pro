@@ -3,7 +3,7 @@ import { DeployWindowManagement } from '@/components/deploy/DeployWindowManageme
 import { DeployApprovalManagement } from '@/components/deploy/DeployApprovalManagement';
 import { VersionRollbackManagement } from '@/components/deploy/VersionRollbackManagement';
 import { DeployStatistics } from '@/components/deploy/DeployStatistics';
-import { SegmentedControl, SegmentedControlItem } from '@/components/ui';
+import { SegmentedControl, SegmentedControlItem } from '@/components/common';
 
 type DeployTabKey = 'windows' | 'approvals' | 'rollback' | 'statistics';
 

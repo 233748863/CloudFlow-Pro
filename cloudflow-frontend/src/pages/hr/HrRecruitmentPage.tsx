@@ -29,7 +29,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import {
   Candidate,
   CandidatePayload,

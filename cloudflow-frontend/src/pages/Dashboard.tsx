@@ -10,7 +10,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { Announcement, SysScheduleEvent } from '@/types';
-import { LoadingSpinner } from '@/components/ui';
+import { LoadingSpinner } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 import {

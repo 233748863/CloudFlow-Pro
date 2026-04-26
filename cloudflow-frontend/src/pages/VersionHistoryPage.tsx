@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, History } from 'lucide-react';
 import request from '@/services/api/request';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/common';
 import { VersionHistory } from './VersionHistory';
 
 interface WorkflowInfo {

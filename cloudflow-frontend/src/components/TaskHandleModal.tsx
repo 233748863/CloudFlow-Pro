@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
-import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/ui';
+import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { ProcessTrace } from './ProcessTrace';

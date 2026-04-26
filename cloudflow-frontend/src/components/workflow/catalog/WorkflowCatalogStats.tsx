@@ -1,6 +1,6 @@
 import React from 'react';
 import { Filter, FolderOpen, FormInput, GitMerge } from 'lucide-react';
-import { StatCard } from '@/components/ui';
+import { StatCard } from '@/components/common';
 
 interface WorkflowCatalogStatsProps {
   workflowCount: number;

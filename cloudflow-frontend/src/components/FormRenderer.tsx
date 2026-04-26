@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { AlertTriangle, FileText, Send, X } from 'lucide-react';
 import type { FormDefinition } from '../types';
-import { Button, Input, Textarea } from '@/components/ui';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Button, Input, Textarea } from '@/components/common';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './common/select';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { cn } from '@/utils/cn';
 

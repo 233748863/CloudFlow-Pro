@@ -4,7 +4,7 @@ import type { Announcement } from '@/types';
 import { cn } from '@/utils/cn';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 import { formatAnnouncementRelativeTime } from '@/utils/announcementFormat';
-import { getAnnouncementPriorityMeta } from '@/utils/announcementMeta';
+import { getAnnouncementPriorityMeta, getAnnouncementTypeMeta } from '@/utils/announcementMeta';
 
 interface AnnouncementListItemProps {
   announcement: Announcement;
@@ -21,10 +21,11 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
 }) => {
   const unread = !announcement.isRead;
   const priorityMeta = getAnnouncementPriorityMeta(announcement.priority);
+  const typeMeta = getAnnouncementTypeMeta(announcement.type);
   const timeText = formatAnnouncementRelativeTime(
     announcement.publishTime || announcement.createTime,
   );
-  const excerpt = getAnnouncementExcerpt(announcement.content, variant === 'compact' ? 72 : 110);
+  const excerpt = getAnnouncementExcerpt(announcement.content, variant === 'compact' ? 96 : 110);
 
   if (variant === 'compact') {
     return (
@@ -32,9 +33,9 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
         type="button"
         onClick={onClick}
         className={cn(
-          `group flex w-full items-start gap-3 border-b border-slate-100 px-4 py-3 text-left transition-colors dark:border-slate-800 ${
+          `group flex w-full items-start gap-3 border-b border-slate-100 px-4 py-4 text-left transition-colors dark:border-slate-800 ${
             unread
-              ? 'bg-cyan-50/40 hover:bg-cyan-50 dark:bg-cyan-950/10 dark:hover:bg-cyan-950/20'
+              ? 'bg-teal-50/55 hover:bg-teal-50 dark:bg-teal-950/12 dark:hover:bg-teal-950/22'
               : 'bg-white hover:bg-slate-50 dark:bg-slate-950 dark:hover:bg-slate-900/70'
           }`,
           className,
@@ -42,53 +43,60 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
       >
         <div
           className={cn(
-            'mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full border',
+            'mt-0.5 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border',
             unread
-              ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200'
+              ? 'border-teal-200 bg-teal-50 text-teal-700 dark:border-teal-900/80 dark:bg-teal-950/30 dark:text-teal-200'
               : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
           )}
         >
-          {unread ? <Bell size={14} /> : <CheckCircle2 size={14} />}
+          {unread ? typeMeta.icon : <CheckCircle2 size={16} />}
         </div>
 
         <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-              {announcement.title}
-            </h3>
-            {announcement.isTop === 1 ? (
-              <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                <Pin size={10} />
-                置顶
-              </span>
-            ) : null}
-            <span
-              className={cn(
-                'inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium',
-                priorityMeta.className,
-              )}
-            >
-              {priorityMeta.label}
-            </span>
-            {unread ? (
-              <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[11px] font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
-                未读
-              </span>
-            ) : null}
-          </div>
+          <div className="flex items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold ${typeMeta.className}`}>
+                  {unread ? <Bell size={11} /> : typeMeta.icon}
+                  {typeMeta.label}
+                </span>
+                <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${priorityMeta.className}`}>
+                  {priorityMeta.label}
+                </span>
+                {announcement.isTop === 1 ? (
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                    <Pin size={10} />
+                    置顶
+                  </span>
+                ) : null}
+                {unread ? (
+                  <span className="rounded-full border border-teal-200 bg-teal-50 px-2.5 py-1 text-[11px] font-semibold text-teal-700 dark:border-teal-900/80 dark:bg-teal-950/30 dark:text-teal-200">
+                    未读
+                  </span>
+                ) : null}
+              </div>
 
-          <p className="mt-1 line-clamp-1 text-sm text-slate-500 dark:text-slate-400">
-            {excerpt}
-          </p>
+              <div className="mt-2 flex items-start justify-between gap-3">
+                <h3 className="min-w-0 flex-1 text-sm font-semibold leading-6 text-slate-900 dark:text-slate-100">
+                  <span className="line-clamp-1">{announcement.title}</span>
+                </h3>
+                <time className="shrink-0 text-xs text-slate-400 dark:text-slate-500">{timeText}</time>
+              </div>
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-            <span>#{announcement.announcementId}</span>
-            <span className="text-slate-300 dark:text-slate-700">·</span>
-            <time>{timeText}</time>
+              <p className="mt-1 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">
+                {excerpt}
+              </p>
+
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                <span>#{announcement.announcementId}</span>
+                <span className="text-slate-300 dark:text-slate-700">·</span>
+                <span>{announcement.isRead ? '已读' : '待处理'}</span>
+              </div>
+            </div>
+
+            <ChevronRight className="mt-1 h-4 w-4 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
           </div>
         </div>
-
-        <ChevronRight className="mt-1 h-4 w-4 flex-shrink-0 text-slate-300 transition-transform group-hover:translate-x-1 group-hover:text-slate-500 dark:text-slate-600 dark:group-hover:text-slate-300" />
       </button>
     );
   }

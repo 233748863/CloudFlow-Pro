@@ -57,7 +57,7 @@ public class Candidate implements Serializable {
     /**
      * 简历URL
      */
-    private String resumeUrl;
+    private String resumeAttachmentUrls;
 
     /**
      * 来源：WEBSITE-官网 REFERRAL-内推 HEADHUNTER-猎头 CAMPUS-校招

@@ -14,7 +14,7 @@ import {
   X
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, SegmentedControl, SegmentedControlItem } from '@/components/ui';
+import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   ImportResult,

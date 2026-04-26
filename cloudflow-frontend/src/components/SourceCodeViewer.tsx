@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { BACKEND_SOURCE } from '../backend_data';
 import { generateBackendArtifacts } from '../services/geminiService';
 import { WorkflowDefinition } from '../types';
-import { Button, SegmentedControl, SegmentedControlItem } from '@/components/ui';
+import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
 import { cn } from '@/utils/cn';
 
 type ArtifactTab = 'java' | 'sql';

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Search, UserMinus, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
-import { Button, Input, Textarea } from '@/components/ui';
+import { Button, Input, Textarea } from '@/components/common';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { cn } from '@/utils/cn';
 import { getUserList } from '../services/api/auth';

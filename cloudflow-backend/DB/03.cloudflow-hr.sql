@@ -951,7 +951,7 @@ CREATE TABLE hr_candidate (
   gender            VARCHAR(20)     DEFAULT NULL COMMENT '性别：MALE-男 FEMALE-女',
   phone             VARCHAR(20)     NOT NULL COMMENT '手机号',
   email             VARCHAR(100)    DEFAULT NULL COMMENT '邮箱',
-  resume_url        VARCHAR(500)    DEFAULT NULL COMMENT '简历URL',
+  resume_attachment_urls TEXT       DEFAULT NULL COMMENT '简历附件URL列表，多个逗号分隔',
   source            VARCHAR(50)     DEFAULT NULL COMMENT '来源：WEBSITE-官网 REFERRAL-内推 HEADHUNTER-猎头 CAMPUS-校招',
   status            VARCHAR(20)     NOT NULL DEFAULT 'NEW' COMMENT '状态：NEW-新简历 SCREENING-筛选中 INTERVIEW-面试中 OFFER-已发Offer HIRED-已入职 REJECTED-已拒绝',
   reject_reason     VARCHAR(500)    DEFAULT NULL COMMENT '拒绝原因',

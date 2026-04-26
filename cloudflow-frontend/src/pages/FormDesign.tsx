@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowRight, FileSpreadsheet, GitMerge, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { FormBuilder } from '../components/FormBuilder';
-import { EmptyError, EmptyForms, SkeletonForm, Button } from '@/components/ui';
+import { EmptyError, EmptyForms, SkeletonForm, Button } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import { useMount } from '../hooks/useMount';

@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui';
+} from '@/components/common';
 
 type DashboardTone = 'cyan' | 'emerald' | 'amber' | 'slate';
 type TrendSeriesKey = keyof Pick<

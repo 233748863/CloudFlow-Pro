@@ -1,7 +1,7 @@
 import React from "react";
 import { Eye, Layers3, Plus, Search, Workflow } from "lucide-react";
-import { Button, EmptyState, SkeletonCard } from "@/components/ui";
-import { Pagination } from "@/components/common/Pagination";
+import { Button, EmptyState, SkeletonCard } from "@/components/common";
+import { Pagination } from "@/components/common";
 import { TEXT } from "./config";
 import { EMPTY_GRAPH, getTemplateMetrics, normalizeTags } from "./utils";
 import type { ParsedTemplateGraph, TemplateItem } from "./types";

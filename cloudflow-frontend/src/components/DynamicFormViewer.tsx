@@ -1,9 +1,9 @@
 import React from 'react';
 import { FormDefinition, FormField } from '../types';
-import { DatePicker } from './ui/date-picker';
-import { Input } from './ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { Textarea } from './ui/textarea';
+import { DatePicker } from './common/date-picker';
+import { Input } from './common/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './common/select';
+import { Textarea } from './common/textarea';
 
 const SELECT_NONE_VALUE = '__NONE__';
 

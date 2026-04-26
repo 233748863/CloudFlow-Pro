@@ -537,16 +537,16 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("更新员工合同，合同ID：{}", id);
         
         // 1. 查询合同
-        EmployeeContract contract = employeeContractMapper.selectById(id);
+        Long tenantId = SecurityUtils.getTenantId();
+        EmployeeContract contract = employeeContractMapper.selectContractById(tenantId, id);
         if (contract == null) {
             throw HrBusinessException.contractNotFound(id);
         }
         
         // 2. 验证合同编号唯一性（如果修改了合同编号）
         if (dto.getContractNo() != null && !dto.getContractNo().equals(contract.getContractNo())) {
-            Long tenantId = contract.getTenantId();
             LambdaQueryWrapper<EmployeeContract> wrapper = Wrappers.lambdaQuery(EmployeeContract.class);
-            wrapper.eq(EmployeeContract::getTenantId, tenantId)
+            wrapper.eq(EmployeeContract::getTenantId, contract.getTenantId())
                    .eq(EmployeeContract::getContractNo, dto.getContractNo())
                    .ne(EmployeeContract::getId, id);
             
@@ -589,12 +589,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         
         // 2. 查询合同列表
         Long tenantId = SecurityUtils.getTenantId();
-        LambdaQueryWrapper<EmployeeContract> wrapper = Wrappers.lambdaQuery(EmployeeContract.class);
-        wrapper.eq(EmployeeContract::getTenantId, tenantId)
-               .eq(EmployeeContract::getEmployeeId, employeeId)
-               .orderByDesc(EmployeeContract::getStartDate);
-        
-        List<EmployeeContract> contracts = employeeContractMapper.selectList(wrapper);
+        List<EmployeeContract> contracts = employeeContractMapper.selectContractsByEmployeeId(tenantId, employeeId);
         Map<Long, List<String>> attachmentUrlMap = getContractAttachmentUrlMap(contracts);
         
         // 3. 转换为VO列表
@@ -643,7 +638,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("查询合同详情，合同ID：{}", id);
         
         // 1. 查询合同
-        EmployeeContract contract = employeeContractMapper.selectById(id);
+        Long tenantId = SecurityUtils.getTenantId();
+        EmployeeContract contract = employeeContractMapper.selectContractById(tenantId, id);
         if (contract == null) {
             throw HrBusinessException.contractNotFound(id);
         }
@@ -664,7 +660,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("删除员工合同，合同ID：{}", id);
         
         // 1. 查询合同
-        EmployeeContract contract = employeeContractMapper.selectById(id);
+        Long tenantId = SecurityUtils.getTenantId();
+        EmployeeContract contract = employeeContractMapper.selectContractById(tenantId, id);
         if (contract == null) {
             throw HrBusinessException.contractNotFound(id);
         }
@@ -813,7 +810,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("更新员工证件，证件ID：{}", id);
         
         // 1. 查询证件
-        EmployeeDocument document = employeeDocumentMapper.selectById(id);
+        Long tenantId = SecurityUtils.getTenantId();
+        EmployeeDocument document = employeeDocumentMapper.selectDocumentById(tenantId, id);
         if (document == null) {
             throw HrBusinessException.documentNotFound(id);
         }
@@ -849,12 +847,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         
         // 2. 查询证件列表
         Long tenantId = SecurityUtils.getTenantId();
-        LambdaQueryWrapper<EmployeeDocument> wrapper = Wrappers.lambdaQuery(EmployeeDocument.class);
-        wrapper.eq(EmployeeDocument::getTenantId, tenantId)
-               .eq(EmployeeDocument::getEmployeeId, employeeId)
-               .orderByDesc(EmployeeDocument::getCreateTime);
-        
-        List<EmployeeDocument> documents = employeeDocumentMapper.selectList(wrapper);
+        List<EmployeeDocument> documents = employeeDocumentMapper.selectDocumentsByEmployeeId(tenantId, employeeId);
         Map<Long, List<String>> attachmentUrlMap = getDocumentAttachmentUrlMap(documents);
         
         // 3. 转换为VO列表
@@ -866,7 +859,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("查询证件详情，证件ID：{}", id);
         
         // 1. 查询证件
-        EmployeeDocument document = employeeDocumentMapper.selectById(id);
+        Long tenantId = SecurityUtils.getTenantId();
+        EmployeeDocument document = employeeDocumentMapper.selectDocumentById(tenantId, id);
         if (document == null) {
             throw HrBusinessException.documentNotFound(id);
         }
@@ -887,7 +881,8 @@ public class EmployeeServiceImpl implements EmployeeService {
         log.info("删除员工证件，证件ID：{}", id);
         
         // 1. 查询证件
-        EmployeeDocument document = employeeDocumentMapper.selectById(id);
+        Long tenantId = SecurityUtils.getTenantId();
+        EmployeeDocument document = employeeDocumentMapper.selectDocumentById(tenantId, id);
         if (document == null) {
             throw HrBusinessException.documentNotFound(id);
         }

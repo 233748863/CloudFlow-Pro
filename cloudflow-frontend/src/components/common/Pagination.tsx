@@ -1,13 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import {
-  Button,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui';
+import { Button } from './button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './select';
 
 interface PaginationProps {
   total: number;
@@ -66,7 +60,7 @@ export const Pagination: React.FC<PaginationProps> = ({
   const [jumpPage, setJumpPage] = useState('');
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
   const fromItem = total === 0 ? 0 : (page - 1) * pageSize + 1;
-  const toItem = Math.min(page * pageSize, total);
+  const toItem = total === 0 ? 0 : Math.min(page * pageSize, total);
 
   const visiblePages = useMemo(() => buildVisiblePages(page, totalPages), [page, totalPages]);
 

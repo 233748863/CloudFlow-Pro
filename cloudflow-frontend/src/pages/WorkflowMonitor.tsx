@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { Button, LoadingSpinner, Switch } from '@/components/ui';
+import { Button, LoadingSpinner, Switch } from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
   AnomalyAlert,

@@ -2,7 +2,7 @@ import React from 'react';
 import { ArrowRight, Layers3, PenTool } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/common';
 
 type CreationDetail = {
   label: string;

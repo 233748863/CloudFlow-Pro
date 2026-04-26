@@ -23,7 +23,7 @@ import {
   getWorkflowCategoryLabel,
   normalizeWorkflowCategory,
 } from '@/utils/workflowCategory';
-import { Button, EmptyState, FilterChip, Input, LoadingSpinner, SideNavItem } from '@/components/ui';
+import { Button, EmptyState, FilterChip, Input, LoadingSpinner, SideNavItem } from '@/components/common';
 import { cn } from '@/utils/cn';
 
 const parseWorkflowGraph = (

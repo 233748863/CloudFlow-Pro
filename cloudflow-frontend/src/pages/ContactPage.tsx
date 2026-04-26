@@ -13,9 +13,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui';
+} from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { contactApi, Contact, DeptNode } from '../services/api/contact';
 import { getErrorMessage } from '@/utils/errorMessage';
 

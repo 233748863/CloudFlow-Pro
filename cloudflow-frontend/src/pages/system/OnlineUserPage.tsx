@@ -15,7 +15,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui';
+} from '@/components/common';
 import {
   forceLogoutOnlineUsers,
   getOnlineUserPage,

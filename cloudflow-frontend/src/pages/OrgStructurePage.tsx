@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/common';
 import { OrgStructure, type OrgStructureStats } from '../components/OrgStructure';
 import { cn } from '@/utils/cn';
 

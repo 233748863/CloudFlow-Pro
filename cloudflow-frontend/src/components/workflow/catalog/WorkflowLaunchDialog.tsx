@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { BaseDialog } from '@/components/common';
-import { Button, EmptyState, LoadingSpinner } from '@/components/ui';
+import { Button, EmptyState, LoadingSpinner } from '@/components/common';
 import { FormRenderer } from '@/components/FormRenderer';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
 

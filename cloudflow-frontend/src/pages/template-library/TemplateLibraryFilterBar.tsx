@@ -7,7 +7,7 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
-} from "@/components/ui";
+} from "@/components/common";
 import { TEXT } from "./config";
 
 interface TemplateLibraryFilterBarProps {

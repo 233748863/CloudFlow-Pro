@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, FilterChip } from '@/components/ui';
+import { Button, FilterChip } from '@/components/common';
 import { SearchInput } from '@/components/common';
 
 interface WorkflowCategoryOption {

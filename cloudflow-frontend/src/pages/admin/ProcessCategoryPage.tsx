@@ -28,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import { cn } from '@/utils/cn';
 import { processCategoryApi, type ProcessCategory } from '../../services/api/processCategory';
 
@@ -46,13 +46,13 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 const iconOptions = [
-  'briefcase',
-  'users',
-  'dollar-sign',
-  'building',
-  'folder-kanban',
-  'folder-tree',
-  'layers',
+  { value: 'briefcase', label: '公文包' },
+  { value: 'users', label: '多人协作' },
+  { value: 'dollar-sign', label: '金额审批' },
+  { value: 'building', label: '组织架构' },
+  { value: 'folder-kanban', label: '看板文件夹' },
+  { value: 'folder-tree', label: '树形目录' },
+  { value: 'layers', label: '通用分类' },
 ];
 
 const emptyForm: ProcessCategory = {
@@ -116,6 +116,38 @@ const renderIcon = (icon?: string, className = 'h-4 w-4 text-slate-400 dark:text
   const Icon = icon && iconMap[icon] ? iconMap[icon] : Layers;
   return <Icon className={className} />;
 };
+
+const IconOptionDisplay: React.FC<{
+  icon?: string;
+  label: string;
+  code?: string;
+  empty?: boolean;
+}> = ({ icon, label, code, empty = false }) => (
+  <div className="flex min-w-0 items-center gap-2.5">
+    <span
+      className={cn(
+        'flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border',
+        empty
+          ? 'border-dashed border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-500'
+          : 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100',
+      )}
+    >
+      {empty ? (
+        <span className="text-[11px] font-medium">无</span>
+      ) : (
+        renderIcon(icon, 'h-4 w-4 text-current')
+      )}
+    </span>
+    <span className="min-w-0 flex-1">
+      <span className="block truncate text-sm text-slate-900 dark:text-slate-100">{label}</span>
+      {code ? (
+        <span className="block truncate font-mono text-[11px] text-slate-400 dark:text-slate-500">
+          {code}
+        </span>
+      ) : null}
+    </span>
+  </div>
+);
 
 const flattenCategories = (items: ProcessCategory[]): ProcessCategory[] => {
   const result: ProcessCategory[] = [];
@@ -302,6 +334,11 @@ const ProcessCategoryPage: React.FC = () => {
 
     return descendants;
   }, [flatList, form.categoryId]);
+
+  const selectedIconOption = useMemo(
+    () => iconOptions.find((item) => item.value === form.icon) ?? null,
+    [form.icon],
+  );
 
   const loadData = async () => {
     setLoading(true);
@@ -767,13 +804,27 @@ const ProcessCategoryPage: React.FC = () => {
                 onValueChange={(value) => setForm((current) => ({ ...current, icon: value === EMPTY_ICON_VALUE ? '' : value }))}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="未设置" />
+                  {selectedIconOption ? (
+                    <IconOptionDisplay
+                      icon={selectedIconOption.value}
+                      label={selectedIconOption.label}
+                      code={selectedIconOption.value}
+                    />
+                  ) : (
+                    <IconOptionDisplay label="未设置" empty />
+                  )}
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={EMPTY_ICON_VALUE}>未设置</SelectItem>
+                  <SelectItem value={EMPTY_ICON_VALUE}>
+                    <IconOptionDisplay label="未设置" empty />
+                  </SelectItem>
                   {iconOptions.map((option) => (
-                    <SelectItem key={option} value={option}>
-                      {option}
+                    <SelectItem key={option.value} value={option.value}>
+                      <IconOptionDisplay
+                        icon={option.value}
+                        label={option.label}
+                        code={option.value}
+                      />
                     </SelectItem>
                   ))}
                 </SelectContent>

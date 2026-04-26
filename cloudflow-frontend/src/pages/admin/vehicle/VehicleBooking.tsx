@@ -8,7 +8,7 @@ import {
   Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
 import { toBackendDateString } from '@/utils/dateFormat';
 import { useAuth } from '@/context/AuthContext';

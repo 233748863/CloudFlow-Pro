@@ -3,7 +3,7 @@ import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, GitMerge, Loader2 } from 'lucide-react';
 import { WorkflowBuilder } from '../components/WorkflowBuilder';
 import { WorkflowDefinition, FormDefinition, User } from '../types';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/common';
 import {
   getProcessDefinition,
   getProcessDefinitions,

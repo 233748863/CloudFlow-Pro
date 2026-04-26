@@ -9,7 +9,7 @@ import {
   Label,
   Switch,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import { toast } from 'sonner';
 
 const WEEKDAYS = [

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowRight } from 'lucide-react';
-import { EmptyState, LoadingSpinner } from '@/components/ui';
+import { EmptyState, LoadingSpinner } from '@/components/common';
 
 export interface UserDashboardRecentUsageItem {
   id: string;

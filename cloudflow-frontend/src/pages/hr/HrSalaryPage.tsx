@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Layers3, RefreshCcw, Search, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
@@ -20,7 +20,7 @@ import {
   TableHeader,
   TableRow,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
   EmployeeInsurance,
@@ -805,7 +805,7 @@ const SalaryAmountEditor: React.FC<{
 }> = ({ fields, valueMap, onValueChange, emptyText }) => {
   if (!fields.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400">
         {emptyText}
       </div>
     );
@@ -834,7 +834,7 @@ const SalaryAmountEditor: React.FC<{
 const SalaryDiffTable: React.FC<{ rows: SalaryDiffField[] }> = ({ rows }) => {
   if (!rows.length) {
     return (
-      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-10 text-center text-sm text-slate-500">
+      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400">
         当前没有可展示的薪资明细差异。
       </div>
     );
@@ -928,11 +928,11 @@ const WorkspaceSectionCard: React.FC<{
 }> = ({ title, description, headerAside, eyebrow, className, children }) => (
   <section
     className={cn(
-      'overflow-hidden rounded-lg border border-slate-200/80 bg-slate-50/45 dark:border-slate-800 dark:bg-slate-950/75',
+      'overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
       className,
     )}
   >
-    <div className="flex flex-col gap-2 border-b border-slate-200/80 px-3.5 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         {eyebrow ? (
           <div className="mb-1 text-[10px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
@@ -948,7 +948,7 @@ const WorkspaceSectionCard: React.FC<{
       </div>
       {headerAside ? <div className="flex flex-wrap items-center gap-2">{headerAside}</div> : null}
     </div>
-    <div className="p-3.5">{children}</div>
+    <div className="p-4">{children}</div>
   </section>
 );
 
@@ -1019,7 +1019,7 @@ const WorkspaceMetricStrip: React.FC<{
 }> = ({ items, className, gridClassName = 'md:grid-cols-2 xl:grid-cols-4' }) => (
   <div
     className={cn(
-      'overflow-hidden rounded-lg border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/80',
+      'overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
       className,
     )}
   >
@@ -1063,11 +1063,11 @@ const WorkspaceDiagnosticSummary: React.FC<{
 }> = ({ summary, items, emptyText, className }) => (
   <div
     className={cn(
-      'overflow-hidden rounded-lg border border-slate-200/80 bg-white/80 dark:border-slate-800 dark:bg-slate-950/80',
+      'overflow-hidden rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88',
       className,
     )}
   >
-    <div className="flex flex-col gap-2 px-3.5 py-2.5 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-2 px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
       <div className="min-w-0">
         <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
           {items.length ? '校验' : '状态'}
@@ -1084,11 +1084,11 @@ const WorkspaceDiagnosticSummary: React.FC<{
       </span>
     </div>
     {items.length ? (
-      <div className="border-t border-slate-200/80 dark:border-slate-800">
+      <div className="border-t border-slate-100 dark:border-slate-800">
         {items.map(item => (
           <div
             key={item.key}
-            className="border-t border-slate-100 px-3.5 py-2.5 first:border-t-0 dark:border-slate-800"
+            className="border-t border-slate-100 px-4 py-3 first:border-t-0 dark:border-slate-800"
           >
             <div
               className={cn(
@@ -1105,7 +1105,7 @@ const WorkspaceDiagnosticSummary: React.FC<{
         ))}
       </div>
     ) : emptyText ? (
-      <div className="border-t border-slate-200/80 px-3.5 py-2.5 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
+      <div className="border-t border-slate-100 px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:text-slate-400">
         {emptyText}
       </div>
     ) : null}
@@ -1128,7 +1128,7 @@ const WorkspaceInlineRiskList: React.FC<{
       {items.map(item => (
         <div
           key={item.key}
-          className="flex items-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 dark:border-slate-800 dark:bg-slate-950/80"
+          className="flex items-start gap-3 rounded-xl border border-slate-200 bg-white px-3 py-2.5 dark:border-slate-800 dark:bg-slate-950/88"
         >
           <span
             className={cn(
@@ -8867,14 +8867,25 @@ export const HrSalaryPage: React.FC = () => {
   return (
     <>
       <div className="mx-auto flex w-full max-w-[1680px] flex-col gap-4 px-4 py-4 lg:px-6">
-        <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-          <div className="min-w-0">
-            <h1 className="text-[22px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-              薪酬管理
-            </h1>
-          </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="cf-tabs w-full justify-start overflow-x-auto lg:w-auto">
+              {SALARY_SECTION_NAV_ITEMS.map(item => (
+                <button
+                  key={item.value}
+                  type="button"
+                  onClick={() => goSalarySection(item.value)}
+                  className={cn(
+                    'cf-tab shrink-0',
+                    currentSection === item.value && 'cf-tab-active',
+                  )}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
 
-          <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
                 onClick={openAssignDialog}
@@ -8899,26 +8910,7 @@ export const HrSalaryPage: React.FC = () => {
               >
                 刷新数据
               </Button>
-          </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center gap-1 rounded-xl border border-slate-200 bg-white p-1.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-            {SALARY_SECTION_NAV_ITEMS.map(item => (
-              <button
-                key={item.value}
-                type="button"
-                onClick={() => goSalarySection(item.value)}
-                className={cn(
-                  'inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium transition-colors',
-                  currentSection === item.value
-                    ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900'
-                    : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
-                )}
-              >
-                {item.label}
-              </button>
-            ))}
+            </div>
           </div>
 
           <div className="space-y-6">

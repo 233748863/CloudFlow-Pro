@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Calendar, ChevronLeft, ChevronRight, Clock, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -20,6 +20,13 @@ interface DatePickerProps {
   id?: string;
   name?: string;
   variant?: 'default' | 'glass';
+}
+
+interface DropdownPlacement {
+  top: number;
+  left: number;
+  width: number;
+  maxHeight: number;
 }
 
 const MONTH_NAMES = ['1月', '2月', '3月', '4月', '5月', '6月', '7月', '8月', '9月', '10月', '11月', '12月'];
@@ -73,6 +80,70 @@ function toDisplayDate(value?: string) {
   return `${parsed.year}/${pad(parsed.month + 1)}/${pad(parsed.day)}`;
 }
 
+function getEstimatedDropdownHeight(type: PickerMode): number {
+  if (type === 'time') {
+    return 256;
+  }
+  return 380;
+}
+
+function getDropdownWidth(type: PickerMode, triggerWidth: number): number {
+  if (type === 'time') {
+    return 184;
+  }
+  if (type === 'datetime-local') {
+    return 420;
+  }
+  return Math.max(triggerWidth, 288);
+}
+
+function resolvePlacement(
+  triggerRect: DOMRect,
+  type: PickerMode,
+  dropdownElement: HTMLDivElement | null,
+): DropdownPlacement {
+  const viewportPadding = 16;
+  const width = getDropdownWidth(type, triggerRect.width);
+  const dropdownWidth = dropdownElement?.offsetWidth ?? width;
+  const dropdownHeight = dropdownElement?.offsetHeight ?? getEstimatedDropdownHeight(type);
+  const spaceBelow = window.innerHeight - triggerRect.bottom - viewportPadding;
+  const spaceAbove = triggerRect.top - viewportPadding;
+  const dropUp = spaceBelow < Math.min(dropdownHeight, getEstimatedDropdownHeight(type)) && spaceAbove > spaceBelow;
+  const maxHeight = Math.max(180, (dropUp ? spaceAbove : spaceBelow) - 6);
+  const renderedHeight = Math.min(dropdownHeight, maxHeight);
+
+  let left = triggerRect.left;
+  if (left + dropdownWidth > window.innerWidth - viewportPadding) {
+    left = Math.max(viewportPadding, window.innerWidth - dropdownWidth - viewportPadding);
+  }
+
+  const top = dropUp
+    ? Math.max(viewportPadding, triggerRect.top - renderedHeight - 6)
+    : triggerRect.bottom + 6;
+
+  return {
+    top,
+    left,
+    width,
+    maxHeight,
+  };
+}
+
+function centerSelectedItem(container: HTMLDivElement | null) {
+  if (!container) {
+    return;
+  }
+
+  const selected = container.querySelector<HTMLElement>('[data-selected="true"]');
+  if (!selected) {
+    return;
+  }
+
+  const targetScrollTop = selected.offsetTop - (container.clientHeight - selected.offsetHeight) / 2;
+  const boundedScrollTop = Math.max(0, Math.min(targetScrollTop, container.scrollHeight - container.clientHeight));
+  container.scrollTop = boundedScrollTop;
+}
+
 interface CalendarPanelProps {
   year: number;
   month: number;
@@ -80,6 +151,7 @@ interface CalendarPanelProps {
   onSelectDate: (year: number, month: number, day: number) => void;
   onChangeMonth: (year: number, month: number) => void;
   onQuickDate?: (kind: QuickDateKind) => void;
+  isDateDisabled?: (year: number, month: number, day: number) => boolean;
 }
 
 function CalendarPanel({
@@ -89,6 +161,7 @@ function CalendarPanel({
   onSelectDate,
   onChangeMonth,
   onQuickDate,
+  isDateDisabled,
 }: CalendarPanelProps) {
   const daysInMonth = getDaysInMonth(year, month);
   const firstDay = getFirstDayOfMonth(year, month);
@@ -148,23 +221,40 @@ function CalendarPanel({
 
       <div className="grid grid-cols-7 gap-1">
         {prevDays.map((day) => (
-          <button
-            key={`prev-${day}`}
-            type="button"
-            onClick={() => {
-              if (month === 0) onSelectDate(year - 1, 11, day);
-              else onSelectDate(year, month - 1, day);
-              goToPrevMonth();
-            }}
-            className="h-8 rounded-lg text-[11px] text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400"
-          >
-            {day}
-          </button>
+          (() => {
+            const targetYear = month === 0 ? year - 1 : year;
+            const targetMonth = month === 0 ? 11 : month - 1;
+            const disabled = isDateDisabled?.(targetYear, targetMonth, day) ?? false;
+
+            return (
+              <button
+                key={`prev-${day}`}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  if (disabled) {
+                    return;
+                  }
+                  onSelectDate(targetYear, targetMonth, day);
+                  goToPrevMonth();
+                }}
+                className={cn(
+                  'h-8 rounded-lg text-[11px] transition-colors',
+                  disabled
+                    ? 'cursor-not-allowed text-slate-200 dark:text-slate-700'
+                    : 'text-slate-300 hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400',
+                )}
+              >
+                {day}
+              </button>
+            );
+          })()
         ))}
 
         {currentDays.map((day) => {
           const dateStr = formatDate(year, month, day);
           const isToday = dateStr === todayStr;
+          const isDisabled = isDateDisabled?.(year, month, day) ?? false;
           const isSelected = selectedDate
             && selectedDate.year === year
             && selectedDate.month === month
@@ -174,10 +264,18 @@ function CalendarPanel({
             <button
               key={`cur-${day}`}
               type="button"
-              onClick={() => onSelectDate(year, month, day)}
+              disabled={isDisabled}
+              onClick={() => {
+                if (isDisabled) {
+                  return;
+                }
+                onSelectDate(year, month, day);
+              }}
               className={cn(
                 'h-8 rounded-lg text-[11px] font-medium transition-all',
-                isSelected
+                isDisabled
+                  ? 'cursor-not-allowed text-slate-300 dark:text-slate-700'
+                  : isSelected
                   ? 'bg-[color:var(--cf-primary-500)] text-white font-semibold shadow-[0_10px_20px_rgba(20,184,166,0.18)]'
                   : isToday
                     ? 'bg-[rgba(240,253,250,0.96)] text-[color:var(--cf-primary-700)] font-semibold ring-1 ring-[rgba(153,246,228,0.96)] dark:bg-[rgba(20,184,166,0.18)] dark:text-[rgb(204,251,241)] dark:ring-[rgba(20,184,166,0.28)]'
@@ -190,18 +288,34 @@ function CalendarPanel({
         })}
 
         {nextDays.map((day) => (
-          <button
-            key={`next-${day}`}
-            type="button"
-            onClick={() => {
-              if (month === 11) onSelectDate(year + 1, 0, day);
-              else onSelectDate(year, month + 1, day);
-              goToNextMonth();
-            }}
-            className="h-8 rounded-lg text-[11px] text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400"
-          >
-            {day}
-          </button>
+          (() => {
+            const targetYear = month === 11 ? year + 1 : year;
+            const targetMonth = month === 11 ? 0 : month + 1;
+            const disabled = isDateDisabled?.(targetYear, targetMonth, day) ?? false;
+
+            return (
+              <button
+                key={`next-${day}`}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  if (disabled) {
+                    return;
+                  }
+                  onSelectDate(targetYear, targetMonth, day);
+                  goToNextMonth();
+                }}
+                className={cn(
+                  'h-8 rounded-lg text-[11px] transition-colors',
+                  disabled
+                    ? 'cursor-not-allowed text-slate-200 dark:text-slate-700'
+                    : 'text-slate-300 hover:bg-slate-50 hover:text-slate-500 dark:text-slate-600 dark:hover:bg-slate-900 dark:hover:text-slate-400',
+                )}
+              >
+                {day}
+              </button>
+            );
+          })()
         ))}
       </div>
 
@@ -263,9 +377,9 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
   const hourRef = useRef<HTMLDivElement>(null);
   const minuteRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    hourRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'center' });
-    minuteRef.current?.querySelector('[data-selected="true"]')?.scrollIntoView({ block: 'center' });
+  useLayoutEffect(() => {
+    centerSelectedItem(hourRef.current);
+    centerSelectedItem(minuteRef.current);
   }, [hour, minute]);
 
   const isRow = layout === 'row';
@@ -331,11 +445,12 @@ function TimePanel({ hour, minute, onChangeTime, layout = 'col' }: TimePanelProp
 }
 
 export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
-  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', id, name, required }, ref) => {
+  ({ type = 'date', value = '', onChange, placeholder, disabled, className = '', min, max, id, name, required }, ref) => {
     const [open, setOpen] = useState(false);
+    const [positionReady, setPositionReady] = useState(false);
     const containerRef = useRef<HTMLDivElement>(null);
     const dropdownRef = useRef<HTMLDivElement>(null);
-    const [placement, setPlacement] = useState({
+    const [placement, setPlacement] = useState<DropdownPlacement>({
       top: 0,
       left: 0,
       width: 288,
@@ -345,6 +460,8 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     const now = new Date();
     const currentDate = parseDate(type === 'datetime-local' ? value?.split('T')[0] || '' : type === 'date' ? value : '');
     const currentTime = parseTime(type === 'datetime-local' ? value?.split('T')[1] || '' : type === 'time' ? value : '');
+    const minDate = parseDate(type === 'datetime-local' ? min?.split('T')[0] || '' : type === 'date' ? min : '');
+    const maxDate = parseDate(type === 'datetime-local' ? max?.split('T')[0] || '' : type === 'date' ? max : '');
 
     const [viewYear, setViewYear] = useState(currentDate?.year ?? now.getFullYear());
     const [viewMonth, setViewMonth] = useState(currentDate?.month ?? now.getMonth());
@@ -367,6 +484,27 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     const emitChange = useCallback((newValue: string) => {
       onChange?.({ target: { value: newValue } });
     }, [onChange]);
+
+    const isDateDisabled = useCallback((year: number, month: number, day: number) => {
+      const targetValue = formatDate(year, month, day);
+      if (minDate && targetValue < formatDate(minDate.year, minDate.month, minDate.day)) {
+        return true;
+      }
+      if (maxDate && targetValue > formatDate(maxDate.year, maxDate.month, maxDate.day)) {
+        return true;
+      }
+      return false;
+    }, [maxDate, minDate]);
+
+    const updatePlacement = useCallback(() => {
+      if (!containerRef.current) {
+        setPositionReady(false);
+        return;
+      }
+
+      setPlacement(resolvePlacement(containerRef.current.getBoundingClientRect(), type, dropdownRef.current));
+      setPositionReady(true);
+    }, [type]);
 
     useEffect(() => {
       if (!open) return;
@@ -393,40 +531,13 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       };
     }, [open]);
 
-    useEffect(() => {
-      if (!(open && containerRef.current)) return;
+    useLayoutEffect(() => {
+      if (!open) {
+        setPositionReady(false);
+        return;
+      }
 
-      const updatePlacement = () => {
-        if (!containerRef.current) return;
-
-        const rect = containerRef.current.getBoundingClientRect();
-        const viewportPadding = 16;
-        const defaultWidth = type === 'time' ? 184 : type === 'datetime-local' ? 420 : Math.max(rect.width, 288);
-        const dropdownWidth = dropdownRef.current?.offsetWidth ?? defaultWidth;
-        const dropdownHeight = dropdownRef.current?.offsetHeight ?? 380;
-        const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
-        const spaceAbove = rect.top - viewportPadding;
-        const dropUp = spaceBelow < Math.min(dropdownHeight, 380) && spaceAbove > spaceBelow;
-        const maxHeight = Math.max(180, (dropUp ? spaceAbove : spaceBelow) - 6);
-        const renderedHeight = Math.min(dropdownHeight, maxHeight);
-
-        let left = rect.left;
-        if (left + dropdownWidth > window.innerWidth - viewportPadding) {
-          left = Math.max(viewportPadding, window.innerWidth - dropdownWidth - viewportPadding);
-        }
-
-        const top = dropUp
-          ? Math.max(viewportPadding, rect.top - renderedHeight - 6)
-          : rect.bottom + 6;
-
-        setPlacement({
-          top,
-          left,
-          width: defaultWidth,
-          maxHeight,
-        });
-      };
-
+      updatePlacement();
       const rafId = window.requestAnimationFrame(updatePlacement);
       window.addEventListener('resize', updatePlacement);
       window.addEventListener('scroll', updatePlacement, true);
@@ -436,9 +547,12 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
         window.removeEventListener('resize', updatePlacement);
         window.removeEventListener('scroll', updatePlacement, true);
       };
-    }, [open, type]);
+    }, [open, updatePlacement]);
 
     const handleSelectDate = (year: number, month: number, day: number) => {
+      if (isDateDisabled(year, month, day)) {
+        return;
+      }
       if (type === 'date') {
         emitChange(formatDate(year, month, day));
         setOpen(false);
@@ -522,6 +636,11 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       const d = target.getDate();
       const h = target.getHours();
       const min = target.getMinutes();
+
+      if (isDateDisabled(y, m, d)) {
+        return;
+      }
+
       setViewYear(y);
       setViewMonth(m);
       setTempHour(h);
@@ -533,7 +652,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
       } else if (type === 'datetime-local') {
         emitChange(`${formatDate(y, m, d)}T${formatTime(h, min)}`);
       }
-    }, [currentDate, currentTime, emitChange, tempHour, tempMinute, type]);
+    }, [currentDate, currentTime, emitChange, isDateDisabled, tempHour, tempMinute, type]);
 
     const handleClear = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -553,20 +672,33 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
     })();
 
     const defaultPlaceholder = type === 'date' ? '选择日期' : type === 'time' ? '选择时间' : '选择日期和时间';
-    const dropdownWidth = type === 'time' ? Math.min(placement.width, 184) : placement.width;
 
     return (
-      <div ref={(node) => {
-        containerRef.current = node;
-        if (typeof ref === 'function') ref(node);
-        else if (ref) ref.current = node;
-      }} className={`relative ${open ? 'z-[120]' : 'z-0'}`}>
+      <div
+        ref={(node) => {
+          containerRef.current = node;
+          if (typeof ref === 'function') ref(node);
+          else if (ref) ref.current = node;
+        }}
+        className={`relative ${open ? 'z-[120]' : 'z-0'}`}
+      >
         <input type="hidden" id={id} name={name} value={value} required={required} />
 
         <button
           type="button"
           disabled={disabled}
-          onClick={() => !disabled && setOpen(!open)}
+          onClick={() => {
+            if (disabled) {
+              return;
+            }
+
+            if (!open && containerRef.current) {
+              setPlacement(resolvePlacement(containerRef.current.getBoundingClientRect(), type, null));
+              setPositionReady(false);
+            }
+
+            setOpen(!open);
+          }}
           className={cn(
             'cf-control group flex h-11 w-full items-center gap-2 rounded-xl px-4 text-left text-sm',
             open && 'cf-control-active',
@@ -616,8 +748,10 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                 style={{
                   top: placement.top,
                   left: placement.left,
-                  width: dropdownWidth,
+                  width: placement.width,
                   maxHeight: placement.maxHeight,
+                  visibility: positionReady ? 'visible' : 'hidden',
+                  pointerEvents: positionReady ? undefined : 'none',
                 }}
               >
                 <div className="flex items-stretch">
@@ -633,6 +767,7 @@ export const DatePicker = React.forwardRef<HTMLDivElement, DatePickerProps>(
                           setViewMonth(m);
                         }}
                         onQuickDate={type === 'date' || type === 'datetime-local' ? applyQuickDate : undefined}
+                        isDateDisabled={type === 'date' || type === 'datetime-local' ? isDateDisabled : undefined}
                       />
                     </div>
                   ) : null}

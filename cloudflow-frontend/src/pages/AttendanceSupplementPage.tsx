@@ -37,8 +37,8 @@ import {
   TableHead,
   TableHeader,
   Textarea,
-} from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+} from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 
 interface InlineStateProps {
   title: string;

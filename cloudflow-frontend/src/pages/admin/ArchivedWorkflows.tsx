@@ -17,6 +17,7 @@ import { BaseDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  DatePicker,
   Input,
   Table,
   TableActionHead,
@@ -25,7 +26,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui';
+} from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
   getArchivedWorkflows,
@@ -306,17 +307,21 @@ export const ArchivedWorkflows: React.FC = () => {
                 />
               </div>
 
-              <Input
+              <DatePicker
                 type="date"
                 value={filters.start}
+                max={filters.end || undefined}
                 onChange={(event) => setFilters((current) => ({ ...current, start: event.target.value }))}
+                placeholder="开始日期"
                 className="h-10 w-full sm:w-40"
               />
 
-              <Input
+              <DatePicker
                 type="date"
                 value={filters.end}
+                min={filters.start || undefined}
                 onChange={(event) => setFilters((current) => ({ ...current, end: event.target.value }))}
+                placeholder="结束日期"
                 className="h-10 w-full sm:w-40"
               />
 

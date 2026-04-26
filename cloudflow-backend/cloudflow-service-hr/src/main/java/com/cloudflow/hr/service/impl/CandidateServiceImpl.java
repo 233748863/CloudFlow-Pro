@@ -28,7 +28,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 候选人服务实现类
@@ -91,7 +93,8 @@ public class CandidateServiceImpl implements CandidateService {
 
         // 7. 创建候选人记录
         Candidate candidate = new Candidate();
-        BeanUtils.copyProperties(dto, candidate);
+        BeanUtils.copyProperties(dto, candidate, "resumeAttachmentUrls");
+        candidate.setResumeAttachmentUrls(joinAttachmentUrls(dto.getResumeAttachmentUrls()));
         candidate.setTenantId(tenantId);
         candidate.setStatus("NEW");
 
@@ -139,8 +142,8 @@ public class CandidateServiceImpl implements CandidateService {
         if (StringUtils.hasText(dto.getEmail())) {
             candidate.setEmail(dto.getEmail());
         }
-        if (StringUtils.hasText(dto.getResumeUrl())) {
-            candidate.setResumeUrl(dto.getResumeUrl());
+        if (dto.getResumeAttachmentUrls() != null) {
+            candidate.setResumeAttachmentUrls(joinAttachmentUrls(dto.getResumeAttachmentUrls()));
         }
         if (StringUtils.hasText(dto.getSource())) {
             candidate.setSource(dto.getSource());
@@ -196,7 +199,8 @@ public class CandidateServiceImpl implements CandidateService {
 
         // 2. 转换为VO
         CandidateDetailVO vo = new CandidateDetailVO();
-        BeanUtils.copyProperties(candidate, vo);
+        BeanUtils.copyProperties(candidate, vo, "resumeAttachmentUrls");
+        vo.setResumeAttachmentUrls(splitAttachmentUrls(candidate.getResumeAttachmentUrls()));
 
         // 3. 填充招聘需求信息
         if (candidate.getRequestId() != null) {
@@ -266,7 +270,8 @@ public class CandidateServiceImpl implements CandidateService {
         Page<CandidateVO> voPage = new Page<>(candidatePage.getCurrent(), candidatePage.getSize(), candidatePage.getTotal());
         voPage.setRecords(candidatePage.getRecords().stream().map(candidate -> {
             CandidateVO vo = new CandidateVO();
-            BeanUtils.copyProperties(candidate, vo);
+            BeanUtils.copyProperties(candidate, vo, "resumeAttachmentUrls");
+            vo.setResumeAttachmentUrls(splitAttachmentUrls(candidate.getResumeAttachmentUrls()));
 
             // 填充招聘需求信息
             if (candidate.getRequestId() != null) {
@@ -374,5 +379,35 @@ public class CandidateServiceImpl implements CandidateService {
             default:
                 return status;
         }
+    }
+
+    private String joinAttachmentUrls(List<String> attachmentUrls) {
+        List<String> normalizedUrls = normalizeAttachmentUrls(attachmentUrls);
+        if (normalizedUrls.isEmpty()) {
+            return null;
+        }
+        return String.join(",", normalizedUrls);
+    }
+
+    private List<String> splitAttachmentUrls(String attachmentUrls) {
+        if (!StringUtils.hasText(attachmentUrls)) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(attachmentUrls.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private List<String> normalizeAttachmentUrls(List<String> attachmentUrls) {
+        if (attachmentUrls == null) {
+            return Collections.emptyList();
+        }
+        return attachmentUrls.stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.toList());
     }
 }

@@ -1,6 +1,6 @@
 import React from "react";
 import { FolderOpen, Layers3 } from "lucide-react";
-import { FilterChip, SideNavItem } from "@/components/ui";
+import { FilterChip, SideNavItem } from "@/components/common";
 import { TEXT } from "./config";
 import type { CategoryNode } from "./types";
 

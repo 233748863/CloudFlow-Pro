@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
 import { BaseDialog } from '@/components/common';
-import { SegmentedControl, SegmentedControlItem } from '@/components/ui';
+import { SegmentedControl, SegmentedControlItem } from '@/components/common';
 
 export interface WorkspaceOverviewItem {
   label: string;

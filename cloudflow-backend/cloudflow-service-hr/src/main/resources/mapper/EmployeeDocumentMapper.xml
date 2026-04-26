@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.EmployeeDocumentMapper">
+
+    <sql id="BaseDocumentColumns">
+        id,
+        tenant_id,
+        employee_id,
+        document_type,
+        document_no,
+        issue_date,
+        expiry_date,
+        create_time,
+        update_time,
+        create_by,
+        update_by,
+        deleted
+    </sql>
+
+    <select id="selectDocumentsByEmployeeId" resultType="com.cloudflow.hr.domain.entity.EmployeeDocument">
+        SELECT
+        <include refid="BaseDocumentColumns"/>
+        FROM hr_employee_document
+        WHERE deleted = 0
+          AND tenant_id = #{tenantId}
+          AND employee_id = #{employeeId}
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectDocumentById" resultType="com.cloudflow.hr.domain.entity.EmployeeDocument">
+        SELECT
+        <include refid="BaseDocumentColumns"/>
+        FROM hr_employee_document
+        WHERE deleted = 0
+          AND tenant_id = #{tenantId}
+          AND id = #{id}
+        LIMIT 1
+    </select>
+
+</mapper>

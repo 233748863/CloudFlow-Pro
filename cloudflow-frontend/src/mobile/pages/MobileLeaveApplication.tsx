@@ -13,7 +13,7 @@ import {
   HrLeaveTypeOption,
   leaveApplicationApi,
 } from '@/services/api/leaveApplication';
-import { DatePicker } from '@/components/ui';
+import { DatePicker } from '@/components/common';
 import { toBackendDateString } from '@/utils/dateFormat';
 
 interface LeaveApplicationFormState {

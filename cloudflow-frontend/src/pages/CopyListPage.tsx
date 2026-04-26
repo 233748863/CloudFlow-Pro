@@ -26,7 +26,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui';
+} from '@/components/common';
 import { BaseDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { toast } from 'sonner';
@@ -564,7 +564,7 @@ export const CopyListPage: React.FC = () => {
                         )}
                         onClick={() => handleViewDetail(record)}
                       >
-                        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1.9fr)_180px_180px_auto] lg:items-center">
+                        <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
                           <div className="flex min-w-0 items-start gap-3">
                             <div className="shrink-0 pt-1" onClick={(e) => e.stopPropagation()}>
                               {isUnread ? (
@@ -580,10 +580,10 @@ export const CopyListPage: React.FC = () => {
                             </div>
 
                             <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
+                              <div className="flex min-w-0 flex-wrap items-center gap-2">
                                 <h4
                                   className={cn(
-                                    'min-w-0 flex-1 truncate text-sm font-semibold',
+                                    'min-w-0 truncate text-sm font-semibold',
                                     isUnread ? 'text-slate-900 dark:text-slate-100' : 'text-slate-700 dark:text-slate-200',
                                   )}
                                 >
@@ -607,26 +607,15 @@ export const CopyListPage: React.FC = () => {
                                 {record.processName ? <span>流程 {record.processName}</span> : null}
                                 <span>抄送节点 {record.nodeName || '-'}</span>
                                 <span>{record.createTime ? new Date(record.createTime).toLocaleString() : '-'}</span>
+                                {record.readTime && !isUnread ? (
+                                  <span>阅读 {new Date(record.readTime).toLocaleString()}</span>
+                                ) : null}
                               </div>
                             </div>
                           </div>
 
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            <div>阅读状态</div>
-                            <div className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {isUnread ? '未读' : '已读'}
-                            </div>
-                          </div>
-
-                          <div className="text-xs text-slate-500 dark:text-slate-400">
-                            <div>流程状态</div>
-                            <div className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-                              {getStatusLabel(record.processStatus)}
-                            </div>
-                          </div>
-
                           <div
-                            className="flex shrink-0 flex-wrap items-center justify-end gap-2"
+                            className="flex shrink-0 flex-wrap items-center justify-end gap-2 lg:border-l lg:border-slate-100 lg:pl-6 dark:lg:border-slate-800"
                             onClick={(e) => e.stopPropagation()}
                           >
                             {isUnread ? (

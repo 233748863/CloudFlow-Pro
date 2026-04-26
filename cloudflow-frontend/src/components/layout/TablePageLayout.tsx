@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { cn } from '@/utils/cn';
 
 interface TablePageLayoutProps {
@@ -15,32 +15,16 @@ export const TablePageLayout: React.FC<TablePageLayoutProps> = ({
   table,
   pagination,
   className,
-}) => {
-  const [isMobile, setIsMobile] = useState(false);
-
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 1024);
-    };
-
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-
-    return () => {
-      window.removeEventListener('resize', checkMobile);
-    };
-  }, []);
-
-  return (
-    <div className={cn('flex flex-col gap-6', isMobile ? 'table-page-mobile' : '', className)}>
+}) => (
+  <div className={cn('flex flex-col gap-6', className)}>
       {actions ? <div className="flex-shrink-0">{actions}</div> : null}
       {filters ? <div className="flex-shrink-0">{filters}</div> : null}
 
-      <div className={cn('flex min-h-0 flex-1 flex-col', isMobile ? 'min-h-fit flex-none' : '')}>
+      <div className="flex min-h-0 flex-1 flex-col">
         <div
           className={cn(
-            'flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
-            isMobile ? 'h-auto overflow-visible border-none bg-transparent shadow-none' : '',
+            'flex flex-col overflow-visible rounded-none border-none bg-transparent shadow-none',
+            'lg:h-full lg:overflow-hidden lg:rounded-2xl lg:border lg:border-slate-200 lg:bg-white lg:shadow-sm dark:lg:border-slate-800 dark:lg:bg-slate-950/88',
           )}
         >
           {table}
@@ -49,5 +33,4 @@ export const TablePageLayout: React.FC<TablePageLayoutProps> = ({
 
       {pagination ? <div className="flex-shrink-0">{pagination}</div> : null}
     </div>
-  );
-};
+);

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, SegmentedControl, SegmentedControlItem } from '@/components/ui';
+import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
 import { cn } from '@/utils/cn';
 
 interface WorkspaceControlGroupProps {

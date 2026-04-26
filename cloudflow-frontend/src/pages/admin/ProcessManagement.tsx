@@ -33,8 +33,8 @@ import {
   TableHeader,
   TableRow,
   Textarea,
-} from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+} from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';

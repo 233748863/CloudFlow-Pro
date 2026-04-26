@@ -35,7 +35,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui';
+} from '@/components/common';
 import { cn } from '@/utils/cn';
 
 type OperationLogFilters = {

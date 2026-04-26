@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * 候选人创建DTO
@@ -51,7 +52,7 @@ public class CandidateCreateDTO implements Serializable {
     /**
      * 简历URL
      */
-    private String resumeUrl;
+    private List<String> resumeAttachmentUrls;
 
     /**
      * 来源：WEBSITE-官网 REFERRAL-内推 HEADHUNTER-猎头 CAMPUS-校招

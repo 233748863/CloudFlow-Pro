@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowRight, FileText } from 'lucide-react';
-import { Button, EmptyState, LoadingSpinner } from '@/components/ui';
+import { Button, EmptyState, LoadingSpinner } from '@/components/common';
 
 interface UserDashboardRecentApplicationsProps {
   applications: any[];

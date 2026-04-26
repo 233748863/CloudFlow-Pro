@@ -32,7 +32,7 @@ import {
   TableHeader,
   TableRow,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import { cn } from '@/utils/cn';
 import request from '../../services/api/request';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';

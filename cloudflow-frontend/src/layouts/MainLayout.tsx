@@ -219,15 +219,12 @@ export const MainLayout = () => {
 
   return (
     <div className="relative h-screen overflow-hidden bg-slate-50 text-slate-900 transition-colors dark:bg-slate-950 dark:text-slate-100">
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(at_40%_20%,rgba(20,184,166,0.12)_0px,transparent_48%),radial-gradient(at_80%_0%,rgba(6,182,212,0.08)_0px,transparent_50%),radial-gradient(at_0%_55%,rgba(20,184,166,0.08)_0px,transparent_48%)] dark:opacity-50" />
-        <div className="absolute inset-0 bg-[linear-gradient(rgba(20,184,166,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(20,184,166,0.025)_1px,transparent_1px)] bg-[size:72px_72px] opacity-70 dark:opacity-20" />
-      </div>
+      <div className="pointer-events-none fixed inset-0 bg-mesh-gradient dark:opacity-60" />
 
       <aside
         className={cn(
           'fixed inset-y-0 left-0 z-40 flex flex-col border-r border-slate-200/80 bg-white/86 backdrop-blur-xl transition-[width] duration-300 dark:border-slate-800 dark:bg-slate-950/90',
-          sidebarCollapsed ? 'w-[88px]' : 'w-72',
+          sidebarCollapsed ? 'w-[72px]' : 'w-64',
         )}
       >
         <div
@@ -261,10 +258,8 @@ export const MainLayout = () => {
                     title={`${item.groupLabel} / ${item.label}`}
                     onClick={() => item.path && navigate(item.path)}
                     className={cn(
-                      'flex h-11 w-full items-center justify-center rounded-xl border transition-colors',
-                      active
-                        ? 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/40 dark:text-cyan-200'
-                        : 'border-transparent text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white',
+                      'cf-side-link h-10 w-10 justify-center gap-0 px-0',
+                      active && 'cf-side-link-active',
                     )}
                   >
                     <item.icon size={18} />
@@ -285,10 +280,8 @@ export const MainLayout = () => {
                       type="button"
                       onClick={() => toggleGroup(group.id)}
                       className={cn(
-                        'flex w-full items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-medium transition-all duration-200',
-                        parentButtonActive
-                          ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-white',
+                        'cf-side-link',
+                        parentButtonActive && 'cf-side-link-active',
                       )}
                     >
                       <group.icon size={18} className="shrink-0" />
@@ -312,10 +305,8 @@ export const MainLayout = () => {
                             type="button"
                             onClick={() => child.path && navigate(child.path)}
                             className={cn(
-                              'flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left text-sm font-medium transition-all duration-200',
-                              isActive(child.path)
-                                ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-200'
-                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white',
+                              'cf-side-link cf-side-link-sm',
+                              isActive(child.path) && 'cf-side-link-active',
                             )}
                           >
                             <child.icon size={16} className="shrink-0" />
@@ -338,8 +329,8 @@ export const MainLayout = () => {
               onClick={toggleThemeMode}
               title={sidebarCollapsed ? (resolvedTheme === 'dark' ? '浅色模式' : '深色模式') : undefined}
               className={cn(
-                'flex items-center gap-3 overflow-hidden rounded-xl py-2.5 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
-                sidebarCollapsed ? 'w-10 justify-center px-0' : 'w-full pl-[1.0625rem] pr-3.5',
+                'cf-side-link overflow-hidden',
+                sidebarCollapsed ? 'h-10 w-10 justify-center gap-0 px-0' : '',
               )}
             >
               {resolvedTheme === 'dark' ? (
@@ -355,8 +346,8 @@ export const MainLayout = () => {
               onClick={() => setSidebarCollapsed((prev) => !prev)}
               title={sidebarCollapsed ? '展开侧栏' : '收起侧栏'}
               className={cn(
-                'flex items-center gap-3 overflow-hidden rounded-xl py-2.5 text-sm font-medium text-slate-600 transition-all duration-200 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white',
-                sidebarCollapsed ? 'w-10 justify-center px-0' : 'w-full pl-[1.0625rem] pr-3.5',
+                'cf-side-link overflow-hidden',
+                sidebarCollapsed ? 'h-10 w-10 justify-center gap-0 px-0' : '',
               )}
             >
               {sidebarCollapsed ? <ChevronsRight size={18} className="shrink-0" /> : <ChevronsLeft size={18} className="shrink-0" />}
@@ -369,15 +360,18 @@ export const MainLayout = () => {
       <div
         className={cn(
           'relative flex h-screen min-h-0 flex-col overflow-hidden transition-[padding] duration-300',
-          sidebarCollapsed ? 'pl-[88px]' : 'pl-72',
+          sidebarCollapsed ? 'pl-[72px]' : 'pl-64',
         )}
       >
-        <header className="sticky top-0 z-30 border-b border-slate-200/70 bg-white/72 backdrop-blur-xl dark:border-slate-800 dark:bg-slate-950/78">
+        <header className="glass sticky top-0 z-30 border-b border-slate-200/70 dark:border-slate-800/70">
           <div className="flex h-16 items-center justify-between px-4 md:px-6">
             <div className="min-w-0">
-              <h1 className="hidden truncate text-lg font-semibold text-slate-900 dark:text-slate-100 lg:block">
-                {activeLabel.item}
-              </h1>
+              <div className="hidden lg:block">
+                <h1 className="truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {activeLabel.item}
+                </h1>
+                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">{activeLabel.group}</p>
+              </div>
             </div>
 
             <div className="ml-4 flex shrink-0 items-center gap-2.5 md:gap-3">

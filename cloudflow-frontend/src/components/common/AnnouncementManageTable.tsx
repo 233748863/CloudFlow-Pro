@@ -2,7 +2,7 @@ import React from 'react';
 import { Edit, Eye, Pin, Trash2, X } from 'lucide-react';
 import type { Announcement } from '@/types';
 import { AnnouncementScope } from '@/types';
-import { TableActionHead, TableHead, TableHeader, TableRowActions } from '@/components/ui';
+import { TableActionHead, TableHead, TableHeader, TableRowActions } from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
   getAnnouncementPriorityMeta,

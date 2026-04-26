@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Ban, Eye, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, TableRowActions } from '@/components/ui';
+import { Button, TableRowActions } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { recallProcess } from '../services/api/workflow';
 import { Task, TaskStatus } from '../types';

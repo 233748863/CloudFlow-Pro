@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/common';
 
 interface DeployActionButtonProps {
   label: string;

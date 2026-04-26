@@ -1,21 +1,21 @@
-# 前端错误处理指南
+# 鍓嶇閿欒澶勭悊鎸囧崡
 
-本指南介绍如何使用统一的错误处理器来处理 API 错误。
+鏈寚鍗椾粙缁嶅浣曚娇鐢ㄧ粺涓€鐨勯敊璇鐞嗗櫒鏉ュ鐞?API 閿欒銆?
 
-## 概述
+## 姒傝堪
 
-统一的错误处理器提供了以下功能：
+缁熶竴鐨勯敊璇鐞嗗櫒鎻愪緵浜嗕互涓嬪姛鑳斤細
 
-1. **自动错误分类**：根据错误代码自动选择合适的提示方式
-2. **友好的错误提示**：为不同类型的错误提供用户友好的提示信息
-3. **特殊错误处理**：支持冲突解决、运行实例警告等特殊场景
-4. **字段级别验证**：显示表单字段级别的验证错误
+1. **鑷姩閿欒鍒嗙被**锛氭牴鎹敊璇唬鐮佽嚜鍔ㄩ€夋嫨鍚堥€傜殑鎻愮ず鏂瑰紡
+2. **鍙嬪ソ鐨勯敊璇彁绀?*锛氫负涓嶅悓绫诲瀷鐨勯敊璇彁渚涚敤鎴峰弸濂界殑鎻愮ず淇℃伅
+3. **鐗规畩閿欒澶勭悊**锛氭敮鎸佸啿绐佽В鍐炽€佽繍琛屽疄渚嬭鍛婄瓑鐗规畩鍦烘櫙
+4. **瀛楁绾у埆楠岃瘉**锛氭樉绀鸿〃鍗曞瓧娈电骇鍒殑楠岃瘉閿欒
 
-## 快速开始
+## 蹇€熷紑濮?
 
-### 1. 基本用法
+### 1. 鍩烘湰鐢ㄦ硶
 
-最简单的用法是在 catch 块中调用 `handleApiError`：
+鏈€绠€鍗曠殑鐢ㄦ硶鏄湪 catch 鍧椾腑璋冪敤 `handleApiError`锛?
 
 ```typescript
 import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
@@ -24,15 +24,15 @@ import request from '@/services/api/request';
 
 try {
   const result = await request.post('/api/workflow/save', data);
-  showSuccess('保存成功');
+  showSuccess('淇濆瓨鎴愬姛');
 } catch (error) {
   handleApiError(error as AxiosError<ApiErrorResponse>);
 }
 ```
 
-### 2. 使用包装器
+### 2. 浣跨敤鍖呰鍣?
 
-使用 `withErrorHandler` 可以让代码更简洁：
+浣跨敤 `withErrorHandler` 鍙互璁╀唬鐮佹洿绠€娲侊細
 
 ```typescript
 import { withErrorHandler, showSuccess } from '@/utils/errorHandler';
@@ -40,35 +40,35 @@ import { withErrorHandler, showSuccess } from '@/utils/errorHandler';
 const handleSave = withErrorHandler(
   async () => {
     const result = await request.post('/api/workflow/save', data);
-    showSuccess('保存成功');
+    showSuccess('淇濆瓨鎴愬姛');
     return result;
   },
-  { customMessage: '保存失败' }
+  { customMessage: '淇濆瓨澶辫触' }
 );
 
-// 调用
+// 璋冪敤
 await handleSave();
 ```
 
-## 错误类型处理
+## 閿欒绫诲瀷澶勭悊
 
-### 1. 权限错误 (PERMISSION_DENIED)
+### 1. 鏉冮檺閿欒 (PERMISSION_DENIED)
 
-权限错误会自动显示友好的提示，包含联系管理员的建议。
+鏉冮檺閿欒浼氳嚜鍔ㄦ樉绀哄弸濂界殑鎻愮ず锛屽寘鍚仈绯荤鐞嗗憳鐨勫缓璁€?
 
 ```typescript
-// 后端返回 403 或 code: 'PERMISSION_DENIED'
-// 自动显示：
-// "您没有权限执行此操作"
-// "如需访问此功能，请联系系统管理员"
+// 鍚庣杩斿洖 403 鎴?code: 'PERMISSION_DENIED'
+// 鑷姩鏄剧ず锛?
+// "鎮ㄦ病鏈夋潈闄愭墽琛屾鎿嶄綔"
+// "濡傞渶璁块棶姝ゅ姛鑳斤紝璇疯仈绯荤郴缁熺鐞嗗憳"
 ```
 
-### 2. 资源冲突 (RESOURCE_CONFLICT)
+### 2. 璧勬簮鍐茬獊 (RESOURCE_CONFLICT)
 
-处理导入流程时的名称冲突等场景：
+澶勭悊瀵煎叆娴佺▼鏃剁殑鍚嶇О鍐茬獊绛夊満鏅細
 
 ```typescript
-import { ConflictResolutionDialog } from '@/components/ui/ConflictResolutionDialog';
+import { ConflictResolutionDialog } from '@/components/common/ConflictResolutionDialog';
 
 const [showConflictDialog, setShowConflictDialog] = useState(false);
 const [conflictData, setConflictData] = useState(null);
@@ -80,7 +80,7 @@ try {
   const errorData = axiosError.response?.data;
 
   if (errorData?.code === 'RESOURCE_CONFLICT') {
-    // 显示冲突解决对话框
+    // 鏄剧ず鍐茬獊瑙ｅ喅瀵硅瘽妗?
     setConflictData({
       resourceName: errorData.data?.resourceName,
       message: errorData.message,
@@ -91,25 +91,25 @@ try {
   }
 }
 
-// 在 JSX 中
+// 鍦?JSX 涓?
 <ConflictResolutionDialog
   open={showConflictDialog}
   onClose={() => setShowConflictDialog(false)}
   resourceName={conflictData?.resourceName}
   message={conflictData?.message}
   onConfirm={(strategy, newName) => {
-    // 使用选择的策略重新导入
+    // 浣跨敤閫夋嫨鐨勭瓥鐣ラ噸鏂板鍏?
     handleImportWithStrategy(strategy, newName);
   }}
 />
 ```
 
-### 3. 运行实例警告 (RUNNING_INSTANCES_WARNING)
+### 3. 杩愯瀹炰緥璀﹀憡 (RUNNING_INSTANCES_WARNING)
 
-处理版本回滚等操作时的运行实例警告：
+澶勭悊鐗堟湰鍥炴粴绛夋搷浣滄椂鐨勮繍琛屽疄渚嬭鍛婏細
 
 ```typescript
-import { WarningConfirmDialog } from '@/components/ui/WarningConfirmDialog';
+import { WarningConfirmDialog } from '@/components/common/WarningConfirmDialog';
 
 const [showWarningDialog, setShowWarningDialog] = useState(false);
 const [pendingAction, setPendingAction] = useState(null);
@@ -121,36 +121,36 @@ try {
   const errorData = axiosError.response?.data;
 
   if (errorData?.code === 'RUNNING_INSTANCES_WARNING') {
-    // 保存待执行的操作
+    // 淇濆瓨寰呮墽琛岀殑鎿嶄綔
     setPendingAction(data);
     
-    // 显示警告对话框
+    // 鏄剧ず璀﹀憡瀵硅瘽妗?
     setShowWarningDialog(true);
   } else {
     handleApiError(axiosError);
   }
 }
 
-// 在 JSX 中
+// 鍦?JSX 涓?
 <WarningConfirmDialog
   open={showWarningDialog}
   onClose={() => setShowWarningDialog(false)}
-  title="运行实例警告"
-  message="该流程有正在运行的实例"
-  description="回滚可能影响运行中的流程"
-  confirmText="强制回滚"
+  title="杩愯瀹炰緥璀﹀憡"
+  message="璇ユ祦绋嬫湁姝ｅ湪杩愯鐨勫疄渚?
+  description="鍥炴粴鍙兘褰卞搷杩愯涓殑娴佺▼"
+  confirmText="寮哄埗鍥炴粴"
   requireDoubleConfirm={true}
   onConfirm={() => {
-    // 执行强制操作
+    // 鎵ц寮哄埗鎿嶄綔
     handleForceRollback(pendingAction);
   }}
   severity="warning"
 />
 ```
 
-### 4. 验证错误 (INVALID_REQUEST)
+### 4. 楠岃瘉閿欒 (INVALID_REQUEST)
 
-显示字段级别的验证错误：
+鏄剧ず瀛楁绾у埆鐨勯獙璇侀敊璇細
 
 ```typescript
 const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -162,7 +162,7 @@ try {
   const errorData = axiosError.response?.data;
 
   if (errorData?.code === 'INVALID_REQUEST' && errorData.errors) {
-    // 提取字段错误
+    // 鎻愬彇瀛楁閿欒
     const errors: Record<string, string> = {};
     errorData.errors.forEach((err) => {
       errors[err.field] = err.message;
@@ -170,116 +170,116 @@ try {
     setFieldErrors(errors);
   }
   
-  // 同时显示 toast 提示
+  // 鍚屾椂鏄剧ず toast 鎻愮ず
   handleApiError(axiosError);
 }
 
-// 在表单中显示错误
+// 鍦ㄨ〃鍗曚腑鏄剧ず閿欒
 <input name="name" />
 {fieldErrors.name && (
   <span className="text-red-500 text-sm">{fieldErrors.name}</span>
 )}
 ```
 
-### 5. 模板正在使用 (TEMPLATE_IN_USE)
+### 5. 妯℃澘姝ｅ湪浣跨敤 (TEMPLATE_IN_USE)
 
 ```typescript
-// 自动显示：
-// "该模板正在被使用，无法删除"
-// "当前有 5 个流程正在使用此模板"
+// 鑷姩鏄剧ず锛?
+// "璇ユā鏉挎鍦ㄨ浣跨敤锛屾棤娉曞垹闄?
+// "褰撳墠鏈?5 涓祦绋嬫鍦ㄤ娇鐢ㄦ妯℃澘"
 ```
 
-### 6. 不支持的节点类型 (UNSUPPORTED_NODE_TYPES)
+### 6. 涓嶆敮鎸佺殑鑺傜偣绫诲瀷 (UNSUPPORTED_NODE_TYPES)
 
 ```typescript
-// 自动显示：
-// "流程包含不支持的节点类型"
-// "不支持的节点类型：customNode1、customNode2"
+// 鑷姩鏄剧ず锛?
+// "娴佺▼鍖呭惈涓嶆敮鎸佺殑鑺傜偣绫诲瀷"
+// "涓嶆敮鎸佺殑鑺傜偣绫诲瀷锛歝ustomNode1銆乧ustomNode2"
 ```
 
-## 高级选项
+## 楂樼骇閫夐」
 
-### 静默模式
+### 闈欓粯妯″紡
 
-某些场景下不需要显示错误提示（如轮询、后台任务）：
+鏌愪簺鍦烘櫙涓嬩笉闇€瑕佹樉绀洪敊璇彁绀猴紙濡傝疆璇€佸悗鍙颁换鍔★級锛?
 
 ```typescript
 try {
   const result = await request.get('/api/workflow/status', { silent: true });
 } catch (error) {
-  // 错误被静默处理，不会显示 toast
-  console.log('状态检查失败');
+  // 閿欒琚潤榛樺鐞嗭紝涓嶄細鏄剧ず toast
+  console.log('鐘舵€佹鏌ュけ璐?);
 }
 ```
 
-### 自定义错误消息
+### 鑷畾涔夐敊璇秷鎭?
 
-为特定操作提供更友好的错误提示：
+涓虹壒瀹氭搷浣滄彁渚涙洿鍙嬪ソ鐨勯敊璇彁绀猴細
 
 ```typescript
 const handleDelete = withErrorHandler(
   async (id: string) => {
     await request.delete(`/api/workflow/templates/${id}`);
-    showSuccess('模板删除成功');
+    showSuccess('妯℃澘鍒犻櫎鎴愬姛');
   },
   {
-    customMessage: '删除模板失败，请稍后重试',
+    customMessage: '鍒犻櫎妯℃澘澶辫触锛岃绋嶅悗閲嶈瘯',
   }
 );
 ```
 
-## 辅助函数
+## 杈呭姪鍑芥暟
 
 ### showSuccess
 
-显示成功提示：
+鏄剧ず鎴愬姛鎻愮ず锛?
 
 ```typescript
 import { showSuccess } from '@/utils/errorHandler';
 
-showSuccess('操作成功');
-showSuccess('保存成功', '流程已保存到草稿箱');
+showSuccess('鎿嶄綔鎴愬姛');
+showSuccess('淇濆瓨鎴愬姛', '娴佺▼宸蹭繚瀛樺埌鑽夌绠?);
 ```
 
 ### showWarning
 
-显示警告提示：
+鏄剧ず璀﹀憡鎻愮ず锛?
 
 ```typescript
 import { showWarning } from '@/utils/errorHandler';
 
-showWarning('请先保存流程');
-showWarning('数据可能不完整', '部分字段未填写');
+showWarning('璇峰厛淇濆瓨娴佺▼');
+showWarning('鏁版嵁鍙兘涓嶅畬鏁?, '閮ㄥ垎瀛楁鏈～鍐?);
 ```
 
 ### showInfo
 
-显示信息提示：
+鏄剧ず淇℃伅鎻愮ず锛?
 
 ```typescript
 import { showInfo } from '@/utils/errorHandler';
 
-showInfo('正在处理中');
-showInfo('数据同步中', '预计需要 30 秒');
+showInfo('姝ｅ湪澶勭悊涓?);
+showInfo('鏁版嵁鍚屾涓?, '棰勮闇€瑕?30 绉?);
 ```
 
-## 后端错误响应格式
+## 鍚庣閿欒鍝嶅簲鏍煎紡
 
-后端应该返回以下格式的错误响应：
+鍚庣搴旇杩斿洖浠ヤ笅鏍煎紡鐨勯敊璇搷搴旓細
 
 ```json
 {
   "code": "RESOURCE_CONFLICT",
-  "message": "流程名称已存在",
+  "message": "娴佺▼鍚嶇О宸插瓨鍦?,
   "errors": [
     {
       "field": "name",
-      "message": "名称不能为空",
+      "message": "鍚嶇О涓嶈兘涓虹┖",
       "rejectedValue": ""
     }
   ],
   "data": {
-    "suggestions": ["重命名", "覆盖", "跳过"],
+    "suggestions": ["閲嶅懡鍚?, "瑕嗙洊", "璺宠繃"],
     "usageCount": 5,
     "affectedWorkflows": ["workflow1", "workflow2"]
   },
@@ -288,36 +288,36 @@ showInfo('数据同步中', '预计需要 30 秒');
 }
 ```
 
-## 错误代码列表
+## 閿欒浠ｇ爜鍒楄〃
 
-| 错误代码 | 说明 | 处理方式 |
+| 閿欒浠ｇ爜 | 璇存槑 | 澶勭悊鏂瑰紡 |
 |---------|------|---------|
-| `PERMISSION_DENIED` | 权限不足 | 显示友好的权限提示 |
-| `RESOURCE_CONFLICT` | 资源冲突 | 显示冲突解决对话框 |
-| `RUNNING_INSTANCES_WARNING` | 运行实例警告 | 显示警告确认对话框 |
-| `INVALID_REQUEST` | 验证错误 | 显示字段级别的错误 |
-| `TEMPLATE_IN_USE` | 模板正在使用 | 显示使用数量 |
-| `UNSUPPORTED_NODE_TYPES` | 不支持的节点类型 | 列出不支持的类型 |
-| `RESOURCE_NOT_FOUND` | 资源不存在 | 显示通用错误提示 |
-| `INTERNAL_ERROR` | 服务器错误 | 显示通用错误提示 |
+| `PERMISSION_DENIED` | 鏉冮檺涓嶈冻 | 鏄剧ず鍙嬪ソ鐨勬潈闄愭彁绀?|
+| `RESOURCE_CONFLICT` | 璧勬簮鍐茬獊 | 鏄剧ず鍐茬獊瑙ｅ喅瀵硅瘽妗?|
+| `RUNNING_INSTANCES_WARNING` | 杩愯瀹炰緥璀﹀憡 | 鏄剧ず璀﹀憡纭瀵硅瘽妗?|
+| `INVALID_REQUEST` | 楠岃瘉閿欒 | 鏄剧ず瀛楁绾у埆鐨勯敊璇?|
+| `TEMPLATE_IN_USE` | 妯℃澘姝ｅ湪浣跨敤 | 鏄剧ず浣跨敤鏁伴噺 |
+| `UNSUPPORTED_NODE_TYPES` | 涓嶆敮鎸佺殑鑺傜偣绫诲瀷 | 鍒楀嚭涓嶆敮鎸佺殑绫诲瀷 |
+| `RESOURCE_NOT_FOUND` | 璧勬簮涓嶅瓨鍦?| 鏄剧ず閫氱敤閿欒鎻愮ず |
+| `INTERNAL_ERROR` | 鏈嶅姟鍣ㄩ敊璇?| 鏄剧ず閫氱敤閿欒鎻愮ず |
 
-## 最佳实践
+## 鏈€浣冲疄璺?
 
-1. **始终使用统一的错误处理器**：不要直接使用 `toast.error`，而是使用 `handleApiError`
-2. **为特殊场景提供自定义处理**：如冲突解决、运行实例警告等
-3. **显示字段级别的验证错误**：在表单中显示具体的字段错误
-4. **使用静默模式处理后台任务**：避免干扰用户
-5. **提供友好的错误消息**：使用 `customMessage` 选项
+1. **濮嬬粓浣跨敤缁熶竴鐨勯敊璇鐞嗗櫒**锛氫笉瑕佺洿鎺ヤ娇鐢?`toast.error`锛岃€屾槸浣跨敤 `handleApiError`
+2. **涓虹壒娈婂満鏅彁渚涜嚜瀹氫箟澶勭悊**锛氬鍐茬獊瑙ｅ喅銆佽繍琛屽疄渚嬭鍛婄瓑
+3. **鏄剧ず瀛楁绾у埆鐨勯獙璇侀敊璇?*锛氬湪琛ㄥ崟涓樉绀哄叿浣撶殑瀛楁閿欒
+4. **浣跨敤闈欓粯妯″紡澶勭悊鍚庡彴浠诲姟**锛氶伩鍏嶅共鎵扮敤鎴?
+5. **鎻愪緵鍙嬪ソ鐨勯敊璇秷鎭?*锛氫娇鐢?`customMessage` 閫夐」
 
-## 示例代码
+## 绀轰緥浠ｇ爜
 
-完整的示例代码请参考：
-- `src/utils/errorHandler.example.tsx` - 各种使用场景的示例
-- `src/pages/VersionHistory.improved.tsx` - 实际应用示例
+瀹屾暣鐨勭ず渚嬩唬鐮佽鍙傝€冿細
+- `src/utils/errorHandler.example.tsx` - 鍚勭浣跨敤鍦烘櫙鐨勭ず渚?
+- `src/pages/VersionHistory.improved.tsx` - 瀹為檯搴旂敤绀轰緥
 
-## 注意事项
+## 娉ㄦ剰浜嬮」
 
-1. 错误处理器会自动处理 401（未授权）和 503（服务不可用）错误
-2. 网络错误和超时错误会显示特定的提示信息
-3. 所有错误都会被记录到控制台，便于调试
-4. 生产环境下，错误会被上报到后端日志收集系统
+1. 閿欒澶勭悊鍣ㄤ細鑷姩澶勭悊 401锛堟湭鎺堟潈锛夊拰 503锛堟湇鍔′笉鍙敤锛夐敊璇?
+2. 缃戠粶閿欒鍜岃秴鏃堕敊璇細鏄剧ず鐗瑰畾鐨勬彁绀轰俊鎭?
+3. 鎵€鏈夐敊璇兘浼氳璁板綍鍒版帶鍒跺彴锛屼究浜庤皟璇?
+4. 鐢熶骇鐜涓嬶紝閿欒浼氳涓婃姤鍒板悗绔棩蹇楁敹闆嗙郴缁?

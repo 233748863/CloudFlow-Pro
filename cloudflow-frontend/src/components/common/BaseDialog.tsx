@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn';
@@ -20,6 +20,8 @@ interface BaseDialogProps {
   footerClassName?: string;
   panelClassName?: string;
   closeOnClickOutside?: boolean;
+  closeOnEscape?: boolean;
+  zIndex?: number;
 }
 
 export const BaseDialog: React.FC<BaseDialogProps> = ({
@@ -35,8 +37,13 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   bodyClassName,
   footerClassName,
   panelClassName,
-  closeOnClickOutside = true,
+  closeOnClickOutside = false,
+  closeOnEscape = true,
+  zIndex = 50,
 }) => {
+  const titleId = useId();
+  const dialogRef = useRef<HTMLDivElement | null>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
   const widthClassMap: Record<BaseDialogWidth, string> = {
     narrow: 'max-w-md',
     normal: 'max-w-lg',
@@ -53,20 +60,30 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       return;
     }
 
+    previousActiveElementRef.current = document.activeElement as HTMLElement;
+
     const handleEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
+      if (closeOnEscape && event.key === 'Escape') {
         onClose();
       }
     };
 
     const unlockBodyScroll = lockBodyScroll();
     window.addEventListener('keydown', handleEscape);
+    window.requestAnimationFrame(() => {
+      const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      firstFocusable?.focus();
+    });
 
     return () => {
       unlockBodyScroll();
       window.removeEventListener('keydown', handleEscape);
+      previousActiveElementRef.current?.focus?.();
+      previousActiveElementRef.current = null;
     };
-  }, [onClose, open]);
+  }, [closeOnEscape, onClose, open]);
 
   if (!open) {
     return null;
@@ -75,6 +92,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   return createPortal(
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/48 p-2 backdrop-blur-sm sm:p-4"
+      style={zIndex === 50 ? undefined : { zIndex }}
       onClick={() => {
         if (closeOnClickOutside) {
           onClose();
@@ -82,9 +100,10 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       }}
       role="dialog"
       aria-modal="true"
-      aria-label={typeof title === 'string' ? title : undefined}
+      aria-labelledby={titleId}
     >
       <div
+        ref={dialogRef}
         className={cn(
           'w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]',
           'flex flex-col',
@@ -96,7 +115,9 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       >
         <div className="flex flex-shrink-0 items-start justify-between gap-4 border-b border-slate-100 px-4 py-3 sm:px-6 sm:py-4 dark:border-slate-800">
           <div className="min-w-0">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{title}</h3>
+            <h3 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              {title}
+            </h3>
             {description ? (
               <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
                 {description}

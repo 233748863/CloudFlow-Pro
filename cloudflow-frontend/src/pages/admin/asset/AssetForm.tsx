@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { addAsset, updateAsset, Asset } from '@/services/api/admin';
-import { DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/ui';
+import { DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 

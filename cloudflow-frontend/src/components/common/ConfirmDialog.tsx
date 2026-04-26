@@ -1,7 +1,6 @@
 import React from 'react';
-import { AlertTriangle } from 'lucide-react';
-import { BaseDialog } from '@/components/common/BaseDialog';
-import { Button } from '@/components/ui';
+import { BaseDialog } from './BaseDialog';
+import { Button } from './button';
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -12,23 +11,25 @@ interface ConfirmDialogProps {
   danger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
+  children?: React.ReactNode;
 }
 
 export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   open,
   title,
   message,
-  confirmText = '确定',
-  cancelText = '取消',
+  confirmText = '纭畾',
+  cancelText = '鍙栨秷',
   danger = false,
   onConfirm,
   onCancel,
+  children,
 }) => (
   <BaseDialog
     open={open}
     title={title}
     onClose={onCancel}
-    maxWidthClassName="max-w-md"
+    width="narrow"
     footer={(
       <div className="flex justify-end gap-3">
         <Button variant="outline" onClick={onCancel}>
@@ -40,17 +41,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       </div>
     )}
   >
-    <div className="flex items-start gap-3">
-      <div
-        className={
-          danger
-            ? 'rounded-full bg-red-50 p-2 text-red-600 dark:bg-red-950/40 dark:text-red-300'
-            : 'rounded-full bg-amber-50 p-2 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300'
-        }
-      >
-        <AlertTriangle size={18} />
-      </div>
-      <p className="whitespace-pre-line pt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{message}</p>
+    <div className="space-y-4">
+      <p className="whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">{message}</p>
+      {children}
     </div>
   </BaseDialog>
 );

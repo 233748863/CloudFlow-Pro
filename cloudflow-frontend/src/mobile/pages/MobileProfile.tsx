@@ -2,7 +2,7 @@ import React from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, User, Mail, Phone, Building, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui';
+import { Button } from '@/components/common';
 
 export const MobileProfile: React.FC = () => {
   const { user, logout } = useAuth();

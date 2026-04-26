@@ -1,19 +1,19 @@
-.cf-announcement-modal-overlay,
-.cf-announcement-popup-overlay {
+.cf-announcement-layer,
+.cf-announcement-popup-layer {
   animation: cfAnnouncementOverlayIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.cf-announcement-modal-panel,
+.cf-announcement-panel,
 .cf-announcement-popup-panel {
   animation: cfAnnouncementPanelIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.cf-announcement-scroll::-webkit-scrollbar {
-  width: 8px;
-}
-
 .cf-announcement-scroll {
   overscroll-behavior: contain;
+}
+
+.cf-announcement-scroll::-webkit-scrollbar {
+  width: 8px;
 }
 
 .cf-announcement-scroll::-webkit-scrollbar-track {

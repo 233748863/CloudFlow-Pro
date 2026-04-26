@@ -4737,18 +4737,18 @@ INSERT INTO cloud_flow_db.hr_recruitment_request (
 
 -- 4. 候选人示例数据
 INSERT INTO cloud_flow_db.hr_candidate (
-  id, tenant_id, request_id, name, gender, phone, email, resume_url, source, status, reject_reason,
+  id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'https://example.com/resume/chenhaitao.pdf', 'HEADHUNTER', 'HIRED', NULL,
+(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'https://example.com/resume/chenhaitao.pdf,https://example.com/resume/chenhaitao-portfolio.pdf', 'HEADHUNTER', 'HIRED', NULL,
  '2026-03-21 10:00:00', '2026-03-24 12:31:14', 'admin', 'admin', 0),
 (3002, 100000, 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 'https://example.com/resume/sunxiaoyu.pdf', 'REFERRAL', 'OFFER', NULL,
  '2026-03-21 10:30:00', '2026-03-23 09:10:00', 'zhao', 'zhao', 0),
-(3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', 'https://example.com/resume/linjiaqi.pdf', 'WEBSITE', 'SCREENING', NULL,
+(3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', 'https://example.com/resume/linjiaqi.pdf,https://example.com/resume/linjiaqi-works.pdf', 'WEBSITE', 'SCREENING', NULL,
  '2026-03-22 13:00:00', '2026-03-22 13:30:00', 'zhao', 'zhao', 0),
 (3004, 100000, 2003, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 'https://example.com/resume/liruotong.pdf', 'REFERRAL', 'HIRED', NULL,
  '2026-03-15 14:00:00', '2026-03-20 18:10:00', 'zhao', 'zhao', 0),
-(3005, 100000, 2001, '吴嘉豪', 'MALE', '13900011006', 'wu.jiahao@example.com', 'https://example.com/resume/wujiahao.pdf', 'WEBSITE', 'INTERVIEW', NULL,
+(3005, 100000, 2001, '吴嘉豪', 'MALE', '13900011006', 'wu.jiahao@example.com', 'https://example.com/resume/wujiahao.pdf,https://example.com/resume/wujiahao-github.pdf', 'WEBSITE', 'INTERVIEW', NULL,
  '2026-03-24 12:40:00', '2026-03-24 12:40:00', 'admin', 'admin', 0);
 
 -- 5. 面试示例数据
@@ -6346,11 +6346,11 @@ INSERT INTO cloud_flow_db.hr_recruitment_request (
  DATE_SUB(NOW(), INTERVAL 205 DAY), DATE_SUB(NOW(), INTERVAL 192 DAY), 'zhao', 'zhao', 0);
 
 INSERT INTO cloud_flow_db.hr_candidate (
-  id, tenant_id, request_id, name, gender, phone, email, resume_url, source, status, reject_reason,
+  id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
 (3011, 100000, 2011, '林清禾', 'FEMALE', '13900012011', 'lin.qinghe@example.com',
- 'https://demo.cloudflow.local/files/hr/resume-linqinghe.pdf', 'REFERRAL', 'HIRED', NULL,
+ 'https://demo.cloudflow.local/files/hr/resume-linqinghe.pdf,https://demo.cloudflow.local/files/hr/resume-linqinghe-project.pdf', 'REFERRAL', 'HIRED', NULL,
  DATE_SUB(NOW(), INTERVAL 201 DAY), DATE_SUB(NOW(), INTERVAL 180 DAY), 'zhao', 'zhao', 0);
 
 INSERT INTO cloud_flow_db.hr_interview (
@@ -7132,12 +7132,12 @@ INSERT INTO cloud_flow_db.hr_recruitment_request (
  14000.00, 20000.00, DATE_ADD(CURDATE(), INTERVAL 15 DAY), NULL, 'RECRUITING', 0, DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
 
 INSERT INTO cloud_flow_db.hr_candidate (
-  id, tenant_id, request_id, name, gender, phone, email, resume_url, source, status, reject_reason,
+  id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(3012, 100000, 2012, '顾文韬', 'MALE', '13900012021', 'gu.wentao@example.com', 'https://demo.cloudflow.local/files/hr/resume-guwentao.pdf', 'HEADHUNTER', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 18 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
+(3012, 100000, 2012, '顾文韬', 'MALE', '13900012021', 'gu.wentao@example.com', 'https://demo.cloudflow.local/files/hr/resume-guwentao.pdf,https://demo.cloudflow.local/files/hr/resume-guwentao-project.pdf', 'HEADHUNTER', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 18 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
 (3013, 100000, 2012, '马会', 'FEMALE', '13900012022', 'ma.hui@example.com', 'https://demo.cloudflow.local/files/hr/resume-mahui.pdf', 'REFERRAL', 'SCREENING', NULL, DATE_SUB(NOW(), INTERVAL 16 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0),
-(3014, 100000, 2013, '冯子轩', 'MALE', '13900012023', 'feng.zixuan@example.com', 'https://demo.cloudflow.local/files/hr/resume-fengzixuan.pdf', 'WEBSITE', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0),
+(3014, 100000, 2013, '冯子轩', 'MALE', '13900012023', 'feng.zixuan@example.com', 'https://demo.cloudflow.local/files/hr/resume-fengzixuan.pdf,https://demo.cloudflow.local/files/hr/resume-fengzixuan-award.pdf', 'WEBSITE', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0),
 (3015, 100000, 2013, '周绮雯', 'FEMALE', '13900012024', 'zhou.qiwen@example.com', 'https://demo.cloudflow.local/files/hr/resume-zhouqiwen.pdf', 'REFERRAL', 'OFFER', NULL, DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
 
 INSERT INTO cloud_flow_db.hr_interview (

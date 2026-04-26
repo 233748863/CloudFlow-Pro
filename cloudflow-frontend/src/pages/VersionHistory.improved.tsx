@@ -20,7 +20,7 @@ import {
   showWarning,
   ApiErrorResponse,
 } from '@/utils/errorHandler';
-import { WarningConfirmDialog } from '@/components/ui';
+import { WarningConfirmDialog } from '@/components/common';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 interface VersionHistoryProps {

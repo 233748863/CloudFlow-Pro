@@ -1,7 +1,7 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { TableCell, TableRow } from '@/components/ui/table';
+import { TableCell, TableRow } from '@/components/common/table';
 import { EmptyState, LoadingSpinner } from '@/components/common';
 
 export const WorkspaceBackdrop: React.FC = () => (

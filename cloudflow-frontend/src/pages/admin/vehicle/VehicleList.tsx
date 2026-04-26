@@ -37,8 +37,8 @@ import {
   TableHeader,
   TableRow,
   Textarea,
-} from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+} from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   addVehicle,

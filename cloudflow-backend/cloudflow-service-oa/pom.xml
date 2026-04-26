@@ -12,7 +12,6 @@
     <artifactId>cloudflow-service-oa</artifactId>
 
     <dependencies>
-        <!-- 注册与配置中心 -->
         <dependency>
             <groupId>com.alibaba.cloud</groupId>
             <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
@@ -22,7 +21,6 @@
             <artifactId>spring-cloud-starter-alibaba-nacos-config</artifactId>
         </dependency>
 
-        <!-- 远程调用 -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
@@ -36,7 +34,6 @@
             <artifactId>feign-core</artifactId>
         </dependency>
 
-        <!-- Web 与安全 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -50,7 +47,6 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
-        <!-- CloudFlow 公共模块 -->
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-security</artifactId>
@@ -92,7 +88,6 @@
             <artifactId>cloudflow-common-audit</artifactId>
         </dependency>
 
-        <!-- OA 模块直接使用的第三方库 -->
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
@@ -101,8 +96,11 @@
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.data</groupId>
+            <artifactId>spring-data-redis</artifactId>
+        </dependency>
 
-        <!-- 监控与运维 -->
         <dependency>
             <groupId>io.micrometer</groupId>
             <artifactId>micrometer-registry-prometheus</artifactId>
@@ -112,7 +110,6 @@
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
 
-        <!-- 开发辅助 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

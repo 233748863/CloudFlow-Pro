@@ -31,8 +31,8 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui';
-import { TableRowActions } from '@/components/ui/table-row-actions';
+} from '@/components/common';
+import { TableRowActions } from '@/components/common/table-row-actions';
 import { addDept, deleteDept, getDeptTree, getUserList, updateDept, updateUser, deleteUser } from '../services/api/auth';
 import { cn } from '@/utils/cn';
 

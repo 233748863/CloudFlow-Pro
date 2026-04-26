@@ -12,14 +12,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { consumableApi, Consumable } from "@/services/api/consumable";
-import { TableRowActions } from "@/components/ui/table-row-actions";
+import { TableRowActions } from "@/components/common/table-row-actions";
 import {
   Button,
   Input,
   TableActionHead,
   TableHead,
   TableHeader,
-} from "@/components/ui";
+} from "@/components/common";
 import {
   WorkspaceBackdrop,
   WorkspaceTableStateRow,

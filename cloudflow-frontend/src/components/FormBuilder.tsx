@@ -34,11 +34,11 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './ui/select';
-import { Input } from './ui/input';
-import { Switch } from './ui/switch';
-import { Textarea } from './ui/textarea';
-import { Button } from './ui/button';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from './common/select';
+import { Input } from './common/input';
+import { Switch } from './common/switch';
+import { Textarea } from './common/textarea';
+import { Button } from './common/button';
 import { cn } from '@/utils/cn';
 
 interface Props {

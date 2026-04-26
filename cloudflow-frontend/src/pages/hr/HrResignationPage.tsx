@@ -19,7 +19,7 @@ import {
   TableHeader,
   TableRow,
   Textarea,
-} from '@/components/ui';
+} from '@/components/common';
 import {
   approveResignation,
   completeResignationHandover,

@@ -74,6 +74,10 @@ public class SliderPuzzleUtil {
         return DEFAULT_CIRCLE_R;
     }
 
+    private static Color alpha(Color color, int alpha) {
+        return new Color(color.getRed(), color.getGreen(), color.getBlue(), alpha);
+    }
+
     public static class CaptchaData {
         private String bgImage;
         private String sliderImage;
@@ -133,6 +137,50 @@ public class SliderPuzzleUtil {
         return path;
     }
 
+    private static void paintBackground(Graphics2D gBg, int width, int height, Random random) {
+        Color topColor = new Color(54 + random.nextInt(28), 126 + random.nextInt(36), 144 + random.nextInt(28));
+        Color bottomColor = new Color(69 + random.nextInt(32), 97 + random.nextInt(28), 126 + random.nextInt(34));
+        GradientPaint gradient = new GradientPaint(0, 0, topColor, width, height, bottomColor);
+        gBg.setPaint(gradient);
+        gBg.fillRect(0, 0, width, height);
+
+        Color[] palette = new Color[] {
+            new Color(45, 212, 191),
+            new Color(96, 165, 250),
+            new Color(99, 102, 241),
+            new Color(244, 114, 182),
+            new Color(250, 204, 21)
+        };
+
+        for (int i = 0; i < 16; i++) {
+            Color base = palette[random.nextInt(palette.length)];
+            int radius = 14 + random.nextInt(34);
+            gBg.setColor(alpha(base, 36 + random.nextInt(42)));
+            gBg.fillOval(random.nextInt(width), random.nextInt(height), radius, radius);
+        }
+
+        for (int i = 0; i < 6; i++) {
+            Color base = palette[random.nextInt(palette.length)];
+            gBg.setColor(alpha(base, 38 + random.nextInt(24)));
+            gBg.setStroke(new BasicStroke(1.2f + random.nextFloat() * 1.2f));
+            gBg.drawLine(
+                random.nextInt(width),
+                random.nextInt(height),
+                random.nextInt(width),
+                random.nextInt(height)
+            );
+        }
+
+        gBg.setPaint(new RadialGradientPaint(
+            width * 0.22f,
+            height * 0.24f,
+            Math.max(width, height) * 0.52f,
+            new float[] {0f, 1f},
+            new Color[] {new Color(255, 255, 255, 110), new Color(255, 255, 255, 0)}
+        ));
+        gBg.fillRect(0, 0, width, height);
+    }
+
     /**
      * 生成滑块验证码数据
      *
@@ -154,26 +202,7 @@ public class SliderPuzzleUtil {
         BufferedImage bg = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D gBg = bg.createGraphics();
         gBg.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        // 渐变背景
-        Color c1 = new Color(30 + random.nextInt(100), 50 + random.nextInt(100), 80 + random.nextInt(150));
-        Color c2 = new Color(30 + random.nextInt(100), 50 + random.nextInt(100), 80 + random.nextInt(150));
-        GradientPaint gp = new GradientPaint(0, 0, c1, width, height, c2);
-        gBg.setPaint(gp);
-        gBg.fillRect(0, 0, width, height);
-
-        // 添加噪点/装饰
-        for (int i = 0; i < 20; i++) {
-            gBg.setColor(new Color(random.nextInt(255), random.nextInt(255), random.nextInt(255), 80));
-            int r = 10 + random.nextInt(40);
-            gBg.fillOval(random.nextInt(width), random.nextInt(height), r, r);
-        }
-        // 添加线条增加复杂度
-        for (int i = 0; i < 5; i++) {
-            gBg.setColor(new Color(random.nextInt(255), random.nextInt(255), random.nextInt(255), 60));
-            gBg.setStroke(new BasicStroke(1 + random.nextInt(2)));
-            gBg.drawLine(random.nextInt(width), random.nextInt(height), random.nextInt(width), random.nextInt(height));
-        }
+        paintBackground(gBg, width, height, random);
 
         // 2. 确定拼图位置
         int targetX = sliderImgWidth + random.nextInt(width - 2 * sliderImgWidth);
@@ -193,20 +222,37 @@ public class SliderPuzzleUtil {
         // 将绘图原点下移 circleR，使顶部 tab（y=-circleR）映射到图片 y=0
         gSlider.translate(0, circleR);
 
+        // 先绘制阴影，让滑块块体比目标缺口更显眼
+        Graphics2D gSliderShadow = (Graphics2D) gSlider.create();
+        gSliderShadow.translate(2, 2);
+        gSliderShadow.setColor(new Color(15, 23, 42, 58));
+        gSliderShadow.fill(path);
+        gSliderShadow.dispose();
+
         // 用拼图路径裁剪
         gSlider.setClip(path);
         // 从背景图中提取对应区域
         gSlider.drawImage(bg, -targetX, -targetY, null);
+        // 提升亮度，避免滑块与背景混在一起
+        gSlider.setComposite(AlphaComposite.SrcAtop.derive(0.18f));
+        gSlider.setPaint(new GradientPaint(
+            0,
+            -circleR,
+            new Color(255, 255, 255, 220),
+            sliderImgWidth,
+            sliderImgHeight,
+            new Color(255, 255, 255, 20)
+        ));
+        gSlider.fillRect(0, -circleR, sliderImgWidth, sliderImgHeight);
+        gSlider.setComposite(AlphaComposite.SrcOver);
 
-        // 绘制拼图块边框（白色半透明）
+        // 绘制拼图块边框
         gSlider.setClip(null);
-        gSlider.setColor(new Color(255, 255, 255, 220));
+        gSlider.setColor(new Color(255, 255, 255, 245));
         gSlider.setStroke(new BasicStroke(2.0f));
         gSlider.draw(path);
-
-        // 添加内阴影效果
-        gSlider.setColor(new Color(0, 0, 0, 40));
-        gSlider.setStroke(new BasicStroke(1.0f));
+        gSlider.setColor(new Color(94, 234, 212, 88));
+        gSlider.setStroke(new BasicStroke(1.1f));
         gSlider.draw(path);
 
         gSlider.dispose();
@@ -214,14 +260,26 @@ public class SliderPuzzleUtil {
         // 5. 在背景图上绘制缺口
         Graphics2D gBg2 = bg.createGraphics();
         gBg2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-        gBg2.translate(targetX, targetY);
-        // 半透明黑色填充缺口
-        gBg2.setColor(new Color(0, 0, 0, 160));
-        gBg2.fill(path);
-        // 缺口边框
-        gBg2.setColor(new Color(255, 255, 255, 80));
-        gBg2.setStroke(new BasicStroke(1.5f));
-        gBg2.draw(path);
+
+        Graphics2D gSlotShadow = (Graphics2D) gBg2.create();
+        gSlotShadow.translate(targetX + 1, targetY + 1);
+        gSlotShadow.setColor(new Color(15, 23, 42, 62));
+        gSlotShadow.fill(path);
+        gSlotShadow.dispose();
+
+        Graphics2D gSlot = (Graphics2D) gBg2.create();
+        gSlot.translate(targetX, targetY);
+        // 弱化目标缺口，避免比滑块更显眼
+        gSlot.setColor(new Color(255, 255, 255, 98));
+        gSlot.fill(path);
+        gSlot.setColor(new Color(255, 255, 255, 150));
+        gSlot.setStroke(new BasicStroke(1.6f));
+        gSlot.draw(path);
+        gSlot.setColor(new Color(15, 23, 42, 28));
+        gSlot.setStroke(new BasicStroke(1.0f));
+        gSlot.draw(path);
+        gSlot.dispose();
+
         gBg2.dispose();
 
         gBg.dispose();
