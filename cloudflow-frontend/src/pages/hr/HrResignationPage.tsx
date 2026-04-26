@@ -550,11 +550,7 @@ export const HrResignationPage: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="min-w-0">
-        <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-          <LogOut className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Resignation Flow
-        </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
+        <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           离职办理
         </h1>
       </div>
@@ -623,9 +619,6 @@ export const HrResignationPage: React.FC = () => {
             <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
-                <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                  先定位员工，再连续处理该员工的离职链路。
-                </div>
               </div>
               <div className="space-y-3 overflow-y-auto p-4">
                 {loading ? (
@@ -687,9 +680,6 @@ export const HrResignationPage: React.FC = () => {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请列表</div>
-                    <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                      默认聚焦最近且仍可继续推进的离职记录。
-                    </div>
                   </div>
                   <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                     {selectedEmployee ? `${applications.length} 条` : '等待选择员工'}
@@ -714,11 +704,6 @@ export const HrResignationPage: React.FC = () => {
                     {!selectedEmployeeCanCreate ? (
                       <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
                         当前员工已离职，仅建议查看历史申请；新建时会自动切到仍可发起的在职员工。
-                      </div>
-                    ) : null}
-                    {selectedEmployeeHasOpenResignation ? (
-                      <div className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
-                        当前员工已有待处理离职申请。新建时会优先切到其他可发起员工，避免重复发起。
                       </div>
                     ) : null}
                   </div>
@@ -806,9 +791,6 @@ export const HrResignationPage: React.FC = () => {
               <div className="flex flex-col gap-4 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请详情</div>
-                  <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                    详情区直接办理提交、审批、面谈和确认动作，不再堆叠额外工作台摘要。
-                  </div>
                 </div>
                 {detail ? (
                   <div className="flex flex-wrap gap-2">
@@ -903,9 +885,6 @@ export const HrResignationPage: React.FC = () => {
                   <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                     <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">离职面谈</div>
-                      <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-                        直接调用后端 `interview` 接口保存面谈内容。
-                      </div>
                     </div>
                     <div className="space-y-4 p-4">
                       <Textarea
@@ -934,7 +913,7 @@ export const HrResignationPage: React.FC = () => {
                         <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">
                           实际离职日期
                         </Label>
-                        <Input
+                        <DatePicker
                           type="date"
                           value={confirmDate}
                           onChange={(event) => setConfirmDate(event.target.value)}
@@ -969,9 +948,6 @@ export const HrResignationPage: React.FC = () => {
         <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">交接清单</div>
-            <div className="mt-1 text-xs leading-6 text-slate-500 dark:text-slate-400">
-              交接事项统一放在单表里处理，避免在详情侧栏继续叠卡。
-            </div>
           </div>
           <div className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
             {detail ? `${handovers.length} 项交接` : '等待加载申请'}
