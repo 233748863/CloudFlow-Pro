@@ -98,6 +98,8 @@ public class SalaryAdjustmentServiceImpl implements SalaryAdjustmentService {
         salaryAdjustment.setAdjustmentAmount(adjustmentAmount);
         salaryAdjustment.setAdjustmentRate(adjustmentRate);
         salaryAdjustment.setEffectiveDate(dto.getEffectiveDate());
+        salaryAdjustment.setSourceType(dto.getSourceType());
+        salaryAdjustment.setSourceId(dto.getSourceId());
         salaryAdjustment.setStatus("DRAFT");
         salaryAdjustmentMapper.insert(salaryAdjustment);
 

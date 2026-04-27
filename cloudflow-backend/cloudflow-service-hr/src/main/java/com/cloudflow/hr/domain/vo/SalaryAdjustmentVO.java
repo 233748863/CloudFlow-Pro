@@ -89,6 +89,16 @@ public class SalaryAdjustmentVO {
      * 流程实例ID
      */
     private String processInstanceId;
+
+    /**
+     * 来源类型
+     */
+    private String sourceType;
+
+    /**
+     * 来源业务ID
+     */
+    private Long sourceId;
     
     /**
      * 状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 EFFECTIVE-已生效

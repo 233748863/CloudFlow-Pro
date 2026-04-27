@@ -71,6 +71,7 @@ public class OnboardingServiceImpl implements OnboardingService {
     private final AuthServiceClient authServiceClient;
     private final WorkflowServiceClient workflowServiceClient;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
+    private final EmployeeUserSyncService employeeUserSyncService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -459,6 +460,7 @@ public class OnboardingServiceImpl implements OnboardingService {
     private Employee createEmployeeFromApplication(OnboardingApplication application, LocalDate actualDate) {
         log.info("根据入职申请创建员工档案，申请ID：{}", application.getId());
         Long userId = ensureUserAccount(application);
+        employeeUserSyncService.ensureUserNotLinked(application.getTenantId(), userId, null);
 
         Employee employee = new Employee();
         employee.setTenantId(application.getTenantId());
@@ -509,9 +511,10 @@ public class OnboardingServiceImpl implements OnboardingService {
     private void syncExistingUserAccount(Long userId, OnboardingApplication application) {
         UserUpdateDTO userUpdateDTO = new UserUpdateDTO();
         userUpdateDTO.setDeptId(application.getDeptId());
+        userUpdateDTO.setForceDeptSync(true);
         userUpdateDTO.setNickName(buildUserNickName(application));
-        userUpdateDTO.setEmail(application.getEmail());
-        userUpdateDTO.setPhonenumber(application.getPhone());
+        userUpdateDTO.setEmail(application.getEmail() == null ? "" : application.getEmail());
+        userUpdateDTO.setPhonenumber(application.getPhone() == null ? "" : application.getPhone());
         userUpdateDTO.setSex(resolveUserSex(application.getGender()));
         userUpdateDTO.setStatus(0);
 

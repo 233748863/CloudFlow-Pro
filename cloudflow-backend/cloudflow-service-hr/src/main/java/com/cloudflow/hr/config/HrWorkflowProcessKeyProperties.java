@@ -32,4 +32,8 @@ public class HrWorkflowProcessKeyProperties {
     private String salaryAdjustment = "salary_adjustment_approval";
 
     private String transfer = "transfer_approval";
+
+    private String performancePlan = "performance_plan_approval";
+
+    private String performanceResult = "performance_result_approval";
 }

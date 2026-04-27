@@ -241,6 +241,7 @@ public class SysUserServiceImpl implements ISysUserService {
             }
 
             insertUserRole(user);
+            insertUserPost(user);
         }
 
         return result;
@@ -273,6 +274,7 @@ public class SysUserServiceImpl implements ISysUserService {
         sysUserRoleMapper.delete(wrapper);
 
         insertUserRole(user);
+        replaceUserPostIfSpecified(user);
 
         // 同时清除用户菜单树缓存
         menuService.evictUserMenuCache(user.getUserId());
@@ -289,6 +291,35 @@ public class SysUserServiceImpl implements ISysUserService {
                 ur.setRoleId(roleId);
                 sysUserRoleMapper.insert(ur);
             }
+        }
+    }
+
+    private void replaceUserPostIfSpecified(SysUser user) {
+        if (user.getPostIds() == null) {
+            return;
+        }
+        LambdaQueryWrapper<SysUserPost> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysUserPost::getUserId, user.getUserId());
+        sysUserPostMapper.delete(wrapper);
+        insertUserPost(user);
+    }
+
+    private void insertUserPost(SysUser user) {
+        Long[] postIds = user.getPostIds();
+        if (postIds == null || postIds.length == 0) {
+            return;
+        }
+
+        Long tenantId = user.getTenantId() != null ? user.getTenantId() : UserContext.getTenantId();
+        for (Long postId : postIds) {
+            if (postId == null) {
+                continue;
+            }
+            SysUserPost userPost = new SysUserPost();
+            userPost.setUserId(user.getUserId());
+            userPost.setPostId(postId);
+            userPost.setTenantId(tenantId);
+            sysUserPostMapper.insert(userPost);
         }
     }
 

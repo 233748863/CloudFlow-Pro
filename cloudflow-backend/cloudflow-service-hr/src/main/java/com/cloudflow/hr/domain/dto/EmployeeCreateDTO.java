@@ -81,4 +81,9 @@ public class EmployeeCreateDTO {
      * 入职日期
      */
     private LocalDate hireDate;
+
+    /**
+     * 关联的系统用户ID（Auth服务sys_user.user_id）
+     */
+    private Long userId;
 }

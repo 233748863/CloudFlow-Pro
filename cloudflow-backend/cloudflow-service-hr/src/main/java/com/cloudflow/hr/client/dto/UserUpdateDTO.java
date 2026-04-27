@@ -21,6 +21,11 @@ public class UserUpdateDTO implements Serializable {
      * 部门ID
      */
     private Long deptId;
+
+    /**
+     * 是否按本次请求强制同步部门ID，允许把部门清空为null
+     */
+    private Boolean forceDeptSync;
     
     /**
      * 用户昵称

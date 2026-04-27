@@ -49,6 +49,7 @@ public class TransferServiceImpl implements TransferService {
     private final AuthServiceClient authServiceClient;
     private final WorkflowServiceClient workflowServiceClient;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
+    private final EmployeeUserSyncService employeeUserSyncService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -270,6 +271,7 @@ public class TransferServiceImpl implements TransferService {
         employee.setPostId(application.getToPostId());
         employee.setPositionId(application.getToPositionId());
         employeeMapper.updateById(employee);
+        employeeUserSyncService.syncLinkedUser(employee);
 
         // 5. 更新申请状态为已生效
         application.setStatus("EFFECTIVE");

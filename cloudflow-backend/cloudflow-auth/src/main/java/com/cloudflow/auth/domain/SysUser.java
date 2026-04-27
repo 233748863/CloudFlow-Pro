@@ -43,6 +43,12 @@ public class SysUser implements Serializable {
     private Long[] roleIds;
 
     @TableField(exist = false)
+    private Long[] postIds;
+
+    @TableField(exist = false)
+    private Boolean forceDeptSync;
+
+    @TableField(exist = false)
     private String avatar;
 
     @TableField(exist = false)

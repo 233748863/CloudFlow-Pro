@@ -44,6 +44,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement | null>(null);
   const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const widthClassMap: Record<BaseDialogWidth, string> = {
     narrow: 'max-w-md',
     normal: 'max-w-lg',
@@ -56,6 +57,10 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   const hasCustomBodyOverflow = Boolean(bodyClassName && /(^|\s)!?overflow(?:-[xy])?-/.test(bodyClassName));
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
     if (!open) {
       return;
     }
@@ -64,7 +69,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
 
     const handleEscape = (event: KeyboardEvent) => {
       if (closeOnEscape && event.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
       }
     };
 
@@ -72,7 +77,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
     window.addEventListener('keydown', handleEscape);
     window.requestAnimationFrame(() => {
       const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        '[data-autofocus], input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
       );
       firstFocusable?.focus();
     });
@@ -83,7 +88,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       previousActiveElementRef.current?.focus?.();
       previousActiveElementRef.current = null;
     };
-  }, [closeOnEscape, onClose, open]);
+  }, [closeOnEscape, open]);
 
   if (!open) {
     return null;

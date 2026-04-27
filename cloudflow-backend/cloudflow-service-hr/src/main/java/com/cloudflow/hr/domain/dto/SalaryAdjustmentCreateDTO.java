@@ -50,4 +50,14 @@ public class SalaryAdjustmentCreateDTO {
      */
     @NotNull(message = "生效日期不能为空")
     private LocalDate effectiveDate;
+
+    /**
+     * 来源类型：PERFORMANCE_OBJECTIVE 等
+     */
+    private String sourceType;
+
+    /**
+     * 来源业务ID
+     */
+    private Long sourceId;
 }

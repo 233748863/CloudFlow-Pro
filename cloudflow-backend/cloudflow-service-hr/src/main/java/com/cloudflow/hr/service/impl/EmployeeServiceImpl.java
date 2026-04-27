@@ -89,6 +89,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     private final ResignationApplicationMapper resignationApplicationMapper;
     private final TransferApplicationMapper transferApplicationMapper;
     private final ReportingLineMapper reportingLineMapper;
+    private final EmployeeUserSyncService employeeUserSyncService;
     
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -122,6 +123,7 @@ public class EmployeeServiceImpl implements EmployeeService {
             }
         }
         validateHireDate(dto.getEmployeeStatus(), dto.getHireDate());
+        employeeUserSyncService.validateUserBindable(tenantId, dto.getUserId(), null);
         
         // 4. 创建员工记录
         Employee employee = new Employee();
@@ -129,6 +131,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         employee.setTenantId(tenantId);
         
         employeeMapper.insert(employee);
+        employeeUserSyncService.syncLinkedUser(employee);
         
         log.info("员工档案创建成功，员工ID：{}，工号：{}", employee.getId(), employee.getEmployeeNo());
         return employee.getId();
@@ -165,6 +168,9 @@ public class EmployeeServiceImpl implements EmployeeService {
         String targetEmployeeStatus = dto.getEmployeeStatus() != null ? dto.getEmployeeStatus() : employee.getEmployeeStatus();
         LocalDate targetHireDate = dto.getHireDate() != null ? dto.getHireDate() : employee.getHireDate();
         validateHireDate(targetEmployeeStatus, targetHireDate);
+        if (dto.getUserId() != null) {
+            employeeUserSyncService.validateUserBindable(employee.getTenantId(), dto.getUserId(), id);
+        }
         
         // 4. 使用显式 set 更新，确保前端把字段清空为 null 时能真实落库，同时刷新更新时间。
         LambdaUpdateWrapper<Employee> updateWrapper = Wrappers.lambdaUpdate(Employee.class);
@@ -182,8 +188,10 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .set(Employee::getHireDate, dto.getHireDate())
                 .set(Employee::getRegularDate, dto.getRegularDate())
                 .set(Employee::getResignDate, dto.getResignDate())
+                .set(dto.getUserId() != null, Employee::getUserId, dto.getUserId())
                 .set(Employee::getUpdateTime, LocalDateTime.now());
         employeeMapper.update(null, updateWrapper);
+        employeeUserSyncService.syncLinkedUser(employeeMapper.selectById(id));
         
         log.info("员工档案更新成功，员工ID：{}", id);
     }
@@ -284,7 +292,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
         
         ensureEmployeeHasNoRelatedRecords(id);
-        disableLinkedUserIfNecessary(employee);
+        employeeUserSyncService.disableLinkedUser(employee);
         employeeMapper.deleteById(id);
         
         log.info("员工档案删除成功，员工ID：{}", id);
@@ -364,23 +372,6 @@ public class EmployeeServiceImpl implements EmployeeService {
         }
     }
 
-    private void disableLinkedUserIfNecessary(Employee employee) {
-        if (employee.getUserId() == null) {
-            return;
-        }
-        try {
-            R<Void> result = authServiceClient.disableUser(employee.getUserId());
-            if (result == null || !result.isSuccess()) {
-                throw HrBusinessException.employeeLinkedUserDisableFailed(employee.getId(), employee.getUserId());
-            }
-        } catch (HrBusinessException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("禁用员工关联 Auth 用户失败，员工ID：{}，用户ID：{}", employee.getId(), employee.getUserId(), e);
-            throw HrBusinessException.employeeLinkedUserDisableFailed(employee.getId(), employee.getUserId());
-        }
-    }
-
     private void addRelatedRecordIfExists(List<String> relatedRecords, long count, String recordName) {
         if (count > 0) {
             relatedRecords.add(recordName);
@@ -406,8 +397,7 @@ public class EmployeeServiceImpl implements EmployeeService {
 
         LambdaQueryWrapper<Employee> wrapper = Wrappers.lambdaQuery(Employee.class);
         wrapper.eq(Employee::getTenantId, tenantId)
-                .eq(Employee::getUserId, userId)
-                .last("LIMIT 1");
+                .eq(Employee::getUserId, userId);
         Employee employee = employeeMapper.selectOne(wrapper);
         if (employee == null) {
             throw new HrBusinessException("当前登录用户未关联 HR 员工档案");

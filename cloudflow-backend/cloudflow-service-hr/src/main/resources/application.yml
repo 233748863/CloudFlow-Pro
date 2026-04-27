@@ -217,6 +217,8 @@ cloudflow:
         resignation: resignation_approval
         salary-adjustment: salary_adjustment_approval
         transfer: transfer_approval
+        performance-plan: performance_plan_approval
+        performance-result: performance_result_approval
     audit-log:
       archive-days: 90
       delete-days: 365

@@ -14,6 +14,7 @@ import {
   RefreshCcw,
   Search,
   Send,
+  Target,
   UserCog,
   UserRoundCheck,
   UserRoundPlus,
@@ -378,6 +379,15 @@ export const HrDashboardPage: React.FC = () => {
             keywords: ['薪酬', '薪资', '调薪', '个税', '社保'],
             tone: 'amber',
             icon: <Landmark size={16} />,
+          },
+          {
+            title: '绩效管理',
+            hint: '目标树、类目分解、进度填报与归档',
+            path: '/hr/performance',
+            meta: '目标绩效',
+            keywords: ['绩效', '目标', '销售额', '类目', '评分'],
+            tone: 'cyan',
+            icon: <Target size={16} />,
           },
           {
             title: '假期额度',

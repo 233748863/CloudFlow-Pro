@@ -34,7 +34,7 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 507
    OR menu_id BETWEEN 600 AND 617
-   OR menu_id BETWEEN 700 AND 733;
+   OR menu_id BETWEEN 700 AND 739;
 
 DELETE FROM cloud_flow_db.sys_post
 WHERE post_id BETWEEN 1 AND 11;
@@ -338,6 +338,82 @@ CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_employee_document_attachment (
   KEY idx_tenant_document_id (tenant_id, document_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工证件附件表';
 
+CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_performance_objective (
+  id                         BIGINT(20)     NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id                  BIGINT(20)     NOT NULL COMMENT '租户ID',
+  objective_no               VARCHAR(50)    NOT NULL COMMENT '目标编号',
+  cycle_name                 VARCHAR(100)   NOT NULL COMMENT '绩效周期',
+  cycle_start_date           DATE           NOT NULL COMMENT '周期开始日期',
+  cycle_end_date             DATE           NOT NULL COMMENT '周期结束日期',
+  objective_name             VARCHAR(200)   NOT NULL COMMENT '目标名称',
+  total_target_amount        DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '总目标值，单指标兼容字段',
+  category_codes             VARCHAR(255)   NOT NULL COMMENT '允许考核类型编码，逗号分隔',
+  category_config            TEXT           DEFAULT NULL COMMENT '考核类型配置JSON',
+  metric_config              TEXT           DEFAULT NULL COMMENT '绩效指标配置JSON，含名称、单位、默认权重',
+  score_cap                  DECIMAL(5,2)   NOT NULL DEFAULT 120.00 COMMENT '单项计分封顶百分比',
+  archived_actual_amount     DECIMAL(18,4)  DEFAULT NULL COMMENT '归档实际完成值快照',
+  archived_completion_rate   DECIMAL(8,2)   DEFAULT NULL COMMENT '归档原始达成率快照',
+  archived_capped_rate       DECIMAL(8,2)   DEFAULT NULL COMMENT '归档封顶达成率快照',
+  archived_score             DECIMAL(8,2)   DEFAULT NULL COMMENT '归档得分快照',
+  archived_grade             VARCHAR(10)    DEFAULT NULL COMMENT '归档等级快照',
+  archived_time              DATETIME       DEFAULT NULL COMMENT '归档时间',
+  archive_snapshot           MEDIUMTEXT     DEFAULT NULL COMMENT '归档完整绩效快照JSON',
+  plan_process_instance_id   VARCHAR(100)   DEFAULT NULL COMMENT '计划审批流程实例ID',
+  result_process_instance_id VARCHAR(100)   DEFAULT NULL COMMENT '结果审批流程实例ID',
+  status                     VARCHAR(30)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态',
+  create_time                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by                  VARCHAR(64)    DEFAULT '' COMMENT '创建者',
+  update_by                  VARCHAR(64)    DEFAULT '' COMMENT '更新者',
+  deleted                    TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_objective_no (tenant_id, objective_no),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_cycle (cycle_start_date, cycle_end_date),
+  KEY idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='绩效目标表';
+
+CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_performance_assignment (
+  id                BIGINT(20)     NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)     NOT NULL COMMENT '租户ID',
+  objective_id      BIGINT(20)     NOT NULL COMMENT '绩效目标ID',
+  parent_id         BIGINT(20)     DEFAULT NULL COMMENT '父分配节点ID',
+  node_key          VARCHAR(255)   NOT NULL COMMENT '节点唯一键',
+  assignee_type     VARCHAR(20)    NOT NULL COMMENT '分配对象类型',
+  assignee_id       BIGINT(20)     NOT NULL COMMENT '分配对象ID',
+  assignee_name     VARCHAR(100)   DEFAULT NULL COMMENT '分配对象名称快照',
+  category_code     VARCHAR(50)    DEFAULT NULL COMMENT '考核类型编码',
+  category_name     VARCHAR(100)   DEFAULT NULL COMMENT '考核类型名称',
+  metric_code       VARCHAR(50)    DEFAULT NULL COMMENT '指标编码',
+  metric_name       VARCHAR(100)   DEFAULT NULL COMMENT '指标名称',
+  metric_unit       VARCHAR(20)    DEFAULT NULL COMMENT '指标单位',
+  metric_value_type VARCHAR(20)    DEFAULT NULL COMMENT '指标数值类型：DECIMAL/INTEGER/PERCENT',
+  metric_precision  INT            DEFAULT 2 COMMENT '指标小数位',
+  metric_weight     DECIMAL(8,2)   DEFAULT 100.00 COMMENT '类型指标权重',
+  target_amount     DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '目标值',
+  actual_amount     DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '实际完成值',
+  quota_source      VARCHAR(20)    NOT NULL DEFAULT 'MANAGER' COMMENT '额度来源',
+  locked            TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '是否经理锁定额度',
+  owner_employee_id BIGINT(20)     DEFAULT NULL COMMENT '负责拆解的部门负责人员工ID',
+  sort_order        INT            NOT NULL DEFAULT 0 COMMENT '排序',
+  status            VARCHAR(30)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态',
+  create_time       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)    DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)    DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  UNIQUE KEY uk_objective_node_key (tenant_id, objective_id, node_key, deleted),
+  KEY idx_objective_id (objective_id),
+  KEY idx_parent_id (parent_id),
+  KEY idx_assignee (assignee_type, assignee_id),
+  KEY idx_category_metric (category_code, metric_code),
+  KEY idx_owner_employee_id (owner_employee_id),
+  CONSTRAINT fk_performance_assignment_objective FOREIGN KEY (objective_id) REFERENCES cloud_flow_db.hr_performance_objective(id) ON DELETE CASCADE,
+  CONSTRAINT fk_performance_assignment_parent FOREIGN KEY (parent_id) REFERENCES cloud_flow_db.hr_performance_assignment(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='绩效分配树表';
+
 DELETE FROM cloud_flow_db.hr_employee_contract_attachment
 WHERE tenant_id = 100000;
 
@@ -351,6 +427,12 @@ DELETE FROM cloud_flow_db.hr_employee_document
 WHERE tenant_id = 100000;
 
 DELETE FROM cloud_flow_db.hr_emergency_contact
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_performance_assignment
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_performance_objective
 WHERE tenant_id = 100000;
 
 DELETE FROM cloud_flow_db.hr_salary_adjustment
@@ -1053,15 +1135,28 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(730, '薪资项目',   7, 6, '/hr/sala
 INSERT INTO cloud_flow_db.sys_menu VALUES(731, '薪资结构',   7, 7, '/hr/salary/structures', 'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:structure:list', 'Layers3',     'admin', NOW(), '', null, '薪资结构配置');
 INSERT INTO cloud_flow_db.sys_menu VALUES(732, '薪资等级',   7, 8, '/hr/salary/grades',     'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:grade:list',     'Landmark',    'admin', NOW(), '', null, '薪资等级配置');
 INSERT INTO cloud_flow_db.sys_menu VALUES(733, '社保方案',   7, 9, '/hr/salary/insurance',  'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:insurance:list', 'ShieldCheck', 'admin', NOW(), '', null, '社保方案配置');
+INSERT INTO cloud_flow_db.sys_menu VALUES(734, '绩效管理',   7, 11, '/hr/performance',      'pages/hr/HrPerformancePage', NULL, 0, 0, 'C', '0', '0', 'hr:performance:list', 'Target',      'admin', NOW(), '', null, '绩效目标、分解、填报与归档');
+INSERT INTO cloud_flow_db.sys_menu VALUES(735, '新建绩效目标', 734, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:create', '#', 'admin', NOW(), '', null, '新建绩效目标权限');
+INSERT INTO cloud_flow_db.sys_menu VALUES(736, '绩效目标分解', 734, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:split', '#', 'admin', NOW(), '', null, '绩效目标分解权限');
+INSERT INTO cloud_flow_db.sys_menu VALUES(737, '绩效结果填报', 734, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:result', '#', 'admin', NOW(), '', null, '绩效结果填报权限');
+INSERT INTO cloud_flow_db.sys_menu VALUES(738, '绩效提交审批', 734, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:submit', '#', 'admin', NOW(), '', null, '绩效提交审批权限');
+INSERT INTO cloud_flow_db.sys_menu VALUES(739, '绩效调薪联动', 734, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:salary', '#', 'admin', NOW(), '', null, '绩效调薪联动权限');
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 730, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 731, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 732, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 733, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 734, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 735, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 736, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 737, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 738, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 739, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 730, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 731, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 732, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 733, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 734, 100000);
 
 -- 10. 初始化字典类型数据
 INSERT INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
@@ -1431,6 +1526,12 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_salary_adjustment_approval', '调薪审批流程', 'salary_adjustment_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交调薪申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_performance_plan_approval', '绩效计划审批流程', 'performance_plan_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交绩效计划"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_performance_result_approval', '绩效结果审批流程', 'performance_result_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交绩效结果"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_transfer_approval', '调岗审批流程', 'transfer_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交调岗申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());

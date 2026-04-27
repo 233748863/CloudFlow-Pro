@@ -148,11 +148,11 @@ CREATE TABLE hr_employee (
     deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
     PRIMARY KEY (id),
     UNIQUE KEY uk_tenant_employee_no (tenant_id, employee_no),
+    UNIQUE KEY uk_tenant_user_id (tenant_id, user_id),
     KEY idx_tenant_id (tenant_id),
     KEY idx_dept_id (dept_id),
     KEY idx_post_id (post_id),
     KEY idx_position_id (position_id),
-    KEY idx_user_id (user_id),
     KEY idx_employee_status (employee_status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工档案表';
 
@@ -832,6 +832,8 @@ CREATE TABLE hr_salary_adjustment (
   adjustment_rate   DECIMAL(5,2)    NOT NULL DEFAULT 0.00 COMMENT '调薪比例（百分比）',
   effective_date    DATE            NOT NULL COMMENT '生效日期',
   process_instance_id VARCHAR(100)  DEFAULT NULL COMMENT '流程实例ID',
+  source_type       VARCHAR(50)     DEFAULT NULL COMMENT '来源类型：PERFORMANCE_OBJECTIVE等',
+  source_id         BIGINT(20)      DEFAULT NULL COMMENT '来源业务ID',
   status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 APPROVING-审批中 APPROVED-已通过 REJECTED-已拒绝 EFFECTIVE-已生效',
   create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -844,8 +846,90 @@ CREATE TABLE hr_salary_adjustment (
   KEY idx_employee_id (employee_id),
   KEY idx_status (status),
   KEY idx_effective_date (effective_date),
-  KEY idx_process_instance_id (process_instance_id)
+  KEY idx_process_instance_id (process_instance_id),
+  KEY idx_source (source_type, source_id),
+  UNIQUE KEY uk_perf_source_employee (tenant_id, source_type, source_id, employee_id, deleted)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='调薪申请表';
+
+-- 7. 绩效目标表
+DROP TABLE IF EXISTS hr_performance_assignment;
+DROP TABLE IF EXISTS hr_performance_objective;
+CREATE TABLE hr_performance_objective (
+  id                         BIGINT(20)     NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id                  BIGINT(20)     NOT NULL COMMENT '租户ID',
+  objective_no               VARCHAR(50)    NOT NULL COMMENT '目标编号',
+  cycle_name                 VARCHAR(100)   NOT NULL COMMENT '绩效周期',
+  cycle_start_date           DATE           NOT NULL COMMENT '周期开始日期',
+  cycle_end_date             DATE           NOT NULL COMMENT '周期结束日期',
+  objective_name             VARCHAR(200)   NOT NULL COMMENT '目标名称',
+  total_target_amount        DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '总目标值，单指标兼容字段',
+  category_codes             VARCHAR(255)   NOT NULL COMMENT '允许考核类型编码，逗号分隔',
+  category_config            TEXT           DEFAULT NULL COMMENT '考核类型配置JSON',
+  metric_config              TEXT           DEFAULT NULL COMMENT '绩效指标配置JSON，含名称、单位、默认权重',
+  score_cap                  DECIMAL(5,2)   NOT NULL DEFAULT 120.00 COMMENT '单项计分封顶百分比',
+  archived_actual_amount     DECIMAL(18,4)  DEFAULT NULL COMMENT '归档实际完成值快照',
+  archived_completion_rate   DECIMAL(8,2)   DEFAULT NULL COMMENT '归档原始达成率快照',
+  archived_capped_rate       DECIMAL(8,2)   DEFAULT NULL COMMENT '归档封顶达成率快照',
+  archived_score             DECIMAL(8,2)   DEFAULT NULL COMMENT '归档得分快照',
+  archived_grade             VARCHAR(10)    DEFAULT NULL COMMENT '归档等级快照',
+  archived_time              DATETIME       DEFAULT NULL COMMENT '归档时间',
+  archive_snapshot           MEDIUMTEXT     DEFAULT NULL COMMENT '归档完整绩效快照JSON',
+  plan_process_instance_id   VARCHAR(100)   DEFAULT NULL COMMENT '计划审批流程实例ID',
+  result_process_instance_id VARCHAR(100)   DEFAULT NULL COMMENT '结果审批流程实例ID',
+  status                     VARCHAR(30)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT PLAN_APPROVING PLAN_APPROVED RESULT_APPROVING COMPLETED REJECTED CANCELLED',
+  create_time                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by                  VARCHAR(64)    DEFAULT '' COMMENT '创建者',
+  update_by                  VARCHAR(64)    DEFAULT '' COMMENT '更新者',
+  deleted                    TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_objective_no (tenant_id, objective_no),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_cycle (cycle_start_date, cycle_end_date),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='绩效目标表';
+
+-- 8. 绩效分配树表
+CREATE TABLE hr_performance_assignment (
+  id                BIGINT(20)     NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)     NOT NULL COMMENT '租户ID',
+  objective_id      BIGINT(20)     NOT NULL COMMENT '绩效目标ID',
+  parent_id         BIGINT(20)     DEFAULT NULL COMMENT '父分配节点ID',
+  node_key          VARCHAR(255)   NOT NULL COMMENT '节点唯一键',
+  assignee_type     VARCHAR(20)    NOT NULL COMMENT '分配对象类型：DEPT-部门 EMPLOYEE-员工',
+  assignee_id       BIGINT(20)     NOT NULL COMMENT '分配对象ID',
+  assignee_name     VARCHAR(100)   DEFAULT NULL COMMENT '分配对象名称快照',
+  category_code     VARCHAR(50)    DEFAULT NULL COMMENT '考核类型编码',
+  category_name     VARCHAR(100)   DEFAULT NULL COMMENT '考核类型名称',
+  metric_code       VARCHAR(50)    DEFAULT NULL COMMENT '指标编码',
+  metric_name       VARCHAR(100)   DEFAULT NULL COMMENT '指标名称',
+  metric_unit       VARCHAR(20)    DEFAULT NULL COMMENT '指标单位',
+  metric_value_type VARCHAR(20)    DEFAULT NULL COMMENT '指标数值类型：DECIMAL/INTEGER/PERCENT',
+  metric_precision  INT            DEFAULT 2 COMMENT '指标小数位',
+  metric_weight     DECIMAL(8,2)   DEFAULT 100.00 COMMENT '类型指标权重',
+  target_amount     DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '目标值',
+  actual_amount     DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '实际完成值',
+  quota_source      VARCHAR(20)    NOT NULL DEFAULT 'MANAGER' COMMENT '额度来源：MANAGER-经理 DEPT_OWNER-部门负责人',
+  locked            TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '是否经理锁定额度',
+  owner_employee_id BIGINT(20)     DEFAULT NULL COMMENT '负责拆解的部门负责人员工ID',
+  sort_order        INT            NOT NULL DEFAULT 0 COMMENT '排序',
+  status            VARCHAR(30)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态',
+  create_time       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)    DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)    DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  UNIQUE KEY uk_objective_node_key (tenant_id, objective_id, node_key, deleted),
+  KEY idx_objective_id (objective_id),
+  KEY idx_parent_id (parent_id),
+  KEY idx_assignee (assignee_type, assignee_id),
+  KEY idx_category_metric (category_code, metric_code),
+  KEY idx_owner_employee_id (owner_employee_id),
+  CONSTRAINT fk_performance_assignment_objective FOREIGN KEY (objective_id) REFERENCES hr_performance_objective(id) ON DELETE CASCADE,
+  CONSTRAINT fk_performance_assignment_parent FOREIGN KEY (parent_id) REFERENCES hr_performance_assignment(id) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='绩效分配树表';
 
 -- 7. 五险一金方案表
 DROP TABLE IF EXISTS hr_insurance_scheme;

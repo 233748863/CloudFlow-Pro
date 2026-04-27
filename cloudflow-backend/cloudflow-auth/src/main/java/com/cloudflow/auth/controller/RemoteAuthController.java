@@ -137,7 +137,9 @@ public class RemoteAuthController {
             return R.fail("用户不存在");
         }
 
-        if (request.getDeptId() != null) {
+        if (Boolean.TRUE.equals(request.getForceDeptSync())) {
+            existing.setDeptId(request.getDeptId());
+        } else if (request.getDeptId() != null) {
             existing.setDeptId(request.getDeptId());
         }
         if (request.getNickName() != null) {
@@ -157,6 +159,9 @@ public class RemoteAuthController {
         }
         if (request.getRoleIds() != null) {
             existing.setRoleIds(request.getRoleIds());
+        }
+        if (request.getPostIds() != null) {
+            existing.setPostIds(request.getPostIds());
         }
         if (StringUtils.hasText(request.getPassword())) {
             existing.setPassword(request.getPassword());
