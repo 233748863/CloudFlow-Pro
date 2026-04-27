@@ -35,6 +35,7 @@ import {
   sendProbationReminders,
   submitProbationConfirmation,
 } from '@/services/api/hr';
+import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
 import {
   buildEmployeeLabel,
   hasWorkflowStatus,
@@ -123,15 +124,6 @@ const getPreferredApplicationId = (
     rows.find((item) => ['DRAFT', 'APPROVING'].includes(String(item.status || '').toUpperCase()))
       ?.id || rows[0]?.id
   );
-};
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString('zh-CN');
 };
 
 const InlineState = ({

@@ -18,6 +18,7 @@ import {
   AttendanceSupplementForm,
 } from '@/services/api/attendanceSupplement';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
+import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -680,7 +681,7 @@ export const AttendanceSupplementPage: React.FC = () => {
               <DetailField label="补录日期" value={renderDetailValue(detailRecord.attendanceDate)} />
               <DetailField label="打卡类型" value={checkTypeMap[detailRecord.checkType] || detailRecord.checkType} />
               <DetailField label="补录时间" value={renderDetailValue(detailRecord.checkTime)} />
-              <DetailField label="创建时间" value={renderDetailValue(detailRecord.createTime)} />
+              <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">

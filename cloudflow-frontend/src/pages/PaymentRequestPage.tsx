@@ -3,6 +3,7 @@ import { Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Se
 import { toast } from 'sonner';
 import { paymentRequestApi, PaymentRequest } from '@/services/api/expense';
 import FileUpload from '@/components/FileUpload';
+import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -501,7 +502,7 @@ export const PaymentRequestPage: React.FC = () => {
                       <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                           <div className="font-medium text-slate-900 dark:text-slate-100">{item.paymentNo || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.createTime || '-'}</div>
+                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                           <div className="font-medium text-slate-900 dark:text-slate-100">{item.payeeName || '-'}</div>
@@ -738,8 +739,8 @@ export const PaymentRequestPage: React.FC = () => {
               <DetailRow label="申请人" value={renderDetailValue(detailPayment.userName)} />
               <DetailRow label="所属部门" value={renderDetailValue(detailPayment.deptName)} />
               <DetailRow label="流程实例" value={renderDetailValue(detailPayment.instanceId)} />
-              <DetailRow label="创建时间" value={renderDetailValue(detailPayment.createTime)} />
-              <DetailRow label="更新时间" value={renderDetailValue(detailPayment.updateTime)} />
+              <DetailRow label="创建时间" value={formatDateTimeDisplay(detailPayment.createTime)} />
+              <DetailRow label="更新时间" value={formatDateTimeDisplay(detailPayment.updateTime)} />
             </DetailRows>
 
             <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">

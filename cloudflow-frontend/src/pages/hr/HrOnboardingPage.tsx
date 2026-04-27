@@ -48,6 +48,7 @@ import {
   rejectOnboarding,
   submitOnboardingApplication,
 } from '@/services/api/hr';
+import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
 import {
   flattenDeptTree,
   hasWorkflowStatus,
@@ -114,15 +115,6 @@ const taskStatusClass = (status?: string) => {
 };
 
 const isTaskCompleted = (status?: string) => /(COMPLETE|DONE|FINISH)/i.test(status || '');
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString('zh-CN');
-};
 
 const InlineState = ({
   title,

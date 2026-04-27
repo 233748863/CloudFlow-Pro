@@ -44,6 +44,7 @@ import {
   sendOffer,
   submitOffer,
 } from '@/services/api/hr';
+import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
 import {
   flattenDeptTree,
   hasWorkflowStatus,
@@ -90,15 +91,6 @@ const salaryFormatter = new Intl.NumberFormat('zh-CN', {
 
 const formatSalary = (value?: number | null) =>
   typeof value === 'number' && !Number.isNaN(value) ? `¥${salaryFormatter.format(value)}` : '-';
-
-const formatDateTime = (value?: string | null) => {
-  if (!value) return '-';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) {
-    return value;
-  }
-  return parsed.toLocaleString('zh-CN');
-};
 
 const offerStatusClass = (status?: string) => {
   if (!status) {

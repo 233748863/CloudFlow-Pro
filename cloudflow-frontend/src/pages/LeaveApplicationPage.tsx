@@ -19,7 +19,7 @@ import {
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { toBackendDateString } from '@/utils/dateFormat';
+import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
@@ -715,8 +715,8 @@ export const LeaveApplicationPage: React.FC = () => {
                           {item.leaveTypeName || '-'}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          <div>{item.startTime || '-'}</div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{item.endTime || '-'}</div>
+                          <div>{formatDateTimeDisplay(item.startTime)}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.endTime)}</div>
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
                           {formatDuration(item)}
@@ -897,12 +897,12 @@ export const LeaveApplicationPage: React.FC = () => {
               <DetailField label="申请单号" value={renderDetailValue(detailRecord.applicationNo)} />
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
               <DetailField label="请假类型" value={renderDetailValue(detailRecord.leaveTypeName)} />
-              <DetailField label="开始时间" value={renderDetailValue(detailRecord.startTime)} />
-              <DetailField label="结束时间" value={renderDetailValue(detailRecord.endTime)} />
+              <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
+              <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
               <DetailField label="请假时长" value={formatDuration(detailRecord)} />
               <DetailField label="状态" value={statusMap[detailRecord.status || 'DRAFT'] || detailRecord.status || '-'} />
-              <DetailField label="创建时间" value={renderDetailValue(detailRecord.createTime)} />
-              <DetailField label="更新时间" value={renderDetailValue(detailRecord.updateTime)} />
+              <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
+              <DetailField label="更新时间" value={formatDateTimeDisplay(detailRecord.updateTime)} />
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">

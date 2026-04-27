@@ -18,7 +18,7 @@ import {
   OvertimeApplicationForm,
 } from '@/services/api/overtimeApplication';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
-import { toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
+import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -556,8 +556,8 @@ export const OvertimeApplicationPage: React.FC = () => {
                           {overtimeTypeMap[item.overtimeType] || item.overtimeType}
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
-                          <div>{item.startTime || '-'}</div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500">{item.endTime || '-'}</div>
+                          <div>{formatDateTimeDisplay(item.startTime)}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.endTime)}</div>
                         </td>
                         <td className="px-4 py-2.5 text-sm font-medium text-slate-900 dark:text-slate-100">
                           {item.duration ? `${item.duration} 小时` : '-'}
@@ -766,11 +766,11 @@ export const OvertimeApplicationPage: React.FC = () => {
               <DetailField label="申请人" value={renderDetailValue(detailRecord.employeeName)} />
               <DetailField label="加班类型" value={overtimeTypeMap[detailRecord.overtimeType] || detailRecord.overtimeType} />
               <DetailField label="补偿方式" value={compensationTypeMap[detailRecord.compensationType] || detailRecord.compensationType} />
-              <DetailField label="开始时间" value={renderDetailValue(detailRecord.startTime)} />
-              <DetailField label="结束时间" value={renderDetailValue(detailRecord.endTime)} />
+              <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
+              <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
               <DetailField label="加班时长" value={detailRecord.duration ? `${detailRecord.duration} 小时` : '-'} />
               <DetailField label="状态" value={statusMap[detailRecord.status || 'DRAFT'] || detailRecord.status || '-'} />
-              <DetailField label="创建时间" value={renderDetailValue(detailRecord.createTime)} />
+              <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">

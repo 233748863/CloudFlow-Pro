@@ -60,3 +60,39 @@ export const parseBackendDate = (dateStr: string): Date => {
     : dateStr;
   return new Date(normalized);
 };
+
+const formatDateParts = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+export const formatDateTimeDisplay = (value?: string | Date | null): string => {
+  if (!value) return '-';
+
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '-' : formatDateParts(value);
+  }
+
+  const text = String(value).trim();
+  if (!text) return '-';
+
+  const localMatch = text.match(
+    /^(\d{4}-\d{2}-\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?(?:\.\d+)?)?$/,
+  );
+  if (localMatch) {
+    const [, date, hour = '00', minute = '00', second = '00'] = localMatch;
+    return `${date} ${hour}:${minute}:${second}`;
+  }
+
+  const parsed = parseBackendDate(text);
+  if (Number.isNaN(parsed.getTime())) {
+    return text;
+  }
+
+  return formatDateParts(parsed);
+};

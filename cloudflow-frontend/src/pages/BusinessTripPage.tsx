@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { businessTripApi, BusinessTrip } from '@/services/api/businessTrip';
 import FileUpload from '@/components/FileUpload';
 import { ProcessTrace } from '@/components/ProcessTrace';
+import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -529,7 +530,7 @@ export const BusinessTripPage: React.FC = () => {
                       <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                         <td className="px-4 py-3 text-sm text-slate-900 dark:text-slate-100">
                           <div className="font-medium text-slate-900 dark:text-slate-100">{item.tripNo || '-'}</div>
-                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{item.createTime || '-'}</div>
+                          <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.createTime)}</div>
                         </td>
                         <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                           <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || '-'}</div>
@@ -873,7 +874,7 @@ export const BusinessTripPage: React.FC = () => {
               <DetailRow label="紧急联系人" value={`${detailTrip.emergencyContact || '-'} / ${detailTrip.emergencyPhone || '-'}`} />
               <DetailRow label="同行人员" value={renderDetailValue(detailTrip.companions)} />
               <DetailRow label="流程实例" value={renderDetailValue(detailTrip.instanceId)} />
-              <DetailRow label="创建时间" value={renderDetailValue(detailTrip.createTime)} />
+              <DetailRow label="创建时间" value={formatDateTimeDisplay(detailTrip.createTime)} />
             </DetailRows>
 
             <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">

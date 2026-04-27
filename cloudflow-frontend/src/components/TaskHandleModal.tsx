@@ -20,6 +20,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
 import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
+import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { ProcessTrace } from './ProcessTrace';
 import { SignatureModal } from './SignatureModal';
@@ -167,15 +168,6 @@ const TaskEmptyBlock = ({
     ) : null}
   </div>
 );
-
-const formatDateTime = (value?: string) => {
-  if (!value) return '-';
-  try {
-    return new Date(value).toLocaleString('zh-CN');
-  } catch {
-    return value;
-  }
-};
 
 const extractAttachmentFiles = (formData?: Record<string, any>) => {
   const attachmentUrl = formData?.attachmentUrl;

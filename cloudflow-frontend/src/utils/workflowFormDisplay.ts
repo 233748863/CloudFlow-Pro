@@ -1,3 +1,5 @@
+import { formatDateTimeDisplay } from './dateFormat';
+
 const HIDDEN_WORKFLOW_KEYS = new Set([
   'formId',
   'processDefKey',
@@ -53,6 +55,15 @@ const WORKFLOW_SUMMARY_KEYS = [
   'totalAmount',
   'amount',
 ] as const;
+
+const DATE_TIME_FIELD_KEYS = new Set([
+  'startTime',
+  'endTime',
+  'actualStartTime',
+  'actualEndTime',
+  'completedTime',
+  'dueDate',
+]);
 
 const WORKFLOW_FIELD_LABELS: Record<string, string> = {
   userName: '申请人',
@@ -231,6 +242,10 @@ export const formatWorkflowFieldValue = (
   }
 
   const normalized = String(value);
+
+  if (DATE_TIME_FIELD_KEYS.has(key)) {
+    return formatDateTimeDisplay(normalized);
+  }
 
   if (key === 'paymentType') {
     const paymentTypeLabels: Record<string, string> = {
