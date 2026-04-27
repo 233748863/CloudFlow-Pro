@@ -73,6 +73,11 @@ const Dashboard = React.lazy(() =>
 const Workplace = React.lazy(() =>
   import("./pages/Workplace").then((module) => ({ default: module.Workplace })),
 );
+const ProfilePage = React.lazy(() =>
+  import("./pages/ProfilePage").then((module) => ({
+    default: module.ProfilePage,
+  })),
+);
 const TaskListPage = React.lazy(() =>
   import("./pages/TaskListPage").then((module) => ({
     default: module.TaskListPage,
@@ -537,6 +542,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <Workplace />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/profile",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <ProfilePage />
               </Suspense>
             ),
           },

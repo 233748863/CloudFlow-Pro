@@ -10,6 +10,7 @@ interface AuthContextType {
   loading: boolean;
   login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: () => Promise<User | null>;
   switchTenant: (tenantId: number) => Promise<void>;
 }
 
@@ -27,7 +28,8 @@ const buildAuthUser = (userInfo: UserInfo): User => ({
   tenantName: userInfo.tenantName,
   position: userInfo.position,
   phone: userInfo.phone,
-  status: 'ACTIVE',
+  status: userInfo.status || 'ACTIVE',
+  createTime: userInfo.createTime,
   avatar: userInfo.avatar,
 });
 
@@ -59,21 +61,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     void initAuth();
   }, []);
 
-  const login = async (token: string) => {
-    localStorage.setItem('token', token);
-
+  const refreshUser = async () => {
     try {
       const userInfo = await getInfo();
       if (userInfo) {
         const currentUser = buildAuthUser(userInfo);
         setUser(currentUser);
         localStorage.setItem('user', JSON.stringify(currentUser));
+        return currentUser;
       }
+      return null;
     } catch (error) {
       logger.error('获取用户信息失败:', error);
       clearAuthSession();
       throw error;
     }
+  };
+
+  const login = async (token: string) => {
+    localStorage.setItem('token', token);
+    await refreshUser();
   };
 
   const logout = async () => {
@@ -114,7 +121,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, switchTenant }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, switchTenant }}>
       {children}
     </AuthContext.Provider>
   );

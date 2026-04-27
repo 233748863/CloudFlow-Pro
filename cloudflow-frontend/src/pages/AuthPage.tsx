@@ -180,7 +180,7 @@ export const AuthPage: React.FC = () => {
               <img src="/icon.svg" alt="CloudFlow Pro" className="cf-auth-brand__image" />
             </div>
             <h1 className="cf-auth-brand__title">CloudFlow Pro</h1>
-            <p className="cf-auth-brand__subtitle">企业协同办公统一入口</p>
+            <p className="cf-auth-brand__subtitle">社区协同办公统一入口</p>
           </div>
 
           <div className="cf-auth-card">
@@ -188,7 +188,7 @@ export const AuthPage: React.FC = () => {
               <div className="cf-auth-card__header">
                 <h2 className="cf-auth-card__title">{isLogin ? '欢迎回来' : '创建账号'}</h2>
                 <p className="cf-auth-card__description">
-                  {isLogin ? '登录以继续进入 CloudFlow 桌面工作台' : '注册后开始使用 CloudFlow 桌面工作台'}
+                  {isLogin ? '登录以继续进入社区工作台' : '注册后开始使用社区工作台'}
                 </p>
               </div>
 

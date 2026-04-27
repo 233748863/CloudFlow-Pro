@@ -20,6 +20,7 @@ export interface User {
   position?: string;
   phone?: string; // 手机号
   status?: string;
+  createTime?: string;
   avatar?: string;
 }
 

@@ -173,6 +173,13 @@ export const MainLayout = () => {
   };
 
   const activeLabel = useMemo(() => {
+    if (location.pathname === '/profile') {
+      return {
+        group: '个人中心',
+        item: '个人资料',
+      };
+    }
+
     for (const group of menuTree) {
       const child = group.children?.find((item) => isActive(item.path));
       if (child) {

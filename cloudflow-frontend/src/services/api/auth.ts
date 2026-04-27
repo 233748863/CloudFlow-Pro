@@ -87,6 +87,8 @@ export interface UserInfo {
   tenantName?: string;
   position?: string;
   phone?: string; // 手机号
+  status?: string;
+  createTime?: string;
 }
 
 export interface CaptchaResponse {
@@ -169,6 +171,8 @@ export const getInfo = async (): Promise<UserInfo> => {
     tenantName: user.tenantName,
     position: user.position,
     phone: user.phone || user.phonenumber,
+    status: user.status,
+    createTime: user.createTime,
   } as UserInfo;
 }
 
@@ -264,4 +268,33 @@ export const getMenuTreeSelect = () => {
  */
 export const switchTenant = async (tenantId: number): Promise<{ token: string; tenantId: number; message: string }> => {
   return request.post('/auth/switchTenant', { tenantId });
+};
+
+export interface UpdateProfilePayload {
+  nickName: string;
+  email?: string;
+  phone?: string;
+}
+
+export const updateProfile = (data: UpdateProfilePayload): Promise<void> => {
+  return request.put('/auth/profile', {
+    nickName: data.nickName,
+    email: data.email,
+    phonenumber: data.phone,
+  });
+};
+
+export const changeProfilePassword = async (
+  oldPassword: string,
+  newPassword: string,
+): Promise<void> => {
+  const [oldPasswordHash, newPasswordHash] = await Promise.all([
+    hashPassword(oldPassword),
+    hashPassword(newPassword),
+  ]);
+
+  return request.put('/auth/profile/password', {
+    oldPassword: oldPasswordHash,
+    newPassword: newPasswordHash,
+  });
 };

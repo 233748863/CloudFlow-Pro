@@ -243,6 +243,10 @@ public class AuthController {
         user.setUserId(cachedUser.getUserId());
         user.setUserName(cachedUser.getUserName());
         user.setNickName(cachedUser.getNickName());
+        user.setEmail(cachedUser.getEmail());
+        user.setPhonenumber(cachedUser.getPhonenumber());
+        user.setStatus(cachedUser.getStatus());
+        user.setCreateTime(cachedUser.getCreateTime());
         user.setAvatar(cachedUser.getAvatar());
         Long tenantId = resolveTenantId(userMap, cachedUser);
         user.setTenantId(tenantId);
@@ -266,6 +270,78 @@ public class AuthController {
         data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
 
         return R.ok(data);
+    }
+
+    @PutMapping("/profile")
+    public R<?> updateProfile(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+        Map<String, Object> userMap = resolveLoginUser(request);
+        if (userMap == null) {
+            return R.fail(401, "Token已过期或无效");
+        }
+
+        Long userId = toLong(userMap.get("userId"));
+        if (userId == null) {
+            return R.fail(401, "登录用户信息异常");
+        }
+
+        String nickName = trimValue(params.get("nickName"));
+        if (!StringUtils.hasText(nickName)) {
+            return R.fail("显示名称不能为空");
+        }
+
+        SysUser existing = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
+        if (existing == null) {
+            return R.fail(404, "用户不存在");
+        }
+
+        SysUser update = new SysUser();
+        update.setUserId(userId);
+        update.setNickName(nickName);
+        update.setEmail(trimValue(params.get("email")));
+        String phone = trimValue(params.get("phonenumber"));
+        update.setPhonenumber(StringUtils.hasText(phone) ? phone : trimValue(params.get("phone")));
+
+        TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.updateById(update));
+        sysUserService.evictUserInfoCache(existing.getUserName());
+
+        return R.ok("保存成功");
+    }
+
+    @PutMapping("/profile/password")
+    public R<?> changeProfilePassword(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+        Map<String, Object> userMap = resolveLoginUser(request);
+        if (userMap == null) {
+            return R.fail(401, "Token已过期或无效");
+        }
+
+        Long userId = toLong(userMap.get("userId"));
+        if (userId == null) {
+            return R.fail(401, "登录用户信息异常");
+        }
+
+        String oldPassword = trimValue(params.get("oldPassword"));
+        String newPassword = trimValue(params.get("newPassword"));
+        if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
+            return R.fail("密码不能为空");
+        }
+
+        SysUser existing = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
+        if (existing == null) {
+            return R.fail(404, "用户不存在");
+        }
+
+        if (!BCrypt.checkpw(oldPassword, existing.getPassword())) {
+            return R.fail("当前密码错误");
+        }
+
+        SysUser update = new SysUser();
+        update.setUserId(userId);
+        update.setPassword(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
+
+        TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.updateById(update));
+        sysUserService.evictUserInfoCache(existing.getUserName());
+
+        return R.ok("密码修改成功");
     }
 
     /**
@@ -345,6 +421,10 @@ public class AuthController {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private String trimValue(Object value) {
+        return value == null ? "" : String.valueOf(value).trim();
     }
 
     private String extractUsername(Map<String, Object> userMap, Long userId) {
