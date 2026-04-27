@@ -6,10 +6,12 @@ import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/system/user")
@@ -57,6 +59,19 @@ public class SysUserController {
     @HasPermission("system:user:edit")
     public R<?> edit(@RequestBody SysUser user) {
         return R.ok(userService.updateUser(user));
+    }
+
+    /**
+     * 管理员重置用户密码
+     */
+    @PutMapping("/{userId}/password")
+    @HasPermission("system:user:edit")
+    public R<?> resetPassword(@PathVariable("userId") Long userId, @RequestBody Map<String, Object> params) {
+        String password = params.get("password") == null ? "" : String.valueOf(params.get("password")).trim();
+        if (!StringUtils.hasText(password)) {
+            return R.fail("密码不能为空");
+        }
+        return R.ok(userService.resetPwd(userId, password));
     }
 
     /**

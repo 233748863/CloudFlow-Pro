@@ -216,6 +216,12 @@ export const updateUser = (data: SysUser) => {
   return request.put('/auth/system/user', data);
 };
 
+export const resetUserPassword = async (userId: number, password: string): Promise<void> => {
+  return request.put(`/auth/system/user/${userId}/password`, {
+    password: await hashPassword(password),
+  });
+};
+
 export const deleteUser = (userIds: number[]) => {
   return request.delete(`/auth/system/user/${userIds.join(',')}`);
 };

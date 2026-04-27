@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   Building2,
   Edit,
+  KeyRound,
   Plus,
   RefreshCw,
   Search,
@@ -38,6 +39,7 @@ import {
   getDeptTree,
   getRoleList,
   getUserList,
+  resetUserPassword,
   updateUser,
 } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
@@ -176,6 +178,12 @@ export const UserList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserItem | null>(null);
   const [pendingDeleteUser, setPendingDeleteUser] = useState<UserItem | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<UserItem | null>(null);
+  const [resetPasswordForm, setResetPasswordForm] = useState({
+    password: '',
+    confirmPassword: '',
+  });
+  const [resettingPassword, setResettingPassword] = useState(false);
   const [formData, setFormData] = useState({
     userName: '',
     nickName: '',
@@ -462,6 +470,50 @@ export const UserList = () => {
     }
   };
 
+  const handleOpenResetPassword = (user: UserItem) => {
+    setResetPasswordUser(user);
+    setResetPasswordForm({ password: '', confirmPassword: '' });
+  };
+
+  const handleCloseResetPassword = () => {
+    if (resettingPassword) {
+      return;
+    }
+    setResetPasswordUser(null);
+    setResetPasswordForm({ password: '', confirmPassword: '' });
+  };
+
+  const handleResetPassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!resetPasswordUser) {
+      return;
+    }
+
+    const password = resetPasswordForm.password.trim();
+    if (password.length < 6) {
+      toast.error('新密码至少 6 位');
+      return;
+    }
+
+    if (password !== resetPasswordForm.confirmPassword.trim()) {
+      toast.error('两次输入的新密码不一致');
+      return;
+    }
+
+    setResettingPassword(true);
+    try {
+      await resetUserPassword(resetPasswordUser.userId, password);
+      toast.success('密码已重置');
+      setResetPasswordUser(null);
+      setResetPasswordForm({ password: '', confirmPassword: '' });
+    } catch (resetError) {
+      console.error(resetError);
+      toast.error('重置密码失败');
+    } finally {
+      setResettingPassword(false);
+    }
+  };
+
   const tenantNameById = (tenantId?: number) =>
     tenants.find((tenant) => tenant.tenantId === tenantId)?.tenantName || '默认租户';
 
@@ -650,6 +702,12 @@ export const UserList = () => {
                                 icon: <Edit size={15} />,
                                 onClick: () => handleOpenModal(user),
                                 tone: 'neutral',
+                              },
+                              {
+                                label: '重置密码',
+                                icon: <KeyRound size={15} />,
+                                onClick: () => handleOpenResetPassword(user),
+                                tone: 'warning',
                               },
                               {
                                 label: '删除用户',
@@ -912,6 +970,64 @@ export const UserList = () => {
                 </div>
               )}
             </div>
+          </div>
+        </form>
+      </BaseDialog>
+
+      <BaseDialog
+        open={Boolean(resetPasswordUser)}
+        title="重置用户密码"
+        description={
+          resetPasswordUser
+            ? `无需旧密码，直接为“${resetPasswordUser.nickName || resetPasswordUser.userName}”设置新登录密码。`
+            : undefined
+        }
+        onClose={handleCloseResetPassword}
+        maxWidthClassName="max-w-md"
+        footer={
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={handleCloseResetPassword} disabled={resettingPassword}>
+              取消
+            </Button>
+            <Button type="submit" form="reset-user-password-form" disabled={resettingPassword}>
+              {resettingPassword ? '重置中...' : '确认重置'}
+            </Button>
+          </div>
+        }
+      >
+        <form id="reset-user-password-form" onSubmit={handleResetPassword} className="space-y-4">
+          <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+            重置后原密码立即失效，用户下次登录需使用新密码。
+          </div>
+          <div>
+            <label className={fieldLabelClassName}>
+              新密码 <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              type="password"
+              value={resetPasswordForm.password}
+              onChange={(event) =>
+                setResetPasswordForm((current) => ({ ...current, password: event.target.value }))
+              }
+              autoComplete="new-password"
+              placeholder="请输入新密码"
+              required
+            />
+          </div>
+          <div>
+            <label className={fieldLabelClassName}>
+              确认新密码 <span className="text-rose-500">*</span>
+            </label>
+            <Input
+              type="password"
+              value={resetPasswordForm.confirmPassword}
+              onChange={(event) =>
+                setResetPasswordForm((current) => ({ ...current, confirmPassword: event.target.value }))
+              }
+              autoComplete="new-password"
+              placeholder="请再次输入新密码"
+              required
+            />
           </div>
         </form>
       </BaseDialog>
