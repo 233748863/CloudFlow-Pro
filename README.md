@@ -10,7 +10,7 @@
 [![MyBatis Plus](https://img.shields.io/badge/MyBatis%20Plus-3.5.7-red)](https://baomidou.com/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[在线演示](http://demo.cloudflow.com) | [开发文档](docs/) | [API文档](http://localhost:9000/doc.html)
+[在线演示](http://demo.cloudflow.com) | [API文档](http://localhost:9000/doc.html)
 
 </div>
 
@@ -187,7 +187,6 @@ CloudFlow Pro/
 │   └── public/                     # 静态资源
 ├── config/                         # Nacos配置文件
 ├── docker/                         # Docker镜像构建
-├── docs/                           # 项目文档
 └── README.md                       # 项目说明
 ```
 
@@ -656,27 +655,6 @@ export const useUserStore = create((set) => ({
 - **WorkTaskController** - 任务管理、任务看板
 - **SyncController** - 离线同步、数据上传、冲突解决
 - **ErrorReportController** - 前端错误上报
-
----
-
-## 📖 文档导航
-
-### 核心文档
-- [后端生产就绪评估](docs/后端生产就绪最终评估.md) - 系统评估报告
-- [阶段2完成总结](docs/阶段2完成总结.md) - Phase 2 监控告警模块
-- [Nacos微服务部署](docs/Nacos微服务部署.md) - 微服务部署指南
-- [数据权限集成指南](cloudflow-backend/cloudflow-common/DATASCOPE_INTEGRATION_GUIDE.md)
-
-### 功能文档
-- [工作流设计指南](docs/工作流对比-若依VS CloudFlow最终版.md)
-- [P1任务管理](docs/P1前端实现总结.md) - 任务管理模块
-- [车辆系统设计](docs/车辆系统设计.md)
-- [验证码集成指南](docs/验证码集成指南.md)
-
-### 开发文档
-- [前端代码审查报告](docs/前端代码审查报告.md)
-- [后端API开发总结](docs/后端API开发总结.md)
-- [性能优化指南](cloudflow-backend/cloudflow-service-workflow/PERFORMANCE_OPTIMIZATION.md)
 
 ---
 
