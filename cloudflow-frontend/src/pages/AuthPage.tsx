@@ -25,6 +25,8 @@ type RegisterFormState = {
 const resolveModeByPathname = (pathname: string): AuthMode =>
   pathname === '/register' ? 'register' : 'login';
 
+const appIconUrl = `${import.meta.env.BASE_URL}icon.svg`;
+
 export const AuthPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -177,7 +179,7 @@ export const AuthPage: React.FC = () => {
         <div className="cf-auth-container">
           <div className="cf-auth-brand">
             <div className="cf-auth-brand__logo">
-              <img src="/icon.svg" alt="新元社区" className="cf-auth-brand__image" />
+              <img src={appIconUrl} alt="新元社区" className="cf-auth-brand__image" />
             </div>
             <h1 className="cf-auth-brand__title">新元社区</h1>
             <p className="cf-auth-brand__subtitle">社区协同办公统一入口</p>

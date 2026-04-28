@@ -6,7 +6,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
+    const enablePwa = env.VITE_ENABLE_PWA === 'true';
     return {
+      base: env.VITE_PUBLIC_BASE_PATH || '/',
       build: {
         rollupOptions: {
           output: {
@@ -91,7 +93,7 @@ export default defineConfig(({ mode }) => {
       plugins: [
         react(), 
         tailwindcss(),
-        VitePWA({
+        enablePwa && VitePWA({
           registerType: 'autoUpdate',
           includeAssets: ['icon.svg'],
           manifest: {
@@ -124,7 +126,7 @@ export default defineConfig(({ mode }) => {
              ]
           }
         })
-      ],
+      ].filter(Boolean),
       define: {
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY),
         'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY)

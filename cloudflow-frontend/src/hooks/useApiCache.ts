@@ -13,6 +13,8 @@ interface UseApiCacheOptions {
   refetchOnFocus?: boolean; // 窗口获得焦点时是否重新获取
 }
 
+const API_CACHE_PREFIX = 'cloudflow_pro_api_cache_';
+
 /**
  * API 缓存 Hook
  * 提供简单的 API 请求缓存机制，减少不必要的网络请求
@@ -37,14 +39,15 @@ export const useApiCache = <T>(
   // 从缓存中获取数据
   const getCachedData = useCallback((): CacheEntry<T> | null => {
     try {
-      const cached = localStorage.getItem(`api_cache_${key}`);
+      const cacheKey = `${API_CACHE_PREFIX}${key}`;
+      const cached = localStorage.getItem(cacheKey);
       if (!cached) return null;
 
       const entry: CacheEntry<T> = JSON.parse(cached);
       
       // 检查缓存是否过期
       if (Date.now() > entry.expiresAt) {
-        localStorage.removeItem(`api_cache_${key}`);
+        localStorage.removeItem(cacheKey);
         return null;
       }
 
@@ -63,7 +66,7 @@ export const useApiCache = <T>(
     };
 
     try {
-      localStorage.setItem(`api_cache_${key}`, JSON.stringify(entry));
+      localStorage.setItem(`${API_CACHE_PREFIX}${key}`, JSON.stringify(entry));
     } catch (error) {
       console.warn('Failed to cache data:', error);
     }
@@ -118,7 +121,7 @@ export const useApiCache = <T>(
 
   // 清除缓存
   const clearCache = useCallback(() => {
-    localStorage.removeItem(`api_cache_${key}`);
+    localStorage.removeItem(`${API_CACHE_PREFIX}${key}`);
     setData(null);
   }, [key]);
 
@@ -166,7 +169,7 @@ export const useApiCache = <T>(
 export const clearAllApiCache = () => {
   const keys = Object.keys(localStorage);
   keys.forEach(key => {
-    if (key.startsWith('api_cache_')) {
+    if (key.startsWith(API_CACHE_PREFIX)) {
       localStorage.removeItem(key);
     }
   });

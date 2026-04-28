@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import { getAuthToken } from '@/utils/authStorage';
 
 interface WebSocketMessage {
     type: string;
     data: any;
 }
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api';
+const wsBasePath = import.meta.env.VITE_WS_BASE_PATH || '/ws';
+
+const joinPath = (base: string, path: string) => `${base.replace(/\/$/, '')}/${path.replace(/^\//, '')}`;
 
 /**
  * WebSocket 连接 Hook
@@ -40,7 +46,7 @@ export const useWebSocket = () => {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), 3000);
             // 使用 OPTIONS 请求探测白名单路径，不会触发 401
-            await fetch('/api/auth/login', {
+            await fetch(joinPath(apiBaseUrl, '/auth/login'), {
                 method: 'OPTIONS',
                 signal: controller.signal,
             });
@@ -57,7 +63,7 @@ export const useWebSocket = () => {
         // 组件已卸载，不连接
         if (unmountedRef.current) return;
 
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
         if (!token || !user) return;
 
         // 关闭已有连接
@@ -87,7 +93,7 @@ export const useWebSocket = () => {
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/notifications?token=${token}`;
+        const wsUrl = `${protocol}//${host}${joinPath(wsBasePath, '/notifications')}?token=${token}`;
 
         const ws = new WebSocket(wsUrl);
 

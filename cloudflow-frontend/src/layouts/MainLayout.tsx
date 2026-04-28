@@ -27,6 +27,7 @@ interface MenuTreeItem {
 }
 
 const SIDEBAR_STORAGE_KEY = 'cf-sidebar-collapsed';
+const appIconUrl = `${import.meta.env.BASE_URL}icon.svg`;
 
 function readStoredSidebarState(): boolean {
   if (typeof window === 'undefined') {
@@ -210,7 +211,7 @@ export const MainLayout = () => {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-slate-50 px-4 text-slate-600 dark:bg-slate-950 dark:text-slate-300">
         <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.08)] dark:border-slate-800 dark:bg-slate-900 dark:shadow-[0_18px_36px_rgba(2,6,23,0.42)]">
-          <img src="/icon.svg" alt="新元社区" className="h-12 w-12 object-contain" />
+          <img src={appIconUrl} alt="新元社区" className="h-12 w-12 object-contain" />
         </div>
         <div className="space-y-1 text-center">
           <p className="text-sm font-medium">正在加载工作区资源…</p>
@@ -241,7 +242,7 @@ export const MainLayout = () => {
           )}
         >
           <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-cyan-100 bg-white shadow-[0_0_20px_rgba(20,184,166,0.18)] dark:border-cyan-950/40 dark:bg-slate-900 dark:shadow-[0_0_20px_rgba(6,182,212,0.12)]">
-            <img src="/icon.svg" alt="新元社区" className="h-8 w-8 object-contain" />
+            <img src={appIconUrl} alt="新元社区" className="h-8 w-8 object-contain" />
           </div>
 
           {sidebarCollapsed ? null : (

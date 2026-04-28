@@ -4,6 +4,7 @@ import { User } from '@/types';
 import { getInfo, logout as logoutApi, switchTenant as switchTenantApi, type UserInfo } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import { clearAuthSession } from '@/utils/sessionCleanup';
+import { getAuthToken, setAuthToken, setStoredAuthUser } from '@/utils/authStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -40,14 +41,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
+      const token = getAuthToken();
       if (token) {
         try {
           const userInfo = await getInfo();
           if (userInfo) {
             const currentUser = buildAuthUser(userInfo);
             setUser(currentUser);
-            localStorage.setItem('user', JSON.stringify(currentUser));
+            setStoredAuthUser(currentUser);
           }
         } catch (error) {
           logger.error('Failed to get user info:', error);
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (userInfo) {
         const currentUser = buildAuthUser(userInfo);
         setUser(currentUser);
-        localStorage.setItem('user', JSON.stringify(currentUser));
+        setStoredAuthUser(currentUser);
         return currentUser;
       }
       return null;
@@ -80,12 +81,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const login = async (token: string) => {
-    localStorage.setItem('token', token);
+    setAuthToken(token);
     await refreshUser();
   };
 
   const logout = async () => {
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (token) {
       try {
         await logoutApi();
@@ -101,13 +102,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const switchTenant = async (tenantId: number) => {
     try {
       const response = await switchTenantApi(tenantId);
-      localStorage.setItem('token', response.token);
+      setAuthToken(response.token);
 
       const userInfo = await getInfo();
       if (userInfo) {
         const updatedUser = buildAuthUser(userInfo);
         setUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        setStoredAuthUser(updatedUser);
         toast.success(`已切换到${updatedUser.tenantName || `租户 ${tenantId}`}`);
       } else {
         toast.success(`已切换到租户 ${tenantId}`);

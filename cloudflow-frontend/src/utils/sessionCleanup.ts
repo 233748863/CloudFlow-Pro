@@ -1,4 +1,6 @@
-const SESSION_CACHE_PREFIXES = ['api_cache_'];
+import { removeAuthToken, removeStoredAuthUser } from '@/utils/authStorage';
+
+const SESSION_CACHE_PREFIXES = ['cloudflow_pro_api_cache_'];
 
 export const clearSessionCaches = (): void => {
   try {
@@ -14,7 +16,7 @@ export const clearSessionCaches = (): void => {
 };
 
 export const clearAuthSession = (): void => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+  removeAuthToken();
+  removeStoredAuthUser();
   clearSessionCaches();
 };

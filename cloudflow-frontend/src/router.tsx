@@ -106,7 +106,7 @@ const RouteStatusPage = ({ code, title, description }: RouteStatusPageProps) => 
       <button
         type="button"
         onClick={() => {
-          window.location.href = '/';
+          window.location.href = import.meta.env.BASE_URL || '/';
         }}
         className="mt-6 rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white hover:bg-cyan-500"
       >
@@ -225,4 +225,10 @@ const mobileRoutes = [
 const isMobile = isMobileDevice();
 logger.log('Device Detection:', isMobile ? 'Mobile' : 'Desktop');
 
-export const router = createBrowserRouter(isMobile ? mobileRoutes : desktopRoutes);
+const routerBaseName = import.meta.env.BASE_URL === '/'
+  ? undefined
+  : import.meta.env.BASE_URL.replace(/\/$/, '');
+
+export const router = createBrowserRouter(isMobile ? mobileRoutes : desktopRoutes, {
+  basename: routerBaseName,
+});
