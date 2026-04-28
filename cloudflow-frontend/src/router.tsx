@@ -124,7 +124,7 @@ const RouteErrorPage = () => {
       <RouteStatusPage
         code={String(error.status)}
         title={error.status === 404 ? '页面不存在' : '页面加载失败'}
-        description={error.statusText || '当前地址在轻版中没有对应页面。'}
+        description={error.statusText || '当前地址没有对应页面。'}
       />
     );
   }
@@ -139,7 +139,7 @@ const RouteErrorPage = () => {
 };
 
 const RouteNotFoundPage = () => (
-  <RouteStatusPage code="404" title="页面不存在" description="当前功能已从轻版中移除。" />
+  <RouteStatusPage code="404" title="页面不存在" description="当前功能不可用。" />
 );
 
 const withSuspense = (element: React.ReactNode) => <Suspense fallback={<Loading />}>{element}</Suspense>;

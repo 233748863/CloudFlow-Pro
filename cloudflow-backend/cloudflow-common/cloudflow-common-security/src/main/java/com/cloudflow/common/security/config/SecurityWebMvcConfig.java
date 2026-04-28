@@ -26,8 +26,13 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
 
     private static final String[] EXCLUDE_PATHS = {
             "/login",
+            "/auth/login",
             "/register",
+            "/auth/register",
+            "/tenant/options",
+            "/auth/tenant/options",
             "/captcha/**",
+            "/auth/captcha/**",
             "/doc.html",
             "/webjars/**",
             "/swagger-resources/**",

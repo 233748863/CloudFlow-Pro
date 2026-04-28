@@ -19,6 +19,11 @@ public class SysTenant {
      */
     @TableId(value = "tenant_id", type = IdType.AUTO)
     private Long tenantId;
+
+    /**
+     * Tenant code used by login and registration.
+     */
+    private String tenantCode;
     
     /**
      * 租户名称

@@ -176,6 +176,7 @@
 .cf-auth-input-icon {
   pointer-events: none;
   position: absolute;
+  z-index: 1;
   inset-block: 0;
   left: 0;
   display: flex;
@@ -235,6 +236,10 @@
   margin: 0.375rem 0 0;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.cf-auth-hint--error {
+  color: #dc2626;
 }
 
 .cf-auth-error {

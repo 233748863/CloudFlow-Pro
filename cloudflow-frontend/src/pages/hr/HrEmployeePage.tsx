@@ -43,13 +43,11 @@ const defaultForm: HrEmployeePayload = {
   deptId: undefined,
   postId: undefined,
   employeeType: 'FULL_TIME',
-  employeeStatus: 'PENDING',
+  employeeStatus: 'REGULAR',
   hireDate: '',
 };
 
 const statusLabel: Record<string, string> = {
-  PENDING: '待入职',
-  PROBATION: '试用期',
   REGULAR: '正式员工',
   RESIGNED: '已离职',
 };
@@ -203,8 +201,8 @@ const HrEmployeePage: React.FC = () => {
       toast.error('请先填写姓名');
       return false;
     }
-    if (form.employeeStatus !== 'PENDING' && !form.hireDate) {
-      toast.error('待入职之外的员工状态必须填写入职日期');
+    if (!form.hireDate) {
+      toast.error('员工档案必须填写入职日期');
       return false;
     }
     if (form.hireDate && form.regularDate && form.regularDate < form.hireDate) {
@@ -282,8 +280,6 @@ const HrEmployeePage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">全部状态</SelectItem>
-                      <SelectItem value="PENDING">待入职</SelectItem>
-                      <SelectItem value="PROBATION">试用期</SelectItem>
                       <SelectItem value="REGULAR">正式员工</SelectItem>
                       <SelectItem value="RESIGNED">已离职</SelectItem>
                     </SelectContent>
@@ -455,8 +451,6 @@ const HrEmployeePage: React.FC = () => {
                 <Select value={form.employeeStatus} onValueChange={(value) => setForm((prev) => ({ ...prev, employeeStatus: value }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PENDING">待入职</SelectItem>
-                    <SelectItem value="PROBATION">试用期</SelectItem>
                     <SelectItem value="REGULAR">正式员工</SelectItem>
                     <SelectItem value="RESIGNED">已离职</SelectItem>
                   </SelectContent>

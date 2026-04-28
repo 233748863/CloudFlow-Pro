@@ -45,6 +45,17 @@ public class SysTenantController {
 
     @PostMapping
     public R<Void> add(@RequestBody SysTenant tenant) {
+        if (StringUtils.isBlank(tenant.getTenantCode())) {
+            return R.fail("租户编码不能为空");
+        }
+        tenant.setTenantCode(tenant.getTenantCode().trim());
+
+        LambdaQueryWrapper<SysTenant> codeWrapper = new LambdaQueryWrapper<>();
+        codeWrapper.eq(SysTenant::getTenantCode, tenant.getTenantCode());
+        if (tenantService.count(codeWrapper) > 0) {
+            return R.fail("租户编码已存在");
+        }
+
         LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysTenant::getTenantName, tenant.getTenantName());
         if (tenantService.count(wrapper) > 0) {
@@ -77,6 +88,20 @@ public class SysTenantController {
         SysTenant existTenant = tenantService.getById(tenant.getTenantId());
         if (existTenant == null) {
             return R.fail("租户不存在");
+        }
+
+        if (StringUtils.isBlank(tenant.getTenantCode())) {
+            return R.fail("租户编码不能为空");
+        }
+        tenant.setTenantCode(tenant.getTenantCode().trim());
+
+        if (!tenant.getTenantCode().equals(existTenant.getTenantCode())) {
+            LambdaQueryWrapper<SysTenant> codeWrapper = new LambdaQueryWrapper<>();
+            codeWrapper.eq(SysTenant::getTenantCode, tenant.getTenantCode());
+            codeWrapper.ne(SysTenant::getTenantId, tenant.getTenantId());
+            if (tenantService.count(codeWrapper) > 0) {
+                return R.fail("租户编码已存在");
+            }
         }
 
         if (!existTenant.getTenantName().equals(tenant.getTenantName())) {

@@ -22,11 +22,13 @@ public interface ISysUserService {
      * 参考 Poco 的 findUserInfo 模式
      */
     UserInfo findUserInfo(String username);
+    UserInfo findUserInfo(String username, Long tenantId);
 
     /**
      * 清除指定用户的信息缓存
      */
     void evictUserInfoCache(String username);
+    void evictUserInfoCache(String username, Long tenantId);
 
     /**
      * 根据用户ID列表批量查询用户

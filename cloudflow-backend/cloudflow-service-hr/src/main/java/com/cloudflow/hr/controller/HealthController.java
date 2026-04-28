@@ -18,7 +18,7 @@ public class HealthController {
         result.put("status", "UP");
         result.put("service", "cloudflow-service-hr");
         result.put("timestamp", LocalDateTime.now());
-        result.put("message", "HR light service is running");
+        result.put("message", "HR service is running");
         return result;
     }
 
@@ -26,7 +26,7 @@ public class HealthController {
     public Map<String, Object> info() {
         Map<String, Object> result = new HashMap<>();
         result.put("name", "CloudFlow HR Service");
-        result.put("description", "CloudFlow Pro HR light service");
+        result.put("description", "CloudFlow Pro HR service");
         result.put("version", "1.0.0");
         result.put("modules", new String[]{
                 "Employee Archive",

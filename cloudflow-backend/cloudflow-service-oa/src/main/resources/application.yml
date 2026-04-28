@@ -70,5 +70,5 @@ logging:
 info:
   app:
     name: ${spring.application.name}
-    description: CloudFlow OA Light Service
+    description: CloudFlow Pro OA 协同办公微服务
     version: 1.0.0

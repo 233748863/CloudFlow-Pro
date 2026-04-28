@@ -56,7 +56,7 @@ export const Workplace = () => {
       <div>
         <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">工作台</h1>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          轻版只保留日常登记、公告、通讯录和员工档案。
+          日常登记、公告、通讯录和员工档案。
         </p>
       </div>
 

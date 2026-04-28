@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * Auth 对外提供的内部远程调用接口。
- * 仅供保留的轻版服务做内部调用，避免业务服务直接绑定到 Auth 的后台管理接口与登录态。
+ * 仅供业务服务做内部调用，避免业务服务直接绑定到 Auth 的后台管理接口与登录态。
  */
 @RestController
 @RequestMapping("/inner/auth")

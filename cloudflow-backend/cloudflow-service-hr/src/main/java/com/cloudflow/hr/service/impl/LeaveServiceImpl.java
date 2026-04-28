@@ -897,7 +897,7 @@ public class LeaveServiceImpl implements LeaveService {
      * 请假相关操作只允许已入职员工执行。
      */
     private void validateLeaveEligibleEmployee(Employee employee, String operation) {
-        if ("PROBATION".equals(employee.getEmployeeStatus()) || "REGULAR".equals(employee.getEmployeeStatus())) {
+        if ("REGULAR".equals(employee.getEmployeeStatus())) {
             return;
         }
         throw HrBusinessException.invalidEmployeeStatus(employee.getId(), employee.getEmployeeStatus(), operation);
@@ -1458,7 +1458,7 @@ public class LeaveServiceImpl implements LeaveService {
 
     
     /**
-     * 提交请假申请（HR轻审批）
+     * 提交请假申请（HR审批）
      */
     @Override
     @Transactional(rollbackFor = Exception.class)

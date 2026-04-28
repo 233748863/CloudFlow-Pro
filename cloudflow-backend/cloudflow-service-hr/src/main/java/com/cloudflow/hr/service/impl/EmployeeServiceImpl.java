@@ -125,7 +125,7 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     private void validateHireDate(String employeeStatus, LocalDate hireDate) {
-        if (employeeStatus == null || "PENDING".equals(employeeStatus)) {
+        if (employeeStatus == null) {
             return;
         }
         if (hireDate == null) {
@@ -205,7 +205,7 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employee == null) {
             throw HrBusinessException.employeeNotFound(id);
         }
-        if (!"PENDING".equals(employee.getEmployeeStatus()) && !"RESIGNED".equals(employee.getEmployeeStatus())) {
+        if (!"RESIGNED".equals(employee.getEmployeeStatus())) {
             throw HrBusinessException.cannotDeleteActiveEmployee(id);
         }
 

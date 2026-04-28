@@ -13,9 +13,9 @@ import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.SysTenantService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantBroker;
-import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
@@ -52,6 +52,9 @@ public class AuthController {
     private ISysUserService sysUserService;
 
     @Autowired
+    private SysTenantService tenantService;
+
+    @Autowired
     private com.cloudflow.auth.service.CaptchaService captchaService;
 
     @Autowired
@@ -63,9 +66,6 @@ public class AuthController {
     @Autowired
     private com.cloudflow.auth.mapper.SysRoleMapper sysRoleMapper;
 
-    @Autowired
-    private TenantConfigProperties tenantConfigProperties;
-
     @PostMapping("/login")
     public R<?> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
         // 先校验滑块验证码，避免未通过人机校验时继续执行登录流程。
@@ -73,8 +73,16 @@ public class AuthController {
             return R.fail("验证码失效或错误，请重新验证");
         }
 
+        String username = trimValue(form.getUsername());
+        SysTenant tenant = resolveTenantByCode(form.getTenantCode());
+        String tenantError = validateTenantAvailable(tenant, false);
+        if (tenantError != null) {
+            return R.fail(tenantError);
+        }
+
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysUser::getUserName, form.getUsername());
+        queryWrapper.eq(SysUser::getUserName, username);
+        queryWrapper.eq(SysUser::getTenantId, tenant.getTenantId());
         SysUser user = sysUserMapper.selectOne(queryWrapper);
 
         if (user == null) {
@@ -99,7 +107,7 @@ public class AuthController {
         user.setLoginDate(LocalDateTime.now());
         sysUserMapper.updateById(user);
 
-        UserInfo userInfo = sysUserService.findUserInfo(form.getUsername());
+        UserInfo userInfo = sysUserService.findUserInfo(username, tenant.getTenantId());
         if (userInfo == null) {
             return R.fail("用户信息异常");
         }
@@ -114,7 +122,8 @@ public class AuthController {
             loginUser.put("deptName", dept != null ? dept.getDeptName() : null);
         }
         loginUser.put("tenantId", user.getTenantId());
-        loginUser.put("tenantName", resolveTenantName(user.getTenantId()));
+        loginUser.put("tenantCode", tenant.getTenantCode());
+        loginUser.put("tenantName", tenant.getTenantName());
         loginUser.put("avatar", user.getAvatar());
         loginUser.put("roles", userInfo.getRoles());
         loginUser.put("permissions", userInfo.getPermissions());
@@ -140,21 +149,28 @@ public class AuthController {
             return R.fail("两次输入的密码不一致");
         }
 
+        String username = trimValue(registerBody.getUsername());
+        SysTenant tenant = resolveTenantByCode(registerBody.getTenantCode());
+        String tenantError = validateTenantAvailable(tenant, true);
+        if (tenantError != null) {
+            return R.fail(tenantError);
+        }
+
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(SysUser::getUserName, registerBody.getUsername());
+        queryWrapper.eq(SysUser::getUserName, username);
+        queryWrapper.eq(SysUser::getTenantId, tenant.getTenantId());
         if (sysUserMapper.selectCount(queryWrapper) > 0) {
-            return R.fail("用户 '" + registerBody.getUsername() + "' 已存在");
+            return R.fail("用户 '" + username + "' 已存在");
         }
 
         SysUser user = new SysUser();
-        user.setUserName(registerBody.getUsername());
-        user.setNickName(registerBody.getUsername());
+        user.setUserName(username);
+        user.setNickName(username);
         user.setPassword(registerBody.getPassword());
         user.setEmail(registerBody.getEmail());
         user.setStatus("0");
         user.setDelFlag("0");
-        // 注册时使用系统配置中的默认租户ID，避免写入不存在的租户主键
-        user.setTenantId(tenantConfigProperties.getDefaultTenantId());
+        user.setTenantId(tenant.getTenantId());
 
         try {
             sysUserService.insertUser(user);
@@ -163,6 +179,27 @@ public class AuthController {
         }
 
         return R.ok("注册成功");
+    }
+
+    @GetMapping("/tenant/options")
+    public R<List<TenantOption>> tenantOptions() {
+        List<SysTenant> tenants = TenantBroker.applyWithoutTenant(ignored ->
+                tenantService.list(
+                        new LambdaQueryWrapper<SysTenant>()
+                                .eq(SysTenant::getStatus, "0")
+                                .isNotNull(SysTenant::getTenantCode)
+                                .ne(SysTenant::getTenantCode, "")
+                                .and(wrapper -> wrapper.isNull(SysTenant::getExpireTime)
+                                        .or()
+                                        .gt(SysTenant::getExpireTime, LocalDateTime.now()))
+                                .orderByAsc(SysTenant::getTenantName)
+                )
+        );
+
+        return R.ok(tenants.stream()
+                .filter(tenant -> StringUtils.hasText(tenant.getTenantCode()))
+                .map(tenant -> new TenantOption(tenant.getTenantCode(), tenant.getTenantName()))
+                .collect(Collectors.toList()));
     }
 
     @GetMapping("/info")
@@ -174,9 +211,10 @@ public class AuthController {
 
         Long userId = toLong(userMap.get("userId"));
         String username = extractUsername(userMap, userId);
+        Long tokenTenantId = toLong(userMap.get("tenantId"));
 
         UserInfo userInfo = TenantBroker.applyWithoutTenant(ignored ->
-                StringUtils.hasText(username) ? sysUserService.findUserInfo(username) : null
+                StringUtils.hasText(username) && tokenTenantId != null ? sysUserService.findUserInfo(username, tokenTenantId) : null
         );
         if (userInfo == null) {
             return R.fail(401, "用户信息不存在");
@@ -248,7 +286,7 @@ public class AuthController {
         update.setPhonenumber(StringUtils.hasText(phone) ? phone : trimValue(params.get("phone")));
 
         TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.updateById(update));
-        sysUserService.evictUserInfoCache(existing.getUserName());
+        sysUserService.evictUserInfoCache(existing.getUserName(), existing.getTenantId());
 
         return R.ok("保存成功");
     }
@@ -285,7 +323,7 @@ public class AuthController {
         update.setPassword(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
 
         TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.updateById(update));
-        sysUserService.evictUserInfoCache(existing.getUserName());
+        sysUserService.evictUserInfoCache(existing.getUserName(), existing.getTenantId());
 
         return R.ok("密码修改成功");
     }
@@ -323,9 +361,14 @@ public class AuthController {
         if (userMap != null) {
             String username = (String) userMap.get("username");
             Long userId = toLong(userMap.get("userId"));
+            Long tenantId = toLong(userMap.get("tenantId"));
 
             if (username != null) {
-                sysUserService.evictUserInfoCache(username);
+                if (tenantId != null) {
+                    sysUserService.evictUserInfoCache(username, tenantId);
+                } else {
+                    sysUserService.evictUserInfoCache(username);
+                }
             }
 
             if (userId != null) {
@@ -371,6 +414,47 @@ public class AuthController {
 
     private String trimValue(Object value) {
         return value == null ? "" : String.valueOf(value).trim();
+    }
+
+    private SysTenant resolveTenantByCode(String tenantCode) {
+        String normalizedCode = trimValue(tenantCode);
+        if (!StringUtils.hasText(normalizedCode)) {
+            return null;
+        }
+
+        return TenantBroker.applyWithoutTenant(ignored ->
+                sysTenantMapper.selectOne(
+                        new LambdaQueryWrapper<SysTenant>()
+                                .eq(SysTenant::getTenantCode, normalizedCode)
+                                .last("LIMIT 1")
+                )
+        );
+    }
+
+    private SysTenant resolveTenantById(Long tenantId) {
+        if (tenantId == null) {
+            return null;
+        }
+        return TenantBroker.applyWithoutTenant(ignored -> sysTenantMapper.selectById(tenantId));
+    }
+
+    private String validateTenantAvailable(SysTenant tenant, boolean checkUserLimit) {
+        if (tenant == null) {
+            return "租户不存在";
+        }
+        if (!"0".equals(tenant.getStatus())) {
+            return "租户已停用";
+        }
+        if (tenant.getExpireTime() != null && LocalDateTime.now().isAfter(tenant.getExpireTime())) {
+            return "租户已过期";
+        }
+        if (checkUserLimit && tenantService.isUserLimitReached(tenant.getTenantId())) {
+            return "租户用户数量已达上限";
+        }
+        return null;
+    }
+
+    public record TenantOption(String tenantCode, String tenantName) {
     }
 
     private String extractUsername(Map<String, Object> userMap, Long userId) {
@@ -482,8 +566,15 @@ public class AuthController {
             }
         }
 
-        userMap.put("tenantId", targetTenantId);
-        userMap.put("tenantName", resolveTenantName(targetTenantId));
+        SysTenant targetTenant = resolveTenantById(targetTenantId);
+        String tenantError = validateTenantAvailable(targetTenant, false);
+        if (tenantError != null) {
+            return R.fail(tenantError);
+        }
+
+        userMap.put("tenantId", targetTenant.getTenantId());
+        userMap.put("tenantCode", targetTenant.getTenantCode());
+        userMap.put("tenantName", targetTenant.getTenantName());
 
         if (StringUtils.hasText(rawToken)) {
             tokenService.deleteToken(rawToken);
@@ -493,7 +584,8 @@ public class AuthController {
 
         Map<String, Object> result = new HashMap<>();
         result.put("token", newToken);
-        result.put("tenantId", targetTenantId);
+        result.put("tenantId", targetTenant.getTenantId());
+        result.put("tenantCode", targetTenant.getTenantCode());
         result.put("message", "租户切换成功");
 
         return R.ok(result);

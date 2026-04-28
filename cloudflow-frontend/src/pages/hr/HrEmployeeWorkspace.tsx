@@ -53,8 +53,6 @@ interface ContactFormState {
 }
 
 const employeeStatusLabel: Record<string, string> = {
-  PENDING: '待入职',
-  PROBATION: '试用期',
   REGULAR: '正式员工',
   RESIGNED: '已离职',
 };

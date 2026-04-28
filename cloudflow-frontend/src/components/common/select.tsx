@@ -158,7 +158,13 @@ export const Select = ({
   );
 };
 
-export const SelectTrigger = ({ children, className = '' }: { children: React.ReactNode; className?: string }) => {
+export const SelectTrigger = ({
+  children,
+  className = '',
+  onClick,
+  onKeyDown,
+  ...props
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & { children: React.ReactNode }) => {
   const { setOpen, open, disabled } = React.useContext(SelectContext);
   const hasExplicitWidth = className
     .split(/\s+/)
@@ -166,6 +172,7 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
 
   return (
     <button
+      {...props}
       type="button"
       disabled={disabled}
       aria-expanded={open}
@@ -176,12 +183,14 @@ export const SelectTrigger = ({ children, className = '' }: { children: React.Re
         open && 'cf-control-active',
         className,
       )}
-      onClick={() => {
-        if (disabled) return;
+      onClick={(event) => {
+        onClick?.(event);
+        if (event.defaultPrevented || disabled) return;
         setOpen(!open);
       }}
       onKeyDown={(event) => {
-        if (disabled) return;
+        onKeyDown?.(event);
+        if (event.defaultPrevented || disabled) return;
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
           event.preventDefault();
           setOpen(true);

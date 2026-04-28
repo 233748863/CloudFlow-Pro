@@ -55,6 +55,7 @@ interface TenantView extends SysTenant, TenantStatistics {
 }
 
 interface TenantFormData {
+  tenantCode: string;
   tenantName: string;
   contactName: string;
   contactPhone: string;
@@ -86,6 +87,7 @@ const DEFAULT_TENANT_STATS: TenantStatistics = {
 };
 
 const DEFAULT_FORM_DATA: TenantFormData = {
+  tenantCode: '',
   tenantName: '',
   contactName: '',
   contactPhone: '',
@@ -339,6 +341,7 @@ export const TenantList: React.FC = () => {
     if (tenant) {
       setEditingTenant(tenant);
       setFormData({
+        tenantCode: tenant.tenantCode || '',
         tenantName: tenant.tenantName || '',
         contactName: tenant.contactName || '',
         contactPhone: tenant.contactPhone || '',
@@ -371,12 +374,22 @@ export const TenantList: React.FC = () => {
       return;
     }
 
+    if (!formData.tenantCode.trim()) {
+      toast.error('请输入租户编码');
+      return;
+    }
+
     try {
+      const payload = {
+        ...formData,
+        tenantCode: formData.tenantCode.trim(),
+        tenantName: formData.tenantName.trim(),
+      };
       if (editingTenant) {
-        await updateTenant({ ...formData, tenantId: editingTenant.tenantId });
+        await updateTenant({ ...payload, tenantId: editingTenant.tenantId });
         toast.success('租户更新成功');
       } else {
-        await addTenant(formData);
+        await addTenant(payload);
         toast.success('租户创建成功');
       }
 
@@ -552,6 +565,11 @@ export const TenantList: React.FC = () => {
                                 <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
                                   ID {tenant.tenantId}
                                 </span>
+                                {tenant.tenantCode ? (
+                                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
+                                    {tenant.tenantCode}
+                                  </span>
+                                ) : null}
                                 {tenant.domain ? (
                                   <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 dark:border-slate-800 dark:bg-slate-900/70">
                                     {tenant.domain}
@@ -748,6 +766,19 @@ export const TenantList: React.FC = () => {
                 onChange={(event) =>
                   setFormData((current) => ({ ...current, tenantName: event.target.value }))
                 }
+              />
+            </div>
+
+            <div>
+              <label className={fieldLabelClassName}>
+                租户编码 <span className="text-red-500">*</span>
+              </label>
+              <Input
+                value={formData.tenantCode}
+                onChange={(event) =>
+                  setFormData((current) => ({ ...current, tenantCode: event.target.value }))
+                }
+                placeholder="xinyuan"
               />
             </div>
 

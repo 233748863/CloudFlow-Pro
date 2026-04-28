@@ -188,7 +188,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     }
 
     /**
-     * 提交加班申请（HR轻审批）
+     * 提交加班申请（HR审批）
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -877,7 +877,7 @@ public class OvertimeServiceImpl implements OvertimeService {
      * 加班申请只允许已入职员工发起。
      */
     private void validateOvertimeEligibleEmployee(Employee employee) {
-        if ("PROBATION".equals(employee.getEmployeeStatus()) || "REGULAR".equals(employee.getEmployeeStatus())) {
+        if ("REGULAR".equals(employee.getEmployeeStatus())) {
             return;
         }
         throw HrBusinessException.invalidEmployeeStatus(employee.getId(), employee.getEmployeeStatus(), "加班申请");

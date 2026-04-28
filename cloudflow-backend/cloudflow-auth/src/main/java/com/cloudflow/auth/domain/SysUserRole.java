@@ -8,4 +8,5 @@ import lombok.Data;
 public class SysUserRole {
     private Long userId;
     private Long roleId;
+    private Long tenantId;
 }

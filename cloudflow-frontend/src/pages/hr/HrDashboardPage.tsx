@@ -52,8 +52,6 @@ const moduleEntries = [
 ];
 
 const statusLabel: Record<string, string> = {
-  PENDING: '待入职',
-  PROBATION: '试用期',
   REGULAR: '正式',
   RESIGNED: '已离职',
 };
@@ -83,8 +81,7 @@ const HrDashboardPage: React.FC = () => {
   const summary = useMemo(() => {
     const activeCount = employees.filter((item) => item.employeeStatus !== 'RESIGNED').length;
     const regularCount = employees.filter((item) => item.employeeStatus === 'REGULAR').length;
-    const pendingCount = employees.filter((item) => item.employeeStatus === 'PENDING').length;
-    return { total: employees.length, activeCount, regularCount, pendingCount };
+    return { total: employees.length, activeCount, regularCount };
   }, [employees]);
 
   const latestEmployees = useMemo(
@@ -99,8 +96,8 @@ const HrDashboardPage: React.FC = () => {
         <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-950">
           <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-base font-semibold text-slate-900 dark:text-slate-100">HR 轻版工作台</div>
-              <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">保留员工档案、加班登记、休假登记和假期额度</div>
+              <div className="text-base font-semibold text-slate-900 dark:text-slate-100">HR 工作台</div>
+              <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">员工档案、加班登记、休假登记和假期额度</div>
             </div>
             <Button variant="outline" size="sm" onClick={() => void loadEmployees()}>
               <RefreshCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
@@ -112,12 +109,11 @@ const HrDashboardPage: React.FC = () => {
       table={(
         <div className="grid gap-4 p-4 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {[
                 ['员工总数', summary.total],
                 ['在岗员工', summary.activeCount],
                 ['正式员工', summary.regularCount],
-                ['待入职', summary.pendingCount],
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950">
                   <div className="text-sm text-slate-500 dark:text-slate-400">{label}</div>

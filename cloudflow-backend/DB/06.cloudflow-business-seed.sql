@@ -1,7 +1,6 @@
 -- =========================================================
--- CloudFlow Pro - light business seed
--- Scope: basic workspace, schedule, announcement, contacts,
---        employee archive, leave, overtime and leave quota.
+-- CloudFlow Pro - 业务种子数据
+-- 范围：工作台、日程、公告、通讯录、员工档案、休假、加班、假期额度。
 -- =========================================================
 
 USE cloud_flow_db;
@@ -9,7 +8,7 @@ USE cloud_flow_db;
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
--- Clean tenant-scoped seed data.
+-- 清理指定租户的种子数据。
 DELETE FROM sys_role_menu WHERE tenant_id = 100000;
 DELETE FROM sys_user_role WHERE tenant_id = 100000;
 DELETE FROM sys_user_post WHERE tenant_id = 100000;
@@ -33,16 +32,16 @@ DELETE FROM sys_role WHERE tenant_id = 100000 AND role_id IN (1, 2, 3);
 DELETE FROM sys_tenant WHERE tenant_id = 100000;
 DELETE FROM sys_menu;
 
--- Tenant and organization.
+-- 租户与组织。
 INSERT INTO sys_tenant (
-  tenant_id, tenant_name, contact_name, contact_phone, contact_email, domain,
+  tenant_id, tenant_code, tenant_name, contact_name, contact_phone, contact_email, domain,
   status, expire_time, user_limit, storage_limit, storage_used, del_flag,
   create_by, create_time, update_by, update_time, remark
 ) VALUES (
-  100000, '新元社区', '管理员', '15888888888',
+  100000, 'xinyuan', '新元社区', '管理员', '15888888888',
   'admin@cloudflow.com', 'cloudflow.local', '0',
   DATE_ADD(CURDATE(), INTERVAL 10 YEAR), 100, 10240, 0, '0',
-  'admin', NOW(), '', NULL, 'default tenant'
+  'admin', NOW(), '', NULL, '默认租户'
 );
 
 INSERT INTO sys_dept (
@@ -57,27 +56,27 @@ INSERT INTO sys_post (
   post_id, tenant_id, post_code, post_name, post_sort, status,
   create_by, create_time, update_by, update_time, remark
 ) VALUES
-(1, 100000, 'admin', '系统管理员', 1, '0', 'admin', NOW(), '', NULL, 'system maintenance'),
-(2, 100000, 'hr', '人事专员', 2, '0', 'admin', NOW(), '', NULL, 'HR approval and employee archive'),
-(3, 100000, 'employee', '员工', 3, '0', 'admin', NOW(), '', NULL, 'basic employee');
+(1, 100000, 'admin', '系统管理员', 1, '0', 'admin', NOW(), '', NULL, '系统维护'),
+(2, 100000, 'hr', '人事专员', 2, '0', 'admin', NOW(), '', NULL, '人事审批与员工档案'),
+(3, 100000, 'employee', '员工', 3, '0', 'admin', NOW(), '', NULL, '普通员工');
 
 INSERT INTO sys_role (
   role_id, tenant_id, role_name, role_key, role_sort, data_scope, ds_type,
   ds_scope, status, del_flag, create_by, create_time, update_by, update_time, remark
 ) VALUES
-(1, 100000, '管理员', 'admin', 1, '1', 0, NULL, '0', '0', 'admin', NOW(), '', NULL, 'system admin'),
-(2, 100000, '人事', 'hr', 2, '1', 0, NULL, '0', '0', 'admin', NOW(), '', NULL, 'HR approval and archive maintenance'),
-(3, 100000, '员工', 'employee', 3, '4', 4, NULL, '0', '0', 'admin', NOW(), '', NULL, 'self-service employee');
+(1, 100000, '管理员', 'admin', 1, '1', 0, NULL, '0', '0', 'admin', NOW(), '', NULL, '系统管理员'),
+(2, 100000, '人事', 'hr', 2, '1', 0, NULL, '0', '0', 'admin', NOW(), '', NULL, '人事审批与档案维护'),
+(3, 100000, '员工', 'employee', 3, '4', 4, NULL, '0', '0', 'admin', NOW(), '', NULL, '员工自助');
 
--- Password for all seed users: 123456
+-- 所有种子用户密码：123456
 INSERT INTO sys_user (
   user_id, tenant_id, dept_id, user_name, nick_name, email, phonenumber, sex,
   password, status, del_flag, login_ip, login_date, create_by, create_time,
   update_by, update_time, remark, avatar
 ) VALUES
-(1, 100000, 100, 'admin', '管理员', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, 'system admin', ''),
-(2, 100000, 101, 'hr', '人事', 'hr@cloudflow.com', '15888888889', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, 'HR manager', ''),
-(3, 100000, 102, 'staff', '员工', 'staff@cloudflow.com', '15888888890', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, 'employee', '');
+(1, 100000, 100, 'admin', '管理员', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '系统管理员', ''),
+(2, 100000, 101, 'hr', '人事', 'hr@cloudflow.com', '15888888889', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '人事管理员', ''),
+(3, 100000, 102, 'staff', '员工', 'staff@cloudflow.com', '15888888890', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '普通员工', '');
 
 INSERT INTO sys_user_role (user_id, role_id, tenant_id) VALUES
 (1, 1, 100000),
@@ -89,42 +88,42 @@ INSERT INTO sys_user_post (user_id, post_id, tenant_id) VALUES
 (2, 2, 100000),
 (3, 3, 100000);
 
--- Menus. Employee gets quota view only; quota init/adjust are HR/admin button permissions.
+-- 菜单。员工仅可查看假期额度，额度初始化/调整为人事和管理员按钮权限。
 INSERT INTO sys_menu (
   menu_id, menu_name, parent_id, order_num, path, component, query,
   is_frame, is_cache, menu_type, visible, status, perms, icon,
   create_by, create_time, update_by, update_time, remark
 ) VALUES
-(1, '工作台', 0, 1, '/dashboard', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'LayoutDashboard', 'admin', NOW(), '', NULL, 'workspace'),
-(100, '首页', 1, 1, '/dashboard', 'pages/Dashboard', NULL, 0, 0, 'C', '0', '0', 'dashboard:view', 'LayoutDashboard', 'admin', NOW(), '', NULL, 'dashboard'),
-(101, '我的工作台', 1, 2, '/workplace', 'pages/Workplace', NULL, 0, 0, 'C', '0', '0', 'workplace:view', 'Briefcase', 'admin', NOW(), '', NULL, 'my workplace'),
+(1, '工作台', 0, 1, '/dashboard', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'LayoutDashboard', 'admin', NOW(), '', NULL, '工作台'),
+(100, '首页', 1, 1, '/dashboard', 'pages/Dashboard', NULL, 0, 0, 'C', '0', '0', 'dashboard:view', 'LayoutDashboard', 'admin', NOW(), '', NULL, '首页'),
+(101, '我的工作台', 1, 2, '/workplace', 'pages/Workplace', NULL, 0, 0, 'C', '0', '0', 'workplace:view', 'Briefcase', 'admin', NOW(), '', NULL, '我的工作台'),
 
-(2, '办公协同', 0, 2, '/office', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'CalendarDays', 'admin', NOW(), '', NULL, 'office'),
-(200, '日程', 2, 1, '/schedule', 'pages/SchedulePage', NULL, 0, 0, 'C', '0', '0', 'office:schedule:list', 'CalendarDays', 'admin', NOW(), '', NULL, 'schedule'),
-(201, '公告', 2, 2, '/office/announcement', 'pages/AnnouncementPage', NULL, 0, 0, 'C', '0', '0', 'office:announcement:list', 'Megaphone', 'admin', NOW(), '', NULL, 'announcement'),
-(202, '通讯录', 2, 3, '/office/contact', 'pages/ContactPage', NULL, 0, 0, 'C', '0', '0', 'office:contact:list', 'Contact', 'admin', NOW(), '', NULL, 'contacts'),
+(2, '办公协同', 0, 2, '/office', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'CalendarDays', 'admin', NOW(), '', NULL, '办公协同'),
+(200, '日程', 2, 1, '/schedule', 'pages/SchedulePage', NULL, 0, 0, 'C', '0', '0', 'office:schedule:list', 'CalendarDays', 'admin', NOW(), '', NULL, '日程'),
+(201, '公告', 2, 2, '/office/announcement', 'pages/AnnouncementPage', NULL, 0, 0, 'C', '0', '0', 'office:announcement:list', 'Megaphone', 'admin', NOW(), '', NULL, '公告'),
+(202, '通讯录', 2, 3, '/office/contact', 'pages/ContactPage', NULL, 0, 0, 'C', '0', '0', 'office:contact:list', 'Contact', 'admin', NOW(), '', NULL, '通讯录'),
 
-(7, '人事管理', 0, 3, '/hr', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'Users', 'admin', NOW(), '', NULL, 'HR light'),
-(700, '人事工作台', 7, 1, '/hr/dashboard', 'pages/hr/HrDashboardPage', NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view', 'LayoutDashboard', 'admin', NOW(), '', NULL, 'HR dashboard'),
-(701, '员工档案', 7, 2, '/hr/employees', 'pages/hr/HrEmployeePage', NULL, 0, 0, 'C', '0', '0', 'hr:employee:list', 'UserRound', 'admin', NOW(), '', NULL, 'employee archive'),
-(702, '假期额度', 7, 3, '/hr/leave/quota', 'pages/hr/HrLeaveQuotaPage', NULL, 0, 0, 'C', '0', '0', 'hr:leave:quota:view', 'WalletCards', 'admin', NOW(), '', NULL, 'leave quota'),
-(707, '人事审批', 7, 4, '/hr/approvals', 'pages/hr/HrApprovalPage', NULL, 0, 0, 'C', '0', '0', 'hr:approval:list', 'ClipboardCheck', 'admin', NOW(), '', NULL, 'HR approvals'),
-(703, '加班登记', 7, 5, '/hr/overtime/applications', 'pages/OvertimeApplicationPage', NULL, 0, 0, 'C', '0', '0', 'hr:overtime:list', 'Clock', 'admin', NOW(), '', NULL, 'overtime registration'),
-(704, '休假登记', 7, 6, '/hr/leave/application', 'pages/LeaveApplicationPage', NULL, 0, 0, 'C', '0', '0', 'hr:leave:application', 'CalendarCheck', 'admin', NOW(), '', NULL, 'leave registration'),
-(705, '假期额度初始化', 702, 1, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:leave:quota:init', '#', 'admin', NOW(), '', NULL, 'HR quota initialization'),
-(706, '假期额度调整', 702, 2, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:leave:quota:manage', '#', 'admin', NOW(), '', NULL, 'HR quota adjustment'),
-(708, '人事审批通过', 707, 1, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:approval:approve', '#', 'admin', NOW(), '', NULL, 'HR approval approve'),
-(709, '人事审批驳回', 707, 2, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:approval:reject', '#', 'admin', NOW(), '', NULL, 'HR approval reject'),
+(7, '人事管理', 0, 3, '/hr', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'Users', 'admin', NOW(), '', NULL, '人事管理'),
+(700, '人事工作台', 7, 1, '/hr/dashboard', 'pages/hr/HrDashboardPage', NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view', 'LayoutDashboard', 'admin', NOW(), '', NULL, '人事工作台'),
+(701, '员工档案', 7, 2, '/hr/employees', 'pages/hr/HrEmployeePage', NULL, 0, 0, 'C', '0', '0', 'hr:employee:list', 'UserRound', 'admin', NOW(), '', NULL, '员工档案'),
+(702, '假期额度', 7, 3, '/hr/leave/quota', 'pages/hr/HrLeaveQuotaPage', NULL, 0, 0, 'C', '0', '0', 'hr:leave:quota:view', 'WalletCards', 'admin', NOW(), '', NULL, '假期额度'),
+(707, '人事审批', 7, 4, '/hr/approvals', 'pages/hr/HrApprovalPage', NULL, 0, 0, 'C', '0', '0', 'hr:approval:list', 'ClipboardCheck', 'admin', NOW(), '', NULL, '人事审批'),
+(703, '加班登记', 7, 5, '/hr/overtime/applications', 'pages/OvertimeApplicationPage', NULL, 0, 0, 'C', '0', '0', 'hr:overtime:list', 'Clock', 'admin', NOW(), '', NULL, '加班登记'),
+(704, '休假登记', 7, 6, '/hr/leave/application', 'pages/LeaveApplicationPage', NULL, 0, 0, 'C', '0', '0', 'hr:leave:application', 'CalendarCheck', 'admin', NOW(), '', NULL, '休假登记'),
+(705, '假期额度初始化', 702, 1, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:leave:quota:init', '#', 'admin', NOW(), '', NULL, '假期额度初始化'),
+(706, '假期额度调整', 702, 2, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:leave:quota:manage', '#', 'admin', NOW(), '', NULL, '假期额度调整'),
+(708, '人事审批通过', 707, 1, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:approval:approve', '#', 'admin', NOW(), '', NULL, '人事审批通过'),
+(709, '人事审批驳回', 707, 2, '#', '', NULL, 0, 0, 'F', '1', '0', 'hr:approval:reject', '#', 'admin', NOW(), '', NULL, '人事审批驳回'),
 
-(6, '系统管理', 0, 4, '/system', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'Settings', 'admin', NOW(), '', NULL, 'basic system management'),
-(600, '组织架构', 6, 1, '/users', 'pages/OrgStructurePage', NULL, 0, 0, 'C', '0', '0', 'system:dept:list', 'Network', 'admin', NOW(), '', NULL, 'organization'),
-(601, '用户管理', 6, 2, '/system/users', 'pages/system/UserList', NULL, 0, 0, 'C', '0', '0', 'system:user:list', 'UserCog', 'admin', NOW(), '', NULL, 'users'),
-(602, '角色管理', 6, 3, '/system/roles', 'pages/system/RoleList', NULL, 0, 0, 'C', '0', '0', 'system:role:list', 'ShieldCheck', 'admin', NOW(), '', NULL, 'roles'),
-(603, '菜单管理', 6, 4, '/system/menus', 'pages/system/MenuList', NULL, 0, 0, 'C', '0', '0', 'system:menu:list', 'ListTree', 'admin', NOW(), '', NULL, 'menus'),
-(605, '租户管理', 6, 5, '/system/tenant', 'pages/system/TenantList', NULL, 0, 0, 'C', '0', '0', 'system:tenant:list', 'Building2', 'admin', NOW(), '', NULL, 'tenants'),
-(606, '岗位管理', 6, 6, '/system/post', 'pages/system/PostList', NULL, 0, 0, 'C', '0', '0', 'system:post:list', 'IdCard', 'admin', NOW(), '', NULL, 'posts'),
-(607, '参数配置', 6, 7, '/system/config', 'pages/system/ConfigList', NULL, 0, 0, 'C', '0', '0', 'system:config:list', 'SlidersHorizontal', 'admin', NOW(), '', NULL, 'config'),
-(608, '字典管理', 6, 8, '/system/dict', 'pages/admin/DictPage', NULL, 0, 0, 'C', '0', '0', 'system:dict:list', 'BookOpen', 'admin', NOW(), '', NULL, 'dict');
+(6, '系统管理', 0, 4, '/system', NULL, NULL, 0, 0, 'M', '0', '0', NULL, 'Settings', 'admin', NOW(), '', NULL, '系统管理'),
+(600, '组织架构', 6, 1, '/users', 'pages/OrgStructurePage', NULL, 0, 0, 'C', '0', '0', 'system:dept:list', 'Network', 'admin', NOW(), '', NULL, '组织架构'),
+(601, '用户管理', 6, 2, '/system/users', 'pages/system/UserList', NULL, 0, 0, 'C', '0', '0', 'system:user:list', 'UserCog', 'admin', NOW(), '', NULL, '用户管理'),
+(602, '角色管理', 6, 3, '/system/roles', 'pages/system/RoleList', NULL, 0, 0, 'C', '0', '0', 'system:role:list', 'ShieldCheck', 'admin', NOW(), '', NULL, '角色管理'),
+(603, '菜单管理', 6, 4, '/system/menus', 'pages/system/MenuList', NULL, 0, 0, 'C', '0', '0', 'system:menu:list', 'ListTree', 'admin', NOW(), '', NULL, '菜单管理'),
+(605, '租户管理', 6, 5, '/system/tenant', 'pages/system/TenantList', NULL, 0, 0, 'C', '0', '0', 'system:tenant:list', 'Building2', 'admin', NOW(), '', NULL, '租户管理'),
+(606, '岗位管理', 6, 6, '/system/post', 'pages/system/PostList', NULL, 0, 0, 'C', '0', '0', 'system:post:list', 'IdCard', 'admin', NOW(), '', NULL, '岗位管理'),
+(607, '参数配置', 6, 7, '/system/config', 'pages/system/ConfigList', NULL, 0, 0, 'C', '0', '0', 'system:config:list', 'SlidersHorizontal', 'admin', NOW(), '', NULL, '参数配置'),
+(608, '字典管理', 6, 8, '/system/dict', 'pages/admin/DictPage', NULL, 0, 0, 'C', '0', '0', 'system:dict:list', 'BookOpen', 'admin', NOW(), '', NULL, '字典管理');
 
 INSERT INTO sys_role_menu (role_id, menu_id, tenant_id)
 SELECT 1, menu_id, 100000 FROM sys_menu;
@@ -141,7 +140,7 @@ INSERT INTO sys_role_menu (role_id, menu_id, tenant_id) VALUES
 (3, 2, 100000), (3, 200, 100000), (3, 201, 100000), (3, 202, 100000),
 (3, 7, 100000), (3, 702, 100000), (3, 703, 100000), (3, 704, 100000);
 
--- Dictionaries.
+-- 字典。
 INSERT INTO sys_dict_type (
   dict_id, tenant_id, dict_name, dict_type, status, remark, create_by, create_time, update_by, update_time
 ) VALUES
@@ -172,9 +171,7 @@ INSERT INTO sys_dict_data (
 (10010, 100000, 1, '全职', 'FULL_TIME', 'hr_employee_type', NULL, 'primary', 'Y', '0', NULL, 'admin', NOW(), NULL, NULL),
 (10011, 100000, 2, '兼职', 'PART_TIME', 'hr_employee_type', NULL, 'info', 'N', '0', NULL, 'admin', NOW(), NULL, NULL),
 (10012, 100000, 3, '实习', 'INTERN', 'hr_employee_type', NULL, 'warning', 'N', '0', NULL, 'admin', NOW(), NULL, NULL),
-(10013, 100000, 1, '待入职', 'PENDING', 'hr_employee_status', NULL, 'info', 'N', '0', NULL, 'admin', NOW(), NULL, NULL),
-(10014, 100000, 2, '试用期', 'PROBATION', 'hr_employee_status', NULL, 'warning', 'N', '0', NULL, 'admin', NOW(), NULL, NULL),
-(10015, 100000, 3, '正式', 'REGULAR', 'hr_employee_status', NULL, 'success', 'Y', '0', NULL, 'admin', NOW(), NULL, NULL),
+(10015, 100000, 1, '正式', 'REGULAR', 'hr_employee_status', NULL, 'success', 'Y', '0', NULL, 'admin', NOW(), NULL, NULL),
 (10016, 100000, 1, '草稿', 'DRAFT', 'hr_application_status', NULL, 'info', 'Y', '0', NULL, 'admin', NOW(), NULL, NULL),
 (10017, 100000, 2, '审批中', 'APPROVING', 'hr_application_status', NULL, 'warning', 'N', '0', NULL, 'admin', NOW(), NULL, NULL),
 (10018, 100000, 3, '已通过', 'APPROVED', 'hr_application_status', NULL, 'success', 'N', '0', NULL, 'admin', NOW(), NULL, NULL),
@@ -192,30 +189,30 @@ INSERT INTO sys_config (
   config_id, tenant_id, config_name, config_key, config_value, config_type,
   config_scope, create_by, create_time, update_by, update_time, remark
 ) VALUES
-(1, 100000, '系统名称', 'sys.name', 'CloudFlow Pro 轻版', 'Y', '1', 'admin', NOW(), '', NULL, 'system name');
+(1, 100000, '系统名称', 'sys.name', 'CloudFlow Pro', 'Y', '1', 'admin', NOW(), '', NULL, '系统名称');
 
--- OA seed.
+-- 办公协同种子数据。
 INSERT INTO sys_announcement (
   announcement_id, tenant_id, title, content, type, scope_type, scope_value,
   status, priority, is_top, sender_id, publish_time, expire_time,
   create_by, create_time, update_by, update_time, del_flag
 ) VALUES
-(9601, 100000, '轻版功能说明', '当前组织仅保留工作台、日程、公告、通讯录、员工档案、休假登记、加班登记和假期额度。', '2', 'ALL', NULL, '1', 'M', 1, 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'admin', NOW(), '', NULL, '0');
+(9601, 100000, '系统功能说明', '当前组织已启用工作台、日程、公告、通讯录、员工档案、休假登记、加班登记和假期额度。', '2', 'ALL', NULL, '1', 'M', 1, 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'admin', NOW(), '', NULL, '0');
 
 INSERT INTO sys_notice (
   notice_id, tenant_id, notice_title, notice_type, notice_content,
   sender_id, recipient_id, status, create_by, create_time, update_by, update_time, remark
 ) VALUES
-(9901, 100000, '人事轻审批已启用', '1', '休假和加班登记由人事或管理员审批。', 1, 2, '0', 'admin', NOW(), '', NULL, NULL),
-(9902, 100000, '人事轻审批已启用', '1', '休假和加班登记由人事或管理员审批。', 1, 3, '0', 'admin', NOW(), '', NULL, NULL);
+(9901, 100000, '人事审批已启用', '1', '休假和加班登记由人事或管理员审批。', 1, 2, '0', 'admin', NOW(), '', NULL, NULL),
+(9902, 100000, '人事审批已启用', '1', '休假和加班登记由人事或管理员审批。', 1, 3, '0', 'admin', NOW(), '', NULL, NULL);
 
 INSERT INTO sys_schedule_event (
   event_id, tenant_id, title, description, start_time, end_time,
   is_all_day, type, creator_id, attendees, create_time, update_time, del_flag
 ) VALUES
-(9501, 100000, '轻版规则确认', '确认菜单范围和半天额度规则。', DATE_ADD(CURDATE(), INTERVAL 10 HOUR), DATE_ADD(CURDATE(), INTERVAL 11 HOUR), 0, 'WORK', 1, '[2,3]', NOW(), NULL, '0');
+(9501, 100000, '规则确认', '确认菜单范围和半天额度规则。', DATE_ADD(CURDATE(), INTERVAL 10 HOUR), DATE_ADD(CURDATE(), INTERVAL 11 HOUR), 0, 'WORK', 1, '[2,3]', NOW(), NULL, '0');
 
--- HR seed.
+-- 人事种子数据。
 INSERT INTO hr_employee (
   id, tenant_id, employee_no, name, gender, birth_date, phone, email,
   dept_id, post_id, employee_type, employee_status, hire_date, regular_date,

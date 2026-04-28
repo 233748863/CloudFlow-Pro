@@ -40,6 +40,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
     private final List<String> whiteList = Arrays.asList(
             "/auth/login",
             "/auth/register",
+            "/auth/tenant/options",
             "/auth/captcha/**",
             "/ws/**"
     );
