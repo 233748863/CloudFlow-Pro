@@ -31,6 +31,7 @@ const buildAuthUser = (userInfo: UserInfo): User => ({
   status: userInfo.status || 'ACTIVE',
   createTime: userInfo.createTime,
   avatar: userInfo.avatar,
+  permissions: userInfo.permissions || [],
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {

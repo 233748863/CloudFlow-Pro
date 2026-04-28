@@ -19,7 +19,6 @@ spring:
       discovery:
         namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
         group: DEFAULT_GROUP
-  # 本地数据源配置（Nacos不可用时的后备配置）
   datasource:
     dynamic:
       primary: master
@@ -30,7 +29,6 @@ spring:
           username: root
           password: Juwangkeji@2025
           driver-class-name: com.mysql.cj.jdbc.Driver
-  # 本地Redis配置（Nacos不可用时的后备配置）
   data:
     redis:
       host: 192.168.1.173
@@ -39,16 +37,13 @@ spring:
       database: 0
       timeout: 3000ms
 
-# MyBatis Plus配置
 mybatis-plus:
   mapper-locations: classpath:mapper/**/*.xml
   type-aliases-package: com.cloudflow.oa.domain
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
 
-# Sa-Token 本地后备配置（Nacos cloudflow-common.yaml 不可用时生效）
 cloudflow:
   security:
     token:
@@ -67,33 +62,13 @@ sa-token:
   active-timeout: -1
   is-log: false
 
-# 日志配置
 logging:
   level:
     com.cloudflow.oa: INFO
-    com.cloudflow.oa.mapper: DEBUG
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  endpoint:
-    health:
-      show-details: when-authorized
-      probes:
-        enabled: true
-  health:
-    redis:
-      enabled: true
-    db:
-      enabled: true
-  metrics:
-    tags:
-      application: ${spring.application.name}
+    com.cloudflow.oa.mapper: INFO
 
 info:
   app:
     name: ${spring.application.name}
-    description: CloudFlow OA Service
+    description: CloudFlow OA Light Service
     version: 1.0.0

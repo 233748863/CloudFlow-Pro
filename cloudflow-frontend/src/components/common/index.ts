@@ -42,7 +42,6 @@ export {
 
 export { BaseDialog } from './BaseDialog';
 export { ConfirmDialog } from './ConfirmDialog';
-export * from './ConflictResolutionDialog';
 export * from './date-picker';
 export * from './EmptyState';
 export * from './ErrorBoundary';
@@ -50,7 +49,6 @@ export { FilterChip } from './filter-chip';
 export { LoadingSpinner } from './LoadingSpinner';
 export { Pagination } from './Pagination';
 export * from './PermissionGuard';
-export * from './RoleSelector';
 export * from './RouteGuard';
 export { SearchInput } from './SearchInput';
 export * from './Skeleton';
@@ -58,7 +56,6 @@ export { StatCard } from './StatCard';
 export * from './table-row-actions';
 export * from './theme-mode-switcher';
 export { ToastViewport } from './Toast';
-export * from './UserSelector';
 export * from './VirtualList';
 export * from './WarningConfirmDialog';
 

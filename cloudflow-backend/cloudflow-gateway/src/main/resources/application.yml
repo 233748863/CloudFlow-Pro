@@ -46,23 +46,6 @@ sa-token:
   active-timeout: -1
   is-log: false
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-  endpoint:
-    health:
-      show-details: when-authorized
-      probes:
-        enabled: true
-  health:
-    redis:
-      enabled: true
-  metrics:
-    tags:
-      application: ${spring.application.name}
-
 info:
   app:
     name: ${spring.application.name}

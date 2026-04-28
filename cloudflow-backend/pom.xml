@@ -13,7 +13,6 @@
         <module>cloudflow-common</module>
         <module>cloudflow-gateway</module>
         <module>cloudflow-auth</module>
-        <module>cloudflow-service-workflow</module>
         <module>cloudflow-service-oa</module>
         <module>cloudflow-service-hr</module>
     </modules>
@@ -32,7 +31,6 @@
         <lombok.version>1.18.32</lombok.version>
         <knife4j.version>4.5.0</knife4j.version>
         <mysql.version>8.0.33</mysql.version>
-        <aws.sdk.version>2.25.16</aws.sdk.version>
         <jackson.version>2.16.1</jackson.version>
         <redisson.version>3.27.0</redisson.version>
         <aspectj.version>1.9.22.1</aspectj.version>
@@ -42,12 +40,8 @@
         <groovy.version>3.0.19</groovy.version>
         <httpclient5.version>5.2.1</httpclient5.version>
         <dynamic-ds.version>4.3.1</dynamic-ds.version>
-        <javers.version>7.6.2</javers.version>
         <gson.version>2.11.0</gson.version>
         <jsqlparser.version>4.9</jsqlparser.version>
-        <fastexcel.version>1.0.0</fastexcel.version>
-        <poi.version>5.2.5</poi.version>
-        <commons-io.version>2.16.1</commons-io.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <maven.dependency.plugin.version>3.7.0</maven.dependency.plugin.version>
     </properties>
@@ -87,15 +81,6 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <!-- AWS SDK BOM -->
-            <dependency>
-                <groupId>software.amazon.awssdk</groupId>
-                <artifactId>bom</artifactId>
-                <version>${aws.sdk.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-
             <!-- ==================== 内部模块版本管理 ==================== -->
             <dependency>
                 <groupId>com.cloudflow</groupId>
@@ -124,16 +109,6 @@
             </dependency>
             <dependency>
                 <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-log</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-audit</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.cloudflow</groupId>
                 <artifactId>cloudflow-common-idempotent</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -150,17 +125,7 @@
             <!-- 新增模块 -->
             <dependency>
                 <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-excel</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.cloudflow</groupId>
                 <artifactId>cloudflow-common-sensitive</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.cloudflow</groupId>
-                <artifactId>cloudflow-common-oss</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -214,7 +179,7 @@
                 <version>${jackson.version}</version>
             </dependency>
 
-            <!-- Gson：收敛 Javers 等库带来的版本漂移 -->
+            <!-- Gson：统一第三方 JSON 库版本 -->
             <dependency>
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
@@ -336,41 +301,6 @@
                 <version>${dynamic-ds.version}</version>
             </dependency>
 
-            <!-- Javers 对象差异比较（审计模块使用） -->
-            <dependency>
-                <groupId>org.javers</groupId>
-                <artifactId>javers-core</artifactId>
-                <version>${javers.version}</version>
-            </dependency>
-
-            <!-- Excel 导入导出：统一在根 POM 控制版本 -->
-            <dependency>
-                <groupId>cn.idev.excel</groupId>
-                <artifactId>fastexcel</artifactId>
-                <version>${fastexcel.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>cn.idev.excel</groupId>
-                <artifactId>fastexcel-core</artifactId>
-                <version>${fastexcel.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.poi</groupId>
-                <artifactId>poi</artifactId>
-                <version>${poi.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>org.apache.poi</groupId>
-                <artifactId>poi-ooxml</artifactId>
-                <version>${poi.version}</version>
-            </dependency>
-
-            <!-- 固定 commons-io 版本，避免被其他间接依赖降级后导致 POI 缺少 builder() 方法 -->
-            <dependency>
-                <groupId>commons-io</groupId>
-                <artifactId>commons-io</artifactId>
-                <version>${commons-io.version}</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -490,15 +420,9 @@
                                 <ignoredUnusedDeclaredDependency>com.baomidou:dynamic-datasource-spring-boot3-starter</ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>org.redisson:redisson-spring-boot-starter</ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>com.github.xiaoymin:knife4j-openapi3-jakarta-spring-boot-starter</ignoredUnusedDeclaredDependency>
-                                <ignoredUnusedDeclaredDependency>io.micrometer:micrometer-registry-prometheus</ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>com.mysql:mysql-connector-j</ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>com.cloudflow:cloudflow-common-*</ignoredUnusedDeclaredDependency>
                             </ignoredUnusedDeclaredDependencies>
-                            <ignoredNonTestScopedDependencies>
-                                <!-- FastExcel 传递带入的 POI 在当前项目里主要用于测试校验导出结果 -->
-                                <ignoredNonTestScopedDependency>org.apache.poi:poi</ignoredNonTestScopedDependency>
-                                <ignoredNonTestScopedDependency>org.apache.poi:poi-ooxml</ignoredNonTestScopedDependency>
-                            </ignoredNonTestScopedDependencies>
                         </configuration>
                     </execution>
                 </executions>

@@ -178,10 +178,6 @@ public class SseEmitterManager {
     /**
      * 获取所有在线用户 ID
      */
-    public java.util.Set<Long> getOnlineUserIds() {
-        return userEmitters.keySet();
-    }
-
     /**
      * 获取 SSE 连接超时时间（毫秒）
      * 从 sys_config 表读取 sys.sse.connectionTimeout（单位：秒），转换为毫秒

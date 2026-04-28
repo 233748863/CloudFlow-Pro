@@ -3,12 +3,9 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
-import com.cloudflow.hr.client.WorkflowServiceClient;
-import com.cloudflow.hr.client.dto.ProcessStartDTO;
-import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.*;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.LeaveApplication;
@@ -20,7 +17,6 @@ import com.cloudflow.hr.domain.vo.LeaveQuotaInitResultVO;
 import com.cloudflow.hr.domain.vo.LeaveQuotaVO;
 import com.cloudflow.hr.domain.vo.LeaveTypeVO;
 import com.cloudflow.hr.exception.HrBusinessException;
-import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.exception.InsufficientQuotaException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -39,14 +35,15 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -65,12 +62,16 @@ public class LeaveServiceImpl implements LeaveService {
     private final LeaveQuotaMapper leaveQuotaMapper;
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final EmployeeMapper employeeMapper;
-    private final WorkflowServiceClient workflowServiceClient;
     private final ObjectMapper objectMapper;
-    private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
 
     private static final String LEAVE_CODE_ANNUAL = "ANNUAL";
     private static final String LEAVE_CODE_COMPENSATORY = "COMPENSATORY";
+    private static final BigDecimal LEAVE_HALF_DAY = new BigDecimal("0.50");
+    private static final BigDecimal LEAVE_FULL_DAY = new BigDecimal("1.00");
+    private static final LocalTime LEAVE_AM_START = LocalTime.of(8, 0);
+    private static final LocalTime LEAVE_AM_END = LocalTime.of(12, 0);
+    private static final LocalTime LEAVE_PM_START = LocalTime.of(14, 0);
+    private static final LocalTime LEAVE_PM_END = LocalTime.of(18, 0);
 
      
     // ==================== 假期类型管理 ====================
@@ -1314,6 +1315,36 @@ public class LeaveServiceImpl implements LeaveService {
         return vo;
     }
 
+    private LeavePeriod resolveLeavePeriod(String periodType) {
+        String normalizedPeriodType = periodType == null || periodType.isBlank()
+                ? "FULL_DAY"
+                : periodType.trim().toUpperCase();
+        switch (normalizedPeriodType) {
+            case "AM":
+                return new LeavePeriod("AM", LEAVE_AM_START, LEAVE_AM_END, LEAVE_HALF_DAY);
+            case "PM":
+                return new LeavePeriod("PM", LEAVE_PM_START, LEAVE_PM_END, LEAVE_HALF_DAY);
+            case "FULL_DAY":
+                return new LeavePeriod("FULL_DAY", LEAVE_AM_START, LEAVE_PM_END, LEAVE_FULL_DAY);
+            default:
+                throw new HrBusinessException("请假时段只能选择上午、下午或全天");
+        }
+    }
+
+    private static class LeavePeriod {
+        private final String periodType;
+        private final LocalTime startTime;
+        private final LocalTime endTime;
+        private final BigDecimal duration;
+
+        private LeavePeriod(String periodType, LocalTime startTime, LocalTime endTime, BigDecimal duration) {
+            this.periodType = periodType;
+            this.startTime = startTime;
+            this.endTime = endTime;
+            this.duration = duration;
+        }
+    }
+
     
     // ==================== 请假申请管理 ====================
     
@@ -1323,8 +1354,8 @@ public class LeaveServiceImpl implements LeaveService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Long createLeaveApplication(LeaveApplicationCreateDTO dto) {
-        log.info("创建请假申请，employeeId: {}, leaveTypeId: {}, duration: {}", 
-                dto.getEmployeeId(), dto.getLeaveTypeId(), dto.getDuration());
+        log.info("创建请假申请，employeeId: {}, leaveTypeId: {}, periodType: {}",
+                dto.getEmployeeId(), dto.getLeaveTypeId(), dto.getPeriodType());
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
@@ -1338,6 +1369,17 @@ public class LeaveServiceImpl implements LeaveService {
         if (leaveType == null || !leaveType.getTenantId().equals(tenantId)) {
             throw new HrBusinessException("假期类型不存在");
         }
+
+        LeavePeriod leavePeriod = resolveLeavePeriod(dto.getPeriodType());
+        LocalDate leaveDate = dto.getStartTime().toLocalDate();
+        LocalDate endDate = dto.getEndTime().toLocalDate();
+        if (!leaveDate.equals(endDate)) {
+            throw new HrBusinessException("休假登记仅支持单日，请按天拆分提交");
+        }
+        LocalDateTime normalizedStartTime = leaveDate.atTime(leavePeriod.startTime);
+        LocalDateTime normalizedEndTime = leaveDate.atTime(leavePeriod.endTime);
+        BigDecimal normalizedDuration = normalizeQuota(leavePeriod.duration);
+        String normalizedUnit = "DAY";
         
         // 如果假期类型需要额度，验证额度是否充足
         if (leaveType.getNeedQuota()) {
@@ -1346,17 +1388,17 @@ public class LeaveServiceImpl implements LeaveService {
                         tenantId,
                         dto.getEmployeeId(),
                         leaveType,
-                        dto.getDuration(),
-                        resolveCompensatoryReferenceDate(dto.getStartTime(), dto.getEndTime())
+                        normalizedDuration,
+                        resolveCompensatoryReferenceDate(normalizedStartTime, normalizedEndTime)
                 );
             } else {
                 Map<Integer, BigDecimal> usageByYear = splitQuotaUsageByYear(
-                        dto.getStartTime(),
-                        dto.getEndTime(),
-                        dto.getDuration(),
-                        dto.getUnit()
+                        normalizedStartTime,
+                        normalizedEndTime,
+                        normalizedDuration,
+                        normalizedUnit
                 );
-                validateQuotaAvailability(tenantId, dto.getEmployeeId(), leaveType, dto.getUnit(), usageByYear);
+                validateQuotaAvailability(tenantId, dto.getEmployeeId(), leaveType, normalizedUnit, usageByYear);
             }
         }
         
@@ -1368,6 +1410,11 @@ public class LeaveServiceImpl implements LeaveService {
         BeanUtils.copyProperties(dto, leaveApplication);
         leaveApplication.setTenantId(tenantId);
         leaveApplication.setApplicationNo(applicationNo);
+        leaveApplication.setStartTime(normalizedStartTime);
+        leaveApplication.setEndTime(normalizedEndTime);
+        leaveApplication.setDuration(normalizedDuration);
+        leaveApplication.setUnit(normalizedUnit);
+        leaveApplication.setPeriodType(leavePeriod.periodType);
         leaveApplication.setStatus("DRAFT"); // 初始状态为草稿
         
         // 保存到数据库
@@ -1384,6 +1431,7 @@ public class LeaveServiceImpl implements LeaveService {
         if (leaveApplication == null || !leaveApplication.getTenantId().equals(tenantId)) {
             throw new HrBusinessException("请假申请不存在");
         }
+        ensureReadableApplication(leaveApplication, tenantId);
 
         LeaveApplicationVO vo = new LeaveApplicationVO();
         BeanUtils.copyProperties(leaveApplication, vo);
@@ -1410,7 +1458,7 @@ public class LeaveServiceImpl implements LeaveService {
 
     
     /**
-     * 提交请假申请（启动审批流程）
+     * 提交请假申请（HR轻审批）
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -1468,46 +1516,8 @@ public class LeaveServiceImpl implements LeaveService {
                     leaveApplication.getEmployeeId(), leaveApplication.getLeaveTypeId(), leaveApplication.getDuration());
         }
         
-        ProcessStartDTO processStartDTO = new ProcessStartDTO();
-        processStartDTO.setTenantId(leaveApplication.getTenantId());
-        processStartDTO.setProcessDefinitionKey(workflowProcessKeyProperties.getLeave());
-        processStartDTO.setBusinessType("LEAVE");
-        processStartDTO.setBusinessId(leaveApplication.getId());
-        processStartDTO.setBusinessNo(leaveApplication.getApplicationNo());
-        processStartDTO.setProcessTitle("请假申请-" + leaveApplication.getApplicationNo());
-        processStartDTO.setStartUserId(SecurityUtils.getUserId());
-
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("employeeId", leaveApplication.getEmployeeId());
-        variables.put("leaveTypeId", leaveApplication.getLeaveTypeId());
-        variables.put("startTime", leaveApplication.getStartTime() != null ? leaveApplication.getStartTime().toString() : null);
-        variables.put("endTime", leaveApplication.getEndTime() != null ? leaveApplication.getEndTime().toString() : null);
-        variables.put("duration", leaveApplication.getDuration());
-        variables.put("unit", leaveApplication.getUnit());
-        variables.put("reason", leaveApplication.getReason());
-        processStartDTO.setVariables(variables);
-
-        try {
-            R<String> result = workflowServiceClient.startProcess(processStartDTO);
-            if (result == null) {
-                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
-            }
-            if (!result.isSuccess()) {
-                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
-            }
-            if (result.getData() == null || result.getData().isBlank()) {
-                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 未返回流程实例ID");
-            }
-
-            leaveApplication.setStatus("APPROVING");
-            leaveApplication.setProcessInstanceId(result.getData());
-            leaveApplicationMapper.updateById(leaveApplication);
-        } catch (HrSystemException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("启动请假审批流程失败", e);
-            throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + e.getMessage(), e);
-        }
+        leaveApplication.setStatus("APPROVING");
+        leaveApplicationMapper.updateById(leaveApplication);
         
         log.info("请假申请提交成功，ID: {}", id);
     }
@@ -1516,6 +1526,7 @@ public class LeaveServiceImpl implements LeaveService {
     @Transactional(rollbackFor = Exception.class)
     public void approveLeaveApplication(Long id) {
         log.info("审批通过请假申请，ID: {}", id);
+        requireHrApprovalManager();
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
@@ -1567,6 +1578,7 @@ public class LeaveServiceImpl implements LeaveService {
     @Transactional(rollbackFor = Exception.class)
     public void rejectLeaveApplication(Long id) {
         log.info("审批拒绝请假申请，ID: {}", id);
+        requireHrApprovalManager();
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
@@ -1634,14 +1646,6 @@ public class LeaveServiceImpl implements LeaveService {
             throw new HrBusinessException("只有审批中或已通过的申请才能撤销");
         }
 
-        if ("APPROVING".equals(leaveApplication.getStatus()) && leaveApplication.getProcessInstanceId() != null
-                && !leaveApplication.getProcessInstanceId().isBlank()) {
-            R<Void> result = workflowServiceClient.cancelProcess(leaveApplication.getProcessInstanceId());
-            if (result == null || !result.isSuccess()) {
-                throw new HrSystemException("WORKFLOW_CANCEL_FAILED",
-                        "撤销审批流程失败：" + (result != null ? result.getMsg() : "Workflow 服务无响应"));
-            }
-        }
         
         // 查询假期类型
         LeaveType leaveType = leaveTypeMapper.selectById(leaveApplication.getLeaveTypeId());
@@ -1688,11 +1692,83 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
+        query.setEmployeeId(resolveReadableEmployeeId(query.getEmployeeId(), tenantId));
         
         // 创建分页对象
         Page<LeaveApplicationVO> page = new Page<>(query.getPageNum(), query.getPageSize());
         
         // 查询请假申请列表
         return leaveApplicationMapper.selectLeaveApplicationPage(page, tenantId, query);
+    }
+
+    @Override
+    public List<LeaveApplicationVO> listApprovedLeaveBoard(LocalDateTime startTime, LocalDateTime endTime) {
+        Long tenantId = SecurityUtils.getTenantId();
+        LocalDateTime start = startTime != null ? startTime : LocalDateTime.now().toLocalDate().atStartOfDay();
+        LocalDateTime end = endTime != null ? endTime : start.plusDays(30);
+        if (!end.isAfter(start)) {
+            end = start.plusDays(1);
+        }
+        return leaveApplicationMapper.selectApprovedLeaveBoard(tenantId, start, end);
+    }
+
+    private void requireHrApprovalManager() {
+        if (!canManageHrApproval()) {
+            throw new HrBusinessException("只有 HR 或管理员可以审核人事申请");
+        }
+    }
+
+    private boolean canManageHrApproval() {
+        if (SecurityUtils.isAdmin()) {
+            return true;
+        }
+        Set<String> roles = UserContext.getRoles();
+        if (roles != null) {
+            for (String role : roles) {
+                if ("HR".equalsIgnoreCase(String.valueOf(role).trim())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private Long resolveReadableEmployeeId(Long requestedEmployeeId, Long tenantId) {
+        if (canManageHrApproval()) {
+            return requestedEmployeeId;
+        }
+        Long currentEmployeeId = getCurrentEmployeeId(tenantId);
+        if (requestedEmployeeId == null) {
+            return currentEmployeeId;
+        }
+        if (!requestedEmployeeId.equals(currentEmployeeId)) {
+            throw new HrBusinessException("只能查看本人的请假申请");
+        }
+        return requestedEmployeeId;
+    }
+
+    private void ensureReadableApplication(LeaveApplication leaveApplication, Long tenantId) {
+        if (canManageHrApproval()) {
+            return;
+        }
+        Long currentEmployeeId = getCurrentEmployeeId(tenantId);
+        if (!currentEmployeeId.equals(leaveApplication.getEmployeeId())) {
+            throw new HrBusinessException("只能查看本人的请假申请");
+        }
+    }
+
+    private Long getCurrentEmployeeId(Long tenantId) {
+        Long userId = SecurityUtils.getUserId();
+        if (userId == null) {
+            throw new HrBusinessException("当前用户未登录");
+        }
+        LambdaQueryWrapper<Employee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Employee::getTenantId, tenantId)
+                .eq(Employee::getUserId, userId);
+        Employee employee = employeeMapper.selectOne(wrapper);
+        if (employee == null) {
+            throw new HrBusinessException("当前用户未关联员工档案");
+        }
+        return employee.getId();
     }
 }

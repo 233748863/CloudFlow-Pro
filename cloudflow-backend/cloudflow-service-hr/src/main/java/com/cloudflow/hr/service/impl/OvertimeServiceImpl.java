@@ -1,12 +1,9 @@
 package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
-import com.cloudflow.hr.client.WorkflowServiceClient;
-import com.cloudflow.hr.client.dto.ProcessStartDTO;
-import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.OvertimeApplicationCreateDTO;
 import com.cloudflow.hr.domain.dto.OvertimeApplicationQueryDTO;
 import com.cloudflow.hr.domain.entity.Employee;
@@ -16,7 +13,6 @@ import com.cloudflow.hr.domain.entity.OvertimeApplication;
 import com.cloudflow.hr.domain.vo.OvertimeApplicationVO;
 import com.cloudflow.hr.domain.vo.OvertimeStatisticsVO;
 import com.cloudflow.hr.exception.HrBusinessException;
-import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.LeaveQuotaMapper;
 import com.cloudflow.hr.mapper.LeaveTypeMapper;
@@ -32,16 +28,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.DayOfWeek;
+import java.time.LocalTime;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -60,17 +57,14 @@ public class OvertimeServiceImpl implements OvertimeService {
     private final EmployeeMapper employeeMapper;
     private final LeaveTypeMapper leaveTypeMapper;
     private final LeaveQuotaMapper leaveQuotaMapper;
-    private final WorkflowServiceClient workflowServiceClient;
-    private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
     private final ObjectMapper objectMapper;
 
-    // 加班转换比例配置
-    private static final BigDecimal WORKDAY_RATIO = new BigDecimal("1.0");   // 工作日加班：1:1转调休
-    private static final BigDecimal WEEKEND_RATIO = new BigDecimal("1.5");   // 周末加班：1:1.5转调休
-    private static final BigDecimal HOLIDAY_RATIO = new BigDecimal("2.0");   // 节假日加班：1:2转调休
-
-    // 每日加班时长上限（小时）
-    private static final BigDecimal DAILY_OVERTIME_LIMIT = new BigDecimal("4.0");
+    private static final BigDecimal SLOT_QUOTA_AMOUNT = new BigDecimal("0.50");
+    private static final LocalTime OVERTIME_AM_START = LocalTime.of(8, 0);
+    private static final LocalTime OVERTIME_AM_END = LocalTime.of(12, 0);
+    private static final LocalTime OVERTIME_PM_START = LocalTime.of(14, 0);
+    private static final LocalTime OVERTIME_PM_END = LocalTime.of(18, 0);
+    private static final LocalTime OVERTIME_NIGHT_START = LocalTime.of(18, 0);
 
     /**
      * 创建加班申请
@@ -91,22 +85,24 @@ public class OvertimeServiceImpl implements OvertimeService {
         }
         validateOvertimeEligibleEmployee(employee);
 
-        // 验证时间范围
-        if (dto.getEndTime().isBefore(dto.getStartTime())) {
-            throw new HrBusinessException("结束时间不能早于开始时间");
+        if (!dto.getEndTime().isAfter(dto.getStartTime())) {
+            throw new HrBusinessException("结束时间必须晚于开始时间");
         }
 
         // 计算加班时长（小时）
-        long minutes = ChronoUnit.MINUTES.between(dto.getStartTime(), dto.getEndTime());
-        BigDecimal duration = new BigDecimal(minutes).divide(new BigDecimal("60"), 2, RoundingMode.HALF_UP);
-
-        // 验证加班时长上限
-        if (duration.compareTo(DAILY_OVERTIME_LIMIT) > 0) {
-            throw new HrBusinessException("单次加班时长不能超过" + DAILY_OVERTIME_LIMIT + "小时");
-        }
+        BigDecimal duration = calculateDuration(dto.getStartTime(), dto.getEndTime());
+        OvertimeQuotaResult quotaResult = calculateOvertimeQuota(dto.getStartTime(), dto.getEndTime());
 
         // 根据加班类型和补偿类型计算补偿时长
-        BigDecimal compensationHours = calculateCompensationHours(duration, dto.getOvertimeType(), dto.getCompensationType());
+        BigDecimal compensationHours = calculateCompensationAmount(
+                duration,
+                quotaResult.getQuotaAmount(),
+                dto.getOvertimeType(),
+                dto.getCompensationType()
+        );
+        if ("TIME_OFF".equals(dto.getCompensationType()) && quotaResult.getQuotaAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new HrBusinessException("加班时间未命中可折算调休的班段");
+        }
 
         // 生成申请编号
         String applicationNo = generateApplicationNo();
@@ -118,6 +114,8 @@ public class OvertimeServiceImpl implements OvertimeService {
         application.setApplicationNo(applicationNo);
         application.setDuration(duration);
         application.setCompensationHours(compensationHours);
+        application.setQuotaAmount(quotaResult.getQuotaAmount());
+        application.setMatchedSlots(quotaResult.getMatchedSlots());
         application.setStatus("DRAFT");
 
         // 保存到数据库
@@ -145,13 +143,14 @@ public class OvertimeServiceImpl implements OvertimeService {
         }
         validateOvertimeEligibleEmployee(employee);
 
-        if (dto.getEndTime().isBefore(dto.getStartTime())) {
-            throw new HrBusinessException("结束时间不能早于开始时间");
+        if (!dto.getEndTime().isAfter(dto.getStartTime())) {
+            throw new HrBusinessException("结束时间必须晚于开始时间");
         }
 
         BigDecimal duration = calculateDuration(dto.getStartTime(), dto.getEndTime());
-        if (duration.compareTo(DAILY_OVERTIME_LIMIT) > 0) {
-            throw new HrBusinessException("单次加班时长不能超过" + DAILY_OVERTIME_LIMIT + "小时");
+        OvertimeQuotaResult quotaResult = calculateOvertimeQuota(dto.getStartTime(), dto.getEndTime());
+        if ("TIME_OFF".equals(dto.getCompensationType()) && quotaResult.getQuotaAmount().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new HrBusinessException("加班时间未命中可折算调休的班段");
         }
 
         application.setEmployeeId(dto.getEmployeeId());
@@ -161,9 +160,14 @@ public class OvertimeServiceImpl implements OvertimeService {
         application.setOvertimeType(dto.getOvertimeType());
         application.setReason(dto.getReason());
         application.setCompensationType(dto.getCompensationType());
-        application.setCompensationHours(
-                calculateCompensationHours(duration, dto.getOvertimeType(), dto.getCompensationType()));
-        application.setProcessInstanceId(null);
+        application.setCompensationHours(calculateCompensationAmount(
+                duration,
+                quotaResult.getQuotaAmount(),
+                dto.getOvertimeType(),
+                dto.getCompensationType()
+        ));
+        application.setQuotaAmount(quotaResult.getQuotaAmount());
+        application.setMatchedSlots(quotaResult.getMatchedSlots());
         application.setStatus("DRAFT");
         overtimeApplicationMapper.updateById(application);
     }
@@ -184,7 +188,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     }
 
     /**
-     * 提交加班申请（启动审批流程）
+     * 提交加班申请（HR轻审批）
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -206,63 +210,20 @@ public class OvertimeServiceImpl implements OvertimeService {
             throw new HrBusinessException("只有草稿状态的申请才能提交");
         }
 
-        // TODO: 调用Workflow服务启动审批流程
-        // String processInstanceId = workflowServiceClient.startProcess(...);
-        // application.setProcessInstanceId(processInstanceId);
-
-        // 更新状态为审批中
-        ProcessStartDTO processStartDTO = new ProcessStartDTO();
-        processStartDTO.setTenantId(application.getTenantId());
-        processStartDTO.setProcessDefinitionKey(workflowProcessKeyProperties.getOvertime());
-        processStartDTO.setBusinessType("OVERTIME");
-        processStartDTO.setBusinessId(application.getId());
-        processStartDTO.setBusinessNo(application.getApplicationNo());
-        processStartDTO.setProcessTitle("加班申请-" + application.getApplicationNo());
-        processStartDTO.setStartUserId(SecurityUtils.getUserId());
-
-        Map<String, Object> variables = new HashMap<>();
-        variables.put("employeeId", application.getEmployeeId());
-        variables.put("overtimeType", application.getOvertimeType());
-        variables.put("compensationType", application.getCompensationType());
-        variables.put("startTime", application.getStartTime() != null ? application.getStartTime().toString() : null);
-        variables.put("endTime", application.getEndTime() != null ? application.getEndTime().toString() : null);
-        variables.put("duration", application.getDuration());
-        variables.put("compensationHours", application.getCompensationHours());
-        variables.put("reason", application.getReason());
-        processStartDTO.setVariables(variables);
-
-        try {
-            R<String> result = workflowServiceClient.startProcess(processStartDTO);
-            if (result == null) {
-                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 服务无响应");
-            }
-            if (!result.isSuccess()) {
-                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + result.getMsg());
-            }
-            if (result.getData() == null || result.getData().isBlank()) {
-                throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：Workflow 未返回流程实例ID");
-            }
-
-            application.setStatus("APPROVING");
-            application.setProcessInstanceId(result.getData());
-            overtimeApplicationMapper.updateById(application);
-        } catch (HrSystemException e) {
-            throw e;
-        } catch (Exception e) {
-            log.error("启动加班审批流程失败", e);
-            throw new HrSystemException("WORKFLOW_START_FAILED", "启动审批流程失败：" + e.getMessage(), e);
-        }
+        application.setStatus("APPROVING");
+        overtimeApplicationMapper.updateById(application);
 
         log.info("加班申请提交成功，申请编号: {}", application.getApplicationNo());
     }
 
     /**
-     * 审批通过后处理（转换为调休或加班费）
+     * 审批通过后处理（登记调休额度）
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void approveOvertimeApplication(Long id) {
         log.info("审批通过加班申请，ID: {}", id);
+        requireHrApprovalManager();
 
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
@@ -299,6 +260,7 @@ public class OvertimeServiceImpl implements OvertimeService {
     @Transactional(rollbackFor = Exception.class)
     public void rejectOvertimeApplication(Long id) {
         log.info("审批拒绝加班申请，ID: {}", id);
+        requireHrApprovalManager();
 
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
@@ -340,14 +302,6 @@ public class OvertimeServiceImpl implements OvertimeService {
             throw new HrBusinessException("只有审批中或已通过的申请才能撤销");
         }
 
-        if ("APPROVING".equals(application.getStatus()) && application.getProcessInstanceId() != null
-                && !application.getProcessInstanceId().isBlank()) {
-            R<Void> result = workflowServiceClient.cancelProcess(application.getProcessInstanceId());
-            if (result == null || !result.isSuccess()) {
-                throw new HrSystemException("WORKFLOW_CANCEL_FAILED",
-                        "撤销审批流程失败：" + (result != null ? result.getMsg() : "Workflow 服务无响应"));
-            }
-        }
 
         if ("APPROVED".equals(application.getStatus()) && "TIME_OFF".equals(application.getCompensationType())) {
             removeTimeOffQuota(application);
@@ -368,11 +322,12 @@ public class OvertimeServiceImpl implements OvertimeService {
 
         // 获取当前租户ID
         Long tenantId = SecurityUtils.getTenantId();
+        Long readableEmployeeId = resolveReadableEmployeeId(query.getEmployeeId(), tenantId);
 
         // 构建查询条件
         LambdaQueryWrapper<OvertimeApplication> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(OvertimeApplication::getTenantId, tenantId)
-                    .eq(query.getEmployeeId() != null, OvertimeApplication::getEmployeeId, query.getEmployeeId())
+                    .eq(readableEmployeeId != null, OvertimeApplication::getEmployeeId, readableEmployeeId)
                     .eq(query.getOvertimeType() != null, OvertimeApplication::getOvertimeType, query.getOvertimeType())
                     .eq(query.getStatus() != null, OvertimeApplication::getStatus, query.getStatus())
                     .ge(query.getStartTimeFrom() != null, OvertimeApplication::getStartTime, query.getStartTimeFrom())
@@ -403,6 +358,7 @@ public class OvertimeServiceImpl implements OvertimeService {
         if (application == null || !application.getTenantId().equals(tenantId)) {
             throw new HrBusinessException("加班申请不存在");
         }
+        ensureReadableApplication(application, tenantId);
 
         return convertToVO(application);
     }
@@ -439,13 +395,72 @@ public class OvertimeServiceImpl implements OvertimeService {
         statistics.setHolidayHours(getBigDecimalFromMap(statisticsMap, "holidayHours"));
         statistics.setTotalHours(getBigDecimalFromMap(statisticsMap, "totalHours"));
         statistics.setTimeOffHours(getBigDecimalFromMap(statisticsMap, "timeOffHours"));
-        statistics.setPaymentHours(getBigDecimalFromMap(statisticsMap, "paymentHours"));
         statistics.setOvertimeCount(getIntegerFromMap(statisticsMap, "overtimeCount"));
 
         return statistics;
     }
 
     // ==================== 私有辅助方法 ====================
+
+    private void requireHrApprovalManager() {
+        if (!canManageHrApproval()) {
+            throw new HrBusinessException("只有 HR 或管理员可以审核人事申请");
+        }
+    }
+
+    private boolean canManageHrApproval() {
+        if (SecurityUtils.isAdmin()) {
+            return true;
+        }
+        Set<String> roles = UserContext.getRoles();
+        if (roles != null) {
+            for (String role : roles) {
+                if ("HR".equalsIgnoreCase(String.valueOf(role).trim())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private Long resolveReadableEmployeeId(Long requestedEmployeeId, Long tenantId) {
+        if (canManageHrApproval()) {
+            return requestedEmployeeId;
+        }
+        Long currentEmployeeId = getCurrentEmployeeId(tenantId);
+        if (requestedEmployeeId == null) {
+            return currentEmployeeId;
+        }
+        if (!requestedEmployeeId.equals(currentEmployeeId)) {
+            throw new HrBusinessException("只能查看本人的加班申请");
+        }
+        return requestedEmployeeId;
+    }
+
+    private void ensureReadableApplication(OvertimeApplication application, Long tenantId) {
+        if (canManageHrApproval()) {
+            return;
+        }
+        Long currentEmployeeId = getCurrentEmployeeId(tenantId);
+        if (!currentEmployeeId.equals(application.getEmployeeId())) {
+            throw new HrBusinessException("只能查看本人的加班申请");
+        }
+    }
+
+    private Long getCurrentEmployeeId(Long tenantId) {
+        Long userId = SecurityUtils.getUserId();
+        if (userId == null) {
+            throw new HrBusinessException("当前用户未登录");
+        }
+        LambdaQueryWrapper<Employee> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Employee::getTenantId, tenantId)
+                .eq(Employee::getUserId, userId);
+        Employee employee = employeeMapper.selectOne(wrapper);
+        if (employee == null) {
+            throw new HrBusinessException("当前用户未关联员工档案");
+        }
+        return employee.getId();
+    }
 
     /**
      * 计算补偿时长
@@ -460,29 +475,121 @@ public class OvertimeServiceImpl implements OvertimeService {
         return new BigDecimal(minutes).divide(new BigDecimal("60"), 2, RoundingMode.HALF_UP);
     }
 
-    private BigDecimal calculateCompensationHours(BigDecimal duration, String overtimeType, String compensationType) {
-        // 如果是加班费，补偿时长等于加班时长
-        if ("PAYMENT".equals(compensationType)) {
-            return duration;
+    private BigDecimal calculateCompensationAmount(BigDecimal duration,
+                                                   BigDecimal quotaAmount,
+                                                   String overtimeType,
+                                                   String compensationType) {
+        validateOvertimeType(overtimeType);
+        if ("TIME_OFF".equals(compensationType)) {
+            return normalizeQuotaAmount(quotaAmount);
         }
+        throw new HrBusinessException("无效的补偿类型：" + compensationType);
+    }
 
-        // 如果是调休，根据加班类型应用不同的转换比例
-        BigDecimal ratio;
+    private void validateOvertimeType(String overtimeType) {
         switch (overtimeType) {
             case "WORKDAY":
-                ratio = WORKDAY_RATIO;
-                break;
             case "WEEKEND":
-                ratio = WEEKEND_RATIO;
-                break;
             case "HOLIDAY":
-                ratio = HOLIDAY_RATIO;
-                break;
+                return;
             default:
                 throw new HrBusinessException("无效的加班类型：" + overtimeType);
         }
+    }
 
-        return duration.multiply(ratio).setScale(2, RoundingMode.HALF_UP);
+    private OvertimeQuotaResult calculateOvertimeQuota(LocalDateTime startTime, LocalDateTime endTime) {
+        List<MatchedOvertimeSlot> slots = resolveMatchedSlots(startTime, endTime);
+        BigDecimal quotaAmount = SLOT_QUOTA_AMOUNT.multiply(BigDecimal.valueOf(slots.size()))
+                .setScale(2, RoundingMode.HALF_UP);
+        String matchedSlots = slots.stream()
+                .map(MatchedOvertimeSlot::serialize)
+                .collect(Collectors.joining(","));
+        return new OvertimeQuotaResult(quotaAmount, matchedSlots);
+    }
+
+    private List<MatchedOvertimeSlot> resolveMatchedSlots(LocalDateTime startTime, LocalDateTime endTime) {
+        List<MatchedOvertimeSlot> slots = new ArrayList<>();
+        LocalDate date = startTime.toLocalDate();
+        LocalDate lastDate = endTime.toLocalDate();
+        while (!date.isAfter(lastDate)) {
+            addMatchedSlot(slots, startTime, endTime, date, "AM",
+                    date.atTime(OVERTIME_AM_START), date.atTime(OVERTIME_AM_END));
+            addMatchedSlot(slots, startTime, endTime, date, "PM",
+                    date.atTime(OVERTIME_PM_START), date.atTime(OVERTIME_PM_END));
+            addMatchedSlot(slots, startTime, endTime, date, "NIGHT",
+                    date.atTime(OVERTIME_NIGHT_START), date.plusDays(1).atStartOfDay());
+            date = date.plusDays(1);
+        }
+        return slots;
+    }
+
+    private void addMatchedSlot(List<MatchedOvertimeSlot> slots,
+                                LocalDateTime startTime,
+                                LocalDateTime endTime,
+                                LocalDate slotDate,
+                                String slotCode,
+                                LocalDateTime slotStart,
+                                LocalDateTime slotEnd) {
+        LocalDateTime overlapStart = startTime.isAfter(slotStart) ? startTime : slotStart;
+        LocalDateTime overlapEnd = endTime.isBefore(slotEnd) ? endTime : slotEnd;
+        if (overlapEnd.isAfter(overlapStart)) {
+            slots.add(new MatchedOvertimeSlot(slotDate, slotCode));
+        }
+    }
+
+    private List<MatchedOvertimeSlot> parseMatchedSlots(String matchedSlots) {
+        if (matchedSlots == null || matchedSlots.isBlank()) {
+            return List.of();
+        }
+        List<MatchedOvertimeSlot> slots = new ArrayList<>();
+        for (String rawSlot : matchedSlots.split(",")) {
+            String slot = rawSlot.trim();
+            if (slot.isBlank()) {
+                continue;
+            }
+            String[] parts = slot.split(":");
+            if (parts.length != 2) {
+                continue;
+            }
+            try {
+                slots.add(new MatchedOvertimeSlot(LocalDate.parse(parts[0]), parts[1]));
+            } catch (Exception ignored) {
+                // 旧数据格式不影响额度回滚，后续会按总额度兜底。
+            }
+        }
+        return slots;
+    }
+
+    private static class OvertimeQuotaResult {
+        private final BigDecimal quotaAmount;
+        private final String matchedSlots;
+
+        private OvertimeQuotaResult(BigDecimal quotaAmount, String matchedSlots) {
+            this.quotaAmount = quotaAmount;
+            this.matchedSlots = matchedSlots;
+        }
+
+        private BigDecimal getQuotaAmount() {
+            return quotaAmount;
+        }
+
+        private String getMatchedSlots() {
+            return matchedSlots;
+        }
+    }
+
+    private static class MatchedOvertimeSlot {
+        private final LocalDate date;
+        private final String slotCode;
+
+        private MatchedOvertimeSlot(LocalDate date, String slotCode) {
+            this.date = date;
+            this.slotCode = slotCode;
+        }
+
+        private String serialize() {
+            return date + ":" + slotCode;
+        }
     }
 
     /**
@@ -491,8 +598,8 @@ public class OvertimeServiceImpl implements OvertimeService {
      * @param application 加班申请
      */
     private void addTimeOffQuota(OvertimeApplication application) {
-        log.info("增加调休额度，员工ID: {}, 补偿时长: {}小时",
-                application.getEmployeeId(), application.getCompensationHours());
+        log.info("增加调休额度，员工ID: {}, 额度: {}天",
+                application.getEmployeeId(), resolveTimeOffQuotaAmount(application));
 
         LeaveType leaveType = getRequiredCompensatoryLeaveType(application.getTenantId());
 
@@ -534,16 +641,16 @@ public class OvertimeServiceImpl implements OvertimeService {
             }
         }
 
-        log.info("调休额度增加成功，员工ID: {}, 增加时长: {}小时",
-                application.getEmployeeId(), application.getCompensationHours());
+        log.info("调休额度增加成功，员工ID: {}, 增加额度: {}天",
+                application.getEmployeeId(), resolveTimeOffQuotaAmount(application));
     }
 
     /**
      * 撤销已通过的调休额度；如果额度已被请假冻结或使用，则不允许撤销。
      */
     private void removeTimeOffQuota(OvertimeApplication application) {
-        log.info("回滚调休额度，员工ID: {}, 补偿时长: {}小时",
-                application.getEmployeeId(), application.getCompensationHours());
+        log.info("回滚调休额度，员工ID: {}, 额度: {}天",
+                application.getEmployeeId(), resolveTimeOffQuotaAmount(application));
 
         LeaveType leaveType = getRequiredCompensatoryLeaveType(application.getTenantId());
         Map<Integer, BigDecimal> quotaByYear = splitTimeOffQuotaByYear(application);
@@ -582,8 +689,8 @@ public class OvertimeServiceImpl implements OvertimeService {
             leaveQuotaMapper.updateById(quota);
         }
 
-        log.info("调休额度回滚成功，员工ID: {}, 回滚时长: {}小时",
-                application.getEmployeeId(), application.getCompensationHours());
+        log.info("调休额度回滚成功，员工ID: {}, 回滚额度: {}天",
+                application.getEmployeeId(), resolveTimeOffQuotaAmount(application));
     }
 
     private LeaveType getRequiredCompensatoryLeaveType(Long tenantId) {
@@ -669,7 +776,19 @@ public class OvertimeServiceImpl implements OvertimeService {
      * 跨年加班按分钟占比拆分调休额度，保证各年度分摊后总额不变。
      */
     private Map<Integer, BigDecimal> splitTimeOffQuotaByYear(OvertimeApplication application) {
-        BigDecimal totalQuota = normalizeQuotaAmount(application.getCompensationHours());
+        List<MatchedOvertimeSlot> matchedSlots = parseMatchedSlots(application.getMatchedSlots());
+        if (!matchedSlots.isEmpty()) {
+            LinkedHashMap<Integer, BigDecimal> quotaByYear = new LinkedHashMap<>();
+            for (MatchedOvertimeSlot slot : matchedSlots) {
+                Integer year = slot.date.getYear();
+                quotaByYear.put(year, normalizeQuotaAmount(
+                        quotaByYear.getOrDefault(year, BigDecimal.ZERO).add(SLOT_QUOTA_AMOUNT)
+                ));
+            }
+            return quotaByYear;
+        }
+
+        BigDecimal totalQuota = resolveTimeOffQuotaAmount(application);
         if (totalQuota.compareTo(BigDecimal.ZERO) <= 0) {
             return Map.of();
         }
@@ -718,6 +837,18 @@ public class OvertimeServiceImpl implements OvertimeService {
             index++;
         }
         return splitQuota;
+    }
+
+    private BigDecimal resolveTimeOffQuotaAmount(OvertimeApplication application) {
+        BigDecimal quotaAmount = normalizeQuotaAmount(application.getQuotaAmount());
+        if (quotaAmount.compareTo(BigDecimal.ZERO) > 0) {
+            return quotaAmount;
+        }
+        BigDecimal legacyHours = normalizeQuotaAmount(application.getCompensationHours());
+        if (legacyHours.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        return legacyHours.divide(BigDecimal.valueOf(8), 2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateYearOverlapMinutes(LocalDateTime startTime, LocalDateTime endTime, int year) {
@@ -804,8 +935,6 @@ public class OvertimeServiceImpl implements OvertimeService {
         switch (compensationType) {
             case "TIME_OFF":
                 return "调休";
-            case "PAYMENT":
-                return "加班费";
             default:
                 return compensationType;
         }

@@ -6,7 +6,6 @@
 # 使用示例（在 cloudflow-backend 目录下）:
 #   docker build --build-arg MODULE_NAME=cloudflow-gateway -t cloudflow-gateway .
 #   docker build --build-arg MODULE_NAME=cloudflow-auth -t cloudflow-auth .
-#   docker build --build-arg MODULE_NAME=cloudflow-service-workflow -t cloudflow-workflow .
 #   docker build --build-arg MODULE_NAME=cloudflow-service-oa -t cloudflow-oa .
 # ============================================================
 
@@ -22,15 +21,15 @@ COPY pom.xml .
 COPY cloudflow-common/pom.xml cloudflow-common/
 COPY cloudflow-gateway/pom.xml cloudflow-gateway/
 COPY cloudflow-auth/pom.xml cloudflow-auth/
-COPY cloudflow-service-workflow/pom.xml cloudflow-service-workflow/
 COPY cloudflow-service-oa/pom.xml cloudflow-service-oa/
+COPY cloudflow-service-hr/pom.xml cloudflow-service-hr/
 
 # 复制源代码
 COPY cloudflow-common/ cloudflow-common/
 COPY cloudflow-gateway/ cloudflow-gateway/
 COPY cloudflow-auth/ cloudflow-auth/
-COPY cloudflow-service-workflow/ cloudflow-service-workflow/
 COPY cloudflow-service-oa/ cloudflow-service-oa/
+COPY cloudflow-service-hr/ cloudflow-service-hr/
 
 # 编译指定模块及其依赖
 RUN mvn clean package -DskipTests -pl ${MODULE_NAME} -am

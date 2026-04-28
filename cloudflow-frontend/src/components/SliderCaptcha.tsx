@@ -1,4 +1,4 @@
-import type { CSSProperties, KeyboardEvent } from 'react';
+﻿import type { CSSProperties, KeyboardEvent } from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
@@ -45,7 +45,7 @@ const STATUS_META: Record<
   },
   success: {
     label: '验证通过',
-    assist: '即将继续当前流程',
+    assist: '即将继续当前操作',
   },
   fail: {
     label: '位置不准确，正在刷新拼图',

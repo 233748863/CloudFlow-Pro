@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
@@ -14,53 +14,42 @@ import {
   leaveApplicationApi,
 } from '@/services/api/leaveApplication';
 import { DatePicker } from '@/components/common';
-import { toBackendDateString } from '@/utils/dateFormat';
 
 interface LeaveApplicationFormState {
   leaveTypeId?: number;
-  startValue: string;
-  endValue: string;
+  leaveDate: string;
+  periodType: LeavePeriodType;
   reason: string;
 }
 
-const buildDateTimeRange = (type: HrLeaveTypeOption | undefined, form: LeaveApplicationFormState) => {
-  if (!type) {
+type LeavePeriodType = 'AM' | 'PM' | 'FULL_DAY';
+
+const periodOptions: Array<{ label: string; value: LeavePeriodType; duration: number; start: string; end: string }> = [
+  { label: '上午', value: 'AM', duration: 0.5, start: '08:00:00', end: '12:00:00' },
+  { label: '下午', value: 'PM', duration: 0.5, start: '14:00:00', end: '18:00:00' },
+  { label: '全天', value: 'FULL_DAY', duration: 1, start: '08:00:00', end: '18:00:00' },
+];
+
+const getPeriodOption = (periodType: LeavePeriodType) =>
+  periodOptions.find((item) => item.value === periodType) || periodOptions[2];
+
+const buildDateTimeRange = (form: LeaveApplicationFormState) => {
+  if (!form.leaveDate) {
     return { startTime: '', endTime: '' };
   }
 
-  if (type.unit === 'HOUR') {
-    return {
-      startTime: toBackendDateString(form.startValue),
-      endTime: toBackendDateString(form.endValue),
-    };
-  }
-
+  const period = getPeriodOption(form.periodType);
   return {
-    startTime: `${form.startValue} 09:00:00`,
-    endTime: `${form.endValue} 18:00:00`,
+    startTime: `${form.leaveDate} ${period.start}`,
+    endTime: `${form.leaveDate} ${period.end}`,
   };
 };
 
 const calculateDuration = (type: HrLeaveTypeOption | undefined, form: LeaveApplicationFormState) => {
-  if (!type || !form.startValue || !form.endValue) {
+  if (!type || !form.leaveDate) {
     return 0;
   }
-
-  if (type.unit === 'HOUR') {
-    const start = new Date(form.startValue).getTime();
-    const end = new Date(form.endValue).getTime();
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-      return 0;
-    }
-    return Math.round(((end - start) / 3600000) * 10) / 10;
-  }
-
-  const start = new Date(`${form.startValue}T00:00:00`).getTime();
-  const end = new Date(`${form.endValue}T00:00:00`).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-    return 0;
-  }
-  return Math.floor((end - start) / 86400000) + 1;
+  return getPeriodOption(form.periodType).duration;
 };
 
 const getLeaveTypeTone = (leaveCode?: string) => {
@@ -86,8 +75,8 @@ export const MobileLeaveApplication: React.FC = () => {
   const [loadingTypes, setLoadingTypes] = useState(true);
   const [leaveTypes, setLeaveTypes] = useState<HrLeaveTypeOption[]>([]);
   const [form, setForm] = useState<LeaveApplicationFormState>({
-    startValue: '',
-    endValue: '',
+    leaveDate: '',
+    periodType: 'FULL_DAY',
     reason: '',
   });
   const {
@@ -114,8 +103,7 @@ export const MobileLeaveApplication: React.FC = () => {
         setForm((prev) => ({
           ...prev,
           leaveTypeId: prev.leaveTypeId ?? firstType.id,
-          startValue: prev.startValue || today,
-          endValue: prev.endValue || today,
+          leaveDate: prev.leaveDate || today,
         }));
       }
     } catch (error) {
@@ -137,7 +125,7 @@ export const MobileLeaveApplication: React.FC = () => {
       return false;
     }
     if (!canStartSelfService) {
-      toast.error(restrictionMessage || '当前账号暂时不能发起 HR 自助流程');
+      toast.error(restrictionMessage || '当前账号暂时不能发起 HR 自助申请');
       return false;
     }
     return true;
@@ -149,11 +137,11 @@ export const MobileLeaveApplication: React.FC = () => {
     if (!selectedType) {
       return '请选择请假类型';
     }
-    if (!form.startValue || !form.endValue) {
-      return selectedType.unit === 'HOUR' ? '请选择开始和结束时间' : '请选择开始和结束日期';
+    if (!form.leaveDate) {
+      return '请选择请假日期';
     }
     if (duration <= 0) {
-      return selectedType.unit === 'HOUR' ? '结束时间必须晚于开始时间' : '结束日期不能早于开始日期';
+      return '请选择请假时段';
     }
     if (form.reason.trim().length < 2) {
       return '请输入请假原因（至少 2 个字符）';
@@ -176,7 +164,7 @@ export const MobileLeaveApplication: React.FC = () => {
       return;
     }
 
-    const { startTime, endTime } = buildDateTimeRange(selectedType, form);
+    const { startTime, endTime } = buildDateTimeRange(form);
 
     setSubmitting(true);
     try {
@@ -185,7 +173,8 @@ export const MobileLeaveApplication: React.FC = () => {
         startTime,
         endTime,
         duration,
-        unit: selectedType.unit || 'DAY',
+        unit: 'DAY',
+        periodType: form.periodType,
         reason: form.reason.trim(),
       });
       const leaveId = createRes?.id;
@@ -193,7 +182,7 @@ export const MobileLeaveApplication: React.FC = () => {
         throw new Error('创建请假申请失败');
       }
       await leaveApplicationApi.submit(leaveId);
-      toast.success('请假申请已提交，等待审批');
+      toast.success('请假申请已提交，等待 HR 审批');
       navigate('/dashboard');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '提交失败，请稍后重试');
@@ -237,7 +226,7 @@ export const MobileLeaveApplication: React.FC = () => {
                 <AlertCircle size={16} />
               </div>
               <div>
-                <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助流程</div>
+                <div className="text-sm font-semibold">当前账号暂时不能继续发起 HR 自助申请</div>
                 <div className="mt-1 text-xs leading-5 text-amber-800">{restrictionMessage}</div>
               </div>
             </div>
@@ -273,27 +262,37 @@ export const MobileLeaveApplication: React.FC = () => {
           <div className="mt-3 grid grid-cols-1 gap-3">
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                {selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}
+                请假日期
               </label>
               <DatePicker
-                type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
-                value={form.startValue}
+                type="date"
+                value={form.leaveDate}
                 onChange={(event) =>
-                  setForm((prev) => ({ ...prev, startValue: event.target.value }))
+                  setForm((prev) => ({ ...prev, leaveDate: event.target.value }))
                 }
               />
             </div>
             <div>
               <label className="mb-1 block text-sm font-medium text-slate-700">
-                {selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}
+                请假时段
               </label>
-              <DatePicker
-                type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
-                value={form.endValue}
-                onChange={(event) =>
-                  setForm((prev) => ({ ...prev, endValue: event.target.value }))
-                }
-              />
+              <div className="grid grid-cols-3 gap-2">
+                {periodOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setForm((prev) => ({ ...prev, periodType: option.value }))}
+                    disabled={selfServiceLocked}
+                    className={`rounded-2xl border px-3 py-2.5 text-sm font-medium transition-all ${
+                      form.periodType === option.value
+                        ? 'border-pink-500 bg-pink-50 text-pink-500'
+                        : 'border-slate-200 text-slate-600'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
@@ -325,12 +324,10 @@ export const MobileLeaveApplication: React.FC = () => {
                 <div>
                   时长：
                   <span className={`ml-1 rounded-full px-2 py-0.5 text-xs font-semibold ${getLeaveTypeTone(selectedType?.leaveCode)}`}>
-                    {duration > 0 ? `${duration} ${selectedType?.unit === 'HOUR' ? '小时' : '天'}` : '未计算'}
+                    {duration > 0 ? `${duration} 天` : '未计算'}
                   </span>
                 </div>
-                <div className="mt-1 text-xs text-slate-500">
-                  后端将按 HR 请假类型配置的正式单位和额度规则处理，不再拼装兼容字段。
-                </div>
+                <div className="mt-1 text-xs text-slate-500">时段：{getPeriodOption(form.periodType).label}</div>
               </div>
             </div>
           </div>

@@ -15,8 +15,8 @@
             la.end_time,
             la.duration,
             la.unit,
+            la.period_type,
             la.reason,
-            la.process_instance_id,
             la.status,
             la.create_time,
             la.update_time
@@ -41,6 +41,31 @@
             AND la.start_time &lt;= #{query.startTimeTo}
         </if>
         ORDER BY la.create_time DESC
+    </select>
+
+    <select id="selectApprovedLeaveBoard" resultType="com.cloudflow.hr.domain.vo.LeaveApplicationVO">
+        SELECT
+            la.id,
+            la.employee_id,
+            e.name AS employee_name,
+            la.leave_type_id,
+            lt.leave_name AS leave_type_name,
+            la.start_time,
+            la.end_time,
+            la.duration,
+            la.unit,
+            la.period_type,
+            la.status
+        FROM hr_leave_application la
+        LEFT JOIN hr_employee e ON la.employee_id = e.id
+        LEFT JOIN hr_leave_type lt ON la.leave_type_id = lt.id
+        WHERE la.tenant_id = #{tenantId}
+          AND la.deleted = 0
+          AND la.status = 'APPROVED'
+          AND la.start_time &lt; #{endTime}
+          AND la.end_time &gt;= #{startTime}
+        ORDER BY la.start_time ASC, la.end_time ASC, la.id ASC
+        LIMIT 20
     </select>
 
 </mapper>

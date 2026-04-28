@@ -179,10 +179,6 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     /**
      * 获取在线用户数量
      */
-    public int getOnlineUserCount() {
-        return userSessions.size();
-    }
-
     /**
      * 判断指定用户是否在线
      */

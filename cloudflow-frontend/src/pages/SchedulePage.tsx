@@ -17,7 +17,6 @@ import {
   Clock3,
   Eye,
   FileText,
-  MapPin,
   Plus,
   RotateCcw,
   Search,
@@ -50,8 +49,8 @@ import { Pagination } from '@/components/common/Pagination';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { useAuth } from '../context/AuthContext';
-import { createEvent, deleteEvent, getMeetingRooms, getMyEvents } from '../services/api/schedule';
-import type { MeetingRoom, SysScheduleEvent } from '../types';
+import { createEvent, deleteEvent, getMyEvents } from '../services/api/schedule';
+import type { SysScheduleEvent } from '../types';
 import {
   parseBackendDate,
   toBackendDateString,
@@ -69,8 +68,6 @@ interface CalendarEventExtendedProps {
   originalTitle: string;
   description?: string;
   type: ScheduleEventType;
-  roomId?: string;
-  roomName?: string | null;
   startTime: string;
   endTime: string;
 }
@@ -116,7 +113,7 @@ const EVENT_TYPE_META: Record<
     color: '#06b6d4',
     badgeClass: 'bg-cyan-500/10 text-cyan-700 ring-1 ring-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-900',
     softClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
-    hint: '适合评审、同步和客户沟通等需要明确地点或固定时段的安排。',
+    hint: '适合评审、同步和客户沟通等固定时段安排。',
   },
   WORK: {
     label: '工作',
@@ -327,22 +324,11 @@ const toSelectedEvent = (event: ScheduleCalendarEvent): SelectedEventDetail => (
   title: event.extendedProps.originalTitle,
   description: event.extendedProps.description,
   type: event.extendedProps.type,
-  roomId: event.extendedProps.roomId,
-  roomName: event.extendedProps.roomName,
   startTime: event.extendedProps.startTime,
   endTime: event.extendedProps.endTime,
   allDay: event.allDay,
   originalTitle: event.extendedProps.originalTitle,
 });
-
-const getLocationLabel = (type: ScheduleEventType, roomName?: string | null) => {
-  if (roomName) return roomName;
-  return type === 'MEETING' ? '未绑定会议室' : '个人安排';
-};
-
-const getEventLocationLabel = (event: ScheduleCalendarEvent) => {
-  return getLocationLabel(event.extendedProps.type, event.extendedProps.roomName);
-};
 
 const matchesTableScope = (event: ScheduleCalendarEvent, scope: ScheduleFilterScope, now: Date) => {
   switch (scope) {
@@ -363,7 +349,6 @@ const getEventSearchText = (event: ScheduleCalendarEvent) =>
   [
     event.extendedProps.originalTitle,
     event.extendedProps.description,
-    event.extendedProps.roomName,
     EVENT_TYPE_META[event.extendedProps.type].label,
   ]
     .filter(Boolean)
@@ -483,7 +468,6 @@ export const SchedulePage = () => {
   const currentViewRange = useRef<{ start: Date; end: Date } | null>(null);
 
   const [events, setEvents] = useState<ScheduleCalendarEvent[]>([]);
-  const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [calendarViewMode, setCalendarViewMode] = useState<CalendarViewMode>('dayGridMonth');
   const [calendarTitle, setCalendarTitle] = useState('');
   const [calendarWindowLabel, setCalendarWindowLabel] = useState('');
@@ -498,13 +482,7 @@ export const SchedulePage = () => {
   const [tableFilters, setTableFilters] = useState<ScheduleTableFilters>(DEFAULT_TABLE_FILTERS);
   const [tablePageNum, setTablePageNum] = useState(1);
 
-  const getRoomName = (roomId?: string, rooms: MeetingRoom[] = meetingRooms) => {
-    if (!roomId) return null;
-    const room = rooms.find(item => String(item.roomId) === String(roomId));
-    return room?.name || `会议室 ${roomId}`;
-  };
-
-  const fetchEvents = async (start: Date, end: Date, rooms: MeetingRoom[] = meetingRooms) => {
+  const fetchEvents = async (start: Date, end: Date) => {
     setIsLoadingEvents(true);
     setLoadError(null);
     try {
@@ -526,8 +504,6 @@ export const SchedulePage = () => {
               originalTitle: item.title,
               description: item.description,
               type: item.type,
-              roomId: item.roomId,
-              roomName: getRoomName(item.roomId, rooms),
               startTime: item.startTime,
               endTime: item.endTime,
             },
@@ -547,27 +523,6 @@ export const SchedulePage = () => {
       await fetchEvents(currentViewRange.current.start, currentViewRange.current.end);
     }
   };
-
-  useEffect(() => {
-    let active = true;
-    const loadRooms = async () => {
-      try {
-        const rooms = await getMeetingRooms();
-        if (!active) return;
-        const safeRooms = Array.isArray(rooms) ? rooms : [];
-        setMeetingRooms(safeRooms);
-        if (currentViewRange.current) {
-          void fetchEvents(currentViewRange.current.start, currentViewRange.current.end, safeRooms);
-        }
-      } catch (error) {
-        console.error('加载会议室失败', error);
-      }
-    };
-    void loadRooms();
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const openCreateDrawer = (range?: { start: Date; end: Date; allDay?: boolean } | null) => {
     setSelectedEvent(null);
@@ -601,8 +556,6 @@ export const SchedulePage = () => {
       title: clickInfo.event.extendedProps.originalTitle || clickInfo.event.title,
       description: clickInfo.event.extendedProps.description,
       type: clickInfo.event.extendedProps.type,
-      roomId: clickInfo.event.extendedProps.roomId,
-      roomName: clickInfo.event.extendedProps.roomName,
       startTime: clickInfo.event.extendedProps.startTime,
       endTime: clickInfo.event.extendedProps.endTime,
       allDay: clickInfo.event.allDay,
@@ -640,7 +593,6 @@ export const SchedulePage = () => {
     setForm(prev => ({
       ...prev,
       type: nextType,
-      roomId: nextType === 'MEETING' ? prev.roomId : undefined,
     }));
   };
 
@@ -819,7 +771,6 @@ export const SchedulePage = () => {
     form.startTime && form.endTime
       ? formatDateRange(form.startTime, form.endTime, Boolean(form.isAllDay))
       : selectionSummary;
-  const draftMeetingRoomLabel = form.roomId ? getRoomName(form.roomId) : null;
   const selectedEventTimingMeta = selectedEvent ? getEventTimingMeta(selectedEvent, now) : null;
   const listSummary = [
     tableScopeLabel,
@@ -839,7 +790,7 @@ export const SchedulePage = () => {
                 <Search size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input
                   type="text"
-                  placeholder="按标题、备注或会议室搜索"
+                  placeholder="按标题、备注或类型搜索"
                   value={tableFilters.keyword}
                   onChange={event => {
                     setTableFilters(prev => ({ ...prev, keyword: event.target.value }));
@@ -1034,11 +985,59 @@ export const SchedulePage = () => {
                   }
                   .schedule-calendar .fc-event {
                     cursor: pointer;
-                    border: none !important;
+                    border: 1px solid rgba(226, 232, 240, 0.95) !important;
                     border-radius: 10px !important;
                     box-shadow: none !important;
+                    overflow: hidden;
                   }
-                  .schedule-calendar .fc-event-main { padding: 0 !important; }
+                  .schedule-calendar .fc-event-main {
+                    padding: 0 !important;
+                    color: inherit !important;
+                  }
+                  .schedule-calendar .fc-daygrid-event {
+                    margin: 1px 6px 2px;
+                  }
+                  .schedule-calendar .cf-event--meeting {
+                    background: #ecfeff !important;
+                    border-color: #a5f3fc !important;
+                    color: #155e75 !important;
+                  }
+                  .schedule-calendar .cf-event--work {
+                    background: #ecfdf5 !important;
+                    border-color: #a7f3d0 !important;
+                    color: #047857 !important;
+                  }
+                  .schedule-calendar .cf-event--personal {
+                    background: #fffbeb !important;
+                    border-color: #fde68a !important;
+                    color: #92400e !important;
+                  }
+                  .dark .schedule-calendar .cf-event--meeting {
+                    background: rgba(8, 145, 178, 0.22) !important;
+                    border-color: rgba(14, 116, 144, 0.72) !important;
+                    color: #cffafe !important;
+                  }
+                  .dark .schedule-calendar .cf-event--work {
+                    background: rgba(5, 150, 105, 0.22) !important;
+                    border-color: rgba(4, 120, 87, 0.72) !important;
+                    color: #d1fae5 !important;
+                  }
+                  .dark .schedule-calendar .cf-event--personal {
+                    background: rgba(217, 119, 6, 0.22) !important;
+                    border-color: rgba(180, 83, 9, 0.72) !important;
+                    color: #fef3c7 !important;
+                  }
+                  .schedule-calendar .cf-calendar-event-content {
+                    color: inherit;
+                  }
+                  .schedule-calendar .cf-calendar-event-time {
+                    color: currentColor;
+                    opacity: 0.72;
+                  }
+                  .schedule-calendar .cf-calendar-event-dot {
+                    background: currentColor;
+                    opacity: 0.82;
+                  }
                   .schedule-calendar .fc-timegrid-axis,
                   .schedule-calendar .fc-timegrid-slot-label-cushion {
                     color: #94a3b8;
@@ -1071,15 +1070,13 @@ export const SchedulePage = () => {
                   eventContent={(eventInfo: EventContentArg) => {
                     const type = eventInfo.event.extendedProps.type as ScheduleEventType;
                     const title = eventInfo.event.extendedProps.originalTitle || eventInfo.event.title;
-                    const roomName = eventInfo.event.extendedProps.roomName as string | undefined;
-
                     if (eventInfo.view.type === 'dayGridMonth') {
                       return (
-                        <div className="flex items-center gap-1.5 px-2 py-1 text-[11px] font-medium text-white">
+                        <div className="cf-calendar-event-content flex items-center gap-1.5 px-2 py-1 text-[11px] font-semibold">
                           {eventInfo.timeText ? (
-                            <span className="shrink-0 text-white/80">{eventInfo.timeText}</span>
+                            <span className="cf-calendar-event-time shrink-0">{eventInfo.timeText}</span>
                           ) : (
-                            <span className="h-1.5 w-1.5 rounded-full bg-white/70" />
+                            <span className="cf-calendar-event-dot h-1.5 w-1.5 rounded-full" />
                           )}
                           <span className="truncate">{title}</span>
                         </div>
@@ -1087,12 +1084,11 @@ export const SchedulePage = () => {
                     }
 
                     return (
-                      <div className="px-2 py-1.5 text-white">
-                        <div className="text-[11px] font-medium text-white/80">
+                      <div className="cf-calendar-event-content px-2 py-1.5">
+                        <div className="cf-calendar-event-time text-[11px] font-medium">
                           {eventInfo.timeText || EVENT_TYPE_META[type].label}
                         </div>
                         <div className="truncate text-sm font-semibold leading-5">{title}</div>
-                        {roomName ? <div className="truncate text-[11px] text-white/80">{roomName}</div> : null}
                       </div>
                     );
                   }}
@@ -1120,17 +1116,16 @@ export const SchedulePage = () => {
                     <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                       <TableHead>主题</TableHead>
                       <TableHead>时间</TableHead>
-                      <TableHead>地点</TableHead>
                       <TableHead>状态</TableHead>
                       <TableActionHead className="w-40 text-right">操作</TableActionHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {isLoadingEvents ? (
-                      <TableStateRow colSpan={5} title="正在加载日程列表..." loading />
+                      <TableStateRow colSpan={4} title="正在加载日程列表..." loading />
                     ) : tablePageEvents.length === 0 ? (
                       <TableStateRow
-                        colSpan={5}
+                        colSpan={4}
                         icon={<Calendar size={18} />}
                         title={tableHasActiveFilters ? '当前筛选下暂无匹配日程' : '当前视图暂无日程记录'}
                         description={
@@ -1167,12 +1162,6 @@ export const SchedulePage = () => {
                               <div>{formatEventSlot(event)}</div>
                               <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
                                 {getDurationLabel(event.extendedProps.startTime, event.extendedProps.endTime, event.allDay)}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3.5 text-sm text-slate-600 dark:text-slate-300">
-                              <div className="inline-flex items-center gap-1.5">
-                                <MapPin size={14} className="text-slate-400 dark:text-slate-500" />
-                                <span>{getEventLocationLabel(event)}</span>
                               </div>
                             </TableCell>
                             <TableCell className="py-3.5">
@@ -1272,42 +1261,12 @@ export const SchedulePage = () => {
               </Select>
             </div>
 
-            {form.type === 'MEETING' ? (
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">会议室 / 地点</Label>
-                <Select
-                  value={form.roomId || 'NONE'}
-                  onValueChange={value =>
-                    setForm(prev => ({
-                      ...prev,
-                      roomId: value === 'NONE' ? undefined : value,
-                    }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择会议室" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NONE">暂不绑定会议室</SelectItem>
-                    {meetingRooms.map(room => (
-                      <SelectItem key={String(room.roomId)} value={String(room.roomId)}>
-                        {room.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-slate-500 dark:text-slate-400">
-                  {meetingRooms.length > 0 ? `当前可选 ${meetingRooms.length} 间会议室` : '当前没有可选会议室'}
-                </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">登记方式</div>
+              <div className="mt-1.5 text-sm text-slate-700 dark:text-slate-300">
+                仅登记个人日程，不绑定额外办公资源。
               </div>
-            ) : (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-400">会议室 / 地点</div>
-                <div className="mt-1.5 text-sm text-slate-700 dark:text-slate-300">
-                  非会议事项无需绑定会议室。
-                </div>
-              </div>
-            )}
+            </div>
           </div>
 
           <div className="space-y-4 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
@@ -1391,9 +1350,7 @@ export const SchedulePage = () => {
             )}
 
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              {form.type === 'MEETING'
-                ? `当前类型：会议预约${draftMeetingRoomLabel ? ` · ${draftMeetingRoomLabel}` : ''}`
-                : '当前类型无需绑定会议室。'}
+              当前仅登记日程时间和说明。
             </div>
           </div>
 
@@ -1456,12 +1413,6 @@ export const SchedulePage = () => {
                 <div className="text-xs font-medium text-slate-500 dark:text-slate-400">预计占用</div>
                 <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">
                   {getDurationLabel(selectedEvent.startTime, selectedEvent.endTime, selectedEvent.allDay)}
-                </div>
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                <div className="text-xs font-medium text-slate-500 dark:text-slate-400">会议室 / 地点</div>
-                <div className="mt-1.5 text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {getLocationLabel(selectedEvent.type, selectedEvent.roomName)}
                 </div>
               </div>
               <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">

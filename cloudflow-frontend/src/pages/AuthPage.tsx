@@ -177,9 +177,9 @@ export const AuthPage: React.FC = () => {
         <div className="cf-auth-container">
           <div className="cf-auth-brand">
             <div className="cf-auth-brand__logo">
-              <img src="/icon.svg" alt="CloudFlow Pro" className="cf-auth-brand__image" />
+              <img src="/icon.svg" alt="新元社区" className="cf-auth-brand__image" />
             </div>
-            <h1 className="cf-auth-brand__title">CloudFlow Pro</h1>
+            <h1 className="cf-auth-brand__title">新元社区</h1>
             <p className="cf-auth-brand__subtitle">社区协同办公统一入口</p>
           </div>
 
@@ -434,7 +434,7 @@ export const AuthPage: React.FC = () => {
             )}
           </div>
 
-          <div className="cf-auth-copyright">© {currentYear} CloudFlow Pro. All rights reserved.</div>
+          <div className="cf-auth-copyright">© {currentYear} 新元社区 版权所有</div>
         </div>
       </div>
 

@@ -1,9 +1,8 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Calendar,
   ClipboardList,
-  Download,
   Eye,
   Plus,
   RotateCcw,
@@ -17,14 +16,12 @@ import {
   LeaveApplicationForm,
 } from '@/services/api/leaveApplication';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
-import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
+import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { ProcessTrace } from '@/components/ProcessTrace';
 import {
   Button,
   DatePicker,
@@ -42,8 +39,8 @@ import { TableRowActions } from '@/components/common/table-row-actions';
 
 interface LeaveApplicationDraftForm {
   leaveTypeId?: number;
-  startValue: string;
-  endValue: string;
+  leaveDate: string;
+  periodType: LeavePeriodType;
   reason: string;
 }
 
@@ -76,6 +73,19 @@ interface ConfirmState {
 }
 
 const ALL_FILTER_VALUE = '__all__';
+type LeavePeriodType = 'AM' | 'PM' | 'FULL_DAY';
+
+const periodTypeMap: Record<string, string> = {
+  AM: '上午',
+  PM: '下午',
+  FULL_DAY: '全天',
+};
+
+const periodTimeMap: Record<LeavePeriodType, { start: string; end: string; duration: number }> = {
+  AM: { start: '08:00:00', end: '12:00:00', duration: 0.5 },
+  PM: { start: '14:00:00', end: '18:00:00', duration: 0.5 },
+  FULL_DAY: { start: '08:00:00', end: '18:00:00', duration: 1 },
+};
 
 const statusMap: Record<string, string> = {
   DRAFT: '草稿',
@@ -135,55 +145,26 @@ const toDateValue = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
-const toDateTimeValue = (date: Date) => {
-  const year = date.getFullYear();
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
-  const day = `${date.getDate()}`.padStart(2, '0');
-  const hour = `${date.getHours()}`.padStart(2, '0');
-  const minute = `${date.getMinutes()}`.padStart(2, '0');
-  return `${year}-${month}-${day}T${hour}:${minute}`;
-};
-
 const buildEmptyForm = (type?: HrLeaveTypeOption): LeaveApplicationDraftForm => {
-  const now = new Date();
-  const oneHourLater = new Date(now.getTime() + 60 * 60 * 1000);
-
-  if (type?.unit === 'HOUR') {
-    return {
-      leaveTypeId: type.id,
-      startValue: toDateTimeValue(now),
-      endValue: toDateTimeValue(oneHourLater),
-      reason: '',
-    };
-  }
-
-  const today = toDateValue(now);
   return {
     leaveTypeId: type?.id,
-    startValue: today,
-    endValue: today,
+    leaveDate: toDateValue(new Date()),
+    periodType: 'FULL_DAY',
     reason: '',
   };
 };
 
 const buildDateTimeRange = (
-  type: HrLeaveTypeOption | undefined,
   form: LeaveApplicationDraftForm,
 ) => {
-  if (!type) {
+  if (!form.leaveDate) {
     return { startTime: '', endTime: '' };
   }
 
-  if (type.unit === 'HOUR') {
-    return {
-      startTime: toBackendDateString(form.startValue),
-      endTime: toBackendDateString(form.endValue),
-    };
-  }
-
+  const period = periodTimeMap[form.periodType] || periodTimeMap.FULL_DAY;
   return {
-    startTime: `${form.startValue} 09:00:00`,
-    endTime: `${form.endValue} 18:00:00`,
+    startTime: `${form.leaveDate} ${period.start}`,
+    endTime: `${form.leaveDate} ${period.end}`,
   };
 };
 
@@ -191,29 +172,17 @@ const calculateDuration = (
   type: HrLeaveTypeOption | undefined,
   form: LeaveApplicationDraftForm,
 ) => {
-  if (!type || !form.startValue || !form.endValue) {
+  if (!type || !form.leaveDate) {
     return 0;
   }
-
-  if (type.unit === 'HOUR') {
-    const start = new Date(form.startValue).getTime();
-    const end = new Date(form.endValue).getTime();
-    if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
-      return 0;
-    }
-    return Math.round(((end - start) / 3600000) * 10) / 10;
-  }
-
-  const start = new Date(`${form.startValue}T00:00:00`).getTime();
-  const end = new Date(`${form.endValue}T00:00:00`).getTime();
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
-    return 0;
-  }
-  return Math.floor((end - start) / 86400000) + 1;
+  return periodTimeMap[form.periodType]?.duration || 1;
 };
 
 const formatDuration = (item: LeaveApplication) =>
   `${item.duration}${unitMap[item.unit || ''] || item.unit || ''}`;
+
+const formatPeriodType = (periodType?: string) =>
+  periodType ? periodTypeMap[periodType] || periodType : '-';
 
 export const LeaveApplicationPage: React.FC = () => {
   const [list, setList] = useState<LeaveApplication[]>([]);
@@ -239,8 +208,8 @@ export const LeaveApplicationPage: React.FC = () => {
     restrictionMessage,
   } = useHrSelfServiceEligibility();
   const [formData, setFormData] = useState<LeaveApplicationDraftForm>({
-    startValue: '',
-    endValue: '',
+    leaveDate: '',
+    periodType: 'FULL_DAY',
     reason: '',
   });
 
@@ -292,7 +261,7 @@ export const LeaveApplicationPage: React.FC = () => {
       return false;
     }
     if (!canStartSelfService) {
-      toast.error(restrictionMessage || '当前账号暂时不能发起 HR 自助流程');
+      toast.error(restrictionMessage || '当前账号暂时不能发起 HR 自助申请');
       return false;
     }
     return true;
@@ -381,21 +350,10 @@ export const LeaveApplicationPage: React.FC = () => {
     }
 
     setFormData((prev) => {
-      if (nextType.unit === 'HOUR') {
-        const hourForm = buildEmptyForm(nextType);
-        return {
-          ...prev,
-          leaveTypeId: nextType.id,
-          startValue: prev.startValue.includes('T') ? prev.startValue : hourForm.startValue,
-          endValue: prev.endValue.includes('T') ? prev.endValue : hourForm.endValue,
-        };
-      }
-
       return {
         ...prev,
         leaveTypeId: nextType.id,
-        startValue: prev.startValue ? prev.startValue.slice(0, 10) : buildEmptyForm(nextType).startValue,
-        endValue: prev.endValue ? prev.endValue.slice(0, 10) : buildEmptyForm(nextType).endValue,
+        leaveDate: prev.leaveDate || buildEmptyForm(nextType).leaveDate,
       };
     });
   };
@@ -404,15 +362,11 @@ export const LeaveApplicationPage: React.FC = () => {
     if (!selectedType) {
       return '请选择请假类型';
     }
-    if (!formData.startValue || !formData.endValue) {
-      return selectedType.unit === 'HOUR'
-        ? '请选择开始和结束时间'
-        : '请选择开始和结束日期';
+    if (!formData.leaveDate) {
+      return '请选择请假日期';
     }
     if (duration <= 0) {
-      return selectedType.unit === 'HOUR'
-        ? '结束时间必须晚于开始时间'
-        : '结束日期不能早于开始日期';
+      return '请选择请假时段';
     }
     if (formData.reason.trim().length < 2) {
       return '请输入请假原因，至少 2 个字符';
@@ -431,13 +385,14 @@ export const LeaveApplicationPage: React.FC = () => {
       return null;
     }
 
-    const { startTime, endTime } = buildDateTimeRange(selectedType, formData);
+    const { startTime, endTime } = buildDateTimeRange(formData);
     return {
       leaveTypeId: selectedType.id,
       startTime,
       endTime,
       duration,
-      unit: selectedType.unit || 'DAY',
+      unit: 'DAY',
+      periodType: formData.periodType,
       reason: formData.reason.trim(),
     };
   };
@@ -482,7 +437,7 @@ export const LeaveApplicationPage: React.FC = () => {
         throw new Error('创建请假申请失败');
       }
       await leaveApplicationApi.submit(createRes.id);
-      toast.success('请假申请已提交，等待审批');
+      toast.success('请假申请已提交，等待 HR 审批');
       setShowDialog(false);
       await fetchList();
     } catch (error) {
@@ -500,7 +455,7 @@ export const LeaveApplicationPage: React.FC = () => {
       type: 'submit',
       id,
       title: '提交请假草稿',
-      message: '提交后将进入审批流程。',
+      message: '提交后将进入 HR 审批。',
       confirmText: '提交',
     });
   };
@@ -513,7 +468,7 @@ export const LeaveApplicationPage: React.FC = () => {
       type: 'cancel',
       id,
       title: '撤销请假申请',
-      message: '撤销后当前申请将结束流转。',
+      message: '撤销后当前申请将结束审批。',
       confirmText: '撤销',
     });
   };
@@ -539,25 +494,6 @@ export const LeaveApplicationPage: React.FC = () => {
       toast.error(
         getErrorMessage(error, currentState.type === 'submit' ? '提交失败' : '撤销失败'),
       );
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const blob = await leaveApplicationApi.export({
-        pageNum: 1,
-        pageSize: 500,
-        status: searchParams.status || undefined,
-        leaveTypeId: searchParams.leaveTypeId ? Number(searchParams.leaveTypeId) : undefined,
-      });
-      const fileName = downloadBlob(blob, buildExcelFileName('请假申请'));
-      toast.success(
-        total > 0
-          ? `已导出 ${total} 条请假申请，下载文件：${fileName}`
-          : `已导出空结果，下载文件：${fileName}`,
-      );
-    } catch (error) {
-      toast.error(getErrorMessage(error, '导出失败'));
     }
   };
 
@@ -656,10 +592,6 @@ export const LeaveApplicationPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
-                <Download size={14} className="mr-1.5" />
-                导出
-              </Button>
               <Button size="sm" onClick={openCreateDialog} disabled={selfServiceLocked}>
                 <Plus size={14} className="mr-1.5" />
                 新建申请
@@ -717,6 +649,7 @@ export const LeaveApplicationPage: React.FC = () => {
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
                           <div>{formatDateTimeDisplay(item.startTime)}</div>
                           <div className="text-xs text-slate-400 dark:text-slate-500">{formatDateTimeDisplay(item.endTime)}</div>
+                          <div className="text-xs text-slate-400 dark:text-slate-500">{formatPeriodType(item.periodType)}</div>
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
                           {formatDuration(item)}
@@ -827,36 +760,43 @@ export const LeaveApplicationPage: React.FC = () => {
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {selectedType?.unit === 'HOUR' ? '开始时间' : '开始日期'}
+                请假日期
               </label>
               <DatePicker
                 className="h-11 rounded-xl"
-                type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
-                value={formData.startValue}
+                type="date"
+                value={formData.leaveDate}
                 onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, startValue: event.target.value }))
+                  setFormData((prev) => ({ ...prev, leaveDate: event.target.value }))
                 }
               />
             </div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                {selectedType?.unit === 'HOUR' ? '结束时间' : '结束日期'}
+                请假时段
               </label>
-              <DatePicker
-                className="h-11 rounded-xl"
-                type={selectedType?.unit === 'HOUR' ? 'datetime-local' : 'date'}
-                value={formData.endValue}
-                onChange={(event) =>
-                  setFormData((prev) => ({ ...prev, endValue: event.target.value }))
+              <Select
+                value={formData.periodType}
+                onValueChange={(value) =>
+                  setFormData((prev) => ({ ...prev, periodType: value as LeavePeriodType }))
                 }
-              />
+              >
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="请选择请假时段" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="AM">上午</SelectItem>
+                  <SelectItem value="PM">下午</SelectItem>
+                  <SelectItem value="FULL_DAY">全天</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
-            <span>时长 {duration > 0 ? `${duration}${unitMap[selectedType?.unit || ''] || ''}` : '--'}</span>
-            <span>{unitMap[selectedType?.unit || ''] || '--'}</span>
+            <span>时长 {duration > 0 ? `${duration}天` : '--'}</span>
+            <span>{formatPeriodType(formData.periodType)}</span>
             <span>{selectedType?.needQuota ? '占用额度' : '不校验额度'}</span>
           </div>
 
@@ -899,6 +839,7 @@ export const LeaveApplicationPage: React.FC = () => {
               <DetailField label="请假类型" value={renderDetailValue(detailRecord.leaveTypeName)} />
               <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
               <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
+              <DetailField label="请假时段" value={formatPeriodType(detailRecord.periodType)} />
               <DetailField label="请假时长" value={formatDuration(detailRecord)} />
               <DetailField label="状态" value={statusMap[detailRecord.status || 'DRAFT'] || detailRecord.status || '-'} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
@@ -912,19 +853,6 @@ export const LeaveApplicationPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">流程轨迹</div>
-                {detailRecord.processInstanceId ? (
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{detailRecord.processInstanceId}</div>
-                ) : null}
-              </div>
-              {detailRecord.processInstanceId ? (
-                <ProcessTrace instanceId={detailRecord.processInstanceId} />
-              ) : (
-                <InlineState title="暂无流程轨迹" className="py-8" />
-              )}
-            </div>
           </>
         )}
       </BaseDialog>

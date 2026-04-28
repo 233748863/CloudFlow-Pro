@@ -1,6 +1,6 @@
 import React from 'react';
-import { Outlet, useNavigate, useLocation } from 'react-router-dom';
-import { Home, PlayCircle, MessageSquare, User } from 'lucide-react';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { CalendarDays, Home, Megaphone, User } from 'lucide-react';
 
 export const MobileLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -8,48 +8,38 @@ export const MobileLayout: React.FC = () => {
 
   const tabs = [
     { id: '/dashboard', label: '首页', icon: Home },
-    { id: '/workplace', label: '工作台', icon: PlayCircle },
-    { id: '/announcement', label: '消息', icon: MessageSquare },
+    { id: '/schedule', label: '日程', icon: CalendarDays },
+    { id: '/announcement', label: '公告', icon: Megaphone },
     { id: '/profile', label: '我的', icon: User },
   ];
 
   return (
-    <div className="flex flex-col h-screen bg-slate-50 font-[Inter]">
-      {/* Main Content Area */}
+    <div className="flex h-screen flex-col bg-slate-50">
       <div className="flex-1 overflow-y-auto pb-16">
         <Outlet />
       </div>
 
-      {/* Bottom Tab Bar */}
-      <nav 
-        className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 h-16 flex items-center justify-around z-50 pb-safe"
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 flex h-16 items-center justify-around border-t border-slate-200 bg-white"
         role="navigation"
         aria-label="主导航"
       >
         {tabs.map((tab) => {
-          const isActive = location.pathname === tab.id;
+          const isActive = location.pathname === tab.id || (tab.id === '/dashboard' && location.pathname === '/');
           return (
             <button
               key={tab.id}
+              type="button"
               onClick={() => navigate(tab.id)}
-              className="flex flex-col items-center justify-center w-full h-full"
+              className="flex h-full w-full flex-col items-center justify-center"
               aria-label={tab.label}
               aria-current={isActive ? 'page' : undefined}
-              role="tab"
-              aria-selected={isActive}
             >
               <tab.icon
-                size={24}
-                className={`mb-1 transition-colors ${
-                  isActive ? 'text-pink-500' : 'text-slate-400'
-                }`}
-                aria-hidden="true"
+                size={22}
+                className={`mb-1 transition-colors ${isActive ? 'text-cyan-600' : 'text-slate-400'}`}
               />
-              <span
-                className={`text-[10px] font-medium ${
-                  isActive ? 'text-pink-500' : 'text-slate-500'
-                }`}
-              >
+              <span className={`text-[10px] font-medium ${isActive ? 'text-cyan-600' : 'text-slate-500'}`}>
                 {tab.label}
               </span>
             </button>

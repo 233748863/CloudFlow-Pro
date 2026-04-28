@@ -1,12 +1,12 @@
 import { useEffect, useCallback } from 'react';
-import { useAppStore } from '../stores/workflowStore';
+import { useUIStateStore } from '../stores/uiStateStore';
 
 /**
  * 离开页面确认 Hook
  * 当有未保存的更改时，阻止用户离开页面
  */
 export function useUnsavedChanges(enabled: boolean = true) {
-  const isDirty = useAppStore((s) => s.isDirty);
+  const isDirty = useUIStateStore((s) => s.isDirty);
 
   // 浏览器刷新/关闭确认
   useEffect(() => {

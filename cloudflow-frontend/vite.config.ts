@@ -95,9 +95,9 @@ export default defineConfig(({ mode }) => {
           registerType: 'autoUpdate',
           includeAssets: ['icon.svg'],
           manifest: {
-            name: 'CloudFlow Pro',
-            short_name: 'CloudFlow',
-            description: 'Enterprise Cloud Flow Management System',
+            name: '新元社区',
+            short_name: '新元',
+            description: '新元社区协同办公工作台',
             theme_color: '#ffffff',
             icons: [
               {

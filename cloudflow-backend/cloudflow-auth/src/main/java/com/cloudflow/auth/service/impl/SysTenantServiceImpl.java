@@ -2,12 +2,10 @@ package com.cloudflow.auth.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.domain.SysTenant;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.TenantStatisticsDTO;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
-import com.cloudflow.auth.mapper.SysFileMapper;
 import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.SysTenantService;
@@ -41,9 +39,6 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
 
     @Autowired
     private SysUserMapper sysUserMapper;
-
-    @Autowired
-    private SysFileMapper sysFileMapper;
 
     @Override
     public boolean isTenantExpired(Long tenantId) {
@@ -116,7 +111,7 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
             return new TenantStorageSummaryDTO(tenantId, 0L, 0L, 0L, 0D);
         }
 
-        long storageUsed = bytesToMb(countStorageUsedBytesBatch(Collections.singletonList(tenantId)).getOrDefault(tenantId, 0L));
+        long storageUsed = tenant.getStorageUsed() != null ? tenant.getStorageUsed() : 0L;
         return buildTenantStorageSummary(tenant, storageUsed);
     }
 
@@ -155,7 +150,7 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
             return true;
         }
 
-        long currentUsedBytes = countStorageUsedBytesBatch(Collections.singletonList(tenantId)).getOrDefault(tenantId, 0L);
+        long currentUsedBytes = Math.max(tenant.getStorageUsed() != null ? tenant.getStorageUsed() : 0L, 0L) * MB_BYTES;
         long normalizedIncomingBytes = Math.max(incomingBytes, 0L);
         long storageLimitBytes = storageLimit * MB_BYTES;
         return currentUsedBytes + normalizedIncomingBytes <= storageLimitBytes;
@@ -186,31 +181,6 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
         });
     }
 
-    private Map<Long, Long> countStorageUsedBytesBatch(Collection<Long> tenantIds) {
-        List<Long> normalizedTenantIds = normalizeTenantIds(tenantIds);
-        if (normalizedTenantIds.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        return executeWithoutTenant(() -> {
-            QueryWrapper<SysFile> wrapper = new QueryWrapper<>();
-            wrapper.select("tenant_id", "SUM(file_size) AS total_bytes")
-                .in("tenant_id", normalizedTenantIds)
-                .eq("del_flag", "0")
-                .groupBy("tenant_id");
-
-            Map<Long, Long> usedBytesMap = new HashMap<>();
-            for (Map<String, Object> row : sysFileMapper.selectMaps(wrapper)) {
-                Long tenantId = toLong(row.get("tenant_id"));
-                Long totalBytes = toLong(row.get("total_bytes"));
-                if (tenantId != null) {
-                    usedBytesMap.put(tenantId, totalBytes != null ? totalBytes : 0L);
-                }
-            }
-            return usedBytesMap;
-        });
-    }
-
     private List<Long> normalizeTenantIds(Collection<Long> tenantIds) {
         if (tenantIds == null || tenantIds.isEmpty()) {
             return Collections.emptyList();
@@ -235,13 +205,6 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
         long remainingStorage = storageLimit > 0 ? Math.max(storageLimit - storageUsed, 0L) : 0L;
         double storageUsagePercent = storageLimit > 0 ? Math.min((storageUsed * 100D) / storageLimit, 100D) : 0D;
         return new TenantStorageSummaryDTO(tenant.getTenantId(), storageLimit, storageUsed, remainingStorage, storageUsagePercent);
-    }
-
-    private long bytesToMb(long bytes) {
-        if (bytes <= 0) {
-            return 0L;
-        }
-        return (bytes + MB_BYTES - 1) / MB_BYTES;
     }
 
     private Long toLong(Object value) {

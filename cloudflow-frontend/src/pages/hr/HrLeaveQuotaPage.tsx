@@ -3,6 +3,7 @@ import { CalendarRange, Coins, RefreshCcw, Search, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { useAuth } from '@/context/AuthContext';
 import {
   Button,
   Input,
@@ -22,6 +23,7 @@ import {
 } from '@/components/common';
 import {
   adjustHrLeaveQuota,
+  getCurrentHrEmployee,
   HrEmployee,
   HrLeaveQuotaInitResult,
   HrLeaveQuotaVO,
@@ -76,9 +78,11 @@ const getUnitLabel = (unit?: string | null) => {
 const formatQuotaNumber = (value?: number | string | null) => {
   const numericValue = Number(value ?? 0);
   if (!Number.isFinite(numericValue)) return '-';
-  return numericValue
+  if (numericValue === 0) return '0';
+  const formattedValue = numericValue
     .toFixed(Number.isInteger(numericValue) ? 0 : 2)
     .replace(/\.?0+$/, '');
+  return formattedValue || '0';
 };
 
 const formatQuotaValue = (value?: number | string | null, unit?: string | null) =>
@@ -118,7 +122,7 @@ const writeSessionStorageRecord = (storageKey: string, value: Record<string, unk
     }
     window.sessionStorage.setItem(storageKey, JSON.stringify(value));
   } catch {
-    // 会话缓存写入失败时不影响主流程，只回退为当前页内状态。
+    // 会话缓存写入失败时不影响主操作，只回退为当前页内状态。
   }
 };
 
@@ -256,6 +260,7 @@ const DialogSection = ({
 );
 
 export const HrLeaveQuotaPage: React.FC = () => {
+  const { user } = useAuth();
   const currentYear = getCurrentYear();
   const todayDateInputValue = getCurrentDateInputValue();
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
@@ -284,6 +289,11 @@ export const HrLeaveQuotaPage: React.FC = () => {
   );
 
   const yearOptions = useMemo(() => buildYearOptions(currentYear), [currentYear]);
+
+  const canManageQuota = useMemo(() => {
+    const role = String(user?.role || '').replace(/^ROLE_/i, '').toUpperCase();
+    return role === 'ADMIN' || role === 'HR';
+  }, [user]);
 
   const quotaEnabledLeaveTypes = useMemo(
     () => leaveTypes.filter((item) => item.needQuota !== false && item.status !== 0),
@@ -396,14 +406,17 @@ export const HrLeaveQuotaPage: React.FC = () => {
   );
 
   const canInitCurrentAnnualQuota = Boolean(
-    selectedEmployeeId
+    canManageQuota
+      && selectedEmployeeId
       && selectedYear
       && selectedLeaveType
       && !isCompensatorySelected
       && !selectedQuotaInitialized,
   );
 
-  const canInitAllAnnualQuota = Boolean(selectedEmployeeId && selectedYear && pendingQuotaCount > 0);
+  const canInitAllAnnualQuota = Boolean(
+    canManageQuota && selectedEmployeeId && selectedYear && pendingQuotaCount > 0,
+  );
 
   const showBulkInitButton =
     canInitAllAnnualQuota && (pendingQuotaCount > 1 || !canInitCurrentAnnualQuota);
@@ -428,7 +441,9 @@ export const HrLeaveQuotaPage: React.FC = () => {
       setPageLoading(true);
       try {
         const [employeeRes, leaveTypeRes] = await Promise.all([
-          listEmployees({ pageNum: 1, pageSize: 200 }),
+          canManageQuota
+            ? listEmployees({ pageNum: 1, pageSize: 200 })
+            : getCurrentHrEmployee().then((employee) => [employee]),
           listHrLeaveTypes(),
         ]);
         const employeeList = normalizeRows<HrEmployee>(employeeRes);
@@ -460,7 +475,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
     };
 
     void bootstrap();
-  }, []);
+  }, [canManageQuota]);
 
   useEffect(() => {
     if (!employees.length) {
@@ -584,6 +599,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
   };
 
   const handleInitAnnualQuota = async () => {
+    if (!canManageQuota) {
+      toast.error('当前账号无额度初始化权限');
+      return;
+    }
     const employeeId = Number(selectedEmployeeId);
     const year = Number(selectedYear);
     if (!employeeId || !year) {
@@ -619,6 +638,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
   };
 
   const handleInitAllAnnualQuota = async () => {
+    if (!canManageQuota) {
+      toast.error('当前账号无额度初始化权限');
+      return;
+    }
     const employeeId = Number(selectedEmployeeId);
     const year = Number(selectedYear);
     if (!employeeId || !year) {
@@ -656,6 +679,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
   };
 
   const handleOpenAdjustDialog = () => {
+    if (!canManageQuota) {
+      toast.error('当前账号无额度调整权限');
+      return;
+    }
     if (!selectedEmployeeId || !selectedLeaveTypeId) {
       toast.error('请先选择员工和假种');
       return;
@@ -688,6 +715,10 @@ export const HrLeaveQuotaPage: React.FC = () => {
   };
 
   const handleSubmitAdjustment = async () => {
+    if (!canManageQuota) {
+      toast.error('当前账号无额度调整权限');
+      return;
+    }
     const employeeId = Number(selectedEmployeeId);
     const leaveTypeId = Number(selectedLeaveTypeId);
     if (!employeeId || !leaveTypeId) {
@@ -807,7 +838,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
 
       <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
         <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          可管理假种 {quotaSummary.length || '--'}
+          {canManageQuota ? '可管理假种' : '我的假种'} {quotaSummary.length || '--'}
         </span>
         <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
           已初始化 {initializedQuotaCount}
@@ -835,7 +866,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
             />
             刷新额度
           </Button>
-          {canInitCurrentAnnualQuota ? (
+          {canManageQuota && canInitCurrentAnnualQuota ? (
             <Button
               variant="outline"
               size="sm"
@@ -846,7 +877,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
               补齐当前假种
             </Button>
           ) : null}
-          {showBulkInitButton ? (
+          {canManageQuota && showBulkInitButton ? (
             <Button
               variant="outline"
               size="sm"
@@ -857,10 +888,12 @@ export const HrLeaveQuotaPage: React.FC = () => {
               批量补齐
             </Button>
           ) : null}
-          <Button size="sm" onClick={handleOpenAdjustDialog} disabled={!selectedLeaveTypeId || actionLoading}>
-            <Coins size={14} className="mr-1.5" />
-            手工调整
-          </Button>
+          {canManageQuota ? (
+            <Button size="sm" onClick={handleOpenAdjustDialog} disabled={!selectedLeaveTypeId || actionLoading}>
+              <Coins size={14} className="mr-1.5" />
+              手工调整
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -868,15 +901,17 @@ export const HrLeaveQuotaPage: React.FC = () => {
         filters={(
           <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
             <div className="flex flex-1 flex-wrap items-center gap-3">
-              <div className="relative w-full sm:w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-                <Input
-                  className="pl-10"
-                  placeholder="搜索姓名、工号、部门"
-                  value={employeeKeyword}
-                  onChange={(event) => setEmployeeKeyword(event.target.value)}
-                />
-              </div>
+              {canManageQuota ? (
+                <div className="relative w-full sm:w-72">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                  <Input
+                    className="pl-10"
+                    placeholder="搜索姓名、工号、部门"
+                    value={employeeKeyword}
+                    onChange={(event) => setEmployeeKeyword(event.target.value)}
+                  />
+                </div>
+              ) : null}
               <div className="w-full sm:w-40">
                 <Select value={selectedYear} onValueChange={setSelectedYear}>
                   <SelectTrigger className="h-11">
@@ -907,15 +942,21 @@ export const HrLeaveQuotaPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto">
-              <Button variant="outline" onClick={() => setEmployeeKeyword('')}>
-                重置搜索
-              </Button>
-            </div>
+            {canManageQuota ? (
+              <div className="flex w-full flex-shrink-0 flex-wrap items-center justify-end gap-3 lg:w-auto">
+                <Button variant="outline" onClick={() => setEmployeeKeyword('')}>
+                  重置搜索
+                </Button>
+              </div>
+            ) : null}
           </div>
         )}
         table={(
-          <div className="grid min-h-[760px] grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)]">
+          <div className={canManageQuota
+            ? 'grid min-h-[760px] grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)]'
+            : 'grid min-h-[760px] grid-cols-1'}
+          >
+            {canManageQuota ? (
             <aside className="min-w-0 border-b border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/20 xl:border-b-0 xl:border-r">
               <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                 <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
@@ -957,7 +998,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
                           <div>
                             <span className="text-slate-400 dark:text-slate-500">当前组织</span>
                             <div className="mt-1">
-                              {[employee.deptName, employee.postName, employee.positionName]
+                              {[employee.deptName, employee.postName]
                                 .filter(Boolean)
                                 .join(' / ') || '-'}
                             </div>
@@ -973,6 +1014,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
                 )}
               </div>
             </aside>
+            ) : null}
 
             <div className="flex min-h-0 flex-col">
               <div className="grid gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:grid-cols-[1.2fr_1fr_1fr]">

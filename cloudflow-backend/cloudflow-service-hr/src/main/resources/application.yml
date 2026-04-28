@@ -34,7 +34,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
-    password: ${DB_PASSWORD:root}
+    password: ${DB_PASSWORD:Juwangkeji@2025}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -101,10 +101,6 @@ feign:
         connect-timeout: 3000
         read-timeout: 5000
         logger-level: BASIC
-      cloudflow-service-workflow:
-        connect-timeout: 5000
-        read-timeout: 15000
-        logger-level: BASIC
   circuitbreaker:
     enabled: true
   compression:
@@ -118,26 +114,6 @@ feign:
     enabled: false
   httpclient:
     enabled: false
-
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,prometheus
-      base-path: /actuator
-  endpoint:
-    health:
-      show-details: when-authorized
-      probes:
-        enabled: true
-  health:
-    redis:
-      enabled: true
-    db:
-      enabled: true
-  metrics:
-    tags:
-      application: ${spring.application.name}
 
 info:
   app:
@@ -173,31 +149,12 @@ cloudflow:
       - sys_dict_data
       - sys_config
     default-tenant-id: 100000
-  file-storage:
-    type: local
-    presigned-expire-minutes: 30
-  oss:
-    enabled: false
-    config-key: default
-    endpoint: localhost:9000
-    access-key: minioadmin
-    secret-key: minioadmin
-    bucket-name: cloudflow-hr
-    region: us-east-1
-    is-https: N
-    access-policy: 1
-    prefix: hr
-    domain:
   profile: /data/cloudflow/hr/profile
   hr:
     sync:
       full-sync-on-startup: true
       incremental-sync-interval: 5
       realtime-sync-enabled: true
-    attendance:
-      gps-range: 500
-      late-threshold: 15
-      early-threshold: 15
     leave:
       annual-leave-days-per-year: 5
       annual-leave-max-days: 15
@@ -205,20 +162,3 @@ cloudflow:
       workday-ratio: 1.0
       weekend-ratio: 2.0
       holiday-ratio: 3.0
-    workflow:
-      process-keys:
-        leave: leave_request
-        overtime: overtime_request
-        attendance-supplement: attendance_appeal
-        offer: offer_approval
-        onboarding: onboarding_approval
-        probation-confirmation: probation_confirmation_approval
-        recruitment-request: biz_recruit
-        resignation: resignation_approval
-        salary-adjustment: salary_adjustment_approval
-        transfer: transfer_approval
-        performance-plan: performance_plan_approval
-        performance-result: performance_result_approval
-    audit-log:
-      archive-days: 90
-      delete-days: 365

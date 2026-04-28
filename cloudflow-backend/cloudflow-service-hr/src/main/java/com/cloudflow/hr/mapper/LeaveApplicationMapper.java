@@ -9,6 +9,9 @@ import com.cloudflow.hr.domain.vo.LeaveApplicationVO;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 /**
  * 请假申请Mapper接口
  */
@@ -26,4 +29,8 @@ public interface LeaveApplicationMapper extends BaseMapper<LeaveApplication> {
     IPage<LeaveApplicationVO> selectLeaveApplicationPage(Page<LeaveApplicationVO> page,
                                                          @Param("tenantId") Long tenantId,
                                                          @Param("query") LeaveApplicationQueryDTO query);
+
+    List<LeaveApplicationVO> selectApprovedLeaveBoard(@Param("tenantId") Long tenantId,
+                                                       @Param("startTime") LocalDateTime startTime,
+                                                       @Param("endTime") LocalDateTime endTime);
 }

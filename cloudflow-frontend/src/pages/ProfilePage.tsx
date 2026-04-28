@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   BadgeCheck,
   Building2,
@@ -61,9 +61,7 @@ const getRoleLabel = (role?: string) => {
   const normalized = String(role || '').replace(/^ROLE_/i, '').toUpperCase();
   const labels: Record<string, string> = {
     ADMIN: '管理员',
-    MANAGER: '经理',
     HR: '人力资源',
-    FINANCE: '财务',
     EMPLOYEE: '员工',
     USER: '用户',
     COMMON: '普通用户',
@@ -127,7 +125,7 @@ export const ProfilePage: React.FC = () => {
     });
   }, [user]);
 
-  const displayName = user?.name || user?.username || 'CloudFlow';
+  const displayName = user?.name || user?.username || '新元用户';
   const initials = getInitials(user?.name, user?.username);
   const statusMeta = getStatusMeta(user?.status);
 

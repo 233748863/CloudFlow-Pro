@@ -13,95 +13,81 @@ import com.cloudflow.hr.client.vo.UserVO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.Collections;
 import java.util.List;
 
-/**
- * Auth服务降级处理
- * 当Auth服务不可用时，返回降级响应
- *
- * @author CloudFlow
- * @since 1.0.0
- */
 @Slf4j
 @Component
 public class AuthServiceFallback implements AuthServiceClient {
-    
-    // ==================== 部门管理接口降级 ====================
-    
+
     @Override
     public R<List<DeptTreeVO>> getDeptTree(Long tenantId) {
-        log.error("Auth服务调用失败：获取部门树失败，租户ID={}", tenantId);
-        return R.fail("Auth服务暂时不可用，无法获取部门树");
+        log.error("Auth fallback: get dept tree failed, tenantId={}", tenantId);
+        return R.fail("Auth service unavailable, failed to get department tree");
     }
-    
+
     @Override
     public R<DeptVO> getDeptById(Long id) {
-        log.error("Auth服务调用失败：获取部门信息失败，部门ID={}", id);
-        return R.fail("Auth服务暂时不可用，无法获取部门信息");
+        log.error("Auth fallback: get dept failed, deptId={}", id);
+        return R.fail("Auth service unavailable, failed to get department");
     }
-    
+
     @Override
     public R<Long> createDept(DeptCreateDTO dto) {
-        log.error("Auth服务调用失败：创建部门失败，部门名称={}", dto.getDeptName());
-        return R.fail("Auth服务暂时不可用，无法创建部门");
+        log.error("Auth fallback: create dept failed, deptName={}", dto.getDeptName());
+        return R.fail("Auth service unavailable, failed to create department");
     }
-    
-    // ==================== 岗位管理接口降级 ====================
-    
+
     @Override
     public R<List<PostVO>> getPostList(Long tenantId) {
-        log.error("Auth服务调用失败：获取岗位列表失败，租户ID={}", tenantId);
-        return R.fail("Auth服务暂时不可用，无法获取岗位列表");
+        log.error("Auth fallback: get post list failed, tenantId={}", tenantId);
+        return R.fail("Auth service unavailable, failed to get posts");
     }
-    
+
     @Override
     public R<PostVO> getPostById(Long id) {
-        log.error("Auth服务调用失败：获取岗位信息失败，岗位ID={}", id);
-        return R.fail("Auth服务暂时不可用，无法获取岗位信息");
+        log.error("Auth fallback: get post failed, postId={}", id);
+        return R.fail("Auth service unavailable, failed to get post");
     }
-    
+
     @Override
     public R<Long> createPost(PostCreateDTO dto) {
-        log.error("Auth服务调用失败：创建岗位失败，岗位名称={}", dto.getPostName());
-        return R.fail("Auth服务暂时不可用，无法创建岗位");
+        log.error("Auth fallback: create post failed, postName={}", dto.getPostName());
+        return R.fail("Auth service unavailable, failed to create post");
     }
-    
-    // ==================== 用户管理接口降级 ====================
-    
+
     @Override
     public R<Long> createUser(UserCreateDTO dto) {
-        log.error("Auth服务调用失败：创建用户失败，用户名={}", dto.getUserName());
-        return R.fail("Auth服务暂时不可用，无法创建用户账号，请稍后重试");
+        log.error("Auth fallback: create user failed, userName={}", dto.getUserName());
+        return R.fail("Auth service unavailable, failed to create user");
     }
-    
+
     @Override
     public R<UserVO> getUserById(Long id) {
-        log.error("Auth服务调用失败：获取用户信息失败，用户ID={}", id);
-        return R.fail("Auth服务暂时不可用，无法获取用户信息");
+        log.error("Auth fallback: get user failed, userId={}", id);
+        return R.fail("Auth service unavailable, failed to get user");
     }
 
     @Override
     public R<UserVO> getUserByUserName(String userName) {
-        log.error("Auth服务调用失败：按用户名获取用户失败，用户名={}", userName);
-        return R.fail("Auth服务暂时不可用，无法按用户名获取用户信息");
+        log.error("Auth fallback: get user by name failed, userName={}", userName);
+        return R.fail("Auth service unavailable, failed to get user by name");
     }
 
     @Override
     public R<List<UserVO>> batchGetUsers(List<Long> userIds) {
-        log.error("Auth服务调用失败：批量获取用户信息失败，用户ID列表={}", userIds);
-        return R.fail("Auth服务暂时不可用，无法批量获取用户信息");
+        log.error("Auth fallback: batch get users failed, userIds={}", userIds);
+        return R.fail("Auth service unavailable, failed to batch get users");
     }
 
     @Override
     public R<Void> updateUser(Long id, UserUpdateDTO dto) {
-        log.error("Auth服务调用失败：更新用户信息失败，用户ID={}", id);
-        return R.fail("Auth服务暂时不可用，无法更新用户信息，请稍后重试");
+        log.error("Auth fallback: update user failed, userId={}", id);
+        return R.fail("Auth service unavailable, failed to update user");
     }
-    
+
     @Override
     public R<Void> disableUser(Long id) {
-        log.error("Auth服务调用失败：禁用用户失败，用户ID={}", id);
-        return R.fail("Auth服务暂时不可用，无法禁用用户账号，请稍后重试");
+        log.error("Auth fallback: disable user failed, userId={}", id);
+        return R.fail("Auth service unavailable, failed to disable user");
     }
 }

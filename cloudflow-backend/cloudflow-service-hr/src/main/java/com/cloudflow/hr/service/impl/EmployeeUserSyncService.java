@@ -15,11 +15,6 @@ import org.springframework.util.StringUtils;
 
 import java.util.Collections;
 
-/**
- * Keeps the HR employee profile and the Auth login account consistent.
- *
- * sys_user remains the login/permission subject, while hr_employee remains the HR subject.
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -37,7 +32,7 @@ public class EmployeeUserSyncService {
 
         UserVO user = getExistingUser(userId);
         if (user.getUserId() == null || !userId.equals(user.getUserId())) {
-            throw new HrBusinessException("LINKED_USER_NOT_FOUND", "关联的系统用户不存在");
+            throw new HrBusinessException("LINKED_USER_NOT_FOUND", "Linked system user does not exist");
         }
 
         ensureUserNotLinked(tenantId, userId, currentEmployeeId);
@@ -57,7 +52,7 @@ public class EmployeeUserSyncService {
 
         Long count = employeeMapper.selectCount(wrapper);
         if (count != null && count > 0) {
-            throw new HrBusinessException("LINKED_USER_ALREADY_BOUND", "该系统用户已绑定其他 HR 员工档案");
+            throw new HrBusinessException("LINKED_USER_ALREADY_BOUND", "Linked system user is already bound to another HR employee");
         }
     }
 
@@ -80,13 +75,13 @@ public class EmployeeUserSyncService {
             R<Void> result = authServiceClient.updateUser(employee.getUserId(), dto);
             if (result == null || !result.isSuccess()) {
                 throw new HrBusinessException("LINKED_USER_SYNC_FAILED",
-                        "同步关联系统用户失败：" + (result == null ? "Auth 服务无响应" : result.getMsg()));
+                        "Failed to sync linked system user: " + (result == null ? "Auth service did not respond" : result.getMsg()));
             }
         } catch (HrBusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("同步关联系统用户失败，员工ID：{}，用户ID：{}", employee.getId(), employee.getUserId(), e);
-            throw new HrBusinessException("LINKED_USER_SYNC_FAILED", "同步关联系统用户失败：" + e.getMessage(), e);
+            log.error("Failed to sync linked user, employeeId={}, userId={}", employee.getId(), employee.getUserId(), e);
+            throw new HrBusinessException("LINKED_USER_SYNC_FAILED", "Failed to sync linked system user: " + e.getMessage(), e);
         }
     }
 
@@ -103,7 +98,7 @@ public class EmployeeUserSyncService {
         } catch (HrBusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("禁用员工关联 Auth 用户失败，员工ID：{}，用户ID：{}", employee.getId(), employee.getUserId(), e);
+            log.error("Failed to disable linked user, employeeId={}, userId={}", employee.getId(), employee.getUserId(), e);
             throw HrBusinessException.employeeLinkedUserDisableFailed(employee.getId(), employee.getUserId());
         }
     }
@@ -113,21 +108,21 @@ public class EmployeeUserSyncService {
             R<UserVO> result = authServiceClient.getUserById(userId);
             if (result == null || !result.isSuccess() || result.getData() == null) {
                 throw new HrBusinessException("LINKED_USER_NOT_FOUND",
-                        "关联的系统用户不存在：" + (result == null ? "Auth 服务无响应" : result.getMsg()));
+                        "Linked system user does not exist: " + (result == null ? "Auth service did not respond" : result.getMsg()));
             }
             return result.getData();
         } catch (HrBusinessException e) {
             throw e;
         } catch (Exception e) {
-            log.error("校验关联系统用户失败，用户ID：{}", userId, e);
-            throw new HrBusinessException("LINKED_USER_VALIDATE_FAILED", "校验关联系统用户失败：" + e.getMessage(), e);
+            log.error("Failed to validate linked user, userId={}", userId, e);
+            throw new HrBusinessException("LINKED_USER_VALIDATE_FAILED", "Failed to validate linked system user: " + e.getMessage(), e);
         }
     }
 
     private String buildNickName(Employee employee) {
         String nickName = StringUtils.hasText(employee.getName()) ? employee.getName().trim() : employee.getEmployeeNo();
         if (!StringUtils.hasText(nickName)) {
-            return "员工";
+            return "employee";
         }
         return nickName.length() <= SYS_USER_NICK_NAME_MAX_LENGTH
                 ? nickName

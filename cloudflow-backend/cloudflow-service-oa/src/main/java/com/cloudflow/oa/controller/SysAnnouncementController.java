@@ -1,46 +1,42 @@
 package com.cloudflow.oa.controller;
 
-import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.log.annotation.SysLog;
-import com.cloudflow.oa.domain.SysAnnouncement;
-import com.cloudflow.oa.service.ISysAnnouncementService;
-import org.springframework.beans.factory.annotation.Autowired;
-import cn.dev33.satoken.annotation.SaCheckLogin;
-import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
-import org.springframework.web.bind.annotation.*;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.domain.SysAnnouncement;
+import com.cloudflow.oa.service.ISysAnnouncementService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/announcement")
+@RequiredArgsConstructor
 public class SysAnnouncementController {
 
-    @Autowired
-    private ISysAnnouncementService announcementService;
+    private final ISysAnnouncementService announcementService;
 
-    /**
-     * 获取我的公告列表
-     */
     @GetMapping("/my-list")
     public R<List<SysAnnouncement>> getMyList() {
         return R.ok(announcementService.getMyAnnouncements(UserContext.getUserId()));
     }
 
-    /**
-     * 标记已读
-     */
     @PostMapping("/read/{id}")
     public R<Boolean> read(@PathVariable("id") Long id) {
         return R.ok(announcementService.readAnnouncement(id, UserContext.getUserId()));
     }
 
-    /**
-     * 发布公告 (仅管理员/HR)
-     */
-    @SysLog("发布公告")
     @PostMapping("/publish")
     @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> publish(@RequestBody SysAnnouncement announcement) {
@@ -48,10 +44,7 @@ public class SysAnnouncementController {
         announcement.setCreateBy(String.valueOf(UserContext.getUserId()));
         return R.ok(announcementService.publish(announcement));
     }
-    
-    /**
-     * 获取管理列表（分页）- 仅管理员/HR
-     */
+
     @GetMapping("/manage-list")
     @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Map<String, Object>> getManageList(
@@ -62,50 +55,31 @@ public class SysAnnouncementController {
             @RequestParam(defaultValue = "10") Integer size) {
         return R.ok(announcementService.getManageList(title, type, status, page, size));
     }
-    
-    /**
-     * 编辑公告 - 仅管理员/HR
-     */
-    @SysLog("编辑公告")
+
     @PutMapping
     @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> update(@RequestBody SysAnnouncement announcement) {
         return R.ok(announcementService.updateAnnouncement(announcement));
     }
-    
-    /**
-     * 删除公告 - 仅管理员
-     */
-    @SysLog("删除公告")
+
     @DeleteMapping("/{id}")
     @SaCheckRole("admin")
     public R<Boolean> delete(@PathVariable("id") Long id) {
         return R.ok(announcementService.removeById(id));
     }
-    
-    /**
-     * 撤销公告 - 仅管理员/HR
-     */
-    @SysLog("撤销公告")
+
     @PostMapping("/revoke/{id}")
     @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> revoke(@PathVariable("id") Long id) {
         return R.ok(announcementService.revokeAnnouncement(id));
     }
-    
-    /**
-     * 切换置顶状态 - 仅管理员/HR
-     */
-    @SysLog("切换公告置顶")
+
     @PostMapping("/toggle-top/{id}")
     @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
     public R<Boolean> toggleTop(@PathVariable("id") Long id) {
         return R.ok(announcementService.toggleTop(id));
     }
-    
-    /**
-     * 获取阅读统计
-     */
+
     @GetMapping("/read-stats/{id}")
     public R<Map<String, Object>> getReadStats(@PathVariable("id") Long id) {
         return R.ok(announcementService.getReadStats(id));

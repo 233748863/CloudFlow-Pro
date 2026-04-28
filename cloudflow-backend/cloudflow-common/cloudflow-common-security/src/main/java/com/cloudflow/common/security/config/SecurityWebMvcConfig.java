@@ -28,7 +28,6 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
             "/login",
             "/register",
             "/captcha/**",
-            "/actuator/**",
             "/doc.html",
             "/webjars/**",
             "/swagger-resources/**",

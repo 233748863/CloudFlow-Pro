@@ -16,7 +16,7 @@ export const STORES = {
 // 待同步操作类型
 export interface PendingAction {
   id: string;
-  type: 'task_complete' | 'task_approve' | 'task_reject' | 'notice_read' | 'schedule_create' | 'hr_leave_request' | 'reimbursement_request' | 'vehicle_booking' | 'meeting_booking';
+  type: 'notice_read' | 'schedule_create';
   payload: Record<string, any>;
   createdAt: string;
   retryCount: number;

@@ -27,7 +27,7 @@ import java.util.List;
 
 /**
  * Auth 对外提供的内部远程调用接口。
- * 仅供微服务间调用，避免 HR 和 workflow 直接绑定到 Auth 的后台管理接口与登录态。
+ * 仅供保留的轻版服务做内部调用，避免业务服务直接绑定到 Auth 的后台管理接口与登录态。
  */
 @RestController
 @RequestMapping("/inner/auth")
@@ -35,7 +35,6 @@ import java.util.List;
 public class RemoteAuthController {
 
     private static final String HR_SERVICE = "cloudflow-service-hr";
-    private static final String WORKFLOW_SERVICE = "cloudflow-service-workflow";
 
     private final SysDeptMapper sysDeptMapper;
     private final ISysPostService postService;
@@ -101,7 +100,7 @@ public class RemoteAuthController {
         return R.ok(post.getPostId());
     }
 
-    @Inner(allowedServices = {HR_SERVICE, WORKFLOW_SERVICE})
+    @Inner(allowedServices = {HR_SERVICE})
     @GetMapping("/user/{userId}")
     public R<SysUser> getUser(@PathVariable Long userId) {
         return R.ok(userService.selectUserById(userId));
@@ -113,7 +112,7 @@ public class RemoteAuthController {
         return R.ok(userService.selectUserByUserName(userName));
     }
 
-    @Inner(allowedServices = {HR_SERVICE, WORKFLOW_SERVICE})
+    @Inner(allowedServices = {HR_SERVICE})
     @PostMapping("/user/batch")
     public R<List<SysUser>> batchGetUsers(@RequestBody List<Long> userIds) {
         return R.ok(userService.selectUserByIds(userIds));

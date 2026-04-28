@@ -85,8 +85,6 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                     </div>
 
                     <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <span>#{item.announcementId}</span>
-                      <span className="text-slate-300 dark:text-slate-700">·</span>
                       <span>{item.createTime ? new Date(item.createTime).toLocaleString() : '-'}</span>
                     </div>
                   </div>

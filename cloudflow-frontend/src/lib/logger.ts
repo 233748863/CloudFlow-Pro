@@ -115,7 +115,6 @@ export function createLogger(module: string) {
 }
 
 // 预定义的模块日志器
-export const logWorkflow = createLogger('Workflow');
 export const logForm = createLogger('Form');
 export const logTask = createLogger('Task');
 export const logAuth = createLogger('Auth');

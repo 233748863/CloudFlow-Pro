@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Clock,
-  Download,
   Edit,
   Eye,
   Plus,
@@ -19,13 +18,11 @@ import {
 } from '@/services/api/overtimeApplication';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
-import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { ProcessTrace } from '@/components/ProcessTrace';
 import {
   Button,
   DatePicker,
@@ -61,6 +58,11 @@ interface DetailFieldProps {
   value: React.ReactNode;
 }
 
+interface MatchedSlotSummaryProps {
+  slots?: string | string[] | null;
+  className?: string;
+}
+
 interface ConfirmState {
   type: 'delete' | 'submit' | 'cancel';
   id: number;
@@ -74,7 +76,7 @@ const ALL_FILTER_VALUE = '__all__';
 
 const emptyForm = (): OvertimeApplicationForm => ({
   overtimeType: 'WORKDAY',
-  compensationType: 'PAYMENT',
+  compensationType: 'TIME_OFF',
   startTime: '',
   endTime: '',
   reason: '',
@@ -95,9 +97,16 @@ const overtimeTypeMap: Record<string, string> = {
 };
 
 const compensationTypeMap: Record<string, string> = {
-  PAYMENT: '加班费',
   TIME_OFF: '调休',
 };
+
+const overtimeSlotMap: Record<string, string> = {
+  AM: '上午',
+  PM: '下午',
+  NIGHT: '晚上',
+};
+
+const overtimeSlotCodes = ['AM', 'PM', 'NIGHT'] as const;
 
 const InlineState: React.FC<InlineStateProps> = ({
   title,
@@ -137,6 +146,129 @@ const DetailField: React.FC<DetailFieldProps> = ({ label, value }) => (
   </div>
 );
 
+const parseMatchedSlots = (matchedSlots?: string | string[] | null) => {
+  const source = Array.isArray(matchedSlots)
+    ? matchedSlots
+    : String(matchedSlots || '').split(',');
+  return source.map((item) => item.trim()).filter(Boolean);
+};
+
+const getSlotOrder = (code: string) => {
+  const index = overtimeSlotCodes.indexOf(code as typeof overtimeSlotCodes[number]);
+  return index === -1 ? overtimeSlotCodes.length : index;
+};
+
+const formatCompactDate = (date: string) => {
+  const [, month, day] = date.split('-');
+  return month && day ? `${month}-${day}` : date;
+};
+
+const summarizeMatchedSlots = (slots: string[]) => {
+  const dates = new Set<string>();
+  const counts: Record<string, number> = { AM: 0, PM: 0, NIGHT: 0 };
+
+  slots.forEach((slot) => {
+    const [date, code] = slot.split(':');
+    if (date) {
+      dates.add(date);
+    }
+    if (code && Object.prototype.hasOwnProperty.call(counts, code)) {
+      counts[code] += 1;
+    }
+  });
+
+  return {
+    total: slots.length,
+    days: dates.size,
+    quota: slots.length * 0.5,
+    counts,
+  };
+};
+
+const groupMatchedSlots = (slots: string[]) => {
+  const byDate = new Map<string, Set<string>>();
+
+  slots.forEach((slot) => {
+    const [date, code] = slot.split(':');
+    if (!date || !code) {
+      return;
+    }
+    if (!byDate.has(date)) {
+      byDate.set(date, new Set<string>());
+    }
+    byDate.get(date)!.add(code);
+  });
+
+  return Array.from(byDate.entries())
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([date, codes]) => {
+      const labels = Array.from(codes)
+        .sort((left, right) => getSlotOrder(left) - getSlotOrder(right) || left.localeCompare(right))
+        .map((code) => overtimeSlotMap[code] || code);
+      return {
+        date,
+        label: `${formatCompactDate(date)} ${labels.join('/')}`,
+        title: `${date} ${labels.join('/')}`,
+      };
+    });
+};
+
+const MatchedSlotSummary: React.FC<MatchedSlotSummaryProps> = ({ slots, className }) => {
+  const normalizedSlots = parseMatchedSlots(slots);
+  const summary = summarizeMatchedSlots(normalizedSlots);
+  const groups = groupMatchedSlots(normalizedSlots);
+  const countItems = overtimeSlotCodes.filter((code) => summary.counts[code] > 0);
+
+  return (
+    <div className={['space-y-2', className].filter(Boolean).join(' ')}>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs font-medium text-slate-500 dark:text-slate-400">命中班段</span>
+        {summary.total > 0 ? (
+          <>
+            <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white dark:bg-slate-100 dark:text-slate-900">
+              共 {summary.total} 段
+            </span>
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-200 dark:ring-emerald-900">
+              {summary.quota.toFixed(2)} 天额度
+            </span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              {summary.days} 天
+            </span>
+            {countItems.map((code) => (
+              <span
+                key={code}
+                className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+              >
+                {overtimeSlotMap[code]} {summary.counts[code]}
+              </span>
+            ))}
+          </>
+        ) : null}
+      </div>
+
+      {summary.total > 0 ? (
+        <div className="max-h-24 overflow-y-auto pr-1">
+          <div className="flex flex-wrap gap-2">
+            {groups.map((group) => (
+              <span
+                key={group.title}
+                title={group.title}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+              >
+                {group.label}
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-slate-200 bg-white px-3 py-2 text-xs text-slate-500 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400">
+          未命中可折算班段
+        </div>
+      )}
+    </div>
+  );
+};
+
 const calculateDurationHours = (startTime: string, endTime: string) => {
   if (!startTime || !endTime) {
     return 0;
@@ -147,6 +279,51 @@ const calculateDurationHours = (startTime: string, endTime: string) => {
     return 0;
   }
   return Math.round(((end - start) / 3600000) * 10) / 10;
+};
+
+const toLocalDateKey = (date: Date) => {
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const atLocalTime = (dateKey: string, hour: number, minute = 0) =>
+  new Date(`${dateKey}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00`);
+
+const calculateMatchedSlots = (startTime: string, endTime: string) => {
+  if (!startTime || !endTime) {
+    return [];
+  }
+  const start = new Date(startTime);
+  const end = new Date(endTime);
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || end <= start) {
+    return [];
+  }
+
+  const result: string[] = [];
+  const cursor = new Date(start);
+  cursor.setHours(0, 0, 0, 0);
+  const last = new Date(end);
+  last.setHours(0, 0, 0, 0);
+
+  while (cursor <= last) {
+    const dateKey = toLocalDateKey(cursor);
+    const nightEnd = atLocalTime(dateKey, 0);
+    nightEnd.setDate(nightEnd.getDate() + 1);
+    [
+      { code: 'AM', slotStart: atLocalTime(dateKey, 8), slotEnd: atLocalTime(dateKey, 12) },
+      { code: 'PM', slotStart: atLocalTime(dateKey, 14), slotEnd: atLocalTime(dateKey, 18) },
+      { code: 'NIGHT', slotStart: atLocalTime(dateKey, 18), slotEnd: nightEnd },
+    ].forEach((slot) => {
+      if (end > slot.slotStart && start < slot.slotEnd) {
+        result.push(`${dateKey}:${slot.code}`);
+      }
+    });
+    cursor.setDate(cursor.getDate() + 1);
+  }
+
+  return result;
 };
 
 export const OvertimeApplicationPage: React.FC = () => {
@@ -182,7 +359,7 @@ export const OvertimeApplicationPage: React.FC = () => {
       return false;
     }
     if (!canStartSelfService) {
-      toast.error(restrictionMessage || '当前账号暂时不能发起 HR 自助流程');
+      toast.error(restrictionMessage || '当前账号暂时不能发起 HR 自助申请');
       return false;
     }
     return true;
@@ -193,6 +370,11 @@ export const OvertimeApplicationPage: React.FC = () => {
     () => calculateDurationHours(formData.startTime, formData.endTime),
     [formData.endTime, formData.startTime],
   );
+  const formMatchedSlots = useMemo(
+    () => calculateMatchedSlots(formData.startTime, formData.endTime),
+    [formData.endTime, formData.startTime],
+  );
+  const formQuotaAmount = formMatchedSlots.length * 0.5;
   const draftCount = list.filter((item) => item.status === 'DRAFT').length;
   const pendingCount = list.filter((item) => item.status === 'APPROVING').length;
   const approvedCount = list.filter((item) => item.status === 'APPROVED').length;
@@ -305,6 +487,10 @@ export const OvertimeApplicationPage: React.FC = () => {
       toast.error('结束时间必须晚于开始时间');
       return;
     }
+    if (formData.compensationType === 'TIME_OFF' && formQuotaAmount <= 0) {
+      toast.error('调休加班必须命中 08:00-12:00、14:00-18:00 或 18:00-24:00 班段');
+      return;
+    }
 
     try {
       const payload: OvertimeApplicationForm = {
@@ -349,7 +535,7 @@ export const OvertimeApplicationPage: React.FC = () => {
       type: 'submit',
       id,
       title: '提交加班申请',
-      message: '提交后将进入审批流程。',
+      message: '提交后将进入 HR 审批。',
       confirmText: '提交',
     });
   };
@@ -362,7 +548,7 @@ export const OvertimeApplicationPage: React.FC = () => {
       type: 'cancel',
       id,
       title: '撤销加班申请',
-      message: '撤销后当前申请将结束流转。',
+      message: '撤销后当前申请将结束审批。',
       confirmText: '撤销',
     });
   };
@@ -394,20 +580,6 @@ export const OvertimeApplicationPage: React.FC = () => {
         cancel: '撤销失败',
       };
       toast.error(getErrorMessage(error, messageMap[currentState.type]));
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const blob = await overtimeApplicationApi.export(searchParams);
-      const fileName = downloadBlob(blob, buildExcelFileName('加班申请'));
-      toast.success(
-        total > 0
-          ? `已导出 ${total} 条加班申请，下载文件：${fileName}`
-          : `已导出空结果，下载文件：${fileName}`,
-      );
-    } catch (error) {
-      toast.error(getErrorMessage(error, '导出失败'));
     }
   };
 
@@ -497,10 +669,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExport} disabled={loading}>
-                <Download size={14} className="mr-1.5" />
-                导出
-              </Button>
               <Button size="sm" onClick={handleAdd} disabled={selfServiceLocked}>
                 <Plus size={14} className="mr-1.5" />
                 新建申请
@@ -511,7 +679,7 @@ export const OvertimeApplicationPage: React.FC = () => {
         table={(
           <div className="flex min-h-[36rem] flex-col">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1100px]">
+              <table className="w-full min-w-[1180px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                   <tr>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -530,6 +698,9 @@ export const OvertimeApplicationPage: React.FC = () => {
                       补偿方式
                     </TableHead>
                     <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
+                      调休额度
+                    </TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
                       状态
                     </TableHead>
                     <TableActionHead className="w-56 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">
@@ -539,10 +710,10 @@ export const OvertimeApplicationPage: React.FC = () => {
                 </TableHeader>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {loading ? (
-                    <TableStateRow colSpan={7} title="正在加载加班申请..." loading />
+                    <TableStateRow colSpan={8} title="正在加载加班申请..." loading />
                   ) : list.length === 0 ? (
                     <TableStateRow
-                      colSpan={7}
+                      colSpan={8}
                       icon={<Timer className="h-4 w-4" />}
                       title={hasActiveFilters ? '当前条件下暂无记录' : '暂无加班申请'}
                     />
@@ -564,6 +735,9 @@ export const OvertimeApplicationPage: React.FC = () => {
                         </td>
                         <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
                           {compensationTypeMap[item.compensationType] || item.compensationType}
+                        </td>
+                        <td className="px-4 py-2.5 text-sm text-slate-600 dark:text-slate-300">
+                          {item.quotaAmount == null ? '-' : `${item.quotaAmount} 天`}
                         </td>
                         <td className="px-4 py-2.5">{getStatusBadge(item.status || 'DRAFT')}</td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-right">
@@ -688,7 +862,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                   <SelectValue placeholder="请选择补偿方式" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="PAYMENT">加班费</SelectItem>
                   <SelectItem value="TIME_OFF">调休</SelectItem>
                 </SelectContent>
               </Select>
@@ -723,10 +896,37 @@ export const OvertimeApplicationPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 dark:text-slate-400">
-            <span>时长 {formDuration > 0 ? `${formDuration} 小时` : '--'}</span>
-            <span>{overtimeTypeMap[formData.overtimeType] || '--'}</span>
-            <span>{compensationTypeMap[formData.compensationType] || '--'}</span>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/80 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <div>
+                <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">加班时长</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {formDuration > 0 ? `${formDuration} 小时` : '--'}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">加班类型</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {overtimeTypeMap[formData.overtimeType] || '--'}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">补偿方式</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {compensationTypeMap[formData.compensationType] || '--'}
+                </div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">调休额度</div>
+                <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {formQuotaAmount.toFixed(2)} 天
+                </div>
+              </div>
+            </div>
+            <MatchedSlotSummary
+              slots={formMatchedSlots}
+              className="mt-3 border-t border-slate-200 pt-3 dark:border-slate-800"
+            />
           </div>
 
           <div>
@@ -769,8 +969,13 @@ export const OvertimeApplicationPage: React.FC = () => {
               <DetailField label="开始时间" value={formatDateTimeDisplay(detailRecord.startTime)} />
               <DetailField label="结束时间" value={formatDateTimeDisplay(detailRecord.endTime)} />
               <DetailField label="加班时长" value={detailRecord.duration ? `${detailRecord.duration} 小时` : '-'} />
+              <DetailField label="调休额度" value={detailRecord.quotaAmount == null ? '-' : `${detailRecord.quotaAmount} 天`} />
               <DetailField label="状态" value={statusMap[detailRecord.status || 'DRAFT'] || detailRecord.status || '-'} />
               <DetailField label="创建时间" value={formatDateTimeDisplay(detailRecord.createTime)} />
+            </div>
+
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
+              <MatchedSlotSummary slots={detailRecord.matchedSlots} />
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
@@ -780,19 +985,6 @@ export const OvertimeApplicationPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/70">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">流程轨迹</div>
-                {detailRecord.processInstanceId ? (
-                  <div className="text-xs text-slate-500 dark:text-slate-400">{detailRecord.processInstanceId}</div>
-                ) : null}
-              </div>
-              {detailRecord.processInstanceId ? (
-                <ProcessTrace instanceId={detailRecord.processInstanceId} />
-              ) : (
-                <InlineState title="暂无流程轨迹" className="py-8" />
-              )}
-            </div>
           </>
         )}
       </BaseDialog>

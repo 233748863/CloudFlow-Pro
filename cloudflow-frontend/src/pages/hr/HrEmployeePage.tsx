@@ -1,11 +1,5 @@
 import React, { useDeferredValue, useEffect, useMemo, useState } from 'react';
-import {
-  Edit3,
-  Plus,
-  RefreshCcw,
-  Search,
-  Users,
-} from 'lucide-react';
+import { Edit3, Plus, RefreshCcw, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
@@ -26,16 +20,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/common';
-import { cn } from '@/utils/cn';
 import {
   HrEmployee,
   HrEmployeePayload,
-  PositionOption,
   PostOption,
   createEmployee,
   getDeptTreeOptions,
   getEmployeeDetail,
-  getPositionOptions,
   getPostOptions,
   listEmployees,
   updateEmployee,
@@ -51,7 +42,6 @@ const defaultForm: HrEmployeePayload = {
   email: '',
   deptId: undefined,
   postId: undefined,
-  positionId: undefined,
   employeeType: 'FULL_TIME',
   employeeStatus: 'PENDING',
   hireDate: '',
@@ -71,40 +61,8 @@ const typeLabel: Record<string, string> = {
   CONTRACTOR: '外包',
 };
 
-const statusTone = (status?: string | null) => {
-  switch (status) {
-    case 'REGULAR':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
-    case 'PROBATION':
-      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
-    case 'RESIGNED':
-      return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-    default:
-      return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
-  }
-};
-
-const typeTone = (type?: string | null) => {
-  switch (type) {
-    case 'PART_TIME':
-      return 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200';
-    case 'INTERN':
-      return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200';
-    case 'CONTRACTOR':
-      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
-    default:
-      return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-  }
-};
-
-const InlineState = ({
-  title,
-  className,
-}: {
-  title: string;
-  className?: string;
-}) => (
-  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
+const InlineState = ({ title }: { title: string }) => (
+  <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
       <Users className="h-4 w-4" />
     </div>
@@ -112,42 +70,27 @@ const InlineState = ({
   </div>
 );
 
-const TableStateRow = ({
-  colSpan,
-  title,
-  loading = false,
-}: {
-  colSpan: number;
-  title: string;
-  loading?: boolean;
-}) => (
+const TableStateRow = ({ colSpan, title }: { colSpan: number; title: string }) => (
   <tr className="hover:bg-transparent">
     <td colSpan={colSpan} className="px-4 py-14">
-      <InlineState title={title} className={loading ? 'py-6' : 'py-4'} />
+      <InlineState title={title} />
     </td>
   </tr>
 );
 
-const DialogSection = ({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) => (
-  <section className="overflow-visible rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
-    <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+const DialogSection = ({ title, children }: { title: string; children: React.ReactNode }) => (
+  <section className="rounded-xl border border-slate-200 bg-slate-50/60 dark:border-slate-800 dark:bg-slate-900/40">
+    <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-100">
+      {title}
     </div>
-    <div className="overflow-visible p-4">{children}</div>
+    <div className="p-4">{children}</div>
   </section>
 );
 
-export const HrEmployeePage: React.FC = () => {
+const HrEmployeePage: React.FC = () => {
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [postOptions, setPostOptions] = useState<PostOption[]>([]);
-  const [positionOptions, setPositionOptions] = useState<PositionOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [keyword, setKeyword] = useState('');
   const [status, setStatus] = useState('ALL');
@@ -162,24 +105,20 @@ export const HrEmployeePage: React.FC = () => {
   const loadData = async (preferredEmployeeId?: number) => {
     setLoading(true);
     try {
-      const [employeeRes, deptRes, postRes, positionRes] = await Promise.all([
+      const [employeeRes, deptRes, postRes] = await Promise.all([
         listEmployees(),
         getDeptTreeOptions(),
         getPostOptions(),
-        getPositionOptions(),
       ]);
       const nextEmployees = normalizeRows<HrEmployee>(employeeRes);
       setEmployees(nextEmployees);
       setSelectedEmployeeId((prev) => {
         const targetId = preferredEmployeeId ?? prev;
-        if (targetId && nextEmployees.some((item) => item.id === targetId)) {
-          return targetId;
-        }
+        if (targetId && nextEmployees.some((item) => item.id === targetId)) return targetId;
         return nextEmployees[0]?.id ?? null;
       });
       setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
       setPostOptions(normalizeRows<PostOption>(postRes));
-      setPositionOptions(normalizeRows<PositionOption>(positionRes));
     } catch (error) {
       console.error(error);
       toast.error('员工数据加载失败');
@@ -197,15 +136,7 @@ export const HrEmployeePage: React.FC = () => {
       employees.filter((item) => {
         const matchedKeyword =
           !deferredKeyword
-          || [
-            item.name,
-            item.employeeNo,
-            item.deptName,
-            item.postName,
-            item.positionName,
-            item.phone,
-            item.email,
-          ]
+          || [item.name, item.employeeNo, item.deptName, item.postName, item.phone, item.email]
             .filter(Boolean)
             .some((value) => String(value).toLowerCase().includes(deferredKeyword));
         const matchedStatus = status === 'ALL' || item.employeeStatus === status;
@@ -219,27 +150,10 @@ export const HrEmployeePage: React.FC = () => {
       setSelectedEmployeeId(null);
       return;
     }
-
     if (!selectedEmployeeId || !filteredEmployees.some((item) => item.id === selectedEmployeeId)) {
       setSelectedEmployeeId(filteredEmployees[0].id);
     }
   }, [filteredEmployees, selectedEmployeeId]);
-
-  const summary = useMemo(() => {
-    const probationCount = employees.filter((item) => item.employeeStatus === 'PROBATION').length;
-    const regularCount = employees.filter((item) => item.employeeStatus === 'REGULAR').length;
-    const resignedCount = employees.filter((item) => item.employeeStatus === 'RESIGNED').length;
-
-    return {
-      total: employees.length,
-      filtered: filteredEmployees.length,
-      probationCount,
-      regularCount,
-      resignedCount,
-    };
-  }, [employees, filteredEmployees.length]);
-
-  const hasActiveFilters = status !== 'ALL' || keyword.trim().length > 0;
 
   const resetForm = () => {
     setEditingId(null);
@@ -267,7 +181,6 @@ export const HrEmployeePage: React.FC = () => {
         email: detail.email || undefined,
         deptId: detail.deptId || undefined,
         postId: detail.postId || undefined,
-        positionId: detail.positionId || undefined,
         employeeType: detail.employeeType,
         employeeStatus: detail.employeeStatus,
         hireDate: toDateInputValue(detail.hireDate) || undefined,
@@ -317,7 +230,6 @@ export const HrEmployeePage: React.FC = () => {
       email: form.email?.trim() || null,
       deptId: form.deptId ?? null,
       postId: form.postId ?? null,
-      positionId: form.positionId ?? null,
       employeeType: form.employeeType,
       employeeStatus: form.employeeStatus,
       hireDate: form.hireDate || null,
@@ -363,7 +275,6 @@ export const HrEmployeePage: React.FC = () => {
                     onChange={(event) => setKeyword(event.target.value)}
                   />
                 </div>
-
                 <div className="w-full sm:w-40">
                   <Select value={status} onValueChange={setStatus}>
                     <SelectTrigger>
@@ -379,22 +290,9 @@ export const HrEmployeePage: React.FC = () => {
                   </Select>
                 </div>
               </div>
-
               <div className="flex flex-wrap items-center gap-2">
-                {hasActiveFilters ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      setKeyword('');
-                      setStatus('ALL');
-                    }}
-                  >
-                    重置
-                  </Button>
-                ) : null}
                 <Button variant="outline" size="sm" onClick={() => void loadData(selectedEmployeeId ?? undefined)}>
-                  <RefreshCcw size={14} className={cn('mr-1.5', loading && 'animate-spin')} />
+                  <RefreshCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                   刷新
                 </Button>
                 <Button size="sm" onClick={handleCreate}>
@@ -412,21 +310,14 @@ export const HrEmployeePage: React.FC = () => {
                 <div>
                   <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">员工列表</div>
                   <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    共 {summary.total} 人，当前筛选 {summary.filtered} 人
+                    共 {employees.length} 人，当前筛选 {filteredEmployees.length} 人
                   </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 dark:text-slate-400">
-                  <span>试用 {summary.probationCount}</span>
-                  <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-800" />
-                  <span>正式 {summary.regularCount}</span>
-                  <span className="h-3.5 w-px bg-slate-200 dark:bg-slate-800" />
-                  <span>离职 {summary.resignedCount}</span>
                 </div>
               </div>
 
               <div className="min-h-0 overflow-auto">
                 <div className="overflow-x-auto">
-                  <Table className="min-w-[840px]">
+                  <Table className="min-w-[780px]">
                     <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
                       <TableRow>
                         <TableHead>工号</TableHead>
@@ -439,7 +330,7 @@ export const HrEmployeePage: React.FC = () => {
                     </TableHeader>
                     <TableBody>
                       {loading ? (
-                        <TableStateRow colSpan={6} title="正在加载员工档案..." loading />
+                        <TableStateRow colSpan={6} title="正在加载员工档案..." />
                       ) : filteredEmployees.length === 0 ? (
                         <TableStateRow colSpan={6} title="暂无符合条件的员工数据" />
                       ) : (
@@ -447,52 +338,29 @@ export const HrEmployeePage: React.FC = () => {
                           const active = selectedEmployeeId === item.id;
                           const employeeMeta = [item.phone, item.email].filter(Boolean).join(' / ') || '暂无联系方式';
                           const organizationMeta = item.deptName || '未分配部门';
-                          const positionMeta = [item.postName, item.positionName].filter(Boolean).join(' / ') || '未配置岗位';
+                          const postMeta = item.postName || '未配置岗位';
 
                           return (
                             <TableRow
                               key={item.id}
-                              className={cn(
-                                'cursor-pointer',
-                                active && 'bg-cyan-50/70 dark:bg-cyan-950/20',
-                              )}
+                              className={active ? 'cursor-pointer bg-cyan-50/70 dark:bg-cyan-950/20' : 'cursor-pointer'}
                               onClick={() => setSelectedEmployeeId(item.id)}
                             >
-                              <TableCell className="font-medium text-slate-900 dark:text-slate-100">
-                                {item.employeeNo}
+                              <TableCell className="font-medium text-slate-900 dark:text-slate-100">{item.employeeNo}</TableCell>
+                              <TableCell>
+                                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.name}</div>
+                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{employeeMeta}</div>
                               </TableCell>
                               <TableCell>
-                                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                  {item.name}
-                                </div>
-                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                  {employeeMeta}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="text-sm text-slate-900 dark:text-slate-100">
-                                  {organizationMeta}
-                                </div>
-                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                                  {positionMeta}
-                                </div>
+                                <div className="text-sm text-slate-900 dark:text-slate-100">{organizationMeta}</div>
+                                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{postMeta}</div>
                               </TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1.5">
-                                  <span
-                                    className={[
-                                      'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                                      typeTone(item.employeeType),
-                                    ].join(' ')}
-                                  >
+                                  <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                                     {typeLabel[item.employeeType] || item.employeeType}
                                   </span>
-                                  <span
-                                    className={[
-                                      'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                                      statusTone(item.employeeStatus),
-                                    ].join(' ')}
-                                  >
+                                  <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-xs text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
                                     {statusLabel[item.employeeStatus] || item.employeeStatus}
                                   </span>
                                 </div>
@@ -552,13 +420,9 @@ export const HrEmployeePage: React.FC = () => {
         title={editingId ? '编辑员工档案' : '新建员工档案'}
         onClose={resetForm}
         maxWidthClassName="max-w-5xl"
-        bodyClassName="overflow-visible"
-        panelClassName="overflow-visible"
         footer={(
           <div className="flex justify-end gap-3">
-            <Button variant="outline" onClick={resetForm}>
-              取消
-            </Button>
+            <Button variant="outline" onClick={resetForm}>取消</Button>
             <Button disabled={submitting} onClick={() => void handleSubmit()}>
               {submitting ? '保存中...' : editingId ? '保存修改' : '创建员工'}
             </Button>
@@ -569,33 +433,17 @@ export const HrEmployeePage: React.FC = () => {
           <DialogSection title="基础信息">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">工号</Label>
-                <Input
-                  value={form.employeeNo}
-                  disabled={Boolean(editingId)}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, employeeNo: event.target.value }))
-                  }
-                  className="h-11"
-                />
+                <Label>工号</Label>
+                <Input value={form.employeeNo} disabled={Boolean(editingId)} onChange={(event) => setForm((prev) => ({ ...prev, employeeNo: event.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">姓名</Label>
-                <Input
-                  value={form.name}
-                  onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                  className="h-11"
-                />
+                <Label>姓名</Label>
+                <Input value={form.name} onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">性别</Label>
-                <Select
-                  value={form.gender}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, gender: value }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label>性别</Label>
+                <Select value={form.gender} onValueChange={(value) => setForm((prev) => ({ ...prev, gender: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="MALE">男</SelectItem>
                     <SelectItem value="FEMALE">女</SelectItem>
@@ -603,16 +451,9 @@ export const HrEmployeePage: React.FC = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工状态</Label>
-                <Select
-                  value={form.employeeStatus}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({ ...prev, employeeStatus: value }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label>员工状态</Label>
+                <Select value={form.employeeStatus} onValueChange={(value) => setForm((prev) => ({ ...prev, employeeStatus: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="PENDING">待入职</SelectItem>
                     <SelectItem value="PROBATION">试用期</SelectItem>
@@ -622,16 +463,9 @@ export const HrEmployeePage: React.FC = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工类型</Label>
-                <Select
-                  value={form.employeeType}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({ ...prev, employeeType: value }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Label>员工类型</Label>
+                <Select value={form.employeeType} onValueChange={(value) => setForm((prev) => ({ ...prev, employeeType: value }))}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="FULL_TIME">全职</SelectItem>
                     <SelectItem value="PART_TIME">兼职</SelectItem>
@@ -641,14 +475,8 @@ export const HrEmployeePage: React.FC = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">出生日期</Label>
-                <DatePicker
-                  type="date"
-                  value={form.birthDate || ''}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, birthDate: event.target.value }))
-                  }
-                />
+                <Label>出生日期</Label>
+                <DatePicker type="date" value={form.birthDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, birthDate: event.target.value }))} />
               </div>
             </div>
           </DialogSection>
@@ -656,108 +484,48 @@ export const HrEmployeePage: React.FC = () => {
           <DialogSection title="联系方式与时间">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">手机号</Label>
-                <Input
-                  value={form.phone || ''}
-                  onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))}
-                  className="h-11"
-                />
+                <Label>手机号</Label>
+                <Input value={form.phone || ''} onChange={(event) => setForm((prev) => ({ ...prev, phone: event.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">邮箱</Label>
-                <Input
-                  value={form.email || ''}
-                  onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
-                  className="h-11"
-                />
+                <Label>邮箱</Label>
+                <Input value={form.email || ''} onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">入职日期</Label>
-                <DatePicker
-                  type="date"
-                  value={form.hireDate || ''}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, hireDate: event.target.value }))
-                  }
-                />
+                <Label>入职日期</Label>
+                <DatePicker type="date" value={form.hireDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, hireDate: event.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">转正日期</Label>
-                <DatePicker
-                  type="date"
-                  value={form.regularDate || ''}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, regularDate: event.target.value }))
-                  }
-                />
+                <Label>转正日期</Label>
+                <DatePicker type="date" value={form.regularDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, regularDate: event.target.value }))} />
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">离职日期</Label>
-                <DatePicker
-                  type="date"
-                  value={form.resignDate || ''}
-                  onChange={(event) =>
-                    setForm((prev) => ({ ...prev, resignDate: event.target.value }))
-                  }
-                />
+                <Label>离职日期</Label>
+                <DatePicker type="date" value={form.resignDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, resignDate: event.target.value }))} />
               </div>
             </div>
           </DialogSection>
 
           <DialogSection title="组织与岗位">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
-                <Select
-                  value={form.deptId ? String(form.deptId) : undefined}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, deptId: Number(value) }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择部门" />
-                  </SelectTrigger>
+                <Label>部门</Label>
+                <Select value={form.deptId ? String(form.deptId) : undefined} onValueChange={(value) => setForm((prev) => ({ ...prev, deptId: Number(value) }))}>
+                  <SelectTrigger><SelectValue placeholder="请选择部门" /></SelectTrigger>
                   <SelectContent>
                     {deptOptions.map((option) => (
-                      <SelectItem key={option.value} value={String(option.value)}>
-                        {option.label}
-                      </SelectItem>
+                      <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">岗位</Label>
-                <Select
-                  value={form.postId ? String(form.postId) : undefined}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, postId: Number(value) }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择岗位" />
-                  </SelectTrigger>
+                <Label>岗位</Label>
+                <Select value={form.postId ? String(form.postId) : undefined} onValueChange={(value) => setForm((prev) => ({ ...prev, postId: Number(value) }))}>
+                  <SelectTrigger><SelectValue placeholder="请选择岗位" /></SelectTrigger>
                   <SelectContent>
                     {postOptions.map((option) => (
-                      <SelectItem key={option.postId} value={String(option.postId)}>
-                        {option.postName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
-                <Select
-                  value={form.positionId ? String(form.positionId) : undefined}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({ ...prev, positionId: Number(value) }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择职位" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {positionOptions.map((option) => (
-                      <SelectItem key={option.id} value={String(option.id)}>
-                        {option.positionName}
-                      </SelectItem>
+                      <SelectItem key={option.postId} value={String(option.postId)}>{option.postName}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

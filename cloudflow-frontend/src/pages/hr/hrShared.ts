@@ -16,7 +16,7 @@ export const normalizeRows = <T,>(data: unknown): T[] => {
 export const flattenDeptTree = (nodes: DeptTreeNode[] = [], prefix = ''): Array<{ label: string; value: number }> => {
   const result: Array<{ label: string; value: number }> = [];
 
-  nodes.forEach(node => {
+  nodes.forEach((node) => {
     const currentLabel = prefix ? `${prefix} / ${node.deptName}` : node.deptName;
     result.push({ label: currentLabel, value: node.deptId });
 
@@ -32,9 +32,9 @@ export const matchEmployeeKeyword = (employee: HrEmployee, keyword: string) => {
   if (!keyword.trim()) return true;
 
   const normalizedKeyword = keyword.trim().toLowerCase();
-  return [employee.employeeNo, employee.name, employee.deptName, employee.postName, employee.positionName]
+  return [employee.employeeNo, employee.name, employee.deptName, employee.postName]
     .filter(Boolean)
-    .some(value => String(value).toLowerCase().includes(normalizedKeyword));
+    .some((value) => String(value).toLowerCase().includes(normalizedKeyword));
 };
 
 export const buildEmployeeLabel = (employee: HrEmployee) =>
@@ -42,7 +42,3 @@ export const buildEmployeeLabel = (employee: HrEmployee) =>
 
 export const toDateInputValue = (value?: string | null) =>
   value ? String(value).slice(0, 10) : '';
-
-// 前端动作按钮直接复用后端状态机，避免用户点到后端明确不允许的流转。
-export const hasWorkflowStatus = (status: string | null | undefined, ...allowed: string[]) =>
-  allowed.includes(String(status || '').toUpperCase());

@@ -89,6 +89,7 @@ export interface UserInfo {
   phone?: string; // 手机号
   status?: string;
   createTime?: string;
+  permissions?: string[];
 }
 
 export interface CaptchaResponse {
@@ -173,6 +174,7 @@ export const getInfo = async (): Promise<UserInfo> => {
     phone: user.phone || user.phonenumber,
     status: user.status,
     createTime: user.createTime,
+    permissions: Array.isArray(data?.permissions) ? data.permissions : [],
   } as UserInfo;
 }
 

@@ -118,7 +118,7 @@ public interface AuthServiceClient {
     R<Void> updateUser(@PathVariable("id") Long id, @RequestBody UserUpdateDTO dto);
     
     /**
-     * 禁用用户（离职时调用）
+     * 禁用用户（员工档案停用时调用）
      *
      * @param id 用户ID
      * @return 操作结果

@@ -13,7 +13,6 @@ import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
-import com.cloudflow.auth.service.LoginLogService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.tenant.TenantConfigProperties;
@@ -67,22 +66,10 @@ public class AuthController {
     @Autowired
     private TenantConfigProperties tenantConfigProperties;
 
-    @Autowired
-    private LoginLogService loginLogService;
-
     @PostMapping("/login")
     public R<?> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
-        long startAt = System.currentTimeMillis();
-
         // 先校验滑块验证码，避免未通过人机校验时继续执行登录流程。
         if (!captchaService.validatePassToken(form.getCaptchaToken())) {
-            loginLogService.recordLoginFailure(
-                form.getUsername(),
-                tenantConfigProperties.getDefaultTenantId(),
-                request,
-                "验证码失效或错误，请重新验证",
-                System.currentTimeMillis() - startAt
-            );
             return R.fail("验证码失效或错误，请重新验证");
         }
 
@@ -91,47 +78,19 @@ public class AuthController {
         SysUser user = sysUserMapper.selectOne(queryWrapper);
 
         if (user == null) {
-            loginLogService.recordLoginFailure(
-                form.getUsername(),
-                tenantConfigProperties.getDefaultTenantId(),
-                request,
-                "用户不存在",
-                System.currentTimeMillis() - startAt
-            );
             return R.fail("用户不存在");
         }
 
         // 明确拦截停用/删除账号，避免继续进入后续流程后抛出模糊 500。
         if ("2".equals(user.getDelFlag())) {
-            loginLogService.recordLoginFailure(
-                form.getUsername(),
-                user.getTenantId(),
-                request,
-                "账号不存在",
-                System.currentTimeMillis() - startAt
-            );
             return R.fail("账号不存在");
         }
 
         if (!"0".equals(user.getStatus())) {
-            loginLogService.recordLoginFailure(
-                form.getUsername(),
-                user.getTenantId(),
-                request,
-                "账号已停用",
-                System.currentTimeMillis() - startAt
-            );
             return R.fail("账号已停用");
         }
 
         if (!BCrypt.checkpw(form.getPassword(), user.getPassword())) {
-            loginLogService.recordLoginFailure(
-                form.getUsername(),
-                user.getTenantId(),
-                request,
-                "密码错误",
-                System.currentTimeMillis() - startAt
-            );
             return R.fail("密码错误");
         }
 
@@ -142,13 +101,6 @@ public class AuthController {
 
         UserInfo userInfo = sysUserService.findUserInfo(form.getUsername());
         if (userInfo == null) {
-            loginLogService.recordLoginFailure(
-                form.getUsername(),
-                user.getTenantId(),
-                request,
-                "用户信息异常",
-                System.currentTimeMillis() - startAt
-            );
             return R.fail("用户信息异常");
         }
 
@@ -172,12 +124,6 @@ public class AuthController {
         loginUser.put("dsDeptIds", dsInfo.get("dsDeptIds"));
 
         String token = tokenService.createToken(loginUser);
-        loginLogService.recordLoginSuccess(
-            user.getUserName(),
-            user.getTenantId(),
-            request,
-            System.currentTimeMillis() - startAt
-        );
 
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
@@ -266,8 +212,8 @@ public class AuthController {
 
         Map<String, Object> data = new HashMap<>();
         data.put("user", user);
-        data.put("roles", resolveStringCollection(userMap.get("roles"), userInfo.getRoles()));
-        data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
+        data.put("roles", userInfo.getRoles());
+        data.put("permissions", userInfo.getPermissions());
 
         return R.ok(data);
     }

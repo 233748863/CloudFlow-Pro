@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { useAppStore } from '../stores/workflowStore';
+﻿import { useEffect, useRef } from 'react';
+import { useUIStateStore } from '../stores/uiStateStore';
 
 /**
  * 自动保存 Hook
@@ -31,7 +31,7 @@ export function useAutoSave<T>(
     resetKey,
     isEqual = Object.is,
   } = options;
-  const setDirty = useAppStore((s) => s.setDirty);
+  const setDirty = useUIStateStore((s) => s.setDirty);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const dataRef = useRef<T>(data);
   const isSavingRef = useRef(false);
@@ -49,7 +49,7 @@ export function useAutoSave<T>(
       return;
     }
 
-    // 当外部实体切换（如 workflowId/formId 变化）时，重置基线，不触发自动保存
+    // 当外部实体切换（如 entityId/formId 变化）时，重置基线，不触发自动保存
     if (resetKeyRef.current !== resetKey) {
       resetKeyRef.current = resetKey;
       dataRef.current = data;

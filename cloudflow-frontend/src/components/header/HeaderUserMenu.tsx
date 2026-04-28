@@ -50,17 +50,19 @@ export const HeaderUserMenu: React.FC = () => {
   }, [dropdownOpen]);
 
   const displayName = useMemo(
-    () => user?.username || user?.name || user?.email?.split('@')[0] || 'CloudFlow',
+    () => user?.username || user?.name || user?.email?.split('@')[0] || '新元用户',
     [user],
   );
 
   const subtitle = useMemo(() => {
-    const rawRole = String(user?.role || 'user').trim();
-    if (!rawRole) {
-      return 'user';
-    }
-
-    return rawRole.replace(/^ROLE_/i, '').replace(/_/g, ' ').toLowerCase();
+    const normalizedRole = String(user?.role || '').replace(/^ROLE_/i, '').trim().toUpperCase();
+    const roleLabelMap: Record<string, string> = {
+      ADMIN: '管理员',
+      HR: '人事',
+      EMPLOYEE: '员工',
+      USER: '用户',
+    };
+    return roleLabelMap[normalizedRole] || '用户';
   }, [user]);
 
   if (!user) {

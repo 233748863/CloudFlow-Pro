@@ -54,7 +54,7 @@ public class ContextTaskDecorator implements TaskDecorator {
                 if (dsDeptIds != null && !dsDeptIds.isEmpty()) UserContext.setDsDeptIds(dsDeptIds);
                 if (tenantContextId != null) TenantContext.setTenantId(tenantContextId);
                 if (requestAttributes != null) {
-                    // 关键补齐：异步线程也保留请求上下文，审计日志才能拿到真实 IP / User-Agent
+                    // 异步线程也保留请求上下文，便于下游读取真实 IP / User-Agent。
                     RequestContextHolder.setRequestAttributes(requestAttributes, true);
                 }
 

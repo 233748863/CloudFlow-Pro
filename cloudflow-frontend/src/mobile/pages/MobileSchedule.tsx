@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronLeft, Calendar, Clock, MapPin, Users, Loader2, RefreshCw, Plus } from 'lucide-react';
+import { ChevronLeft, Calendar, Clock, Users, Loader2, RefreshCw, Plus } from 'lucide-react';
 import { getTodaySchedule, getMyEvents } from '@/services/api/schedule';
 import type { SysScheduleEvent } from '@/types';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
@@ -283,12 +283,6 @@ export const MobileSchedule: React.FC = () => {
                       </p>
                     )}
                     <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                      {event.roomId && (
-                        <div className="flex items-center gap-1">
-                          <MapPin size={12} />
-                          <span>会议室 {event.roomId}</span>
-                        </div>
-                      )}
                       {event.attendees && (
                         <div className="flex items-center gap-1">
                           <Users size={12} />
@@ -356,12 +350,6 @@ export const MobileSchedule: React.FC = () => {
                           </p>
                         )}
                         <div className="flex flex-wrap gap-2 text-xs text-slate-400">
-                          {event.roomId && (
-                            <div className="flex items-center gap-1">
-                              <MapPin size={12} />
-                              <span>会议室 {event.roomId}</span>
-                            </div>
-                          )}
                           {event.attendees && (
                             <div className="flex items-center gap-1">
                               <Users size={12} />

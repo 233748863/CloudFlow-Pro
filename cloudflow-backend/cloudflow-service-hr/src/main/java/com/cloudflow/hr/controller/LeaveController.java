@@ -2,18 +2,26 @@ package com.cloudflow.hr.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.domain.dto.*;
 import com.cloudflow.hr.domain.vo.LeaveApplicationVO;
 import com.cloudflow.hr.domain.vo.LeaveQuotaInitResultVO;
 import com.cloudflow.hr.domain.vo.LeaveQuotaVO;
 import com.cloudflow.hr.domain.vo.LeaveTypeVO;
+import com.cloudflow.hr.domain.vo.EmployeeVO;
 import com.cloudflow.hr.service.LeaveService;
+import com.cloudflow.hr.service.EmployeeService;
+import com.cloudflow.hr.exception.HrBusinessException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 /**
  * 假期管理控制器
@@ -28,6 +36,7 @@ import java.util.List;
 public class LeaveController {
     
     private final LeaveService leaveService;
+    private final EmployeeService employeeService;
     
     // ==================== 假期类型管理 ====================
     
@@ -78,6 +87,7 @@ public class LeaveController {
     public R<LeaveQuotaInitResultVO> initLeaveQuota(@RequestParam Long employeeId,
                                                     @RequestParam Integer year,
                                                     @RequestParam(required = false) Long leaveTypeId) {
+        requireLeaveQuotaManager();
         LeaveQuotaInitResultVO result = leaveService.initLeaveQuota(employeeId, year, leaveTypeId);
         return R.ok(result);
     }
@@ -87,6 +97,7 @@ public class LeaveController {
      */
     @PostMapping("/quota/adjust")
     public R<Void> adjustLeaveQuota(@Validated @RequestBody LeaveQuotaAdjustDTO dto) {
+        requireLeaveQuotaManager();
         leaveService.adjustLeaveQuota(dto);
         return R.ok();
     }
@@ -98,6 +109,7 @@ public class LeaveController {
     public R<LeaveQuotaVO> getLeaveQuota(@RequestParam Long employeeId,
                                           @RequestParam Long leaveTypeId,
                                           @RequestParam Integer year) {
+        employeeId = resolveReadableEmployeeId(employeeId);
         LeaveQuotaVO vo = leaveService.getLeaveQuota(employeeId, leaveTypeId, year);
         return R.ok(vo);
     }
@@ -109,6 +121,7 @@ public class LeaveController {
     public R<List<LeaveQuotaVO>> listLeaveQuotaBuckets(@RequestParam Long employeeId,
                                                        @RequestParam Long leaveTypeId,
                                                        @RequestParam Integer year) {
+        employeeId = resolveReadableEmployeeId(employeeId);
         List<LeaveQuotaVO> list = leaveService.listLeaveQuotaBuckets(employeeId, leaveTypeId, year);
         return R.ok(list);
     }
@@ -116,8 +129,42 @@ public class LeaveController {
     @GetMapping("/quota/list")
     public R<List<LeaveQuotaVO>> listLeaveQuotas(@RequestParam Long employeeId,
                                                   @RequestParam Integer year) {
+        employeeId = resolveReadableEmployeeId(employeeId);
         List<LeaveQuotaVO> list = leaveService.listLeaveQuotas(employeeId, year);
         return R.ok(list);
+    }
+
+    private Long resolveReadableEmployeeId(Long requestedEmployeeId) {
+        if (isLeaveQuotaManager()) {
+            return requestedEmployeeId;
+        }
+        EmployeeVO currentEmployee = employeeService.getCurrentEmployee();
+        if (currentEmployee == null || currentEmployee.getId() == null) {
+            throw new HrBusinessException("Current user is not bound to an employee profile");
+        }
+        return currentEmployee.getId();
+    }
+
+    private void requireLeaveQuotaManager() {
+        if (!isLeaveQuotaManager()) {
+            throw new HrBusinessException("Only HR or admin can initialize or adjust leave quota");
+        }
+    }
+
+    private boolean isLeaveQuotaManager() {
+        if (SecurityUtils.isAdmin()) {
+            return true;
+        }
+        Set<String> roles = UserContext.getRoles();
+        if (roles != null) {
+            for (String role : roles) {
+                String normalizedRole = String.valueOf(role).trim().toUpperCase();
+                if ("HR".equals(normalizedRole)) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
     
     // ==================== 请假申请管理 ====================
@@ -182,5 +229,14 @@ public class LeaveController {
     public R<IPage<LeaveApplicationVO>> listLeaveApplications(@Validated LeaveApplicationQueryDTO query) {
         IPage<LeaveApplicationVO> page = leaveService.listLeaveApplications(query);
         return R.ok(page);
+    }
+
+    @GetMapping("/application/board")
+    public R<List<LeaveApplicationVO>> listApprovedLeaveBoard(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate) {
+        LocalDate start = startDate != null ? startDate : LocalDate.now();
+        LocalDate end = endDate != null ? endDate : start.plusDays(30);
+        return R.ok(leaveService.listApprovedLeaveBoard(start.atStartOfDay(), end.plusDays(1).atStartOfDay()));
     }
 }

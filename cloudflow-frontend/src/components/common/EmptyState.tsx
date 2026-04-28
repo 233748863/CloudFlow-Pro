@@ -1,15 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import {
-  AlertTriangle,
-  ClipboardList,
-  FileText,
-  Inbox,
-  Lock,
-  Plus,
-  Search,
-  SquareKanban,
-} from 'lucide-react';
+import { AlertTriangle, ClipboardList, FileText, Inbox, Lock, Plus, Search } from 'lucide-react';
 import { Button } from './button';
 import { cn } from '@/utils/cn';
 
@@ -43,7 +34,7 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
       {icon || <Inbox className="empty-state-icon h-10 w-10" />}
     </div>
     <h3 className="empty-state-title">{title}</h3>
-    {(description || message) ? <p className="empty-state-description">{description || message}</p> : null}
+    {description || message ? <p className="empty-state-description">{description || message}</p> : null}
     {action ? (
       <div className="mt-6">{action}</div>
     ) : actionText ? (
@@ -78,18 +69,8 @@ export const EmptyTasks: React.FC<{ onCreate?: () => void }> = ({ onCreate }) =>
   <EmptyState
     icon={<ClipboardList className="empty-state-icon h-10 w-10" />}
     title="暂无任务"
-    description="您目前没有待处理的任务"
+    description="当前没有待处理任务"
     actionText={onCreate ? '创建任务' : undefined}
-    onAction={onCreate}
-  />
-);
-
-export const EmptyWorkflows: React.FC<{ onCreate?: () => void }> = ({ onCreate }) => (
-  <EmptyState
-    icon={<SquareKanban className="empty-state-icon h-10 w-10" />}
-    title="暂无流程"
-    description="还没有创建任何流程定义"
-    actionText={onCreate ? '创建流程' : undefined}
     onAction={onCreate}
   />
 );
@@ -98,7 +79,7 @@ export const EmptyForms: React.FC<{ onCreate?: () => void }> = ({ onCreate }) =>
   <EmptyState
     icon={<FileText className="empty-state-icon h-10 w-10" />}
     title="暂无表单"
-    description="还没有创建任何表单定义"
+    description="当前没有表单数据"
     actionText={onCreate ? '创建表单' : undefined}
     onAction={onCreate}
   />
@@ -128,6 +109,6 @@ export const EmptyPermission: React.FC = () => (
   <EmptyState
     icon={<Lock className="empty-state-icon h-10 w-10 text-amber-500" />}
     title="权限不足"
-    description="您没有权限访问此内容"
+    description="当前账号没有访问该内容的权限"
   />
 );

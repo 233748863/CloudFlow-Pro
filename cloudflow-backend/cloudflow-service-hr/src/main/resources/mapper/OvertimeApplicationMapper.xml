@@ -9,8 +9,7 @@
             SUM(CASE WHEN overtime_type = 'WEEKEND' THEN duration ELSE 0 END) AS weekendHours,
             SUM(CASE WHEN overtime_type = 'HOLIDAY' THEN duration ELSE 0 END) AS holidayHours,
             SUM(duration) AS totalHours,
-            SUM(CASE WHEN compensation_type = 'TIME_OFF' THEN compensation_hours ELSE 0 END) AS timeOffHours,
-            SUM(CASE WHEN compensation_type = 'PAYMENT' THEN duration ELSE 0 END) AS paymentHours,
+            SUM(CASE WHEN compensation_type = 'TIME_OFF' THEN COALESCE(quota_amount, compensation_hours / 8, 0) ELSE 0 END) AS timeOffHours,
             COUNT(*) AS overtimeCount
         FROM hr_overtime_application
         WHERE tenant_id = #{tenantId}

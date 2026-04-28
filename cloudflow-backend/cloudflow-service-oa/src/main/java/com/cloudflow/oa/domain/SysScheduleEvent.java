@@ -35,8 +35,6 @@ public class SysScheduleEvent {
      */
     private String type;
     
-    private Long roomId;
-    
     private Long creatorId;
     
     /**

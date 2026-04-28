@@ -217,15 +217,8 @@ class SyncManager {
     await updatePendingAction(action.id, { status: 'syncing' });
 
     const endpointMap: Record<string, { method: string; url: string }> = {
-      task_complete: { method: 'POST', url: `/workflow/task/complete` },
-      task_approve: { method: 'POST', url: `/workflow/task/complete` },
-      task_reject: { method: 'POST', url: `/workflow/task/complete` },
       notice_read: { method: 'POST', url: `/oa/notice/read/${action.payload.noticeId}` },
       schedule_create: { method: 'POST', url: `/oa/schedule` },
-      hr_leave_request: { method: 'POST', url: `/workflow/process/start` },
-      reimbursement_request: { method: 'POST', url: `/workflow/process/start` },
-      vehicle_booking: { method: 'POST', url: `/workflow/process/start` },
-      meeting_booking: { method: 'POST', url: `/oa/meeting-room` },
     };
 
     const endpoint = endpointMap[action.type];
@@ -259,9 +252,6 @@ class SyncManager {
         const data = response.data || response;
 
         // 缓存下载的数据
-        if (data.tasks) {
-          await cacheData('sync_tasks', data.tasks, 60);
-        }
         if (data.messages) {
           await cacheData('sync_messages', data.messages, 60);
         }

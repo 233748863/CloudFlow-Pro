@@ -16,7 +16,6 @@ const files = [
   'src/pages/DutySchedulePage.tsx',
   'src/pages/BusinessTripPage.tsx',
   'src/pages/VisitorPage.tsx',
-  'src/pages/AttendanceSupplementPage.tsx',
   'src/pages/system/ConfigList.tsx',
   'src/pages/system/PostList.tsx',
 ];

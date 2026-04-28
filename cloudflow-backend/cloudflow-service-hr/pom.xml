@@ -67,26 +67,6 @@
         </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-log</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-audit</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-excel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>cn.idev.excel</groupId>
-            <artifactId>fastexcel-core</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.cloudflow</groupId>
-            <artifactId>cloudflow-common-oss</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-idempotent</artifactId>
         </dependency>
         <dependency>
@@ -106,16 +86,6 @@
         <dependency>
             <groupId>org.redisson</groupId>
             <artifactId>redisson</artifactId>
-        </dependency>
-
-        <!-- 监控与运维 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.micrometer</groupId>
-            <artifactId>micrometer-registry-prometheus</artifactId>
         </dependency>
 
         <!-- 开发辅助 -->
