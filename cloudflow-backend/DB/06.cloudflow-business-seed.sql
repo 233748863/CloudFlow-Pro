@@ -29,10 +29,10 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_menu
 WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
-   OR menu_id BETWEEN 100 AND 210
+   OR menu_id BETWEEN 100 AND 211
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
-   OR menu_id BETWEEN 500 AND 507
+   OR menu_id BETWEEN 500 AND 509
    OR menu_id BETWEEN 600 AND 617
    OR menu_id BETWEEN 700 AND 739;
 
@@ -105,8 +105,11 @@ WHERE definition_id IN (
   'wf_probation_confirmation_approval',
   'wf_resignation_approval',
   'wf_salary_adjustment_approval',
+  'wf_performance_plan_approval',
+  'wf_performance_result_approval',
   'wf_transfer_approval',
   'wf_payment_request',
+  'wf_purchase_request',
   'wf_business_trip',
   'wf_vehicle_approval',
   'wf_knowledge_publish'
@@ -273,6 +276,9 @@ WHERE asset_id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.sys_consumable
 WHERE consumable_id BETWEEN 9000 AND 9999;
 
+DELETE FROM cloud_flow_db.sys_supplier
+WHERE supplier_id BETWEEN 9000 AND 9999;
+
 DELETE FROM cloud_flow_db.sys_visitor
 WHERE visitor_id BETWEEN 9700 AND 9999;
 
@@ -301,6 +307,15 @@ DELETE FROM cloud_flow_db.biz_expense_claim
 WHERE id BETWEEN 9000 AND 9999;
 
 DELETE FROM cloud_flow_db.biz_payment_request
+WHERE id BETWEEN 9000 AND 9999;
+
+DELETE FROM cloud_flow_db.biz_purchase_receipt
+WHERE purchase_id BETWEEN 9000 AND 9999;
+
+DELETE FROM cloud_flow_db.biz_purchase_item
+WHERE purchase_id BETWEEN 9000 AND 9999;
+
+DELETE FROM cloud_flow_db.biz_purchase_request
 WHERE id BETWEEN 9000 AND 9999;
 
 DELETE FROM cloud_flow_db.biz_business_trip
@@ -768,10 +783,16 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(209, '付款申请',   2, 9, '/payment
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(210, '知识库',     2, 10, '/office/knowledge',        'pages/KnowledgePage',          NULL, 0, 0, 'C', '0', '0', 'office:knowledge:list',     'BookOpen',        'admin', NOW(), '', null, '制度文档知识库');
 
--- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班
+INSERT INTO cloud_flow_db.sys_menu VALUES(211, '采购申请',   2, 11, '/office/purchase-request', 'pages/PurchaseRequestPage',   NULL, 0, 0, 'C', '0', '0', 'office:purchase:list',      'ShoppingCart',    'admin', NOW(), '', null, '行政采购申请');
+
+-- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班、供应商、耗材
 INSERT INTO cloud_flow_db.sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', NOW(), '', null, '访客预约管理');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(507, '值班排班',   5, 8, '/admin/duty-schedule',      'pages/DutySchedulePage',       NULL, 0, 0, 'C', '0', '0', 'admin:duty:list',           'CalendarClock',   'admin', NOW(), '', null, '值班排班管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(508, '供应商管理', 5, 9, '/admin/supplier',           'pages/admin/supplier/SupplierPage', NULL, 0, 0, 'C', '0', '0', 'admin:supplier:list', 'Handshake',       'admin', NOW(), '', null, '行政采购供应商管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(509, '耗材管理',   5, 10, '/admin/consumable',         'pages/admin/consumable/ConsumablePage', NULL, 0, 0, 'C', '0', '0', 'admin:consumable:list', 'Package',       'admin', NOW(), '', null, '行政采购耗材目录与库存管理');
 
 -- 流程管理(parent_id=4)扩展菜单：Phase 2 监控告警功能（2026-02-22新增）
 INSERT INTO cloud_flow_db.sys_menu VALUES(700, '告警管理',   4, 7, '/workflow/alerts',          'pages/AlertList',              NULL, 0, 0, 'C', '0', '0', 'workflow:alert:list',       'Bell',            'admin', NOW(), '', null, '查看和处理超时告警和异常告警');
@@ -914,10 +935,16 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 209, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 210, 100000);
 
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 211, 100000);
+
 -- 行政管理扩展菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 506, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 507, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 508, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 509, 100000);
 
 -- Phase 2 监控告警菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 700, 100000);
@@ -1126,6 +1153,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 208, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 209, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 210, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 211, 100000);
 
 -- Phase 2 监控告警菜单（仅查看流程监控）
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 4, 100000);
@@ -1552,6 +1581,9 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_payment_request', '付款审批流程', 'payment_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交付款申请"},{"id":"n1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance"},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000"},{"id":"end_b1","type":"END","title":"流程结束"},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_purchase_request', '采购审批流程', 'purchase_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交采购申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"采购经理审批","approverType":"ROLE","approverValue":"manager"},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"END","title":"流程结束","condition":"amount < 50000"},{"id":"b2","type":"APPROVAL","title":"管理员审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->gw1","source":"n2","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_business_trip', '出差审批流程', 'business_trip', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交出差申请"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER"},{"id":"n2","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
@@ -5312,6 +5344,12 @@ INSERT INTO cloud_flow_db.sys_consumable (
 (9003, 100000, '便签纸', '76x76mm', '包', 18, 5, '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY)),
 (9004, 100000, '工牌挂绳', '标准蓝色', '根', 42, 10, '0', 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
 (9005, 100000, '演示用 HDMI 线', '2米 4K', '根', 3, 4, '0', 'chen', DATE_SUB(NOW(), INTERVAL 12 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 2 HOUR));
+
+INSERT INTO cloud_flow_db.sys_supplier (
+  supplier_id, tenant_id, supplier_name, contact_name, contact_phone, bank_name, bank_account, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9001, 100000, '杭州云启办公用品有限公司', '周芸', '13800010001', '招商银行杭州科技园支行', '6217000012345678901', 'ACTIVE', '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(9002, 100000, '上海企采耗材供应链有限公司', '陈立', '13800010002', '中国银行上海浦东支行', '6217000012345678902', 'ACTIVE', '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT INTO cloud_flow_db.sys_asset_log (
   log_id, tenant_id, ref_id, ref_type, type, quantity_change, operator_id, target_id, remark, create_time

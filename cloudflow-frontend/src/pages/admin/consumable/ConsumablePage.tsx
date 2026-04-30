@@ -3,107 +3,127 @@ import {
   AlertTriangle,
   ArrowDownCircle,
   ArrowUpCircle,
+  Edit,
+  History,
   Loader2,
   Package,
-  Pencil,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { consumableApi, Consumable } from "@/services/api/consumable";
-import { TableRowActions } from "@/components/common/table-row-actions";
+import { BaseDialog } from "@/components/common/BaseDialog";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { Pagination } from "@/components/common/Pagination";
+import { TablePageLayout } from "@/components/layout/TablePageLayout";
 import {
   Button,
   Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   TableActionHead,
   TableHead,
   TableHeader,
+  Textarea,
 } from "@/components/common";
+import { TableRowActions } from "@/components/common/table-row-actions";
 import {
-  WorkspaceBackdrop,
-  WorkspaceTableStateRow,
-} from "@/components/workspace/WorkspacePrimitives";
-import {
-  WorkspaceDialogShell,
-  WorkspaceHeroCard,
-  WorkspaceMetricCard,
-  WorkspacePaginationBar,
-  WorkspaceResultCard,
-  WorkspaceWorkbenchCard,
-} from "@/components/workspace/WorkspacePanels";
+  consumableApi,
+  Consumable,
+  ConsumableStockLog,
+} from "@/services/api/consumable";
 import { getErrorMessage } from "@/utils/errorMessage";
 
-/** 耗材管理页面 */
+const createDefaultForm = (): Consumable => ({
+  name: "",
+  model: "",
+  unit: "个",
+  lowStockThreshold: 10,
+});
+
 const ConsumablePage: React.FC = () => {
   const [list, setList] = useState<Consumable[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
-  const [pageNum, setPageNum] = useState(1);
-  const [pageSize] = useState(10);
   const [searchName, setSearchName] = useState("");
+  const [searchParams, setSearchParams] = useState({
+    name: "",
+    pageNum: 1,
+    pageSize: 10,
+  });
   const [showForm, setShowForm] = useState(false);
   const [showStockModal, setShowStockModal] = useState(false);
   const [stockAction, setStockAction] = useState<"add" | "reduce">("add");
+  const [stockOutType, setStockOutType] = useState<"ISSUE" | "LOSS">("ISSUE");
   const [stockQuantity, setStockQuantity] = useState(1);
+  const [stockRemark, setStockRemark] = useState("");
   const [currentItem, setCurrentItem] = useState<Consumable | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Consumable | null>(null);
+  const [logTarget, setLogTarget] = useState<Consumable | null>(null);
+  const [stockLogs, setStockLogs] = useState<ConsumableStockLog[]>([]);
+  const [logLoading, setLogLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [formData, setFormData] = useState<Consumable>({
-    name: "",
-    model: "",
-    unit: "个",
-    quantity: 0,
-    lowStockThreshold: 10,
-  });
+  const [formData, setFormData] = useState<Consumable>(createDefaultForm());
 
   const fetchList = useCallback(async () => {
     setLoading(true);
     try {
       const data: any = await consumableApi.list({
-        pageNum,
-        pageSize,
-        name: searchName || undefined,
+        pageNum: searchParams.pageNum,
+        pageSize: searchParams.pageSize,
+        name: searchParams.name || undefined,
       });
-      setList(data?.records || []);
+      setList(data?.records || data?.rows || []);
       setTotal(data?.total || 0);
     } catch (error) {
       toast.error(getErrorMessage(error, "加载耗材列表失败"));
     } finally {
       setLoading(false);
     }
-  }, [pageNum, pageSize, searchName]);
+  }, [searchParams]);
 
   useEffect(() => {
     void fetchList();
   }, [fetchList]);
 
+  const isLowStock = (item: Consumable) =>
+    Number(item.quantity || 0) <= Number(item.lowStockThreshold || 0);
+
+  const totalPages = Math.max(1, Math.ceil(total / searchParams.pageSize));
+  const lowStockCount = useMemo(
+    () => list.filter((item) => isLowStock(item)).length,
+    [list],
+  );
+  const totalQuantity = useMemo(
+    () => list.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
+    [list],
+  );
+
   const handleSearch = () => {
-    setPageNum(1);
-    void fetchList();
+    setSearchParams((prev) => ({
+      ...prev,
+      name: searchName.trim(),
+      pageNum: 1,
+    }));
   };
 
   const handleReset = () => {
     setSearchName("");
-    setPageNum(1);
-    setTimeout(() => {
-      void fetchList();
-    }, 0);
+    setSearchParams((prev) => ({ ...prev, name: "", pageNum: 1 }));
   };
 
   const handleAdd = () => {
-    setFormData({
-      name: "",
-      model: "",
-      unit: "个",
-      quantity: 0,
-      lowStockThreshold: 10,
-    });
+    setFormData(createDefaultForm());
     setCurrentItem(null);
     setShowForm(true);
   };
 
   const handleEdit = (item: Consumable) => {
-    setFormData({ ...item });
+    setFormData({ ...createDefaultForm(), ...item });
     setCurrentItem(item);
     setShowForm(true);
   };
@@ -124,7 +144,7 @@ const ConsumablePage: React.FC = () => {
         toast.success("新增成功");
       }
       setShowForm(false);
-      void fetchList();
+      await fetchList();
     } catch (error) {
       toast.error(getErrorMessage(error, "保存失败"));
     } finally {
@@ -132,13 +152,13 @@ const ConsumablePage: React.FC = () => {
     }
   };
 
-  const handleDelete = async (item: Consumable) => {
-    if (!item.consumableId) return;
-    if (!window.confirm(`确定删除耗材「${item.name}」吗？`)) return;
+  const handleDelete = async () => {
+    if (!deleteTarget?.consumableId) return;
     try {
-      await consumableApi.remove([item.consumableId]);
+      await consumableApi.remove([deleteTarget.consumableId]);
       toast.success("删除成功");
-      void fetchList();
+      setDeleteTarget(null);
+      await fetchList();
     } catch (error) {
       toast.error(getErrorMessage(error, "删除失败"));
     }
@@ -147,31 +167,69 @@ const ConsumablePage: React.FC = () => {
   const openStockModal = (item: Consumable, action: "add" | "reduce") => {
     setCurrentItem(item);
     setStockAction(action);
+    setStockOutType("ISSUE");
     setStockQuantity(1);
+    setStockRemark("");
     setShowStockModal(true);
   };
 
+  const openLogs = async (item: Consumable) => {
+    if (!item.consumableId) return;
+    setLogTarget(item);
+    setLogLoading(true);
+    try {
+      const result = await consumableApi.logs(item.consumableId) as ConsumableStockLog[];
+      setStockLogs(Array.isArray(result) ? result : []);
+    } catch (error) {
+      toast.error(getErrorMessage(error, "加载库存流水失败"));
+    } finally {
+      setLogLoading(false);
+    }
+  };
+
   const handleStock = async () => {
-    if (!currentItem?.consumableId || stockQuantity <= 0) return;
+    if (!currentItem?.consumableId || stockQuantity <= 0) {
+      toast.error("数量必须大于 0");
+      return;
+    }
+    if (!stockRemark.trim()) {
+      toast.error(`${stockAction === "add" ? "入库" : "出库"}原因不能为空`);
+      return;
+    }
+
+    if (
+      stockAction === "reduce" &&
+      stockQuantity > Number(currentItem.quantity || 0)
+    ) {
+      toast.error("出库数量不能超过当前库存");
+      return;
+    }
+
     setSubmitting(true);
     try {
       if (stockAction === "add") {
-        await consumableApi.addStock(currentItem.consumableId, stockQuantity);
+        await consumableApi.addStock(
+          currentItem.consumableId,
+          stockQuantity,
+          stockRemark.trim(),
+        );
         toast.success(`入库成功，数量: ${stockQuantity}`);
       } else {
         await consumableApi.reduceStock(
           currentItem.consumableId,
           stockQuantity,
+          stockOutType,
+          stockRemark.trim(),
         );
         toast.success(`出库成功，数量: ${stockQuantity}`);
       }
       setShowStockModal(false);
-      void fetchList();
+      await fetchList();
     } catch (error) {
       toast.error(
         getErrorMessage(
           error,
-          stockAction === "add" ? "入库失败" : "出库失败，可能库存不足",
+          stockAction === "add" ? "入库失败" : "出库失败",
         ),
       );
     } finally {
@@ -179,224 +237,135 @@ const ConsumablePage: React.FC = () => {
     }
   };
 
-  const isLowStock = (item: Consumable) =>
-    (item.quantity || 0) <= (item.lowStockThreshold || 0);
-
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  const lowStockCount = useMemo(
-    () => list.filter((item) => isLowStock(item)).length,
-    [list],
-  );
-  const totalQuantity = useMemo(
-    () => list.reduce((sum, item) => sum + Number(item.quantity || 0), 0),
-    [list],
-  );
-  const hasActiveFilters = Boolean(searchName.trim());
-  const now = new Date();
-  const todayLabel = `${now.getMonth() + 1}/${now.getDate()}`;
-  const timeLabel = now.toLocaleTimeString("zh-CN", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-  const overviewItems = [
-    { label: "当前结果", value: `${list.length} 项耗材` },
-    { label: "库存总量", value: `${totalQuantity}` },
-    { label: "低库存", value: `${lowStockCount} 项` },
-    { label: "搜索状态", value: hasActiveFilters ? "已启用" : "默认" },
-  ];
-
   return (
-    <div className="relative min-h-screen pb-6">
-      <WorkspaceBackdrop />
-      <div className="relative z-10 space-y-3">
-        <WorkspaceHeroCard
-          badge={
-            <div className="flex flex-wrap items-center gap-2 text-[11px] font-medium text-slate-500">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-cyan-700">
-                <Package className="h-3.5 w-3.5" />
-                {todayLabel}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-2.5 py-1">
-                {timeLabel}
-              </span>
-            </div>
-          }
-          title="耗材管理"
-          description="统一管理办公耗材的基础信息、库存变化和预警状态，让出入库操作也回到工作台结构。"
-          actions={
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={handleReset}>
-                重置筛选
-              </Button>
-              <Button onClick={handleAdd} className="gap-2">
-                <Plus size={16} />
-                新增耗材
-              </Button>
-            </div>
-          }
-          contentClassName="p-4 sm:p-5"
-        >
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <WorkspaceMetricCard
-              label="耗材总量"
-              value={total}
-              hint="接口返回的耗材总记录数"
-              aside={<Package className="h-[18px] w-[18px] text-cyan-600" />}
-            />
-            <WorkspaceMetricCard
-              label="当前页"
-              value={list.length}
-              hint={`库存总量 ${totalQuantity}`}
-              aside={<Search className="h-[18px] w-[18px] text-sky-500" />}
-            />
-            <WorkspaceMetricCard
-              label="低库存"
-              value={lowStockCount}
-              hint="达到或低于预警阈值"
-              aside={
-                <AlertTriangle className="h-[18px] w-[18px] text-amber-500" />
-              }
-            />
-            <WorkspaceMetricCard
-              label="筛选状态"
-              value={hasActiveFilters ? "已启用" : "默认"}
-              hint={
-                hasActiveFilters ? `关键词：${searchName}` : "当前显示全部耗材"
-              }
-              aside={<Search className="h-[18px] w-[18px] text-emerald-500" />}
-            />
-          </div>
-        </WorkspaceHeroCard>
-
-        <WorkspaceWorkbenchCard
-          title="耗材工作台"
-          total={total}
-          hasActiveFilters={hasActiveFilters}
-          overviewItems={overviewItems}
-          quickFilterAside={
-            hasActiveFilters ? (
-              <Button variant="outline" size="sm" onClick={handleReset}>
-                清空筛选
-              </Button>
-            ) : (
-              <span className="rounded-full bg-white px-3 py-1.5 text-[11px] font-medium text-slate-400 border border-slate-200 shadow-sm">
-                当前显示全部耗材
-              </span>
-            )
-          }
-          filterBar={
-            <div className="flex gap-3">
-              <div className="relative flex-1">
+    <div className="space-y-4">
+      <TablePageLayout
+        className="gap-4"
+        filters={
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
+              <div className="relative w-full sm:w-[280px]">
                 <Search
-                  size={18}
+                  size={16}
                   className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
                 />
                 <Input
-                  type="text"
+                  className="h-10 pl-9"
                   value={searchName}
                   onChange={(event) => setSearchName(event.target.value)}
                   onKeyDown={(event) => event.key === "Enter" && handleSearch()}
-                  placeholder="搜索耗材名称..."
-                  className="pl-10"
+                  placeholder="搜索耗材名称"
                 />
               </div>
-              <Button variant="outline" onClick={handleSearch}>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
+                <span>第 {searchParams.pageNum} / {totalPages} 页</span>
+                <span>共 {total} 条</span>
+                <span>当前页库存 {totalQuantity}</span>
+                <span>低库存 {lowStockCount} 项</span>
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <Button variant="outline" size="sm" onClick={handleSearch}>
                 搜索
               </Button>
+              <Button variant="outline" size="sm" onClick={handleReset}>
+                <RotateCcw size={14} className="mr-1.5" />
+                清空条件
+              </Button>
+          <Button size="sm" onClick={handleAdd}>
+            <Plus size={14} className="mr-1.5" />
+            新增耗材
+              </Button>
             </div>
-          }
-        />
-
-        <WorkspaceResultCard
-          total={total}
-          title="耗材列表"
-          description="统一展示耗材基础信息、库存状态和入出库操作。"
-          footer={
-            total > pageSize ? (
-              <WorkspacePaginationBar
-                total={total}
-                pageNum={pageNum}
-                totalPages={totalPages}
-                onPrev={() => setPageNum((page) => Math.max(1, page - 1))}
-                onNext={() =>
-                  setPageNum((page) => Math.min(totalPages, page + 1))
-                }
-                prevDisabled={pageNum <= 1}
-                nextDisabled={pageNum >= totalPages}
-              />
-            ) : null
-          }
-        >
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <TableHeader>
+          </div>
+        }
+        table={
+          <div className="min-h-[38rem] overflow-x-auto">
+            <table className="w-full min-w-[980px]">
+              <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                 <tr>
-                  <TableHead className="px-4 py-3 text-left">名称</TableHead>
+                  <TableHead className="px-4 py-3 text-left">耗材</TableHead>
                   <TableHead className="px-4 py-3 text-left">型号</TableHead>
                   <TableHead className="px-4 py-3 text-left">单位</TableHead>
                   <TableHead className="px-4 py-3 text-center">库存</TableHead>
                   <TableHead className="px-4 py-3 text-center">
                     预警阈值
                   </TableHead>
-                  <TableHead className="px-4 py-3 text-center">状态</TableHead>
-                  <TableActionHead className="w-72 px-4 py-3">
+                  <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                  <TableActionHead className="w-44 px-4 py-3 text-right">
                     操作
                   </TableActionHead>
                 </tr>
               </TableHeader>
-              <tbody>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {loading ? (
-                  <WorkspaceTableStateRow
-                    colSpan={7}
-                    type="loading"
-                    title="正在加载耗材数据..."
-                  />
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-16 text-center text-sm text-slate-500"
+                    >
+                      正在加载耗材...
+                    </td>
+                  </tr>
                 ) : list.length === 0 ? (
-                  <WorkspaceTableStateRow
-                    colSpan={7}
-                    title="暂无耗材数据"
-                    icon={<Package size={24} />}
-                  />
+                  <tr>
+                    <td
+                      colSpan={7}
+                      className="px-4 py-16 text-center text-sm text-slate-500"
+                    >
+                      暂无耗材
+                    </td>
+                  </tr>
                 ) : (
                   list.map((item) => (
                     <tr
                       key={item.consumableId}
-                      className="border-b border-slate-100 hover:bg-slate-50"
+                      className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60"
                     >
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                        {item.name}
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">
+                          {item.name}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-400">
+                          ID {item.consumableId || "-"}
+                        </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         {item.model || "-"}
                       </td>
-                      <td className="px-4 py-3 text-sm text-slate-600">
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         {item.unit || "-"}
                       </td>
                       <td className="px-4 py-3 text-center text-sm">
                         <span
-                          className={`font-semibold ${isLowStock(item) ? "text-red-600" : "text-slate-900"}`}
+                          className={
+                            isLowStock(item)
+                              ? "font-semibold text-rose-600"
+                              : "font-semibold text-slate-900 dark:text-slate-100"
+                          }
                         >
                           {item.quantity ?? 0}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center text-sm text-slate-600">
+                      <td className="px-4 py-3 text-center text-sm text-slate-600 dark:text-slate-300">
                         {item.lowStockThreshold ?? "-"}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3">
                         {isLowStock(item) ? (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-600">
+                          <span className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
                             <AlertTriangle size={12} />
                             库存不足
                           </span>
                         ) : (
-                          <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-0.5 text-xs text-green-600">
+                          <span className="inline-flex items-center rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">
                             正常
                           </span>
                         )}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3">
+                      <td className="px-4 py-3 text-right">
                         <TableRowActions
-                          align="center"
+                          align="end"
+                          iconOnly
                           actions={[
                             {
                               label: "入库",
@@ -411,15 +380,21 @@ const ConsumablePage: React.FC = () => {
                               tone: "warning",
                             },
                             {
+                              label: "流水",
+                              icon: <History size={14} />,
+                              onClick: () => void openLogs(item),
+                              tone: "info",
+                            },
+                            {
                               label: "编辑",
-                              icon: <Pencil size={14} />,
+                              icon: <Edit size={14} />,
                               onClick: () => handleEdit(item),
                               tone: "primary",
                             },
                             {
                               label: "删除",
                               icon: <Trash2 size={14} />,
-                              onClick: () => void handleDelete(item),
+                              onClick: () => setDeleteTarget(item),
                               tone: "danger",
                             },
                           ]}
@@ -431,157 +406,239 @@ const ConsumablePage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        </WorkspaceResultCard>
+        }
+        pagination={
+          total > 0 ? (
+            <Pagination
+              total={total}
+              page={searchParams.pageNum}
+              pageSize={searchParams.pageSize}
+              showPageSizeSelector={false}
+              showJump={false}
+              onPageChange={(page) =>
+                setSearchParams((prev) => ({ ...prev, pageNum: page }))
+              }
+              onPageSizeChange={() => {}}
+            />
+          ) : null
+        }
+      />
 
-        {showForm ? (
-          <WorkspaceDialogShell
-            title={currentItem?.consumableId ? "编辑耗材" : "新增耗材"}
-            description="维护耗材名称、型号、单位和库存预警信息。"
-            onClose={() => setShowForm(false)}
-            maxWidthClassName="max-w-md"
-          >
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  名称 <span className="text-red-500">*</span>
-                </label>
-                <Input
-                  type="text"
-                  value={formData.name}
-                  onChange={(event) =>
-                    setFormData({ ...formData, name: event.target.value })
-                  }
-                  placeholder="请输入耗材名称"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    型号
-                  </label>
-                  <Input
-                    type="text"
-                    value={formData.model || ""}
-                    onChange={(event) =>
-                      setFormData({ ...formData, model: event.target.value })
-                    }
-                    placeholder="如 A4"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    单位
-                  </label>
-                  <Input
-                    type="text"
-                    value={formData.unit || ""}
-                    onChange={(event) =>
-                      setFormData({ ...formData, unit: event.target.value })
-                    }
-                    placeholder="如 个/箱/包"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    初始库存
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formData.quantity ?? 0}
-                    onChange={(event) =>
-                      setFormData({
-                        ...formData,
-                        quantity: parseInt(event.target.value, 10) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-slate-700">
-                    低库存预警
-                  </label>
-                  <Input
-                    type="number"
-                    min={0}
-                    value={formData.lowStockThreshold ?? 10}
-                    onChange={(event) =>
-                      setFormData({
-                        ...formData,
-                        lowStockThreshold:
-                          parseInt(event.target.value, 10) || 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <Button variant="outline" onClick={() => setShowForm(false)}>
-                  取消
-                </Button>
-                <Button onClick={handleSave} disabled={submitting}>
-                  {submitting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : null}
-                  保存
-                </Button>
-              </div>
-            </div>
-          </WorkspaceDialogShell>
-        ) : null}
+      <BaseDialog
+        open={showForm}
+        title={currentItem?.consumableId ? "编辑耗材" : "新增耗材"}
+        description={
+          currentItem?.consumableId
+            ? "库存数量只能通过入库或出库调整。"
+            : "新增耗材后库存默认为 0，请通过入库录入初始库存。"
+        }
+        onClose={() => setShowForm(false)}
+        width="wide"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowForm(false)}>
+              取消
+            </Button>
+            <Button onClick={() => void handleSave()} disabled={submitting}>
+              {submitting ? (
+                <Loader2 size={16} className="mr-1.5 animate-spin" />
+              ) : null}
+              保存
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              耗材名称
+            </label>
+            <Input
+              value={formData.name}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, name: event.target.value }))
+              }
+              placeholder="请输入耗材名称"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              型号
+            </label>
+            <Input
+              value={formData.model || ""}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, model: event.target.value }))
+              }
+              placeholder="如 70g/500张"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              单位
+            </label>
+            <Input
+              value={formData.unit || ""}
+              onChange={(event) =>
+                setFormData((prev) => ({ ...prev, unit: event.target.value }))
+              }
+              placeholder="如 个/箱/包"
+            />
+          </div>
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              低库存预警
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={formData.lowStockThreshold ?? 10}
+              onChange={(event) =>
+                setFormData((prev) => ({
+                  ...prev,
+                  lowStockThreshold:
+                    Number.parseInt(event.target.value, 10) || 0,
+                }))
+              }
+            />
+          </div>
+        </div>
+      </BaseDialog>
 
-        {showStockModal && currentItem ? (
-          <WorkspaceDialogShell
-            title={`${stockAction === "add" ? "入库" : "出库"} - ${currentItem.name}`}
-            description={`当前库存：${currentItem.quantity ?? 0} ${currentItem.unit || "个"}`}
-            onClose={() => setShowStockModal(false)}
-            maxWidthClassName="max-w-sm"
-          >
-            <div className="space-y-4">
+      <BaseDialog
+        open={showStockModal && Boolean(currentItem)}
+        title={`${stockAction === "add" ? "入库" : "出库"} - ${currentItem?.name || ""}`}
+        description={`当前库存：${currentItem?.quantity ?? 0} ${currentItem?.unit || "个"}`}
+        onClose={() => setShowStockModal(false)}
+        width="narrow"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowStockModal(false)}>
+              取消
+            </Button>
+            <Button
+              onClick={() => void handleStock()}
+              disabled={submitting || stockQuantity <= 0}
+            >
+              {submitting ? (
+                <Loader2 size={16} className="mr-1.5 animate-spin" />
+              ) : null}
+              确认{stockAction === "add" ? "入库" : "出库"}
+            </Button>
+          </>
+        }
+      >
+        <div>
+          <div className="space-y-4">
+            {stockAction === "reduce" ? (
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">
-                  {stockAction === "add" ? "入库" : "出库"}数量
+                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                  出库类型
                 </label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={
-                    stockAction === "reduce" ? currentItem.quantity : undefined
-                  }
-                  value={stockQuantity}
-                  onChange={(event) =>
-                    setStockQuantity(parseInt(event.target.value, 10) || 0)
-                  }
-                />
+                <Select value={stockOutType} onValueChange={(value) => setStockOutType(value as "ISSUE" | "LOSS")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ISSUE">领用出库</SelectItem>
+                    <SelectItem value="LOSS">盘亏调整</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowStockModal(false)}
-                >
-                  取消
-                </Button>
-                <Button
-                  onClick={handleStock}
-                  disabled={submitting || stockQuantity <= 0}
-                  className={
-                    stockAction === "add"
-                      ? "bg-green-600 text-white hover:bg-green-700 [background-image:none]"
-                      : "bg-orange-600 text-white hover:bg-orange-700 [background-image:none]"
-                  }
-                >
-                  {submitting ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : null}
-                  确认{stockAction === "add" ? "入库" : "出库"}
-                </Button>
-              </div>
+            ) : null}
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {stockAction === "add" ? "入库" : "出库"}数量
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={stockAction === "reduce" ? currentItem?.quantity : undefined}
+                value={stockQuantity}
+                onChange={(event) =>
+                  setStockQuantity(Number.parseInt(event.target.value, 10) || 0)
+                }
+              />
             </div>
-          </WorkspaceDialogShell>
-        ) : null}
-      </div>
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                {stockAction === "add" ? "入库" : "出库"}原因
+              </label>
+              <Textarea
+                value={stockRemark}
+                onChange={(event) => setStockRemark(event.target.value)}
+                placeholder={stockAction === "add" ? "如 初始库存、采购入库、盘盈调整" : "如 部门领用、盘点盘亏"}
+                rows={3}
+              />
+            </div>
+          </div>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={Boolean(logTarget)}
+        title={`库存流水 - ${logTarget?.name || ""}`}
+        onClose={() => setLogTarget(null)}
+        width="wide"
+      >
+        <div className="min-h-64 overflow-x-auto">
+          <table className="w-full min-w-[720px]">
+            <TableHeader>
+              <tr>
+                <TableHead className="px-4 py-3 text-left">类型</TableHead>
+                <TableHead className="px-4 py-3 text-center">数量变动</TableHead>
+                <TableHead className="px-4 py-3 text-left">原因</TableHead>
+                <TableHead className="px-4 py-3 text-left">时间</TableHead>
+              </tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {logLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-slate-500">
+                    正在加载库存流水...
+                  </td>
+                </tr>
+              ) : stockLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-12 text-center text-sm text-slate-500">
+                    暂无库存流水
+                  </td>
+                </tr>
+              ) : (
+                stockLogs.map((log) => (
+                  <tr key={log.logId}>
+                    <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-300">
+                      {log.type || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-center text-sm">
+                      <span className={Number(log.quantityChange || 0) >= 0 ? "font-semibold text-emerald-600" : "font-semibold text-rose-600"}>
+                        {Number(log.quantityChange || 0) > 0 ? "+" : ""}{log.quantityChange ?? 0}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      {log.remark || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-slate-500">
+                      {log.createTime || "-"}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </BaseDialog>
+
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        title="删除耗材"
+        message={`删除后「${deleteTarget?.name || ""}」不再出现在采购申请选择列表。`}
+        confirmText="删除"
+        cancelText="取消"
+        danger
+        onConfirm={() => void handleDelete()}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 };

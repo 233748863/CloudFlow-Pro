@@ -26,6 +26,8 @@ public class SysConsumable {
     private Integer quantity;
     
     private Integer lowStockThreshold;
+
+    private String delFlag;
     
     private Long tenantId;
     
@@ -35,4 +37,9 @@ public class SysConsumable {
 
     
     private LocalDateTime createTime;
+
+    private String updateBy;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateTime;
 }

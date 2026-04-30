@@ -4,14 +4,21 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.oa.domain.BizPurchaseItem;
+import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.domain.SysConsumable;
+import com.cloudflow.oa.mapper.BizPurchaseItemMapper;
+import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.mapper.SysConsumableMapper;
 import com.cloudflow.oa.service.IConsumableService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -19,8 +26,12 @@ import java.util.List;
  */
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysConsumable>
         implements IConsumableService {
+
+    private final SysAssetLogMapper assetLogMapper;
+    private final BizPurchaseItemMapper purchaseItemMapper;
 
     @Override
     public IPage<SysConsumable> queryPage(SysConsumable query, int pageNum, int pageSize) {
@@ -34,6 +45,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
         if (StringUtils.hasText(query.getModel())) {
             wrapper.like(SysConsumable::getModel, query.getModel());
         }
+        wrapper.eq(SysConsumable::getDelFlag, "0");
         // 按创建时间倒序
         wrapper.orderByDesc(SysConsumable::getCreateTime);
 
@@ -45,35 +57,46 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
         // 查询库存数量 <= 低库存阈值的耗材
         LambdaQueryWrapper<SysConsumable> wrapper = new LambdaQueryWrapper<>();
         wrapper.apply("quantity <= low_stock_threshold");
+        wrapper.eq(SysConsumable::getDelFlag, "0");
         wrapper.orderByAsc(SysConsumable::getQuantity);
         return list(wrapper);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean addStock(Long consumableId, int quantity) {
+    public boolean addStock(Long consumableId, int quantity, String remark) {
         if (quantity <= 0) {
             log.warn("入库数量必须大于0，consumableId: {}, quantity: {}", consumableId, quantity);
             return false;
         }
         SysConsumable consumable = getById(consumableId);
-        if (consumable == null) {
+        if (consumable == null || !"0".equals(consumable.getDelFlag())) {
             return false;
         }
         consumable.setQuantity(consumable.getQuantity() + quantity);
+        consumable.setUpdateBy(UserContext.getUserName());
+        consumable.setUpdateTime(LocalDateTime.now());
         log.info("耗材入库：{}，入库数量: {}，当前库存: {}", consumable.getName(), quantity, consumable.getQuantity());
-        return updateById(consumable);
+        boolean updated = updateById(consumable);
+        if (updated) {
+            saveStockLog(consumableId, "入库", quantity, remark);
+        }
+        return updated;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean reduceStock(Long consumableId, int quantity) {
+    public boolean reduceStock(Long consumableId, int quantity, String stockOutType, String remark) {
         if (quantity <= 0) {
             log.warn("出库数量必须大于0，consumableId: {}, quantity: {}", consumableId, quantity);
             return false;
         }
+        if (!StringUtils.hasText(stockOutType)) {
+            log.warn("出库类型不能为空，consumableId: {}", consumableId);
+            return false;
+        }
         SysConsumable consumable = getById(consumableId);
-        if (consumable == null) {
+        if (consumable == null || !"0".equals(consumable.getDelFlag())) {
             return false;
         }
         if (consumable.getQuantity() < quantity) {
@@ -81,7 +104,37 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
             return false;
         }
         consumable.setQuantity(consumable.getQuantity() - quantity);
+        consumable.setUpdateBy(UserContext.getUserName());
+        consumable.setUpdateTime(LocalDateTime.now());
         log.info("耗材出库：{}，出库数量: {}，剩余库存: {}", consumable.getName(), quantity, consumable.getQuantity());
-        return updateById(consumable);
+        boolean updated = updateById(consumable);
+        if (updated) {
+            String type = "LOSS".equals(stockOutType) ? "盘亏调整" : "领用出库";
+            saveStockLog(consumableId, type, -quantity, remark);
+        }
+        return updated;
+    }
+
+    @Override
+    public boolean canDelete(Long consumableId) {
+        if (consumableId == null) {
+            return false;
+        }
+        Long count = purchaseItemMapper.selectCount(new LambdaQueryWrapper<BizPurchaseItem>()
+                .eq(BizPurchaseItem::getConsumableId, consumableId));
+        return count == null || count == 0;
+    }
+
+    private void saveStockLog(Long consumableId, String type, Integer quantityChange, String remark) {
+        SysAssetLog logRecord = new SysAssetLog();
+        logRecord.setTenantId(UserContext.getTenantId());
+        logRecord.setRefId(consumableId);
+        logRecord.setRefType("2");
+        logRecord.setType(type);
+        logRecord.setQuantityChange(quantityChange);
+        logRecord.setOperatorId(UserContext.getUserId());
+        logRecord.setRemark(remark);
+        logRecord.setCreateTime(LocalDateTime.now());
+        assetLogMapper.insert(logRecord);
     }
 }

@@ -24,10 +24,15 @@ public interface IConsumableService extends IService<SysConsumable> {
     /**
      * 入库（增加库存）
      */
-    boolean addStock(Long consumableId, int quantity);
+    boolean addStock(Long consumableId, int quantity, String remark);
 
     /**
      * 出库（减少库存）
      */
-    boolean reduceStock(Long consumableId, int quantity);
+    boolean reduceStock(Long consumableId, int quantity, String stockOutType, String remark);
+
+    /**
+     * 是否可删除。
+     */
+    boolean canDelete(Long consumableId);
 }

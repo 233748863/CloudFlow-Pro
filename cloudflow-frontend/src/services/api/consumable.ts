@@ -13,6 +13,18 @@ export interface Consumable {
   createTime?: string;
 }
 
+export interface ConsumableStockLog {
+  logId?: number;
+  refId?: number;
+  refType?: string;
+  type?: string;
+  quantityChange?: number;
+  operatorId?: number;
+  targetId?: number;
+  remark?: string;
+  createTime?: string;
+}
+
 /** 耗材管理相关API */
 export const consumableApi = {
   /** 分页查询耗材列表 */
@@ -35,14 +47,17 @@ export const consumableApi = {
   /** 删除耗材 */
   remove: (ids: number[]) => request.delete(`/oa/consumable/${ids.join(',')}`),
 
+  /** 获取库存流水 */
+  logs: (id: number) => request.get(`/oa/consumable/${id}/logs`),
+
   /** 获取库存不足的耗材列表 */
   getLowStock: () => request.get('/oa/consumable/low-stock'),
 
   /** 入库操作 */
-  addStock: (id: number, quantity: number) =>
-    request.post(`/oa/consumable/${id}/add-stock`, { quantity }),
+  addStock: (id: number, quantity: number, remark: string) =>
+    request.post(`/oa/consumable/${id}/add-stock`, { quantity, remark }),
 
   /** 出库操作 */
-  reduceStock: (id: number, quantity: number) =>
-    request.post(`/oa/consumable/${id}/reduce-stock`, { quantity }),
+  reduceStock: (id: number, quantity: number, stockOutType: 'ISSUE' | 'LOSS', remark: string) =>
+    request.post(`/oa/consumable/${id}/reduce-stock`, { quantity, stockOutType, remark }),
 };

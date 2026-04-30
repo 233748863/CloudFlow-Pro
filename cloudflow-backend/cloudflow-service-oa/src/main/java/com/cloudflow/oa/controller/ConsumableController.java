@@ -1,15 +1,20 @@
 package com.cloudflow.oa.controller;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.domain.SysConsumable;
+import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +30,7 @@ import java.util.Map;
 public class ConsumableController {
 
     private final IConsumableService consumableService;
+    private final SysAssetLogMapper assetLogMapper;
 
     /**
      * 分页查询耗材列表
@@ -50,36 +56,82 @@ public class ConsumableController {
     }
 
     /**
-     * 新增耗材 - 仅管理员
+     * 新增耗材 - 管理员/经理
      */
     @SysLog("新增耗材")
     @PostMapping
-    @SaCheckRole("admin")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R add(@RequestBody SysConsumable consumable) {
+        consumable.setConsumableId(null);
+        consumable.setQuantity(0);
+        consumable.setDelFlag("0");
+        consumable.setTenantId(UserContext.getTenantId());
+        consumable.setCreateBy(UserContext.getUserName());
+        consumable.setUpdateBy(UserContext.getUserName());
         return R.result(consumableService.save(consumable));
     }
 
     /**
-     * 修改耗材 - 仅管理员
+     * 修改耗材 - 管理员/经理
      */
     @SysLog("修改耗材")
     @PutMapping
-    @SaCheckRole("admin")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R edit(@RequestBody SysConsumable consumable) {
         if (consumable.getConsumableId() == null) {
             return R.fail("耗材ID不能为空");
         }
-        return R.result(consumableService.updateById(consumable));
+        SysConsumable existing = consumableService.getById(consumable.getConsumableId());
+        if (existing == null) {
+            return R.fail("耗材不存在");
+        }
+        existing.setName(consumable.getName());
+        existing.setModel(consumable.getModel());
+        existing.setUnit(consumable.getUnit());
+        existing.setLowStockThreshold(consumable.getLowStockThreshold());
+        existing.setUpdateBy(UserContext.getUserName());
+        return R.result(consumableService.updateById(existing));
     }
 
     /**
-     * 删除耗材 - 仅管理员
+     * 删除耗材 - 管理员/经理
      */
     @SysLog("删除耗材")
     @DeleteMapping("/{ids}")
-    @SaCheckRole("admin")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R remove(@PathVariable("ids") List<Long> ids) {
-        return R.result(consumableService.removeBatchByIds(ids));
+        for (Long id : ids) {
+            SysConsumable existing = consumableService.getById(id);
+            if (existing == null || !"0".equals(existing.getDelFlag())) {
+                return R.fail("耗材不存在");
+            }
+            if (existing.getQuantity() != null && existing.getQuantity() > 0) {
+                return R.fail("库存不为0的耗材不能删除，请先出库或盘亏调整");
+            }
+            if (!consumableService.canDelete(id)) {
+                return R.fail("耗材已被采购申请引用，不能删除");
+            }
+        }
+        for (Long id : ids) {
+            SysConsumable consumable = new SysConsumable();
+            consumable.setConsumableId(id);
+            consumable.setDelFlag("1");
+            consumable.setUpdateBy(UserContext.getUserName());
+            consumableService.updateById(consumable);
+        }
+        return R.ok();
+    }
+
+    /**
+     * 获取耗材库存流水。
+     */
+    @GetMapping("/{id}/logs")
+    public R logs(@PathVariable("id") Long id) {
+        LambdaQueryWrapper<SysAssetLog> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysAssetLog::getRefId, id)
+                .eq(SysAssetLog::getRefType, "2")
+                .orderByDesc(SysAssetLog::getCreateTime);
+        return R.ok(assetLogMapper.selectList(wrapper));
     }
 
     /**
@@ -91,34 +143,64 @@ public class ConsumableController {
     }
 
     /**
-     * 入库操作 - 仅管理员
+     * 入库操作 - 管理员/经理
      */
     @SysLog("耗材入库")
     @PostMapping("/{id}/add-stock")
-    @SaCheckRole("admin")
-    public R addStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
-        Integer quantity = params.get("quantity");
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    public R addStock(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
+        Integer quantity = toInteger(params.get("quantity"));
         if (quantity == null || quantity <= 0) {
             return R.fail("入库数量必须大于0");
         }
-        return R.result(consumableService.addStock(id, quantity));
+        String remark = toText(params.get("remark"));
+        if (!StringUtils.hasText(remark)) {
+            return R.fail("入库原因不能为空");
+        }
+        return R.result(consumableService.addStock(id, quantity, remark));
     }
 
     /**
-     * 出库操作 - 仅管理员
+     * 出库操作 - 管理员/经理
      */
     @SysLog("耗材出库")
     @PostMapping("/{id}/reduce-stock")
-    @SaCheckRole("admin")
-    public R reduceStock(@PathVariable("id") Long id, @RequestBody Map<String, Integer> params) {
-        Integer quantity = params.get("quantity");
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    public R reduceStock(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
+        Integer quantity = toInteger(params.get("quantity"));
         if (quantity == null || quantity <= 0) {
             return R.fail("出库数量必须大于0");
         }
-        boolean result = consumableService.reduceStock(id, quantity);
+        String stockOutType = toText(params.get("stockOutType"));
+        if (!"ISSUE".equals(stockOutType) && !"LOSS".equals(stockOutType)) {
+            return R.fail("请选择出库类型");
+        }
+        String remark = toText(params.get("remark"));
+        if (!StringUtils.hasText(remark)) {
+            return R.fail("出库原因不能为空");
+        }
+        boolean result = consumableService.reduceStock(id, quantity, stockOutType, remark);
         if (!result) {
             return R.fail("出库失败，可能库存不足");
         }
         return R.ok();
+    }
+
+    private Integer toInteger(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value instanceof String text && StringUtils.hasText(text)) {
+            try {
+                return Integer.parseInt(text);
+            } catch (NumberFormatException ignored) {
+                return null;
+            }
+        }
+        return null;
+    }
+
+    private String toText(Object value) {
+        return value == null ? null : String.valueOf(value).trim();
     }
 }

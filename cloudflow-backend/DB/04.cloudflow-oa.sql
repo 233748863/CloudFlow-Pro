@@ -174,6 +174,27 @@ CREATE TABLE sys_consumable (
   PRIMARY KEY (consumable_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='耗材库存表';
 
+-- 10. 供应商主数据表
+DROP TABLE IF EXISTS sys_supplier;
+CREATE TABLE sys_supplier (
+  supplier_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '供应商ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  supplier_name     VARCHAR(100)    NOT NULL COMMENT '供应商名称',
+  contact_name      VARCHAR(64)     DEFAULT NULL COMMENT '联系人',
+  contact_phone     VARCHAR(30)     DEFAULT NULL COMMENT '联系电话',
+  bank_name         VARCHAR(100)    DEFAULT NULL COMMENT '开户行',
+  bank_account      VARCHAR(100)    DEFAULT NULL COMMENT '银行账号',
+  status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE启用/DISABLED停用)',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (supplier_id),
+  KEY idx_supplier_tenant (tenant_id),
+  KEY idx_supplier_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='供应商主数据表';
+
 -- 10. 资产变动日志表
 DROP TABLE IF EXISTS sys_asset_log;
 CREATE TABLE sys_asset_log (
@@ -400,6 +421,84 @@ CREATE TABLE biz_payment_request (
   KEY idx_payment_status (status),
   KEY idx_payment_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='付款申请表';
+
+-- 17. 行政采购申请表
+DROP TABLE IF EXISTS biz_purchase_request;
+CREATE TABLE biz_purchase_request (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  purchase_no       VARCHAR(50)     NOT NULL COMMENT '采购单号',
+  supplier_id       BIGINT(20)      NOT NULL COMMENT '供应商ID',
+  supplier_name     VARCHAR(100)    DEFAULT NULL COMMENT '供应商名称快照',
+  supplier_contact  VARCHAR(64)     DEFAULT NULL COMMENT '供应商联系人快照',
+  supplier_phone    VARCHAR(30)     DEFAULT NULL COMMENT '供应商联系电话快照',
+  supplier_bank     VARCHAR(100)    DEFAULT NULL COMMENT '供应商开户行快照',
+  supplier_account  VARCHAR(100)    DEFAULT NULL COMMENT '供应商银行账号快照',
+  total_amount      DECIMAL(10,2)   DEFAULT 0.00 COMMENT '采购总金额',
+  expected_date     DATETIME        DEFAULT NULL COMMENT '期望到货日期',
+  reason            VARCHAR(500)    NOT NULL COMMENT '采购事由',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/PARTIAL_RECEIVED/RECEIVED/REJECTED/PAYMENT_CREATED)',
+  payment_request_id BIGINT(20)     DEFAULT NULL COMMENT '关联付款申请ID',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_purchase_no (purchase_no),
+  KEY idx_purchase_user (user_id),
+  KEY idx_purchase_status (status),
+  KEY idx_purchase_supplier (supplier_id),
+  KEY idx_purchase_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='行政采购申请表';
+
+-- 18. 行政采购申请明细表
+DROP TABLE IF EXISTS biz_purchase_item;
+CREATE TABLE biz_purchase_item (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  purchase_id       BIGINT(20)      NOT NULL COMMENT '采购申请ID',
+  consumable_id     BIGINT(20)      NOT NULL COMMENT '耗材ID',
+  consumable_name   VARCHAR(100)    DEFAULT NULL COMMENT '耗材名称快照',
+  model             VARCHAR(100)    DEFAULT NULL COMMENT '规格型号快照',
+  unit              VARCHAR(20)     DEFAULT NULL COMMENT '单位快照',
+  quantity          INT(11)         NOT NULL COMMENT '采购数量',
+  unit_price        DECIMAL(10,2)   NOT NULL COMMENT '采购单价',
+  amount            DECIMAL(10,2)   NOT NULL COMMENT '采购金额',
+  received_quantity INT(11)         DEFAULT 0 COMMENT '已入库数量',
+  PRIMARY KEY (id),
+  KEY idx_purchase_item_purchase (purchase_id),
+  KEY idx_purchase_item_consumable (consumable_id),
+  KEY idx_purchase_item_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='行政采购申请明细表';
+
+-- 19. 行政采购到货入库记录表
+DROP TABLE IF EXISTS biz_purchase_receipt;
+CREATE TABLE biz_purchase_receipt (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  purchase_id       BIGINT(20)      NOT NULL COMMENT '采购申请ID',
+  item_id           BIGINT(20)      NOT NULL COMMENT '采购明细ID',
+  consumable_id     BIGINT(20)      NOT NULL COMMENT '耗材ID',
+  consumable_name   VARCHAR(100)    DEFAULT NULL COMMENT '耗材名称快照',
+  received_quantity INT(11)         NOT NULL COMMENT '本次入库数量',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
+  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
+  receipt_time      DATETIME        DEFAULT NULL COMMENT '入库时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_purchase_receipt_purchase (purchase_id),
+  KEY idx_purchase_receipt_item (item_id),
+  KEY idx_purchase_receipt_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='行政采购到货入库记录表';
 
 -- =========================================================
 -- 九、出差申请模块

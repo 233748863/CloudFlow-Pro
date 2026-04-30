@@ -184,6 +184,11 @@ const PaymentRequestPage = React.lazy(() =>
     default: module.PaymentRequestPage,
   })),
 );
+const PurchaseRequestPage = React.lazy(() =>
+  import("./pages/PurchaseRequestPage").then((module) => ({
+    default: module.PurchaseRequestPage,
+  })),
+);
 const CopyListPage = React.lazy(() =>
   import("./pages/CopyListPage").then((module) => ({
     default: module.CopyListPage,
@@ -227,6 +232,8 @@ const ContactPage = React.lazy(() => import("./pages/ContactPage"));
 const KnowledgePage = React.lazy(() => import("./pages/KnowledgePage"));
 const VisitorPage = React.lazy(() => import("./pages/VisitorPage"));
 const DutySchedulePage = React.lazy(() => import("./pages/DutySchedulePage"));
+const SupplierPage = React.lazy(() => import("./pages/admin/supplier/SupplierPage"));
+const ConsumablePage = React.lazy(() => import("./pages/admin/consumable/ConsumablePage"));
 const DictPage = React.lazy(() => import("./pages/admin/DictPage"));
 const ProcessCategoryPage = React.lazy(
   () => import("./pages/admin/ProcessCategoryPage"),
@@ -807,6 +814,14 @@ const desktopRoutes = [
             ),
           },
           {
+            path: "/office/purchase-request",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <PurchaseRequestPage />
+              </Suspense>
+            ),
+          },
+          {
             path: "/system/log",
             element: (
               <Suspense fallback={<Loading />}>
@@ -902,6 +917,22 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <DutySchedulePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/supplier",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <SupplierPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/consumable",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <ConsumablePage />
               </Suspense>
             ),
           },
