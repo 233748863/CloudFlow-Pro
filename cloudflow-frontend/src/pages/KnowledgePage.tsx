@@ -20,6 +20,7 @@ import FileUpload from '@/components/FileUpload';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
+  ConfirmDialog,
   Dialog,
   DialogContent,
   DialogFooter,
@@ -54,6 +55,15 @@ import { renderAnnouncementHtml } from '@/utils/announcementContent';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 
 type ViewMode = 'library' | 'mine' | 'manage';
+
+interface ConfirmState {
+  type: 'submit' | 'recall' | 'delete';
+  id: number;
+  title: string;
+  message: string;
+  confirmText: string;
+  danger?: boolean;
+}
 
 const categories = ['行政制度', '办公指南', '财务制度', '人事制度', '项目规范', '其他'];
 
@@ -167,6 +177,7 @@ const KnowledgePage: React.FC = () => {
   const [detail, setDetail] = useState<KnowledgeDocument | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [readStats, setReadStats] = useState<KnowledgeReadStats | null>(null);
+  const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   const activeRows = viewMode === 'library' ? library : viewMode === 'mine' ? submissions : manageRows;
   const tableTotal = viewMode === 'library' ? library.length : total;
@@ -282,36 +293,64 @@ const KnowledgePage: React.FC = () => {
     }
   };
 
-  const submitDocument = async (id?: number) => {
-    if (!id) return;
-    try {
-      await knowledgeApi.submit(id);
-      toast.success('已提交发布审批');
-      void fetchData();
-    } catch (error: any) {
-      toast.error(error?.message || '提交失败');
-    }
+  const openSubmitConfirm = (document: KnowledgeDocument) => {
+    if (!document.documentId) return;
+    setConfirmState({
+      type: 'submit',
+      id: document.documentId,
+      title: '提交知识文档',
+      message: `确认提交《${document.title || '未命名文档'}》进入发布审批吗？`,
+      confirmText: '提交',
+    });
   };
 
-  const recallDocument = async (id?: number) => {
-    if (!id) return;
-    try {
-      await knowledgeApi.recall(id);
-      toast.success('已撤回审批');
-      void fetchData();
-    } catch (error: any) {
-      toast.error(error?.message || '撤回失败');
-    }
+  const openRecallConfirm = (document: KnowledgeDocument) => {
+    if (!document.documentId) return;
+    setConfirmState({
+      type: 'recall',
+      id: document.documentId,
+      title: '撤回知识文档',
+      message: `撤回后《${document.title || '未命名文档'}》将回到草稿状态。`,
+      confirmText: '撤回',
+    });
   };
 
-  const removeDocument = async (id?: number) => {
-    if (!id) return;
+  const openDeleteConfirm = (document: KnowledgeDocument) => {
+    if (!document.documentId) return;
+    setConfirmState({
+      type: 'delete',
+      id: document.documentId,
+      title: '删除知识文档',
+      message: `删除后《${document.title || '未命名文档'}》不可恢复。`,
+      confirmText: '删除',
+      danger: true,
+    });
+  };
+
+  const handleConfirmAction = async () => {
+    if (!confirmState) return;
+
+    const currentState = confirmState;
+    setConfirmState(null);
     try {
-      await knowledgeApi.remove(id);
-      toast.success('文档已删除');
+      if (currentState.type === 'submit') {
+        await knowledgeApi.submit(currentState.id);
+        toast.success('已提交发布审批');
+      } else if (currentState.type === 'recall') {
+        await knowledgeApi.recall(currentState.id);
+        toast.success('已撤回审批');
+      } else {
+        await knowledgeApi.remove(currentState.id);
+        toast.success('文档已删除');
+      }
       void fetchData();
     } catch (error: any) {
-      toast.error(error?.message || '删除失败');
+      const fallback = currentState.type === 'submit'
+        ? '提交失败'
+        : currentState.type === 'recall'
+          ? '撤回失败'
+          : '删除失败';
+      toast.error(error?.message || fallback);
     }
   };
 
@@ -525,7 +564,7 @@ const KnowledgePage: React.FC = () => {
                   {
                     label: '提交',
                     icon: <Send size={14} />,
-                    onClick: () => void submitDocument(item.documentId),
+                    onClick: () => openSubmitConfirm(item),
                     tone: 'success',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || (item.status !== 'DRAFT' && item.status !== 'REJECTED'),
                     className: 'rounded-lg',
@@ -533,7 +572,7 @@ const KnowledgePage: React.FC = () => {
                   {
                     label: '撤回',
                     icon: <RotateCcw size={14} />,
-                    onClick: () => void recallDocument(item.documentId),
+                    onClick: () => openRecallConfirm(item),
                     tone: 'warning',
                     hidden: viewMode !== 'mine' || item.status !== 'PENDING',
                     className: 'rounded-lg',
@@ -549,7 +588,7 @@ const KnowledgePage: React.FC = () => {
                   {
                     label: '删除',
                     icon: <Trash2 size={14} />,
-                    onClick: () => void removeDocument(item.documentId),
+                    onClick: () => openDeleteConfirm(item),
                     tone: 'danger',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || item.status === 'PENDING',
                     className: 'rounded-lg',
@@ -724,6 +763,16 @@ const KnowledgePage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={Boolean(confirmState)}
+        title={confirmState?.title || '确认操作'}
+        message={confirmState?.message || ''}
+        confirmText={confirmState?.confirmText || '确定'}
+        danger={confirmState?.danger}
+        onConfirm={() => void handleConfirmAction()}
+        onCancel={() => setConfirmState(null)}
+      />
     </div>
   );
 };
