@@ -25,6 +25,7 @@ export interface DeptNode {
   leader?: string;
   phone?: string;
   email?: string;
+  children?: DeptNode[];
 }
 
 /** 通讯录 API */

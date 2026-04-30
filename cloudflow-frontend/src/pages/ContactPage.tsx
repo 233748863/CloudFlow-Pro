@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { BookUser, Building2, Eye, RotateCcw, Search, Users } from 'lucide-react';
+import { BookUser, Building2, ChevronDown, ChevronRight, Eye, RotateCcw, Search, Users } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Pagination } from '@/components/common';
 import {
@@ -78,6 +78,44 @@ const DetailRow: React.FC<{
   </div>
 );
 
+const buildDeptTree = (depts: DeptNode[]) => {
+  const nodeMap = new Map<number, DeptNode & { children: DeptNode[] }>();
+  depts.forEach((dept) => {
+    nodeMap.set(dept.dept_id, { ...dept, children: [] });
+  });
+  const roots: Array<DeptNode & { children: DeptNode[] }> = [];
+  nodeMap.forEach((dept) => {
+    const parent = nodeMap.get(dept.parent_id);
+    if (parent && dept.parent_id !== dept.dept_id) {
+      parent.children.push(dept);
+    } else {
+      roots.push(dept);
+    }
+  });
+  const sortNodes = (nodes: Array<DeptNode & { children: DeptNode[] }>) => {
+    nodes.sort((a, b) => (a.order_num || 0) - (b.order_num || 0));
+    nodes.forEach((node) => sortNodes(node.children as Array<DeptNode & { children: DeptNode[] }>));
+  };
+  sortNodes(roots);
+  return roots;
+};
+
+const findDeptById = (depts: DeptNode[], deptId?: number): DeptNode | undefined => {
+  if (!deptId) {
+    return undefined;
+  }
+  for (const dept of depts) {
+    if (dept.dept_id === deptId) {
+      return dept;
+    }
+    const child = findDeptById(dept.children || [], deptId);
+    if (child) {
+      return child;
+    }
+  }
+  return undefined;
+};
+
 export const ContactPage: React.FC = () => {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [depts, setDepts] = useState<DeptNode[]>([]);
@@ -88,6 +126,7 @@ export const ContactPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [pageNum, setPageNum] = useState(1);
   const [selectedUser, setSelectedUser] = useState<Contact | null>(null);
+  const [expandedDeptIds, setExpandedDeptIds] = useState<Set<number>>(new Set());
 
   useEffect(() => {
     void loadDepts();
@@ -157,12 +196,69 @@ export const ContactPage: React.FC = () => {
     setPageNum(1);
   };
 
-  const topDepts = useMemo(
-    () => depts.filter(dept => dept.parent_id === 0 || dept.parent_id === 100),
-    [depts],
-  );
+  const deptTree = useMemo(() => buildDeptTree(depts), [depts]);
+  const selectedDept = useMemo(() => findDeptById(deptTree, selectedDeptId), [deptTree, selectedDeptId]);
 
-  const selectedDept = topDepts.find(dept => dept.dept_id === selectedDeptId);
+  useEffect(() => {
+    setExpandedDeptIds((previous) => {
+      const next = new Set(previous);
+      deptTree.forEach((dept) => next.add(dept.dept_id));
+      return next;
+    });
+  }, [deptTree]);
+
+  const toggleDeptExpand = (deptId: number) => {
+    setExpandedDeptIds((previous) => {
+      const next = new Set(previous);
+      if (next.has(deptId)) {
+        next.delete(deptId);
+      } else {
+        next.add(deptId);
+      }
+      return next;
+    });
+  };
+
+  const renderDeptNode = (dept: DeptNode, depth = 0): React.ReactNode => {
+    const children = dept.children || [];
+    const hasChildren = children.length > 0;
+    const expanded = expandedDeptIds.has(dept.dept_id);
+    const active = selectedDeptId === dept.dept_id;
+
+    return (
+      <div key={dept.dept_id}>
+        <div
+          className={[
+            'group flex items-center gap-1 rounded-lg pr-2 text-sm transition',
+            active
+              ? 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200'
+              : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-900 dark:hover:text-slate-100',
+          ].join(' ')}
+          style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        >
+          <button
+            type="button"
+            className="flex h-8 w-5 shrink-0 items-center justify-center text-slate-400 hover:text-slate-700 dark:text-slate-500 dark:hover:text-slate-200"
+            onClick={() => toggleDeptExpand(dept.dept_id)}
+          >
+            {hasChildren ? (expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />) : <span className="w-3.5" />}
+          </button>
+          <button
+            type="button"
+            className="flex min-w-0 flex-1 items-center gap-2 py-1.5 text-left"
+            onClick={() => {
+              setSelectedDeptId(dept.dept_id);
+              setPageNum(1);
+            }}
+          >
+            <Building2 className="h-4 w-4 shrink-0 opacity-70" />
+            <span className="truncate">{dept.dept_name}</span>
+          </button>
+        </div>
+        {expanded ? children.map((child) => renderDeptNode(child, depth + 1)) : null}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -224,31 +320,14 @@ export const ContactPage: React.FC = () => {
                   全部部门
                 </SideNavItem>
 
-                {topDepts.length === 0 ? (
+                {deptTree.length === 0 ? (
                   <InlineState
                     title="暂无部门数据"
                     className="py-8"
                     icon={<Building2 className="h-4 w-4" />}
                   />
                 ) : (
-                  topDepts.map(dept => {
-                    const active = selectedDeptId === dept.dept_id;
-
-                    return (
-                      <SideNavItem
-                        key={dept.dept_id}
-                        size="sm"
-                        active={active}
-                        onClick={() => {
-                          setSelectedDeptId(dept.dept_id);
-                          setPageNum(1);
-                        }}
-                      >
-                        <Building2 className="h-4 w-4 opacity-70" />
-                        <span className="truncate">{dept.dept_name}</span>
-                      </SideNavItem>
-                    );
-                  })
+                  deptTree.map((dept) => renderDeptNode(dept, 0))
                 )}
               </div>
             </aside>
