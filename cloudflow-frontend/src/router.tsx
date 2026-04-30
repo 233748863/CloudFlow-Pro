@@ -224,6 +224,7 @@ const LeaveApplicationPage = React.lazy(
 // OA 扩展页面
 const BusinessTripPage = React.lazy(() => import("./pages/BusinessTripPage"));
 const ContactPage = React.lazy(() => import("./pages/ContactPage"));
+const KnowledgePage = React.lazy(() => import("./pages/KnowledgePage"));
 const VisitorPage = React.lazy(() => import("./pages/VisitorPage"));
 const DutySchedulePage = React.lazy(() => import("./pages/DutySchedulePage"));
 const DictPage = React.lazy(() => import("./pages/admin/DictPage"));
@@ -877,6 +878,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <ContactPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/knowledge",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <KnowledgePage />
               </Suspense>
             ),
           },

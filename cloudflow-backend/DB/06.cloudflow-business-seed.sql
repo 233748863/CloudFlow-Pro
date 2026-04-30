@@ -29,7 +29,7 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_menu
 WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
-   OR menu_id BETWEEN 100 AND 209
+   OR menu_id BETWEEN 100 AND 210
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 507
@@ -108,8 +108,12 @@ WHERE definition_id IN (
   'wf_transfer_approval',
   'wf_payment_request',
   'wf_business_trip',
-  'wf_vehicle_approval'
+  'wf_vehicle_approval',
+  'wf_knowledge_publish'
 );
+
+DELETE FROM cloud_flow_db.oa_knowledge_read;
+DELETE FROM cloud_flow_db.oa_knowledge_document;
 
 DELETE FROM cloud_flow_db.wf_process_category
 WHERE category_id IN (1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 20, 21, 22, 30, 31, 32);
@@ -762,6 +766,8 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(208, '报销申请',   2, 8, '/expense
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(209, '付款申请',   2, 9, '/payment/request',          'pages/PaymentRequestPage',     NULL, 0, 0, 'C', '0', '0', 'office:payment:list',       'WalletCards',     'admin', NOW(), '', null, '付款申请');
 
+INSERT INTO cloud_flow_db.sys_menu VALUES(210, '知识库',     2, 10, '/office/knowledge',        'pages/KnowledgePage',          NULL, 0, 0, 'C', '0', '0', 'office:knowledge:list',     'BookOpen',        'admin', NOW(), '', null, '制度文档知识库');
+
 -- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班
 INSERT INTO cloud_flow_db.sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', NOW(), '', null, '访客预约管理');
 
@@ -906,6 +912,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 208, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 209, 100000);
 
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 210, 100000);
+
 -- 行政管理扩展菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 506, 100000);
 
@@ -948,6 +956,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 207, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 208, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 209, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 210, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 300, 100000);
 
@@ -1037,6 +1047,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 208, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 209, 100000);
 
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 210, 100000);
+
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 506, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 507, 100000);
@@ -1112,6 +1124,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 207, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 208, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 209, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 210, 100000);
 
 -- Phase 2 监控告警菜单（仅查看流程监控）
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 4, 100000);
@@ -1544,6 +1558,9 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_vehicle_approval', '用车审批流程', 'vehicle_approval', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交用车申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政确认派车","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_knowledge_publish', '知识库发布审批', 'knowledge_publish', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交知识文档"},{"id":"n1","type":"APPROVAL","title":"直属领导审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"管理员/HR发布审批","approverType":"ROLE","approverValue":"admin,hr","signType":"ANY"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 -- 测试数据
 -- 用于开发和测试环境
@@ -4987,6 +5004,25 @@ INSERT INTO cloud_flow_db.hr_resignation_handover (
 INSERT INTO cloud_flow_db.sys_announcement (title, content, type, scope_type, status, priority, sender_id, create_time, create_by) VALUES 
 ('关于系统OA模块升级的通知', '<p>各位同事：</p><p>系统将于本周五晚进行升级，新增任务管理和公告中心模块，请知悉。</p>', '1', 'ALL', '1', 'H', 1, NOW(), 'admin'),
 ('2026年春节放假安排', '<p>春节放假7天，请各位同事提前安排好工作。</p>', '2', 'ALL', '1', 'M', 1, NOW(), 'admin');
+
+-- 1.1 初始化知识库数据
+INSERT INTO cloud_flow_db.oa_knowledge_document (
+  document_id, tenant_id, title, category, summary, content, attachment_url, scope_type, scope_value,
+  status, submitter_id, submitter_name, dept_id, dept_name, submit_time, publish_time,
+  del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9001, 100000, '出差与报销衔接制度', '行政制度',
+ '说明出差申请、费用归集和报销提交的基本要求。',
+ '<h3>适用范围</h3><p>适用于所有提交出差申请和报销申请的员工。</p><h3>执行要求</h3><p>出差前提交申请，返回后5个工作日内完成费用报销。</p>',
+ '', 'ALL', NULL, 'PUBLISHED', 1, 'admin', 100, '总经办',
+ DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 9 DAY),
+ '0', 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 9 DAY)),
+(9002, 100000, '会议室使用规范', '办公指南',
+ '统一会议室预订、签到和取消规则。',
+ '<h3>预订规则</h3><p>会议室需提前预订，无法按时使用时应及时取消。</p><h3>现场要求</h3><p>会议结束后关闭设备并恢复桌面。</p>',
+ '', 'ALL', NULL, 'PUBLISHED', 1, 'admin', 100, '总经办',
+ DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY),
+ '0', 'admin', DATE_SUB(NOW(), INTERVAL 7 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 6 DAY));
 
 -- 2. 初始化会议室数据
 INSERT INTO cloud_flow_db.sys_meeting_room (name, capacity, location, equipment, status, create_time) VALUES 

@@ -1034,22 +1034,30 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
                     approverUsers.add(u);
                 }
             } else if ("ROLE".equals(approverType) && StringUtils.hasText(approverValue)) {
-                SysRole role = sysRoleMapper.selectOne(
-                    new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, approverValue));
-                if (role != null) {
+                Set<Long> userIds = new LinkedHashSet<>();
+                for (String roleKey : approverValue.split(",")) {
+                    String normalizedRoleKey = roleKey.trim().toLowerCase(Locale.ROOT);
+                    if (!StringUtils.hasText(normalizedRoleKey)) {
+                        continue;
+                    }
+                    SysRole role = sysRoleMapper.selectOne(
+                        new LambdaQueryWrapper<SysRole>().eq(SysRole::getRoleKey, normalizedRoleKey));
+                    if (role == null) {
+                        continue;
+                    }
                     List<SysUserRole> userRoles = sysUserRoleMapper.selectList(
                         new LambdaQueryWrapper<SysUserRole>().eq(SysUserRole::getRoleId, role.getRoleId()));
                     if (userRoles != null) {
-                        List<Long> userIds = userRoles.stream().map(SysUserRole::getUserId).collect(Collectors.toList());
-                        if (!userIds.isEmpty()) {
-                            List<SysUser> users = sysUserMapper.selectBatchIds(userIds);
-                            for (SysUser user : users) {
-                                Map<String, Object> u = new HashMap<>();
-                                u.put("userId", user.getUserId());
-                                u.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
-                                approverUsers.add(u);
-                            }
-                        }
+                        userRoles.stream().map(SysUserRole::getUserId).forEach(userIds::add);
+                    }
+                }
+                if (!userIds.isEmpty()) {
+                    List<SysUser> users = sysUserMapper.selectBatchIds(userIds);
+                    for (SysUser user : users) {
+                        Map<String, Object> u = new HashMap<>();
+                        u.put("userId", user.getUserId());
+                        u.put("userName", user.getNickName() != null ? user.getNickName() : user.getUserName());
+                        approverUsers.add(u);
                     }
                 }
             } else if (("USERS".equals(approverType) || "USER_LIST".equals(approverType)) && StringUtils.hasText(approverValue)) {

@@ -30,6 +30,7 @@ public final class WorkflowCallbackStreamConstants {
     public static final String BUSINESS_TYPE_EXPENSE_CLAIM = "expense_claim";
     public static final String BUSINESS_TYPE_PAYMENT_REQUEST = "payment_request";
     public static final String BUSINESS_TYPE_VEHICLE_APPROVAL = "vehicle_approval";
+    public static final String BUSINESS_TYPE_KNOWLEDGE_DOCUMENT = "KNOWLEDGE_DOCUMENT";
 
     /**
      * 给流程变量补齐回调所需的公共元数据。

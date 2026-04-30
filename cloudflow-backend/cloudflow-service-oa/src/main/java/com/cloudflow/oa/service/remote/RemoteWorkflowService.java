@@ -38,6 +38,12 @@ public interface RemoteWorkflowService {
      */
     @PostMapping("/complete")
     R<?> completeTask(@RequestBody Map<String, Object> req);
+
+    /**
+     * 撤回流程实例。
+     */
+    @PostMapping("/recall")
+    R<?> recallProcess(@RequestBody Map<String, String> req);
     
     /**
      * 查询流程实例状态

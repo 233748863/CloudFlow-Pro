@@ -274,6 +274,53 @@ CREATE TABLE sys_vehicle_expense (
 -- 七、业务表（与工作流关联，OA 范围）
 -- =========================================================
 
+-- 14. OA知识库文档表
+DROP TABLE IF EXISTS oa_knowledge_document;
+CREATE TABLE oa_knowledge_document (
+  document_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '文档ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  title             VARCHAR(255)    NOT NULL COMMENT '文档标题',
+  category          VARCHAR(64)     NOT NULL COMMENT '文档分类',
+  summary           VARCHAR(500)    DEFAULT NULL COMMENT '摘要',
+  content           LONGTEXT        NOT NULL COMMENT '正文内容',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
+  scope_type        VARCHAR(20)     DEFAULT 'ALL' COMMENT '可见范围(ALL/DEPT/ROLE)',
+  scope_value       VARCHAR(255)    DEFAULT NULL COMMENT '范围值',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/PUBLISHED已发布/REJECTED已驳回)',
+  submitter_id      BIGINT(20)      NOT NULL COMMENT '提交人ID',
+  submitter_name    VARCHAR(64)     DEFAULT NULL COMMENT '提交人姓名',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '提交人部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '提交人部门名称',
+  submit_time       DATETIME        DEFAULT NULL COMMENT '提交审批时间',
+  publish_time      DATETIME        DEFAULT NULL COMMENT '发布时间',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (document_id),
+  KEY idx_knowledge_tenant (tenant_id),
+  KEY idx_knowledge_status (status),
+  KEY idx_knowledge_submitter (submitter_id),
+  KEY idx_knowledge_scope (scope_type, scope_value),
+  KEY idx_knowledge_category (category)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='OA知识库文档表';
+
+-- 15. OA知识库阅读记录表
+DROP TABLE IF EXISTS oa_knowledge_read;
+CREATE TABLE oa_knowledge_read (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  document_id       BIGINT(20)      NOT NULL COMMENT '文档ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '用户ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '用户姓名',
+  read_time         DATETIME        DEFAULT NULL COMMENT '阅读时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_knowledge_user (document_id, user_id),
+  KEY idx_knowledge_read_tenant (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA知识库阅读记录表';
+
 -- =========================================================
 -- 八、费用报销与付款申请模块
 -- =========================================================

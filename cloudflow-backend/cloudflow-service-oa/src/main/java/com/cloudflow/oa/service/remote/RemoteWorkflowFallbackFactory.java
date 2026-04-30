@@ -34,6 +34,12 @@ public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWork
                 log.error("完成任务失败，请求参数: {}", req);
                 return R.fail("工作流服务暂时不可用，请稍后重试");
             }
+
+            @Override
+            public R<?> recallProcess(Map<String, String> req) {
+                log.error("撤回流程失败，请求参数: {}", req);
+                return R.fail("工作流服务暂时不可用，请稍后重试");
+            }
             
             @Override
             public R<?> getProcessInstance(String processInstanceId) {
