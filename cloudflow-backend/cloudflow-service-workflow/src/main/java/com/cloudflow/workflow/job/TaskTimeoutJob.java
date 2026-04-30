@@ -13,7 +13,7 @@ import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
-import com.cloudflow.workflow.service.IWorkflowService;
+import com.cloudflow.workflow.service.IWfTaskService;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -68,7 +68,7 @@ public class TaskTimeoutJob {
     private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
     
     @Autowired
-    private IWorkflowService workflowService;
+    private IWfTaskService taskService;
 
     /**
      * 每分钟扫描一次超时任务
@@ -170,7 +170,7 @@ public class TaskTimeoutJob {
             // 3. 解析流程定义
             // 4. 执行下一个节点（可能是审批节点、通知节点、脚本节点等）
             // 5. 如果到达流程末尾，自动完成流程
-            workflowService.completeTask(
+            taskService.completeTask(
                 taskId,
                 "APPROVE",  // 自动通过
                 "任务超时，系统自动通过",

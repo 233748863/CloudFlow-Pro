@@ -52,9 +52,9 @@ public class RedisStreamUtil {
             redisTemplate.opsForStream().createGroup(streamKey, group);
         } catch (Exception e) {
             if (e.getMessage() != null && e.getMessage().contains("BUSYGROUP")) {
-                log.debug("Consumer Group already exists: {}", group);
+                log.debug("消费组已存在: {}", group);
             } else {
-                log.warn("Failed to create consumer group. Key: {}, Group: {}", streamKey, group, e);
+                log.warn("创建消费组失败, key={}, group={}", streamKey, group, e);
             }
         }
     }

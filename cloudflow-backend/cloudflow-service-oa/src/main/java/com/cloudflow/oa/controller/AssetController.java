@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.SysAsset;
 import com.cloudflow.oa.domain.SysAssetLog;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.service.IAssetService;
@@ -182,9 +183,9 @@ public class AssetController {
      * 资产统计（按状态和分类统计）
      */
     @GetMapping("/statistics")
-    public R statistics() {
+    public R<DynamicMapVO> statistics() {
         Map<String, Object> stats = assetService.getStatistics();
-        return R.ok(stats);
+        return R.ok(DynamicMapVO.from(stats));
     }
 
     /**

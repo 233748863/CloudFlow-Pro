@@ -56,7 +56,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> delegateTask(String taskId, Long toUserId, String toUserName, String reason) {
-        log.info("[delegateTask] taskId={}, toUserId={}", taskId, toUserId);
+        log.info("[delegateTask] 转办任务, taskId={}, toUserId={}", taskId, toUserId);
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "delegateTask");
@@ -94,7 +94,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> delegateWithReturn(String taskId, Long toUserId, String toUserName, String reason) {
-        log.info("[delegateWithReturn] taskId={}, toUserId={}", taskId, toUserId);
+        log.info("[delegateWithReturn] 委派任务, taskId={}, toUserId={}", taskId, toUserId);
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "delegateWithReturn");
@@ -169,7 +169,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> addSign(String taskId, List<Long> userIds, List<String> userNames, String signType, String reason) {
-        log.info("[addSign] taskId={}, signType={}", taskId, signType);
+        log.info("[addSign] 加签任务, taskId={}, signType={}", taskId, signType);
         WfTask originalTask = taskMapper.selectById(taskId);
         if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "addSign");
@@ -228,7 +228,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     public R<?> setProxy(Long userId, String userName, Long proxyUserId, String proxyUserName,
                          LocalDateTime startTime, LocalDateTime endTime, String reason) {
         Long effectiveUserId = resolveOperatorId(userId, "setProxy");
-        log.info("[setProxy] userId={}, proxyUserId={}", userId, proxyUserId);
+        log.info("[setProxy] 设置审批代理, userId={}, proxyUserId={}", userId, proxyUserId);
         Long currentTenantId = UserContext.getTenantId();
         LambdaQueryWrapper<WfTaskDelegation> activeProxyQuery = new LambdaQueryWrapper<WfTaskDelegation>()
                 .eq(WfTaskDelegation::getFromUserId, effectiveUserId)
@@ -561,7 +561,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     @Transactional(rollbackFor = Exception.class)
     public R<?> removeSign(String taskId, List<Long> userIds, String reason) {
-        log.info("[removeSign] taskId={}, userIds={}", taskId, userIds);
+        log.info("[removeSign] 减签任务, taskId={}, userIds={}", taskId, userIds);
         WfTask originalTask = taskMapper.selectById(taskId);
         if (originalTask == null) { throw WorkflowException.taskNotFound(taskId); }
         Long operatorId = resolveOperatorId(null, "removeSign");
@@ -614,7 +614,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     public R<?> startSubProcess(String parentInstanceId, String parentNodeKey, String subProcessDefKey,
                                 Map<String, Object> variables) {
-        log.info("[startSubProcess] parentInstanceId={}, subProcessDefKey={}", parentInstanceId, subProcessDefKey);
+        log.info("[startSubProcess] 启动子流程, parentInstanceId={}, subProcessDefKey={}", parentInstanceId, subProcessDefKey);
 
         WfProcessInstance parentInstance = processInstanceMapper.selectById(parentInstanceId);
         if (parentInstance == null) { throw WorkflowException.instanceNotFound(parentInstanceId); }
@@ -672,7 +672,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Transactional(rollbackFor = Exception.class)
     public R<?> conditionalApprove(String taskId, Long operatorId, String operatorName,
                                     String action, String comment, String selectedPath) {
-        log.info("[conditionalApprove] taskId={}, selectedPath={}", taskId, selectedPath);
+        log.info("[conditionalApprove] 条件审批, taskId={}, selectedPath={}", taskId, selectedPath);
         Long effectiveOperatorId = resolveOperatorId(operatorId, "conditionalApprove");
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) { throw WorkflowException.taskNotFound(taskId); }
@@ -958,7 +958,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.25: 发布通知 ====================
 
     public void notifyProcessPublished(String definitionId) {
-        log.info("[notifyProcessPublished] definitionId={}", definitionId);
+        log.info("[notifyProcessPublished] 发送流程发布通知, definitionId={}", definitionId);
         // 查询有权限启动该流程的用户并发送通知
     }
 
@@ -991,7 +991,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     private Long resolveOperatorId(Long requestedUserId, String operation) {
         Long currentUserId = UserContext.getUserId();
         if (requestedUserId != null && currentUserId != null && !Objects.equals(requestedUserId, currentUserId)) {
-            log.warn("[{}] user mismatch, requestedUserId={}, currentUserId={}",
+            log.warn("[{}] 用户不匹配, requestedUserId={}, currentUserId={}",
                     operation, requestedUserId, currentUserId);
             throw WorkflowException.permissionDenied(operation);
         }
@@ -1008,7 +1008,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     private void assertTenantAccess(Long resourceTenantId, String operation, String resourceId) {
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, resourceTenantId)) {
-            log.warn("[{}] tenant mismatch, resourceId={}, currentTenantId={}, resourceTenantId={}",
+            log.warn("[{}] 租户不匹配, resourceId={}, currentTenantId={}, resourceTenantId={}",
                     operation, resourceId, currentTenantId, resourceTenantId);
             throw WorkflowException.permissionDenied(operation);
         }
@@ -1035,7 +1035,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     private void assertTaskAccess(WfTask task, Long operatorId, String operation) {
         assertTaskTenantAccess(task, operation);
         if (task != null && operatorId != null && !Objects.equals(task.getAssignee(), operatorId)) {
-            log.warn("[{}] operator mismatch, taskId={}, operatorId={}, assignee={}",
+            log.warn("[{}] 操作人不匹配, taskId={}, operatorId={}, assignee={}",
                     operation, task.getTaskId(), operatorId, task.getAssignee());
             throw WorkflowException.permissionDenied(operation);
         }
@@ -1072,7 +1072,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     // ==================== P4.28: 消息通知完善 ====================
 
     public void sendNotification(String eventType, Long recipientId, String title, String content) {
-        log.info("[sendNotification] eventType={}, recipientId={}", eventType, recipientId);
+        log.info("[sendNotification] 发送通知, eventType={}, recipientId={}", eventType, recipientId);
         
         // 查询通知配置
         List<WfNotificationConfig> configs = notificationConfigMapper.selectList(

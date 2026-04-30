@@ -121,6 +121,16 @@ export interface ExpenseQuery extends PageQuery {
   endDate?: string;
 }
 
+export interface VehicleUsageApprovalRequest {
+  approved: boolean;
+  remark?: string;
+}
+
+export interface VehicleReturnRequest {
+  endMileage: number;
+  remark?: string;
+}
+
 // --- 车辆管理 API ---
 
 /** 获取车辆列表（分页） */
@@ -177,11 +187,12 @@ export const getUsageInfo = (id: number) => {
 
 /** 审批用车申请 */
 export const approveUsage = (id: number, approved: boolean, remark?: string) => {
-  return request.put(`/oa/vehicle/usage/${id}/approve`, { approved, remark }) as Promise<void>;
+  const data: VehicleUsageApprovalRequest = { approved, remark };
+  return request.put(`/oa/vehicle/usage/${id}/approve`, data) as Promise<void>;
 };
 
 /** 归还车辆（完成用车） */
-export const returnVehicle = (id: number, data: { endMileage: number; remark?: string }) => {
+export const returnVehicle = (id: number, data: VehicleReturnRequest) => {
   return request.put(`/oa/vehicle/usage/${id}/return`, data) as Promise<void>;
 };
 

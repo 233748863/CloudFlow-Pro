@@ -9,7 +9,7 @@ import com.cloudflow.workflow.domain.WfFormDefinition;
  * 表单管理服务接口
  * 负责表单定义的保存、查询等操作
  * 
- * 从 WorkflowServiceImpl 拆分而来
+ * 从原工作流服务拆分而来
  *
  * @author CloudFlow
  */

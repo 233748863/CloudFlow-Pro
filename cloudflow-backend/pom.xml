@@ -50,6 +50,7 @@
         <commons-io.version>2.16.1</commons-io.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <maven.dependency.plugin.version>3.7.0</maven.dependency.plugin.version>
+        <jsr305.version>3.0.2</jsr305.version>
     </properties>
 
     <dependencyManagement>
@@ -240,6 +241,13 @@
                 <groupId>org.projectlombok</groupId>
                 <artifactId>lombok</artifactId>
                 <version>${lombok.version}</version>
+            </dependency>
+
+            <!-- JSR-305 注解：补齐 Spring Data Redis 编译期依赖的 javax.annotation.meta.When -->
+            <dependency>
+                <groupId>com.google.code.findbugs</groupId>
+                <artifactId>jsr305</artifactId>
+                <version>${jsr305.version}</version>
             </dependency>
 
             <!-- MyBatis-Plus -->

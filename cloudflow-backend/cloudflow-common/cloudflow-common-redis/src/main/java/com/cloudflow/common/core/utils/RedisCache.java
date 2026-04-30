@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class RedisCache {
     @Autowired
-    public RedisTemplate redisTemplate;
+    public RedisTemplate<String, Object> redisTemplate;
     
     // 需要忽略租户隔离的 Key 前缀 (如验证码、登录Token等)
     private static final String[] GLOBAL_PREFIXES = {
@@ -97,9 +97,10 @@ public class RedisCache {
      * @param key 缓存键值
      * @return 缓存键值对应的数据
      */
+    @SuppressWarnings("unchecked")
     public <T> T getCacheObject(final String key) {
-        ValueOperations<String, T> operation = redisTemplate.opsForValue();
-        return operation.get(getTenantKey(key));
+        ValueOperations<String, Object> operation = redisTemplate.opsForValue();
+        return (T) operation.get(getTenantKey(key));
     }
 
     /**

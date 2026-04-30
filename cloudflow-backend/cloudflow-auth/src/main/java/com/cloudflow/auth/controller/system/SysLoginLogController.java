@@ -3,6 +3,7 @@ package com.cloudflow.auth.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.auth.domain.vo.DynamicMapVO;
 import com.cloudflow.auth.service.LoginLogService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.domain.SysLogEntity;
@@ -90,7 +91,7 @@ public class SysLoginLogController {
     }
 
     @GetMapping("/trend")
-    public R trend() {
+    public R<List<DynamicMapVO>> trend() {
         LocalDateTime startTime = LocalDate.now().minusDays(30).atStartOfDay();
         LambdaQueryWrapper<SysLogEntity> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysLogEntity::getRequestUri, "/login")
@@ -124,13 +125,13 @@ public class SysLoginLogController {
             }
         }
 
-        List<Map<String, Object>> result = grouped.entrySet().stream()
+        List<DynamicMapVO> result = grouped.entrySet().stream()
             .map(entry -> {
                 Map<String, Object> item = new LinkedHashMap<>();
                 item.put("date", entry.getKey());
                 item.put("success", entry.getValue().get("success"));
                 item.put("fail", entry.getValue().get("fail"));
-                return item;
+                return DynamicMapVO.from(item);
             })
             .collect(Collectors.toList());
 

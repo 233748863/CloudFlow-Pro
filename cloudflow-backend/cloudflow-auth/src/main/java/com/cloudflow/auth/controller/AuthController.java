@@ -8,7 +8,11 @@ import com.cloudflow.auth.domain.RegisterBody;
 import com.cloudflow.auth.domain.SysMenu;
 import com.cloudflow.auth.domain.SysTenant;
 import com.cloudflow.auth.domain.SysUser;
+import com.cloudflow.auth.domain.dto.ChangePasswordDTO;
+import com.cloudflow.auth.domain.dto.ProfileUpdateDTO;
+import com.cloudflow.auth.domain.dto.SwitchTenantDTO;
 import com.cloudflow.auth.domain.dto.UserInfo;
+import com.cloudflow.auth.domain.vo.DynamicMapVO;
 import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
@@ -71,7 +75,7 @@ public class AuthController {
     private LoginLogService loginLogService;
 
     @PostMapping("/login")
-    public R<?> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
+    public R<DynamicMapVO> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
         long startAt = System.currentTimeMillis();
 
         // 先校验滑块验证码，避免未通过人机校验时继续执行登录流程。
@@ -181,7 +185,7 @@ public class AuthController {
 
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
-        return R.ok(result);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     @PostMapping("/register")
@@ -220,7 +224,7 @@ public class AuthController {
     }
 
     @GetMapping("/info")
-    public R<?> info(HttpServletRequest request) {
+    public R<DynamicMapVO> info(HttpServletRequest request) {
         Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
             return R.fail(401, "Token已过期或无效");
@@ -269,11 +273,11 @@ public class AuthController {
         data.put("roles", resolveStringCollection(userMap.get("roles"), userInfo.getRoles()));
         data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
 
-        return R.ok(data);
+        return R.ok(DynamicMapVO.from(data));
     }
 
     @PutMapping("/profile")
-    public R<?> updateProfile(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+    public R<?> updateProfile(@RequestBody ProfileUpdateDTO dto, HttpServletRequest request) {
         Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
             return R.fail(401, "Token已过期或无效");
@@ -284,7 +288,7 @@ public class AuthController {
             return R.fail(401, "登录用户信息异常");
         }
 
-        String nickName = trimValue(params.get("nickName"));
+        String nickName = trimValue(dto.getNickName());
         if (!StringUtils.hasText(nickName)) {
             return R.fail("显示名称不能为空");
         }
@@ -297,9 +301,9 @@ public class AuthController {
         SysUser update = new SysUser();
         update.setUserId(userId);
         update.setNickName(nickName);
-        update.setEmail(trimValue(params.get("email")));
-        String phone = trimValue(params.get("phonenumber"));
-        update.setPhonenumber(StringUtils.hasText(phone) ? phone : trimValue(params.get("phone")));
+        update.setEmail(trimValue(dto.getEmail()));
+        String phone = trimValue(dto.getPhonenumber());
+        update.setPhonenumber(StringUtils.hasText(phone) ? phone : trimValue(dto.getPhone()));
 
         TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.updateById(update));
         sysUserService.evictUserInfoCache(existing.getUserName());
@@ -308,7 +312,7 @@ public class AuthController {
     }
 
     @PutMapping("/profile/password")
-    public R<?> changeProfilePassword(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+    public R<?> changeProfilePassword(@RequestBody ChangePasswordDTO dto, HttpServletRequest request) {
         Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
             return R.fail(401, "Token已过期或无效");
@@ -319,8 +323,8 @@ public class AuthController {
             return R.fail(401, "登录用户信息异常");
         }
 
-        String oldPassword = trimValue(params.get("oldPassword"));
-        String newPassword = trimValue(params.get("newPassword"));
+        String oldPassword = trimValue(dto.getOldPassword());
+        String newPassword = trimValue(dto.getNewPassword());
         if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
             return R.fail("密码不能为空");
         }
@@ -506,7 +510,7 @@ public class AuthController {
      * 允许超级管理员切换到指定租户，以便查看和管理该租户的数据
      */
     @PostMapping("/switchTenant")
-    public R<?> switchTenant(@RequestBody Map<String, Object> params, HttpServletRequest request) {
+    public R<DynamicMapVO> switchTenant(@RequestBody SwitchTenantDTO dto, HttpServletRequest request) {
         String rawToken = resolveRawToken(request);
         Map<String, Object> userMap = tokenService.verifyToken(rawToken);
         if (userMap == null) {
@@ -517,23 +521,9 @@ public class AuthController {
             return R.fail(403, "只有超级管理员才能切换租户");
         }
 
-        // 获取目标租户ID
-        Object tenantIdObj = params.get("tenantId");
-        if (tenantIdObj == null) {
+        Long targetTenantId = dto.getTenantId();
+        if (targetTenantId == null) {
             return R.fail("租户ID不能为空");
-        }
-
-        Long targetTenantId;
-        if (tenantIdObj instanceof Integer) {
-            targetTenantId = ((Integer) tenantIdObj).longValue();
-        } else if (tenantIdObj instanceof Long) {
-            targetTenantId = (Long) tenantIdObj;
-        } else {
-            try {
-                targetTenantId = Long.parseLong(tenantIdObj.toString());
-            } catch (NumberFormatException e) {
-                return R.fail("租户ID格式错误");
-            }
         }
 
         userMap.put("tenantId", targetTenantId);
@@ -550,7 +540,7 @@ public class AuthController {
         result.put("tenantId", targetTenantId);
         result.put("message", "租户切换成功");
 
-        return R.ok(result);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     private boolean hasAdminRole(Object rolesObj) {

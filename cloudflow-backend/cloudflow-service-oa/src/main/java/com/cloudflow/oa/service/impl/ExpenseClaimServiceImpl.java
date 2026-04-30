@@ -9,6 +9,7 @@ import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
 import com.cloudflow.oa.domain.VehicleExpense;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
@@ -145,9 +146,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         
         // 启动工作流
         try {
-            Map<String, Object> req = new HashMap<>();
-            req.put("processDefKey", "expense_claim");
-            req.put("businessKey", "EXPENSE_CLAIM:" + claim.getId());
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey("expense_claim");
+            req.setBusinessKey("EXPENSE_CLAIM:" + claim.getId());
             // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("claimId", claim.getId());
@@ -165,7 +166,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                     claim.getId(),
                     claim.getClaimNo()
             );
-            req.put("variables", variables);
+            req.setVariables(variables);
             
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {

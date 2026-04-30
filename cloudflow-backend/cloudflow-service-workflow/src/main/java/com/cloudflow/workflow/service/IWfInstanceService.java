@@ -11,7 +11,7 @@ import java.util.Map;
  * 流程实例管理服务接口
  * 负责流程的启动、撤回、暂停、恢复、查询等操作
  * 
- * 从 WorkflowServiceImpl 拆分而来，参考 RuoYi-Cloud-Plus IFlwInstanceService 设计
+ * 从原工作流服务拆分而来，参考 RuoYi-Cloud-Plus IFlwInstanceService 设计
  *
  * @author CloudFlow
  */

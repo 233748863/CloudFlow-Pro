@@ -2,6 +2,7 @@ package com.cloudflow.hr.client.fallback;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.WorkflowServiceClient;
+import com.cloudflow.hr.client.dto.WorkflowInvalidateRequest;
 import com.cloudflow.hr.client.dto.WorkflowStartRequest;
 import com.cloudflow.hr.client.vo.ProcessInstanceVO;
 import lombok.extern.slf4j.Slf4j;
@@ -31,8 +32,8 @@ public class WorkflowServiceFallback implements WorkflowServiceClient {
     }
 
     @Override
-    public R<?> invalidateProcess(Map<String, String> body) {
-        log.error("Workflow 服务调用失败: 作废流程失败, processInstanceId={}", body != null ? body.get("instanceId") : null);
+    public R<?> invalidateProcess(WorkflowInvalidateRequest request) {
+        log.error("Workflow 服务调用失败: 作废流程失败, processInstanceId={}", request != null ? request.getInstanceId() : null);
         return R.fail("工作流服务暂时不可用，无法撤销流程，请稍后重试");
     }
 }

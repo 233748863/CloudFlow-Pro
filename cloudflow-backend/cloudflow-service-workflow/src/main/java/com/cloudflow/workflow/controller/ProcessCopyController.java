@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessCopy;
+import com.cloudflow.workflow.domain.dto.BatchCopyReadRequest;
 import com.cloudflow.workflow.service.IProcessCopyService;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
@@ -12,9 +13,6 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Map;
 
 /**
  * 流程抄送控制器
@@ -61,10 +59,9 @@ public class ProcessCopyController {
      * 批量标记为已读
      */
     @PostMapping("/batch-read")
-    public R<?> batchMarkAsRead(@RequestBody Map<String, List<Long>> body) {
+    public R<?> batchMarkAsRead(@RequestBody BatchCopyReadRequest dto) {
         Long userId = UserContext.getUserId();
-        List<Long> copyIds = body.get("copyIds");
-        processCopyService.batchMarkAsRead(copyIds, userId);
+        processCopyService.batchMarkAsRead(dto.getCopyIds(), userId);
         return R.ok();
     }
 }

@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.sensitive.utils.SensitiveUtils;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.ContactMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,10 +37,10 @@ public class ContactController {
      * 返回统一脱敏后的联系信息。
      */
     @GetMapping("/list")
-    public R<Map<String, Object>> list(@RequestParam(value = "keyword", required = false) String keyword,
-                                       @RequestParam(value = "deptId", required = false) Long deptId,
-                                       @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
-                                       @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize) {
+    public R<DynamicMapVO> list(@RequestParam(value = "keyword", required = false) String keyword,
+                                @RequestParam(value = "deptId", required = false) Long deptId,
+                                @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+                                @RequestParam(value = "pageSize", defaultValue = "20") Integer pageSize) {
         int current = normalizePageNum(pageNum);
         int size = normalizePageSize(pageSize);
         String normalizedKeyword = normalizeKeyword(keyword);
@@ -60,17 +61,18 @@ public class ContactController {
         result.put("current", current);
         result.put("size", size);
 
-        return R.ok(result);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     /**
      * 查询部门树（通讯录左侧部门导航用）。
      */
     @GetMapping("/dept/tree")
-    public R<List<Map<String, Object>>> deptTree() {
-        List<Map<String, Object>> depts = contactMapper.selectDeptTree()
+    public R<List<DynamicMapVO>> deptTree() {
+        List<DynamicMapVO> depts = contactMapper.selectDeptTree()
             .stream()
             .map(SensitiveUtils::maskMap)
+            .map(DynamicMapVO::from)
             .collect(Collectors.toList());
         return R.ok(depts);
     }
@@ -79,12 +81,12 @@ public class ContactController {
      * 查询用户详情（通讯录详情卡片）。
      */
     @GetMapping("/user/{userId}")
-    public R<Map<String, Object>> getUserDetail(@PathVariable("userId") Long userId) {
+    public R<DynamicMapVO> getUserDetail(@PathVariable("userId") Long userId) {
         Map<String, Object> user = contactMapper.selectUserDetail(userId);
         if (user == null || user.isEmpty()) {
             return R.fail("用户不存在");
         }
-        return R.ok(SensitiveUtils.maskMap(user));
+        return R.ok(DynamicMapVO.from(SensitiveUtils.maskMap(user)));
     }
 
     private String normalizeKeyword(String keyword) {

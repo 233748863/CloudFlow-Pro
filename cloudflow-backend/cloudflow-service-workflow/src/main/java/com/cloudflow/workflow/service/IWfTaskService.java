@@ -11,7 +11,7 @@ import java.util.Map;
  * 任务操作服务接口
  * 负责任务的完成、驳回、转办、催办、已读等操作
  * 
- * 从 WorkflowServiceImpl 拆分而来，参考 RuoYi-Cloud-Plus IFlwTaskService 设计
+ * 从原工作流服务拆分而来，参考 RuoYi-Cloud-Plus IFlwTaskService 设计
  *
  * @author CloudFlow
  */

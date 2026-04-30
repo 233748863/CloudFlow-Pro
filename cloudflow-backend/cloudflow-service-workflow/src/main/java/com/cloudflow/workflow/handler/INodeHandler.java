@@ -8,7 +8,7 @@ import java.util.Map;
 /**
  * 节点处理器接口
  * 每种节点类型（NOTIFICATION/SCRIPT/TIMER/SUBPROCESS/MANUAL/COPY）对应一个实现
- * 从 WorkflowServiceImpl 拆分出来，遵循策略模式
+ * 从原工作流服务拆分出来，遵循策略模式
  *
  * @author CloudFlow
  */

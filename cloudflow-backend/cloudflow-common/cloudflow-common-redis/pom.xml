@@ -25,6 +25,12 @@
             <artifactId>spring-boot-starter-data-redis</artifactId>
         </dependency>
 
+        <!-- Spring Data Redis 的空值注解依赖，用于消除 javax.annotation.meta.When 编译告警 -->
+        <dependency>
+            <groupId>com.google.code.findbugs</groupId>
+            <artifactId>jsr305</artifactId>
+        </dependency>
+
         <!-- Redis 核心 API：当前模块直接使用 RedisTemplate、RedisCacheManager 等类型 -->
         <dependency>
             <groupId>org.springframework.data</groupId>

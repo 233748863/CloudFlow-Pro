@@ -4,6 +4,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.dto.*;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +16,6 @@ import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 流程发布增强Controller
@@ -34,8 +34,9 @@ public class DeployEnhancementController {
     @Operation(summary = "检查当前是否在发布窗口内")
     @GetMapping("/window/check")
     @SaCheckLogin
-    public R<Map<String, Object>> checkDeployWindow() {
-        return deployEnhancementService.checkDeployWindow();
+    public R<DynamicMapVO> checkDeployWindow() {
+        R<java.util.Map<String, Object>> result = deployEnhancementService.checkDeployWindow();
+        return toDynamicMapResult(result);
     }
 
     @Operation(summary = "获取所有发布窗口配置")
@@ -166,8 +167,9 @@ public class DeployEnhancementController {
     @Operation(summary = "查询审批详情")
     @GetMapping("/approval/detail/{approvalId}")
     @SaCheckLogin
-    public R<Map<String, Object>> getApprovalDetail(@PathVariable("approvalId") Long approvalId) {
-        return deployEnhancementService.getApprovalDetail(approvalId);
+    public R<DynamicMapVO> getApprovalDetail(@PathVariable("approvalId") Long approvalId) {
+        R<java.util.Map<String, Object>> result = deployEnhancementService.getApprovalDetail(approvalId);
+        return toDynamicMapResult(result);
     }
 
     @Operation(summary = "取消发布审批")
@@ -188,7 +190,16 @@ public class DeployEnhancementController {
     @Operation(summary = "获取发布统计信息")
     @GetMapping("/statistics/{processDefId}")
     @SaCheckLogin
-    public R<Map<String, Object>> getDeployStatistics(@PathVariable("processDefId") String processDefId) {
-        return deployEnhancementService.getDeployStatistics(processDefId);
+    public R<DynamicMapVO> getDeployStatistics(@PathVariable("processDefId") String processDefId) {
+        R<java.util.Map<String, Object>> result = deployEnhancementService.getDeployStatistics(processDefId);
+        return toDynamicMapResult(result);
+    }
+
+    private R<DynamicMapVO> toDynamicMapResult(R<java.util.Map<String, Object>> source) {
+        R<DynamicMapVO> result = new R<>();
+        result.setCode(source.getCode());
+        result.setMsg(source.getMsg());
+        result.setData(DynamicMapVO.from(source.getData()));
+        return result;
     }
 }

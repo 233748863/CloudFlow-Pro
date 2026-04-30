@@ -25,6 +25,15 @@ export interface ConsumableStockLog {
   createTime?: string;
 }
 
+export interface ConsumableStockRequest {
+  quantity: number;
+  remark: string;
+}
+
+export interface ConsumableStockOutRequest extends ConsumableStockRequest {
+  stockOutType: 'ISSUE' | 'LOSS';
+}
+
 /** 耗材管理相关API */
 export const consumableApi = {
   /** 分页查询耗材列表 */
@@ -54,10 +63,14 @@ export const consumableApi = {
   getLowStock: () => request.get('/oa/consumable/low-stock'),
 
   /** 入库操作 */
-  addStock: (id: number, quantity: number, remark: string) =>
-    request.post(`/oa/consumable/${id}/add-stock`, { quantity, remark }),
+  addStock: (id: number, quantity: number, remark: string) => {
+    const data: ConsumableStockRequest = { quantity, remark };
+    return request.post(`/oa/consumable/${id}/add-stock`, data);
+  },
 
   /** 出库操作 */
-  reduceStock: (id: number, quantity: number, stockOutType: 'ISSUE' | 'LOSS', remark: string) =>
-    request.post(`/oa/consumable/${id}/reduce-stock`, { quantity, stockOutType, remark }),
+  reduceStock: (id: number, quantity: number, stockOutType: 'ISSUE' | 'LOSS', remark: string) => {
+    const data: ConsumableStockOutRequest = { quantity, stockOutType, remark };
+    return request.post(`/oa/consumable/${id}/reduce-stock`, data);
+  },
 };

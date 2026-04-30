@@ -6,11 +6,11 @@ import cn.dev33.satoken.annotation.SaMode;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.KnowledgeDocument;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IKnowledgeService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/knowledge")
@@ -118,9 +118,9 @@ public class KnowledgeController {
 
     @GetMapping("/read-stats/{id}")
     @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
-    public R<Map<String, Object>> getReadStats(@PathVariable("id") Long id) {
+    public R<DynamicMapVO> getReadStats(@PathVariable("id") Long id) {
         try {
-            return R.ok(knowledgeService.getReadStats(id));
+            return R.ok(DynamicMapVO.from(knowledgeService.getReadStats(id)));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

@@ -10,6 +10,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BusinessTrip;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
 import com.cloudflow.oa.service.IBusinessTripService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
@@ -103,9 +104,9 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         trip.setStatus("PENDING");
 
         try {
-            Map<String, Object> req = new HashMap<>();
-            req.put("processDefKey", "business_trip");
-            req.put("businessKey", "BUSINESS_TRIP:" + trip.getId());
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey("business_trip");
+            req.setBusinessKey("BUSINESS_TRIP:" + trip.getId());
             // 流程变量 - 包含完整业务字段，供审批人在审批卡片和详情中查看
             Map<String, Object> variables = new HashMap<>();
             variables.put("tripId", trip.getId());
@@ -129,7 +130,7 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
                     trip.getId(),
                     trip.getTripNo()
             );
-            req.put("variables", variables);
+            req.setVariables(variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {

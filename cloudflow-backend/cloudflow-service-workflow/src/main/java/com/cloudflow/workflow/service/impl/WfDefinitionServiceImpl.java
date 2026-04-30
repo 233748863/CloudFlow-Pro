@@ -42,7 +42,7 @@ import java.util.*;
 
 /**
  * 流程定义管理服务实现
- * 从 WorkflowServiceImpl 拆分而来，负责流程定义的 CRUD 和发布
+ * 从原工作流服务拆分而来，负责流程定义的 CRUD 和发布
  *
  * @author CloudFlow
  */

@@ -66,7 +66,7 @@ public class AsyncWorkflowService {
      * @param instance 已创建的流程实例
      * @param def 流程定义
      * @param variables 流程变量
-     * @param nodeRunner 节点执行回调（由 WorkflowServiceImpl 提供）
+     * @param nodeRunner 节点执行回调
      */
     @Async("workflowExecutor")
     public void asyncStartProcessNodes(WfProcessInstance instance, WfProcessDefinition def,
@@ -98,7 +98,7 @@ public class AsyncWorkflowService {
                 throw WorkflowException.validationError("流程启动失败：未找到首个可执行节点");
             }
 
-            // 执行节点（通过回调委托给 WorkflowServiceImpl）
+            // 执行节点（通过回调委托给调用方）
             nodeRunner.run(instance, nextNode, variables, 0, rootNode);
 
             // 标记成功
@@ -179,7 +179,7 @@ public class AsyncWorkflowService {
 
     /**
      * 节点执行回调接口
-     * 由 WorkflowServiceImpl 实现，传递给异步服务
+     * 由调用方实现，传递给异步服务
      */
     @FunctionalInterface
     public interface NodeRunner {

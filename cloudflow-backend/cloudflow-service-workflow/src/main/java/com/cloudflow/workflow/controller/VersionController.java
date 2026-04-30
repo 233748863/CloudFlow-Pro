@@ -4,11 +4,12 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WorkflowVersion;
-import com.cloudflow.workflow.domain.dto.ErrorResponse;
 import com.cloudflow.workflow.domain.dto.RollbackVersionRequest;
 import com.cloudflow.workflow.domain.dto.VersionComparisonDTO;
 import com.cloudflow.workflow.domain.dto.VersionDTO;
 import com.cloudflow.workflow.domain.dto.VersionDetailDTO;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.vo.WorkflowErrorVO;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
@@ -32,13 +33,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 /**
- * Workflow version controller.
+ * 流程版本控制器。
  */
 @Slf4j
 @RestController
@@ -63,7 +65,7 @@ public class VersionController {
 
     @GetMapping("/workflow/{workflowId}")
     public R<List<VersionDTO>> getVersionHistory(@PathVariable String workflowId) {
-        log.info("Query workflow version history, workflowId={}", workflowId);
+        log.info("查询流程版本历史, workflowId={}", workflowId);
 
         ensureWorkflowOwnerOrAdmin(workflowId);
         List<VersionDTO> versions = versionService.getVersionHistory(workflowId);
@@ -72,11 +74,11 @@ public class VersionController {
 
     @GetMapping("/{versionId}")
     public R<VersionDetailDTO> getVersionDetail(@PathVariable String versionId) {
-        log.info("Query version detail, versionId={}", versionId);
+        log.info("查询版本详情, versionId={}", versionId);
 
         WorkflowVersion version = workflowVersionMapper.selectById(versionId);
         if (version == null) {
-            throw new WorkflowException("Version not found: " + versionId);
+            throw new WorkflowException("版本不存在: " + versionId);
         }
         ensureWorkflowOwnerOrAdmin(version.getWorkflowId());
 
@@ -88,18 +90,18 @@ public class VersionController {
     public R<VersionComparisonDTO> compareVersions(
             @RequestParam String fromVersionId,
             @RequestParam String toVersionId) {
-        log.info("Compare versions, fromVersionId={}, toVersionId={}", fromVersionId, toVersionId);
+        log.info("对比流程版本, fromVersionId={}, toVersionId={}", fromVersionId, toVersionId);
 
         WorkflowVersion fromVersion = workflowVersionMapper.selectById(fromVersionId);
         WorkflowVersion toVersion = workflowVersionMapper.selectById(toVersionId);
         if (fromVersion == null) {
-            throw new WorkflowException("Version not found: " + fromVersionId);
+            throw new WorkflowException("版本不存在: " + fromVersionId);
         }
         if (toVersion == null) {
-            throw new WorkflowException("Version not found: " + toVersionId);
+            throw new WorkflowException("版本不存在: " + toVersionId);
         }
         if (!Objects.equals(fromVersion.getWorkflowId(), toVersion.getWorkflowId())) {
-            throw WorkflowException.validationError("Only versions of the same workflow can be compared");
+            throw WorkflowException.validationError("只能对比同一流程的版本");
         }
 
         ensureWorkflowOwnerOrAdmin(fromVersion.getWorkflowId());
@@ -108,8 +110,8 @@ public class VersionController {
     }
 
     @PostMapping("/rollback")
-    public ResponseEntity<?> rollbackToVersion(@RequestBody RollbackVersionRequest request) {
-        log.info("Rollback workflow version, workflowId={}, targetVersionId={}",
+    public ResponseEntity<Serializable> rollbackToVersion(@RequestBody RollbackVersionRequest request) {
+        log.info("回滚流程版本, workflowId={}, targetVersionId={}",
             request.getWorkflowId(), request.getTargetVersionId());
 
         // 权限口径统一：仅流程创建者或管理员可回滚
@@ -126,13 +128,12 @@ public class VersionController {
             warningData.put("requireConfirmation", true);
             warningData.put("affectedWorkflows", List.of(request.getWorkflowId()));
 
-            ErrorResponse errorResponse = ErrorResponse.builder()
-                .code("RUNNING_INSTANCES_WARNING")
-                .message("The workflow has running instances. Rollback may impact running processes")
-                .data(warningData)
-                .build();
-
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(WorkflowErrorVO.builder()
+                    .code("RUNNING_INSTANCES_WARNING")
+                    .message("流程存在运行中的实例，回滚可能影响运行中的流程")
+                    .data(DynamicMapVO.from(warningData))
+                    .build());
         }
 
         WorkflowVersion newVersion = versionService.rollbackToVersion(
@@ -146,14 +147,14 @@ public class VersionController {
         Map<String, Object> result = new HashMap<>();
         result.put("versionId", newVersion.getId());
         result.put("versionNumber", newVersion.getVersionNumber());
-        result.put("message", "Version rollback successful");
+        result.put("message", "版本回滚成功");
 
-        return ResponseEntity.ok(R.ok(result));
+        return ResponseEntity.ok((Serializable) R.ok(DynamicMapVO.from(result)));
     }
 
     @GetMapping("/check-running/{workflowId}")
-    public R<Map<String, Object>> checkRunningInstances(@PathVariable String workflowId) {
-        log.info("Check workflow running instances, workflowId={}", workflowId);
+    public R<DynamicMapVO> checkRunningInstances(@PathVariable String workflowId) {
+        log.info("检查流程运行实例, workflowId={}", workflowId);
 
         // 仅流程创建者或管理员可查看运行实例状态，避免越权探测流程活跃情况
         ensureWorkflowOwnerOrAdmin(workflowId);
@@ -163,14 +164,14 @@ public class VersionController {
         result.put("hasRunningInstances", hasRunning);
         result.put("workflowId", workflowId);
 
-        return R.ok(result);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     private void ensureWorkflowOwnerOrAdmin(String workflowId) {
         Long currentUserId = UserContext.getUserId();
         Long currentTenantId = UserContext.getTenantId();
         if (currentUserId == null) {
-            throw new PermissionDeniedException("User not logged in");
+            throw new PermissionDeniedException("用户未登录");
         }
 
         WfProcessDefinition definition = definitionMapper.selectById(workflowId);
@@ -178,13 +179,14 @@ public class VersionController {
             throw WorkflowException.processNotFound(workflowId);
         }
         if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
-            throw new PermissionDeniedException("Tenant mismatch");
+            throw new PermissionDeniedException("租户不匹配");
         }
 
         boolean isCreator = Objects.equals(currentUserId.toString(), definition.getCreateBy());
         boolean isAdmin = permissionService.isAdmin(currentUserId);
         if (!isCreator && !isAdmin) {
-            throw new PermissionDeniedException("Only workflow owner or admin can access version data");
+            throw new PermissionDeniedException("仅流程创建者或管理员可访问版本数据");
         }
     }
+
 }

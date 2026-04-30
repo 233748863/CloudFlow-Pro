@@ -2,11 +2,25 @@ package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.workflow.domain.WfFormDefinition;
+import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.domain.dto.InstanceIdRequest;
 import com.cloudflow.workflow.domain.dto.ProcessStartReq;
+import com.cloudflow.workflow.domain.dto.ProcessRejectRequest;
+import com.cloudflow.workflow.domain.dto.SignatureChangeRequest;
 import com.cloudflow.workflow.domain.dto.TaskCompleteReq;
-import com.cloudflow.workflow.service.IWorkflowService;
+import com.cloudflow.workflow.domain.dto.TerminateProcessRequest;
+import com.cloudflow.workflow.domain.dto.UrgeTaskRequest;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.service.ITaskStatisticsService;
+import com.cloudflow.workflow.service.IWfDefinitionService;
+import com.cloudflow.workflow.service.IWfFormService;
+import com.cloudflow.workflow.service.IWfInstanceService;
+import com.cloudflow.workflow.service.IWfTaskService;
 import com.cloudflow.workflow.service.WorkflowStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -15,22 +29,26 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-
 @RestController
 public class WorkflowController {
 
     @Autowired
-    private IWorkflowService workflowService;
+    private IWfInstanceService instanceService;
+
+    @Autowired
+    private IWfTaskService taskService;
+
+    @Autowired
+    private IWfDefinitionService definitionService;
+
+    @Autowired
+    private IWfFormService formService;
+
+    @Autowired
+    private ITaskStatisticsService taskStatisticsService;
 
     @Autowired
     private WorkflowStatisticsService statisticsService;
-
-    @Autowired
-    private com.cloudflow.workflow.service.IWfTaskService wfTaskService;
 
     /**
      * 发起流程
@@ -39,7 +57,7 @@ public class WorkflowController {
     @PostMapping("/start")
     @SaCheckLogin
     public R<?> startProcess(@RequestBody ProcessStartReq req) {
-        return workflowService.startProcess(req.getProcessDefKey(), req.getBusinessKey(), req.getVariables());
+        return instanceService.startProcess(req.getProcessDefKey(), req.getBusinessKey(), req.getVariables());
     }
 
     /**
@@ -49,7 +67,7 @@ public class WorkflowController {
     @PostMapping("/complete")
     @SaCheckLogin
     public R<?> completeTask(@RequestBody TaskCompleteReq req) {
-        return workflowService.completeTask(req.getTaskId(), req.getAction(), req.getComment(), req.getVariables(), req.getDelegateUserId());
+        return taskService.completeTask(req.getTaskId(), req.getAction(), req.getComment(), req.getVariables(), req.getDelegateUserId());
     }
 
     /**
@@ -57,9 +75,9 @@ public class WorkflowController {
      */
     @GetMapping("/todo")
     @SaCheckLogin
-    public R<com.cloudflow.common.core.domain.PageResult<WfTask>> getTodoTasks(@ModelAttribute com.cloudflow.common.core.domain.PageQuery pageQuery) {
+    public R<PageResult<WfTask>> getTodoTasks(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
-        return R.ok(workflowService.getTodoTasks(userId, pageQuery));
+        return R.ok(taskService.getTodoTasks(userId, pageQuery));
     }
     
     /**
@@ -67,9 +85,9 @@ public class WorkflowController {
      */
     @GetMapping("/my-instances")
     @SaCheckLogin
-    public R<com.cloudflow.common.core.domain.PageResult<WfProcessInstance>> getMyInstances(@ModelAttribute com.cloudflow.common.core.domain.PageQuery pageQuery) {
+    public R<PageResult<WfProcessInstance>> getMyInstances(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
-        return R.ok(workflowService.getMyInstances(userId, pageQuery));
+        return R.ok(instanceService.getMyInstances(userId, pageQuery));
     }
 
     /**
@@ -78,7 +96,7 @@ public class WorkflowController {
     @GetMapping("/instance/{instanceId}")
     @SaCheckLogin
     public R<WfProcessInstance> getProcessInstance(@PathVariable("instanceId") String instanceId) {
-        return R.ok(workflowService.getProcessInstance(instanceId));
+        return R.ok(instanceService.getProcessInstance(instanceId));
     }
 
     /**
@@ -86,8 +104,8 @@ public class WorkflowController {
      */
     @GetMapping("/instance/{instanceId}/trace")
     @SaCheckLogin
-    public R<Map<String, Object>> getProcessTrace(@PathVariable("instanceId") String instanceId) {
-        return R.ok(workflowService.getProcessTrace(instanceId));
+    public R<DynamicMapVO> getProcessTrace(@PathVariable("instanceId") String instanceId) {
+        return R.ok(DynamicMapVO.from(instanceService.getProcessTrace(instanceId)));
     }
 
     /**
@@ -95,8 +113,8 @@ public class WorkflowController {
      */
     @GetMapping("/definitions")
     @SaCheckLogin
-    public R<com.cloudflow.common.core.domain.PageResult<com.cloudflow.workflow.domain.WfProcessDefinition>> listProcessDefinitions(@ModelAttribute com.cloudflow.common.core.domain.PageQuery pageQuery) {
-        return R.ok(workflowService.listProcessDefinitions(pageQuery));
+    public R<PageResult<WfProcessDefinition>> listProcessDefinitions(@ModelAttribute PageQuery pageQuery) {
+        return R.ok(definitionService.listProcessDefinitions(pageQuery));
     }
 
     /**
@@ -104,8 +122,8 @@ public class WorkflowController {
      */
     @GetMapping("/form/{formId}")
     @SaCheckLogin
-    public R<com.cloudflow.workflow.domain.WfFormDefinition> getFormDefinition(@PathVariable("formId") String formId) {
-        return R.ok(workflowService.getFormDefinition(formId));
+    public R<WfFormDefinition> getFormDefinition(@PathVariable("formId") String formId) {
+        return R.ok(formService.getFormDefinition(formId));
     }
 
     /**
@@ -113,8 +131,8 @@ public class WorkflowController {
      */
     @GetMapping("/forms")
     @SaCheckRole("admin")
-    public R<com.cloudflow.common.core.domain.PageResult<com.cloudflow.workflow.domain.WfFormDefinition>> listFormDefinitions(@ModelAttribute com.cloudflow.common.core.domain.PageQuery pageQuery) {
-        return R.ok(workflowService.listFormDefinitions(pageQuery));
+    public R<PageResult<WfFormDefinition>> listFormDefinitions(@ModelAttribute PageQuery pageQuery) {
+        return R.ok(formService.listFormDefinitions(pageQuery));
     }
 
     /**
@@ -123,8 +141,8 @@ public class WorkflowController {
      */
     @PostMapping("/definition/save")
     @SaCheckRole("admin")
-    public R<?> saveProcessDefinition(@RequestBody com.cloudflow.workflow.domain.WfProcessDefinition definition) {
-        return workflowService.saveProcessDefinition(definition);
+    public R<?> saveProcessDefinition(@RequestBody WfProcessDefinition definition) {
+        return definitionService.saveProcessDefinition(definition);
     }
 
     /**
@@ -134,7 +152,7 @@ public class WorkflowController {
     @PostMapping("/definition/deploy/{definitionId}")
     @SaCheckRole("admin")
     public R<?> deployProcessDefinition(@PathVariable("definitionId") String definitionId) {
-        return workflowService.deployProcessDefinition(definitionId);
+        return definitionService.deployProcessDefinition(definitionId);
     }
 
     /**
@@ -143,8 +161,8 @@ public class WorkflowController {
      */
     @PostMapping("/form/save")
     @SaCheckRole("admin")
-    public R<?> saveFormDefinition(@RequestBody com.cloudflow.workflow.domain.WfFormDefinition definition) {
-        return workflowService.saveFormDefinition(definition);
+    public R<?> saveFormDefinition(@RequestBody WfFormDefinition definition) {
+        return formService.saveFormDefinition(definition);
     }
 
     /**
@@ -153,7 +171,7 @@ public class WorkflowController {
     @PostMapping("/task/read/{taskId}")
     @SaCheckLogin
     public R<?> readTask(@PathVariable("taskId") String taskId) {
-        workflowService.readTask(taskId, UserContext.getUserId());
+        taskService.readTask(taskId, UserContext.getUserId());
         return R.ok();
     }
 
@@ -162,10 +180,8 @@ public class WorkflowController {
      */
     @PostMapping("/task/urge")
     @SaCheckLogin
-    public R<?> urgeTask(@RequestBody Map<String, String> body) {
-        String taskId = body.get("taskId");
-        String reason = body.get("reason");
-        return workflowService.urgeTask(taskId, reason);
+    public R<?> urgeTask(@RequestBody UrgeTaskRequest dto) {
+        return taskService.urgeTask(dto.getTaskId(), dto.getReason());
     }
 
     /**
@@ -174,9 +190,9 @@ public class WorkflowController {
      */
     @GetMapping("/tasks/count")
     @SaCheckLogin
-    public R<Map<String, Integer>> getTasksCount() {
+    public R<DynamicMapVO> getTasksCount() {
         Long userId = UserContext.getUserId();
-        return R.ok(workflowService.getTasksCount(userId));
+        return R.ok(DynamicMapVO.from(taskStatisticsService.getTasksCount(userId)));
     }
 
     /**
@@ -185,8 +201,8 @@ public class WorkflowController {
      */
     @GetMapping("/statistics/metrics")
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
-    public R<Map<String, Object>> getStatisticsMetrics() {
-        return R.ok(statisticsService.getMetrics());
+    public R<DynamicMapVO> getStatisticsMetrics() {
+        return R.ok(DynamicMapVO.from(statisticsService.getMetrics()));
     }
 
     /**
@@ -195,8 +211,8 @@ public class WorkflowController {
      */
     @GetMapping("/statistics/analysis")
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
-    public R<Map<String, Object>> getStatisticsAnalysis() {
-        return R.ok(statisticsService.getStatisticsAnalysis());
+    public R<DynamicMapVO> getStatisticsAnalysis() {
+        return R.ok(DynamicMapVO.from(statisticsService.getStatisticsAnalysis()));
     }
 
     /**
@@ -207,7 +223,7 @@ public class WorkflowController {
     @DeleteMapping("/definition/{definitionId}")
     @SaCheckRole("admin")
     public R<?> deleteProcessDefinition(@PathVariable("definitionId") String definitionId) {
-        return workflowService.deleteProcessDefinition(definitionId);
+        return definitionService.deleteProcessDefinition(definitionId);
     }
 
     /**
@@ -216,14 +232,14 @@ public class WorkflowController {
      */
     @GetMapping("/tasks/statistics")
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
-    public R<Map<String, Object>> getTaskStatistics(
+    public R<DynamicMapVO> getTaskStatistics(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String startTime,
             @RequestParam(required = false) String endTime) {
         try {
             java.time.LocalDateTime start = parseDateTimeParam(startTime, false);
             java.time.LocalDateTime end = parseDateTimeParam(endTime, true);
-            return R.ok(workflowService.getTaskStatistics(userId, start, end));
+            return R.ok(DynamicMapVO.from(taskStatisticsService.getTaskStatistics(userId, start, end)));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -235,8 +251,8 @@ public class WorkflowController {
      */
     @GetMapping("/tasks/groups")
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
-    public R<Map<String, Object>> getTaskGroups(@RequestParam(required = false) Long userId) {
-        return R.ok(workflowService.getTaskGroups(userId));
+    public R<DynamicMapVO> getTaskGroups(@RequestParam(required = false) Long userId) {
+        return R.ok(DynamicMapVO.from(taskStatisticsService.getTaskGroups(userId)));
     }
 
     /**
@@ -245,12 +261,12 @@ public class WorkflowController {
      */
     @PostMapping("/recall")
     @SaCheckLogin
-    public R<?> recallProcess(@RequestBody Map<String, String> body) {
-        String instanceId = body.get("instanceId");
+    public R<?> recallProcess(@RequestBody InstanceIdRequest dto) {
+        String instanceId = dto.getInstanceId();
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("instanceId不能为空");
         }
-        return workflowService.recallProcess(instanceId);
+        return instanceService.recallProcess(instanceId);
     }
 
     /**
@@ -258,14 +274,14 @@ public class WorkflowController {
      */
     @PostMapping("/reject")
     @SaCheckLogin
-    public R<?> rejectTask(@RequestBody Map<String, String> body) {
-        String taskId = body.get("taskId");
-        String targetNodeKey = body.get("targetNodeKey");
-        String comment = body.get("comment");
+    public R<?> rejectTask(@RequestBody ProcessRejectRequest dto) {
+        String taskId = dto.getTaskId();
+        String targetNodeKey = dto.getTargetNodeKey();
+        String comment = dto.getComment();
         if (taskId == null || taskId.isBlank()) {
             return R.fail("taskId不能为空");
         }
-        return workflowService.rejectTask(taskId, targetNodeKey, comment);
+        return taskService.rejectTask(taskId, targetNodeKey, comment);
     }
 
     /**
@@ -274,12 +290,12 @@ public class WorkflowController {
      */
     @PostMapping("/pause")
     @SaCheckRole("admin")
-    public R<?> pauseProcess(@RequestBody Map<String, String> body) {
-        String instanceId = body.get("instanceId");
+    public R<?> pauseProcess(@RequestBody InstanceIdRequest dto) {
+        String instanceId = dto.getInstanceId();
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("instanceId不能为空");
         }
-        return workflowService.pauseProcess(instanceId);
+        return instanceService.pauseProcess(instanceId);
     }
 
     /**
@@ -288,12 +304,12 @@ public class WorkflowController {
      */
     @PostMapping("/resume")
     @SaCheckRole("admin")
-    public R<?> resumeProcess(@RequestBody Map<String, String> body) {
-        String instanceId = body.get("instanceId");
+    public R<?> resumeProcess(@RequestBody InstanceIdRequest dto) {
+        String instanceId = dto.getInstanceId();
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("instanceId不能为空");
         }
-        return workflowService.resumeProcess(instanceId);
+        return instanceService.resumeProcess(instanceId);
     }
 
     /**
@@ -301,8 +317,8 @@ public class WorkflowController {
      */
     @GetMapping("/definition/{definitionId}")
     @SaCheckLogin
-    public R<com.cloudflow.workflow.domain.WfProcessDefinition> getProcessDefinition(@PathVariable("definitionId") String definitionId) {
-        return R.ok(workflowService.getProcessDefinition(definitionId));
+    public R<WfProcessDefinition> getProcessDefinition(@PathVariable("definitionId") String definitionId) {
+        return R.ok(definitionService.getProcessDefinition(definitionId));
     }
 
     // ==================== 加签/减签功能 ====================
@@ -319,15 +335,10 @@ public class WorkflowController {
      */
     @PostMapping("/task/add-signature")
     @SaCheckLogin
-    public R<?> addSignature(@RequestBody Map<String, Object> body) {
-        String taskId = (String) body.get("taskId");
-        List<Long> userIds;
-        try {
-            userIds = parseUserIds(body.get("userIds"));
-        } catch (IllegalArgumentException ex) {
-            return R.fail(ex.getMessage());
-        }
-        String comment = (String) body.get("comment");
+    public R<?> addSignature(@RequestBody SignatureChangeRequest dto) {
+        String taskId = dto.getTaskId();
+        java.util.List<Long> userIds = dto.getUserIds();
+        String comment = dto.getComment();
 
         if (taskId == null || taskId.isBlank()) {
             return R.fail("任务ID不能为空");
@@ -339,7 +350,7 @@ public class WorkflowController {
             return R.fail("加签说明不能为空");
         }
 
-        return wfTaskService.addSignature(taskId, userIds, comment);
+        return taskService.addSignature(taskId, userIds, comment);
     }
 
     /**
@@ -354,15 +365,10 @@ public class WorkflowController {
      */
     @PostMapping("/task/reduction-signature")
     @SaCheckLogin
-    public R<?> reductionSignature(@RequestBody Map<String, Object> body) {
-        String taskId = (String) body.get("taskId");
-        List<Long> userIds;
-        try {
-            userIds = parseUserIds(body.get("userIds"));
-        } catch (IllegalArgumentException ex) {
-            return R.fail(ex.getMessage());
-        }
-        String comment = (String) body.get("comment");
+    public R<?> reductionSignature(@RequestBody SignatureChangeRequest dto) {
+        String taskId = dto.getTaskId();
+        java.util.List<Long> userIds = dto.getUserIds();
+        String comment = dto.getComment();
 
         if (taskId == null || taskId.isBlank()) {
             return R.fail("任务ID不能为空");
@@ -374,7 +380,7 @@ public class WorkflowController {
             return R.fail("减签说明不能为空");
         }
 
-        return wfTaskService.reductionSignature(taskId, userIds, comment);
+        return taskService.reductionSignature(taskId, userIds, comment);
     }
 
     // ==================== 流程终止功能 ====================
@@ -391,9 +397,9 @@ public class WorkflowController {
      */
     @PostMapping("/instance/terminate")
     @SaCheckRole("admin")
-    public R<?> terminateProcess(@RequestBody Map<String, String> body) {
-        String instanceId = body.get("instanceId");
-        String reason = body.get("reason");
+    public R<?> terminateProcess(@RequestBody TerminateProcessRequest dto) {
+        String instanceId = dto.getInstanceId();
+        String reason = dto.getReason();
 
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("流程实例ID不能为空");
@@ -402,7 +408,7 @@ public class WorkflowController {
             return R.fail("终止原因不能为空");
         }
 
-        return workflowService.terminateProcess(instanceId, reason);
+        return instanceService.terminateProcess(instanceId, reason);
     }
 
     private java.time.LocalDateTime parseDateTimeParam(String value, boolean endOfDay) {
@@ -423,43 +429,4 @@ public class WorkflowController {
         }
     }
 
-    private List<Long> parseUserIds(Object rawUserIds) {
-        List<Long> userIds = new ArrayList<>();
-        if (rawUserIds == null) {
-            return userIds;
-        }
-        if (rawUserIds instanceof Collection<?> collection) {
-            for (Object item : collection) {
-                appendUserId(userIds, item);
-            }
-            return userIds;
-        }
-        appendUserId(userIds, rawUserIds);
-        return userIds;
-    }
-
-    private void appendUserId(List<Long> userIds, Object rawValue) {
-        if (rawValue == null) {
-            return;
-        }
-        if (rawValue instanceof Number number) {
-            userIds.add(number.longValue());
-            return;
-        }
-        if (rawValue instanceof String text) {
-            for (String part : text.split(",")) {
-                String trimmed = part.trim();
-                if (trimmed.isEmpty()) {
-                    continue;
-                }
-                try {
-                    userIds.add(Long.parseLong(trimmed));
-                } catch (NumberFormatException ex) {
-                    throw new IllegalArgumentException("userIds 包含无效的用户ID: " + trimmed);
-                }
-            }
-            return;
-        }
-        throw new IllegalArgumentException("userIds 参数格式错误");
-    }
 }

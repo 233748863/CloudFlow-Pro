@@ -635,7 +635,7 @@ public class DeadlockDetectionService {
     private void sendDeadlockAlert(String type, String detail, String message) {
         try {
             // 记录日志
-            log.error("[DEADLOCK ALERT] type={}, detail={}, message={}", type, detail, message);
+            log.error("[死锁告警] type={}, detail={}, message={}", type, detail, message);
             
             // 构建告警标题和内容
             String title = String.format("[死锁告警] %s", type);

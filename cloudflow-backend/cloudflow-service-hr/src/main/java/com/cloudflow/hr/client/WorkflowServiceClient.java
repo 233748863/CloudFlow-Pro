@@ -2,6 +2,7 @@ package com.cloudflow.hr.client;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.client.dto.WorkflowInvalidateRequest;
 import com.cloudflow.hr.client.dto.WorkflowStartRequest;
 import com.cloudflow.hr.client.fallback.WorkflowServiceFallback;
 import com.cloudflow.hr.client.vo.ProcessInstanceVO;
@@ -89,10 +90,10 @@ public interface WorkflowServiceClient {
      * 适配 workflow 作废接口
      */
     default R<Void> cancelProcess(String processInstanceId) {
-        Map<String, String> body = new HashMap<>();
-        body.put("instanceId", processInstanceId);
-        body.put("reason", "HR 服务发起撤销");
-        R<?> response = invalidateProcess(body);
+        WorkflowInvalidateRequest request = new WorkflowInvalidateRequest();
+        request.setInstanceId(processInstanceId);
+        request.setReason("HR 服务发起撤销");
+        R<?> response = invalidateProcess(request);
         if (response != null && response.isSuccess()) {
             return R.ok();
         }
@@ -100,5 +101,5 @@ public interface WorkflowServiceClient {
     }
 
     @PostMapping("/enhance/instance/invalidate")
-    R<?> invalidateProcess(@RequestBody Map<String, String> body);
+    R<?> invalidateProcess(@RequestBody WorkflowInvalidateRequest request);
 }

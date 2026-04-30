@@ -53,6 +53,11 @@ export interface PaymentRequest {
   updateTime?: string;
 }
 
+export interface VehicleExpenseConvertRequest {
+  vehicleExpenseIds: number[];
+  userId: number;
+}
+
 const normalizePaymentExpectedDateForDisplay = (value?: string) =>
   value ? String(value).slice(0, 10) : undefined;
 
@@ -121,7 +126,7 @@ export const expenseClaimApi = {
   submit: (id: number) => request.post(`/oa/expense/claim/submit/${id}`),
 
   // 车辆费用转报销单
-  convertVehicleExpense: (data: { vehicleExpenseIds: number[]; userId: number }) =>
+  convertVehicleExpense: (data: VehicleExpenseConvertRequest) =>
     request.post('/oa/expense/claim/convert', data),
 
   // 按部门统计月度报销费用

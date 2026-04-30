@@ -9,6 +9,7 @@ import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.export.PaymentRequestExportVo;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -136,8 +137,8 @@ public class PaymentRequestController {
      * 按部门统计月度付款费用
      */
     @GetMapping("/stats/dept")
-    public R<List<Map<String, Object>>> getMonthlyPaymentByDept(@RequestParam String month) {
-        return R.ok(paymentRequestService.getMonthlyPaymentByDept(month));
+    public R<List<DynamicMapVO>> getMonthlyPaymentByDept(@RequestParam String month) {
+        return R.ok(paymentRequestService.getMonthlyPaymentByDept(month).stream().map(DynamicMapVO::from).toList());
     }
 
     /**

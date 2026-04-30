@@ -1,5 +1,6 @@
 package com.cloudflow.hr.controller;
 
+import com.cloudflow.hr.domain.vo.DynamicMapVO;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -25,13 +26,13 @@ public class HealthController {
      * @return 服务状态信息
      */
     @GetMapping("/health")
-    public Map<String, Object> health() {
+    public DynamicMapVO health() {
         Map<String, Object> result = new HashMap<>();
         result.put("status", "UP");
         result.put("service", "cloudflow-service-hr");
         result.put("timestamp", LocalDateTime.now());
         result.put("message", "HR人力资源管理微服务运行正常");
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -40,7 +41,7 @@ public class HealthController {
      * @return 服务详细信息
      */
     @GetMapping("/info")
-    public Map<String, Object> info() {
+    public DynamicMapVO info() {
         Map<String, Object> result = new HashMap<>();
         result.put("name", "CloudFlow HR Service");
         result.put("description", "CloudFlow Pro HR人力资源管理微服务");
@@ -53,6 +54,6 @@ public class HealthController {
             "薪酬管理",
             "招聘管理"
         });
-        return result;
+        return DynamicMapVO.from(result);
     }
 }

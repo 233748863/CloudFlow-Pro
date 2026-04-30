@@ -47,7 +47,7 @@ import java.util.Objects;
 import java.util.Set;
 
 /**
- * Workflow import/export controller.
+ * 流程导入导出控制器。
  */
 @Slf4j
 @RestController
@@ -92,7 +92,7 @@ public class ImportExportController {
             @PathVariable String workflowId,
             @RequestParam(defaultValue = "false") Boolean includeSensitive) {
 
-        log.info("Export workflow, workflowId={}, includeSensitive={}", workflowId, includeSensitive);
+        log.info("导出流程, workflowId={}, includeSensitive={}", workflowId, includeSensitive);
         ensureWorkflowOwnerOrAdmin(workflowId);
 
         try {
@@ -112,7 +112,7 @@ public class ImportExportController {
                 .contentLength(bytes.length)
                 .body(resource);
         } catch (Exception e) {
-            log.error("Export workflow failed, workflowId={}", workflowId, e);
+            log.error("导出流程失败, workflowId={}", workflowId, e);
             throw new RuntimeException("导出流程失败: " + e.getMessage());
         }
     }
@@ -121,10 +121,10 @@ public class ImportExportController {
     @SaCheckRole("admin")
     public ResponseEntity<Resource> exportWorkflows(@RequestBody BatchExportRequest request) {
         if (request == null || request.getWorkflowIds() == null || request.getWorkflowIds().isEmpty()) {
-            throw WorkflowException.validationError("workflowIds 不能为空");
+            throw WorkflowException.validationError("流程 ID 列表不能为空");
         }
 
-        log.info("Batch export workflows, count={}, includeSensitive={}",
+        log.info("批量导出流程, count={}, includeSensitive={}",
             request.getWorkflowIds().size(), request.getIncludeSensitive());
 
         try {
@@ -145,7 +145,7 @@ public class ImportExportController {
                 .contentLength(bytes.length)
                 .body(resource);
         } catch (Exception e) {
-            log.error("Batch export workflows failed", e);
+            log.error("批量导出流程失败", e);
             throw new RuntimeException("批量导出流程失败: " + e.getMessage());
         }
     }
@@ -153,7 +153,7 @@ public class ImportExportController {
     @PostMapping("/import/validate")
     @SaCheckRole("admin")
     public R<ValidationResultDTO> validateImportFile(@RequestParam("file") MultipartFile file) {
-        log.info("Validate import file, fileName={}, size={}", file.getOriginalFilename(), file.getSize());
+        log.info("校验导入文件, fileName={}, size={}", file.getOriginalFilename(), file.getSize());
 
         try {
             validateImportUploadFile(file);
@@ -179,7 +179,7 @@ public class ImportExportController {
         } catch (WorkflowException e) {
             return R.ok(buildInvalidValidation(e.getMessage()));
         } catch (Exception e) {
-            log.error("Validate import file failed", e);
+            log.error("校验导入文件失败", e);
             return R.fail("校验失败: " + e.getMessage());
         }
     }
@@ -193,7 +193,7 @@ public class ImportExportController {
             return R.ok(ImportResultDTO.failure("unknown", "导入失败：上传文件不能为空"));
         }
 
-        log.info("Import workflow, fileName={}, conflictStrategy={}", file.getOriginalFilename(), conflictStrategy);
+        log.info("导入流程, fileName={}, conflictStrategy={}", file.getOriginalFilename(), conflictStrategy);
 
         try {
             validateImportUploadFile(file);
@@ -230,7 +230,7 @@ public class ImportExportController {
             ImportResultDTO failedResult = ImportResultDTO.failure(fileName, "导入失败：" + e.getMessage());
             return R.ok(failedResult);
         } catch (Exception e) {
-            log.error("Import workflow failed", e);
+            log.error("导入流程失败", e);
             String fileName = file.getOriginalFilename() != null ? file.getOriginalFilename() : "unknown";
             ImportResultDTO failedResult = ImportResultDTO.failure(fileName, "导入失败：" + e.getMessage());
             return R.ok(failedResult);
@@ -249,7 +249,7 @@ public class ImportExportController {
             return R.fail("单次批量导入文件数量不能超过 " + MAX_BATCH_IMPORT_FILE_COUNT + " 个");
         }
 
-        log.info("Batch import workflows, count={}, conflictStrategy={}", files.size(), conflictStrategy);
+        log.info("批量导入流程, count={}, conflictStrategy={}", files.size(), conflictStrategy);
 
         try {
             List<ImportResultDTO> invalidResults = new ArrayList<>();
@@ -267,7 +267,7 @@ public class ImportExportController {
                 } catch (WorkflowException e) {
                     invalidResults.add(ImportResultDTO.failure(fileName, "导入失败: " + e.getMessage()));
                 } catch (Exception e) {
-                    log.error("Parse import file failed, fileName={}", fileName, e);
+                    log.error("解析导入文件失败, fileName={}", fileName, e);
                     invalidResults.add(ImportResultDTO.failure(fileName, "导入失败: " + e.getMessage()));
                 }
             }
@@ -284,11 +284,11 @@ public class ImportExportController {
 
             long successCount = results.stream().filter(r -> Boolean.TRUE.equals(r.getSuccess())).count();
             long failedCount = results.stream().filter(r -> !Boolean.TRUE.equals(r.getSuccess())).count();
-            log.info("Batch import completed, success={}, failed={}", successCount, failedCount);
+            log.info("批量导入完成, success={}, failed={}", successCount, failedCount);
 
             return R.ok(results);
         } catch (Exception e) {
-            log.error("Batch import workflows failed", e);
+            log.error("批量导入流程失败", e);
             return R.fail("批量导入失败: " + e.getMessage());
         }
     }
@@ -297,7 +297,7 @@ public class ImportExportController {
         Long currentUserId = UserContext.getUserId();
         Long currentTenantId = UserContext.getTenantId();
         if (currentUserId == null) {
-            throw new PermissionDeniedException("User not logged in");
+            throw new PermissionDeniedException("用户未登录");
         }
 
         WfProcessDefinition definition = definitionMapper.selectById(workflowId);
@@ -311,7 +311,7 @@ public class ImportExportController {
         boolean isCreator = currentUserId.toString().equals(definition.getCreateBy());
         boolean isAdmin = permissionService.isAdmin(currentUserId);
         if (!isCreator && !isAdmin) {
-            throw new PermissionDeniedException("Only workflow owner or admin can export this workflow");
+            throw new PermissionDeniedException("仅流程创建者或管理员可导出该流程");
         }
     }
 

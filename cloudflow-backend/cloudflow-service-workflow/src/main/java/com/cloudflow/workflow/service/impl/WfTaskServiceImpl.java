@@ -40,7 +40,7 @@ import java.util.stream.Collectors;
 
 /**
  * 任务操作服务实现
- * 从 WorkflowServiceImpl 拆分而来，负责任务的完成、驳回、查询、催办等操作
+ * 从原工作流服务拆分而来，负责任务的完成、驳回、查询、催办等操作
  * 参考 RuoYi-Cloud-Plus IFlwTaskService 设计
  *
  * @author CloudFlow

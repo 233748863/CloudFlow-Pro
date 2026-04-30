@@ -104,6 +104,11 @@ export interface CaptchaCheckResponse {
   passToken: string;
 }
 
+export interface CaptchaCheckRequest {
+  uuid: string;
+  x: number;
+}
+
 export interface RegisterData {
   username: string;
   password: string;
@@ -141,7 +146,7 @@ export const getCaptcha = (): Promise<CaptchaResponse> => {
   return request.get('/auth/captcha/slider');
 };
 
-export const checkCaptcha = (data: { uuid: string, x: number }): Promise<CaptchaCheckResponse> => {
+export const checkCaptcha = (data: CaptchaCheckRequest): Promise<CaptchaCheckResponse> => {
   return request.post('/auth/captcha/check', data);
 };
 
@@ -217,9 +222,10 @@ export const updateUser = (data: SysUser) => {
 };
 
 export const resetUserPassword = async (userId: number, password: string): Promise<void> => {
-  return request.put(`/auth/system/user/${userId}/password`, {
+  const data: ResetPasswordRequest = {
     password: await hashPassword(password),
-  });
+  };
+  return request.put(`/auth/system/user/${userId}/password`, data);
 };
 
 export const deleteUser = (userIds: number[]) => {
@@ -273,8 +279,17 @@ export const getMenuTreeSelect = () => {
  * @param tenantId 目标租户ID
  */
 export const switchTenant = async (tenantId: number): Promise<{ token: string; tenantId: number; message: string }> => {
-  return request.post('/auth/switchTenant', { tenantId });
+  const data: SwitchTenantRequest = { tenantId };
+  return request.post('/auth/switchTenant', data);
 };
+
+export interface ResetPasswordRequest {
+  password: string;
+}
+
+export interface SwitchTenantRequest {
+  tenantId: number;
+}
 
 export interface UpdateProfilePayload {
   nickName: string;
@@ -282,12 +297,24 @@ export interface UpdateProfilePayload {
   phone?: string;
 }
 
+export interface UpdateProfileRequest {
+  nickName: string;
+  email?: string;
+  phonenumber?: string;
+}
+
+export interface ChangeProfilePasswordRequest {
+  oldPassword: string;
+  newPassword: string;
+}
+
 export const updateProfile = (data: UpdateProfilePayload): Promise<void> => {
-  return request.put('/auth/profile', {
+  const payload: UpdateProfileRequest = {
     nickName: data.nickName,
     email: data.email,
     phonenumber: data.phone,
-  });
+  };
+  return request.put('/auth/profile', payload);
 };
 
 export const changeProfilePassword = async (
@@ -299,8 +326,9 @@ export const changeProfilePassword = async (
     hashPassword(newPassword),
   ]);
 
-  return request.put('/auth/profile/password', {
+  const data: ChangeProfilePasswordRequest = {
     oldPassword: oldPasswordHash,
     newPassword: newPasswordHash,
-  });
+  };
+  return request.put('/auth/profile/password', data);
 };

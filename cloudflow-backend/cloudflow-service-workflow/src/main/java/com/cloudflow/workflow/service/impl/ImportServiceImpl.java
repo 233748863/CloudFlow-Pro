@@ -95,10 +95,10 @@ public class ImportServiceImpl implements IImportService {
             if (validationResult.getUnsupportedNodeTypes() != null
                     && !validationResult.getUnsupportedNodeTypes().isEmpty()) {
                 String unsupportedTypes = String.join(", ", validationResult.getUnsupportedNodeTypes());
-                log.error("Import blocked due to unsupported node types: {}", unsupportedTypes);
+                log.error("导入被阻断，存在不支持的节点类型: {}", unsupportedTypes);
                 return ImportResultDTO.failure(
                     exportFormat.getWorkflow().getName(),
-                    "Unsupported node types: " + unsupportedTypes
+                    "不支持的节点类型: " + unsupportedTypes
                 );
             }
 

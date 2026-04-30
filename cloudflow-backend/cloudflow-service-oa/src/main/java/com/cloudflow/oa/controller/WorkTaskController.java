@@ -4,14 +4,13 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.WorkTask;
+import com.cloudflow.oa.domain.dto.WorkTaskStatusDTO;
 import com.cloudflow.oa.service.IWorkTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 协作任务控制器
@@ -76,10 +75,8 @@ public class WorkTaskController {
      */
     @SysLog("修改任务状态")
     @PutMapping("/status")
-    public R<Boolean> updateStatus(@RequestBody Map<String, Object> params) {
-        Long taskId = Long.valueOf(params.get("taskId").toString());
-        String status = params.get("status").toString();
-        return R.ok(workTaskService.updateStatus(taskId, status));
+    public R<Boolean> updateStatus(@RequestBody WorkTaskStatusDTO dto) {
+        return R.ok(workTaskService.updateStatus(dto.getTaskId(), dto.getStatus()));
     }
 
     /**

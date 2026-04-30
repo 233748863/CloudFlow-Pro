@@ -1,5 +1,7 @@
 package com.cloudflow.auth.controller;
 
+import com.cloudflow.auth.domain.dto.CaptchaCheckDTO;
+import com.cloudflow.auth.domain.vo.DynamicMapVO;
 import com.cloudflow.auth.service.CaptchaService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.IpUtils;
@@ -18,26 +20,24 @@ public class CaptchaController {
     private CaptchaService captchaService;
 
     @GetMapping("/slider")
-    public R<?> getSliderCaptcha(HttpServletRequest request) {
+    public R<DynamicMapVO> getSliderCaptcha(HttpServletRequest request) {
         try {
             String ip = IpUtils.getIpAddr(request);
-            return R.ok(captchaService.generateCaptcha(ip));
+            return R.ok(DynamicMapVO.from(captchaService.generateCaptcha(ip)));
         } catch (Exception e) {
             return R.fail(e.getMessage());
         }
     }
 
     @PostMapping("/check")
-    public R<?> checkCaptcha(@RequestBody Map<String, Object> body, HttpServletRequest request) {
+    public R<DynamicMapVO> checkCaptcha(@RequestBody CaptchaCheckDTO dto, HttpServletRequest request) {
         try {
-            String uuid = (String) body.get("uuid");
-            Integer x = (Integer) body.get("x");
             String ip = IpUtils.getIpAddr(request);
             
-            String passToken = captchaService.verifyCaptcha(uuid, x, ip);
+            String passToken = captchaService.verifyCaptcha(dto.getUuid(), dto.getX(), ip);
             Map<String, String> result = new HashMap<>();
             result.put("passToken", passToken);
-            return R.ok(result);
+            return R.ok(DynamicMapVO.from(result));
         } catch (Exception e) {
             return R.fail(e.getMessage());
         }

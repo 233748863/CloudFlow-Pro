@@ -4,6 +4,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysScheduleEvent;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.ISysScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -118,9 +119,9 @@ public class SysScheduleController {
      * @param endDate 结束日期（可选）
      */
     @GetMapping("/room-stats")
-    public R<List<java.util.Map<String, Object>>> getRoomUsageStats(
+    public R<List<DynamicMapVO>> getRoomUsageStats(
             @RequestParam(value = "startDate", required = false) String startDate,
             @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(scheduleService.getRoomUsageStats(startDate, endDate));
+        return R.ok(scheduleService.getRoomUsageStats(startDate, endDate).stream().map(DynamicMapVO::from).toList());
     }
 }

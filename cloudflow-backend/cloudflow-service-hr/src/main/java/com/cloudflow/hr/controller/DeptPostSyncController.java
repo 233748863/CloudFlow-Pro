@@ -2,6 +2,7 @@ package com.cloudflow.hr.controller;
 
 import com.cloudflow.hr.client.vo.DeptVO;
 import com.cloudflow.hr.client.vo.PostVO;
+import com.cloudflow.hr.domain.vo.DynamicMapVO;
 import com.cloudflow.hr.service.DeptPostSyncService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,7 +34,7 @@ public class DeptPostSyncController {
      * @return 操作结果
      */
     @PostMapping("/departments")
-    public Map<String, Object> syncDepartments() {
+    public DynamicMapVO syncDepartments() {
         log.info("手动触发部门数据同步");
         
         Map<String, Object> result = new HashMap<>();
@@ -47,7 +48,7 @@ public class DeptPostSyncController {
             result.put("message", "部门数据同步失败：" + e.getMessage());
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -57,7 +58,7 @@ public class DeptPostSyncController {
      * @return 操作结果
      */
     @PostMapping("/department/{deptId}")
-    public Map<String, Object> syncDepartment(@PathVariable Long deptId) {
+    public DynamicMapVO syncDepartment(@PathVariable Long deptId) {
         log.info("手动触发部门数据同步，部门ID：{}", deptId);
         
         Map<String, Object> result = new HashMap<>();
@@ -71,7 +72,7 @@ public class DeptPostSyncController {
             result.put("message", "部门数据同步失败：" + e.getMessage());
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -80,7 +81,7 @@ public class DeptPostSyncController {
      * @return 操作结果
      */
     @PostMapping("/posts")
-    public Map<String, Object> syncPosts() {
+    public DynamicMapVO syncPosts() {
         log.info("手动触发岗位数据同步");
         
         Map<String, Object> result = new HashMap<>();
@@ -94,7 +95,7 @@ public class DeptPostSyncController {
             result.put("message", "岗位数据同步失败：" + e.getMessage());
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -104,7 +105,7 @@ public class DeptPostSyncController {
      * @return 操作结果
      */
     @PostMapping("/post/{postId}")
-    public Map<String, Object> syncPost(@PathVariable Long postId) {
+    public DynamicMapVO syncPost(@PathVariable Long postId) {
         log.info("手动触发岗位数据同步，岗位ID：{}", postId);
         
         Map<String, Object> result = new HashMap<>();
@@ -118,7 +119,7 @@ public class DeptPostSyncController {
             result.put("message", "岗位数据同步失败：" + e.getMessage());
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -128,7 +129,7 @@ public class DeptPostSyncController {
      * @return 部门信息
      */
     @GetMapping("/department/{deptId}")
-    public Map<String, Object> getCachedDept(@PathVariable Long deptId) {
+    public DynamicMapVO getCachedDept(@PathVariable Long deptId) {
         log.info("获取缓存的部门信息，部门ID：{}", deptId);
         
         Map<String, Object> result = new HashMap<>();
@@ -142,7 +143,7 @@ public class DeptPostSyncController {
             result.put("message", "部门信息不存在或缓存已过期");
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -152,7 +153,7 @@ public class DeptPostSyncController {
      * @return 岗位信息
      */
     @GetMapping("/post/{postId}")
-    public Map<String, Object> getCachedPost(@PathVariable Long postId) {
+    public DynamicMapVO getCachedPost(@PathVariable Long postId) {
         log.info("获取缓存的岗位信息，岗位ID：{}", postId);
         
         Map<String, Object> result = new HashMap<>();
@@ -166,7 +167,7 @@ public class DeptPostSyncController {
             result.put("message", "岗位信息不存在或缓存已过期");
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -175,7 +176,7 @@ public class DeptPostSyncController {
      * @return 部门树
      */
     @GetMapping("/departments/tree")
-    public Map<String, Object> getCachedDeptTree() {
+    public DynamicMapVO getCachedDeptTree() {
         log.info("获取缓存的部门树");
         
         Map<String, Object> result = new HashMap<>();
@@ -185,7 +186,7 @@ public class DeptPostSyncController {
         result.put("data", deptTree);
         result.put("count", deptTree.size());
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -195,7 +196,7 @@ public class DeptPostSyncController {
      * @return 操作结果
      */
     @DeleteMapping("/department/{deptId}")
-    public Map<String, Object> clearDeptCache(@PathVariable Long deptId) {
+    public DynamicMapVO clearDeptCache(@PathVariable Long deptId) {
         log.info("清除部门缓存，部门ID：{}", deptId);
         
         Map<String, Object> result = new HashMap<>();
@@ -209,7 +210,7 @@ public class DeptPostSyncController {
             result.put("message", "清除部门缓存失败：" + e.getMessage());
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -219,7 +220,7 @@ public class DeptPostSyncController {
      * @return 操作结果
      */
     @DeleteMapping("/post/{postId}")
-    public Map<String, Object> clearPostCache(@PathVariable Long postId) {
+    public DynamicMapVO clearPostCache(@PathVariable Long postId) {
         log.info("清除岗位缓存，岗位ID：{}", postId);
         
         Map<String, Object> result = new HashMap<>();
@@ -233,7 +234,7 @@ public class DeptPostSyncController {
             result.put("message", "清除岗位缓存失败：" + e.getMessage());
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -242,7 +243,7 @@ public class DeptPostSyncController {
      * @return 操作结果
      */
     @DeleteMapping("/all")
-    public Map<String, Object> clearAllCache() {
+    public DynamicMapVO clearAllCache() {
         log.info("清除所有部门岗位缓存");
         
         Map<String, Object> result = new HashMap<>();
@@ -256,7 +257,7 @@ public class DeptPostSyncController {
             result.put("message", "清除所有缓存失败：" + e.getMessage());
         }
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -266,7 +267,7 @@ public class DeptPostSyncController {
      * @return 验证结果
      */
     @GetMapping("/validate/department/{deptId}")
-    public Map<String, Object> validateDeptId(@PathVariable Long deptId) {
+    public DynamicMapVO validateDeptId(@PathVariable Long deptId) {
         log.info("验证部门ID，部门ID：{}", deptId);
         
         Map<String, Object> result = new HashMap<>();
@@ -276,7 +277,7 @@ public class DeptPostSyncController {
         result.put("valid", isValid);
         result.put("message", isValid ? "部门ID有效" : "部门ID无效");
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     /**
@@ -286,7 +287,7 @@ public class DeptPostSyncController {
      * @return 验证结果
      */
     @GetMapping("/validate/post/{postId}")
-    public Map<String, Object> validatePostId(@PathVariable Long postId) {
+    public DynamicMapVO validatePostId(@PathVariable Long postId) {
         log.info("验证岗位ID，岗位ID：{}", postId);
         
         Map<String, Object> result = new HashMap<>();
@@ -296,6 +297,6 @@ public class DeptPostSyncController {
         result.put("valid", isValid);
         result.put("message", isValid ? "岗位ID有效" : "岗位ID无效");
         
-        return result;
+        return DynamicMapVO.from(result);
     }
 }

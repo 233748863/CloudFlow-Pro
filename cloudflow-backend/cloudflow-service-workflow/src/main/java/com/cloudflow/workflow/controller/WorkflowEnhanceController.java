@@ -5,6 +5,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.workflow.domain.dto.AddSignReq;
 import com.cloudflow.workflow.domain.dto.RemoveSignReq;
 import com.cloudflow.workflow.domain.dto.DelegateTaskReq;
+import com.cloudflow.workflow.domain.dto.ProcessInvalidateRequest;
 import com.cloudflow.workflow.service.IWorkflowP4Service;
 import com.cloudflow.workflow.service.IWfInstanceService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
@@ -14,8 +15,6 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.Map;
 
 /**
  * P1 增强功能控制器
@@ -113,9 +112,9 @@ public class WorkflowEnhanceController {
      */
     @PostMapping("/instance/invalidate")
     @SaCheckRole("admin")
-    public R<?> invalidateProcess(@RequestBody Map<String, String> body) {
-        String instanceId = body.get("instanceId");
-        String reason = body.get("reason");
+    public R<?> invalidateProcess(@RequestBody ProcessInvalidateRequest dto) {
+        String instanceId = dto.getInstanceId();
+        String reason = dto.getReason();
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("instanceId不能为空");
         }

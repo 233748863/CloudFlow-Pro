@@ -11,7 +11,7 @@ import java.util.Map;
  * 流程定义管理服务接口
  * 负责流程定义的保存、发布、删除、查询等操作
  * 
- * 从 WorkflowServiceImpl 拆分而来，参考 RuoYi-Cloud-Plus IFlwDefinitionService 设计
+ * 从原工作流服务拆分而来，参考 RuoYi-Cloud-Plus IFlwDefinitionService 设计
  *
  * @author CloudFlow
  */

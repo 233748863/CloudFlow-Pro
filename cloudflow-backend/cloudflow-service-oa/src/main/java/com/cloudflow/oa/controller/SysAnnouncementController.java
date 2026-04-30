@@ -4,6 +4,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysAnnouncement;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import cn.dev33.satoken.annotation.SaCheckLogin;
@@ -12,7 +13,6 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/announcement")
@@ -54,13 +54,13 @@ public class SysAnnouncementController {
      */
     @GetMapping("/manage-list")
     @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
-    public R<Map<String, Object>> getManageList(
+    public R<DynamicMapVO> getManageList(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String type,
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        return R.ok(announcementService.getManageList(title, type, status, page, size));
+        return R.ok(DynamicMapVO.from(announcementService.getManageList(title, type, status, page, size)));
     }
     
     /**
@@ -107,7 +107,7 @@ public class SysAnnouncementController {
      * 获取阅读统计
      */
     @GetMapping("/read-stats/{id}")
-    public R<Map<String, Object>> getReadStats(@PathVariable("id") Long id) {
-        return R.ok(announcementService.getReadStats(id));
+    public R<DynamicMapVO> getReadStats(@PathVariable("id") Long id) {
+        return R.ok(DynamicMapVO.from(announcementService.getReadStats(id)));
     }
 }

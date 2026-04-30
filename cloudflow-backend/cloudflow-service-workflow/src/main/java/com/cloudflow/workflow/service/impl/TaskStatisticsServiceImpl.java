@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 
 /**
  * 任务统计服务实现
- * 从 WorkflowServiceImpl 拆分出来，专注于统计和分组功能
+ * 从原工作流服务拆分出来，专注于统计和分组功能
  *
  * @author CloudFlow
  */

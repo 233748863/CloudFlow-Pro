@@ -224,6 +224,16 @@ export async function urgeTask(taskId: string, reason: string): Promise<void> {
   return request.post("/workflow/task/urge", data);
 }
 
+export interface RejectTaskRequest {
+  taskId: string;
+  targetNodeKey: string;
+  comment: string;
+}
+
+export interface InstanceIdRequest {
+  instanceId: string;
+}
+
 /**
  * 驳回任务到指定节点
  */
@@ -233,11 +243,8 @@ export async function rejectTask(
   comment: string,
 ): Promise<void> {
   logApiCall("POST", "/workflow/reject", { taskId, targetNodeKey, comment });
-  return request.post("/workflow/reject", {
-    taskId,
-    targetNodeKey,
-    comment,
-  });
+  const data: RejectTaskRequest = { taskId, targetNodeKey, comment };
+  return request.post("/workflow/reject", data);
 }
 
 /**
@@ -245,7 +252,8 @@ export async function rejectTask(
  */
 export async function recallProcess(instanceId: string): Promise<void> {
   logApiCall("POST", "/workflow/recall", { instanceId });
-  return request.post("/workflow/recall", { instanceId });
+  const data: InstanceIdRequest = { instanceId };
+  return request.post("/workflow/recall", data);
 }
 
 /**
@@ -253,7 +261,8 @@ export async function recallProcess(instanceId: string): Promise<void> {
  */
 export async function pauseProcess(instanceId: string): Promise<void> {
   logApiCall("POST", "/workflow/pause", { instanceId });
-  return request.post("/workflow/pause", { instanceId });
+  const data: InstanceIdRequest = { instanceId };
+  return request.post("/workflow/pause", data);
 }
 
 /**
@@ -261,7 +270,8 @@ export async function pauseProcess(instanceId: string): Promise<void> {
  */
 export async function resumeProcess(instanceId: string): Promise<void> {
   logApiCall("POST", "/workflow/resume", { instanceId });
-  return request.post("/workflow/resume", { instanceId });
+  const data: InstanceIdRequest = { instanceId };
+  return request.post("/workflow/resume", data);
 }
 
 /**
@@ -457,8 +467,12 @@ export async function markCopyAsRead(copyId: number): Promise<void> {
  */
 export async function batchMarkCopyAsRead(copyIds: number[]): Promise<void> {
   logApiCall("POST", "/workflow/copy/batch-read", copyIds);
-  // 后端期望 { copyIds: [...] } 格式
-  return request.post("/workflow/copy/batch-read", { copyIds });
+  const data: BatchCopyReadRequest = { copyIds };
+  return request.post("/workflow/copy/batch-read", data);
+}
+
+export interface BatchCopyReadRequest {
+  copyIds: number[];
 }
 
 // ==================== P1 增强功能 API ====================
@@ -500,6 +514,12 @@ export interface DelegateTaskRequest {
 export interface InvalidateProcessRequest {
   instanceId: string;
   reason: string;
+}
+
+export interface SignatureChangeRequest {
+  taskId: string;
+  userIds: number[];
+  comment: string;
 }
 
 /**
@@ -565,11 +585,8 @@ export async function addSignature(
     userIds,
     comment,
   });
-  return request.post("/workflow/task/add-signature", {
-    taskId,
-    userIds,
-    comment,
-  });
+  const data: SignatureChangeRequest = { taskId, userIds, comment };
+  return request.post("/workflow/task/add-signature", data);
 }
 
 /**
@@ -586,11 +603,8 @@ export async function reductionSignature(
     userIds,
     comment,
   });
-  return request.post("/workflow/task/reduction-signature", {
-    taskId,
-    userIds,
-    comment,
-  });
+  const data: SignatureChangeRequest = { taskId, userIds, comment };
+  return request.post("/workflow/task/reduction-signature", data);
 }
 
 /**

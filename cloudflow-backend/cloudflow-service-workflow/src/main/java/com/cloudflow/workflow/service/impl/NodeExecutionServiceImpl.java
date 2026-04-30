@@ -45,7 +45,7 @@ import java.util.stream.Collectors;
 
 /**
  * 节点执行引擎服务实现
- * 从 WorkflowServiceImpl 拆分而来，负责所有节点执行、条件评估、人员分配等核心引擎逻辑
+ * 从原工作流服务拆分而来，负责所有节点执行、条件评估、人员分配等核心引擎逻辑
  *
  * @author CloudFlow
  */

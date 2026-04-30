@@ -7,6 +7,9 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysVehicle;
 import com.cloudflow.oa.domain.VehicleExpense;
 import com.cloudflow.oa.domain.VehicleUsage;
+import com.cloudflow.oa.domain.dto.VehicleReturnDTO;
+import com.cloudflow.oa.domain.dto.VehicleUsageApprovalDTO;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IVehicleExpenseService;
 import com.cloudflow.oa.service.IVehicleService;
 import com.cloudflow.oa.service.IVehicleUsageService;
@@ -18,7 +21,6 @@ import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 车辆管理 Controller
@@ -78,8 +80,8 @@ public class VehicleController {
 
     /** 车辆统计概览（各状态数量） */
     @GetMapping("/stats")
-    public R<Map<String, Object>> getVehicleStats() {
-        return R.ok(vehicleService.getVehicleStats());
+    public R<DynamicMapVO> getVehicleStats() {
+        return R.ok(DynamicMapVO.from(vehicleService.getVehicleStats()));
     }
 
     // ==================== 用车申请 ====================
@@ -107,19 +109,17 @@ public class VehicleController {
     @SysLog("审批用车申请")
     @PutMapping("/usage/{id}/approve")
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
-    public R<Void> approveUsage(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
-        boolean approved = Boolean.parseBoolean(String.valueOf(params.get("approved")));
-        String remark = (String) params.getOrDefault("remark", "");
-        return usageService.approveUsage(id, approved, remark);
+    public R<Void> approveUsage(@PathVariable("id") Long id, @RequestBody VehicleUsageApprovalDTO dto) {
+        String remark = dto.getRemark() == null ? "" : dto.getRemark();
+        return usageService.approveUsage(id, Boolean.TRUE.equals(dto.getApproved()), remark);
     }
 
     /** 归还车辆（完成用车） */
     @SysLog("归还车辆")
     @PutMapping("/usage/{id}/return")
-    public R<Void> returnVehicle(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
-        double endMileage = Double.parseDouble(String.valueOf(params.get("endMileage")));
-        String remark = (String) params.getOrDefault("remark", "");
-        return usageService.returnVehicle(id, endMileage, remark);
+    public R<Void> returnVehicle(@PathVariable("id") Long id, @RequestBody VehicleReturnDTO dto) {
+        String remark = dto.getRemark() == null ? "" : dto.getRemark();
+        return usageService.returnVehicle(id, dto.getEndMileage(), remark);
     }
 
     /** 取消用车申请 */
@@ -146,8 +146,8 @@ public class VehicleController {
 
     /** 费用统计 */
     @GetMapping("/expense/stats")
-    public R<Map<String, Object>> getExpenseStats(@RequestParam(value = "startDate", required = false) String startDate,
-                                                 @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(expenseService.getExpenseStats(startDate, endDate));
+    public R<DynamicMapVO> getExpenseStats(@RequestParam(value = "startDate", required = false) String startDate,
+                                           @RequestParam(value = "endDate", required = false) String endDate) {
+        return R.ok(DynamicMapVO.from(expenseService.getExpenseStats(startDate, endDate)));
     }
 }

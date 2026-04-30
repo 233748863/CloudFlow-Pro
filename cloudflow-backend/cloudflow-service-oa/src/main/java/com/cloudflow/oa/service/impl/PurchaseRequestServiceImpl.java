@@ -14,6 +14,7 @@ import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.SysConsumable;
 import com.cloudflow.oa.domain.SysSupplier;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizPurchaseItemMapper;
 import com.cloudflow.oa.mapper.BizPurchaseReceiptMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
@@ -142,9 +143,9 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         purchase.setStatus(STATUS_PENDING);
 
         try {
-            Map<String, Object> req = new HashMap<>();
-            req.put("processDefKey", "purchase_request");
-            req.put("businessKey", "PURCHASE_REQUEST:" + purchase.getId());
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey("purchase_request");
+            req.setBusinessKey("PURCHASE_REQUEST:" + purchase.getId());
             Map<String, Object> variables = new HashMap<>();
             variables.put("purchaseId", purchase.getId());
             variables.put("purchaseNo", purchase.getPurchaseNo());
@@ -162,7 +163,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
                     purchase.getId(),
                     purchase.getPurchaseNo()
             );
-            req.put("variables", variables);
+            req.setVariables(variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);
             if (result != null && result.getCode() == 200 && result.getData() != null) {

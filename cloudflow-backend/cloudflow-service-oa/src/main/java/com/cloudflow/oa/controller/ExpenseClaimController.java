@@ -7,7 +7,9 @@ import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizExpenseClaim;
+import com.cloudflow.oa.domain.dto.VehicleExpenseConvertDTO;
 import com.cloudflow.oa.domain.export.ExpenseClaimExportVo;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IExpenseClaimService;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -121,11 +123,8 @@ public class ExpenseClaimController {
      */
     @SysLog("车辆费用转报销单")
     @PostMapping("/convert")
-    public R<Void> convertVehicleExpense(@RequestBody Map<String, Object> params) {
-        @SuppressWarnings("unchecked")
-        List<Long> vehicleExpenseIds = (List<Long>) params.get("vehicleExpenseIds");
-        Long userId = Long.valueOf(params.get("userId").toString());
-        return expenseClaimService.convertVehicleExpenseToClaim(vehicleExpenseIds, userId)
+    public R<Void> convertVehicleExpense(@RequestBody VehicleExpenseConvertDTO dto) {
+        return expenseClaimService.convertVehicleExpenseToClaim(dto.getVehicleExpenseIds(), dto.getUserId())
                 ? R.ok() : R.fail("转换失败");
     }
 
@@ -133,16 +132,16 @@ public class ExpenseClaimController {
      * 按部门统计月度报销费用
      */
     @GetMapping("/stats/dept")
-    public R<List<Map<String, Object>>> getMonthlyExpenseByDept(@RequestParam String month) {
-        return R.ok(expenseClaimService.getMonthlyExpenseByDept(month));
+    public R<List<DynamicMapVO>> getMonthlyExpenseByDept(@RequestParam String month) {
+        return R.ok(expenseClaimService.getMonthlyExpenseByDept(month).stream().map(DynamicMapVO::from).toList());
     }
 
     /**
      * 按类别统计月度报销费用
      */
     @GetMapping("/stats/category")
-    public R<List<Map<String, Object>>> getMonthlyExpenseByCategory(@RequestParam String month) {
-        return R.ok(expenseClaimService.getMonthlyExpenseByCategory(month));
+    public R<List<DynamicMapVO>> getMonthlyExpenseByCategory(@RequestParam String month) {
+        return R.ok(expenseClaimService.getMonthlyExpenseByCategory(month).stream().map(DynamicMapVO::from).toList());
     }
 
     /**

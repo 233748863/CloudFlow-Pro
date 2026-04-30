@@ -1,6 +1,11 @@
 import request from './request';
 import { WorkTask } from '../../types';
 
+export interface WorkTaskStatusRequest {
+  taskId: number;
+  status: string;
+}
+
 /**
  * 获取工作任务列表
  * @param status 可选的状态筛选
@@ -39,7 +44,8 @@ export const updateWorkTask = async (task: Partial<WorkTask>): Promise<boolean> 
  * @param status 新状态
  */
 export const updateWorkTaskStatus = async (taskId: string, status: string): Promise<boolean> => {
-  return await request.put('/oa/work-task/status', { taskId, status });
+  const data: WorkTaskStatusRequest = { taskId: Number(taskId), status };
+  return await request.put('/oa/work-task/status', data);
 };
 
 /**

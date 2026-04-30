@@ -27,6 +27,12 @@ export interface DutySchedule {
   createTime?: string;
 }
 
+export interface DutySwapRequest {
+  backupUserId: number;
+  backupUserName: string;
+  reason: string;
+}
+
 /** 值班排班 API */
 export const dutyScheduleApi = {
   list: (params: { pageNum?: number; pageSize?: number; status?: string; scheduleType?: string; userId?: number }) =>
@@ -40,6 +46,6 @@ export const dutyScheduleApi = {
   remove: (ids: number[]) => request.delete(`/oa/duty/${ids.join(',')}`),
   checkIn: (id: number) => request.put(`/oa/duty/checkin/${id}`),
   checkOut: (id: number) => request.put(`/oa/duty/checkout/${id}`),
-  swap: (id: number, data: { backupUserId: number; backupUserName: string; reason: string }) =>
+  swap: (id: number, data: DutySwapRequest) =>
     request.put(`/oa/duty/swap/${id}`, data),
 };

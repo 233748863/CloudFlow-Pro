@@ -1,6 +1,9 @@
 package com.cloudflow.oa.service.remote;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
+import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 
@@ -28,7 +31,7 @@ public interface RemoteWorkflowService {
      * @return R 包含流程实例信息
      */
     @PostMapping("/start")
-    R<?> startProcess(@RequestBody Map<String, Object> req);
+    R<?> startProcess(@RequestBody WorkflowProcessStartDTO req);
     
     /**
      * 完成任务
@@ -37,13 +40,13 @@ public interface RemoteWorkflowService {
      * @param req 完成任务请求参数
      */
     @PostMapping("/complete")
-    R<?> completeTask(@RequestBody Map<String, Object> req);
+    R<?> completeTask(@RequestBody WorkflowTaskCompleteDTO req);
 
     /**
      * 撤回流程实例。
      */
     @PostMapping("/recall")
-    R<?> recallProcess(@RequestBody Map<String, String> req);
+    R<?> recallProcess(@RequestBody WorkflowRecallDTO req);
     
     /**
      * 查询流程实例状态

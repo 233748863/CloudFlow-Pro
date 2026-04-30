@@ -7,6 +7,7 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.domain.SysConsumable;
+import com.cloudflow.oa.domain.dto.ConsumableStockDTO;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +19,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 耗材管理 Controller
@@ -148,12 +148,12 @@ public class ConsumableController {
     @SysLog("耗材入库")
     @PostMapping("/{id}/add-stock")
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
-    public R addStock(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
-        Integer quantity = toInteger(params.get("quantity"));
+    public R addStock(@PathVariable("id") Long id, @RequestBody ConsumableStockDTO dto) {
+        Integer quantity = dto.getQuantity();
         if (quantity == null || quantity <= 0) {
             return R.fail("入库数量必须大于0");
         }
-        String remark = toText(params.get("remark"));
+        String remark = toText(dto.getRemark());
         if (!StringUtils.hasText(remark)) {
             return R.fail("入库原因不能为空");
         }
@@ -166,16 +166,16 @@ public class ConsumableController {
     @SysLog("耗材出库")
     @PostMapping("/{id}/reduce-stock")
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
-    public R reduceStock(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
-        Integer quantity = toInteger(params.get("quantity"));
+    public R reduceStock(@PathVariable("id") Long id, @RequestBody ConsumableStockDTO dto) {
+        Integer quantity = dto.getQuantity();
         if (quantity == null || quantity <= 0) {
             return R.fail("出库数量必须大于0");
         }
-        String stockOutType = toText(params.get("stockOutType"));
+        String stockOutType = toText(dto.getStockOutType());
         if (!"ISSUE".equals(stockOutType) && !"LOSS".equals(stockOutType)) {
             return R.fail("请选择出库类型");
         }
-        String remark = toText(params.get("remark"));
+        String remark = toText(dto.getRemark());
         if (!StringUtils.hasText(remark)) {
             return R.fail("出库原因不能为空");
         }
@@ -186,21 +186,7 @@ public class ConsumableController {
         return R.ok();
     }
 
-    private Integer toInteger(Object value) {
-        if (value instanceof Number number) {
-            return number.intValue();
-        }
-        if (value instanceof String text && StringUtils.hasText(text)) {
-            try {
-                return Integer.parseInt(text);
-            } catch (NumberFormatException ignored) {
-                return null;
-            }
-        }
-        return null;
-    }
-
-    private String toText(Object value) {
+    private String toText(String value) {
         return value == null ? null : String.valueOf(value).trim();
     }
 }

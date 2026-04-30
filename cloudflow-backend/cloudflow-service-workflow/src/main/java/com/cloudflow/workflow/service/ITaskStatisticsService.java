@@ -5,7 +5,7 @@ import java.util.Map;
 
 /**
  * 任务统计服务接口
- * 从 WorkflowServiceImpl 拆分出来，负责任务统计和分组功能
+ * 从原工作流服务拆分出来，负责任务统计和分组功能
  *
  * @author CloudFlow
  */

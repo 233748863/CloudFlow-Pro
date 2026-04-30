@@ -1,13 +1,14 @@
 package com.cloudflow.oa.service.impl;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
 import com.cloudflow.oa.service.IWorkflowService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -24,13 +25,10 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Override
     public R<?> startProcess(String processDefinitionKey, String businessKey, Map<String, Object> variables) {
         try {
-            // 构建统一的请求参数Map，适配新的RemoteWorkflowService接口
-            Map<String, Object> req = new HashMap<>();
-            req.put("processDefKey", processDefinitionKey);
-            req.put("businessKey", businessKey);
-            if (variables != null) {
-                req.put("variables", variables);
-            }
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey(processDefinitionKey);
+            req.setBusinessKey(businessKey);
+            req.setVariables(variables);
             
             R<?> result = remoteWorkflowService.startProcess(req);
             log.info("工作流启动成功，流程定义Key: {}, 业务Key: {}", processDefinitionKey, businessKey);
@@ -44,12 +42,9 @@ public class WorkflowServiceImpl implements IWorkflowService {
     @Override
     public R<?> completeTask(String taskId, Map<String, Object> variables) {
         try {
-            // 构建统一的请求参数Map
-            Map<String, Object> req = new HashMap<>();
-            req.put("taskId", taskId);
-            if (variables != null) {
-                req.put("variables", variables);
-            }
+            WorkflowTaskCompleteDTO req = new WorkflowTaskCompleteDTO();
+            req.setTaskId(taskId);
+            req.setVariables(variables);
             
             R<?> result = remoteWorkflowService.completeTask(req);
             log.info("任务完成成功，任务ID: {}", taskId);

@@ -9,6 +9,8 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.KnowledgeDocument;
 import com.cloudflow.oa.domain.KnowledgeRead;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
 import com.cloudflow.oa.mapper.KnowledgeReadMapper;
 import com.cloudflow.oa.service.IKnowledgeService;
@@ -177,9 +179,9 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         normalizeDocument(document);
         String instanceId;
         try {
-            Map<String, Object> req = new HashMap<>();
-            req.put("processDefKey", "knowledge_publish");
-            req.put("businessKey", "KNOWLEDGE_DOCUMENT:" + document.getDocumentId());
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey("knowledge_publish");
+            req.setBusinessKey("KNOWLEDGE_DOCUMENT:" + document.getDocumentId());
 
             Map<String, Object> variables = new HashMap<>();
             variables.put("documentId", document.getDocumentId());
@@ -197,7 +199,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
                     document.getDocumentId(),
                     document.getTitle()
             );
-            req.put("variables", variables);
+            req.setVariables(variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);
             instanceId = requireWorkflowInstanceId(document, result);
@@ -230,8 +232,8 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             throw new IllegalArgumentException("只有审批中的文档可以撤回");
         }
         if (StringUtils.hasText(document.getInstanceId())) {
-            Map<String, String> req = new HashMap<>();
-            req.put("instanceId", document.getInstanceId());
+            WorkflowRecallDTO req = new WorkflowRecallDTO();
+            req.setInstanceId(document.getInstanceId());
             R<?> result = remoteWorkflowService.recallProcess(req);
             if (result != null && result.getCode() != 200) {
                 throw new IllegalArgumentException(result.getMsg() != null ? result.getMsg() : "流程撤回失败");

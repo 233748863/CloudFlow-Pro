@@ -1,5 +1,6 @@
 package com.cloudflow.auth.controller;
 
+import com.cloudflow.auth.domain.vo.DynamicMapVO;
 import com.cloudflow.common.core.domain.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.DataType;
@@ -33,7 +34,7 @@ public class CacheMonitorController {
      * 包含：服务器信息、Key 数量、命令统计、Key 分组统计
      */
     @GetMapping("/info")
-    public R<Map<String, Object>> getInfo() {
+    public R<DynamicMapVO> getInfo() {
         // 获取 Redis 服务器信息
         Properties info = (Properties) redisTemplate.execute(
                 (RedisCallback<Object>) RedisServerCommands::info);
@@ -90,7 +91,7 @@ public class CacheMonitorController {
         result.put("dbSize", dbSize);
         result.put("commandStats", topCommands);
         result.put("keyGroups", keyGroups);
-        return R.ok(result);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     /**
@@ -110,7 +111,7 @@ public class CacheMonitorController {
      * @param key Redis key 名称（Base64 编码，避免路径特殊字符问题）
      */
     @GetMapping("/value")
-    public R<Map<String, Object>> getKeyValue(@RequestParam String key) {
+    public R<DynamicMapVO> getKeyValue(@RequestParam String key) {
         if (key == null || key.isEmpty()) {
             return R.fail("Key 不能为空");
         }
@@ -161,7 +162,7 @@ public class CacheMonitorController {
             result.put("value", "[读取失败: " + e.getMessage() + "]");
         }
 
-        return R.ok(result);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     /**

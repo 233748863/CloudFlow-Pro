@@ -4,7 +4,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
-import com.cloudflow.workflow.service.IWorkflowService;
+import com.cloudflow.workflow.service.IWfInstanceService;
 import org.redisson.api.RLock;
 import org.redisson.api.RedissonClient;
 import org.slf4j.Logger;
@@ -25,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  * 定时节点扫描任务（完整版）
  * 
  * 定时扫描 Redis ZSet 中的定时任务，触发到期的定时节点继续流转。
- * 通过调用 WorkflowService.continueFromTimerNode() 实现完整的流程引擎流转，
+ * 通过调用 IWfInstanceService.continueFromTimerNode() 实现完整的流程引擎流转，
  * 支持定时节点基于 nodes+edges 图模型继续流转。
  * 
  * 核心流程：
@@ -58,7 +58,7 @@ public class TimerScanJob {
     private WfProcessInstanceMapper processInstanceMapper;
 
     @Autowired
-    private IWorkflowService workflowService;
+    private IWfInstanceService instanceService;
 
     @Autowired
     private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
@@ -122,7 +122,7 @@ public class TimerScanJob {
     /**
      * 处理单个到期的定时任务（完整版）
      * 
-     * 通过调用 WorkflowService.continueFromTimerNode() 触发完整的流程引擎流转，
+     * 通过调用 IWfInstanceService.continueFromTimerNode() 触发完整的流程引擎流转，
      * 确保定时节点的图模型出边都能正确处理。
      * 
      * 处理流程：
@@ -187,7 +187,7 @@ public class TimerScanJob {
             //   - 通过 advanceAfterNode 继续流转（基于图模型出边）
             //   - 使用分布式锁防并发
             //   - 保存快照和审计日志
-            workflowService.continueFromTimerNode(instanceId, nodeKey, variables);
+            instanceService.continueFromTimerNode(instanceId, nodeKey, variables);
             
             log.info("[TimerScanJob] 定时任务处理完成，流程已继续流转, instanceId={}, nodeKey={}", instanceId, nodeKey);
             

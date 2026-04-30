@@ -10,7 +10,7 @@ import java.util.Map;
  * 节点执行引擎服务接口
  * 负责流程节点的递归执行、条件评估、人员分配等核心引擎逻辑
  * 
- * 从 WorkflowServiceImpl 拆分而来，参考 RuoYi-Cloud-Plus 职责分离设计
+ * 从原工作流服务拆分而来，参考 RuoYi-Cloud-Plus 职责分离设计
  *
  * @author CloudFlow
  */

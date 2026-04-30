@@ -2,7 +2,7 @@ package com.cloudflow.workflow.listener;
 
 import com.cloudflow.common.core.utils.RedisStreamUtil;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
-import com.cloudflow.workflow.service.IWorkflowService;
+import com.cloudflow.workflow.service.IWfTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,7 +19,7 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
     private static final Logger log = LoggerFactory.getLogger(WorkflowStreamConsumer.class);
 
     @Autowired
-    private IWorkflowService workflowService;
+    private IWfTaskService taskService;
 
     @Autowired
     private RedisStreamUtil redisStreamUtil;
@@ -37,8 +37,8 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
 
         try {
             // 执行业务逻辑 (自动通过)
-            // 幂等性依赖 workflowService 内部判断 (如果任务非 pending 状态应抛错或忽略)
-            workflowService.completeTask(taskId, "PASS", "系统 SLA 自动通过 (Stream)", Collections.<String, Object>emptyMap(), null);
+            // 幂等性依赖 taskService 内部判断（如果任务非 pending 状态应抛错或忽略）
+            taskService.completeTask(taskId, "PASS", "系统 SLA 自动通过 (Stream)", Collections.<String, Object>emptyMap(), null);
 
             // 手动确认
             redisStreamUtil.ack(workflowProperties.getStream().getKey(), workflowProperties.getStream().getGroup(), msgId);

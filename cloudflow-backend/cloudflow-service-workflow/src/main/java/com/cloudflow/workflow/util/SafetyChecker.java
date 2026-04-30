@@ -20,7 +20,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Batch operation safety checker.
+ * 批量操作安全检查器。
  */
 @Slf4j
 @Component
@@ -36,10 +36,10 @@ public class SafetyChecker {
     private WorkflowPermissionService permissionService;
 
     /**
-     * Check whether workflows are safe for archive/permanent delete operations.
+     * 检查流程是否可安全归档或永久删除。
      */
     public SafetyCheckResultDTO checkSafety(List<String> workflowIds) {
-        log.info("Start safety check, workflowCount={}", workflowIds == null ? 0 : workflowIds.size());
+        log.info("开始安全检查, workflowCount={}", workflowIds == null ? 0 : workflowIds.size());
 
         SafetyCheckResultDTO result = SafetyCheckResultDTO.builder()
             .safe(true)
@@ -47,7 +47,7 @@ public class SafetyChecker {
 
         if (workflowIds == null || workflowIds.isEmpty()) {
             result.setSafe(false);
-            result.getErrors().add("workflowIds is empty");
+            result.getErrors().add("流程 ID 列表不能为空");
             generateMessage(result);
             return result;
         }
@@ -58,7 +58,7 @@ public class SafetyChecker {
         checkPermissions(workflowIds, result);
         generateMessage(result);
 
-        log.info("Safety check complete, safe={}, warnings={}, errors={}",
+        log.info("安全检查完成, safe={}, warnings={}, errors={}",
             result.getSafe(), result.getWarnings().size(), result.getErrors().size());
 
         return result;
@@ -69,8 +69,8 @@ public class SafetyChecker {
             WfProcessDefinition definition = definitionMapper.selectById(workflowId);
             if (definition == null) {
                 result.setSafe(false);
-                result.getErrors().add("Workflow not found: " + workflowId);
-                result.getDetails().put(workflowId, "Workflow not found");
+                result.getErrors().add("流程不存在: " + workflowId);
+                result.getDetails().put(workflowId, "流程不存在");
             }
         }
     }
@@ -90,9 +90,9 @@ public class SafetyChecker {
             if (runningCount != null && runningCount > 0) {
                 result.getWorkflowsWithRunningInstances().add(workflowId);
                 result.getWarnings().add(String.format(
-                    "Workflow %s has %d running instances", workflowId, runningCount));
+                    "流程 %s 存在 %d 个运行中的实例", workflowId, runningCount));
                 result.getDetails().put(workflowId,
-                    String.format("Has %d running instances", runningCount));
+                    String.format("存在 %d 个运行中的实例", runningCount));
             }
         }
     }
@@ -125,9 +125,9 @@ public class SafetyChecker {
 
                 result.getWorkflowsWithDependencies().add(workflowId);
                 result.getWarnings().add(String.format(
-                    "Workflow %s is referenced by %d workflows", workflowId, referencingNames.size()));
+                    "流程 %s 被 %d 个流程引用", workflowId, referencingNames.size()));
                 result.getDetails().put(workflowId,
-                    "Referenced by workflows: " + String.join(", ", referencingNames));
+                    "被以下流程引用: " + String.join(", ", referencingNames));
             }
         }
     }
@@ -138,7 +138,7 @@ public class SafetyChecker {
 
         if (currentUserId == null) {
             result.setSafe(false);
-            result.getErrors().add("Current user not found in context");
+            result.getErrors().add("当前用户上下文不存在");
             return;
         }
 
@@ -153,8 +153,8 @@ public class SafetyChecker {
             if (currentTenantId != null && !Objects.equals(currentTenantId, definition.getTenantId())) {
                 result.setSafe(false);
                 result.getWorkflowsWithoutPermission().add(workflowId);
-                result.getErrors().add("No permission for workflow (tenant mismatch): " + workflowId);
-                result.getDetails().put(workflowId, "No permission: tenant mismatch");
+                result.getErrors().add("无流程操作权限（租户不匹配）: " + workflowId);
+                result.getDetails().put(workflowId, "无权限：租户不匹配");
                 continue;
             }
 
@@ -163,8 +163,8 @@ public class SafetyChecker {
                 if (!isCreator) {
                     result.setSafe(false);
                     result.getWorkflowsWithoutPermission().add(workflowId);
-                    result.getErrors().add("No permission for workflow: " + workflowId);
-                    result.getDetails().put(workflowId, "No permission: not owner or admin");
+                    result.getErrors().add("无流程操作权限: " + workflowId);
+                    result.getDetails().put(workflowId, "无权限：非创建者或管理员");
                 }
             }
         }
@@ -173,12 +173,12 @@ public class SafetyChecker {
     private void generateMessage(SafetyCheckResultDTO result) {
         if (Boolean.TRUE.equals(result.getSafe())) {
             if (result.getWarnings().isEmpty()) {
-                result.setMessage("Safety check passed");
+                result.setMessage("安全检查通过");
             } else {
-                result.setMessage(String.format("Safety check passed with %d warnings", result.getWarnings().size()));
+                result.setMessage(String.format("安全检查通过，存在 %d 条警告", result.getWarnings().size()));
             }
         } else {
-            result.setMessage(String.format("Safety check failed with %d errors", result.getErrors().size()));
+            result.setMessage(String.format("安全检查失败，存在 %d 个错误", result.getErrors().size()));
         }
     }
 

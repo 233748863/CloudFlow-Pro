@@ -29,7 +29,7 @@ public class DeployEnums {
             for (WindowType type : values()) {
                 if (type.code.equals(code)) return type;
             }
-            throw new IllegalArgumentException("Unknown WindowType: " + code);
+            throw new IllegalArgumentException("未知发布窗口类型: " + code);
         }
     }
 
@@ -57,7 +57,7 @@ public class DeployEnums {
             for (NotificationType type : values()) {
                 if (type.code.equals(code)) return type;
             }
-            throw new IllegalArgumentException("Unknown NotificationType: " + code);
+            throw new IllegalArgumentException("未知通知类型: " + code);
         }
     }
 
@@ -127,7 +127,7 @@ public class DeployEnums {
             for (ApprovalStatus status : values()) {
                 if (status.code.equals(code)) return status;
             }
-            throw new IllegalArgumentException("Unknown ApprovalStatus: " + code);
+            throw new IllegalArgumentException("未知审批状态: " + code);
         }
     }
 
@@ -216,7 +216,7 @@ public class DeployEnums {
             for (ImpactLevel level : values()) {
                 if (level.code.equals(code)) return level;
             }
-            throw new IllegalArgumentException("Unknown ImpactLevel: " + code);
+            throw new IllegalArgumentException("未知影响级别: " + code);
         }
     }
 
@@ -262,7 +262,7 @@ public class DeployEnums {
             for (RollbackStatus status : values()) {
                 if (status.code.equals(code)) return status;
             }
-            throw new IllegalArgumentException("Unknown RollbackStatus: " + code);
+            throw new IllegalArgumentException("未知回滚状态: " + code);
         }
     }
 }

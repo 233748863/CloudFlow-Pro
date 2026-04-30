@@ -5,6 +5,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.DutySchedule;
+import com.cloudflow.oa.domain.dto.DutySwapDTO;
 import com.cloudflow.oa.service.IDutyScheduleService;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
@@ -14,7 +15,6 @@ import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 值班排班 Controller
@@ -112,10 +112,7 @@ public class DutyScheduleController {
     /** 换班申请 */
     @SysLog("换班申请")
     @PutMapping("/swap/{id}")
-    public R swap(@PathVariable("id") Long id, @RequestBody Map<String, Object> params) {
-        Long backupUserId = Long.valueOf(params.get("backupUserId").toString());
-        String backupUserName = (String) params.get("backupUserName");
-        String reason = (String) params.get("reason");
-        return R.result(dutyScheduleService.swapDuty(id, backupUserId, backupUserName, reason));
+    public R swap(@PathVariable("id") Long id, @RequestBody DutySwapDTO dto) {
+        return R.result(dutyScheduleService.swapDuty(id, dto.getBackupUserId(), dto.getBackupUserName(), dto.getReason()));
     }
 }

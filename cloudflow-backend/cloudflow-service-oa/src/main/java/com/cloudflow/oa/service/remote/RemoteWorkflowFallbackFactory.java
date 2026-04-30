@@ -1,6 +1,9 @@
 package com.cloudflow.oa.service.remote;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
+import com.cloudflow.oa.domain.dto.WorkflowTaskCompleteDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
@@ -24,19 +27,19 @@ public class RemoteWorkflowFallbackFactory implements FallbackFactory<RemoteWork
         
         return new RemoteWorkflowService() {
             @Override
-            public R<?> startProcess(Map<String, Object> req) {
+            public R<?> startProcess(WorkflowProcessStartDTO req) {
                 log.error("启动工作流失败，请求参数: {}", req);
                 return R.fail("工作流服务暂时不可用，请稍后重试");
             }
             
             @Override
-            public R<?> completeTask(Map<String, Object> req) {
+            public R<?> completeTask(WorkflowTaskCompleteDTO req) {
                 log.error("完成任务失败，请求参数: {}", req);
                 return R.fail("工作流服务暂时不可用，请稍后重试");
             }
 
             @Override
-            public R<?> recallProcess(Map<String, String> req) {
+            public R<?> recallProcess(WorkflowRecallDTO req) {
                 log.error("撤回流程失败，请求参数: {}", req);
                 return R.fail("工作流服务暂时不可用，请稍后重试");
             }

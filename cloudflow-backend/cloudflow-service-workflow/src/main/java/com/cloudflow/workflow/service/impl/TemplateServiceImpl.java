@@ -17,6 +17,7 @@ import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.ITemplateService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -397,7 +398,7 @@ public class TemplateServiceImpl implements ITemplateService {
      */
     private List<String> convertJsonToTags(String tagsJson) {
         try {
-            return objectMapper.readValue(tagsJson, List.class);
+            return objectMapper.readValue(tagsJson, new TypeReference<List<String>>() {});
         } catch (Exception e) {
             log.error("解析标签JSON失败", e);
             return List.of();
