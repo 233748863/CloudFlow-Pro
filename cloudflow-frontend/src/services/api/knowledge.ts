@@ -36,9 +36,18 @@ export interface KnowledgeReadRecord {
   readTime?: string;
 }
 
+export interface KnowledgeUnreadUser {
+  userId: number;
+  userName?: string;
+  deptName?: string;
+}
+
 export interface KnowledgeReadStats {
   readCount: number;
+  expectedCount?: number;
+  unreadCount?: number;
   readUsers: KnowledgeReadRecord[];
+  unreadUsers?: KnowledgeUnreadUser[];
 }
 
 export interface KnowledgeQuery {

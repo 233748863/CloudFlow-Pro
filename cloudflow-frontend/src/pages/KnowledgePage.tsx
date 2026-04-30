@@ -17,6 +17,10 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import FileUpload from '@/components/FileUpload';
+import {
+  AnnouncementTargetingEditor,
+  type DeptItem,
+} from '@/components/admin/announcements';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
@@ -43,7 +47,8 @@ import {
   Textarea,
 } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
-import { Role } from '@/types';
+import { AnnouncementScope, Role } from '@/types';
+import { getDeptTree, getRoleList, type SysRole } from '@/services/api/auth';
 import {
   knowledgeApi,
   type KnowledgeDocument,
@@ -155,6 +160,48 @@ const AttachmentLinks: React.FC<{ value?: string }> = ({ value }) => {
   );
 };
 
+const parseScopeValues = (value?: string) => (
+  value?.split(',').map((item) => item.trim()).filter(Boolean) ?? []
+);
+
+const flattenDeptTree = (depts: DeptItem[]): DeptItem[] => (
+  depts.flatMap((dept) => [dept, ...(dept.children?.length ? flattenDeptTree(dept.children) : [])])
+);
+
+const normalizeDeptTreeResponse = (response: unknown): DeptItem[] => {
+  if (Array.isArray(response)) {
+    return response as DeptItem[];
+  }
+  const payload = response as { data?: unknown; rows?: unknown; records?: unknown };
+  if (Array.isArray(payload?.data)) {
+    return payload.data as DeptItem[];
+  }
+  if (Array.isArray(payload?.rows)) {
+    return payload.rows as DeptItem[];
+  }
+  if (Array.isArray(payload?.records)) {
+    return payload.records as DeptItem[];
+  }
+  return [];
+};
+
+const normalizeRoleListResponse = (response: unknown): SysRole[] => {
+  if (Array.isArray(response)) {
+    return response as SysRole[];
+  }
+  const payload = response as { data?: unknown; rows?: unknown; records?: unknown };
+  if (Array.isArray(payload?.data)) {
+    return payload.data as SysRole[];
+  }
+  if (Array.isArray(payload?.rows)) {
+    return payload.rows as SysRole[];
+  }
+  if (Array.isArray(payload?.records)) {
+    return payload.records as SysRole[];
+  }
+  return [];
+};
+
 const KnowledgePage: React.FC = () => {
   const { user } = useAuth();
   const canManage = user?.role === Role.ADMIN || user?.role === Role.HR;
@@ -178,6 +225,8 @@ const KnowledgePage: React.FC = () => {
   const [statsOpen, setStatsOpen] = useState(false);
   const [readStats, setReadStats] = useState<KnowledgeReadStats | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
+  const [roles, setRoles] = useState<SysRole[]>([]);
 
   const activeRows = viewMode === 'library' ? library : viewMode === 'mine' ? submissions : manageRows;
   const tableTotal = viewMode === 'library' ? library.length : total;
@@ -193,6 +242,36 @@ const KnowledgePage: React.FC = () => {
     ? (unreadOnly ? '仅未读' : '全部阅读')
     : (statusMeta[status as KnowledgeStatus]?.label || '全部状态');
   const totalPages = viewMode === 'library' ? 1 : Math.max(1, Math.ceil(total / pageSize));
+  const deptNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    flattenDeptTree(deptTree).forEach((dept) => {
+      map.set(String(dept.deptId), dept.deptName);
+    });
+    return map;
+  }, [deptTree]);
+  const roleNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    roles.forEach((role) => {
+      const roleName = role.roleName || role.roleKey;
+      if (role.roleKey) {
+        map.set(String(role.roleKey), roleName);
+      }
+      if (role.roleId) {
+        map.set(String(role.roleId), roleName);
+      }
+    });
+    return map;
+  }, [roles]);
+
+  const formatScopeDisplay = (document: Pick<KnowledgeDocument, 'scopeType' | 'scopeValue'>) => {
+    if (document.scopeType === 'ALL') {
+      return '全员可见';
+    }
+    const values = parseScopeValues(document.scopeValue);
+    const nameMap = document.scopeType === 'DEPT' ? deptNameMap : roleNameMap;
+    const names = values.map((value) => nameMap.get(value) || value);
+    return names.length ? `${scopeLabel[document.scopeType]}：${names.join('、')}` : scopeLabel[document.scopeType];
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -234,6 +313,19 @@ const KnowledgePage: React.FC = () => {
   useEffect(() => {
     void fetchData();
   }, [viewMode, unreadOnly, pageNum, pageSize]);
+
+  useEffect(() => {
+    void Promise.all([getDeptTree(), getRoleList()])
+      .then(([deptResponse, roleResponse]) => {
+        setDeptTree(normalizeDeptTreeResponse(deptResponse));
+        setRoles(normalizeRoleListResponse(roleResponse));
+      })
+      .catch((error) => {
+        console.error('知识库范围数据加载失败', error);
+        setDeptTree([]);
+        setRoles([]);
+      });
+  }, []);
 
   const applyFilters = () => {
     setPageNum(1);
@@ -368,7 +460,7 @@ const KnowledgePage: React.FC = () => {
         )));
       }
     } catch (error: any) {
-      toast.error(error?.message || '文档加载失败');
+      toast.error(error?.message || '文档加载失败，请确认权限或文档状态');
     }
   };
 
@@ -405,6 +497,11 @@ const KnowledgePage: React.FC = () => {
           <Input
             value={keyword}
             onChange={(event) => setKeyword(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                applyFilters();
+              }
+            }}
             className="h-10 pl-9"
             placeholder="搜索标题、摘要或正文"
           />
@@ -520,8 +617,7 @@ const KnowledgePage: React.FC = () => {
             <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
               <div className="font-medium text-slate-900 dark:text-slate-100">{item.category || '-'}</div>
               <div className="mt-1 text-xs text-slate-400 dark:text-slate-500">
-                {(item.scopeType && scopeLabel[item.scopeType]) || '-'}
-                {item.scopeValue ? `：${item.scopeValue}` : ''}
+                {item.scopeType ? formatScopeDisplay(item) : '-'}
               </div>
             </td>
             <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
@@ -659,54 +755,53 @@ const KnowledgePage: React.FC = () => {
       />
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="sm:max-w-4xl">
+        <DialogContent
+          disableDefaultMaxWidth
+          className="w-[calc(100vw-2rem)] sm:max-w-5xl xl:max-w-6xl"
+        >
           <DialogHeader>
             <DialogTitle>{formData.documentId ? '编辑知识文档' : '新建知识文档'}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-2 md:col-span-2">
-              <Label>标题</Label>
-              <Input value={formData.title} onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>分类</Label>
-              <Select value={formData.category} onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}>
-                <SelectTrigger><SelectValue placeholder="选择分类" /></SelectTrigger>
-                <SelectContent>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>可见范围</Label>
-              <Select value={formData.scopeType} onValueChange={(value) => setFormData((prev) => ({ ...prev, scopeType: value as KnowledgeScopeType, scopeValue: value === 'ALL' ? '' : prev.scopeValue }))}>
-                <SelectTrigger><SelectValue placeholder="选择范围" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">全员可见</SelectItem>
-                  <SelectItem value="DEPT">部门可见</SelectItem>
-                  <SelectItem value="ROLE">角色可见</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            {formData.scopeType !== 'ALL' ? (
-              <div className="space-y-2 md:col-span-2">
-                <Label>{formData.scopeType === 'DEPT' ? '部门ID' : '角色标识'}</Label>
-                <Input
-                  value={formData.scopeValue || ''}
-                  onChange={(event) => setFormData((prev) => ({ ...prev, scopeValue: event.target.value }))}
-                  placeholder={formData.scopeType === 'DEPT' ? '例如：100' : '例如：admin / hr / manager'}
-                />
+          <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_27rem]">
+            <div className="space-y-4">
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
+                <div className="space-y-2">
+                  <Label>标题</Label>
+                  <Input value={formData.title} onChange={(event) => setFormData((prev) => ({ ...prev, title: event.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>分类</Label>
+                  <Select value={formData.category} onValueChange={(value) => setFormData((prev) => ({ ...prev, category: value }))}>
+                    <SelectTrigger><SelectValue placeholder="选择分类" /></SelectTrigger>
+                    <SelectContent>{categories.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                  </Select>
+                </div>
               </div>
-            ) : null}
-            <div className="space-y-2 md:col-span-2">
-              <Label>摘要</Label>
-              <Textarea rows={3} value={formData.summary || ''} onChange={(event) => setFormData((prev) => ({ ...prev, summary: event.target.value }))} />
+              <div className="space-y-2">
+                <Label>摘要</Label>
+                <Textarea rows={3} value={formData.summary || ''} onChange={(event) => setFormData((prev) => ({ ...prev, summary: event.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>正文</Label>
+                <Textarea rows={8} value={formData.content} onChange={(event) => setFormData((prev) => ({ ...prev, content: event.target.value }))} />
+              </div>
+              <div className="space-y-2">
+                <Label>附件</Label>
+                <FileUpload value={formData.attachmentUrl || ''} onChange={(value) => setFormData((prev) => ({ ...prev, attachmentUrl: value }))} maxCount={5} />
+              </div>
             </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>正文</Label>
-              <Textarea rows={10} value={formData.content} onChange={(event) => setFormData((prev) => ({ ...prev, content: event.target.value }))} />
-            </div>
-            <div className="space-y-2 md:col-span-2">
-              <Label>附件</Label>
-              <FileUpload value={formData.attachmentUrl || ''} onChange={(value) => setFormData((prev) => ({ ...prev, attachmentUrl: value }))} maxCount={5} />
+            <div className="min-w-0">
+              <AnnouncementTargetingEditor
+                scopeType={(formData.scopeType as AnnouncementScope) || AnnouncementScope.ALL}
+                scopeValue={formData.scopeValue || ''}
+                deptTree={deptTree}
+                onScopeTypeChange={(scopeType) => setFormData((prev) => ({
+                  ...prev,
+                  scopeType: scopeType as KnowledgeScopeType,
+                  scopeValue: scopeType === AnnouncementScope.ALL ? '' : prev.scopeValue || '',
+                }))}
+                onScopeValueChange={(scopeValue) => setFormData((prev) => ({ ...prev, scopeValue }))}
+              />
             </div>
           </div>
           <DialogFooter>
@@ -726,7 +821,7 @@ const KnowledgePage: React.FC = () => {
               <div className="flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
                 <StatusBadge status={detail.status} />
                 <span className="rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-800">{detail.category}</span>
-                <span className="rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-800">{scopeLabel[detail.scopeType]}</span>
+                <span className="rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-800">{formatScopeDisplay(detail)}</span>
                 <span className="rounded-full border border-slate-200 px-2.5 py-1 dark:border-slate-800">提交人：{detail.submitterName || '-'}</span>
               </div>
               {detail.summary ? <p className="rounded-lg bg-slate-50 px-4 py-3 text-sm leading-6 text-slate-600 dark:bg-slate-900 dark:text-slate-300">{detail.summary}</p> : null}
@@ -748,18 +843,51 @@ const KnowledgePage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>阅读统计</DialogTitle>
           </DialogHeader>
-          <div className="text-sm text-slate-600 dark:text-slate-300">已读 {readStats?.readCount || 0} 人</div>
-          <div className="max-h-80 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
-            {readStats?.readUsers?.length ? (
-              readStats.readUsers.map((item) => (
-                <div key={item.id} className="flex items-center justify-between border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
-                  <span className="text-slate-900 dark:text-slate-100">{item.userName || item.userId}</span>
-                  <span className="text-slate-500 dark:text-slate-400">{item.readTime || '-'}</span>
-                </div>
-              ))
-            ) : (
-              <InlineState title="暂无阅读记录" />
-            )}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="text-xs text-slate-500 dark:text-slate-400">应读</div>
+              <div className="mt-1 text-lg font-semibold text-slate-900 dark:text-slate-100">{readStats?.expectedCount ?? 0}</div>
+            </div>
+            <div className="rounded-lg border border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="text-xs text-slate-500 dark:text-slate-400">已读</div>
+              <div className="mt-1 text-lg font-semibold text-emerald-600 dark:text-emerald-300">{readStats?.readCount || 0}</div>
+            </div>
+            <div className="rounded-lg border border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="text-xs text-slate-500 dark:text-slate-400">未读</div>
+              <div className="mt-1 text-lg font-semibold text-amber-600 dark:text-amber-300">{readStats?.unreadCount ?? 0}</div>
+            </div>
+          </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="border-b border-slate-100 px-4 py-2 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">已读人员</div>
+              <div className="max-h-72 overflow-y-auto">
+                {readStats?.readUsers?.length ? (
+                  readStats.readUsers.map((item) => (
+                    <div key={item.id} className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
+                      <span className="truncate text-slate-900 dark:text-slate-100">{item.userName || item.userId}</span>
+                      <span className="shrink-0 text-xs text-slate-500 dark:text-slate-400">{item.readTime || '-'}</span>
+                    </div>
+                  ))
+                ) : (
+                  <InlineState title="暂无阅读记录" />
+                )}
+              </div>
+            </div>
+            <div className="overflow-hidden rounded-lg border border-slate-200 dark:border-slate-800">
+              <div className="border-b border-slate-100 px-4 py-2 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">未读人员</div>
+              <div className="max-h-72 overflow-y-auto">
+                {readStats?.unreadUsers?.length ? (
+                  readStats.unreadUsers.map((item) => (
+                    <div key={item.userId} className="border-b border-slate-100 px-4 py-3 text-sm last:border-b-0 dark:border-slate-800">
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{item.userName || item.userId}</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.deptName || '-'}</div>
+                    </div>
+                  ))
+                ) : (
+                  <InlineState title="暂无未读人员" />
+                )}
+              </div>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Mapper
@@ -17,4 +18,8 @@ public interface KnowledgeDocumentMapper extends BaseMapper<KnowledgeDocument> {
                                                    @Param("keyword") String keyword,
                                                    @Param("category") String category,
                                                    @Param("unreadOnly") Boolean unreadOnly);
+
+    List<Map<String, Object>> selectExpectedReaders(@Param("tenantId") Long tenantId,
+                                                    @Param("scopeType") String scopeType,
+                                                    @Param("scopeValues") List<String> scopeValues);
 }

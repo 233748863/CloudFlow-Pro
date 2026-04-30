@@ -216,8 +216,13 @@ const RoleListPicker: React.FC<{
       .catch(console.error);
   }, []);
 
-  const selectedIds = value ? value.split(',').filter(Boolean) : [];
-  const getRoleIdentifier = (role: any) => String(role.roleId || role.id || role.roleKey);
+  const selectedIds = value ? value.split(',').map((item) => item.trim()).filter(Boolean) : [];
+  const getRoleIdentifier = (role: any) => String(role.roleKey || role.id || role.roleId);
+  const getRoleIdentifiers = (role: any) => [
+    role.roleKey,
+    role.id,
+    role.roleId,
+  ].filter((item) => item !== undefined && item !== null).map(String);
 
   const toggleRole = (id: string) => {
     const nextIds = selectedIds.includes(id)
@@ -226,7 +231,7 @@ const RoleListPicker: React.FC<{
     onChange(nextIds.join(','));
   };
 
-  const selectedRoles = roles.filter((role) => selectedIds.includes(getRoleIdentifier(role)));
+  const selectedRoles = roles.filter((role) => getRoleIdentifiers(role).some((id) => selectedIds.includes(id)));
   const filteredRoles = roles.filter((role) => {
     if (!search) {
       return true;
@@ -234,7 +239,8 @@ const RoleListPicker: React.FC<{
 
     const keyword = search.toLowerCase();
     return (role.roleName || '').toLowerCase().includes(keyword)
-      || (role.name || '').toLowerCase().includes(keyword);
+      || (role.name || '').toLowerCase().includes(keyword)
+      || (role.roleKey || '').toLowerCase().includes(keyword);
   });
 
   return (
@@ -367,7 +373,7 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
         </div>
       </div>
 
-      <div className="mt-4 grid gap-3 md:grid-cols-3">
+      <div className="mt-4 grid gap-3 min-[1180px]:grid-cols-3">
         {cards.map((card) => {
           const active = scopeType === card.value;
 

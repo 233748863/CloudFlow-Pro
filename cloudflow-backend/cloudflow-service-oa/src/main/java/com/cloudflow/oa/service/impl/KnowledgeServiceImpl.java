@@ -20,12 +20,17 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -170,11 +175,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             throw new IllegalArgumentException("只有草稿或已驳回文档可以提交审批");
         }
         normalizeDocument(document);
-        document.setStatus("PENDING");
-        document.setSubmitTime(LocalDateTime.now());
-        document.setUpdateBy(UserContext.getUserName());
-        document.setUpdateTime(LocalDateTime.now());
-
+        String instanceId;
         try {
             Map<String, Object> req = new HashMap<>();
             req.put("processDefKey", "knowledge_publish");
@@ -199,19 +200,21 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             req.put("variables", variables);
 
             R<?> result = remoteWorkflowService.startProcess(req);
-            if (result != null && result.getCode() == 200 && result.getData() != null) {
-                String instanceId = extractInstanceId(result.getData());
-                if (instanceId != null) {
-                    document.setInstanceId(instanceId);
-                }
-            } else {
-                log.warn("知识库文档 {} 启动工作流返回异常: {}",
-                        document.getDocumentId(), result != null ? result.getMsg() : "null");
-            }
+            instanceId = requireWorkflowInstanceId(document, result);
         } catch (Exception e) {
-            log.error("知识库文档 {} 启动工作流失败，但提交状态已更新", document.getDocumentId(), e);
+            log.error("知识库文档 {} 启动工作流失败，保持原状态 {}", document.getDocumentId(), document.getStatus(), e);
+            if (e instanceof IllegalArgumentException) {
+                throw (IllegalArgumentException) e;
+            }
+            throw new IllegalArgumentException("流程启动失败，请稍后重试");
         }
 
+        LocalDateTime now = LocalDateTime.now();
+        document.setStatus("PENDING");
+        document.setSubmitTime(now);
+        document.setInstanceId(instanceId);
+        document.setUpdateBy(UserContext.getUserName());
+        document.setUpdateTime(now);
         return updateById(document);
     }
 
@@ -270,7 +273,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         }
         try {
             KnowledgeRead read = new KnowledgeRead();
-            read.setTenantId(UserContext.getTenantId());
+            read.setTenantId(UserContext.getTenantId() != null ? UserContext.getTenantId() : document.getTenantId());
             read.setDocumentId(documentId);
             read.setUserId(UserContext.getUserId());
             read.setUserName(UserContext.getUserName());
@@ -284,14 +287,28 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
 
     @Override
     public Map<String, Object> getReadStats(Long documentId) {
-        requireDocument(documentId);
+        KnowledgeDocument document = requireDocument(documentId);
         LambdaQueryWrapper<KnowledgeRead> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeRead::getDocumentId, documentId)
                 .orderByDesc(KnowledgeRead::getReadTime);
         List<KnowledgeRead> reads = readMapper.selectList(wrapper);
+        List<Map<String, Object>> expectedUsers = selectExpectedReaders(document);
+        Set<Long> readUserIds = reads.stream()
+                .map(KnowledgeRead::getUserId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<Map<String, Object>> unreadUsers = expectedUsers.stream()
+                .filter(user -> {
+                    Long userId = mapUserId(user);
+                    return userId != null && !readUserIds.contains(userId);
+                })
+                .collect(Collectors.toList());
         Map<String, Object> stats = new HashMap<>();
         stats.put("readCount", reads.size());
+        stats.put("expectedCount", expectedUsers.size());
+        stats.put("unreadCount", unreadUsers.size());
         stats.put("readUsers", reads);
+        stats.put("unreadUsers", unreadUsers);
         return stats;
     }
 
@@ -329,6 +346,12 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         }
         if ("ALL".equals(document.getScopeType())) {
             document.setScopeValue(null);
+        } else {
+            List<String> scopeValues = parseScopeValues(document.getScopeValue());
+            if (scopeValues.isEmpty()) {
+                throw new IllegalArgumentException("定向可见范围值不能为空");
+            }
+            document.setScopeValue(String.join(",", scopeValues));
         }
         document.setAttachmentUrl(
                 OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(document.getAttachmentUrl(), "知识库附件")
@@ -354,12 +377,15 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         if ("ALL".equals(document.getScopeType())) {
             return true;
         }
+        List<String> scopeValues = parseScopeValues(document.getScopeValue());
         if ("DEPT".equals(document.getScopeType())) {
-            return Objects.equals(document.getScopeValue(), String.valueOf(UserContext.getDeptId()));
+            return UserContext.getDeptId() != null && scopeValues.contains(String.valueOf(UserContext.getDeptId()));
         }
         if ("ROLE".equals(document.getScopeType())) {
             Set<String> roles = UserContext.getRoles();
-            return roles != null && roles.contains(document.getScopeValue());
+            return roles != null && roles.stream()
+                    .filter(Objects::nonNull)
+                    .anyMatch(scopeValues::contains);
         }
         return false;
     }
@@ -389,5 +415,96 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             return instanceId != null ? String.valueOf(instanceId) : null;
         }
         return data instanceof String ? (String) data : null;
+    }
+
+    private String requireWorkflowInstanceId(KnowledgeDocument document, R<?> result) {
+        if (result == null) {
+            throw new IllegalArgumentException("流程启动失败：工作流服务无响应");
+        }
+        if (result.getCode() != R.SUCCESS) {
+            throw new IllegalArgumentException(StringUtils.hasText(result.getMsg()) ? result.getMsg() : "流程启动失败");
+        }
+        if (result.getData() == null) {
+            throw new IllegalArgumentException("流程启动失败：未返回流程实例");
+        }
+        String instanceId = extractInstanceId(result.getData());
+        if (!StringUtils.hasText(instanceId)) {
+            throw new IllegalArgumentException("流程启动失败：未返回流程实例ID");
+        }
+        log.info("知识库文档 {} 工作流启动成功，流程实例ID: {}", document.getDocumentId(), instanceId);
+        return instanceId;
+    }
+
+    private List<String> parseScopeValues(String scopeValue) {
+        if (!StringUtils.hasText(scopeValue)) {
+            return Collections.emptyList();
+        }
+        Set<String> values = new LinkedHashSet<>();
+        for (String value : scopeValue.split(",")) {
+            if (StringUtils.hasText(value)) {
+                values.add(value.trim());
+            }
+        }
+        return new ArrayList<>(values);
+    }
+
+    private List<Map<String, Object>> selectExpectedReaders(KnowledgeDocument document) {
+        List<String> scopeValues = parseScopeValues(document.getScopeValue());
+        if (!"ALL".equals(document.getScopeType()) && scopeValues.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return normalizeUserRows(baseMapper.selectExpectedReaders(
+                document.getTenantId(),
+                document.getScopeType(),
+                scopeValues
+        ));
+    }
+
+    private List<Map<String, Object>> normalizeUserRows(List<Map<String, Object>> rows) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        Set<Long> seenUserIds = new LinkedHashSet<>();
+        for (Map<String, Object> row : rows) {
+            Long userId = mapUserId(row);
+            if (userId == null || !seenUserIds.add(userId)) {
+                continue;
+            }
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("userId", userId);
+            item.put("userName", stringValue(rowValue(row, "userName", "user_name", "USER_NAME")));
+            item.put("deptName", stringValue(rowValue(row, "deptName", "dept_name", "DEPT_NAME")));
+            result.add(item);
+        }
+        return result;
+    }
+
+    private Long mapUserId(Map<String, Object> row) {
+        Object value = rowValue(row, "userId", "user_id", "USER_ID");
+        if (value instanceof Number) {
+            return ((Number) value).longValue();
+        }
+        if (value != null && StringUtils.hasText(String.valueOf(value))) {
+            return Long.valueOf(String.valueOf(value));
+        }
+        return null;
+    }
+
+    private Object rowValue(Map<String, Object> row, String... keys) {
+        for (String key : keys) {
+            if (row.containsKey(key)) {
+                return row.get(key);
+            }
+        }
+        for (Map.Entry<String, Object> entry : row.entrySet()) {
+            for (String key : keys) {
+                if (entry.getKey().equalsIgnoreCase(key)) {
+                    return entry.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    private String stringValue(Object value) {
+        return value != null ? String.valueOf(value) : "";
     }
 }

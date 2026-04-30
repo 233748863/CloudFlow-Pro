@@ -14,11 +14,8 @@ import {
 } from '@/services/api/announcement';
 import { getDeptTree } from '@/services/api/auth';
 import { toBackendDateString } from '@/utils/dateFormat';
-import {
-  AnnouncementReadStatusDialog,
-  AnnouncementTargetingEditor,
-  type DeptItem,
-} from '@/components/admin/announcements';
+import { AnnouncementReadStatusDialog } from './AnnouncementReadStatusDialog';
+import { AnnouncementTargetingEditor, type DeptItem } from './AnnouncementTargetingEditor';
 import { AnnouncementManageTable, BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
