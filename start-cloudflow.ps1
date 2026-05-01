@@ -142,6 +142,40 @@ function Stop-PortListeners {
     }
 }
 
+function Install-BackendDependencies {
+    $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $outLog = Join-Path $LogRoot "backend-install-$stamp.out.log"
+    $errLog = Join-Path $LogRoot "backend-install-$stamp.err.log"
+    $mvnArgs = @(
+        "-pl",
+        "cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-hr",
+        "-am",
+        "-DskipTests",
+        "-Dmaven.test.skip=true",
+        "-Dmdep.analyze.skip=true",
+        "install"
+    )
+
+    Write-Host "backend    编译并安装内部依赖..."
+    $process = Start-Process `
+        -FilePath "mvn.cmd" `
+        -ArgumentList $mvnArgs `
+        -WorkingDirectory $BackendRoot `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $outLog `
+        -RedirectStandardError $errLog `
+        -PassThru
+
+    $process.WaitForExit()
+    if ($process.ExitCode -ne 0) {
+        Write-Host "backend    编译失败，查看日志：$outLog"
+        if (Test-Path $errLog) {
+            Write-Host "backend    错误日志：$errLog"
+        }
+        exit $process.ExitCode
+    }
+}
+
 function Start-BackendService {
     param([object]$Service)
 
@@ -224,6 +258,8 @@ foreach ($service in $BackendServices) {
 }
 Stop-PortListeners -Service $FrontendService
 Start-Sleep -Seconds 2
+
+Install-BackendDependencies
 
 foreach ($service in $BackendServices) {
     Start-BackendService -Service $service

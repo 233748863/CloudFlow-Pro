@@ -3,6 +3,11 @@ import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
 import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
 import { clearAuthSession } from '@/utils/sessionCleanup';
+import { getAuthToken, getStoredAuthUser } from '@/utils/authStorage';
+
+const appBasePath = import.meta.env.BASE_URL === '/'
+  ? ''
+  : import.meta.env.BASE_URL.replace(/\/$/, '');
 
 // 定义标准 API 响应接口
 export interface ApiResponse<T = any> {
@@ -125,7 +130,7 @@ request.interceptors.request.use(
     }
 
     // 从 localStorage 获取 token
-    const token = localStorage.getItem('token');
+    const token = getAuthToken();
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -134,7 +139,7 @@ request.interceptors.request.use(
     // 注意：tenantId 在用户登录后会被存储在 user 对象中
     // 我们需要从 localStorage 中获取完整的用户信息来提取 tenantId
     try {
-      const userStr = localStorage.getItem('user');
+      const userStr = getStoredAuthUser();
       if (userStr) {
         const user = JSON.parse(userStr);
         if (user.tenantId) {
@@ -217,8 +222,9 @@ request.interceptors.response.use(
        // 清除认证信息和会话缓存，并跳转登录页
        clearAuthSession();
        // 使用 window.location.href 强制跳转，确保状态重置
-       if (window.location.pathname !== '/login') {
-           window.location.href = '/login';
+       const loginPath = `${appBasePath}/login`;
+       if (window.location.pathname !== loginPath) {
+           window.location.href = loginPath;
        }
     } else if (error.response && error.response.status === 503) {
        // 服务不可用 - 微服务未启动，静默处理不弹 toast

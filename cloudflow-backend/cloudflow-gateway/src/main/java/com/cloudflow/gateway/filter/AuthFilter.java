@@ -7,6 +7,7 @@ import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
@@ -40,6 +41,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
     private final List<String> whiteList = Arrays.asList(
             "/auth/login",
             "/auth/register",
+            "/auth/tenant/options",
             "/auth/captcha/**",
             "/ws/**"
     );
@@ -85,6 +87,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
     private Mono<Void> unauthorized(ServerWebExchange exchange) {
         ServerHttpResponse response = exchange.getResponse();
         response.setStatusCode(HttpStatus.UNAUTHORIZED);
+        response.getHeaders().setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
         String body = "{\"code\":401,\"msg\":\"未授权或Token已过期\"}";
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));

@@ -66,11 +66,17 @@ public class SysUserServiceImpl implements ISysUserService {
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
     @Override
-    @Cacheable(value = CacheConstants.USER_DETAILS, key = "#username", unless = "#result == null")
     public UserInfo findUserInfo(String username) {
+        return findUserInfo(username, UserContext.getTenantId());
+    }
+
+    @Override
+    @Cacheable(value = CacheConstants.USER_DETAILS, key = "#tenantId + ':' + #username", unless = "#result == null")
+    public UserInfo findUserInfo(String username, Long tenantId) {
         // 查询用户
         LambdaQueryWrapper<SysUser> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysUser::getUserName, username);
+        wrapper.eq(tenantId != null, SysUser::getTenantId, tenantId);
         SysUser user = sysUserMapper.selectOne(wrapper);
         if (user == null) {
             return null;
@@ -109,12 +115,18 @@ public class SysUserServiceImpl implements ISysUserService {
     }
 
     @Override
-    @CacheEvict(value = CacheConstants.USER_DETAILS, key = "#username")
+    @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
     public void evictUserInfoCache(String username) {
         // 仅清除缓存,方法体为空
     }
 
     // ==================== 原有方法（增加缓存失效） ====================
+
+    @Override
+    @CacheEvict(value = CacheConstants.USER_DETAILS, key = "#tenantId + ':' + #username")
+    public void evictUserInfoCache(String username, Long tenantId) {
+        // Cache eviction only.
+    }
 
     @Override
     public List<SysUser> selectUserList(SysUser user) {
@@ -230,6 +242,7 @@ public class SysUserServiceImpl implements ISysUserService {
             SysRole defaultRole = sysRoleMapper.selectOne(
                 new LambdaQueryWrapper<SysRole>()
                     .eq(SysRole::getRoleKey, "common")
+                    .eq(targetTenantId != null, SysRole::getTenantId, targetTenantId)
                     .last("LIMIT 1")
             );
 
@@ -237,6 +250,7 @@ public class SysUserServiceImpl implements ISysUserService {
                 SysUserRole userRole = new SysUserRole();
                 userRole.setUserId(user.getUserId());
                 userRole.setRoleId(defaultRole.getRoleId());
+                userRole.setTenantId(targetTenantId);
                 sysUserRoleMapper.insert(userRole);
             }
 
@@ -249,7 +263,7 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @CacheEvict(value = CacheConstants.USER_DETAILS, key = "#user.userName")
+    @CacheEvict(value = CacheConstants.USER_DETAILS, allEntries = true)
     public int updateUser(SysUser user) {
         Long tenantId = UserContext.getTenantId();
         if (tenantId != null) {
@@ -285,10 +299,12 @@ public class SysUserServiceImpl implements ISysUserService {
     private void insertUserRole(SysUser user) {
         Long[] roleIds = user.getRoleIds();
         if (roleIds != null && roleIds.length > 0) {
+            Long tenantId = user.getTenantId() != null ? user.getTenantId() : UserContext.getTenantId();
             for (Long roleId : roleIds) {
                 SysUserRole ur = new SysUserRole();
                 ur.setUserId(user.getUserId());
                 ur.setRoleId(roleId);
+                ur.setTenantId(tenantId);
                 sysUserRoleMapper.insert(ur);
             }
         }
@@ -332,7 +348,7 @@ public class SysUserServiceImpl implements ISysUserService {
             // 先查出用户名用于清除缓存
             SysUser existingUser = sysUserMapper.selectById(userId);
             if (existingUser != null) {
-                evictUserInfoCache(existingUser.getUserName());
+                evictUserInfoCache(existingUser.getUserName(), existingUser.getTenantId());
                 menuService.evictUserMenuCache(userId);
             }
 
@@ -370,7 +386,7 @@ public class SysUserServiceImpl implements ISysUserService {
         // 清除用户缓存
         SysUser existingUser = sysUserMapper.selectById(userId);
         if (existingUser != null) {
-            evictUserInfoCache(existingUser.getUserName());
+            evictUserInfoCache(existingUser.getUserName(), existingUser.getTenantId());
         }
 
         SysUser user = new SysUser();

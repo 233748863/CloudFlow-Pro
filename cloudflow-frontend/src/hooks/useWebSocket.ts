@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
+import { getAuthToken } from '@/utils/authStorage';
 
 interface WebSocketMessage {
     type: string;
@@ -57,7 +58,7 @@ export const useWebSocket = () => {
         // 组件已卸载，不连接
         if (unmountedRef.current) return;
 
-        const token = localStorage.getItem('token');
+        const token = getAuthToken();
         if (!token || !user) return;
 
         // 关闭已有连接

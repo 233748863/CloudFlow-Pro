@@ -19,6 +19,11 @@ public class SysTenant {
      */
     @TableId(value = "tenant_id", type = IdType.AUTO)
     private Long tenantId;
+
+    /**
+     * 租户编码
+     */
+    private String tenantCode;
     
     /**
      * 租户名称

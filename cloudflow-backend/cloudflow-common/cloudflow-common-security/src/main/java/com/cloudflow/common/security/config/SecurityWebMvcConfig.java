@@ -26,9 +26,13 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
 
     private static final String[] EXCLUDE_PATHS = {
             "/login",
+            "/auth/login",
             "/register",
+            "/auth/register",
+            "/tenant/options",
+            "/auth/tenant/options",
             "/captcha/**",
-            "/actuator/**",
+            "/auth/captcha/**",
             "/doc.html",
             "/webjars/**",
             "/swagger-resources/**",
@@ -87,4 +91,5 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
                 && SecurityConstants.INNER_CALL_VALUE.equals(
                 request.getHeader(SecurityConstants.INNER_CALL_HEADER));
     }
+
 }

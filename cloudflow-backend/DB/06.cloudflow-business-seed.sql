@@ -581,8 +581,8 @@ WHERE tenant_id = 100000;
 -- =========================================================
 
 -- 1. 初始化租户
-INSERT INTO cloud_flow_db.sys_tenant (tenant_id, tenant_name, status, user_limit, storage_limit, storage_used, del_flag, expire_time, create_time) 
-VALUES (100000, '默认租户', '0', 100, 10240, 0, '0', DATE_ADD(NOW(), INTERVAL 1 YEAR), NOW());
+INSERT INTO cloud_flow_db.sys_tenant (tenant_id, tenant_code, tenant_name, status, user_limit, storage_limit, storage_used, del_flag, expire_time, create_time)
+VALUES (100000, 'xinyuan', '默认租户', '0', 100, 10240, 0, '0', DATE_ADD(NOW(), INTERVAL 1 YEAR), NOW());
 
 -- 2. 初始化部门数据
 INSERT INTO cloud_flow_db.sys_dept VALUES(100,  100000, 0,   '0',          'CloudFlow 科技',   0, 'admin', '15888888888', 'admin@cloudflow.com', '0', '0', 'admin', NOW(), '', null);

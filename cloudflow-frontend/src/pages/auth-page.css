@@ -213,6 +213,14 @@
   padding-right: 2.875rem;
 }
 
+.cf-auth-select-trigger {
+  height: 2.875rem;
+  border-radius: 0.9rem;
+  padding-left: 2.75rem;
+  padding-right: 0.95rem;
+  font-size: 0.95rem;
+}
+
 .cf-auth-input-toggle {
   position: absolute;
   inset-block: 0;
@@ -235,6 +243,10 @@
   margin: 0.375rem 0 0;
   font-size: 0.75rem;
   color: #6b7280;
+}
+
+.cf-auth-hint--error {
+  color: #b91c1c;
 }
 
 .cf-auth-error {

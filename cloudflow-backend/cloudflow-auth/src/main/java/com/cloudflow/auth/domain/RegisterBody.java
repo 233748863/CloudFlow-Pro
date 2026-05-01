@@ -5,6 +5,9 @@ import lombok.Data;
 
 @Data
 public class RegisterBody {
+    @NotBlank(message = "租户不能为空")
+    private String tenantCode;
+
     @NotBlank(message = "用户名不能为空")
     private String username;
 

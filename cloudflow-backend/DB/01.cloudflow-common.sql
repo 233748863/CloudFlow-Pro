@@ -22,6 +22,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 DROP TABLE IF EXISTS sys_tenant;
 CREATE TABLE sys_tenant (
   tenant_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '租户ID',
+  tenant_code       VARCHAR(50)     NOT NULL COMMENT '租户编码',
   tenant_name       VARCHAR(50)     NOT NULL COMMENT '租户名称',
   contact_name      VARCHAR(50)     DEFAULT NULL COMMENT '联系人',
   contact_phone     VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
@@ -39,6 +40,7 @@ CREATE TABLE sys_tenant (
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (tenant_id),
+  UNIQUE KEY uk_tenant_code (tenant_code),
   KEY idx_tenant_status (status),
   KEY idx_tenant_del_flag (del_flag)
 ) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4 COMMENT='租户表';

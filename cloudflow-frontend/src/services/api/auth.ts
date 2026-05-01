@@ -74,6 +74,11 @@ export interface LoginResponse {
   expiresIn?: number;
 }
 
+export interface TenantOption {
+  tenantCode: string;
+  tenantName: string;
+}
+
 export interface UserInfo {
   userId: number;
   userName: string;
@@ -89,6 +94,7 @@ export interface UserInfo {
   phone?: string; // 手机号
   status?: string;
   createTime?: string;
+  permissions?: string[];
 }
 
 export interface CaptchaResponse {
@@ -110,6 +116,7 @@ export interface CaptchaCheckRequest {
 }
 
 export interface RegisterData {
+  tenantCode: string;
   username: string;
   password: string;
   confirmPassword: string;
@@ -118,9 +125,18 @@ export interface RegisterData {
   captchaToken?: string; // 验证码通过后的令牌
 }
 
-export const login = async (username: string, password?: string, captchaToken?: string): Promise<LoginResponse> => {
+export const getTenantOptions = (): Promise<TenantOption[]> => {
+  return request.get('/auth/tenant/options');
+};
+
+export const login = async (
+  tenantCode: string,
+  username: string,
+  password?: string,
+  captchaToken?: string,
+): Promise<LoginResponse> => {
   const hashedPassword = password ? await hashPassword(password) : await hashPassword('123456');
-  return request.post('/auth/login', { username, password: hashedPassword, captchaToken });
+  return request.post('/auth/login', { tenantCode, username, password: hashedPassword, captchaToken });
 };
 
 /**
@@ -178,6 +194,7 @@ export const getInfo = async (): Promise<UserInfo> => {
     phone: user.phone || user.phonenumber,
     status: user.status,
     createTime: user.createTime,
+    permissions: Array.isArray(data?.permissions) ? data.permissions : [],
   } as UserInfo;
 }
 

@@ -3,6 +3,7 @@ import type { PageQuery } from './auth';
 
 export interface SysTenant {
   tenantId?: number;
+  tenantCode?: string;
   tenantName: string;
   contactName?: string;
   contactPhone?: string;

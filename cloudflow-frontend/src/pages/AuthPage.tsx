@@ -1,21 +1,24 @@
 import React, { useEffect, useState } from 'react';
-import { Eye, EyeOff, Loader2, Lock, LogIn, Mail, ShieldAlert, UserPlus, Users } from 'lucide-react';
+import { Building2, Eye, EyeOff, Loader2, Lock, LogIn, Mail, ShieldAlert, UserPlus, Users } from 'lucide-react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { AuthCaptchaDialog } from '@/components/auth/AuthExperienceShell';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
-import { login as apiLogin, register as apiRegister } from '@/services/api/auth';
+import { getTenantOptions, login as apiLogin, register as apiRegister, type TenantOption } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import './auth-page.css';
 
 type AuthMode = 'login' | 'register';
 
 type LoginFormState = {
+  tenantCode: string;
   username: string;
   password: string;
 };
 
 type RegisterFormState = {
+  tenantCode: string;
   username: string;
   password: string;
   confirmPassword: string;
@@ -24,6 +27,40 @@ type RegisterFormState = {
 
 const resolveModeByPathname = (pathname: string): AuthMode =>
   pathname === '/register' ? 'register' : 'login';
+
+type TenantSelectProps = {
+  value: string;
+  onChange: (tenantCode: string) => void;
+  disabled: boolean;
+  placeholder: string;
+  options: TenantOption[];
+};
+
+const TenantSelect: React.FC<TenantSelectProps> = ({
+  value,
+  onChange,
+  disabled,
+  placeholder,
+  options,
+}) => (
+  <div className="cf-auth-input-wrap">
+    <Select value={value} onValueChange={onChange} disabled={disabled}>
+      <div className="cf-auth-input-icon">
+        <Building2 size={18} />
+      </div>
+      <SelectTrigger className="cf-auth-select-trigger">
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((tenant) => (
+          <SelectItem key={tenant.tenantCode} value={tenant.tenantCode}>
+            {tenant.tenantName}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
+);
 
 export const AuthPage: React.FC = () => {
   const location = useLocation();
@@ -36,14 +73,19 @@ export const AuthPage: React.FC = () => {
   const [pendingAction, setPendingAction] = useState<AuthMode | null>(null);
   const [loginError, setLoginError] = useState('');
   const [registerError, setRegisterError] = useState('');
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
+  const [tenantLoading, setTenantLoading] = useState(true);
+  const [tenantLoadError, setTenantLoadError] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
   const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [showRegisterConfirmPassword, setShowRegisterConfirmPassword] = useState(false);
   const [loginForm, setLoginForm] = useState<LoginFormState>({
+    tenantCode: '',
     username: '',
     password: '',
   });
   const [registerForm, setRegisterForm] = useState<RegisterFormState>({
+    tenantCode: '',
     username: '',
     password: '',
     confirmPassword: '',
@@ -56,6 +98,42 @@ export const AuthPage: React.FC = () => {
     }
   }, [mode, routeMode]);
 
+  useEffect(() => {
+    let active = true;
+
+    const loadTenants = async () => {
+      setTenantLoading(true);
+      setTenantLoadError('');
+      try {
+        const options = await getTenantOptions();
+        if (!active) {
+          return;
+        }
+        setTenantOptions(options);
+        if (options.length === 1) {
+          const tenantCode = options[0].tenantCode;
+          setLoginForm((prev) => ({ ...prev, tenantCode: prev.tenantCode || tenantCode }));
+          setRegisterForm((prev) => ({ ...prev, tenantCode: prev.tenantCode || tenantCode }));
+        }
+      } catch (error: any) {
+        logger.error('Load tenant options error:', error);
+        if (active) {
+          setTenantLoadError(error.message || '租户列表加载失败');
+        }
+      } finally {
+        if (active) {
+          setTenantLoading(false);
+        }
+      }
+    };
+
+    void loadTenants();
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
   const switchMode = (nextMode: AuthMode) => {
     setLoginError('');
     setRegisterError('');
@@ -66,6 +144,11 @@ export const AuthPage: React.FC = () => {
   const handleLoginSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     setLoginError('');
+
+    if (!loginForm.tenantCode) {
+      setLoginError('请选择租户');
+      return;
+    }
 
     if (!loginForm.username.trim() || !loginForm.password) {
       setLoginError('请输入账号和密码');
@@ -78,6 +161,11 @@ export const AuthPage: React.FC = () => {
   const handleRegisterSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     setRegisterError('');
+
+    if (!registerForm.tenantCode) {
+      setRegisterError('请选择租户');
+      return;
+    }
 
     if (!registerForm.username.trim() || !registerForm.password || !registerForm.confirmPassword) {
       setRegisterError('请完整填写注册信息');
@@ -109,7 +197,7 @@ export const AuthPage: React.FC = () => {
 
     try {
       if (currentIntent === 'login') {
-        const response = await apiLogin(loginForm.username.trim(), loginForm.password, token);
+        const response = await apiLogin(loginForm.tenantCode, loginForm.username.trim(), loginForm.password, token);
         if (response?.token) {
           await login(response.token);
           toast.success('登录成功');
@@ -124,6 +212,7 @@ export const AuthPage: React.FC = () => {
       }
 
       await apiRegister({
+        tenantCode: registerForm.tenantCode,
         username: registerForm.username.trim(),
         password: registerForm.password,
         confirmPassword: registerForm.confirmPassword,
@@ -132,6 +221,7 @@ export const AuthPage: React.FC = () => {
       });
 
       setLoginForm({
+        tenantCode: registerForm.tenantCode,
         username: registerForm.username.trim(),
         password: '',
       });
@@ -162,6 +252,8 @@ export const AuthPage: React.FC = () => {
   const isLogin = mode === 'login';
   const currentError = isLogin ? loginError : registerError;
   const currentYear = new Date().getFullYear();
+  const tenantSelectDisabled = tenantLoading || tenantOptions.length === 0;
+  const tenantPlaceholder = tenantLoading ? '租户加载中' : '请选择租户';
 
   return (
     <>
@@ -194,6 +286,20 @@ export const AuthPage: React.FC = () => {
 
               {isLogin ? (
                 <form onSubmit={handleLoginSubmit} className="cf-auth-form">
+                  <div>
+                    <label className="cf-auth-label">
+                      租户
+                    </label>
+                    <TenantSelect
+                      value={loginForm.tenantCode}
+                      onChange={(tenantCode) => setLoginForm((prev) => ({ ...prev, tenantCode }))}
+                      disabled={tenantSelectDisabled}
+                      placeholder={tenantPlaceholder}
+                      options={tenantOptions}
+                    />
+                    {tenantLoadError ? <p className="cf-auth-hint cf-auth-hint--error">{tenantLoadError}</p> : null}
+                  </div>
+
                   <div>
                     <label htmlFor="auth-login-username" className="cf-auth-label">
                       账号
@@ -275,6 +381,20 @@ export const AuthPage: React.FC = () => {
                 </form>
               ) : (
                 <form onSubmit={handleRegisterSubmit} className="cf-auth-form">
+                  <div>
+                    <label className="cf-auth-label">
+                      租户
+                    </label>
+                    <TenantSelect
+                      value={registerForm.tenantCode}
+                      onChange={(tenantCode) => setRegisterForm((prev) => ({ ...prev, tenantCode }))}
+                      disabled={tenantSelectDisabled}
+                      placeholder={tenantPlaceholder}
+                      options={tenantOptions}
+                    />
+                    {tenantLoadError ? <p className="cf-auth-hint cf-auth-hint--error">{tenantLoadError}</p> : null}
+                  </div>
+
                   <div>
                     <label htmlFor="auth-register-username" className="cf-auth-label">
                       用户名

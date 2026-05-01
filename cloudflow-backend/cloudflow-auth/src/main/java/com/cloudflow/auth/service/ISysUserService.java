@@ -24,9 +24,19 @@ public interface ISysUserService {
     UserInfo findUserInfo(String username);
 
     /**
+     * 获取指定租户内的用户完整信息（含角色+权限），带 Spring Cache 缓存
+     */
+    UserInfo findUserInfo(String username, Long tenantId);
+
+    /**
      * 清除指定用户的信息缓存
      */
     void evictUserInfoCache(String username);
+
+    /**
+     * 清除指定租户内用户的信息缓存
+     */
+    void evictUserInfoCache(String username, Long tenantId);
 
     /**
      * 根据用户ID列表批量查询用户

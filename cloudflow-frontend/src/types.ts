@@ -22,6 +22,7 @@ export interface User {
   status?: string;
   createTime?: string;
   avatar?: string;
+  permissions?: string[];
 }
 
 // --- 动态表单类型 ---
