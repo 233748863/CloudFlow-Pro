@@ -1321,7 +1321,7 @@ const PropertyPanel = ({
                   脚本类型
                 </span>
                 <Select
-                  value={formData.props?.scriptType || "GROOVY"}
+                  value={formData.props?.scriptType || "API"}
                   onValueChange={(v) =>
                     handleChange("props", { ...formData.props, scriptType: v })
                   }
@@ -2658,7 +2658,7 @@ function validateWorkflowGraph(graph: WorkflowGraphDefinition): {
     }
 
     if (nodeType === NodeType.SCRIPT) {
-      const scriptType = props.scriptType;
+      const scriptType = props.scriptType || "API";
       if (scriptType === "API" && !props.apiUrl) {
         pushError(
           '脚本节点"' + nodeTitle + '"选择了 API 调用模式，但未配置 API URL',
@@ -3576,6 +3576,9 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         : {}),
       ...(nodeType === NodeType.MANUAL
         ? { approverType: "ROLE" as const }
+        : {}),
+      ...(nodeType === NodeType.SCRIPT
+        ? { props: { scriptType: "API", apiMethod: "POST" } }
         : {}),
     });
 

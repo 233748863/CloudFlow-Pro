@@ -1387,6 +1387,8 @@ INSERT INTO cloud_flow_db.sys_config VALUES(47, 100000, '分布式锁-死锁检�
 
 INSERT INTO cloud_flow_db.sys_config VALUES(48, 100000, '分布式锁-死锁牺牲记录上限',     'sys.workflow.lock.maxVictimRecords',     '100',      'Y', '0', 'admin', NOW(), '', null, '死锁牺牲记录最大保留数量');
 
+INSERT INTO cloud_flow_db.sys_config VALUES(91, 100000, '工作流-是否启用进程内脚本',     'sys.workflow.script.enabled', 'false', 'Y', '0', 'admin', NOW(), '', null, '是否允许工作流服务进程内执行 Groovy/JavaScript 脚本，生产环境默认关闭');
+
 -- SSE实时推送配置（全局）
 INSERT INTO cloud_flow_db.sys_config VALUES(49, 100000, 'SSE-连接超时时间(毫秒)',        'sys.sse.timeout',               '0',        'Y', '0', 'admin', NOW(), '', null, 'SSE连接超时时间，0表示永不超时');
 

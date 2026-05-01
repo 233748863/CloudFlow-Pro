@@ -15,7 +15,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * R.5: 流程引擎健康检查服务
@@ -95,8 +99,30 @@ public class WorkflowHealthCheckServiceImpl implements IWorkflowHealthCheckServi
 
         // 5. 检测僵尸实例（RUNNING 但无活动任务）
         try {
-            // 简单检查：统计 RUNNING 状态但无任务的实例数
-            Long zombieCount = 0L;
+            List<String> runningInstanceIds = processInstanceMapper.selectList(
+                    new LambdaQueryWrapper<WfProcessInstance>()
+                            .select(WfProcessInstance::getInstanceId)
+                            .eq(WfProcessInstance::getStatus, "RUNNING")
+            ).stream()
+                    .map(WfProcessInstance::getInstanceId)
+                    .collect(Collectors.toList());
+
+            long zombieCount = 0L;
+            if (!runningInstanceIds.isEmpty()) {
+                Set<String> activeInstanceIds = new HashSet<>(taskMapper.selectList(
+                        new LambdaQueryWrapper<WfTask>()
+                                .select(WfTask::getInstanceId)
+                                .in(WfTask::getInstanceId, runningInstanceIds)
+                                .eq(WfTask::getStatus, "TODO")
+                ).stream()
+                        .map(WfTask::getInstanceId)
+                        .distinct()
+                        .collect(Collectors.toList()));
+                zombieCount = runningInstanceIds.stream()
+                        .filter(instanceId -> !activeInstanceIds.contains(instanceId))
+                        .count();
+            }
+
             health.put("zombieInstances", zombieCount);
         } catch (Exception e) {
             log.warn("[performHealthCheck] 僵尸实例检测失败: {}", e.getMessage());

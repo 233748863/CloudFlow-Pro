@@ -680,6 +680,164 @@ CREATE TABLE workflow_archive (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='workflow_archive';
 
 --
+DROP TABLE IF EXISTS wf_process_monitor;
+CREATE TABLE wf_process_monitor (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    tenant_id BIGINT COMMENT 'tenant_id',
+    instance_id VARCHAR(64) NOT NULL COMMENT 'instance_id',
+    process_def_id VARCHAR(64) COMMENT 'process_def_id',
+    process_def_key VARCHAR(100) NOT NULL COMMENT 'process_def_key',
+    process_def_name VARCHAR(200) COMMENT 'process_def_name',
+    business_key VARCHAR(100) COMMENT 'business_key',
+    status VARCHAR(30) NOT NULL DEFAULT 'RUNNING' COMMENT 'status',
+    start_time DATETIME NOT NULL COMMENT 'start_time',
+    end_time DATETIME COMMENT 'end_time',
+    duration BIGINT COMMENT 'duration_ms',
+    node_count INT NOT NULL DEFAULT 0 COMMENT 'node_count',
+    task_count INT NOT NULL DEFAULT 0 COMMENT 'task_count',
+    start_user_id BIGINT COMMENT 'start_user_id',
+    start_user_name VARCHAR(100) COMMENT 'start_user_name',
+    error_message TEXT COMMENT 'error_message',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create_time',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update_time',
+    UNIQUE KEY uk_instance_id (instance_id),
+    INDEX idx_tenant_status (tenant_id, status),
+    INDEX idx_process_def_key (tenant_id, process_def_key),
+    INDEX idx_start_time (start_time),
+    INDEX idx_business_key (business_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_process_monitor';
+
+--
+DROP TABLE IF EXISTS wf_task_monitor;
+CREATE TABLE wf_task_monitor (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    tenant_id BIGINT COMMENT 'tenant_id',
+    task_id VARCHAR(64) NOT NULL COMMENT 'task_id',
+    instance_id VARCHAR(64) NOT NULL COMMENT 'instance_id',
+    node_key VARCHAR(100) COMMENT 'node_key',
+    task_name VARCHAR(200) COMMENT 'task_name',
+    assignee_id BIGINT COMMENT 'assignee_id',
+    assignee_name VARCHAR(100) COMMENT 'assignee_name',
+    create_time_task DATETIME NOT NULL COMMENT 'create_time_task',
+    claim_time DATETIME COMMENT 'claim_time',
+    complete_time DATETIME COMMENT 'complete_time',
+    wait_duration BIGINT COMMENT 'wait_duration_ms',
+    handle_duration BIGINT COMMENT 'handle_duration_ms',
+    total_duration BIGINT COMMENT 'total_duration_ms',
+    status VARCHAR(30) NOT NULL DEFAULT 'PENDING' COMMENT 'status',
+    action VARCHAR(30) COMMENT 'action',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create_time',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update_time',
+    UNIQUE KEY uk_task_id (task_id),
+    INDEX idx_instance_id (instance_id),
+    INDEX idx_assignee_status (tenant_id, assignee_id, status),
+    INDEX idx_create_time_task (create_time_task)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_task_monitor';
+
+--
+DROP TABLE IF EXISTS wf_node_monitor;
+CREATE TABLE wf_node_monitor (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    tenant_id BIGINT COMMENT 'tenant_id',
+    instance_id VARCHAR(64) NOT NULL COMMENT 'instance_id',
+    node_id VARCHAR(100) COMMENT 'node_id',
+    node_key VARCHAR(100) COMMENT 'node_key',
+    node_name VARCHAR(200) COMMENT 'node_name',
+    node_type VARCHAR(50) COMMENT 'node_type',
+    start_time DATETIME NOT NULL COMMENT 'start_time',
+    end_time DATETIME COMMENT 'end_time',
+    duration BIGINT COMMENT 'duration_ms',
+    status VARCHAR(30) NOT NULL DEFAULT 'RUNNING' COMMENT 'status',
+    error_message TEXT COMMENT 'error_message',
+    retry_count INT NOT NULL DEFAULT 0 COMMENT 'retry_count',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create_time',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update_time',
+    INDEX idx_instance_id (instance_id),
+    INDEX idx_node_key (tenant_id, node_key),
+    INDEX idx_status (tenant_id, status),
+    INDEX idx_start_time (start_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_node_monitor';
+
+--
+DROP TABLE IF EXISTS wf_timeout_alert;
+CREATE TABLE wf_timeout_alert (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    tenant_id BIGINT COMMENT 'tenant_id',
+    alert_type VARCHAR(30) NOT NULL COMMENT 'alert_type',
+    target_id VARCHAR(64) NOT NULL COMMENT 'target_id',
+    target_name VARCHAR(200) COMMENT 'target_name',
+    timeout_level VARCHAR(30) NOT NULL COMMENT 'timeout_level',
+    timeout_duration BIGINT COMMENT 'timeout_duration_ms',
+    threshold BIGINT COMMENT 'threshold_ms',
+    assignee_id BIGINT COMMENT 'assignee_id',
+    assignee_name VARCHAR(100) COMMENT 'assignee_name',
+    alert_time DATETIME NOT NULL COMMENT 'alert_time',
+    notification_sent CHAR(1) NOT NULL DEFAULT 'N' COMMENT 'notification_sent',
+    escalated CHAR(1) NOT NULL DEFAULT 'N' COMMENT 'escalated',
+    resolved CHAR(1) NOT NULL DEFAULT 'N' COMMENT 'resolved',
+    resolve_time DATETIME COMMENT 'resolve_time',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create_time',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update_time',
+    INDEX idx_tenant_level (tenant_id, timeout_level),
+    INDEX idx_target (alert_type, target_id),
+    INDEX idx_resolved (tenant_id, resolved),
+    INDEX idx_alert_time (alert_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_timeout_alert';
+
+--
+DROP TABLE IF EXISTS wf_anomaly_alert;
+CREATE TABLE wf_anomaly_alert (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    tenant_id BIGINT COMMENT 'tenant_id',
+    instance_id VARCHAR(64) COMMENT 'instance_id',
+    task_id VARCHAR(64) COMMENT 'task_id',
+    process_def_key VARCHAR(100) COMMENT 'process_def_key',
+    process_def_name VARCHAR(200) COMMENT 'process_def_name',
+    node_key VARCHAR(100) COMMENT 'node_key',
+    node_name VARCHAR(200) COMMENT 'node_name',
+    anomaly_type VARCHAR(50) NOT NULL COMMENT 'anomaly_type',
+    severity VARCHAR(30) NOT NULL COMMENT 'severity',
+    error_message TEXT COMMENT 'error_message',
+    stack_trace MEDIUMTEXT COMMENT 'stack_trace',
+    resolved CHAR(1) NOT NULL DEFAULT 'N' COMMENT 'resolved',
+    resolve_note TEXT COMMENT 'resolve_note',
+    alert_time DATETIME NOT NULL COMMENT 'alert_time',
+    resolve_time DATETIME COMMENT 'resolve_time',
+    notification_sent CHAR(1) NOT NULL DEFAULT 'N' COMMENT 'notification_sent',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create_time',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update_time',
+    INDEX idx_tenant_resolved (tenant_id, resolved),
+    INDEX idx_instance_id (instance_id),
+    INDEX idx_process_def_key (tenant_id, process_def_key),
+    INDEX idx_anomaly_type (tenant_id, anomaly_type),
+    INDEX idx_severity (tenant_id, severity),
+    INDEX idx_alert_time (alert_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_anomaly_alert';
+
+--
+DROP TABLE IF EXISTS wf_performance_stats;
+CREATE TABLE wf_performance_stats (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT 'id',
+    tenant_id BIGINT COMMENT 'tenant_id',
+    stat_date DATE NOT NULL COMMENT 'stat_date',
+    process_def_key VARCHAR(100) NOT NULL COMMENT 'process_def_key',
+    process_def_name VARCHAR(200) COMMENT 'process_def_name',
+    total_count INT NOT NULL DEFAULT 0 COMMENT 'total_count',
+    completed_count INT NOT NULL DEFAULT 0 COMMENT 'completed_count',
+    failed_count INT NOT NULL DEFAULT 0 COMMENT 'failed_count',
+    timeout_count INT NOT NULL DEFAULT 0 COMMENT 'timeout_count',
+    anomaly_count INT NOT NULL DEFAULT 0 COMMENT 'anomaly_count',
+    avg_duration BIGINT NOT NULL DEFAULT 0 COMMENT 'avg_duration_ms',
+    min_duration BIGINT NOT NULL DEFAULT 0 COMMENT 'min_duration_ms',
+    max_duration BIGINT NOT NULL DEFAULT 0 COMMENT 'max_duration_ms',
+    create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT 'create_time',
+    update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT 'update_time',
+    UNIQUE KEY uk_tenant_date_process (tenant_id, stat_date, process_def_key),
+    INDEX idx_stat_date (stat_date),
+    INDEX idx_process_def_key (process_def_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='wf_performance_stats';
+
+--
 --
 --
 --

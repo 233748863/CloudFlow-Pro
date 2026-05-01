@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.NodeMonitorMapper">
+
+    <resultMap id="NodeMonitorResult" type="com.cloudflow.workflow.domain.monitor.NodeMonitor">
+        <id property="id" column="id"/>
+        <result property="tenantId" column="tenant_id"/>
+        <result property="instanceId" column="instance_id"/>
+        <result property="nodeId" column="node_id"/>
+        <result property="nodeKey" column="node_key"/>
+        <result property="nodeName" column="node_name"/>
+        <result property="nodeType" column="node_type"/>
+        <result property="startTime" column="start_time"/>
+        <result property="endTime" column="end_time"/>
+        <result property="duration" column="duration"/>
+        <result property="status" column="status"/>
+        <result property="errorMessage" column="error_message"/>
+        <result property="retryCount" column="retry_count"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <sql id="NodeMonitorColumns">
+        id,
+        tenant_id,
+        instance_id,
+        node_id,
+        node_key,
+        node_name,
+        node_type,
+        start_time,
+        end_time,
+        duration,
+        status,
+        error_message,
+        retry_count,
+        create_time,
+        update_time
+    </sql>
+
+    <select id="selectByInstanceId" resultMap="NodeMonitorResult">
+        SELECT <include refid="NodeMonitorColumns"/>
+        FROM wf_node_monitor
+        WHERE instance_id = #{instanceId}
+        ORDER BY start_time ASC, id ASC
+    </select>
+
+    <select id="selectRunningNodes" resultMap="NodeMonitorResult">
+        SELECT <include refid="NodeMonitorColumns"/>
+        FROM wf_node_monitor
+        WHERE tenant_id = #{tenantId}
+          AND status = 'RUNNING'
+        ORDER BY start_time DESC
+    </select>
+
+    <select id="selectFailedNodes" resultMap="NodeMonitorResult">
+        SELECT <include refid="NodeMonitorColumns"/>
+        FROM wf_node_monitor
+        WHERE tenant_id = #{tenantId}
+          AND status = 'FAILED'
+        ORDER BY update_time DESC, start_time DESC
+        <if test="limit != null">
+            LIMIT #{limit}
+        </if>
+    </select>
+
+    <select id="selectNodeStatistics" resultMap="NodeMonitorResult">
+        SELECT
+            MIN(id) AS id,
+            tenant_id,
+            node_key,
+            COUNT(*) AS retry_count,
+            AVG(duration) AS duration,
+            MAX(update_time) AS update_time
+        FROM wf_node_monitor
+        WHERE tenant_id = #{tenantId}
+          AND node_key = #{nodeKey}
+        GROUP BY tenant_id, node_key
+    </select>
+
+</mapper>
