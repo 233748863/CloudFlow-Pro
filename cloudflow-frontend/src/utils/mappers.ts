@@ -17,6 +17,7 @@ interface BackendTask {
   instanceId?: string;
   processDefKey?: string;
   processName?: string;
+  instanceTitle?: string;
   nodeName?: string;
   startUserId?: string;
   startUserName?: string;
@@ -95,7 +96,7 @@ export const mapBackendTaskToFrontend = (t: BackendTask): Task => ({
   id: t.taskId,
   processInstanceId: t.instanceId || '',
   workflowId: t.processDefKey || '',
-  workflowName: t.processName || t.processDefKey || '未命名流程',
+  workflowName: t.instanceTitle || t.processName || t.processDefKey || '未命名流程',
   nodeName: t.nodeName || '-',
   applicantId: t.startUserId ? String(t.startUserId) : '',
   applicantName: t.startUserName || 'Unknown',

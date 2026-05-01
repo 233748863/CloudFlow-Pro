@@ -52,7 +52,15 @@ const STATUS_LABELS: Record<string, string> = {
   PARTIAL_RECEIVED: '部分入库',
   RECEIVED: '已入库',
   REJECTED: '已驳回',
-  PAYMENT_CREATED: '已生成付款',
+};
+
+const PAYMENT_STATUS_LABELS: Record<string, string> = {
+  NONE: '未生成',
+  DRAFT: '付款草稿',
+  PENDING: '付款审批中',
+  APPROVED: '付款已通过',
+  REJECTED: '付款驳回',
+  PAID: '已付款',
 };
 
 interface ConfirmState {
@@ -96,11 +104,27 @@ const getStatusBadge = (status?: string) => {
     PARTIAL_RECEIVED: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
     RECEIVED: 'border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-200',
     REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    PAYMENT_CREATED: 'border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
   };
   return (
     <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
       {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
+    </span>
+  );
+};
+
+const getPaymentStatusBadge = (status?: string) => {
+  const toneMap: Record<string, string> = {
+    NONE: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    DRAFT: 'border border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
+    PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+    APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+    PAID: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+  };
+  const value = status || 'NONE';
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[value] || toneMap.NONE}`}>
+      {PAYMENT_STATUS_LABELS[value] || value}
     </span>
   );
 };
@@ -184,7 +208,7 @@ export const PurchaseRequestPage: React.FC = () => {
   );
   const pendingCount = useMemo(() => purchases.filter((item) => item.status === 'PENDING').length, [purchases]);
   const canProcess = (status?: string) =>
-    ['APPROVED', 'PARTIAL_RECEIVED', 'PAYMENT_CREATED'].includes(status || '');
+    ['APPROVED', 'PARTIAL_RECEIVED'].includes(status || '');
 
   const resetFilters = () => {
     setSearchParams({ status: '', supplierId: undefined, pageNum: 1, pageSize: 10 });
@@ -425,14 +449,15 @@ export const PurchaseRequestPage: React.FC = () => {
                     <TableHead className="px-4 py-3 text-left">金额 / 到货</TableHead>
                     <TableHead className="px-4 py-3 text-left">事由</TableHead>
                     <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                    <TableHead className="px-4 py-3 text-left">付款</TableHead>
                     <TableActionHead className="w-48 px-4 py-3 text-right">操作</TableActionHead>
                   </tr>
                 </TableHeader>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {loading ? (
-                    <tr><td colSpan={7} className="px-4 py-16 text-center text-sm text-slate-500">正在加载采购申请...</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-500">正在加载采购申请...</td></tr>
                   ) : purchases.length === 0 ? (
-                    <tr><td colSpan={7} className="px-4 py-16 text-center text-sm text-slate-500">暂无采购申请</td></tr>
+                    <tr><td colSpan={8} className="px-4 py-16 text-center text-sm text-slate-500">暂无采购申请</td></tr>
                   ) : purchases.map((item) => (
                     <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                       <td className="px-4 py-3">
@@ -453,6 +478,7 @@ export const PurchaseRequestPage: React.FC = () => {
                       </td>
                       <td className="max-w-xs truncate px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.reason || '-'}</td>
                       <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
+                      <td className="px-4 py-3">{getPaymentStatusBadge(item.paymentStatus)}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
@@ -631,6 +657,7 @@ export const PurchaseRequestPage: React.FC = () => {
               <DetailRow label="总金额" value={formatAmount(detailPurchase.totalAmount)} />
               <DetailRow label="期望到货日期" value={renderDetailValue(detailPurchase.expectedDate)} />
               <DetailRow label="付款申请" value={detailPurchase.paymentRequestId ? `#${detailPurchase.paymentRequestId}` : '-'} />
+              <DetailRow label="付款状态" value={getPaymentStatusBadge(detailPurchase.paymentStatus)} />
               <DetailRow label="申请人" value={renderDetailValue(detailPurchase.userName)} />
               <DetailRow label="所属部门" value={renderDetailValue(detailPurchase.deptName)} />
               <DetailRow label="流程实例" value={renderDetailValue(detailPurchase.instanceId)} />

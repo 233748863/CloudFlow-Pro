@@ -79,6 +79,16 @@ public class WorkflowController {
         Long userId = UserContext.getUserId();
         return R.ok(taskService.getTodoTasks(userId, pageQuery));
     }
+
+    /**
+     * 查询我的已办
+     */
+    @GetMapping("/done")
+    @SaCheckLogin
+    public R<PageResult<WfTask>> getDoneTasks(@ModelAttribute PageQuery pageQuery) {
+        Long userId = UserContext.getUserId();
+        return R.ok(taskService.getDoneTasks(userId, pageQuery));
+    }
     
     /**
      * 查询我的申请

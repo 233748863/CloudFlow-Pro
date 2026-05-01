@@ -33,6 +33,7 @@ import { TaskList } from '../components/TaskList';
 import {
   getFormDefinition,
   getFormDefinitions,
+  getDoneTasks,
   getMyInstances,
   getProcessDefinitions,
   getTodoTasks,
@@ -50,6 +51,7 @@ const PAGE_SIZE = 12;
 
 type ProcessOption = { key: string; name: string };
 type TaskListPageMode = 'pending' | 'applications';
+type ApprovalCenterMode = TaskListPageMode | 'done';
 type FilterType = 'all' | 'process' | 'work';
 type ViewMode = 'list' | 'board';
 type ApplicationStatus = 'ALL' | 'RUNNING' | 'COMPLETED' | 'REJECTED' | 'REVOKED';
@@ -95,6 +97,12 @@ const filterTypeTabs: Array<{ key: FilterType; label: string }> = [
   { key: 'all', label: '全部任务' },
   { key: 'process', label: '流程审批' },
   { key: 'work', label: '协作待办' },
+];
+
+const centerModeTabs: Array<{ key: ApprovalCenterMode; label: string }> = [
+  { key: 'pending', label: '待办' },
+  { key: 'done', label: '已办' },
+  { key: 'applications', label: '我的申请' },
 ];
 
 const buildProcessOptions = (source: any[]): ProcessOption[] => {
@@ -208,6 +216,7 @@ const TaskCompactWorkCard = ({
 export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
   const { user } = useAuth();
 
+  const [centerMode, setCenterMode] = useState<ApprovalCenterMode>(type);
   const [tasks, setTasks] = useState<UnifiedTask[]>([]);
   const [rawTasks, setRawTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -244,6 +253,11 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
+  useEffect(() => {
+    setCenterMode(type);
+    setPageNum(1);
+  }, [type]);
+
   const fetchTasks = useCallback(
     async (showLoading = true) => {
       if (!user) return;
@@ -255,7 +269,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
         let processTasks: Task[] = [];
         let workTaskRes: any[] = [];
 
-        if (type === 'applications') {
+        if (centerMode === 'applications') {
           const res = await getMyInstances({
             pageNum,
             pageSize: PAGE_SIZE,
@@ -282,6 +296,32 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
           processTasks = records.map(mapBackendInstanceToTask);
           setTotal(totalCount);
+        } else if (centerMode === 'done') {
+          const doneRes = await getDoneTasks({
+            pageNum,
+            pageSize: PAGE_SIZE,
+            keyword: todoKeyword || undefined,
+            processDefKey: todoProcessDefKey || undefined,
+            startTimeFrom: todoStartTimeFrom || undefined,
+            startTimeTo: todoStartTimeTo || undefined,
+            startUserName: todoStartUserName || undefined,
+          });
+
+          let records: any[] = [];
+          let totalCount = 0;
+
+          if (doneRes && typeof doneRes === 'object') {
+            records = doneRes.records || doneRes.rows || [];
+            totalCount = doneRes.total || 0;
+          }
+
+          if (Array.isArray(doneRes)) {
+            records = doneRes;
+            totalCount = doneRes.length;
+          }
+
+          processTasks = records.map(mapBackendTaskToFrontend);
+          setTotal(totalCount || records.length);
         } else {
           const todoParams: Record<string, string> = {};
           if (todoKeyword) todoParams.keyword = todoKeyword;
@@ -308,7 +348,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
         }
 
         const filteredProcessTasks = processTasks.filter((task) => {
-          if (type === 'pending') {
+          if (centerMode === 'pending') {
             return (
               task.status === TaskStatus.PENDING &&
               (task.assigneeId === user.id || (task.assigneeRole === user.role && !task.assigneeId))
@@ -351,6 +391,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
       todoStartTimeFrom,
       todoStartTimeTo,
       todoStartUserName,
+      centerMode,
       type,
       user,
     ],
@@ -373,11 +414,8 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
         if (!Array.isArray(res)) return;
 
         const options = buildProcessOptions(res);
-        if (type === 'applications') {
-          setProcessDefOptions(options);
-        } else {
-          setTodoProcessDefOptions(options);
-        }
+        setProcessDefOptions(options);
+        setTodoProcessDefOptions(options);
       })
       .catch((processDefError) => {
         console.error('Failed to fetch process definitions:', processDefError);
@@ -386,7 +424,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
           hasShownProcessDefLoadWarningRef.current = true;
         }
       });
-  }, [type]);
+  }, []);
 
   useEffect(() => {
     if (!user || user.role !== Role.ADMIN) {
@@ -490,6 +528,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
   const handleTodoProcessDefKeyChange = (key: string) => {
     setTodoProcessDefKey(key === 'ALL_TYPES' ? '' : key);
+    setPageNum(1);
   };
 
   const handleTimeRangeChange = (from: string, to: string) => {
@@ -516,6 +555,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
     setTodoStartTimeFrom('');
     setTodoStartTimeTo('');
     setTodoStartUserName('');
+    setPageNum(1);
   };
 
   const handleSearch = () => {
@@ -531,6 +571,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
   const handleTodoSearch = () => {
     setTodoKeyword(todoSearchInput);
+    setPageNum(1);
   };
 
   const handleTodoSearchKeyDown = (event: React.KeyboardEvent) => {
@@ -563,13 +604,14 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
     if (filterType === 'work') return task.type === 'WORK';
     return true;
   });
-  const visibleProcessTasks = type === 'pending' ? (filterType === 'work' ? [] : processTasks) : processTasks;
+  const visibleProcessTasks =
+    centerMode === 'pending' ? (filterType === 'work' ? [] : processTasks) : processTasks;
   const visibleWorkTasks =
-    type === 'pending' && filterType !== 'process'
+    centerMode === 'pending' && filterType !== 'process'
       ? filteredUnifiedTasks.filter((task) => task.type === 'WORK')
       : [];
   const visibleTotalCount =
-    type === 'applications' ? visibleProcessTasks.length : visibleProcessTasks.length + visibleWorkTasks.length;
+    centerMode === 'pending' ? visibleProcessTasks.length + visibleWorkTasks.length : visibleProcessTasks.length;
   const hasActiveFilters =
     statusFilter !== 'ALL' ||
     Boolean(keyword) ||
@@ -583,7 +625,8 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
     Boolean(todoStartTimeFrom) ||
     Boolean(todoStartTimeTo) ||
     Boolean(todoStartUserName);
-  const currentViewLabel = type === 'pending' ? (viewMode === 'list' ? '列表视图' : '看板视图') : '申请列表';
+  const currentViewLabel =
+    centerMode === 'pending' ? (viewMode === 'list' ? '列表视图' : '看板视图') : '列表视图';
   const currentTypeLabel =
     filterType === 'process' ? '流程审批' : filterType === 'work' ? '协作待办' : '全部任务';
   const currentStatusLabel =
@@ -602,22 +645,24 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
     processDefOptions.find((item) => item.key === processDefKey)?.name || '全部流程';
 
   const activeFilterBadges = [
-    type === 'pending' && todoKeyword ? `关键词：${todoKeyword}` : null,
-    type === 'pending' && todoStartUserName ? `申请人：${todoStartUserName}` : null,
-    type === 'pending' && todoProcessDefKey ? `流程：${currentPendingProcessLabel}` : null,
-    type === 'pending' && (todoStartTimeFrom || todoStartTimeTo)
+    centerMode !== 'applications' && todoKeyword ? `关键词：${todoKeyword}` : null,
+    centerMode !== 'applications' && todoStartUserName ? `申请人：${todoStartUserName}` : null,
+    centerMode !== 'applications' && todoProcessDefKey ? `流程：${currentPendingProcessLabel}` : null,
+    centerMode !== 'applications' && (todoStartTimeFrom || todoStartTimeTo)
       ? `时间：${todoStartTimeFrom || '开始'} - ${todoStartTimeTo || '结束'}`
       : null,
-    type === 'applications' && keyword ? `关键词：${keyword}` : null,
-    type === 'applications' && statusFilter !== 'ALL' ? `状态：${currentStatusLabel}` : null,
-    type === 'applications' && processDefKey ? `流程：${currentApplicationProcessLabel}` : null,
-    type === 'applications' && priorityFilter ? `优先级：${priorityFilter}` : null,
-    type === 'applications' && (startTimeFrom || startTimeTo)
+    centerMode === 'applications' && keyword ? `关键词：${keyword}` : null,
+    centerMode === 'applications' && statusFilter !== 'ALL' ? `状态：${currentStatusLabel}` : null,
+    centerMode === 'applications' && processDefKey ? `流程：${currentApplicationProcessLabel}` : null,
+    centerMode === 'applications' && priorityFilter ? `优先级：${priorityFilter}` : null,
+    centerMode === 'applications' && (startTimeFrom || startTimeTo)
       ? `时间：${startTimeFrom || '开始'} - ${startTimeTo || '结束'}`
       : null,
   ].filter((item): item is string => Boolean(item));
-  const pageTitle = type === 'pending' ? '审批待办' : '我的申请';
-  const resultTitle = type === 'pending' ? '当前待办内容' : '当前申请记录';
+  const pageTitle =
+    centerMode === 'pending' ? '审批待办' : centerMode === 'done' ? '我的已办' : '我的申请';
+  const resultTitle =
+    centerMode === 'pending' ? '当前待办内容' : centerMode === 'done' ? '当前已办记录' : '当前申请记录';
 
   if (!user) {
     return null;
@@ -667,17 +712,14 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
             <div className="flex flex-col gap-3">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
                 <SegmentedControl className="min-h-10 flex-wrap">
-                  {(type === 'pending' ? filterTypeTabs : statusTabs).map((tab) => (
+                  {centerModeTabs.map((tab) => (
                     <SegmentedControlItem
                       key={tab.key}
                       size="sm"
-                      active={type === 'pending' ? filterType === tab.key : statusFilter === tab.key}
+                      active={centerMode === tab.key}
                       onClick={() => {
-                        if (type === 'pending') {
-                          setFilterType(tab.key as FilterType);
-                        } else {
-                          handleStatusChange(tab.key as ApplicationStatus);
-                        }
+                        setCenterMode(tab.key);
+                        setPageNum(1);
                       }}
                     >
                       {tab.label}
@@ -686,7 +728,35 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
                 </SegmentedControl>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  {type === 'pending' ? (
+                  {centerMode === 'pending' ? (
+                    <SegmentedControl className="min-h-10 flex-wrap">
+                      {filterTypeTabs.map((tab) => (
+                        <SegmentedControlItem
+                          key={tab.key}
+                          size="sm"
+                          active={filterType === tab.key}
+                          onClick={() => setFilterType(tab.key)}
+                        >
+                          {tab.label}
+                        </SegmentedControlItem>
+                      ))}
+                    </SegmentedControl>
+                  ) : null}
+                  {centerMode === 'applications' ? (
+                    <SegmentedControl className="min-h-10 flex-wrap">
+                      {statusTabs.map((tab) => (
+                        <SegmentedControlItem
+                          key={tab.key}
+                          size="sm"
+                          active={statusFilter === tab.key}
+                          onClick={() => handleStatusChange(tab.key)}
+                        >
+                          {tab.label}
+                        </SegmentedControlItem>
+                      ))}
+                    </SegmentedControl>
+                  ) : null}
+                  {centerMode === 'pending' ? (
                     <SegmentedControl className="min-h-10">
                       <SegmentedControlItem size="sm" active={viewMode === 'list'} onClick={() => setViewMode('list')}>
                         <LayoutList size={16} />
@@ -705,7 +775,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
                 </div>
               </div>
 
-              {type === 'pending' ? (
+              {centerMode !== 'applications' ? (
                 <div className="grid gap-3 xl:grid-cols-[minmax(0,1.4fr)_minmax(220px,1fr)_minmax(180px,0.8fr)_minmax(0,1.05fr)]">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -828,15 +898,15 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
                   ))}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button size="sm" onClick={type === 'pending' ? handleTodoSearch : handleSearch}>
+                  <Button size="sm" onClick={centerMode !== 'applications' ? handleTodoSearch : handleSearch}>
                     <Search size={16} />
                     应用筛选
                   </Button>
-                  {(type === 'pending' ? hasTodoActiveFilters : hasActiveFilters) ? (
+                  {(centerMode !== 'applications' ? hasTodoActiveFilters : hasActiveFilters) ? (
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={type === 'pending' ? handleClearTodoFilters : handleClearFilters}
+                      onClick={centerMode !== 'applications' ? handleClearTodoFilters : handleClearFilters}
                     >
                       <X size={16} />
                       清空
@@ -855,20 +925,26 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
                   {resultTitle}
                 </div>
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {type === 'pending' ? `共 ${visibleTotalCount} 条` : `共 ${total} 条`}
+                  {centerMode === 'pending' ? `共 ${visibleTotalCount} 条` : `共 ${total} 条`}
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <TaskFilterBadge>{type === 'pending' ? currentTypeLabel : currentStatusLabel}</TaskFilterBadge>
-                {type === 'pending' ? <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge> : null}
-                {type === 'applications' && processDefKey ? (
+                <TaskFilterBadge>
+                  {centerMode === 'pending'
+                    ? currentTypeLabel
+                    : centerMode === 'done'
+                      ? currentPendingProcessLabel
+                      : currentStatusLabel}
+                </TaskFilterBadge>
+                {centerMode === 'pending' ? <TaskFilterBadge>{currentViewLabel}</TaskFilterBadge> : null}
+                {centerMode === 'applications' && processDefKey ? (
                   <TaskFilterBadge>{currentApplicationProcessLabel}</TaskFilterBadge>
                 ) : null}
               </div>
             </div>
 
             <div className="px-4 py-4">
-              {viewMode === 'board' && type === 'pending' ? (
+              {viewMode === 'board' && centerMode === 'pending' ? (
                 filteredUnifiedTasks.length > 0 ? (
                   <TaskBoard
                     tasks={filteredUnifiedTasks}
@@ -890,7 +966,11 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
                 )
               ) : visibleTotalCount === 0 ? (
                 <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-dashed border-slate-200 bg-slate-50 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/40 dark:text-slate-400">
-                  {type === 'pending' ? '当前筛选条件下暂无待处理任务' : '当前筛选条件下暂无申请记录'}
+                  {centerMode === 'pending'
+                    ? '当前筛选条件下暂无待处理任务'
+                    : centerMode === 'done'
+                      ? '当前筛选条件下暂无已办记录'
+                      : '当前筛选条件下暂无申请记录'}
                 </div>
               ) : (
                 <div className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -902,13 +982,13 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
                             流程审批
                           </div>
                           <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                            {type === 'applications'
+                            {centerMode !== 'pending'
                               ? `当前页 ${visibleProcessTasks.length} 条，总计 ${total} 条`
                               : `当前筛选下 ${visibleProcessTasks.length} 条流程待办`}
                           </div>
                         </div>
                         <TaskFilterBadge>
-                          {type === 'applications' ? currentStatusLabel : currentPendingProcessLabel}
+                          {centerMode === 'applications' ? currentStatusLabel : currentPendingProcessLabel}
                         </TaskFilterBadge>
                       </div>
 
@@ -918,7 +998,8 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
                           setSelectedTask(task);
                           setIsModalOpen(true);
                         }}
-                        showRecallButton={type === 'applications'}
+                        showRecallButton={centerMode === 'applications'}
+                        primaryActionLabel={centerMode === 'pending' ? '处理' : '详情'}
                         onRecallSuccess={() => void fetchTasks(false)}
                       />
                     </section>
@@ -955,7 +1036,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
           </div>
         )}
         pagination={
-          type === 'applications' && total > PAGE_SIZE ? (
+          centerMode !== 'pending' && total > PAGE_SIZE ? (
             <Pagination
               total={total}
               page={pageNum}
@@ -974,7 +1055,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
         currentUser={user}
         onClose={() => setIsModalOpen(false)}
         onComplete={handleTaskUpdate}
-        viewOnly={type === 'applications'}
+        viewOnly={centerMode !== 'pending'}
       />
     </div>
   );

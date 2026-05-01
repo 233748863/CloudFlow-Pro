@@ -49,6 +49,15 @@ public interface IWfTaskService {
     PageResult<WfTask> getTodoTasks(Long userId, PageQuery pageQuery);
 
     /**
+     * 查询已办任务（分页）。
+     *
+     * @param userId    用户ID
+     * @param pageQuery 分页参数
+     * @return 任务列表
+     */
+    PageResult<WfTask> getDoneTasks(Long userId, PageQuery pageQuery);
+
+    /**
      * 标记任务为已读
      *
      * @param taskId 任务ID

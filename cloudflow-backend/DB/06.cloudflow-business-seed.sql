@@ -32,9 +32,10 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 100 AND 211
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
-   OR menu_id BETWEEN 500 AND 509
+   OR menu_id BETWEEN 500 AND 512
    OR menu_id BETWEEN 600 AND 617
-   OR menu_id BETWEEN 700 AND 739;
+   OR menu_id BETWEEN 700 AND 739
+   OR menu_id BETWEEN 212 AND 213;
 
 DELETE FROM cloud_flow_db.sys_post
 WHERE post_id BETWEEN 1 AND 11;
@@ -78,7 +79,7 @@ WHERE dict_type IN (
 );
 
 DELETE FROM cloud_flow_db.sys_config
-WHERE config_id BETWEEN 1 AND 90;
+WHERE config_id BETWEEN 1 AND 91;
 
 DELETE FROM cloud_flow_db.wf_form_definition
 WHERE form_id IN (
@@ -112,11 +113,20 @@ WHERE definition_id IN (
   'wf_purchase_request',
   'wf_business_trip',
   'wf_vehicle_approval',
-  'wf_knowledge_publish'
+  'wf_knowledge_publish',
+  'wf_seal_application',
+  'wf_license_borrow'
 );
 
 DELETE FROM cloud_flow_db.oa_knowledge_read;
 DELETE FROM cloud_flow_db.oa_knowledge_document;
+DELETE FROM cloud_flow_db.oa_borrow_reminder_log WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_seal_handover_log WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_license_handover_log WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_seal_application WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_license_borrow WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_seal WHERE seal_id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_license WHERE license_id BETWEEN 9000 AND 9999;
 
 DELETE FROM cloud_flow_db.wf_process_category
 WHERE category_id IN (1, 2, 3, 4, 5, 10, 11, 12, 13, 14, 20, 21, 22, 30, 31, 32);
@@ -785,6 +795,10 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(210, '知识库',     2, 10, '/office/
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(211, '采购申请',   2, 11, '/office/purchase-request', 'pages/PurchaseRequestPage',   NULL, 0, 0, 'C', '0', '0', 'office:purchase:list',      'ShoppingCart',    'admin', NOW(), '', null, '行政采购申请');
 
+INSERT INTO cloud_flow_db.sys_menu VALUES(212, '用印申请',   2, 12, '/office/seal-application', 'pages/SealApplicationPage',   NULL, 0, 0, 'C', '0', '0', 'office:seal:list',          'Stamp',           'admin', NOW(), '', null, '用印申请');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(213, '证照借用',   2, 13, '/office/license-borrow',   'pages/LicenseBorrowPage',     NULL, 0, 0, 'C', '0', '0', 'office:license:list',       'BadgeCheck',      'admin', NOW(), '', null, '证照借用申请');
+
 -- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班、供应商、耗材
 INSERT INTO cloud_flow_db.sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', NOW(), '', null, '访客预约管理');
 
@@ -793,6 +807,12 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(507, '值班排班',   5, 8, '/admin/d
 INSERT INTO cloud_flow_db.sys_menu VALUES(508, '供应商管理', 5, 9, '/admin/supplier',           'pages/admin/supplier/SupplierPage', NULL, 0, 0, 'C', '0', '0', 'admin:supplier:list', 'Handshake',       'admin', NOW(), '', null, '行政采购供应商管理');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(509, '耗材管理',   5, 10, '/admin/consumable',         'pages/admin/consumable/ConsumablePage', NULL, 0, 0, 'C', '0', '0', 'admin:consumable:list', 'Package',       'admin', NOW(), '', null, '行政采购耗材目录与库存管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(510, '印章台账',   5, 11, '/admin/seal',               'pages/admin/seal-license/SealListPage', NULL, 0, 0, 'C', '0', '0', 'admin:seal:list',       'Stamp',           'admin', NOW(), '', null, '印章台账管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(511, '证照台账',   5, 12, '/admin/license',            'pages/admin/seal-license/LicenseListPage', NULL, 0, 0, 'C', '0', '0', 'admin:license:list', 'BadgeCheck',      'admin', NOW(), '', null, '证照台账管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(512, '借还管理',   5, 13, '/admin/borrow-management',  'pages/admin/seal-license/BorrowManagementPage', NULL, 0, 0, 'C', '0', '0', 'admin:borrow:list', 'RotateCcw',     'admin', NOW(), '', null, '用印证照借还管理');
 
 -- 流程管理(parent_id=4)扩展菜单：Phase 2 监控告警功能（2026-02-22新增）
 INSERT INTO cloud_flow_db.sys_menu VALUES(700, '告警管理',   4, 7, '/workflow/alerts',          'pages/AlertList',              NULL, 0, 0, 'C', '0', '0', 'workflow:alert:list',       'Bell',            'admin', NOW(), '', null, '查看和处理超时告警和异常告警');
@@ -1076,9 +1096,21 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 209, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 210, 100000);
 
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 211, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 212, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 213, 100000);
+
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 506, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 507, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 510, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 511, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 512, 100000);
 
 -- Phase 2 监控告警菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 700, 100000);
@@ -1155,6 +1187,10 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 209, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 210, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 211, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 212, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 213, 100000);
 
 -- Phase 2 监控告警菜单（仅查看流程监控）
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 4, 100000);
@@ -1592,6 +1628,12 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_vehicle_approval', '用车审批流程', 'vehicle_approval', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交用车申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政确认派车","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_seal_application', '用印审批流程', 'seal_application', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交用印申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政审批","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_license_borrow', '证照借用审批流程', 'license_borrow', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交证照借用"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政审批","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_knowledge_publish', '知识库发布审批', 'knowledge_publish', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交知识文档"},{"id":"n1","type":"APPROVAL","title":"直属领导审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"管理员/HR发布审批","approverType":"ROLE","approverValue":"admin,hr","signType":"ANY"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
@@ -5339,13 +5381,13 @@ INSERT INTO cloud_flow_db.sys_asset (
 (9005, 100000, 'IT-SRV-2024-001', '应用演示服务器', '服务器', 'Dell R760 64C/256GB', '3', 46800.00, '2024-05-08', NULL, '机房 R2-08', '近期进行硬盘阵列维护', '0', 'chen', DATE_SUB(NOW(), INTERVAL 250 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 8 HOUR));
 
 INSERT INTO cloud_flow_db.sys_consumable (
-  consumable_id, tenant_id, name, model, unit, quantity, low_stock_threshold, del_flag, create_by, create_time, update_by, update_time
+  consumable_id, tenant_id, name, model, unit, quantity, low_stock_threshold, default_supplier_id, target_stock, warn_enabled, del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9001, 100000, 'A4打印纸', '70g/500张', '箱', 26, 8, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9002, 100000, '黑色硒鼓', 'HP 138A', '支', 5, 6, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-(9003, 100000, '便签纸', '76x76mm', '包', 18, 5, '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(9004, 100000, '工牌挂绳', '标准蓝色', '根', 42, 10, '0', 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9005, 100000, '演示用 HDMI 线', '2米 4K', '根', 3, 4, '0', 'chen', DATE_SUB(NOW(), INTERVAL 12 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 2 HOUR));
+(9001, 100000, 'A4打印纸', '70g/500张', '箱', 26, 8, 9001, 40, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9002, 100000, '黑色硒鼓', 'HP 138A', '支', 5, 6, 9002, 18, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 30 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+(9003, 100000, '便签纸', '76x76mm', '包', 18, 5, 9001, 30, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(9004, 100000, '工牌挂绳', '标准蓝色', '根', 42, 10, 9001, 60, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9005, 100000, '演示用 HDMI 线', '2米 4K', '根', 3, 4, 9002, 12, 1, '0', 'chen', DATE_SUB(NOW(), INTERVAL 12 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 2 HOUR));
 
 INSERT INTO cloud_flow_db.sys_supplier (
   supplier_id, tenant_id, supplier_name, contact_name, contact_phone, bank_name, bank_account, status, del_flag, create_by, create_time, update_by, update_time
@@ -5414,6 +5456,64 @@ INSERT INTO cloud_flow_db.sys_vehicle_expense (
 (9106, 100000, 9001, 9004, '3', 36.00, DATE_SUB(CURDATE(), INTERVAL 1 DAY), '园区停车费', 'https://demo.cloudflow.local/files/vehicle/receipts/park-9106.jpg', 'zhang', DATE_SUB(NOW(), INTERVAL 1 DAY)),
 (9107, 100000, 9001, NULL, '2', 120.00, DATE_SUB(CURDATE(), INTERVAL 5 DAY), '洗车与基础保养', 'https://demo.cloudflow.local/files/vehicle/receipts/wash-9107.jpg', 'admin', DATE_SUB(NOW(), INTERVAL 5 DAY)),
 (9108, 100000, 9002, 9005, '4', 980.00, DATE_SUB(CURDATE(), INTERVAL 1 DAY), '培训期间临时维修', 'https://demo.cloudflow.local/files/vehicle/receipts/repair-9108.jpg', 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+-- -----------------------------
+-- 2.6.1 用印、证照与借还演示
+-- -----------------------------
+INSERT INTO cloud_flow_db.oa_seal (
+  seal_id, tenant_id, seal_code, seal_name, seal_type, keeper_id, keeper_name, location, status, remark,
+  del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9001, 100000, 'SEAL-COMPANY-001', '公司公章', 'COMPANY', 1, 'Admin', '总部行政保险柜 A01', 'BORROWED', '公司主体公章，需审批后借出', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(9002, 100000, 'SEAL-CONTRACT-001', '合同专用章', 'CONTRACT', 2, '李经理', '总部行政保险柜 A02', 'AVAILABLE', '合同签署专用', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(9003, 100000, 'SEAL-FINANCE-001', '财务专用章', 'FINANCE', 3, '王财务', '财务部保险柜', 'AVAILABLE', '票据与财务资料用章', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR));
+
+INSERT INTO cloud_flow_db.oa_license (
+  license_id, tenant_id, license_code, license_name, license_type, license_no, issuer, issue_date, expire_date,
+  keeper_id, keeper_name, location, status, remark, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9001, 100000, 'LIC-BUSINESS-001', '营业执照正本', 'BUSINESS', '91310000CFLOW001', '上海市市场监督管理局', '2022-01-01', '2032-01-01', 1, 'Admin', '总部行政保险柜 B01', 'BORROWED', '正本原则上不外借', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+(9002, 100000, 'LIC-QUAL-001', '软件企业证书', 'QUALIFICATION', 'SQ-2026-0001', '上海市经信委', '2024-05-12', '2027-05-11', 4, '赵HR', '总部行政保险柜 B02', 'AVAILABLE', '投标资质材料常用', '0', 'admin', DATE_SUB(NOW(), INTERVAL 90 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 HOUR));
+
+INSERT INTO cloud_flow_db.oa_seal_application (
+  id, tenant_id, instance_id, application_no, seal_id, seal_name, user_id, user_name, dept_id, dept_name,
+  document_name, use_scene, copy_count, purpose, expected_borrow_time, expected_return_time, actual_borrow_time, actual_return_time,
+  handler_id, handler_name, attachment_url, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9001, 100000, NULL, 'YY202604010001', 9002, '合同专用章', 5, '张三', 101, '研发部',
+ '星河集团产品服务合同', 'CONTRACT', 2, '客户合同签署归档', DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), NULL, NULL,
+ NULL, NULL, 'https://demo.cloudflow.local/files/seal/contract-9001.pdf', 'APPROVED', '0', 'zhang', DATE_SUB(NOW(), INTERVAL 4 HOUR), 'workflow-stream', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(9002, 100000, NULL, 'YY202604010002', 9001, '公司公章', 8, '前端测试', 101, '研发部',
+ '投标授权说明', 'PROOF', 1, '投标文件授权说明盖章', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), NULL,
+ 1, 'Admin', 'https://demo.cloudflow.local/files/seal/bid-auth-9002.pdf', 'OVERDUE', '0', 'test_fe', DATE_SUB(NOW(), INTERVAL 3 DAY), 'overdue-scan', DATE_SUB(NOW(), INTERVAL 1 HOUR));
+
+INSERT INTO cloud_flow_db.oa_license_borrow (
+  id, tenant_id, instance_id, borrow_no, license_id, license_name, user_id, user_name, dept_id, dept_name,
+  purpose, expected_borrow_time, expected_return_time, actual_borrow_time, actual_return_time, handler_id, handler_name,
+  attachment_url, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9001, 100000, NULL, 'ZZ202604010001', 9001, '营业执照正本', 6, '刘法务', 106, '法务部',
+ '客户尽调现场核验证照原件', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 1, 'Admin',
+ 'https://demo.cloudflow.local/files/license/business-license-9001.pdf', 'BORROWED', '0', 'liu', DATE_SUB(NOW(), INTERVAL 2 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9002, 100000, NULL, 'ZZ202604010002', 9002, '软件企业证书', 8, '前端测试', 101, '研发部',
+ '投标资质材料复印件加盖骑缝章', DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 3 DAY), NULL, NULL, NULL, NULL,
+ NULL, 'APPROVED', '0', 'test_fe', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'workflow-stream', DATE_SUB(NOW(), INTERVAL 2 HOUR));
+
+INSERT INTO cloud_flow_db.oa_seal_handover_log (
+  id, tenant_id, application_id, seal_id, action_type, operator_id, operator_name, action_time, remark, create_by, create_time
+) VALUES
+(9001, 100000, 9002, 9001, 'BORROW', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 2 DAY), '投标材料用章借出', 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY));
+
+INSERT INTO cloud_flow_db.oa_license_handover_log (
+  id, tenant_id, borrow_id, license_id, action_type, operator_id, operator_name, action_time, remark, create_by, create_time
+) VALUES
+(9001, 100000, 9001, 9001, 'BORROW', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 1 DAY), '客户尽调现场核验借出', 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.oa_borrow_reminder_log (
+  id, tenant_id, business_type, business_id, resource_id, resource_name, applicant_id, applicant_name,
+  reminder_type, operator_id, operator_name, reminder_content, reminder_time, create_by, create_time
+) VALUES
+(9001, 100000, 'SEAL', 9002, 9001, '公司公章', 8, '前端测试', 'AUTO', NULL, 'system', '用印申请已超过预计归还时间，请尽快归还：公司公章', DATE_SUB(NOW(), INTERVAL 1 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 1 HOUR));
 
 -- -----------------------------
 -- 2.7 访客与值班
@@ -7431,11 +7531,11 @@ INSERT INTO cloud_flow_db.sys_asset (
 (9011, 100000, 'IT-MOB-2026-011', 'Android 测试机套装', '移动设备', 'Android 14 多机型', '2', 14600.00, '2026-02-25', 20, '测试组设备柜 QA-04', '覆盖主流安卓审批与访客扫码场景', '0', 'chen', DATE_SUB(NOW(), INTERVAL 39 DAY), 'chen', DATE_SUB(NOW(), INTERVAL 8 HOUR));
 
 INSERT INTO cloud_flow_db.sys_consumable (
-  consumable_id, tenant_id, name, model, unit, quantity, low_stock_threshold, del_flag, create_by, create_time, update_by, update_time
+  consumable_id, tenant_id, name, model, unit, quantity, low_stock_threshold, default_supplier_id, target_stock, warn_enabled, del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9006, 100000, '白板笔', '黑蓝红三色套装', '盒', 28, 6, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9007, 100000, '一次性访客胸卡', '透明硬卡套', '个', 120, 30, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
-(9008, 100000, '移动电源', '20000mAh', '个', 10, 3, '0', 'admin', DATE_SUB(NOW(), INTERVAL 15 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR));
+(9006, 100000, '白板笔', '黑蓝红三色套装', '盒', 28, 6, 9001, 40, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9007, 100000, '一次性访客胸卡', '透明硬卡套', '个', 120, 30, 9001, 160, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+(9008, 100000, '移动电源', '20000mAh', '个', 10, 3, 9002, 20, 1, '0', 'admin', DATE_SUB(NOW(), INTERVAL 15 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 3 HOUR));
 
 INSERT INTO cloud_flow_db.sys_asset_log (
   log_id, tenant_id, ref_id, ref_type, type, quantity_change, operator_id, target_id, remark, create_time

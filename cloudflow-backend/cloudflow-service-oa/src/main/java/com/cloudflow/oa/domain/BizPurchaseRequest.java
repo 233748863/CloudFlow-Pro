@@ -55,6 +55,8 @@ public class BizPurchaseRequest implements Serializable {
 
     private String status;
 
+    private String paymentStatus;
+
     private Long paymentRequestId;
 
     private String attachmentUrl;

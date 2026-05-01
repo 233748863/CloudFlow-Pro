@@ -179,6 +179,9 @@ export const paymentRequestApi = {
   // 提交付款申请
   submit: (id: number) => request.post(`/oa/payment/request/submit/${id}`),
 
+  // 确认付款
+  confirmPaid: (id: number) => request.post(`/oa/payment/request/${id}/pay`),
+
   // 按部门统计月度付款费用
   getMonthlyPaymentByDept: (month: string) =>
     request.get('/oa/payment/request/stats/dept', { params: { month } }),

@@ -9,6 +9,7 @@ import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
+import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,16 @@ public class PurchaseRequestController {
         try {
             return purchaseRequestService.createPurchase(purchase) ? R.ok() : R.fail("创建失败");
         } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("补货建议生成采购草稿")
+    @PostMapping("/from-suggestion")
+    public R<BizPurchaseRequest> fromSuggestion(@RequestBody PurchaseFromSuggestionDTO dto) {
+        try {
+            return R.ok(purchaseRequestService.createFromSuggestion(dto));
+        } catch (IllegalArgumentException | IllegalStateException e) {
             return R.fail(e.getMessage());
         }
     }

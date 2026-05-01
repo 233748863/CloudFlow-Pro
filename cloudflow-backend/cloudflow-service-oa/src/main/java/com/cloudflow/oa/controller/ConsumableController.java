@@ -11,8 +11,6 @@ import com.cloudflow.oa.domain.dto.ConsumableStockDTO;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
-import cn.dev33.satoken.annotation.SaCheckLogin;
-import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.util.StringUtils;
@@ -64,6 +62,7 @@ public class ConsumableController {
     public R add(@RequestBody SysConsumable consumable) {
         consumable.setConsumableId(null);
         consumable.setQuantity(0);
+        normalizeWarnFields(consumable);
         consumable.setDelFlag("0");
         consumable.setTenantId(UserContext.getTenantId());
         consumable.setCreateBy(UserContext.getUserName());
@@ -88,7 +87,11 @@ public class ConsumableController {
         existing.setName(consumable.getName());
         existing.setModel(consumable.getModel());
         existing.setUnit(consumable.getUnit());
+        normalizeWarnFields(consumable);
         existing.setLowStockThreshold(consumable.getLowStockThreshold());
+        existing.setDefaultSupplierId(consumable.getDefaultSupplierId());
+        existing.setTargetStock(consumable.getTargetStock());
+        existing.setWarnEnabled(consumable.getWarnEnabled());
         existing.setUpdateBy(UserContext.getUserName());
         return R.result(consumableService.updateById(existing));
     }
@@ -143,6 +146,14 @@ public class ConsumableController {
     }
 
     /**
+     * 获取补货建议。
+     */
+    @GetMapping("/replenishment-suggestions")
+    public R replenishmentSuggestions() {
+        return R.ok(consumableService.getReplenishmentSuggestions());
+    }
+
+    /**
      * 入库操作 - 管理员/经理
      */
     @SysLog("耗材入库")
@@ -188,5 +199,17 @@ public class ConsumableController {
 
     private String toText(String value) {
         return value == null ? null : String.valueOf(value).trim();
+    }
+
+    private void normalizeWarnFields(SysConsumable consumable) {
+        if (consumable.getLowStockThreshold() == null || consumable.getLowStockThreshold() < 0) {
+            consumable.setLowStockThreshold(10);
+        }
+        if (consumable.getTargetStock() == null || consumable.getTargetStock() < 0) {
+            consumable.setTargetStock(Math.max(consumable.getLowStockThreshold(), 10));
+        }
+        if (consumable.getWarnEnabled() == null) {
+            consumable.setWarnEnabled(1);
+        }
     }
 }

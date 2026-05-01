@@ -19,6 +19,7 @@
         <result property="expectedDate" column="expected_date"/>
         <result property="reason" column="reason"/>
         <result property="status" column="status"/>
+        <result property="paymentStatus" column="payment_status"/>
         <result property="paymentRequestId" column="payment_request_id"/>
         <result property="attachmentUrl" column="attachment_url"/>
         <result property="deptId" column="dept_id"/>

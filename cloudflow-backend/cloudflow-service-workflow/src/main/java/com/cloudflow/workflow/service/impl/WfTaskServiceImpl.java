@@ -418,6 +418,70 @@ public class WfTaskServiceImpl implements IWfTaskService {
     }
 
     @Override
+    public PageResult<WfTask> getDoneTasks(Long userId, PageQuery pageQuery) {
+        log.info("[getDoneTasks] 查询已办任务, userId={}", userId);
+        Long currentTenantId = UserContext.getTenantId();
+        Map<String, Object> params = pageQuery.getParams() != null ? pageQuery.getParams() : Collections.emptyMap();
+
+        String keyword = Objects.toString(params.get("keyword"), null);
+        String processDefKey = Objects.toString(params.get("processDefKey"), null);
+        String startTimeFrom = Objects.toString(params.get("startTimeFrom"), null);
+        String startTimeTo = Objects.toString(params.get("startTimeTo"), null);
+        String startUserName = Objects.toString(params.get("startUserName"), null);
+
+        List<String> filteredInstanceIds = null;
+        boolean hasInstanceFilter = StringUtils.hasText(keyword) || StringUtils.hasText(processDefKey) || StringUtils.hasText(startUserName);
+        if (hasInstanceFilter) {
+            LambdaQueryWrapper<WfProcessInstance> instanceWrapper = new LambdaQueryWrapper<>();
+            if (currentTenantId != null) {
+                instanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
+            }
+            if (StringUtils.hasText(keyword)) {
+                instanceWrapper.and(w -> w.like(WfProcessInstance::getTitle, keyword).or().like(WfProcessInstance::getProcessNo, keyword));
+            }
+            if (StringUtils.hasText(processDefKey)) {
+                instanceWrapper.eq(WfProcessInstance::getProcessDefKey, processDefKey);
+            }
+            if (StringUtils.hasText(startUserName)) {
+                instanceWrapper.like(WfProcessInstance::getStartUserName, startUserName);
+            }
+            instanceWrapper.select(WfProcessInstance::getInstanceId);
+            List<WfProcessInstance> matchedInstances = processInstanceMapper.selectList(instanceWrapper);
+            filteredInstanceIds = matchedInstances.stream().map(WfProcessInstance::getInstanceId).collect(Collectors.toList());
+            if (filteredInstanceIds.isEmpty()) {
+                return new PageResult<>(new ArrayList<>(), 0L, (long) pageQuery.getPageNum(), (long) pageQuery.getPageSize());
+            }
+        }
+
+        Page<WfTaskHistory> page = new Page<>(pageQuery.getPageNum(), pageQuery.getPageSize());
+        LambdaQueryWrapper<WfTaskHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(WfTaskHistory::getOperatorId, userId);
+        if (currentTenantId != null) {
+            wrapper.eq(WfTaskHistory::getTenantId, currentTenantId);
+        }
+        if (filteredInstanceIds != null) {
+            wrapper.in(WfTaskHistory::getInstanceId, filteredInstanceIds);
+        }
+        if (StringUtils.hasText(startTimeFrom)) {
+            try {
+                LocalDateTime fromDate = java.time.LocalDate.parse(startTimeFrom, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
+                wrapper.ge(WfTaskHistory::getCreateTime, fromDate);
+            } catch (Exception e) { log.warn("[getDoneTasks] 解析开始时间失败"); }
+        }
+        if (StringUtils.hasText(startTimeTo)) {
+            try {
+                LocalDateTime toDate = java.time.LocalDate.parse(startTimeTo, DateTimeFormatter.ofPattern("yyyy-MM-dd")).atStartOfDay();
+                wrapper.le(WfTaskHistory::getCreateTime, toDate.withHour(23).withMinute(59).withSecond(59));
+            } catch (Exception e) { log.warn("[getDoneTasks] 解析结束时间失败"); }
+        }
+        wrapper.orderByDesc(WfTaskHistory::getCreateTime);
+        Page<WfTaskHistory> resultPage = taskHistoryMapper.selectPage(page, wrapper);
+        List<WfTask> tasks = toDoneTasks(resultPage.getRecords());
+        enrichDoneTasks(tasks);
+        return new PageResult<>(tasks, resultPage.getTotal(), resultPage.getCurrent(), resultPage.getSize());
+    }
+
+    @Override
     @Transactional(rollbackFor = Exception.class)
     public void readTask(String taskId, Long userId) {
         WfTask task = taskMapper.selectById(taskId);
@@ -866,6 +930,99 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 }
             } catch (Exception e) {
                 log.warn("[enrichTodoTasks] 填充步骤信息失败, taskId={}: {}", task.getTaskId(), e.getMessage());
+            }
+        }
+    }
+
+    private List<WfTask> toDoneTasks(List<WfTaskHistory> histories) {
+        if (histories == null || histories.isEmpty()) {
+            return new ArrayList<>();
+        }
+        List<WfTask> tasks = new ArrayList<>();
+        for (WfTaskHistory history : histories) {
+            WfTask task = new WfTask();
+            task.setTaskId(history.getTaskId());
+            task.setTenantId(history.getTenantId());
+            task.setInstanceId(history.getInstanceId());
+            task.setNodeKey(history.getNodeKey());
+            task.setNodeName(history.getNodeName());
+            task.setAssignee(history.getOperatorId());
+            task.setAssigneeName(history.getOperatorName());
+            task.setStatus("REJECT".equalsIgnoreCase(history.getAction()) ? "REJECTED" : "COMPLETED");
+            task.setCreateTime(history.getCreateTime());
+            task.setIsRead(true);
+            task.setReadTime(history.getCreateTime());
+            tasks.add(task);
+        }
+        return tasks;
+    }
+
+    private void enrichDoneTasks(List<WfTask> tasks) {
+        if (tasks == null || tasks.isEmpty()) {
+            return;
+        }
+        List<String> instanceIds = tasks.stream().map(WfTask::getInstanceId).filter(StringUtils::hasText).distinct().collect(Collectors.toList());
+        if (instanceIds.isEmpty()) {
+            return;
+        }
+        List<WfProcessInstance> instances = processInstanceMapper.selectBatchIds(instanceIds);
+        Map<String, WfProcessInstance> instanceMap = instances.stream()
+            .collect(Collectors.toMap(WfProcessInstance::getInstanceId, inst -> inst));
+        List<String> definitionIds = instances.stream()
+            .map(WfProcessInstance::getDefinitionId)
+            .filter(StringUtils::hasText)
+            .distinct()
+            .collect(Collectors.toList());
+        Map<String, WfProcessDefinition> defById = new HashMap<>();
+        if (!definitionIds.isEmpty()) {
+            List<WfProcessDefinition> defs = processDefinitionMapper.selectBatchIds(definitionIds);
+            if (defs != null) {
+                for (WfProcessDefinition def : defs) {
+                    if (def != null && StringUtils.hasText(def.getDefinitionId())) {
+                        defById.put(def.getDefinitionId(), def);
+                    }
+                }
+            }
+        }
+        List<WfTaskHistory> allHistories = taskHistoryMapper.selectList(
+            new LambdaQueryWrapper<WfTaskHistory>().in(WfTaskHistory::getInstanceId, instanceIds).orderByAsc(WfTaskHistory::getCreateTime));
+        Map<String, List<WfTaskHistory>> historiesByInstance = allHistories.stream()
+            .collect(Collectors.groupingBy(WfTaskHistory::getInstanceId));
+
+        for (WfTask task : tasks) {
+            WfProcessInstance instance = instanceMap.get(task.getInstanceId());
+            if (instance == null) {
+                continue;
+            }
+            task.setProcessDefKey(instance.getProcessDefKey());
+            task.setStartUserId(String.valueOf(instance.getStartUserId()));
+            task.setStartUserName(instance.getStartUserName());
+            task.setInstanceTitle(instance.getTitle());
+            task.setPriority(instance.getPriority());
+            WfProcessDefinition def = resolveDefinitionForInstance(instance, defById);
+            if (def != null) {
+                task.setProcessName(def.getProcessName());
+                task.setFormId(def.getFormId());
+            }
+            if (StringUtils.hasText(instance.getVariables())) {
+                try {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> vars = objectMapper.readValue(instance.getVariables(), Map.class);
+                    task.setVariables(vars);
+                } catch (Exception e) {
+                    log.warn("[enrichDoneTasks] 解析流程变量失败, instanceId={}: {}", instance.getInstanceId(), e.getMessage());
+                }
+            }
+            if (def != null && StringUtils.hasText(def.getModelJson())) {
+                try {
+                    WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+                    List<Map<String, String>> steps = nodeExecutionService.extractApprovalSteps(root);
+                    if (steps != null && !steps.isEmpty()) {
+                        enrichTaskStepInfo(task, steps, historiesByInstance.getOrDefault(task.getInstanceId(), new ArrayList<>()));
+                    }
+                } catch (Exception e) {
+                    log.warn("[enrichDoneTasks] 填充步骤信息失败, taskId={}: {}", task.getTaskId(), e.getMessage());
+                }
             }
         }
     }

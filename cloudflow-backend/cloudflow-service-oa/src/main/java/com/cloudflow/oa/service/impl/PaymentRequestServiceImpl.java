@@ -1,13 +1,16 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BizPaymentRequest;
+import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
+import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
@@ -18,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
@@ -33,6 +37,9 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
 
     @Autowired
     private RemoteWorkflowService remoteWorkflowService;
+
+    @Autowired
+    private BizPurchaseRequestMapper purchaseRequestMapper;
 
     @Override
     public String generatePaymentNo() {
@@ -82,6 +89,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         
         // 更新状态为审批中
         payment.setStatus("PENDING");
+        updatePurchasePaymentStatus(payment.getId(), "PENDING");
         
         // 启动工作流
         try {
@@ -130,6 +138,27 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     @Override
+    @Audit(name = "确认付款", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)")
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmPaid(Long id) {
+        BizPaymentRequest payment = getById(id);
+        if (payment == null || !"0".equals(payment.getDelFlag())) {
+            throw new IllegalArgumentException("付款申请不存在");
+        }
+        if (!"APPROVED".equals(payment.getStatus())) {
+            throw new IllegalArgumentException("只有审批通过的付款申请可以确认付款");
+        }
+        payment.setStatus("PAID");
+        payment.setUpdateBy(UserContext.getUserName());
+        payment.setUpdateTime(LocalDateTime.now());
+        boolean updated = updateById(payment);
+        if (updated) {
+            updatePurchasePaymentStatus(id, "PAID");
+        }
+        return updated;
+    }
+
+    @Override
     public List<Map<String, Object>> getMonthlyPaymentByDept(String month) {
         return baseMapper.selectMonthlyPaymentByDept(month);
     }
@@ -163,5 +192,18 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         payment.setAttachmentUrl(
                 OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(payment.getAttachmentUrl(), "付款申请附件")
         );
+    }
+
+    private void updatePurchasePaymentStatus(Long paymentRequestId, String paymentStatus) {
+        if (paymentRequestId == null || !StringUtils.hasText(paymentStatus)) {
+            return;
+        }
+        LambdaUpdateWrapper<BizPurchaseRequest> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(BizPurchaseRequest::getPaymentRequestId, paymentRequestId)
+                .eq(BizPurchaseRequest::getDelFlag, "0")
+                .set(BizPurchaseRequest::getPaymentStatus, paymentStatus)
+                .set(BizPurchaseRequest::getUpdateBy, UserContext.getUserName())
+                .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
+        purchaseRequestMapper.update(null, wrapper);
     }
 }

@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Send, Trash2 } from 'lucide-react';
+import { CheckCircle2, Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { paymentRequestApi, PaymentRequest } from '@/services/api/expense';
 import FileUpload from '@/components/FileUpload';
@@ -46,7 +46,7 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 interface ConfirmState {
-  type: 'delete' | 'submit';
+  type: 'delete' | 'submit' | 'pay';
   id: number;
   title: string;
   message: string;
@@ -315,6 +315,16 @@ export const PaymentRequestPage: React.FC = () => {
     });
   };
 
+  const openPayConfirm = (id: number) => {
+    setConfirmState({
+      type: 'pay',
+      id,
+      title: '确认付款',
+      message: '确认后付款单将标记为已付款，并同步回写采购单付款状态。',
+      confirmText: '确认付款',
+    });
+  };
+
   const handleConfirmAction = async () => {
     if (!confirmState) {
       return;
@@ -327,6 +337,9 @@ export const PaymentRequestPage: React.FC = () => {
       if (currentState.type === 'delete') {
         await paymentRequestApi.remove([currentState.id]);
         toast.success('删除成功');
+      } else if (currentState.type === 'pay') {
+        await paymentRequestApi.confirmPaid(currentState.id);
+        toast.success('已确认付款');
       } else {
         await paymentRequestApi.submit(currentState.id);
         toast.success('提交成功');
@@ -335,7 +348,14 @@ export const PaymentRequestPage: React.FC = () => {
       await fetchPayments();
       setDetailPayment((prev) => (prev?.id === currentState.id ? null : prev));
     } catch (error) {
-      toast.error(getErrorMessage(error, currentState.type === 'delete' ? '删除失败' : '提交失败'));
+      toast.error(getErrorMessage(
+        error,
+        currentState.type === 'delete'
+          ? '删除失败'
+          : currentState.type === 'pay'
+            ? '确认付款失败'
+            : '提交失败',
+      ));
     }
   };
 
@@ -550,6 +570,14 @@ export const PaymentRequestPage: React.FC = () => {
                                 onClick: () => openSubmitConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'DRAFT',
+                                className: 'rounded-lg',
+                              },
+                              {
+                                label: '付款',
+                                icon: <CheckCircle2 size={14} />,
+                                onClick: () => openPayConfirm(item.id!),
+                                tone: 'success',
+                                hidden: item.status !== 'APPROVED',
                                 className: 'rounded-lg',
                               },
                               {

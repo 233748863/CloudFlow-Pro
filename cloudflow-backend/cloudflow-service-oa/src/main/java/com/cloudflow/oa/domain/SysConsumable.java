@@ -27,6 +27,12 @@ public class SysConsumable {
     
     private Integer lowStockThreshold;
 
+    private Long defaultSupplierId;
+
+    private Integer targetStock;
+
+    private Integer warnEnabled;
+
     private String delFlag;
     
     private Long tenantId;

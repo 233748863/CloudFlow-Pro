@@ -46,6 +46,7 @@ export interface PurchaseRequest {
   expectedDate?: string;
   reason: string;
   status?: string;
+  paymentStatus?: string;
   paymentRequestId?: number;
   attachmentUrl?: string;
   deptId?: number;
@@ -59,6 +60,16 @@ export interface PurchaseReceiptPayload {
   remark?: string;
   items: Array<{
     itemId: number;
+    quantity: number;
+  }>;
+}
+
+export interface PurchaseFromSuggestionPayload {
+  supplierId?: number;
+  expectedDate?: string;
+  reason?: string;
+  items: Array<{
+    consumableId: number;
     quantity: number;
   }>;
 }
@@ -143,4 +154,10 @@ export const purchaseRequestApi = {
     request.post(`/oa/purchase/request/${id}/receipt`, data),
 
   createPayment: (id: number) => request.post(`/oa/purchase/request/${id}/create-payment`),
+
+  createFromSuggestion: (data: PurchaseFromSuggestionPayload) =>
+    request.post('/oa/purchase/request/from-suggestion', {
+      ...data,
+      expectedDate: normalizeExpectedDateForSubmit(data.expectedDate),
+    }) as Promise<PurchaseRequest>,
 };

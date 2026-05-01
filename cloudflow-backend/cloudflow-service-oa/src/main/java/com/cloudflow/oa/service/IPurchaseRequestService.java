@@ -3,6 +3,7 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
+import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
 
 /**
@@ -23,4 +24,8 @@ public interface IPurchaseRequestService extends IService<BizPurchaseRequest> {
     boolean receivePurchase(Long id, PurchaseReceiptDTO receipt);
 
     BizPaymentRequest createPaymentRequest(Long id);
+
+    BizPurchaseRequest createFromSuggestion(PurchaseFromSuggestionDTO dto);
+
+    void updatePaymentStatus(Long paymentRequestId, String paymentStatus);
 }

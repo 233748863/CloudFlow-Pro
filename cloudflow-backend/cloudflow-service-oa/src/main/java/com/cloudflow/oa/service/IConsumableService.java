@@ -3,6 +3,7 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysConsumable;
+import com.cloudflow.oa.domain.dto.ConsumableReplenishmentSuggestionDTO;
 
 import java.util.List;
 
@@ -20,6 +21,11 @@ public interface IConsumableService extends IService<SysConsumable> {
      * 获取库存不足的耗材列表
      */
     List<SysConsumable> getLowStockList();
+
+    /**
+     * 获取补货建议。
+     */
+    List<ConsumableReplenishmentSuggestionDTO> getReplenishmentSuggestions();
 
     /**
      * 入库（增加库存）

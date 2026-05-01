@@ -1,0 +1,455 @@
+package com.cloudflow.oa.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.oa.domain.OaBorrowReminderLog;
+import com.cloudflow.oa.domain.OaSeal;
+import com.cloudflow.oa.domain.OaSealApplication;
+import com.cloudflow.oa.domain.OaSealHandoverLog;
+import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.mapper.OaBorrowReminderLogMapper;
+import com.cloudflow.oa.mapper.OaSealApplicationMapper;
+import com.cloudflow.oa.mapper.OaSealHandoverLogMapper;
+import com.cloudflow.oa.mapper.OaSealMapper;
+import com.cloudflow.oa.service.IOaSealApplicationService;
+import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.cloudflow.oa.util.OaAttachmentUrlUtils;
+import com.cloudflow.oa.util.OaBorrowConstants;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 用印申请服务实现。
+ */
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationMapper, OaSealApplication>
+        implements IOaSealApplicationService {
+
+    private final OaSealMapper sealMapper;
+    private final OaSealHandoverLogMapper handoverLogMapper;
+    private final OaBorrowReminderLogMapper reminderLogMapper;
+    private final RemoteWorkflowService remoteWorkflowService;
+    private final ISysNoticeService noticeService;
+
+    @Override
+    public PageResult<OaSealApplication> queryPage(OaSealApplication query, PageQuery pageQuery) {
+        LambdaQueryWrapper<OaSealApplication> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(query.getSealId() != null, OaSealApplication::getSealId, query.getSealId())
+                .eq(query.getUserId() != null, OaSealApplication::getUserId, query.getUserId())
+                .eq(StringUtils.hasText(query.getStatus()), OaSealApplication::getStatus, query.getStatus())
+                .like(StringUtils.hasText(query.getApplicationNo()), OaSealApplication::getApplicationNo, query.getApplicationNo())
+                .like(StringUtils.hasText(query.getDocumentName()), OaSealApplication::getDocumentName, query.getDocumentName())
+                .eq(OaSealApplication::getDelFlag, "0");
+        DataScopeHelper.apply(wrapper, OaSealApplication::getUserId, OaSealApplication::getDeptId);
+        wrapper.orderByDesc(OaSealApplication::getCreateTime);
+        Page<OaSealApplication> page = page(pageQuery.build(), wrapper);
+        return PageResult.build(page);
+    }
+
+    @Override
+    public PageResult<OaSealApplication> queryOverduePage(PageQuery pageQuery) {
+        OaSealApplication query = new OaSealApplication();
+        query.setStatus(OaBorrowConstants.STATUS_OVERDUE);
+        return queryPage(query, pageQuery);
+    }
+
+    @Override
+    public OaSealApplication getApplicationInfo(Long id) {
+        return requireApplication(id);
+    }
+
+    @Override
+    public List<OaSealHandoverLog> listHandoverLogs(Long applicationId) {
+        return handoverLogMapper.selectList(new LambdaQueryWrapper<OaSealHandoverLog>()
+                .eq(OaSealHandoverLog::getApplicationId, applicationId)
+                .orderByDesc(OaSealHandoverLog::getActionTime));
+    }
+
+    @Override
+    public List<OaBorrowReminderLog> listReminderLogs(Long applicationId) {
+        return reminderLogMapper.selectList(new LambdaQueryWrapper<OaBorrowReminderLog>()
+                .eq(OaBorrowReminderLog::getBusinessType, OaBorrowConstants.BUSINESS_TYPE_SEAL)
+                .eq(OaBorrowReminderLog::getBusinessId, applicationId)
+                .orderByDesc(OaBorrowReminderLog::getReminderTime));
+    }
+
+    @Override
+    public String generateApplicationNo() {
+        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
+        Integer maxSeq = sealMapper.getTodayApplicationMaxSeq();
+        int nextSeq = (maxSeq == null ? 0 : maxSeq) + 1;
+        return String.format("YY%s%04d", today, nextSeq);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean createApplication(OaSealApplication application) {
+        normalizeAndValidate(application);
+        OaSeal seal = requireAvailableSeal(application.getSealId(), false);
+        LocalDateTime now = LocalDateTime.now();
+        application.setTenantId(resolveTenantId());
+        application.setApplicationNo(generateApplicationNo());
+        application.setSealName(seal.getSealName());
+        application.setUserId(UserContext.getUserId());
+        application.setUserName(UserContext.getUserName());
+        application.setDeptId(UserContext.getDeptId());
+        application.setDeptName(UserContext.getDeptName());
+        application.setStatus(OaBorrowConstants.STATUS_DRAFT);
+        application.setDelFlag("0");
+        application.setCreateBy(UserContext.getUserName());
+        application.setCreateTime(now);
+        application.setUpdateBy(UserContext.getUserName());
+        application.setUpdateTime(now);
+        return save(application);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean updateApplication(OaSealApplication application) {
+        if (application == null || application.getId() == null) {
+            throw new IllegalArgumentException("用印申请ID不能为空");
+        }
+        OaSealApplication persisted = requireApplication(application.getId());
+        if (!OaBorrowConstants.STATUS_DRAFT.equals(persisted.getStatus())) {
+            throw new IllegalArgumentException("只有草稿状态可以编辑");
+        }
+        normalizeAndValidate(application);
+        OaSeal seal = requireAvailableSeal(application.getSealId(), false);
+        application.setApplicationNo(persisted.getApplicationNo());
+        application.setSealName(seal.getSealName());
+        application.setUserId(persisted.getUserId());
+        application.setUserName(persisted.getUserName());
+        application.setDeptId(persisted.getDeptId());
+        application.setDeptName(persisted.getDeptName());
+        application.setStatus(OaBorrowConstants.STATUS_DRAFT);
+        application.setDelFlag("0");
+        application.setUpdateBy(UserContext.getUserName());
+        application.setUpdateTime(LocalDateTime.now());
+        return updateById(application);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean removeApplications(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return true;
+        }
+        for (Long id : ids) {
+            OaSealApplication application = requireApplication(id);
+            if (!OaBorrowConstants.STATUS_DRAFT.equals(application.getStatus())
+                    && !OaBorrowConstants.STATUS_CANCELLED.equals(application.getStatus())
+                    && !OaBorrowConstants.STATUS_REJECTED.equals(application.getStatus())) {
+                throw new IllegalArgumentException("只有草稿、已取消或已驳回的用印申请可以删除");
+            }
+            OaSealApplication update = new OaSealApplication();
+            update.setId(id);
+            update.setDelFlag("1");
+            update.setUpdateBy(UserContext.getUserName());
+            update.setUpdateTime(LocalDateTime.now());
+            updateById(update);
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean submitApplication(Long id) {
+        OaSealApplication application = requireApplication(id);
+        if (!OaBorrowConstants.STATUS_DRAFT.equals(application.getStatus())) {
+            throw new IllegalArgumentException("只有草稿状态可以提交");
+        }
+        requireAvailableSeal(application.getSealId(), false);
+        application.setStatus(OaBorrowConstants.STATUS_PENDING);
+        compensateUserSnapshot(application);
+
+        try {
+            WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
+            req.setProcessDefKey("seal_application");
+            req.setBusinessKey("SEAL_APPLICATION:" + application.getId());
+            Map<String, Object> variables = new HashMap<>();
+            variables.put("applicationId", application.getId());
+            variables.put("applicationNo", application.getApplicationNo());
+            variables.put("sealName", application.getSealName());
+            variables.put("documentName", application.getDocumentName());
+            variables.put("useScene", application.getUseScene());
+            variables.put("copyCount", application.getCopyCount());
+            variables.put("purpose", application.getPurpose());
+            variables.put("userId", application.getUserId());
+            variables.put("userName", application.getUserName());
+            variables.put("deptName", application.getDeptName());
+            variables.put("expectedReturnTime", formatDateTime(application.getExpectedReturnTime()));
+            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+                    variables,
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_SEAL_APPLICATION,
+                    application.getId(),
+                    application.getApplicationNo()
+            );
+            req.setVariables(variables);
+            R<?> result = remoteWorkflowService.startProcess(req);
+            if (result != null && result.getCode() == 200 && result.getData() != null) {
+                application.setInstanceId(extractInstanceId(result.getData()));
+            } else {
+                log.warn("用印申请 {} 工作流启动返回异常: {}", application.getApplicationNo(), result != null ? result.getMsg() : "null");
+            }
+        } catch (Exception e) {
+            log.error("用印申请 {} 启动工作流失败，但提交状态已更新", application.getApplicationNo(), e);
+        }
+        application.setUpdateBy(UserContext.getUserName());
+        application.setUpdateTime(LocalDateTime.now());
+        return updateById(application);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean cancelApplication(Long id) {
+        OaSealApplication application = requireApplication(id);
+        if (!OaBorrowConstants.STATUS_DRAFT.equals(application.getStatus())
+                && !OaBorrowConstants.STATUS_PENDING.equals(application.getStatus())) {
+            throw new IllegalArgumentException("只有草稿或审批中的用印申请可以取消");
+        }
+        application.setStatus(OaBorrowConstants.STATUS_CANCELLED);
+        application.setUpdateBy(UserContext.getUserName());
+        application.setUpdateTime(LocalDateTime.now());
+        return updateById(application);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmBorrow(Long id, String remark) {
+        OaSealApplication application = requireApplication(id);
+        if (!OaBorrowConstants.STATUS_APPROVED.equals(application.getStatus())) {
+            throw new IllegalArgumentException("只有审批通过的用印申请可以借出");
+        }
+        OaSeal seal = requireAvailableSeal(application.getSealId(), true);
+        LocalDateTime now = LocalDateTime.now();
+        application.setStatus(OaBorrowConstants.STATUS_BORROWED);
+        application.setActualBorrowTime(now);
+        application.setHandlerId(UserContext.getUserId());
+        application.setHandlerName(UserContext.getUserName());
+        application.setUpdateBy(UserContext.getUserName());
+        application.setUpdateTime(now);
+        updateById(application);
+
+        seal.setStatus(OaBorrowConstants.RESOURCE_BORROWED);
+        seal.setUpdateBy(UserContext.getUserName());
+        seal.setUpdateTime(now);
+        sealMapper.updateById(seal);
+
+        insertHandoverLog(application, OaBorrowConstants.HANDOVER_BORROW, remark, now);
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmReturn(Long id, String remark) {
+        OaSealApplication application = requireApplication(id);
+        if (!OaBorrowConstants.STATUS_BORROWED.equals(application.getStatus())
+                && !OaBorrowConstants.STATUS_OVERDUE.equals(application.getStatus())) {
+            throw new IllegalArgumentException("只有已借出或逾期的用印申请可以归还");
+        }
+        OaSeal seal = sealMapper.selectById(application.getSealId());
+        LocalDateTime now = LocalDateTime.now();
+        application.setStatus(OaBorrowConstants.STATUS_RETURNED);
+        application.setActualReturnTime(now);
+        application.setHandlerId(UserContext.getUserId());
+        application.setHandlerName(UserContext.getUserName());
+        application.setUpdateBy(UserContext.getUserName());
+        application.setUpdateTime(now);
+        updateById(application);
+
+        if (seal != null && !"1".equals(seal.getDelFlag())) {
+            seal.setStatus(OaBorrowConstants.RESOURCE_AVAILABLE);
+            seal.setUpdateBy(UserContext.getUserName());
+            seal.setUpdateTime(now);
+            sealMapper.updateById(seal);
+        }
+
+        insertHandoverLog(application, OaBorrowConstants.HANDOVER_RETURN, remark, now);
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean remind(Long id, String remark) {
+        OaSealApplication application = requireApplication(id);
+        if (!OaBorrowConstants.STATUS_BORROWED.equals(application.getStatus())
+                && !OaBorrowConstants.STATUS_OVERDUE.equals(application.getStatus())) {
+            throw new IllegalArgumentException("只有已借出或逾期的用印申请可以催还");
+        }
+        insertReminder(application, OaBorrowConstants.REMINDER_MANUAL,
+                StringUtils.hasText(remark) ? remark : "请尽快归还借出的印章");
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public int scanAndRemindOverdue() {
+        LocalDateTime now = LocalDateTime.now();
+        List<OaSealApplication> list = list(new LambdaQueryWrapper<OaSealApplication>()
+                .eq(OaSealApplication::getStatus, OaBorrowConstants.STATUS_BORROWED)
+                .eq(OaSealApplication::getDelFlag, "0")
+                .lt(OaSealApplication::getExpectedReturnTime, now));
+        int handled = 0;
+        for (OaSealApplication application : list) {
+            Long existing = reminderLogMapper.selectCount(new LambdaQueryWrapper<OaBorrowReminderLog>()
+                    .eq(OaBorrowReminderLog::getBusinessType, OaBorrowConstants.BUSINESS_TYPE_SEAL)
+                    .eq(OaBorrowReminderLog::getBusinessId, application.getId())
+                    .eq(OaBorrowReminderLog::getReminderType, OaBorrowConstants.REMINDER_AUTO));
+            application.setStatus(OaBorrowConstants.STATUS_OVERDUE);
+            application.setUpdateBy("overdue-scan");
+            application.setUpdateTime(now);
+            updateById(application);
+            if (existing == null || existing == 0) {
+                insertReminder(application, OaBorrowConstants.REMINDER_AUTO,
+                        "用印申请已超过预计归还时间，请尽快归还：" + application.getSealName());
+            }
+            handled++;
+        }
+        return handled;
+    }
+
+    private void normalizeAndValidate(OaSealApplication application) {
+        if (application == null) {
+            throw new IllegalArgumentException("用印申请不能为空");
+        }
+        if (application.getSealId() == null) {
+            throw new IllegalArgumentException("请选择印章");
+        }
+        if (!StringUtils.hasText(application.getDocumentName())) {
+            throw new IllegalArgumentException("用印文件名称不能为空");
+        }
+        if (!StringUtils.hasText(application.getPurpose())) {
+            throw new IllegalArgumentException("用印用途不能为空");
+        }
+        if (application.getExpectedReturnTime() == null) {
+            throw new IllegalArgumentException("预计归还时间不能为空");
+        }
+        application.setCopyCount(application.getCopyCount() == null || application.getCopyCount() <= 0 ? 1 : application.getCopyCount());
+        application.setUseScene(StringUtils.hasText(application.getUseScene()) ? application.getUseScene() : "CONTRACT");
+        application.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(application.getAttachmentUrl(), "用印申请附件"));
+    }
+
+    private OaSealApplication requireApplication(Long id) {
+        OaSealApplication application = getById(id);
+        if (application == null || !"0".equals(application.getDelFlag())) {
+            throw new IllegalArgumentException("用印申请不存在");
+        }
+        return application;
+    }
+
+    private OaSeal requireAvailableSeal(Long sealId, boolean strictAvailable) {
+        OaSeal seal = sealMapper.selectById(sealId);
+        if (seal == null || !"0".equals(seal.getDelFlag())) {
+            throw new IllegalArgumentException("印章不存在");
+        }
+        if (OaBorrowConstants.RESOURCE_DISABLED.equals(seal.getStatus())) {
+            throw new IllegalArgumentException("印章已停用");
+        }
+        if (strictAvailable && !OaBorrowConstants.RESOURCE_AVAILABLE.equals(seal.getStatus())) {
+            throw new IllegalArgumentException("印章当前不可借出");
+        }
+        return seal;
+    }
+
+    private void compensateUserSnapshot(OaSealApplication application) {
+        if (application.getTenantId() == null) {
+            application.setTenantId(resolveTenantId());
+        }
+        if (application.getUserId() == null) {
+            application.setUserId(UserContext.getUserId());
+        }
+        if (!StringUtils.hasText(application.getUserName())) {
+            application.setUserName(UserContext.getUserName());
+        }
+        if (application.getDeptId() == null) {
+            application.setDeptId(UserContext.getDeptId());
+        }
+        if (!StringUtils.hasText(application.getDeptName())) {
+            application.setDeptName(UserContext.getDeptName());
+        }
+    }
+
+    private void insertHandoverLog(OaSealApplication application, String actionType, String remark, LocalDateTime now) {
+        OaSealHandoverLog log = new OaSealHandoverLog();
+        log.setTenantId(application.getTenantId());
+        log.setApplicationId(application.getId());
+        log.setSealId(application.getSealId());
+        log.setActionType(actionType);
+        log.setOperatorId(UserContext.getUserId());
+        log.setOperatorName(UserContext.getUserName());
+        log.setActionTime(now);
+        log.setRemark(remark);
+        log.setCreateBy(UserContext.getUserName());
+        log.setCreateTime(now);
+        handoverLogMapper.insert(log);
+    }
+
+    private void insertReminder(OaSealApplication application, String reminderType, String content) {
+        LocalDateTime now = LocalDateTime.now();
+        OaBorrowReminderLog log = new OaBorrowReminderLog();
+        log.setTenantId(application.getTenantId());
+        log.setBusinessType(OaBorrowConstants.BUSINESS_TYPE_SEAL);
+        log.setBusinessId(application.getId());
+        log.setResourceId(application.getSealId());
+        log.setResourceName(application.getSealName());
+        log.setApplicantId(application.getUserId());
+        log.setApplicantName(application.getUserName());
+        log.setReminderType(reminderType);
+        log.setOperatorId(UserContext.getUserId());
+        log.setOperatorName(StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system");
+        log.setReminderContent(content);
+        log.setReminderTime(now);
+        log.setCreateBy(log.getOperatorName());
+        log.setCreateTime(now);
+        reminderLogMapper.insert(log);
+        noticeService.sendNotice(application.getUserId(), "用印归还提醒", content, "2",
+                log.getOperatorId(), log.getOperatorName());
+        OaSeal seal = sealMapper.selectById(application.getSealId());
+        if (seal != null && seal.getKeeperId() != null && !seal.getKeeperId().equals(application.getUserId())) {
+            noticeService.sendNotice(seal.getKeeperId(), "用印逾期提醒", content, "2",
+                    log.getOperatorId(), log.getOperatorName());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extractInstanceId(Object data) {
+        if (data instanceof Map) {
+            Map<String, Object> dataMap = (Map<String, Object>) data;
+            Object instanceId = dataMap.get("processInstanceId");
+            if (instanceId == null) {
+                instanceId = dataMap.get("instanceId");
+            }
+            return instanceId != null ? String.valueOf(instanceId) : null;
+        }
+        return data instanceof String ? (String) data : null;
+    }
+
+    private String formatDateTime(LocalDateTime value) {
+        return value == null ? null : DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss").format(value);
+    }
+
+    private Long resolveTenantId() {
+        return UserContext.getTenantId() == null ? OaBorrowConstants.DEFAULT_TENANT_ID : UserContext.getTenantId();
+    }
+}

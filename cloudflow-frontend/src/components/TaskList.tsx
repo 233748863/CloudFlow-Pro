@@ -11,6 +11,7 @@ interface TaskListProps {
   tasks: Task[];
   onTaskClick?: (task: Task) => void;
   showRecallButton?: boolean;
+  primaryActionLabel?: string;
   onRecallSuccess?: () => void;
 }
 
@@ -106,6 +107,7 @@ export const TaskList: React.FC<TaskListProps> = ({
   tasks,
   onTaskClick,
   showRecallButton = false,
+  primaryActionLabel,
   onRecallSuccess,
 }) => {
   const [recalling, setRecalling] = useState<string | null>(null);
@@ -142,7 +144,7 @@ export const TaskList: React.FC<TaskListProps> = ({
       {tasks.map((task) => {
         const canRecall = showRecallButton && task.status === TaskStatus.PENDING;
         const overdue = isOverdue(task);
-        const primaryActionLabel = showRecallButton ? '详情' : '处理';
+        const actionLabel = primaryActionLabel || (showRecallButton ? '详情' : '处理');
         const summaryText =
           task.formData && Object.keys(task.formData).length > 0
             ? getWorkflowSummaryParts(task.formData as Record<string, any>, 3).join(' · ')
@@ -233,7 +235,7 @@ export const TaskList: React.FC<TaskListProps> = ({
                     className="gap-1"
                     actions={[
                       {
-                        label: primaryActionLabel,
+                        label: actionLabel,
                         icon: <Eye size={14} />,
                         onClick: (event) => {
                           event.stopPropagation();

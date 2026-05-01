@@ -8,9 +8,12 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.BizPurchaseItem;
 import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.domain.SysConsumable;
+import com.cloudflow.oa.domain.SysSupplier;
+import com.cloudflow.oa.domain.dto.ConsumableReplenishmentSuggestionDTO;
 import com.cloudflow.oa.mapper.BizPurchaseItemMapper;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.mapper.SysConsumableMapper;
+import com.cloudflow.oa.mapper.SysSupplierMapper;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +35,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
 
     private final SysAssetLogMapper assetLogMapper;
     private final BizPurchaseItemMapper purchaseItemMapper;
+    private final SysSupplierMapper supplierMapper;
 
     @Override
     public IPage<SysConsumable> queryPage(SysConsumable query, int pageNum, int pageSize) {
@@ -57,9 +61,15 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
         // 查询库存数量 <= 低库存阈值的耗材
         LambdaQueryWrapper<SysConsumable> wrapper = new LambdaQueryWrapper<>();
         wrapper.apply("quantity <= low_stock_threshold");
+        wrapper.eq(SysConsumable::getWarnEnabled, 1);
         wrapper.eq(SysConsumable::getDelFlag, "0");
         wrapper.orderByAsc(SysConsumable::getQuantity);
         return list(wrapper);
+    }
+
+    @Override
+    public List<ConsumableReplenishmentSuggestionDTO> getReplenishmentSuggestions() {
+        return getLowStockList().stream().map(this::toSuggestion).toList();
     }
 
     @Override
@@ -136,5 +146,27 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
         logRecord.setRemark(remark);
         logRecord.setCreateTime(LocalDateTime.now());
         assetLogMapper.insert(logRecord);
+    }
+
+    private ConsumableReplenishmentSuggestionDTO toSuggestion(SysConsumable consumable) {
+        ConsumableReplenishmentSuggestionDTO suggestion = new ConsumableReplenishmentSuggestionDTO();
+        suggestion.setConsumableId(consumable.getConsumableId());
+        suggestion.setName(consumable.getName());
+        suggestion.setModel(consumable.getModel());
+        suggestion.setUnit(consumable.getUnit());
+        suggestion.setQuantity(consumable.getQuantity());
+        suggestion.setLowStockThreshold(consumable.getLowStockThreshold());
+        suggestion.setTargetStock(consumable.getTargetStock());
+        suggestion.setDefaultSupplierId(consumable.getDefaultSupplierId());
+        int targetStock = consumable.getTargetStock() == null ? 0 : consumable.getTargetStock();
+        int quantity = consumable.getQuantity() == null ? 0 : consumable.getQuantity();
+        suggestion.setSuggestedQuantity(Math.max(targetStock - quantity, 0));
+        if (consumable.getDefaultSupplierId() != null) {
+            SysSupplier supplier = supplierMapper.selectById(consumable.getDefaultSupplierId());
+            if (supplier != null && "0".equals(supplier.getDelFlag())) {
+                suggestion.setDefaultSupplierName(supplier.getSupplierName());
+            }
+        }
+        return suggestion;
     }
 }

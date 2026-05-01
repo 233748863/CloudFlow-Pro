@@ -32,6 +32,11 @@ public interface IPaymentRequestService extends IService<BizPaymentRequest> {
     boolean submitPayment(Long id);
 
     /**
+     * 确认已付款。
+     */
+    boolean confirmPaid(Long id);
+
+    /**
      * 按部门统计月度付款费用
      */
     List<Map<String, Object>> getMonthlyPaymentByDept(String month);

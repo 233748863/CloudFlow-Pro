@@ -230,10 +230,15 @@ const LeaveApplicationPage = React.lazy(
 const BusinessTripPage = React.lazy(() => import("./pages/BusinessTripPage"));
 const ContactPage = React.lazy(() => import("./pages/ContactPage"));
 const KnowledgePage = React.lazy(() => import("./pages/KnowledgePage"));
+const SealApplicationPage = React.lazy(() => import("./pages/SealApplicationPage"));
+const LicenseBorrowPage = React.lazy(() => import("./pages/LicenseBorrowPage"));
 const VisitorPage = React.lazy(() => import("./pages/VisitorPage"));
 const DutySchedulePage = React.lazy(() => import("./pages/DutySchedulePage"));
 const SupplierPage = React.lazy(() => import("./pages/admin/supplier/SupplierPage"));
 const ConsumablePage = React.lazy(() => import("./pages/admin/consumable/ConsumablePage"));
+const SealListPage = React.lazy(() => import("./pages/admin/seal-license/SealListPage"));
+const LicenseListPage = React.lazy(() => import("./pages/admin/seal-license/LicenseListPage"));
+const BorrowManagementPage = React.lazy(() => import("./pages/admin/seal-license/BorrowManagementPage"));
 const DictPage = React.lazy(() => import("./pages/admin/DictPage"));
 const ProcessCategoryPage = React.lazy(
   () => import("./pages/admin/ProcessCategoryPage"),
@@ -822,6 +827,22 @@ const desktopRoutes = [
             ),
           },
           {
+            path: "/office/seal-application",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <SealApplicationPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/license-borrow",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <LicenseBorrowPage />
+              </Suspense>
+            ),
+          },
+          {
             path: "/system/log",
             element: (
               <Suspense fallback={<Loading />}>
@@ -933,6 +954,30 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <ConsumablePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/seal",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <SealListPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/license",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <LicenseListPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/borrow-management",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <BorrowManagementPage />
               </Suspense>
             ),
           },

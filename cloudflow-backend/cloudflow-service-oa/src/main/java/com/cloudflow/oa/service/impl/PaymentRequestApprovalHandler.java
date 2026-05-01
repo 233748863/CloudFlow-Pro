@@ -6,6 +6,7 @@ import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.service.ApprovalResultHandler;
+import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
 
     private final BizPaymentRequestMapper paymentRequestMapper;
+    private final IPurchaseRequestService purchaseRequestService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -49,6 +51,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
         if (updated <= 0) {
             throw new IllegalStateException("未找到付款申请记录，businessId=" + dto.getBusinessId());
         }
+        purchaseRequestService.updatePaymentStatus(dto.getBusinessId(), status);
         log.info("付款申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
     }

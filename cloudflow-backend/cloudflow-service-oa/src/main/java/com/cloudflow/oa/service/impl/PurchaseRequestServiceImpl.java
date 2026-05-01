@@ -13,6 +13,7 @@ import com.cloudflow.oa.domain.BizPurchaseReceipt;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.SysConsumable;
 import com.cloudflow.oa.domain.SysSupplier;
+import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizPurchaseItemMapper;
@@ -54,7 +55,8 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private static final String STATUS_APPROVED = "APPROVED";
     private static final String STATUS_PARTIAL_RECEIVED = "PARTIAL_RECEIVED";
     private static final String STATUS_RECEIVED = "RECEIVED";
-    private static final String STATUS_PAYMENT_CREATED = "PAYMENT_CREATED";
+    private static final String PAYMENT_STATUS_NONE = "NONE";
+    private static final String PAYMENT_STATUS_DRAFT = "DRAFT";
 
     private final BizPurchaseItemMapper purchaseItemMapper;
     private final BizPurchaseReceiptMapper purchaseReceiptMapper;
@@ -86,6 +88,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         LocalDateTime now = LocalDateTime.now();
         purchase.setPurchaseNo(generatePurchaseNo());
         purchase.setStatus(STATUS_DRAFT);
+        purchase.setPaymentStatus(PAYMENT_STATUS_NONE);
         purchase.setDelFlag("0");
         purchase.setCreateBy(UserContext.getUserName());
         purchase.setCreateTime(now);
@@ -190,8 +193,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         if (purchase == null || !"0".equals(purchase.getDelFlag())) {
             throw new IllegalArgumentException("采购申请不存在");
         }
-        if (!STATUS_APPROVED.equals(purchase.getStatus()) && !STATUS_PARTIAL_RECEIVED.equals(purchase.getStatus())
-                && !STATUS_PAYMENT_CREATED.equals(purchase.getStatus())) {
+        if (!STATUS_APPROVED.equals(purchase.getStatus()) && !STATUS_PARTIAL_RECEIVED.equals(purchase.getStatus())) {
             throw new IllegalArgumentException("只有已通过或部分入库的采购申请可以入库");
         }
         if (receipt == null || receipt.getItems() == null || receipt.getItems().isEmpty()) {
@@ -298,11 +300,57 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         }
 
         purchase.setPaymentRequestId(payment.getId());
-        purchase.setStatus(STATUS_PAYMENT_CREATED);
+        purchase.setPaymentStatus(PAYMENT_STATUS_DRAFT);
         purchase.setUpdateBy(UserContext.getUserName());
         purchase.setUpdateTime(now);
         updateById(purchase);
         return payment;
+    }
+
+    @Override
+    @Audit(name = "补货建议生成采购草稿", spel = "#dto")
+    @Transactional(rollbackFor = Exception.class)
+    public BizPurchaseRequest createFromSuggestion(PurchaseFromSuggestionDTO dto) {
+        if (dto == null || dto.getItems() == null || dto.getItems().isEmpty()) {
+            throw new IllegalArgumentException("补货明细不能为空");
+        }
+        BizPurchaseRequest purchase = new BizPurchaseRequest();
+        purchase.setSupplierId(resolveSuggestionSupplierId(dto));
+        purchase.setExpectedDate(dto.getExpectedDate());
+        purchase.setReason(StringUtils.hasText(dto.getReason()) ? dto.getReason() : "低库存补货采购");
+        List<BizPurchaseItem> items = new ArrayList<>();
+        for (PurchaseFromSuggestionDTO.Item source : dto.getItems()) {
+            if (source == null || source.getConsumableId() == null || source.getQuantity() == null || source.getQuantity() <= 0) {
+                continue;
+            }
+            BizPurchaseItem item = new BizPurchaseItem();
+            item.setConsumableId(source.getConsumableId());
+            item.setQuantity(source.getQuantity());
+            item.setUnitPrice(BigDecimal.ZERO);
+            items.add(item);
+        }
+        if (items.isEmpty()) {
+            throw new IllegalArgumentException("有效补货明细不能为空");
+        }
+        purchase.setItems(items);
+        if (!createPurchase(purchase)) {
+            throw new IllegalStateException("创建采购草稿失败");
+        }
+        return getRequestWithItems(purchase.getId());
+    }
+
+    @Override
+    public void updatePaymentStatus(Long paymentRequestId, String paymentStatus) {
+        if (paymentRequestId == null || !StringUtils.hasText(paymentStatus)) {
+            return;
+        }
+        LambdaUpdateWrapper<BizPurchaseRequest> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(BizPurchaseRequest::getPaymentRequestId, paymentRequestId)
+                .eq(BizPurchaseRequest::getDelFlag, "0")
+                .set(BizPurchaseRequest::getPaymentStatus, paymentStatus)
+                .set(BizPurchaseRequest::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
+        update(wrapper);
     }
 
     private void normalizeAndValidatePurchase(BizPurchaseRequest purchase) {
@@ -400,6 +448,33 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             item.setReceivedQuantity(0);
             purchaseItemMapper.insert(item);
         }
+    }
+
+    private Long resolveSuggestionSupplierId(PurchaseFromSuggestionDTO dto) {
+        if (dto.getSupplierId() != null) {
+            return dto.getSupplierId();
+        }
+        Long supplierId = null;
+        for (PurchaseFromSuggestionDTO.Item item : dto.getItems()) {
+            if (item == null || item.getConsumableId() == null) {
+                continue;
+            }
+            SysConsumable consumable = consumableService.getById(item.getConsumableId());
+            if (consumable == null || consumable.getDefaultSupplierId() == null) {
+                continue;
+            }
+            if (supplierId == null) {
+                supplierId = consumable.getDefaultSupplierId();
+                continue;
+            }
+            if (!supplierId.equals(consumable.getDefaultSupplierId())) {
+                throw new IllegalArgumentException("多条补货建议存在不同默认供应商，请手动选择供应商");
+            }
+        }
+        if (supplierId == null) {
+            throw new IllegalArgumentException("请选择供应商");
+        }
+        return supplierId;
     }
 
     private String buildItemSummary(List<BizPurchaseItem> items) {

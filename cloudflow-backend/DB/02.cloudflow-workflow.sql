@@ -410,6 +410,37 @@ CREATE TABLE wf_transaction_message (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='事务消息表';
 
 --
+DROP TABLE IF EXISTS wf_deploy_window;
+CREATE TABLE wf_deploy_window (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT 'ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  window_name       VARCHAR(100)    NOT NULL COMMENT '窗口名称',
+  window_type       VARCHAR(20)     NOT NULL COMMENT '窗口类型',
+  start_time        TIME            NOT NULL COMMENT '开始时间',
+  end_time          TIME            NOT NULL COMMENT '结束时间',
+  week_days         VARCHAR(50)     DEFAULT NULL COMMENT '星期几',
+  month_days        VARCHAR(100)    DEFAULT NULL COMMENT '每月几号',
+  custom_dates      TEXT            DEFAULT NULL COMMENT '自定义日期',
+  is_enabled        TINYINT(1)      DEFAULT 1 COMMENT '是否启用',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '描述',
+  create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_window_type (window_type),
+  KEY idx_is_enabled (is_enabled),
+  KEY idx_tenant_enabled (tenant_id, is_enabled)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布窗口配置表';
+
+INSERT INTO wf_deploy_window (
+  tenant_id, window_name, window_type, start_time, end_time, week_days, month_days, custom_dates, is_enabled, description, create_by, create_time
+) VALUES
+(100000, '工作日发布窗口', 'WEEKLY', '09:00:00', '18:00:00', '1,2,3,4,5', NULL, NULL, 1, '周一至周五工作时间允许发布', 'system', NOW()),
+(100000, '周末维护窗口', 'WEEKLY', '00:00:00', '23:59:59', '6,7', NULL, NULL, 0, '周末维护窗口默认禁用', 'system', NOW());
+
+--
 DROP TABLE IF EXISTS wf_deploy_record;
 CREATE TABLE wf_deploy_record (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
@@ -441,6 +472,98 @@ CREATE TABLE wf_deploy_record (
   KEY idx_deploy_time (deploy_time),
   KEY idx_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布记录表';
+
+--
+DROP TABLE IF EXISTS wf_deploy_approval;
+CREATE TABLE wf_deploy_approval (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  deploy_id         BIGINT(20)      NOT NULL COMMENT '发布记录ID',
+  process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
+  approval_status   VARCHAR(20)     DEFAULT 'PENDING' COMMENT '审批状态',
+  current_step      INT             DEFAULT 1 COMMENT '当前审批步骤',
+  total_steps       INT             DEFAULT 1 COMMENT '总审批步骤数',
+  approval_config   TEXT            DEFAULT NULL COMMENT '审批配置',
+  submitter_id      BIGINT(20)      NOT NULL COMMENT '提交人ID',
+  submit_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  complete_time     DATETIME        DEFAULT NULL COMMENT '完成时间',
+  created_time      DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  updated_time      DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_deploy_id (deploy_id),
+  KEY idx_process_def_id (process_def_id),
+  KEY idx_submitter_id (submitter_id),
+  KEY idx_approval_status (approval_status),
+  KEY idx_submit_time (submit_time),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布审批表';
+
+--
+DROP TABLE IF EXISTS wf_deploy_approval_step;
+CREATE TABLE wf_deploy_approval_step (
+  id                 BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id          BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  approval_id        BIGINT(20)      NOT NULL COMMENT '审批ID',
+  step_no            INT             NOT NULL COMMENT '步骤序号',
+  step_name          VARCHAR(100)    DEFAULT NULL COMMENT '步骤名称',
+  approver_type      VARCHAR(20)     NOT NULL COMMENT '审批人类型',
+  approver_ids       VARCHAR(500)    NOT NULL COMMENT '审批人ID列表',
+  approval_mode      VARCHAR(20)     DEFAULT 'ANY' COMMENT '审批模式',
+  step_status        VARCHAR(20)     DEFAULT 'PENDING' COMMENT '步骤状态',
+  actual_approver_id BIGINT(20)      DEFAULT NULL COMMENT '实际审批人ID',
+  approval_comment   VARCHAR(500)    DEFAULT NULL COMMENT '审批意见',
+  approval_time      DATETIME        DEFAULT NULL COMMENT '审批时间',
+  created_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_approval_id (approval_id),
+  KEY idx_step_no (step_no),
+  KEY idx_step_status (step_status),
+  KEY idx_approver_type (approver_type),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布审批步骤表';
+
+--
+DROP TABLE IF EXISTS wf_deploy_notification;
+CREATE TABLE wf_deploy_notification (
+  id                   BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id            BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  deploy_id            BIGINT(20)      NOT NULL COMMENT '发布记录ID',
+  notification_type    VARCHAR(20)     NOT NULL COMMENT '通知类型',
+  recipient_type       VARCHAR(20)     NOT NULL COMMENT '接收人类型',
+  recipient_ids        VARCHAR(500)    NOT NULL COMMENT '接收人ID列表',
+  notification_title   VARCHAR(200)    DEFAULT NULL COMMENT '通知标题',
+  notification_content TEXT            DEFAULT NULL COMMENT '通知内容',
+  send_status          VARCHAR(20)     DEFAULT 'PENDING' COMMENT '发送状态',
+  send_time            DATETIME        DEFAULT NULL COMMENT '发送时间',
+  error_message        TEXT            DEFAULT NULL COMMENT '错误信息',
+  created_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_deploy_id (deploy_id),
+  KEY idx_send_status (send_status),
+  KEY idx_created_time (created_time),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布通知表';
+
+--
+DROP TABLE IF EXISTS wf_process_version_snapshot;
+CREATE TABLE wf_process_version_snapshot (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  process_def_id    VARCHAR(64)     NOT NULL COMMENT '流程定义ID',
+  process_key       VARCHAR(64)     NOT NULL COMMENT '流程Key',
+  version           INT             NOT NULL COMMENT '版本号',
+  snapshot_data     LONGTEXT        NOT NULL COMMENT '快照数据',
+  bpmn_xml          LONGTEXT        DEFAULT NULL COMMENT 'BPMN XML',
+  form_config       TEXT            DEFAULT NULL COMMENT '表单配置',
+  node_config       TEXT            DEFAULT NULL COMMENT '节点配置',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_process_def_id (process_def_id),
+  KEY idx_process_key (process_key),
+  KEY idx_process_version (process_def_id, version),
+  KEY idx_process_key_version (process_key, version),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程版本快照表';
 
 -- =========================================================
 --

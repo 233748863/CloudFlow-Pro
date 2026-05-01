@@ -12,6 +12,8 @@ import com.cloudflow.oa.domain.export.PaymentRequestExportVo;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import jakarta.servlet.http.HttpServletResponse;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.util.StringUtils;
@@ -128,6 +130,20 @@ public class PaymentRequestController {
     public R<Void> submit(@PathVariable Long id) {
         try {
             return paymentRequestService.submitPayment(id) ? R.ok() : R.fail("提交失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    /**
+     * 确认付款
+     */
+    @SysLog("确认付款")
+    @PostMapping("/{id}/pay")
+    @SaCheckRole(value = {"admin", "finance"}, mode = SaMode.OR)
+    public R<Void> confirmPaid(@PathVariable Long id) {
+        try {
+            return paymentRequestService.confirmPaid(id) ? R.ok() : R.fail("确认付款失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

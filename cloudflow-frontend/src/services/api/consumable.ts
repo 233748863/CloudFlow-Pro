@@ -8,9 +8,26 @@ export interface Consumable {
   unit?: string;
   quantity?: number;
   lowStockThreshold?: number;
+  defaultSupplierId?: number;
+  defaultSupplierName?: string;
+  targetStock?: number;
+  warnEnabled?: number;
   tenantId?: number;
   createBy?: string;
   createTime?: string;
+}
+
+export interface ConsumableReplenishmentSuggestion {
+  consumableId: number;
+  name: string;
+  model?: string;
+  unit?: string;
+  quantity?: number;
+  lowStockThreshold?: number;
+  targetStock?: number;
+  suggestedQuantity?: number;
+  defaultSupplierId?: number;
+  defaultSupplierName?: string;
 }
 
 export interface ConsumableStockLog {
@@ -61,6 +78,10 @@ export const consumableApi = {
 
   /** 获取库存不足的耗材列表 */
   getLowStock: () => request.get('/oa/consumable/low-stock'),
+
+  /** 获取补货建议 */
+  getReplenishmentSuggestions: () =>
+    request.get('/oa/consumable/replenishment-suggestions') as Promise<ConsumableReplenishmentSuggestion[]>,
 
   /** 入库操作 */
   addStock: (id: number, quantity: number, remark: string) => {

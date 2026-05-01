@@ -200,6 +200,31 @@ export async function getTodoTasks(params?: {
 }
 
 /**
+ * 获取已办任务列表（支持分页和条件查询）
+ */
+export async function getDoneTasks(params?: {
+  pageNum?: number;
+  pageSize?: number;
+  keyword?: string;
+  processDefKey?: string;
+  startTimeFrom?: string;
+  startTimeTo?: string;
+  startUserName?: string;
+}): Promise<any> {
+  logApiCall("GET", "/workflow/done", params);
+  const query: Record<string, any> = {
+    pageNum: params?.pageNum || 1,
+    pageSize: params?.pageSize || 20,
+  };
+  if (params?.keyword) query["params[keyword]"] = params.keyword;
+  if (params?.processDefKey) query["params[processDefKey]"] = params.processDefKey;
+  if (params?.startTimeFrom) query["params[startTimeFrom]"] = params.startTimeFrom;
+  if (params?.startTimeTo) query["params[startTimeTo]"] = params.startTimeTo;
+  if (params?.startUserName) query["params[startUserName]"] = params.startUserName;
+  return request.get("/workflow/done", { params: query });
+}
+
+/**
  * 完成任务（审批/拒绝/转办等）
  */
 export async function completeTask(data: CompleteTaskRequest): Promise<void> {
@@ -981,6 +1006,7 @@ export default {
 
   // 任务
   getTodoTasks,
+  getDoneTasks,
   completeTask,
   readTask,
   urgeTask,

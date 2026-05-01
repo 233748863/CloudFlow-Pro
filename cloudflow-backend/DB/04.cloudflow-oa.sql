@@ -166,6 +166,9 @@ CREATE TABLE sys_consumable (
   unit              VARCHAR(20)     DEFAULT '个' COMMENT '单位',
   quantity          INT(11)         DEFAULT 0 COMMENT '库存数量',
   low_stock_threshold INT(11)       DEFAULT 10 COMMENT '预警阈值',
+  default_supplier_id BIGINT(20)    DEFAULT NULL COMMENT '默认供应商ID',
+  target_stock      INT(11)         DEFAULT 0 COMMENT '目标库存',
+  warn_enabled      TINYINT(1)      DEFAULT 1 COMMENT '是否启用库存预警(1启用 0停用)',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
@@ -440,7 +443,8 @@ CREATE TABLE biz_purchase_request (
   total_amount      DECIMAL(10,2)   DEFAULT 0.00 COMMENT '采购总金额',
   expected_date     DATETIME        DEFAULT NULL COMMENT '期望到货日期',
   reason            VARCHAR(500)    NOT NULL COMMENT '采购事由',
-  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/PARTIAL_RECEIVED/RECEIVED/REJECTED/PAYMENT_CREATED)',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/PARTIAL_RECEIVED/RECEIVED/REJECTED)',
+  payment_status    VARCHAR(20)     DEFAULT 'NONE' COMMENT '付款状态(NONE/DRAFT/PENDING/APPROVED/REJECTED/PAID)',
   payment_request_id BIGINT(20)     DEFAULT NULL COMMENT '关联付款申请ID',
   attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
   dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
@@ -454,6 +458,7 @@ CREATE TABLE biz_purchase_request (
   UNIQUE KEY uk_purchase_no (purchase_no),
   KEY idx_purchase_user (user_id),
   KEY idx_purchase_status (status),
+  KEY idx_purchase_payment_status (payment_status),
   KEY idx_purchase_supplier (supplier_id),
   KEY idx_purchase_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='行政采购申请表';
@@ -544,6 +549,202 @@ CREATE TABLE biz_business_trip (
   KEY idx_trip_status (status),
   KEY idx_trip_date (start_date, end_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='出差申请表';
+
+-- =========================================================
+-- 十、用印与证照借用模块
+-- =========================================================
+
+-- 20. 印章台账表
+DROP TABLE IF EXISTS oa_seal;
+CREATE TABLE oa_seal (
+  seal_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '印章ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  seal_code         VARCHAR(50)     NOT NULL COMMENT '印章编码',
+  seal_name         VARCHAR(100)    NOT NULL COMMENT '印章名称',
+  seal_type         VARCHAR(30)     NOT NULL COMMENT '印章类型(COMPANY公章/FINANCE财务章/CONTRACT合同章/LEGAL法人章/OTHER其他)',
+  keeper_id         BIGINT(20)      DEFAULT NULL COMMENT '保管人ID',
+  keeper_name       VARCHAR(64)     DEFAULT NULL COMMENT '保管人姓名',
+  location          VARCHAR(200)    DEFAULT NULL COMMENT '存放位置',
+  status            VARCHAR(20)     DEFAULT 'AVAILABLE' COMMENT '状态(AVAILABLE可用/BORROWED借出/DISABLED停用)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (seal_id),
+  UNIQUE KEY uk_seal_code_tenant (seal_code, tenant_id),
+  KEY idx_seal_tenant (tenant_id),
+  KEY idx_seal_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='印章台账表';
+
+-- 21. 用印申请表
+DROP TABLE IF EXISTS oa_seal_application;
+CREATE TABLE oa_seal_application (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  application_no    VARCHAR(50)     NOT NULL COMMENT '用印申请编号',
+  seal_id           BIGINT(20)      NOT NULL COMMENT '印章ID',
+  seal_name         VARCHAR(100)    DEFAULT NULL COMMENT '印章名称快照',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  document_name     VARCHAR(200)    NOT NULL COMMENT '用印文件名称',
+  use_scene         VARCHAR(30)     DEFAULT 'CONTRACT' COMMENT '用印场景(CONTRACT合同/PROOF证明/FINANCE财务/OTHER其他)',
+  copy_count        INT(11)         DEFAULT 1 COMMENT '用印份数',
+  purpose           VARCHAR(500)    NOT NULL COMMENT '用印用途',
+  expected_borrow_time DATETIME     DEFAULT NULL COMMENT '预计借出时间',
+  expected_return_time DATETIME     NOT NULL COMMENT '预计归还时间',
+  actual_borrow_time DATETIME       DEFAULT NULL COMMENT '实际借出时间',
+  actual_return_time DATETIME       DEFAULT NULL COMMENT '实际归还时间',
+  handler_id        BIGINT(20)      DEFAULT NULL COMMENT '最近经办人ID',
+  handler_name      VARCHAR(64)     DEFAULT NULL COMMENT '最近经办人姓名',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/BORROWED/RETURNED/OVERDUE/CANCELLED)',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_seal_application_no (application_no),
+  KEY idx_seal_app_tenant (tenant_id),
+  KEY idx_seal_app_seal (seal_id),
+  KEY idx_seal_app_user (user_id),
+  KEY idx_seal_app_status (status),
+  KEY idx_seal_app_return_time (expected_return_time)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='用印申请表';
+
+-- 22. 用印借还交接日志表
+DROP TABLE IF EXISTS oa_seal_handover_log;
+CREATE TABLE oa_seal_handover_log (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  application_id    BIGINT(20)      NOT NULL COMMENT '用印申请ID',
+  seal_id           BIGINT(20)      NOT NULL COMMENT '印章ID',
+  action_type       VARCHAR(20)     NOT NULL COMMENT '动作类型(BORROW借出/RETURN归还)',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '经办人ID',
+  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '经办人姓名',
+  action_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_seal_handover_app (application_id),
+  KEY idx_seal_handover_seal (seal_id),
+  KEY idx_seal_handover_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='用印借还交接日志表';
+
+-- 23. 证照台账表
+DROP TABLE IF EXISTS oa_license;
+CREATE TABLE oa_license (
+  license_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '证照ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  license_code      VARCHAR(50)     NOT NULL COMMENT '证照编码',
+  license_name      VARCHAR(100)    NOT NULL COMMENT '证照名称',
+  license_type      VARCHAR(30)     NOT NULL COMMENT '证照类型(BUSINESS营业执照/PERMIT许可证/QUALIFICATION资质证书/OTHER其他)',
+  license_no        VARCHAR(100)    DEFAULT NULL COMMENT '证照编号',
+  issuer            VARCHAR(100)    DEFAULT NULL COMMENT '签发机构',
+  issue_date        DATE            DEFAULT NULL COMMENT '签发日期',
+  expire_date       DATE            DEFAULT NULL COMMENT '到期日期',
+  keeper_id         BIGINT(20)      DEFAULT NULL COMMENT '保管人ID',
+  keeper_name       VARCHAR(64)     DEFAULT NULL COMMENT '保管人姓名',
+  location          VARCHAR(200)    DEFAULT NULL COMMENT '存放位置',
+  status            VARCHAR(20)     DEFAULT 'AVAILABLE' COMMENT '状态(AVAILABLE可用/BORROWED借出/DISABLED停用)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (license_id),
+  UNIQUE KEY uk_license_code_tenant (license_code, tenant_id),
+  KEY idx_license_tenant (tenant_id),
+  KEY idx_license_status (status),
+  KEY idx_license_expire (expire_date)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='证照台账表';
+
+-- 24. 证照借用申请表
+DROP TABLE IF EXISTS oa_license_borrow;
+CREATE TABLE oa_license_borrow (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  borrow_no         VARCHAR(50)     NOT NULL COMMENT '证照借用编号',
+  license_id        BIGINT(20)      NOT NULL COMMENT '证照ID',
+  license_name      VARCHAR(100)    DEFAULT NULL COMMENT '证照名称快照',
+  user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  purpose           VARCHAR(500)    NOT NULL COMMENT '借用用途',
+  expected_borrow_time DATETIME     DEFAULT NULL COMMENT '预计借出时间',
+  expected_return_time DATETIME     NOT NULL COMMENT '预计归还时间',
+  actual_borrow_time DATETIME       DEFAULT NULL COMMENT '实际借出时间',
+  actual_return_time DATETIME       DEFAULT NULL COMMENT '实际归还时间',
+  handler_id        BIGINT(20)      DEFAULT NULL COMMENT '最近经办人ID',
+  handler_name      VARCHAR(64)     DEFAULT NULL COMMENT '最近经办人姓名',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/BORROWED/RETURNED/OVERDUE/CANCELLED)',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_license_borrow_no (borrow_no),
+  KEY idx_license_borrow_tenant (tenant_id),
+  KEY idx_license_borrow_license (license_id),
+  KEY idx_license_borrow_user (user_id),
+  KEY idx_license_borrow_status (status),
+  KEY idx_license_borrow_return_time (expected_return_time)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='证照借用申请表';
+
+-- 25. 证照借还交接日志表
+DROP TABLE IF EXISTS oa_license_handover_log;
+CREATE TABLE oa_license_handover_log (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  borrow_id         BIGINT(20)      NOT NULL COMMENT '证照借用申请ID',
+  license_id        BIGINT(20)      NOT NULL COMMENT '证照ID',
+  action_type       VARCHAR(20)     NOT NULL COMMENT '动作类型(BORROW借出/RETURN归还)',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '经办人ID',
+  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '经办人姓名',
+  action_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_license_handover_borrow (borrow_id),
+  KEY idx_license_handover_license (license_id),
+  KEY idx_license_handover_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='证照借还交接日志表';
+
+-- 26. 用印/证照逾期催还日志表
+DROP TABLE IF EXISTS oa_borrow_reminder_log;
+CREATE TABLE oa_borrow_reminder_log (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  business_type     VARCHAR(20)     NOT NULL COMMENT '业务类型(SEAL/LICENSE)',
+  business_id       BIGINT(20)      NOT NULL COMMENT '业务申请ID',
+  resource_id       BIGINT(20)      NOT NULL COMMENT '资源ID',
+  resource_name     VARCHAR(100)    DEFAULT NULL COMMENT '资源名称',
+  applicant_id      BIGINT(20)      DEFAULT NULL COMMENT '申请人ID',
+  applicant_name    VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  reminder_type     VARCHAR(20)     NOT NULL COMMENT '催还类型(AUTO自动/MANUAL手动)',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
+  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
+  reminder_content  VARCHAR(500)    DEFAULT NULL COMMENT '催还内容',
+  reminder_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '催还时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_borrow_reminder_business (business_type, business_id),
+  KEY idx_borrow_reminder_tenant (tenant_id),
+  KEY idx_borrow_reminder_type (reminder_type)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='用印证照逾期催还日志表';
 
 -- =========================================================
 -- 十二、访客管理模块
