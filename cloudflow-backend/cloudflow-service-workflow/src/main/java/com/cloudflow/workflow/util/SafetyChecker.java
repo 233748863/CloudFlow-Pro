@@ -88,11 +88,12 @@ public class SafetyChecker {
 
             Long runningCount = instanceMapper.selectCount(queryWrapper);
             if (runningCount != null && runningCount > 0) {
+                result.setSafe(false);
                 result.getWorkflowsWithRunningInstances().add(workflowId);
-                result.getWarnings().add(String.format(
-                    "流程 %s 存在 %d 个运行中的实例", workflowId, runningCount));
+                result.getErrors().add(String.format(
+                    "流程 %s 存在 %d 个运行中或暂停中的实例", workflowId, runningCount));
                 result.getDetails().put(workflowId,
-                    String.format("存在 %d 个运行中的实例", runningCount));
+                    String.format("存在 %d 个运行中或暂停中的实例", runningCount));
             }
         }
     }

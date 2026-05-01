@@ -61,6 +61,12 @@ public class OaWorkflowEventListener {
         syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.CANCELLED, "流程作废");
     }
 
+    @EventListener
+    @Async("workflowEventExecutor")
+    public void onProcessTerminated(ProcessTerminatedEvent event) {
+        syncByInstance(event.getProcessDefKey(), event.getInstanceId(), SyncAction.CANCELLED, "流程终止");
+    }
+
     private void syncByInstance(String processDefKey, String instanceId, SyncAction action, String trigger) {
         OaBusinessBinding binding = bindings.get(processDefKey);
         if (binding == null) {

@@ -51,7 +51,7 @@
     <select id="countPendingTasks" resultType="java.lang.Integer">
         SELECT COUNT(*)
         FROM wf_task
-        WHERE status = 'PENDING'
+        WHERE status = 'TODO'
     </select>
 
     <!-- 获取平均完成时间 -->

@@ -9,6 +9,7 @@ import com.cloudflow.workflow.domain.enums.DeployEnums.*;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
+import com.cloudflow.workflow.service.ScriptExecutionPolicy;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -69,6 +70,9 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
 
     @Autowired
     private WorkflowPermissionService workflowPermissionService;
+
+    @Autowired
+    private ScriptExecutionPolicy scriptExecutionPolicy;
 
     // ==================== 发布窗口管理 ====================
 
@@ -486,13 +490,27 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         }
 
         // 2. 分析待办任务
-        LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
-        taskWrapper.eq(WfTask::getStatus, "PENDING");
+        LambdaQueryWrapper<WfProcessInstance> taskInstanceWrapper = new LambdaQueryWrapper<>();
+        taskInstanceWrapper.eq(WfProcessInstance::getDefinitionId, processDefId)
+                .eq(WfProcessInstance::getStatus, "RUNNING");
         if (currentTenantId != null) {
-            taskWrapper.eq(WfTask::getTenantId, currentTenantId);
+            taskInstanceWrapper.eq(WfProcessInstance::getTenantId, currentTenantId);
         }
-        // 通过实例关联流程定义
-        Long pendingTaskCount = taskMapper.selectCount(taskWrapper);
+        List<String> runningInstanceIds = processInstanceMapper.selectList(taskInstanceWrapper).stream()
+                .map(WfProcessInstance::getInstanceId)
+                .filter(StringUtils::hasText)
+                .collect(Collectors.toList());
+
+        Long pendingTaskCount = 0L;
+        if (!runningInstanceIds.isEmpty()) {
+            LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
+            taskWrapper.in(WfTask::getInstanceId, runningInstanceIds)
+                    .eq(WfTask::getStatus, "TODO");
+            if (currentTenantId != null) {
+                taskWrapper.eq(WfTask::getTenantId, currentTenantId);
+            }
+            pendingTaskCount = taskMapper.selectCount(taskWrapper);
+        }
         if (pendingTaskCount > 0) {
             ImpactAnalysisDTO.ImpactItem item = new ImpactAnalysisDTO.ImpactItem();
             item.setImpactType(ImpactType.PENDING_TASK.getCode());
@@ -523,6 +541,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             return R.fail("流程定义不存在");
         }
         assertTenantAccess(definition.getTenantId(), "提交发布审批");
+        scriptExecutionPolicy.assertModelDeployable(definition.getModelJson());
         Long tenantId = resolveTenantId(definition.getTenantId());
 
         // 1. 检查是否已有待审批的发布请求
@@ -622,12 +641,11 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             WfDeployApprovalStep nextStep = deployApprovalStepMapper.selectNextPendingStep(approvalId);
             if (nextStep == null) {
                 // 所有步骤都已通过，审批完成
+                // 自动执行发布
+                autoDeployAfterApproval(approval);
                 approval.setApprovalStatus(ApprovalStatus.APPROVED.getCode());
                 approval.setCompleteTime(LocalDateTime.now());
                 deployApprovalMapper.updateById(approval);
-
-                // 自动执行发布
-                autoDeployAfterApproval(approval);
                 return R.ok("审批通过，流程已自动发布");
             } else {
                 // 激活下一步
@@ -660,6 +678,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
             if (definition != null) {
                 assertTenantAccess(definition.getTenantId(), "审批通过自动发布");
+                scriptExecutionPolicy.assertModelDeployable(definition.getModelJson());
                 // 创建发布记录
                 WfDeployRecord record = new WfDeployRecord();
                 record.setTenantId(resolveTenantId(approval.getTenantId()));
@@ -697,6 +716,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             }
         } catch (Exception e) {
             log.error("审批通过后自动发布失败", e);
+            throw WorkflowException.validationError("审批通过后自动发布失败: " + e.getMessage());
         }
     }
 

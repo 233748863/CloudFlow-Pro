@@ -6,6 +6,7 @@ import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.handler.INodeHandler;
 import com.cloudflow.workflow.service.HttpClientService;
 import com.cloudflow.workflow.service.ScriptExecutionService;
+import com.cloudflow.workflow.service.ScriptExecutionPolicy;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,7 @@ public class ScriptNodeHandler implements INodeHandler {
     private static final Logger log = LoggerFactory.getLogger(ScriptNodeHandler.class);
 
     private final ScriptExecutionService scriptExecutionService;
+    private final ScriptExecutionPolicy scriptExecutionPolicy;
     private final HttpClientService httpClientService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -47,15 +49,17 @@ public class ScriptNodeHandler implements INodeHandler {
                 return true;
             }
 
-            String scriptType = (String) props.getOrDefault("scriptType", "GROOVY");
+            String scriptType = scriptExecutionPolicy.normalizeScriptType((String) props.get("scriptType"));
             switch (scriptType) {
                 case "API":
                     handleApiCall(node, props, variables);
                     break;
                 case "GROOVY":
+                    scriptExecutionPolicy.assertInProcessScriptAllowed(scriptType);
                     handleGroovyScript(node, props, variables);
                     break;
                 case "JAVASCRIPT":
+                    scriptExecutionPolicy.assertInProcessScriptAllowed(scriptType);
                     handleJavaScript(node, props, variables);
                     break;
                 default:

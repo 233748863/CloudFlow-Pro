@@ -235,12 +235,15 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         // 普通审批模式：创建单个用户任务
         WfTask task = new WfTask();
         task.setTaskId(UUID.randomUUID().toString());
+        task.setTenantId(instance.getTenantId());
         task.setInstanceId(instance.getInstanceId());
         task.setNodeName(node.getTitle());
         task.setNodeKey(node.getId());
 
         Long assigneeId = resolveAssignee(node, instance);
         task.setAssignee(assigneeId != null ? assigneeId : 1L);
+        task.setAssigneeName(resolveUserDisplayName(task.getAssignee()));
+        task.setAllowEdit(Boolean.TRUE.equals(node.getAllowEdit()));
         task.setStatus(WfTaskStatus.TODO.getCode());
         task.setCreateTime(LocalDateTime.now());
         taskMapper.insert(task);
@@ -261,14 +264,21 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         }
 
         // 发布任务分配事件
-        String assigneeName = null;
-        if (task.getAssignee() != null) {
-            SysUser assigneeUser = sysUserMapper.selectById(task.getAssignee());
-            if (assigneeUser != null) {
-                assigneeName = assigneeUser.getNickName() != null ? assigneeUser.getNickName() : assigneeUser.getUserName();
-            }
-        }
+        String assigneeName = task.getAssigneeName();
         workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), task.getAssignee(), assigneeName);
+    }
+
+    private String resolveUserDisplayName(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        SysUser assigneeUser = sysUserMapper.selectById(userId);
+        if (assigneeUser == null) {
+            return null;
+        }
+        return StringUtils.hasText(assigneeUser.getNickName())
+            ? assigneeUser.getNickName()
+            : assigneeUser.getUserName();
     }
 
     /**

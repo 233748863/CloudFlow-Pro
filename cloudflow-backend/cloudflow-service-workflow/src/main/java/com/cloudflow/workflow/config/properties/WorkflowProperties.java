@@ -45,6 +45,7 @@ public class WorkflowProperties {
     private Async async = new Async();
     private Nonce nonce = new Nonce();
     private Lock lock = new Lock();
+    private Script script = new Script();
 
     /**
      * 初始化时从 sys_config 加载配置值，覆盖默认值
@@ -93,6 +94,9 @@ public class WorkflowProperties {
             lock.setMaxVictimRecords(
                     sysConfigHelper.getGlobalInt("sys.workflow.lock.maxVictimRecords", lock.getMaxVictimRecords()));
 
+            script.setEnabled(
+                    sysConfigHelper.getGlobalBoolean("sys.workflow.script.enabled", script.isEnabled()));
+
             // Redis Stream 配置
             String streamKey = sysConfigHelper.getGlobalValue("sys.workflow.stream.key", null);
             if (streamKey != null) {
@@ -140,6 +144,9 @@ public class WorkflowProperties {
 
     public Lock getLock() { return lock; }
     public void setLock(Lock lock) { this.lock = lock; }
+
+    public Script getScript() { return script; }
+    public void setScript(Script script) { this.script = script; }
 
     // ========== 内部配置类 ==========
 
@@ -237,5 +244,14 @@ public class WorkflowProperties {
 
         public int getExpireMinutes() { return expireMinutes; }
         public void setExpireMinutes(int expireMinutes) { this.expireMinutes = expireMinutes; }
+    }
+
+    /** 脚本节点配置 */
+    public static class Script {
+        /** 是否允许进程内执行 Groovy/JavaScript 脚本，默认关闭 */
+        private boolean enabled = false;
+
+        public boolean isEnabled() { return enabled; }
+        public void setEnabled(boolean enabled) { this.enabled = enabled; }
     }
 }

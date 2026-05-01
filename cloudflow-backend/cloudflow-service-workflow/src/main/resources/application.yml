@@ -74,6 +74,9 @@ cloudflow:
     token:
       expiration: 1440
       refresh-time: 20
+  workflow:
+    script:
+      enabled: false
 
 sa-token:
   token-name: Authorization

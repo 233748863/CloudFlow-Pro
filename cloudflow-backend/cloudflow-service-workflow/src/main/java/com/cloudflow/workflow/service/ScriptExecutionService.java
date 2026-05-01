@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service;
 
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
+import com.cloudflow.workflow.exception.WorkflowException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -16,6 +17,12 @@ import java.util.Map;
 public class ScriptExecutionService {
     
     private static final Logger log = LoggerFactory.getLogger(ScriptExecutionService.class);
+
+    private final ScriptExecutionPolicy scriptExecutionPolicy;
+
+    public ScriptExecutionService(ScriptExecutionPolicy scriptExecutionPolicy) {
+        this.scriptExecutionPolicy = scriptExecutionPolicy;
+    }
     
     /**
      * 执行 Groovy 脚本
@@ -26,6 +33,7 @@ public class ScriptExecutionService {
      */
     public Object executeGroovyScript(String scriptContent, Map<String, Object> variables) {
         try {
+            scriptExecutionPolicy.assertInProcessScriptAllowed("GROOVY");
             log.info("[executeGroovyScript] 开始执行 Groovy 脚本");
             
             // 创建绑定上下文
@@ -43,6 +51,8 @@ public class ScriptExecutionService {
             log.info("[executeGroovyScript] Groovy 脚本执行成功");
             return result;
             
+        } catch (WorkflowException e) {
+            throw e;
         } catch (Exception e) {
             log.error("[executeGroovyScript] Groovy 脚本执行失败: {}", e.getMessage(), e);
             throw new RuntimeException("Groovy 脚本执行失败: " + e.getMessage(), e);
@@ -59,10 +69,13 @@ public class ScriptExecutionService {
      */
     public Object executeJavaScript(String scriptContent, Map<String, Object> variables) {
         try {
+            scriptExecutionPolicy.assertInProcessScriptAllowed("JAVASCRIPT");
             log.info("[executeJavaScript] JavaScript 执行暂未实现");
             log.warn("[executeJavaScript] 建议使用 GraalVM 或外部 Node.js 进程执行 JavaScript");
             throw new UnsupportedOperationException("JavaScript 执行暂未实现，建议使用 Groovy 或 API 调用");
             
+        } catch (WorkflowException e) {
+            throw e;
         } catch (Exception e) {
             log.error("[executeJavaScript] JavaScript 执行失败: {}", e.getMessage(), e);
             throw new RuntimeException("JavaScript 执行失败: " + e.getMessage(), e);

@@ -23,6 +23,7 @@ import com.cloudflow.workflow.model.WorkflowGraphModelResolver;
 import com.cloudflow.workflow.security.WorkflowSecurityUtils;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
+import com.cloudflow.workflow.service.ScriptExecutionPolicy;
 import com.cloudflow.workflow.service.WorkflowAuditService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -71,6 +72,8 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     private IVersionService versionService;
     @Autowired
     private WorkflowGraphModelResolver workflowGraphModelResolver;
+    @Autowired
+    private ScriptExecutionPolicy scriptExecutionPolicy;
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -244,6 +247,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         if (!workflowGraphModelResolver.validateGraphModel(def.getModelJson())) {
             throw WorkflowException.validationError("流程定义图模型校验失败");
         }
+        scriptExecutionPolicy.assertModelDeployable(def.getModelJson());
 
         // 更新状态
         def.setStatus("PUBLISHED");

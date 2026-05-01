@@ -65,6 +65,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
     @Autowired
     private WfTaskUrgeMapper taskUrgeMapper;
     @Autowired
+    private WfTaskAddSignMapper wfTaskAddSignMapper;
+    @Autowired
     private SysUserMapper sysUserMapper;
     @Autowired
     private WorkflowPermissionService permissionService;
@@ -255,70 +257,86 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.validationError("驳回原因不能为空，请填写驳回理由");
         }
 
-        WfTask task = taskMapper.selectById(taskId);
-        if (task == null) {
-            throw WorkflowException.taskNotFound(taskId);
-        }
-
-        permissionService.checkRejectPermission(task);
-        validateRejectTarget(task.getInstanceId(), task.getNodeKey(), targetNodeKey);
-
-        // 保存驳回历史
-        WfTaskHistory history = new WfTaskHistory();
-        history.setHistoryId(UUID.randomUUID().toString());
-        history.setTaskId(task.getTaskId());
-        history.setInstanceId(task.getInstanceId());
-        history.setNodeName(task.getNodeName());
-        history.setNodeKey(task.getNodeKey());
-        history.setOperatorId(UserContext.getUserId());
-        history.setOperatorName(UserContext.getUserName());
-        history.setComment(comment);
-        history.setAction("REJECT");
-        history.setCreateTime(LocalDateTime.now());
-
+        RLock lock = redissonClient.getLock("lock:task:" + taskId);
         try {
-            Map<String, Object> rejectDetail = new HashMap<>();
-            rejectDetail.put("type", "REJECT");
-            rejectDetail.put("sourceNodeKey", task.getNodeKey());
-            rejectDetail.put("targetNodeKey", targetNodeKey);
-            rejectDetail.put("reason", comment);
-            history.setVariablesChanged(objectMapper.writeValueAsString(rejectDetail));
-        } catch (Exception e) {
-            log.warn("[rejectTask] 序列化驳回详情失败: {}", e.getMessage());
-        }
-
-        if (task.getCreateTime() != null) {
-            long durationSeconds = java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds();
-            history.setDurationSeconds((int) durationSeconds);
-        }
-        taskHistoryMapper.insert(history);
-
-        // 删除当前任务
-        taskMapper.deleteById(taskId);
-
-        // 在目标节点创建新任务
-        WfProcessInstance instance = requireTaskInstanceForOperation(task, "驳回");
-
-        WfProcessDefinition def = resolveDefinitionByInstance(instance);
-        if (def == null || !StringUtils.hasText(def.getModelJson())) {
-            throw WorkflowException.processNotFound(instance.getProcessDefKey());
-        }
-
-        try {
-            WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
-            WfNodeConfig targetNode = nodeExecutionService.findNode(root, targetNodeKey);
-            if (targetNode == null) {
-                throw WorkflowException.validationError("目标节点不存在: " + targetNodeKey);
+            if (!lock.tryLock(5, 10, TimeUnit.SECONDS)) {
+                throw WorkflowException.invalidState("任务处理中，请勿重复提交");
             }
-            nodeExecutionService.runNode(instance, targetNode, null, 0, root);
-        } catch (WorkflowException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new WorkflowException("REJECT_FAILED", "驳回失败: " + e.getMessage(), e);
-        }
 
-        auditService.log(WorkflowAuditService.AuditAction.TASK_REJECT, taskId, "targetNodeKey=" + targetNodeKey);
-        return R.ok();
+            WfTask task = taskMapper.selectById(taskId);
+            if (task == null) {
+                throw WorkflowException.taskNotFound(taskId);
+            }
+
+            permissionService.checkRejectPermission(task);
+            validateRejectTarget(task.getInstanceId(), task.getNodeKey(), targetNodeKey);
+
+            // 保存驳回历史
+            WfTaskHistory history = new WfTaskHistory();
+            history.setHistoryId(UUID.randomUUID().toString());
+            history.setTaskId(task.getTaskId());
+            history.setInstanceId(task.getInstanceId());
+            history.setNodeName(task.getNodeName());
+            history.setNodeKey(task.getNodeKey());
+            history.setOperatorId(UserContext.getUserId());
+            history.setOperatorName(UserContext.getUserName());
+            history.setComment(comment);
+            history.setAction("REJECT");
+            history.setCreateTime(LocalDateTime.now());
+
+            try {
+                Map<String, Object> rejectDetail = new HashMap<>();
+                rejectDetail.put("type", "REJECT");
+                rejectDetail.put("sourceNodeKey", task.getNodeKey());
+                rejectDetail.put("targetNodeKey", targetNodeKey);
+                rejectDetail.put("reason", comment);
+                history.setVariablesChanged(objectMapper.writeValueAsString(rejectDetail));
+            } catch (Exception e) {
+                log.warn("[rejectTask] 序列化驳回详情失败: {}", e.getMessage());
+            }
+
+            if (task.getCreateTime() != null) {
+                long durationSeconds = java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds();
+                history.setDurationSeconds((int) durationSeconds);
+            }
+            taskHistoryMapper.insert(history);
+
+            // 删除当前任务
+            taskMapper.deleteById(taskId);
+            taskReminderJob.cancelReminders(taskId);
+            cleanupTaskReadData(taskId);
+
+            // 在目标节点创建新任务
+            WfProcessInstance instance = requireTaskInstanceForOperation(task, "驳回");
+
+            WfProcessDefinition def = resolveDefinitionByInstance(instance);
+            if (def == null || !StringUtils.hasText(def.getModelJson())) {
+                throw WorkflowException.processNotFound(instance.getProcessDefKey());
+            }
+
+            try {
+                WfNodeConfig root = workflowGraphModelResolver.parseRuntimeRoot(def.getModelJson());
+                WfNodeConfig targetNode = nodeExecutionService.findNode(root, targetNodeKey);
+                if (targetNode == null) {
+                    throw WorkflowException.validationError("目标节点不存在: " + targetNodeKey);
+                }
+                nodeExecutionService.runNode(instance, targetNode, null, 0, root);
+            } catch (WorkflowException e) {
+                throw e;
+            } catch (Exception e) {
+                throw new WorkflowException("REJECT_FAILED", "驳回失败: " + e.getMessage(), e);
+            }
+
+            auditService.log(WorkflowAuditService.AuditAction.TASK_REJECT, taskId, "targetNodeKey=" + targetNodeKey);
+            return R.ok();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new WorkflowException("SYSTEM_BUSY", "系统繁忙，请稍后重试");
+        } finally {
+            if (lock.isHeldByCurrentThread()) {
+                lock.unlock();
+            }
+        }
     }
 
     @Override
@@ -1018,6 +1036,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     // 记录加签历史
                     WfTaskAddSign addSign = new WfTaskAddSign();
                     addSign.setAddSignId(UUID.randomUUID().toString());
+                    addSign.setTenantId(task.getTenantId());
                     addSign.setTaskId(taskId);
                     addSign.setInstanceId(task.getInstanceId());
                     addSign.setSignType("AFTER"); // 后加签
@@ -1038,8 +1057,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     addSign.setStatus("PENDING");
                     addSign.setCreateTime(LocalDateTime.now());
                     
-                    // 插入加签记录（需要先创建 WfTaskAddSignMapper）
-                    // wfTaskAddSignMapper.insert(addSign);
+                    wfTaskAddSignMapper.insert(addSign);
 
                     // 发送通知
                     sysNoticeService.sendNotice(userId, "加签通知",

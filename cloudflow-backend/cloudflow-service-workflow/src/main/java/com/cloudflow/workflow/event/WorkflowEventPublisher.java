@@ -127,10 +127,14 @@ public class WorkflowEventPublisher {
      * @param reason   终止原因
      */
     public void publishProcessTerminated(WfProcessInstance instance, String reason) {
-        log.info("[WorkflowEventPublisher] 发布流程终止事件: instanceId={}, reason={}", 
-                instance.getInstanceId(), reason);
-        // 暂时使用日志记录，后续可扩展为独立事件类
-        // 如需要可以创建 ProcessTerminatedEvent 类
+        publish(new ProcessTerminatedEvent(
+                this,
+                instance.getInstanceId(),
+                instance.getProcessDefKey(),
+                safeGetUserId(),
+                safeGetUserName(),
+                reason
+        ));
     }
 
     /**
