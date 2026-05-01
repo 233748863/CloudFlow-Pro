@@ -44,6 +44,7 @@ target/
 # 本地联调产物
 captcha_*.png
 *-smoke.png
+.cloudflow-runtime/
 
 # Environment variables
 .env
