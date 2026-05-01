@@ -11,35 +11,42 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 证照台账。
+ * 证照续期申请。
  */
 @Data
-@TableName("oa_license")
-public class OaLicense implements Serializable {
+@TableName("oa_license_renewal")
+public class OaLicenseRenewal implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @TableId(type = IdType.AUTO)
-    private Long licenseId;
+    private Long id;
 
     private Long tenantId;
-    private String licenseCode;
+    private String instanceId;
+    private String renewalNo;
+    private Long licenseId;
     private String licenseName;
-    private String licenseType;
     private String licenseNo;
-    private String issuer;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate issueDate;
+    private LocalDate oldIssueDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate expireDate;
+    private LocalDate oldExpireDate;
 
-    private Long keeperId;
-    private String keeperName;
-    private String location;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate newIssueDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate newExpireDate;
+
+    private Long applicantId;
+    private String applicantName;
+    private Long deptId;
+    private String deptName;
+    private String renewalReason;
     private String attachmentUrl;
     private String status;
-    private String remark;
     private String delFlag;
     private String createBy;
 

@@ -63,6 +63,7 @@ export interface OaLicense {
   keeperId?: number;
   keeperName?: string;
   location?: string;
+  attachmentUrl?: string;
   status?: ResourceStatus;
   remark?: string;
   createTime?: string;
@@ -96,6 +97,7 @@ export interface OaHandoverLog {
   operatorName?: string;
   actionTime?: string;
   remark?: string;
+  attachmentUrl?: string;
 }
 
 export interface OaReminderLog {
@@ -104,6 +106,75 @@ export interface OaReminderLog {
   operatorName?: string;
   reminderContent?: string;
   reminderTime?: string;
+}
+
+export interface OaLicenseRenewal {
+  id?: number;
+  instanceId?: string;
+  renewalNo?: string;
+  licenseId: number;
+  licenseName?: string;
+  licenseNo?: string;
+  oldIssueDate?: string;
+  oldExpireDate?: string;
+  newIssueDate?: string;
+  newExpireDate: string;
+  applicantId?: number;
+  applicantName?: string;
+  deptId?: number;
+  deptName?: string;
+  renewalReason: string;
+  attachmentUrl?: string;
+  status?: BorrowStatus;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface OaLicenseExpiryReminderLog {
+  id: number;
+  licenseId: number;
+  licenseName?: string;
+  expireDate?: string;
+  daysBefore?: number;
+  recipientId?: number;
+  recipientName?: string;
+  reminderType: 'AUTO' | 'MANUAL';
+  operatorName?: string;
+  reminderContent?: string;
+  reminderTime?: string;
+}
+
+export interface BorrowManagementSummary {
+  pendingBorrowCount: number;
+  overdueCount: number;
+  expiringLicenseCount: number;
+  pendingSealApplications: OaSealApplication[];
+  pendingLicenseBorrows: OaLicenseBorrow[];
+  overdueSealApplications: OaSealApplication[];
+  overdueLicenseBorrows: OaLicenseBorrow[];
+  expiringLicenses: OaLicense[];
+}
+
+export interface BorrowTrendItem {
+  date: string;
+  sealCount: number;
+  licenseCount: number;
+}
+
+export interface BorrowResourceUsageItem {
+  businessType: string;
+  resourceId?: number;
+  resourceName?: string;
+  count: number;
+}
+
+export interface BorrowManagementStats {
+  pendingBorrowCount: number;
+  borrowedCount: number;
+  overdueCount: number;
+  expiringLicenseCount: number;
+  trend: BorrowTrendItem[];
+  resourceUsage: BorrowResourceUsageItem[];
 }
 
 export const sealApi = {
@@ -129,8 +200,8 @@ export const sealApplicationApi = {
   remove: (ids: number[]) => request.delete(`/oa/seal/application/${ids.join(',')}`),
   submit: (id: number) => request.post(`/oa/seal/application/submit/${id}`),
   cancel: (id: number) => request.put(`/oa/seal/application/cancel/${id}`),
-  confirmBorrow: (id: number, remark?: string) => request.put(`/oa/seal/application/${id}/borrow`, { remark }),
-  confirmReturn: (id: number, remark?: string) => request.put(`/oa/seal/application/${id}/return`, { remark }),
+  confirmBorrow: (id: number, remark?: string, attachmentUrl?: string) => request.put(`/oa/seal/application/${id}/borrow`, { remark, attachmentUrl }),
+  confirmReturn: (id: number, remark?: string, attachmentUrl?: string) => request.put(`/oa/seal/application/${id}/return`, { remark, attachmentUrl }),
   remind: (id: number, remark?: string) => request.post(`/oa/seal/application/${id}/remind`, { remark }),
 };
 
@@ -138,7 +209,11 @@ export const licenseApi = {
   list: (params: { pageNum?: number; pageSize?: number; licenseName?: string; licenseCode?: string; licenseNo?: string; licenseType?: string; status?: string }) =>
     request.get('/oa/license/list', { params }) as Promise<PageResult<OaLicense>>,
   available: () => request.get('/oa/license/available') as Promise<OaLicense[]>,
+  expiring: (params: { days?: number; pageNum?: number; pageSize?: number }) =>
+    request.get('/oa/license/expiring', { params }) as Promise<PageResult<OaLicense>>,
   getInfo: (id: number) => request.get(`/oa/license/${id}`) as Promise<OaLicense>,
+  expiryReminderLogs: (id: number) => request.get(`/oa/license/${id}/expiry-reminder-logs`) as Promise<OaLicenseExpiryReminderLog[]>,
+  remindExpiry: (id: number, remark?: string) => request.post(`/oa/license/${id}/expiry-remind`, { remark }),
   add: (data: OaLicense) => request.post('/oa/license', data),
   edit: (data: OaLicense) => request.put('/oa/license', data),
   remove: (ids: number[]) => request.delete(`/oa/license/${ids.join(',')}`),
@@ -157,7 +232,23 @@ export const licenseBorrowApi = {
   remove: (ids: number[]) => request.delete(`/oa/license/borrow/${ids.join(',')}`),
   submit: (id: number) => request.post(`/oa/license/borrow/submit/${id}`),
   cancel: (id: number) => request.put(`/oa/license/borrow/cancel/${id}`),
-  confirmBorrow: (id: number, remark?: string) => request.put(`/oa/license/borrow/${id}/borrow`, { remark }),
-  confirmReturn: (id: number, remark?: string) => request.put(`/oa/license/borrow/${id}/return`, { remark }),
+  confirmBorrow: (id: number, remark?: string, attachmentUrl?: string) => request.put(`/oa/license/borrow/${id}/borrow`, { remark, attachmentUrl }),
+  confirmReturn: (id: number, remark?: string, attachmentUrl?: string) => request.put(`/oa/license/borrow/${id}/return`, { remark, attachmentUrl }),
   remind: (id: number, remark?: string) => request.post(`/oa/license/borrow/${id}/remind`, { remark }),
+};
+
+export const licenseRenewalApi = {
+  list: (params: { pageNum?: number; pageSize?: number; renewalNo?: string; licenseId?: number; licenseName?: string; status?: string }) =>
+    request.get('/oa/license/renewal/list', { params }) as Promise<PageResult<OaLicenseRenewal>>,
+  getInfo: (id: number) => request.get(`/oa/license/renewal/${id}`) as Promise<OaLicenseRenewal>,
+  add: (data: OaLicenseRenewal) => request.post('/oa/license/renewal', data),
+  edit: (data: OaLicenseRenewal) => request.put('/oa/license/renewal', data),
+  remove: (ids: number[]) => request.delete(`/oa/license/renewal/${ids.join(',')}`),
+  submit: (id: number) => request.post(`/oa/license/renewal/submit/${id}`),
+  cancel: (id: number) => request.put(`/oa/license/renewal/cancel/${id}`),
+};
+
+export const borrowManagementApi = {
+  summary: () => request.get('/oa/borrow-management/summary') as Promise<BorrowManagementSummary>,
+  stats: () => request.get('/oa/borrow-management/stats') as Promise<BorrowManagementStats>,
 };

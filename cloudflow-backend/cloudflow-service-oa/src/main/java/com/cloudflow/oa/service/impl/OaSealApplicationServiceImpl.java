@@ -107,6 +107,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
     public boolean createApplication(OaSealApplication application) {
         normalizeAndValidate(application);
         OaSeal seal = requireAvailableSeal(application.getSealId(), false);
+        assertNoReservationConflict(null, application.getSealId(),
+                resolveBorrowTime(application.getExpectedBorrowTime()), application.getExpectedReturnTime());
         LocalDateTime now = LocalDateTime.now();
         application.setTenantId(resolveTenantId());
         application.setApplicationNo(generateApplicationNo());
@@ -136,6 +138,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         }
         normalizeAndValidate(application);
         OaSeal seal = requireAvailableSeal(application.getSealId(), false);
+        assertNoReservationConflict(application.getId(), application.getSealId(),
+                resolveBorrowTime(application.getExpectedBorrowTime()), application.getExpectedReturnTime());
         application.setApplicationNo(persisted.getApplicationNo());
         application.setSealName(seal.getSealName());
         application.setUserId(persisted.getUserId());
@@ -180,6 +184,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             throw new IllegalArgumentException("只有草稿状态可以提交");
         }
         requireAvailableSeal(application.getSealId(), false);
+        assertNoReservationConflict(application.getId(), application.getSealId(),
+                resolveBorrowTime(application.getExpectedBorrowTime()), application.getExpectedReturnTime());
         application.setStatus(OaBorrowConstants.STATUS_PENDING);
         compensateUserSnapshot(application);
 
@@ -237,6 +243,12 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean confirmBorrow(Long id, String remark) {
+        return confirmBorrow(id, remark, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmBorrow(Long id, String remark, String attachmentUrl) {
         OaSealApplication application = requireApplication(id);
         if (!OaBorrowConstants.STATUS_APPROVED.equals(application.getStatus())) {
             throw new IllegalArgumentException("只有审批通过的用印申请可以借出");
@@ -256,13 +268,19 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         seal.setUpdateTime(now);
         sealMapper.updateById(seal);
 
-        insertHandoverLog(application, OaBorrowConstants.HANDOVER_BORROW, remark, now);
+        insertHandoverLog(application, OaBorrowConstants.HANDOVER_BORROW, remark, attachmentUrl, now);
         return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean confirmReturn(Long id, String remark) {
+        return confirmReturn(id, remark, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmReturn(Long id, String remark, String attachmentUrl) {
         OaSealApplication application = requireApplication(id);
         if (!OaBorrowConstants.STATUS_BORROWED.equals(application.getStatus())
                 && !OaBorrowConstants.STATUS_OVERDUE.equals(application.getStatus())) {
@@ -285,7 +303,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             sealMapper.updateById(seal);
         }
 
-        insertHandoverLog(application, OaBorrowConstants.HANDOVER_RETURN, remark, now);
+        insertHandoverLog(application, OaBorrowConstants.HANDOVER_RETURN, remark, attachmentUrl, now);
         return true;
     }
 
@@ -350,6 +368,29 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(application.getAttachmentUrl(), "用印申请附件"));
     }
 
+    private LocalDateTime resolveBorrowTime(LocalDateTime expectedBorrowTime) {
+        return expectedBorrowTime == null ? LocalDateTime.now() : expectedBorrowTime;
+    }
+
+    private void assertNoReservationConflict(Long currentId, Long sealId, LocalDateTime expectedBorrowTime, LocalDateTime expectedReturnTime) {
+        Long count = count(new LambdaQueryWrapper<OaSealApplication>()
+                .ne(currentId != null, OaSealApplication::getId, currentId)
+                .eq(OaSealApplication::getSealId, sealId)
+                .eq(OaSealApplication::getDelFlag, "0")
+                .in(OaSealApplication::getStatus,
+                        OaBorrowConstants.STATUS_PENDING,
+                        OaBorrowConstants.STATUS_APPROVED,
+                        OaBorrowConstants.STATUS_BORROWED,
+                        OaBorrowConstants.STATUS_OVERDUE)
+                .and(wrapper -> wrapper.isNull(OaSealApplication::getExpectedBorrowTime)
+                        .or()
+                        .lt(OaSealApplication::getExpectedBorrowTime, expectedReturnTime))
+                .gt(OaSealApplication::getExpectedReturnTime, expectedBorrowTime));
+        if (count != null && count > 0) {
+            throw new IllegalArgumentException("所选印章在预计借用时间段内已有占用");
+        }
+    }
+
     private OaSealApplication requireApplication(Long id) {
         OaSealApplication application = getById(id);
         if (application == null || !"0".equals(application.getDelFlag())) {
@@ -390,7 +431,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         }
     }
 
-    private void insertHandoverLog(OaSealApplication application, String actionType, String remark, LocalDateTime now) {
+    private void insertHandoverLog(OaSealApplication application, String actionType, String remark, String attachmentUrl, LocalDateTime now) {
         OaSealHandoverLog log = new OaSealHandoverLog();
         log.setTenantId(application.getTenantId());
         log.setApplicationId(application.getId());
@@ -400,6 +441,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         log.setOperatorName(UserContext.getUserName());
         log.setActionTime(now);
         log.setRemark(remark);
+        log.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(attachmentUrl, "用印交接附件"));
         log.setCreateBy(UserContext.getUserName());
         log.setCreateTime(now);
         handoverLogMapper.insert(log);

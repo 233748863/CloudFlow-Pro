@@ -9,9 +9,12 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseBorrow;
+import com.cloudflow.oa.domain.OaLicenseExpiryReminderLog;
 import com.cloudflow.oa.domain.OaLicenseHandoverLog;
+import com.cloudflow.oa.domain.OaLicenseRenewal;
 import com.cloudflow.oa.domain.dto.OaBorrowActionDTO;
 import com.cloudflow.oa.service.IOaLicenseBorrowService;
+import com.cloudflow.oa.service.IOaLicenseRenewalService;
 import com.cloudflow.oa.service.IOaLicenseService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +31,7 @@ public class LicenseController {
 
     private final IOaLicenseService licenseService;
     private final IOaLicenseBorrowService borrowService;
+    private final IOaLicenseRenewalService renewalService;
 
     @GetMapping("/list")
     public R<PageResult<OaLicense>> list(OaLicense query, PageQuery pageQuery) {
@@ -37,6 +41,12 @@ public class LicenseController {
     @GetMapping("/available")
     public R<List<OaLicense>> listAvailable() {
         return R.ok(licenseService.listAvailable());
+    }
+
+    @GetMapping("/expiring")
+    public R<PageResult<OaLicense>> listExpiring(@RequestParam(value = "days", required = false) Integer days,
+                                                 PageQuery pageQuery) {
+        return R.ok(licenseService.queryExpiringPage(days, pageQuery));
     }
 
     @GetMapping("/{id}")
@@ -76,6 +86,22 @@ public class LicenseController {
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         try {
             return R.result(licenseService.removeLicenses(ids));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/expiry-reminder-logs")
+    public R<List<OaLicenseExpiryReminderLog>> listExpiryReminderLogs(@PathVariable("id") Long id) {
+        return R.ok(licenseService.listExpiryReminderLogs(id));
+    }
+
+    @SysLog("证照到期提醒")
+    @PostMapping("/{id}/expiry-remind")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    public R<Void> remindExpiry(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
+        try {
+            return R.result(licenseService.remindExpiry(id, dto == null ? null : dto.getRemark()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -165,7 +191,9 @@ public class LicenseController {
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R<Void> confirmBorrow(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
-            return R.result(borrowService.confirmBorrow(id, dto == null ? null : dto.getRemark()));
+            return R.result(borrowService.confirmBorrow(id,
+                    dto == null ? null : dto.getRemark(),
+                    dto == null ? null : dto.getAttachmentUrl()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -176,7 +204,9 @@ public class LicenseController {
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R<Void> confirmReturn(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
-            return R.result(borrowService.confirmReturn(id, dto == null ? null : dto.getRemark()));
+            return R.result(borrowService.confirmReturn(id,
+                    dto == null ? null : dto.getRemark(),
+                    dto == null ? null : dto.getAttachmentUrl()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -188,6 +218,70 @@ public class LicenseController {
     public R<Void> remind(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
             return R.result(borrowService.remind(id, dto == null ? null : dto.getRemark()));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/renewal/list")
+    public R<PageResult<OaLicenseRenewal>> listRenewals(OaLicenseRenewal query, PageQuery pageQuery) {
+        return R.ok(renewalService.queryPage(query, pageQuery));
+    }
+
+    @GetMapping("/renewal/{id}")
+    public R<OaLicenseRenewal> getRenewal(@PathVariable("id") Long id) {
+        try {
+            return R.ok(renewalService.getRenewalInfo(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("新增证照续期申请")
+    @PostMapping("/renewal")
+    public R<Void> addRenewal(@RequestBody OaLicenseRenewal renewal) {
+        try {
+            return R.result(renewalService.createRenewal(renewal));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("修改证照续期申请")
+    @PutMapping("/renewal")
+    public R<Void> editRenewal(@RequestBody OaLicenseRenewal renewal) {
+        try {
+            return R.result(renewalService.updateRenewal(renewal));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("删除证照续期申请")
+    @DeleteMapping("/renewal/{ids}")
+    public R<Void> removeRenewals(@PathVariable("ids") List<Long> ids) {
+        try {
+            return R.result(renewalService.removeRenewals(ids));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("提交证照续期申请")
+    @PostMapping("/renewal/submit/{id}")
+    public R<Void> submitRenewal(@PathVariable("id") Long id) {
+        try {
+            return R.result(renewalService.submitRenewal(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("取消证照续期申请")
+    @PutMapping("/renewal/cancel/{id}")
+    public R<Void> cancelRenewal(@PathVariable("id") Long id) {
+        try {
+            return R.result(renewalService.cancelRenewal(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

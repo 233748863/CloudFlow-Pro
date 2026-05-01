@@ -2,10 +2,13 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseBorrow;
 import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.OaLicenseBorrowMapper;
+import com.cloudflow.oa.mapper.OaLicenseMapper;
 import com.cloudflow.oa.service.ApprovalResultHandler;
+import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,8 @@ import java.time.LocalDateTime;
 public class LicenseBorrowApprovalHandler implements ApprovalResultHandler {
 
     private final OaLicenseBorrowMapper licenseBorrowMapper;
+    private final OaLicenseMapper licenseMapper;
+    private final ISysNoticeService noticeService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -31,6 +36,7 @@ public class LicenseBorrowApprovalHandler implements ApprovalResultHandler {
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
         updateStatus(dto, OaBorrowConstants.STATUS_APPROVED);
+        notifyKeeper(dto);
     }
 
     @Override
@@ -52,5 +58,19 @@ public class LicenseBorrowApprovalHandler implements ApprovalResultHandler {
         }
         log.info("证照借用审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+    }
+
+    private void notifyKeeper(ApprovalResultDTO dto) {
+        OaLicenseBorrow borrow = licenseBorrowMapper.selectById(dto.getBusinessId());
+        if (borrow == null) {
+            return;
+        }
+        OaLicense license = licenseMapper.selectById(borrow.getLicenseId());
+        if (license == null || license.getKeeperId() == null) {
+            return;
+        }
+        String content = "证照借用申请已审批通过，请处理借出：" + borrow.getBorrowNo() + " / " + borrow.getLicenseName();
+        noticeService.sendNotice(license.getKeeperId(), "证照待借出处理", content, "2",
+                null, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
     }
 }

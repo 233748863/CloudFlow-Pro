@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCircle2, Clock3, RotateCcw } from 'lucide-react';
+import { Bell, CalendarClock, CheckCircle2, Clock3, Eye, FileWarning, RotateCcw, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
-import { BaseDialog, Button, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
+import { BaseDialog, Button, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { licenseBorrowApi, OaLicenseBorrow, OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
+import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
+import FileUpload from '@/components/FileUpload';
+import { borrowManagementApi, BorrowManagementStats, licenseBorrowApi, OaHandoverLog, OaLicenseBorrow, OaReminderLog, OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -91,6 +93,12 @@ export const BorrowManagementPage: React.FC = () => {
   const [actionTarget, setActionTarget] = useState<UnifiedBorrow | null>(null);
   const [actionType, setActionType] = useState<'borrow' | 'return' | 'remind'>('borrow');
   const [remark, setRemark] = useState('');
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [stats, setStats] = useState<BorrowManagementStats | null>(null);
+  const [detailTarget, setDetailTarget] = useState<UnifiedBorrow | null>(null);
+  const [handoverLogs, setHandoverLogs] = useState<OaHandoverLog[]>([]);
+  const [reminderLogs, setReminderLogs] = useState<OaReminderLog[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -118,14 +126,54 @@ export const BorrowManagementPage: React.FC = () => {
     }
   }, [query]);
 
+  const fetchStats = useCallback(async () => {
+    try {
+      const [summary, statsResult] = await Promise.all([
+        borrowManagementApi.summary(),
+        borrowManagementApi.stats(),
+      ]);
+      setStats({
+        ...statsResult,
+        pendingBorrowCount: summary.pendingBorrowCount,
+        overdueCount: summary.overdueCount,
+        expiringLicenseCount: summary.expiringLicenseCount,
+      });
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取借还统计失败'));
+    }
+  }, []);
+
   useEffect(() => {
     void fetchRows();
   }, [fetchRows]);
+
+  useEffect(() => {
+    void fetchStats();
+  }, [fetchStats]);
 
   const openAction = (target: UnifiedBorrow, type: 'borrow' | 'return' | 'remind') => {
     setActionTarget(target);
     setActionType(type);
     setRemark('');
+    setAttachmentUrl('');
+  };
+
+  const openDetail = async (target: UnifiedBorrow) => {
+    setDetailTarget(target);
+    setDetailLoading(true);
+    try {
+      const api = target.kind === 'SEAL' ? sealApplicationApi : licenseBorrowApi;
+      const [handoverResult, reminderResult] = await Promise.all([
+        api.handoverLogs(target.id),
+        api.reminderLogs(target.id),
+      ]);
+      setHandoverLogs(handoverResult);
+      setReminderLogs(reminderResult);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取借还详情失败'));
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const actionTitle = useMemo(() => {
@@ -139,24 +187,75 @@ export const BorrowManagementPage: React.FC = () => {
     try {
       const api = actionTarget.kind === 'SEAL' ? sealApplicationApi : licenseBorrowApi;
       if (actionType === 'borrow') {
-        await api.confirmBorrow(actionTarget.id, remark);
+        await api.confirmBorrow(actionTarget.id, remark, attachmentUrl);
       } else if (actionType === 'return') {
-        await api.confirmReturn(actionTarget.id, remark);
+        await api.confirmReturn(actionTarget.id, remark, attachmentUrl);
       } else {
         await api.remind(actionTarget.id, remark);
       }
       toast.success(`${actionTitle}成功`);
       setActionTarget(null);
+      setAttachmentUrl('');
       await fetchRows();
+      await fetchStats();
     } catch (error) {
       toast.error(getErrorMessage(error, `${actionTitle}失败`));
     }
   };
 
   const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
+  const maxTrend = Math.max(...(stats?.trend || []).map((item) => item.sealCount + item.licenseCount), 1);
+  const maxUsage = Math.max(...(stats?.resourceUsage || []).map((item) => item.count), 1);
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="行政待处理" value={stats?.pendingBorrowCount ?? 0} icon={<CheckCircle2 size={18} />} iconVariant="primary" meta="审批通过待借出" />
+        <StatCard title="借出中" value={stats?.borrowedCount ?? 0} icon={<Clock3 size={18} />} iconVariant="success" meta="印章和证照合计" />
+        <StatCard title="逾期未还" value={stats?.overdueCount ?? 0} icon={<FileWarning size={18} />} iconVariant="danger" meta="需催还处理" />
+        <StatCard title="证照到期" value={stats?.expiringLicenseCount ?? 0} icon={<CalendarClock size={18} />} iconVariant="warning" meta="30 天内到期" />
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+            <TrendingUp className="h-4 w-4 text-cyan-600" />
+            借还趋势
+          </div>
+          <div className="flex h-32 items-end gap-2">
+            {(stats?.trend || []).map((item) => {
+              const totalCount = item.sealCount + item.licenseCount;
+              const height = Math.max(8, Math.round((totalCount / maxTrend) * 96));
+              return (
+                <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
+                  <div className="flex h-24 w-full items-end justify-center rounded-lg bg-slate-50 px-1 dark:bg-slate-900">
+                    <div className="w-full max-w-8 rounded-t-md bg-cyan-500" style={{ height }} title={`${item.date} ${totalCount} 次`} />
+                  </div>
+                  <span className="w-full truncate text-center text-[11px] text-slate-400">{item.date.slice(5)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">资源使用排行</div>
+          <div className="space-y-3">
+            {(stats?.resourceUsage || []).slice(0, 5).map((item) => (
+              <div key={`${item.businessType}-${item.resourceId}`} className="space-y-1.5">
+                <div className="flex items-center justify-between gap-3 text-xs">
+                  <span className="truncate text-slate-600 dark:text-slate-300">{item.resourceName || '-'}</span>
+                  <span className="text-slate-400">{item.count} 次</span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-900">
+                  <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.max(8, (item.count / maxUsage) * 100)}%` }} />
+                </div>
+              </div>
+            ))}
+            {!stats?.resourceUsage?.length ? <div className="py-8 text-center text-sm text-slate-400">暂无排行数据</div> : null}
+          </div>
+        </div>
+      </div>
+
       <TablePageLayout
         className="gap-4"
         filters={(
@@ -235,6 +334,7 @@ export const BorrowManagementPage: React.FC = () => {
                           align="end"
                           iconOnly
                           actions={[
+                            { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
                             { label: '借出', icon: <CheckCircle2 size={14} />, onClick: () => openAction(item, 'borrow'), tone: 'success', hidden: item.status !== 'APPROVED' },
                             { label: '归还', icon: <RotateCcw size={14} />, onClick: () => openAction(item, 'return'), tone: 'success', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE' },
                             { label: '催还', icon: <Bell size={14} />, onClick: () => openAction(item, 'remind'), tone: 'warning', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE' },
@@ -274,7 +374,65 @@ export const BorrowManagementPage: React.FC = () => {
             <Label>备注</Label>
             <Textarea className="min-h-[110px] resize-none" value={remark} onChange={(event) => setRemark(event.target.value)} />
           </div>
+          {actionType !== 'remind' ? (
+            <div className="space-y-2">
+              <Label>交接附件</Label>
+              <FileUpload value={attachmentUrl} onChange={setAttachmentUrl} maxCount={5} />
+            </div>
+          ) : null}
         </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={Boolean(detailTarget)}
+        title={detailTarget?.no || '借还详情'}
+        onClose={() => setDetailTarget(null)}
+        width="wide"
+        headerAside={detailTarget ? getStatusBadge(detailTarget.status) : null}
+        footer={<Button variant="outline" onClick={() => setDetailTarget(null)}>关闭</Button>}
+      >
+        {detailLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-slate-500 dark:text-slate-400">
+            <Clock3 className="mr-2 h-4 w-4 animate-spin" />
+            正在加载借还详情...
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">交接日志</div>
+              {handoverLogs.length ? (
+                <div className="space-y-3">
+                  {handoverLogs.map((log) => (
+                    <div key={log.id} className="rounded-lg border border-slate-100 px-3 py-3 dark:border-slate-800">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{log.actionType === 'BORROW' ? '借出' : '归还'}</span>
+                        <span className="text-xs text-slate-400">{formatDateTimeDisplay(log.actionTime)}</span>
+                      </div>
+                      <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{log.operatorName || '-'} / {log.remark || '-'}</div>
+                      {getAttachmentList(log.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={log.attachmentUrl} compact /></div> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="py-6 text-center text-sm text-slate-400">暂无交接日志</div>}
+            </div>
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">催还记录</div>
+              {reminderLogs.length ? (
+                <div className="space-y-3">
+                  {reminderLogs.map((log) => (
+                    <div key={log.id} className="rounded-lg border border-slate-100 px-3 py-3 text-sm dark:border-slate-800">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{log.reminderType === 'AUTO' ? '自动催还' : '手动催还'}</span>
+                        <span className="text-xs text-slate-400">{formatDateTimeDisplay(log.reminderTime)}</span>
+                      </div>
+                      <div className="mt-1 text-slate-600 dark:text-slate-300">{log.reminderContent || '-'}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="py-6 text-center text-sm text-slate-400">暂无催还记录</div>}
+            </div>
+          </div>
+        )}
       </BaseDialog>
     </div>
   );

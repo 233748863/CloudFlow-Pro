@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { BadgeCheck, Clock3, Edit, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
+import { BadgeCheck, Clock3, Edit, Eye, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
+import FileUpload from '@/components/FileUpload';
 import { licenseApi, licenseBorrowApi, OaLicense, OaLicenseBorrow } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
@@ -33,6 +35,7 @@ const emptyForm: OaLicenseBorrow = {
   licenseId: 0,
   purpose: '',
   expectedReturnTime: '',
+  attachmentUrl: '',
 };
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
@@ -76,6 +79,8 @@ export const LicenseBorrowPage: React.FC = () => {
   const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, status: '', licenseName: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaLicenseBorrow>(emptyForm);
+  const [detailBorrow, setDetailBorrow] = useState<OaLicenseBorrow | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
@@ -135,6 +140,18 @@ export const LicenseBorrowPage: React.FC = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     setForm(emptyForm);
+  };
+
+  const openDetail = async (item: OaLicenseBorrow) => {
+    setDetailBorrow(item);
+    setDetailLoading(true);
+    try {
+      setDetailBorrow(await licenseBorrowApi.getInfo(item.id!));
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取证照借用详情失败'));
+    } finally {
+      setDetailLoading(false);
+    }
   };
 
   const saveForm = async () => {
@@ -227,7 +244,7 @@ export const LicenseBorrowPage: React.FC = () => {
         table={(
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1080px]">
+              <table className="w-full min-w-[1160px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                   <tr>
                     <TableHead className="px-4 py-3 text-left">借用编号</TableHead>
@@ -235,15 +252,16 @@ export const LicenseBorrowPage: React.FC = () => {
                     <TableHead className="px-4 py-3 text-left">用途</TableHead>
                     <TableHead className="px-4 py-3 text-left">申请人 / 部门</TableHead>
                     <TableHead className="px-4 py-3 text-left">预计借还</TableHead>
+                    <TableHead className="px-4 py-3 text-left">附件</TableHead>
                     <TableHead className="px-4 py-3 text-left">状态</TableHead>
                     <TableActionHead className="w-40 px-4 py-3 text-right">操作</TableActionHead>
                   </tr>
                 </TableHeader>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {loading ? (
-                    <TableStateRow colSpan={7} title="正在加载证照借用..." loading />
+                    <TableStateRow colSpan={8} title="正在加载证照借用..." loading />
                   ) : rows.length === 0 ? (
-                    <TableStateRow colSpan={7} title="暂无证照借用申请" />
+                    <TableStateRow colSpan={8} title="暂无证照借用申请" />
                   ) : rows.map((item) => (
                     <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
@@ -260,12 +278,16 @@ export const LicenseBorrowPage: React.FC = () => {
                         <div>{formatDateTimeDisplay(item.expectedBorrowTime)}</div>
                         <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.expectedReturnTime)}</div>
                       </td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        {getAttachmentList(item.attachmentUrl).length ? `${getAttachmentList(item.attachmentUrl).length} 个` : '-'}
+                      </td>
                       <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
                           iconOnly
                           actions={[
+                            { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
                             { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: item.status !== 'DRAFT' },
                             { label: '提交', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.id!, title: '提交证照借用申请', message: '提交后将进入证照借用审批流程。', confirmText: '提交' }), tone: 'success', hidden: item.status !== 'DRAFT' },
                             { label: '取消', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.id!, title: '取消证照借用申请', message: '取消后该申请不再继续审批。', confirmText: '取消' }), tone: 'warning', hidden: item.status !== 'PENDING' },
@@ -321,7 +343,56 @@ export const LicenseBorrowPage: React.FC = () => {
             <Label>借用用途</Label>
             <Textarea className="min-h-[120px] resize-none" value={form.purpose} onChange={(event) => setForm((prev) => ({ ...prev, purpose: event.target.value }))} />
           </div>
+          <div className="space-y-2">
+            <Label>附件</Label>
+            <FileUpload value={form.attachmentUrl || ''} onChange={(urls) => setForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} />
+          </div>
         </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={Boolean(detailBorrow)}
+        title={detailBorrow?.borrowNo || '证照借用详情'}
+        onClose={() => setDetailBorrow(null)}
+        width="wide"
+        headerAside={detailBorrow && !detailLoading ? getStatusBadge(detailBorrow.status) : null}
+        footer={<Button variant="outline" onClick={() => setDetailBorrow(null)}>关闭</Button>}
+      >
+        {detailLoading ? (
+          <div className="flex items-center justify-center py-12 text-sm text-slate-500 dark:text-slate-400">
+            <Clock3 className="mr-2 h-4 w-4 animate-spin" />
+            正在加载证照借用详情...
+          </div>
+        ) : detailBorrow ? (
+          <div className="space-y-4">
+            <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
+              {[
+                ['证照', detailBorrow.licenseName],
+                ['申请人', detailBorrow.userName],
+                ['所属部门', detailBorrow.deptName],
+                ['预计借出', formatDateTimeDisplay(detailBorrow.expectedBorrowTime)],
+                ['预计归还', formatDateTimeDisplay(detailBorrow.expectedReturnTime)],
+                ['实际借出', formatDateTimeDisplay(detailBorrow.actualBorrowTime)],
+                ['实际归还', formatDateTimeDisplay(detailBorrow.actualReturnTime)],
+                ['经办人', detailBorrow.handlerName],
+                ['流程实例', detailBorrow.instanceId],
+              ].map(([label, value]) => (
+                <div key={label} className="border-b border-slate-100 pb-3 dark:border-slate-800">
+                  <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
+                  <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+                </div>
+              ))}
+            </div>
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">借用用途</div>
+              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detailBorrow.purpose || '-'}</div>
+            </div>
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
+              <AttachmentLinks value={detailBorrow.attachmentUrl} />
+            </div>
+          </div>
+        ) : null}
       </BaseDialog>
 
       <ConfirmDialog

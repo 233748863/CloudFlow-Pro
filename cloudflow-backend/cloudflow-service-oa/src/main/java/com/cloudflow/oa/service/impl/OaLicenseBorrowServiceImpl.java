@@ -106,6 +106,8 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
     public boolean createBorrow(OaLicenseBorrow borrow) {
         normalizeAndValidate(borrow);
         OaLicense license = requireAvailableLicense(borrow.getLicenseId(), false);
+        assertNoReservationConflict(null, borrow.getLicenseId(),
+                resolveBorrowTime(borrow.getExpectedBorrowTime()), borrow.getExpectedReturnTime());
         LocalDateTime now = LocalDateTime.now();
         borrow.setTenantId(resolveTenantId());
         borrow.setBorrowNo(generateBorrowNo());
@@ -135,6 +137,8 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         }
         normalizeAndValidate(borrow);
         OaLicense license = requireAvailableLicense(borrow.getLicenseId(), false);
+        assertNoReservationConflict(borrow.getId(), borrow.getLicenseId(),
+                resolveBorrowTime(borrow.getExpectedBorrowTime()), borrow.getExpectedReturnTime());
         borrow.setBorrowNo(persisted.getBorrowNo());
         borrow.setLicenseName(license.getLicenseName());
         borrow.setUserId(persisted.getUserId());
@@ -179,6 +183,8 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             throw new IllegalArgumentException("只有草稿状态可以提交");
         }
         requireAvailableLicense(borrow.getLicenseId(), false);
+        assertNoReservationConflict(borrow.getId(), borrow.getLicenseId(),
+                resolveBorrowTime(borrow.getExpectedBorrowTime()), borrow.getExpectedReturnTime());
         borrow.setStatus(OaBorrowConstants.STATUS_PENDING);
         compensateUserSnapshot(borrow);
 
@@ -233,6 +239,12 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean confirmBorrow(Long id, String remark) {
+        return confirmBorrow(id, remark, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmBorrow(Long id, String remark, String attachmentUrl) {
         OaLicenseBorrow borrow = requireBorrow(id);
         if (!OaBorrowConstants.STATUS_APPROVED.equals(borrow.getStatus())) {
             throw new IllegalArgumentException("只有审批通过的证照借用申请可以借出");
@@ -252,13 +264,19 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         license.setUpdateTime(now);
         licenseMapper.updateById(license);
 
-        insertHandoverLog(borrow, OaBorrowConstants.HANDOVER_BORROW, remark, now);
+        insertHandoverLog(borrow, OaBorrowConstants.HANDOVER_BORROW, remark, attachmentUrl, now);
         return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean confirmReturn(Long id, String remark) {
+        return confirmReturn(id, remark, null);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmReturn(Long id, String remark, String attachmentUrl) {
         OaLicenseBorrow borrow = requireBorrow(id);
         if (!OaBorrowConstants.STATUS_BORROWED.equals(borrow.getStatus())
                 && !OaBorrowConstants.STATUS_OVERDUE.equals(borrow.getStatus())) {
@@ -281,7 +299,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             licenseMapper.updateById(license);
         }
 
-        insertHandoverLog(borrow, OaBorrowConstants.HANDOVER_RETURN, remark, now);
+        insertHandoverLog(borrow, OaBorrowConstants.HANDOVER_RETURN, remark, attachmentUrl, now);
         return true;
     }
 
@@ -341,6 +359,29 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         borrow.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(borrow.getAttachmentUrl(), "证照借用附件"));
     }
 
+    private LocalDateTime resolveBorrowTime(LocalDateTime expectedBorrowTime) {
+        return expectedBorrowTime == null ? LocalDateTime.now() : expectedBorrowTime;
+    }
+
+    private void assertNoReservationConflict(Long currentId, Long licenseId, LocalDateTime expectedBorrowTime, LocalDateTime expectedReturnTime) {
+        Long count = count(new LambdaQueryWrapper<OaLicenseBorrow>()
+                .ne(currentId != null, OaLicenseBorrow::getId, currentId)
+                .eq(OaLicenseBorrow::getLicenseId, licenseId)
+                .eq(OaLicenseBorrow::getDelFlag, "0")
+                .in(OaLicenseBorrow::getStatus,
+                        OaBorrowConstants.STATUS_PENDING,
+                        OaBorrowConstants.STATUS_APPROVED,
+                        OaBorrowConstants.STATUS_BORROWED,
+                        OaBorrowConstants.STATUS_OVERDUE)
+                .and(wrapper -> wrapper.isNull(OaLicenseBorrow::getExpectedBorrowTime)
+                        .or()
+                        .lt(OaLicenseBorrow::getExpectedBorrowTime, expectedReturnTime))
+                .gt(OaLicenseBorrow::getExpectedReturnTime, expectedBorrowTime));
+        if (count != null && count > 0) {
+            throw new IllegalArgumentException("所选证照在预计借用时间段内已有占用");
+        }
+    }
+
     private OaLicenseBorrow requireBorrow(Long id) {
         OaLicenseBorrow borrow = getById(id);
         if (borrow == null || !"0".equals(borrow.getDelFlag())) {
@@ -381,7 +422,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         }
     }
 
-    private void insertHandoverLog(OaLicenseBorrow borrow, String actionType, String remark, LocalDateTime now) {
+    private void insertHandoverLog(OaLicenseBorrow borrow, String actionType, String remark, String attachmentUrl, LocalDateTime now) {
         OaLicenseHandoverLog log = new OaLicenseHandoverLog();
         log.setTenantId(borrow.getTenantId());
         log.setBorrowId(borrow.getId());
@@ -391,6 +432,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         log.setOperatorName(UserContext.getUserName());
         log.setActionTime(now);
         log.setRemark(remark);
+        log.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(attachmentUrl, "证照交接附件"));
         log.setCreateBy(UserContext.getUserName());
         log.setCreateTime(now);
         handoverLogMapper.insert(log);

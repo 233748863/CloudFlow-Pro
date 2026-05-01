@@ -2,10 +2,13 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
+import com.cloudflow.oa.mapper.OaSealMapper;
 import com.cloudflow.oa.service.ApprovalResultHandler;
+import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +25,8 @@ import java.time.LocalDateTime;
 public class SealApplicationApprovalHandler implements ApprovalResultHandler {
 
     private final OaSealApplicationMapper sealApplicationMapper;
+    private final OaSealMapper sealMapper;
+    private final ISysNoticeService noticeService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -31,6 +36,7 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
         updateStatus(dto, OaBorrowConstants.STATUS_APPROVED);
+        notifyKeeper(dto);
     }
 
     @Override
@@ -52,5 +58,19 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
         }
         log.info("用印申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+    }
+
+    private void notifyKeeper(ApprovalResultDTO dto) {
+        OaSealApplication application = sealApplicationMapper.selectById(dto.getBusinessId());
+        if (application == null) {
+            return;
+        }
+        OaSeal seal = sealMapper.selectById(application.getSealId());
+        if (seal == null || seal.getKeeperId() == null) {
+            return;
+        }
+        String content = "用印申请已审批通过，请处理借出：" + application.getApplicationNo() + " / " + application.getSealName();
+        noticeService.sendNotice(seal.getKeeperId(), "用印待借出处理", content, "2",
+                null, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
     }
 }

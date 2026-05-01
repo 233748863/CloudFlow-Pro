@@ -31,6 +31,7 @@ public class OaLicenseHandoverLog implements Serializable {
     private LocalDateTime actionTime;
 
     private String remark;
+    private String attachmentUrl;
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

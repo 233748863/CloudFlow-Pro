@@ -79,7 +79,7 @@ WHERE dict_type IN (
 );
 
 DELETE FROM cloud_flow_db.sys_config
-WHERE config_id BETWEEN 1 AND 91;
+WHERE config_id BETWEEN 1 AND 92;
 
 DELETE FROM cloud_flow_db.wf_form_definition
 WHERE form_id IN (
@@ -87,7 +87,27 @@ WHERE form_id IN (
   'form_payment',
   'form_leave',
   'form_contract',
-  'form_recruit'
+  'form_recruit',
+  'form_attendance_appeal',
+  'form_overtime_request',
+  'form_expense_claim',
+  'form_leave_request',
+  'form_offer_approval',
+  'form_onboarding_approval',
+  'form_probation_confirmation',
+  'form_resignation_approval',
+  'form_salary_adjustment',
+  'form_performance_plan',
+  'form_performance_result',
+  'form_transfer_approval',
+  'form_payment_request',
+  'form_purchase_request',
+  'form_business_trip',
+  'form_vehicle_approval',
+  'form_seal_application',
+  'form_license_borrow',
+  'form_license_renewal',
+  'form_knowledge_publish'
 );
 
 DELETE FROM cloud_flow_db.wf_process_definition
@@ -115,16 +135,19 @@ WHERE definition_id IN (
   'wf_vehicle_approval',
   'wf_knowledge_publish',
   'wf_seal_application',
-  'wf_license_borrow'
+  'wf_license_borrow',
+  'wf_license_renewal'
 );
 
 DELETE FROM cloud_flow_db.oa_knowledge_read;
 DELETE FROM cloud_flow_db.oa_knowledge_document;
 DELETE FROM cloud_flow_db.oa_borrow_reminder_log WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_license_expiry_reminder_log WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_seal_handover_log WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_license_handover_log WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_seal_application WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_license_borrow WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_license_renewal WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_seal WHERE seal_id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_license WHERE license_id BETWEEN 9000 AND 9999;
 
@@ -1425,6 +1448,8 @@ INSERT INTO cloud_flow_db.sys_config VALUES(48, 100000, '分布式锁-死锁牺�
 
 INSERT INTO cloud_flow_db.sys_config VALUES(91, 100000, '工作流-是否启用进程内脚本',     'sys.workflow.script.enabled', 'false', 'Y', '0', 'admin', NOW(), '', null, '是否允许工作流服务进程内执行 Groovy/JavaScript 脚本，生产环境默认关闭');
 
+INSERT INTO cloud_flow_db.sys_config VALUES(92, 100000, '证照管理-到期提醒天数',     'sys.oa.license.expiryReminderDays', '30,15,7,0', 'Y', '1', 'admin', NOW(), '', null, '证照到期提醒提前天数，多个值用逗号分隔');
+
 -- SSE实时推送配置（全局）
 INSERT INTO cloud_flow_db.sys_config VALUES(49, 100000, 'SSE-连接超时时间(毫秒)',        'sys.sse.timeout',               '0',        'Y', '0', 'admin', NOW(), '', null, 'SSE连接超时时间，0表示永不超时');
 
@@ -1563,6 +1588,29 @@ INSERT INTO cloud_flow_db.wf_form_definition (form_id, form_name, fields_json, c
 ('form_contract', '合同审批表单', '[{"id":"c1","type":"TEXT","label":"合同名称","required":true},{"id":"c2","type":"TEXT","label":"对方单位","required":true},{"id":"c3","type":"NUMBER","label":"合同金额","required":true},{"id":"c4","type":"SELECT","label":"合同类型","required":true,"options":["采购合同","销售合同","服务协议"]},{"id":"c5","type":"TEXTAREA","label":"主要条款摘要","required":true}]', NOW()),
 ('form_recruit', '招聘申请表单', '[{"id":"r1","type":"TEXT","label":"招聘岗位","required":true},{"id":"r2","type":"NUMBER","label":"招聘人数","required":true},{"id":"r3","type":"SELECT","label":"职级","required":true,"options":["P5","P6","P7","P8"]},{"id":"r4","type":"TEXTAREA","label":"岗位职责","required":true},{"id":"r5","type":"NUMBER","label":"预算薪资（千元）","required":true}]', NOW());
 
+-- 通用流程表单定义
+INSERT INTO cloud_flow_db.wf_form_definition (form_id, form_name, fields_json, create_time) VALUES
+('form_attendance_appeal', '补卡/外勤审批表单', '[{"id":"appealType","type":"SELECT","label":"申请类型","required":true,"options":["补卡","外勤"]},{"id":"appealDate","type":"DATE","label":"申请日期","required":true},{"id":"timePoint","type":"TEXT","label":"异常时间点","required":true},{"id":"reason","type":"TEXTAREA","label":"申请说明","required":true}]', NOW()),
+('form_overtime_request', '加班审批表单', '[{"id":"overtimeDate","type":"DATE","label":"加班日期","required":true},{"id":"hours","type":"NUMBER","label":"加班时长（小时）","required":true},{"id":"workContent","type":"TEXTAREA","label":"加班内容","required":true},{"id":"compensationType","type":"SELECT","label":"补偿方式","required":true,"options":["调休","加班费"]}]', NOW()),
+('form_expense_claim', '报销审批表单', '[{"id":"expenseType","type":"SELECT","label":"费用类型","required":true,"options":["差旅费","交通费","招待费","办公费","其他"]},{"id":"amount","type":"NUMBER","label":"报销金额","required":true},{"id":"occurDate","type":"DATE","label":"发生日期","required":true},{"id":"description","type":"TEXTAREA","label":"费用说明","required":true}]', NOW()),
+('form_leave_request', '请假审批表单', '[{"id":"leaveType","type":"SELECT","label":"请假类型","required":true,"options":["年假","事假","病假","婚假","产假","调休"]},{"id":"startDate","type":"DATE","label":"开始日期","required":true},{"id":"endDate","type":"DATE","label":"结束日期","required":true},{"id":"days","type":"NUMBER","label":"请假天数","required":true},{"id":"reason","type":"TEXTAREA","label":"请假事由","required":true}]', NOW()),
+('form_offer_approval', 'Offer审批表单', '[{"id":"candidateName","type":"TEXT","label":"候选人姓名","required":true},{"id":"positionName","type":"TEXT","label":"拟聘岗位","required":true},{"id":"salary","type":"NUMBER","label":"月薪（元）","required":true},{"id":"expectedOnboardDate","type":"DATE","label":"预计入职日期","required":true},{"id":"remark","type":"TEXTAREA","label":"审批说明","required":false}]', NOW()),
+('form_onboarding_approval', '入职审批表单', '[{"id":"employeeName","type":"TEXT","label":"入职人姓名","required":true},{"id":"deptName","type":"TEXT","label":"入职部门","required":true},{"id":"positionName","type":"TEXT","label":"入职岗位","required":true},{"id":"onboardDate","type":"DATE","label":"入职日期","required":true},{"id":"remark","type":"TEXTAREA","label":"入职说明","required":false}]', NOW()),
+('form_probation_confirmation', '转正审批表单', '[{"id":"employeeName","type":"TEXT","label":"员工姓名","required":true},{"id":"deptName","type":"TEXT","label":"所属部门","required":true},{"id":"probationEndDate","type":"DATE","label":"试用期结束日期","required":true},{"id":"selfSummary","type":"TEXTAREA","label":"试用期总结","required":true}]', NOW()),
+('form_resignation_approval', '离职审批表单', '[{"id":"employeeName","type":"TEXT","label":"离职人姓名","required":true},{"id":"resignationDate","type":"DATE","label":"拟离职日期","required":true},{"id":"resignationType","type":"SELECT","label":"离职类型","required":true,"options":["主动离职","协商解除","合同到期"]},{"id":"reason","type":"TEXTAREA","label":"离职原因","required":true}]', NOW()),
+('form_salary_adjustment', '调薪审批表单', '[{"id":"employeeName","type":"TEXT","label":"员工姓名","required":true},{"id":"currentSalary","type":"NUMBER","label":"当前月薪（元）","required":true},{"id":"newSalary","type":"NUMBER","label":"调整后月薪（元）","required":true},{"id":"effectiveDate","type":"DATE","label":"生效日期","required":true},{"id":"reason","type":"TEXTAREA","label":"调薪原因","required":true}]', NOW()),
+('form_performance_plan', '绩效计划审批表单', '[{"id":"planName","type":"TEXT","label":"计划名称","required":true},{"id":"period","type":"TEXT","label":"绩效周期","required":true},{"id":"ownerName","type":"TEXT","label":"负责人","required":true},{"id":"objective","type":"TEXTAREA","label":"绩效目标","required":true}]', NOW()),
+('form_performance_result', '绩效结果审批表单', '[{"id":"period","type":"TEXT","label":"绩效周期","required":true},{"id":"employeeName","type":"TEXT","label":"员工姓名","required":true},{"id":"score","type":"NUMBER","label":"绩效得分","required":true},{"id":"resultLevel","type":"SELECT","label":"绩效等级","required":true,"options":["A","B","C","D"]},{"id":"summary","type":"TEXTAREA","label":"结果说明","required":true}]', NOW()),
+('form_transfer_approval', '调岗审批表单', '[{"id":"employeeName","type":"TEXT","label":"员工姓名","required":true},{"id":"fromDept","type":"TEXT","label":"原部门","required":true},{"id":"toDept","type":"TEXT","label":"目标部门","required":true},{"id":"toPosition","type":"TEXT","label":"目标岗位","required":true},{"id":"effectiveDate","type":"DATE","label":"生效日期","required":true},{"id":"reason","type":"TEXTAREA","label":"调岗原因","required":true}]', NOW()),
+('form_payment_request', '付款审批表单', '[{"id":"payeeName","type":"TEXT","label":"收款方名称","required":true},{"id":"bankAccount","type":"TEXT","label":"银行账号","required":true},{"id":"amount","type":"NUMBER","label":"付款金额","required":true},{"id":"contractNo","type":"TEXT","label":"合同编号","required":false},{"id":"purpose","type":"TEXTAREA","label":"付款用途","required":true}]', NOW()),
+('form_purchase_request', '采购审批表单', '[{"id":"itemName","type":"TEXT","label":"采购物品","required":true},{"id":"quantity","type":"NUMBER","label":"采购数量","required":true},{"id":"amount","type":"NUMBER","label":"采购金额","required":true},{"id":"expectedDate","type":"DATE","label":"期望到货日期","required":false},{"id":"reason","type":"TEXTAREA","label":"采购原因","required":true}]', NOW()),
+('form_business_trip', '出差审批表单', '[{"id":"destination","type":"TEXT","label":"出差地点","required":true},{"id":"startDate","type":"DATE","label":"开始日期","required":true},{"id":"endDate","type":"DATE","label":"结束日期","required":true},{"id":"budget","type":"NUMBER","label":"预算金额","required":true},{"id":"purpose","type":"TEXTAREA","label":"出差事由","required":true}]', NOW()),
+('form_vehicle_approval', '用车审批表单', '[{"id":"vehiclePurpose","type":"TEXT","label":"用车事由","required":true},{"id":"destination","type":"TEXT","label":"目的地","required":true},{"id":"startTime","type":"DATE","label":"用车日期","required":true},{"id":"passengerCount","type":"NUMBER","label":"乘车人数","required":true},{"id":"remark","type":"TEXTAREA","label":"备注","required":false}]', NOW()),
+('form_seal_application', '用印审批表单', '[{"id":"sealName","type":"TEXT","label":"印章名称","required":true},{"id":"documentName","type":"TEXT","label":"用印文件","required":true},{"id":"useCount","type":"NUMBER","label":"用印份数","required":true},{"id":"expectedReturnDate","type":"DATE","label":"预计归还日期","required":false},{"id":"purpose","type":"TEXTAREA","label":"用印事由","required":true}]', NOW()),
+('form_license_borrow', '证照借用审批表单', '[{"id":"licenseName","type":"TEXT","label":"证照名称","required":true},{"id":"borrowDate","type":"DATE","label":"借用日期","required":true},{"id":"expectedReturnDate","type":"DATE","label":"预计归还日期","required":true},{"id":"purpose","type":"TEXTAREA","label":"借用事由","required":true}]', NOW()),
+('form_license_renewal', '证照续期审批表单', '[{"id":"licenseName","type":"TEXT","label":"证照名称","required":true},{"id":"oldExpireDate","type":"DATE","label":"原到期日期","required":true},{"id":"newExpireDate","type":"DATE","label":"新到期日期","required":true},{"id":"reason","type":"TEXTAREA","label":"续期原因","required":true}]', NOW()),
+('form_knowledge_publish', '知识库发布审批表单', '[{"id":"documentTitle","type":"TEXT","label":"文档标题","required":true},{"id":"categoryName","type":"TEXT","label":"知识分类","required":true},{"id":"publishScope","type":"SELECT","label":"发布范围","required":true,"options":["全员","部门","指定角色"]},{"id":"summary","type":"TEXTAREA","label":"发布说明","required":true}]', NOW());
+
 -- 核心流程定义（nodes + edges）
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
 ('wf_reimburse', '财务报销流程', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"流程结束"},{"id":"b2","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount >= 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
@@ -1636,7 +1684,57 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 ('wf_license_borrow', '证照借用审批流程', 'license_borrow', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交证照借用"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政审批","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_license_renewal', '证照续期审批流程', 'license_renewal', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交证照续期"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政审批","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_knowledge_publish', '知识库发布审批', 'knowledge_publish', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交知识文档"},{"id":"n1","type":"APPROVAL","title":"直属领导审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"管理员/HR发布审批","approverType":"ROLE","approverValue":"admin,hr","signType":"ANY"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+UPDATE cloud_flow_db.wf_process_definition
+SET form_id = CASE definition_id
+  WHEN 'wf_attendance_appeal' THEN 'form_attendance_appeal'
+  WHEN 'wf_overtime_request' THEN 'form_overtime_request'
+  WHEN 'wf_expense_claim' THEN 'form_expense_claim'
+  WHEN 'wf_leave_request' THEN 'form_leave_request'
+  WHEN 'wf_offer_approval' THEN 'form_offer_approval'
+  WHEN 'wf_onboarding_approval' THEN 'form_onboarding_approval'
+  WHEN 'wf_probation_confirmation_approval' THEN 'form_probation_confirmation'
+  WHEN 'wf_resignation_approval' THEN 'form_resignation_approval'
+  WHEN 'wf_salary_adjustment_approval' THEN 'form_salary_adjustment'
+  WHEN 'wf_performance_plan_approval' THEN 'form_performance_plan'
+  WHEN 'wf_performance_result_approval' THEN 'form_performance_result'
+  WHEN 'wf_transfer_approval' THEN 'form_transfer_approval'
+  WHEN 'wf_payment_request' THEN 'form_payment_request'
+  WHEN 'wf_purchase_request' THEN 'form_purchase_request'
+  WHEN 'wf_business_trip' THEN 'form_business_trip'
+  WHEN 'wf_vehicle_approval' THEN 'form_vehicle_approval'
+  WHEN 'wf_seal_application' THEN 'form_seal_application'
+  WHEN 'wf_license_borrow' THEN 'form_license_borrow'
+  WHEN 'wf_license_renewal' THEN 'form_license_renewal'
+  WHEN 'wf_knowledge_publish' THEN 'form_knowledge_publish'
+  ELSE form_id
+END
+WHERE definition_id IN (
+  'wf_attendance_appeal',
+  'wf_overtime_request',
+  'wf_expense_claim',
+  'wf_leave_request',
+  'wf_offer_approval',
+  'wf_onboarding_approval',
+  'wf_probation_confirmation_approval',
+  'wf_resignation_approval',
+  'wf_salary_adjustment_approval',
+  'wf_performance_plan_approval',
+  'wf_performance_result_approval',
+  'wf_transfer_approval',
+  'wf_payment_request',
+  'wf_purchase_request',
+  'wf_business_trip',
+  'wf_vehicle_approval',
+  'wf_seal_application',
+  'wf_license_borrow',
+  'wf_license_renewal',
+  'wf_knowledge_publish'
+);
 
 -- 测试数据
 -- 用于开发和测试环境
@@ -5470,10 +5568,10 @@ INSERT INTO cloud_flow_db.oa_seal (
 
 INSERT INTO cloud_flow_db.oa_license (
   license_id, tenant_id, license_code, license_name, license_type, license_no, issuer, issue_date, expire_date,
-  keeper_id, keeper_name, location, status, remark, del_flag, create_by, create_time, update_by, update_time
+  keeper_id, keeper_name, location, attachment_url, status, remark, del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9001, 100000, 'LIC-BUSINESS-001', '营业执照正本', 'BUSINESS', '91310000CFLOW001', '上海市市场监督管理局', '2022-01-01', '2032-01-01', 1, 'Admin', '总部行政保险柜 B01', 'BORROWED', '正本原则上不外借', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
-(9002, 100000, 'LIC-QUAL-001', '软件企业证书', 'QUALIFICATION', 'SQ-2026-0001', '上海市经信委', '2024-05-12', '2027-05-11', 4, '赵HR', '总部行政保险柜 B02', 'AVAILABLE', '投标资质材料常用', '0', 'admin', DATE_SUB(NOW(), INTERVAL 90 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 HOUR));
+(9001, 100000, 'LIC-BUSINESS-001', '营业执照正本', 'BUSINESS', '91310000CFLOW001', '上海市市场监督管理局', '2022-01-01', '2032-01-01', 1, 'Admin', '总部行政保险柜 B01', 'https://demo.cloudflow.local/files/license/business-license-current.pdf', 'BORROWED', '正本原则上不外借', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+(9002, 100000, 'LIC-QUAL-001', '软件企业证书', 'QUALIFICATION', 'SQ-2026-0001', '上海市经信委', '2024-05-12', DATE_ADD(CURDATE(), INTERVAL 15 DAY), 4, '赵HR', '总部行政保险柜 B02', 'https://demo.cloudflow.local/files/license/software-certificate-current.pdf', 'AVAILABLE', '投标资质材料常用', '0', 'admin', DATE_SUB(NOW(), INTERVAL 90 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 HOUR));
 
 INSERT INTO cloud_flow_db.oa_seal_application (
   id, tenant_id, instance_id, application_no, seal_id, seal_name, user_id, user_name, dept_id, dept_name,
@@ -5500,20 +5598,36 @@ INSERT INTO cloud_flow_db.oa_license_borrow (
  NULL, 'APPROVED', '0', 'test_fe', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'workflow-stream', DATE_SUB(NOW(), INTERVAL 2 HOUR));
 
 INSERT INTO cloud_flow_db.oa_seal_handover_log (
-  id, tenant_id, application_id, seal_id, action_type, operator_id, operator_name, action_time, remark, create_by, create_time
+  id, tenant_id, application_id, seal_id, action_type, operator_id, operator_name, action_time, remark, attachment_url, create_by, create_time
 ) VALUES
-(9001, 100000, 9002, 9001, 'BORROW', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 2 DAY), '投标材料用章借出', 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY));
+(9001, 100000, 9002, 9001, 'BORROW', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 2 DAY), '投标材料用章借出', 'https://demo.cloudflow.local/files/seal/handover-9001.jpg', 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY));
 
 INSERT INTO cloud_flow_db.oa_license_handover_log (
-  id, tenant_id, borrow_id, license_id, action_type, operator_id, operator_name, action_time, remark, create_by, create_time
+  id, tenant_id, borrow_id, license_id, action_type, operator_id, operator_name, action_time, remark, attachment_url, create_by, create_time
 ) VALUES
-(9001, 100000, 9001, 9001, 'BORROW', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 1 DAY), '客户尽调现场核验借出', 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
+(9001, 100000, 9001, 9001, 'BORROW', 1, 'Admin', DATE_SUB(NOW(), INTERVAL 1 DAY), '客户尽调现场核验借出', 'https://demo.cloudflow.local/files/license/handover-9001.jpg', 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT INTO cloud_flow_db.oa_borrow_reminder_log (
   id, tenant_id, business_type, business_id, resource_id, resource_name, applicant_id, applicant_name,
   reminder_type, operator_id, operator_name, reminder_content, reminder_time, create_by, create_time
 ) VALUES
 (9001, 100000, 'SEAL', 9002, 9001, '公司公章', 8, '前端测试', 'AUTO', NULL, 'system', '用印申请已超过预计归还时间，请尽快归还：公司公章', DATE_SUB(NOW(), INTERVAL 1 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 1 HOUR));
+
+INSERT INTO cloud_flow_db.oa_license_renewal (
+  id, tenant_id, instance_id, renewal_no, license_id, license_name, license_no, old_issue_date, old_expire_date,
+  new_issue_date, new_expire_date, applicant_id, applicant_name, dept_id, dept_name, renewal_reason, attachment_url,
+  status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9001, 100000, NULL, 'XQ202604010001', 9002, '软件企业证书', 'SQ-2026-0001', '2024-05-12', DATE_ADD(CURDATE(), INTERVAL 15 DAY),
+ CURDATE(), DATE_ADD(CURDATE(), INTERVAL 3 YEAR), 4, '赵HR', 104, '人力资源部', '证照即将到期，补充续期材料进入审批',
+ 'https://demo.cloudflow.local/files/license/renewal-9001.pdf', 'PENDING', '0', 'zhao', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'zhao', DATE_SUB(NOW(), INTERVAL 3 HOUR));
+
+INSERT INTO cloud_flow_db.oa_license_expiry_reminder_log (
+  id, tenant_id, license_id, license_name, expire_date, days_before, recipient_id, recipient_name, reminder_type,
+  operator_id, operator_name, reminder_content, reminder_time, create_by, create_time
+) VALUES
+(9001, 100000, 9002, '软件企业证书', DATE_ADD(CURDATE(), INTERVAL 15 DAY), 15, 4, '赵HR', 'AUTO',
+ NULL, 'system', '证照将在 15 天后到期，请及时办理续期：软件企业证书', DATE_SUB(NOW(), INTERVAL 1 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 1 HOUR));
 
 -- -----------------------------
 -- 2.7 访客与值班

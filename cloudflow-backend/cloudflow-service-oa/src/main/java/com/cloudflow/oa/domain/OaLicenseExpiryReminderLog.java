@@ -7,31 +7,38 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 用印借还交接日志。
+ * 证照到期提醒日志。
  */
 @Data
-@TableName("oa_seal_handover_log")
-public class OaSealHandoverLog implements Serializable {
+@TableName("oa_license_expiry_reminder_log")
+public class OaLicenseExpiryReminderLog implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @TableId(type = IdType.AUTO)
     private Long id;
 
     private Long tenantId;
-    private Long applicationId;
-    private Long sealId;
-    private String actionType;
+    private Long licenseId;
+    private String licenseName;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate expireDate;
+
+    private Integer daysBefore;
+    private Long recipientId;
+    private String recipientName;
+    private String reminderType;
     private Long operatorId;
     private String operatorName;
+    private String reminderContent;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime actionTime;
+    private LocalDateTime reminderTime;
 
-    private String remark;
-    private String attachmentUrl;
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

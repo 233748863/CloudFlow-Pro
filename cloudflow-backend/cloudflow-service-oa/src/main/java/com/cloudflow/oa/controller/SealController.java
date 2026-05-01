@@ -165,7 +165,9 @@ public class SealController {
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R<Void> confirmBorrow(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
-            return R.result(applicationService.confirmBorrow(id, dto == null ? null : dto.getRemark()));
+            return R.result(applicationService.confirmBorrow(id,
+                    dto == null ? null : dto.getRemark(),
+                    dto == null ? null : dto.getAttachmentUrl()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -176,7 +178,9 @@ public class SealController {
     @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     public R<Void> confirmReturn(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
-            return R.result(applicationService.confirmReturn(id, dto == null ? null : dto.getRemark()));
+            return R.result(applicationService.confirmReturn(id,
+                    dto == null ? null : dto.getRemark(),
+                    dto == null ? null : dto.getAttachmentUrl()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

@@ -629,6 +629,7 @@ CREATE TABLE oa_seal_handover_log (
   operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '经办人姓名',
   action_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '交接附件URL(多个用逗号分隔)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
@@ -652,6 +653,7 @@ CREATE TABLE oa_license (
   keeper_id         BIGINT(20)      DEFAULT NULL COMMENT '保管人ID',
   keeper_name       VARCHAR(64)     DEFAULT NULL COMMENT '保管人姓名',
   location          VARCHAR(200)    DEFAULT NULL COMMENT '存放位置',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '证照附件URL(多个用逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'AVAILABLE' COMMENT '状态(AVAILABLE可用/BORROWED借出/DISABLED停用)',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
@@ -714,6 +716,7 @@ CREATE TABLE oa_license_handover_log (
   operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '经办人姓名',
   action_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '交接附件URL(多个用逗号分隔)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
@@ -722,7 +725,64 @@ CREATE TABLE oa_license_handover_log (
   KEY idx_license_handover_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='证照借还交接日志表';
 
--- 26. 用印/证照逾期催还日志表
+-- 26. 证照续期申请表
+DROP TABLE IF EXISTS oa_license_renewal;
+CREATE TABLE oa_license_renewal (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
+  renewal_no        VARCHAR(50)     NOT NULL COMMENT '续期申请编号',
+  license_id        BIGINT(20)      NOT NULL COMMENT '证照ID',
+  license_name      VARCHAR(100)    DEFAULT NULL COMMENT '证照名称快照',
+  license_no        VARCHAR(100)    DEFAULT NULL COMMENT '证照编号快照',
+  old_issue_date    DATE            DEFAULT NULL COMMENT '原签发日期',
+  old_expire_date   DATE            DEFAULT NULL COMMENT '原到期日期',
+  new_issue_date    DATE            DEFAULT NULL COMMENT '新签发日期',
+  new_expire_date   DATE            NOT NULL COMMENT '新到期日期',
+  applicant_id      BIGINT(20)      DEFAULT NULL COMMENT '申请人ID',
+  applicant_name    VARCHAR(64)     DEFAULT NULL COMMENT '申请人姓名',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  renewal_reason    VARCHAR(500)    NOT NULL COMMENT '续期原因',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '续期附件URL(多个用逗号分隔)',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/CANCELLED)',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_license_renewal_no (renewal_no),
+  KEY idx_license_renewal_license (license_id),
+  KEY idx_license_renewal_status (status),
+  KEY idx_license_renewal_tenant (tenant_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='证照续期申请表';
+
+-- 27. 证照到期提醒日志表
+DROP TABLE IF EXISTS oa_license_expiry_reminder_log;
+CREATE TABLE oa_license_expiry_reminder_log (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  license_id        BIGINT(20)      NOT NULL COMMENT '证照ID',
+  license_name      VARCHAR(100)    DEFAULT NULL COMMENT '证照名称',
+  expire_date       DATE            NOT NULL COMMENT '到期日期',
+  days_before       INT(11)         DEFAULT 0 COMMENT '提前提醒天数',
+  recipient_id      BIGINT(20)      NOT NULL COMMENT '接收人ID',
+  recipient_name    VARCHAR(64)     DEFAULT NULL COMMENT '接收人姓名',
+  reminder_type     VARCHAR(20)     NOT NULL COMMENT '提醒类型(AUTO自动/MANUAL手动)',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
+  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
+  reminder_content  VARCHAR(500)    DEFAULT NULL COMMENT '提醒内容',
+  reminder_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '提醒时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_license_expiry_round (license_id, expire_date, days_before, recipient_id),
+  KEY idx_license_expiry_log_tenant (tenant_id),
+  KEY idx_license_expiry_log_license (license_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='证照到期提醒日志表';
+
+-- 28. 用印/证照逾期催还日志表
 DROP TABLE IF EXISTS oa_borrow_reminder_log;
 CREATE TABLE oa_borrow_reminder_log (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',

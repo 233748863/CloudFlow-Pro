@@ -8,4 +8,5 @@ import lombok.Data;
 @Data
 public class OaBorrowActionDTO {
     private String remark;
+    private String attachmentUrl;
 }

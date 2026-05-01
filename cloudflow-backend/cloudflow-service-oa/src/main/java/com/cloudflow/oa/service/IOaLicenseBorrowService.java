@@ -38,7 +38,11 @@ public interface IOaLicenseBorrowService extends IService<OaLicenseBorrow> {
 
     boolean confirmBorrow(Long id, String remark);
 
+    boolean confirmBorrow(Long id, String remark, String attachmentUrl);
+
     boolean confirmReturn(Long id, String remark);
+
+    boolean confirmReturn(Long id, String remark, String attachmentUrl);
 
     boolean remind(Long id, String remark);
 

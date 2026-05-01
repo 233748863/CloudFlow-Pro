@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, Edit, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { BadgeCheck, Bell, Edit, FileClock, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { licenseApi, OaLicense } from '@/services/api/sealLicense';
+import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
+import FileUpload from '@/components/FileUpload';
+import { licenseApi, licenseRenewalApi, OaLicense, OaLicenseRenewal } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
-import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 const TYPE_LABELS: Record<string, string> = {
@@ -22,11 +23,27 @@ const STATUS_LABELS: Record<string, string> = {
   DISABLED: '停用',
 };
 
+const RENEWAL_STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  PENDING: '审批中',
+  APPROVED: '已通过',
+  REJECTED: '已驳回',
+  CANCELLED: '已取消',
+};
+
 const emptyForm: OaLicense = {
   licenseCode: '',
   licenseName: '',
   licenseType: 'BUSINESS',
   status: 'AVAILABLE',
+  attachmentUrl: '',
+};
+
+const emptyRenewalForm: OaLicenseRenewal = {
+  licenseId: 0,
+  newExpireDate: '',
+  renewalReason: '',
+  attachmentUrl: '',
 };
 
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
@@ -42,6 +59,50 @@ const getStatusBadge = (status?: string) => {
       {STATUS_LABELS[status || 'AVAILABLE'] || status || '-'}
     </span>
   );
+};
+
+const getRenewalStatusBadge = (status?: string) => {
+  const toneMap: Record<string, string> = {
+    DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    PENDING: 'border border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+    APPROVED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    REJECTED: 'border border-rose-200 bg-rose-50 text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+    CANCELLED: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+  };
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
+      {RENEWAL_STATUS_LABELS[status || 'DRAFT'] || status || '-'}
+    </span>
+  );
+};
+
+const getDaysUntil = (date?: string) => {
+  if (!date) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(target.getTime())) return null;
+  return Math.round((target.getTime() - today.getTime()) / 86400000);
+};
+
+const getExpiryBadge = (expireDate?: string) => {
+  const days = getDaysUntil(expireDate);
+  if (days === null) {
+    return <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300">未维护</span>;
+  }
+  if (days < 0) {
+    return <span className="rounded-full border border-rose-200 bg-rose-50 px-2.5 py-1 text-xs font-semibold text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">已到期</span>;
+  }
+  if (days === 0) {
+    return <span className="rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">今日到期</span>;
+  }
+  if (days <= 7) {
+    return <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200">{days} 天内</span>;
+  }
+  if (days <= 30) {
+    return <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs font-semibold text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">{days} 天内</span>;
+  }
+  return <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200">正常</span>;
 };
 
 const TableStateRow: React.FC<{ colSpan: number; title: string }> = ({ colSpan, title }) => (
@@ -60,25 +121,40 @@ const TableStateRow: React.FC<{ colSpan: number; title: string }> = ({ colSpan, 
 export const LicenseListPage: React.FC = () => {
   const [rows, setRows] = useState<OaLicense[]>([]);
   const [total, setTotal] = useState(0);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, licenseName: '', status: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, licenseName: '', status: '', expiry: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaLicense>(emptyForm);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
+  const [renewalLicense, setRenewalLicense] = useState<OaLicense | null>(null);
+  const [renewalForm, setRenewalForm] = useState<OaLicenseRenewal>(emptyRenewalForm);
+  const [renewalRows, setRenewalRows] = useState<OaLicenseRenewal[]>([]);
 
   const fetchRows = useCallback(async () => {
     try {
-      const result = await licenseApi.list({
-        pageNum: query.pageNum,
-        pageSize: query.pageSize,
-        licenseName: query.licenseName || undefined,
-        status: query.status || undefined,
-      });
+      const result = query.expiry
+        ? await licenseApi.expiring({ pageNum: query.pageNum, pageSize: query.pageSize, days: Number(query.expiry) })
+        : await licenseApi.list({
+            pageNum: query.pageNum,
+            pageSize: query.pageSize,
+            licenseName: query.licenseName || undefined,
+            status: query.status || undefined,
+          });
       setRows(normalizeRows(result));
       setTotal(result.total || 0);
     } catch (error) {
       toast.error(getErrorMessage(error, '获取证照台账失败'));
     }
   }, [query]);
+
+  const fetchRenewals = useCallback(async (licenseId: number) => {
+    try {
+      const result = await licenseRenewalApi.list({ pageNum: 1, pageSize: 20, licenseId });
+      setRenewalRows(normalizeRows(result));
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取续期记录失败'));
+    }
+  }, []);
 
   useEffect(() => {
     void fetchRows();
@@ -101,6 +177,93 @@ export const LicenseListPage: React.FC = () => {
       await fetchRows();
     } catch (error) {
       toast.error(getErrorMessage(error, '保存证照失败'));
+    }
+  };
+
+  const openRenewalDialog = async (license: OaLicense) => {
+    if (!license.licenseId) return;
+    setRenewalLicense(license);
+    setRenewalForm({
+      ...emptyRenewalForm,
+      licenseId: license.licenseId,
+      oldIssueDate: license.issueDate,
+      oldExpireDate: license.expireDate,
+      newIssueDate: license.issueDate || '',
+    });
+    setRenewalDialogOpen(true);
+    await fetchRenewals(license.licenseId);
+  };
+
+  const saveRenewal = async () => {
+    if (!renewalLicense?.licenseId || !renewalForm.newExpireDate || !renewalForm.renewalReason.trim()) {
+      toast.warning('请填写新到期日期和续期原因');
+      return;
+    }
+    try {
+      const payload = {
+        ...renewalForm,
+        licenseId: renewalLicense.licenseId,
+        licenseName: renewalLicense.licenseName,
+      };
+      if (payload.id) {
+        await licenseRenewalApi.edit(payload);
+      } else {
+        await licenseRenewalApi.add(payload);
+      }
+      toast.success('续期申请已保存');
+      setRenewalForm({
+        ...emptyRenewalForm,
+        licenseId: renewalLicense.licenseId,
+        oldIssueDate: renewalLicense.issueDate,
+        oldExpireDate: renewalLicense.expireDate,
+        newIssueDate: renewalLicense.issueDate || '',
+      });
+      await fetchRenewals(renewalLicense.licenseId);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '保存续期申请失败'));
+    }
+  };
+
+  const submitRenewal = async (id?: number) => {
+    if (!id || !renewalLicense?.licenseId) return;
+    try {
+      await licenseRenewalApi.submit(id);
+      toast.success('续期申请已提交');
+      await fetchRenewals(renewalLicense.licenseId);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '提交续期申请失败'));
+    }
+  };
+
+  const cancelRenewal = async (id?: number) => {
+    if (!id || !renewalLicense?.licenseId) return;
+    try {
+      await licenseRenewalApi.cancel(id);
+      toast.success('续期申请已取消');
+      await fetchRenewals(renewalLicense.licenseId);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '取消续期申请失败'));
+    }
+  };
+
+  const removeRenewal = async (id?: number) => {
+    if (!id || !renewalLicense?.licenseId) return;
+    try {
+      await licenseRenewalApi.remove([id]);
+      toast.success('续期申请已删除');
+      await fetchRenewals(renewalLicense.licenseId);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除续期申请失败'));
+    }
+  };
+
+  const remindExpiry = async (license: OaLicense) => {
+    if (!license.licenseId) return;
+    try {
+      await licenseApi.remindExpiry(license.licenseId);
+      toast.success('到期提醒已发送');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '发送到期提醒失败'));
     }
   };
 
@@ -135,12 +298,24 @@ export const LicenseListPage: React.FC = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="w-full sm:w-[160px]">
+                <Select value={query.expiry || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, expiry: value === 'ALL' ? '' : value }))}>
+                  <SelectTrigger className="h-10"><SelectValue placeholder="到期筛选" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">全部有效期</SelectItem>
+                    <SelectItem value="30">30天内到期</SelectItem>
+                    <SelectItem value="15">15天内到期</SelectItem>
+                    <SelectItem value="7">7天内到期</SelectItem>
+                    <SelectItem value="0">今日到期</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
                 <span>共 {total} 条</span>
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, licenseName: '', status: '' })}>
+              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, licenseName: '', status: '', expiry: '' })}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
@@ -154,20 +329,22 @@ export const LicenseListPage: React.FC = () => {
         table={(
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1040px]">
+              <table className="w-full min-w-[1180px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                   <tr>
                     <TableHead className="px-4 py-3 text-left">编码</TableHead>
                     <TableHead className="px-4 py-3 text-left">名称 / 类型</TableHead>
                     <TableHead className="px-4 py-3 text-left">编号 / 签发机构</TableHead>
                     <TableHead className="px-4 py-3 text-left">有效期</TableHead>
+                    <TableHead className="px-4 py-3 text-left">到期状态</TableHead>
+                    <TableHead className="px-4 py-3 text-left">附件</TableHead>
                     <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                    <TableActionHead className="w-32 px-4 py-3 text-right">操作</TableActionHead>
+                    <TableActionHead className="w-44 px-4 py-3 text-right">操作</TableActionHead>
                   </tr>
                 </TableHeader>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {rows.length === 0 ? (
-                    <TableStateRow colSpan={6} title="暂无证照" />
+                    <TableStateRow colSpan={8} title="暂无证照" />
                   ) : rows.map((item) => (
                     <tr key={item.licenseId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{item.licenseCode}</td>
@@ -183,6 +360,10 @@ export const LicenseListPage: React.FC = () => {
                         <div>{item.issueDate || '-'}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.expireDate || '-'}</div>
                       </td>
+                      <td className="px-4 py-3">{getExpiryBadge(item.expireDate)}</td>
+                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        {getAttachmentList(item.attachmentUrl).length ? `${getAttachmentList(item.attachmentUrl).length} 个` : '-'}
+                      </td>
                       <td className="px-4 py-3">{getStatusBadge(item.status)}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
@@ -190,6 +371,8 @@ export const LicenseListPage: React.FC = () => {
                           iconOnly
                           actions={[
                             { label: '编辑', icon: <Edit size={14} />, onClick: () => { setForm({ ...item }); setDialogOpen(true); }, tone: 'primary' },
+                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !item.expireDate },
+                            { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' },
                             { label: '删除', icon: <Trash2 size={14} />, onClick: () => item.licenseId && setDeleteId(item.licenseId), tone: 'danger' },
                           ]}
                         />
@@ -243,7 +426,62 @@ export const LicenseListPage: React.FC = () => {
             <div className="space-y-2"><Label>保管人</Label><Input className="h-11" value={form.keeperName || ''} onChange={(event) => setForm((prev) => ({ ...prev, keeperName: event.target.value }))} /></div>
             <div className="space-y-2"><Label>存放位置</Label><Input className="h-11" value={form.location || ''} onChange={(event) => setForm((prev) => ({ ...prev, location: event.target.value }))} /></div>
           </div>
+          <div className="space-y-2"><Label>证照附件</Label><FileUpload value={form.attachmentUrl || ''} onChange={(urls) => setForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} /></div>
           <div className="space-y-2"><Label>备注</Label><Textarea className="min-h-[100px] resize-none" value={form.remark || ''} onChange={(event) => setForm((prev) => ({ ...prev, remark: event.target.value }))} /></div>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={renewalDialogOpen}
+        title={renewalLicense ? `${renewalLicense.licenseName} 续期` : '证照续期'}
+        onClose={() => { setRenewalDialogOpen(false); setRenewalLicense(null); setRenewalRows([]); }}
+        width="wide"
+        footer={(
+          <>
+            <Button variant="outline" onClick={() => { setRenewalDialogOpen(false); setRenewalLicense(null); setRenewalRows([]); }}>关闭</Button>
+            <Button onClick={() => void saveRenewal()}>保存续期草稿</Button>
+          </>
+        )}
+      >
+        <div className="space-y-5">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2"><Label>原签发日期</Label><Input className="h-11" value={renewalLicense?.issueDate || '-'} disabled /></div>
+            <div className="space-y-2"><Label>原到期日期</Label><Input className="h-11" value={renewalLicense?.expireDate || '-'} disabled /></div>
+            <div className="space-y-2"><Label>新签发日期</Label><DatePicker className="h-11" type="date" value={renewalForm.newIssueDate || ''} onChange={(event) => setRenewalForm((prev) => ({ ...prev, newIssueDate: event.target.value }))} /></div>
+            <div className="space-y-2"><Label>新到期日期</Label><DatePicker className="h-11" type="date" value={renewalForm.newExpireDate || ''} onChange={(event) => setRenewalForm((prev) => ({ ...prev, newExpireDate: event.target.value }))} /></div>
+          </div>
+          <div className="space-y-2"><Label>续期原因</Label><Textarea className="min-h-[100px] resize-none" value={renewalForm.renewalReason} onChange={(event) => setRenewalForm((prev) => ({ ...prev, renewalReason: event.target.value }))} /></div>
+          <div className="space-y-2"><Label>续期附件</Label><FileUpload value={renewalForm.attachmentUrl || ''} onChange={(urls) => setRenewalForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} /></div>
+          <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+            <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">续期记录</div>
+            <div className="space-y-3">
+              {renewalRows.length ? renewalRows.map((item) => (
+                <div key={item.id} className="rounded-lg border border-slate-100 px-3 py-3 dark:border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.renewalNo || '-'}</div>
+                      <div className="mt-1 text-xs text-slate-400">{item.oldExpireDate || '-'} → {item.newExpireDate || '-'}</div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {getRenewalStatusBadge(item.status)}
+                      <TableRowActions
+                        align="end"
+                        iconOnly
+                        actions={[
+                          { label: '编辑', icon: <Edit size={14} />, onClick: () => setRenewalForm({ ...item }), tone: 'primary', hidden: item.status !== 'DRAFT' },
+                          { label: '提交', icon: <Send size={14} />, onClick: () => void submitRenewal(item.id), tone: 'success', hidden: item.status !== 'DRAFT' },
+                          { label: '取消', icon: <XCircle size={14} />, onClick: () => void cancelRenewal(item.id), tone: 'warning', hidden: item.status !== 'PENDING' },
+                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => void removeRenewal(item.id), tone: 'danger', hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' && item.status !== 'CANCELLED' },
+                        ]}
+                      />
+                    </div>
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-slate-600 dark:text-slate-300">{item.renewalReason || '-'}</div>
+                  {getAttachmentList(item.attachmentUrl).length ? <div className="mt-3"><AttachmentLinks value={item.attachmentUrl} compact /></div> : null}
+                </div>
+              )) : <div className="py-8 text-center text-sm text-slate-400">暂无续期记录</div>}
+            </div>
+          </div>
         </div>
       </BaseDialog>
 
