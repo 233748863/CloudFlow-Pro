@@ -23,6 +23,8 @@ public class OaSealApplication implements Serializable {
     private Long tenantId;
     private String instanceId;
     private String applicationNo;
+    private Long contractId;
+    private String contractNo;
     private Long sealId;
     private String sealName;
     private Long userId;

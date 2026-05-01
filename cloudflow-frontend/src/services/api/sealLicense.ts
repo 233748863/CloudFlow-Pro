@@ -30,6 +30,8 @@ export interface OaSealApplication {
   id?: number;
   instanceId?: string;
   applicationNo?: string;
+  contractId?: number;
+  contractNo?: string;
   sealId: number;
   sealName?: string;
   userId?: number;
@@ -173,6 +175,9 @@ export interface BorrowManagementStats {
   borrowedCount: number;
   overdueCount: number;
   expiringLicenseCount: number;
+  contractUnsealedRiskCount: number;
+  overdueReturnRiskCount: number;
+  unarchivedRiskCount: number;
   trend: BorrowTrendItem[];
   resourceUsage: BorrowResourceUsageItem[];
 }

@@ -35,6 +35,7 @@ public final class WorkflowCallbackStreamConstants {
     public static final String BUSINESS_TYPE_SEAL_APPLICATION = "seal_application";
     public static final String BUSINESS_TYPE_LICENSE_BORROW = "license_borrow";
     public static final String BUSINESS_TYPE_LICENSE_RENEWAL = "license_renewal";
+    public static final String BUSINESS_TYPE_CONTRACT = "biz_contract";
 
     /**
      * 给流程变量补齐回调所需的公共元数据。

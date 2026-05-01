@@ -232,6 +232,7 @@ const ContactPage = React.lazy(() => import("./pages/ContactPage"));
 const KnowledgePage = React.lazy(() => import("./pages/KnowledgePage"));
 const SealApplicationPage = React.lazy(() => import("./pages/SealApplicationPage"));
 const LicenseBorrowPage = React.lazy(() => import("./pages/LicenseBorrowPage"));
+const ContractPage = React.lazy(() => import("./pages/ContractPage"));
 const VisitorPage = React.lazy(() => import("./pages/VisitorPage"));
 const DutySchedulePage = React.lazy(() => import("./pages/DutySchedulePage"));
 const SupplierPage = React.lazy(() => import("./pages/admin/supplier/SupplierPage"));
@@ -239,6 +240,7 @@ const ConsumablePage = React.lazy(() => import("./pages/admin/consumable/Consuma
 const SealListPage = React.lazy(() => import("./pages/admin/seal-license/SealListPage"));
 const LicenseListPage = React.lazy(() => import("./pages/admin/seal-license/LicenseListPage"));
 const BorrowManagementPage = React.lazy(() => import("./pages/admin/seal-license/BorrowManagementPage"));
+const RiskAlertPage = React.lazy(() => import("./pages/admin/RiskAlertPage"));
 const DictPage = React.lazy(() => import("./pages/admin/DictPage"));
 const ProcessCategoryPage = React.lazy(
   () => import("./pages/admin/ProcessCategoryPage"),
@@ -843,6 +845,14 @@ const desktopRoutes = [
             ),
           },
           {
+            path: "/office/contracts",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <ContractPage />
+              </Suspense>
+            ),
+          },
+          {
             path: "/system/log",
             element: (
               <Suspense fallback={<Loading />}>
@@ -978,6 +988,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <BorrowManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/admin/risk-alerts",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <RiskAlertPage />
               </Suspense>
             ),
           },

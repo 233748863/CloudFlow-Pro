@@ -6,6 +6,7 @@ import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import FileUpload from '@/components/FileUpload';
+import { contractApi, OaRiskAlert, OaTraceEvent } from '@/services/api/contractRisk';
 import { OaSeal, OaSealApplication, sealApi, sealApplicationApi } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
@@ -90,6 +91,8 @@ export const SealApplicationPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaSealApplication>(emptyForm);
   const [detailApplication, setDetailApplication] = useState<OaSealApplication | null>(null);
+  const [contractTimeline, setContractTimeline] = useState<OaTraceEvent[]>([]);
+  const [contractRisks, setContractRisks] = useState<OaRiskAlert[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
@@ -155,9 +158,20 @@ export const SealApplicationPage: React.FC = () => {
 
   const openDetail = async (item: OaSealApplication) => {
     setDetailApplication(item);
+    setContractTimeline([]);
+    setContractRisks([]);
     setDetailLoading(true);
     try {
-      setDetailApplication(await sealApplicationApi.getInfo(item.id!));
+      const detail = await sealApplicationApi.getInfo(item.id!);
+      setDetailApplication(detail);
+      if (detail.contractId) {
+        const [timelineResult, riskResult] = await Promise.all([
+          contractApi.timeline(detail.contractId),
+          contractApi.risks(detail.contractId),
+        ]);
+        setContractTimeline(timelineResult);
+        setContractRisks(riskResult);
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, '获取用印申请详情失败'));
     } finally {
@@ -418,6 +432,7 @@ export const SealApplicationPage: React.FC = () => {
             <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
               {[
                 ['印章', detailApplication.sealName],
+                ['关联合同', detailApplication.contractNo],
                 ['文件名称', detailApplication.documentName],
                 ['用印场景', SCENE_LABELS[detailApplication.useScene || ''] || detailApplication.useScene],
                 ['申请人', detailApplication.userName],
@@ -441,6 +456,39 @@ export const SealApplicationPage: React.FC = () => {
               <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
               <AttachmentLinks value={detailApplication.attachmentUrl} />
             </div>
+            {detailApplication.contractId ? (
+              <div className="grid gap-4 xl:grid-cols-2">
+                <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+                  <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">合同风险</div>
+                  {contractRisks.length ? (
+                    <div className="space-y-2">
+                      {contractRisks.slice(0, 5).map((risk) => (
+                        <div key={risk.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm dark:border-slate-800">
+                          <div className="font-medium text-slate-900 dark:text-slate-100">{risk.riskName}</div>
+                          <div className="mt-1 text-xs text-slate-400">{risk.riskLevel} / {risk.riskStatus}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <div className="py-6 text-center text-sm text-slate-400">暂无风险记录</div>}
+                </div>
+                <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+                  <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">合同链路</div>
+                  {contractTimeline.length ? (
+                    <div className="space-y-2">
+                      {contractTimeline.slice(-5).reverse().map((event) => (
+                        <div key={event.id} className="rounded-lg border border-slate-100 px-3 py-2 text-sm dark:border-slate-800">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="font-medium text-slate-900 dark:text-slate-100">{event.eventTitle}</span>
+                            <span className="text-xs text-slate-400">{formatDateTimeDisplay(event.eventTime)}</span>
+                          </div>
+                          <div className="mt-1 text-xs text-slate-400">{event.eventContent || '-'}</div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : <div className="py-6 text-center text-sm text-slate-400">暂无链路事件</div>}
+                </div>
+              </div>
+            ) : null}
           </div>
         ) : null}
       </BaseDialog>

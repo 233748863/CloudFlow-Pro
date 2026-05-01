@@ -822,6 +822,8 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(212, '用印申请',   2, 12, '/office
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(213, '证照借用',   2, 13, '/office/license-borrow',   'pages/LicenseBorrowPage',     NULL, 0, 0, 'C', '0', '0', 'office:license:list',       'BadgeCheck',      'admin', NOW(), '', null, '证照借用申请');
 
+INSERT INTO cloud_flow_db.sys_menu VALUES(214, '合同台账',   2, 14, '/office/contracts',        'pages/ContractPage',          NULL, 0, 0, 'C', '0', '0', 'office:contract:list',      'FileSignature',   'admin', NOW(), '', null, '合同审批、用印与归档台账');
+
 -- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班、供应商、耗材
 INSERT INTO cloud_flow_db.sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', NOW(), '', null, '访客预约管理');
 
@@ -836,6 +838,8 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(510, '印章台账',   5, 11, '/admin/
 INSERT INTO cloud_flow_db.sys_menu VALUES(511, '证照台账',   5, 12, '/admin/license',            'pages/admin/seal-license/LicenseListPage', NULL, 0, 0, 'C', '0', '0', 'admin:license:list', 'BadgeCheck',      'admin', NOW(), '', null, '证照台账管理');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(512, '借还管理',   5, 13, '/admin/borrow-management',  'pages/admin/seal-license/BorrowManagementPage', NULL, 0, 0, 'C', '0', '0', 'admin:borrow:list', 'RotateCcw',     'admin', NOW(), '', null, '用印证照借还管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(513, '风险中心',   5, 14, '/admin/risk-alerts',        'pages/admin/RiskAlertPage',    NULL, 0, 0, 'C', '0', '0', 'admin:risk:list',          'ShieldAlert',     'admin', NOW(), '', null, '合同、审批与用印风险中心');
 
 -- 流程管理(parent_id=4)扩展菜单：Phase 2 监控告警功能（2026-02-22新增）
 INSERT INTO cloud_flow_db.sys_menu VALUES(700, '告警管理',   4, 7, '/workflow/alerts',          'pages/AlertList',              NULL, 0, 0, 'C', '0', '0', 'workflow:alert:list',       'Bell',            'admin', NOW(), '', null, '查看和处理超时告警和异常告警');

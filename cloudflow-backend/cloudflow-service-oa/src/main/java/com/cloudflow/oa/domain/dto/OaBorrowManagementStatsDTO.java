@@ -15,6 +15,9 @@ public class OaBorrowManagementStatsDTO {
     private long borrowedCount;
     private long overdueCount;
     private long expiringLicenseCount;
+    private long contractUnsealedRiskCount;
+    private long overdueReturnRiskCount;
+    private long unarchivedRiskCount;
     private List<TrendItem> trend = new ArrayList<>();
     private List<ResourceUsageItem> resourceUsage = new ArrayList<>();
 

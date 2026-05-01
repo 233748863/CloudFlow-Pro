@@ -2,6 +2,7 @@ package com.cloudflow.oa.job;
 
 import com.cloudflow.oa.service.IOaLicenseBorrowService;
 import com.cloudflow.oa.service.IOaLicenseService;
+import com.cloudflow.oa.service.IOaRiskScanService;
 import com.cloudflow.oa.service.IOaSealApplicationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,7 @@ public class OaBorrowOverdueJob {
     private final IOaSealApplicationService sealApplicationService;
     private final IOaLicenseBorrowService licenseBorrowService;
     private final IOaLicenseService licenseService;
+    private final IOaRiskScanService riskScanService;
 
     @Scheduled(cron = "${cloudflow.oa.borrow.overdue-cron:0 0 9 * * ?}")
     public void scanOverdueBorrows() {
@@ -34,6 +36,14 @@ public class OaBorrowOverdueJob {
         int count = licenseService.scanAndRemindExpiring();
         if (count > 0) {
             log.info("证照到期提醒扫描完成: count={}", count);
+        }
+    }
+
+    @Scheduled(cron = "${cloudflow.oa.contract.risk-cron:0 0 9 * * ?}")
+    public void scanContractRisks() {
+        int count = riskScanService.scanContractRisks();
+        if (count > 0) {
+            log.info("合同风险扫描完成: count={}", count);
         }
     }
 }

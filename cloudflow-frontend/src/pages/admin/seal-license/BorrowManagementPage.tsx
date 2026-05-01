@@ -6,6 +6,7 @@ import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import FileUpload from '@/components/FileUpload';
+import { contractApi, OaRiskAlert } from '@/services/api/contractRisk';
 import { borrowManagementApi, BorrowManagementStats, licenseBorrowApi, OaHandoverLog, OaLicenseBorrow, OaReminderLog, OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
@@ -23,6 +24,8 @@ interface UnifiedBorrow {
   expectedReturnTime?: string;
   actualBorrowTime?: string;
   status?: string;
+  contractId?: number;
+  contractNo?: string;
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,6 +47,8 @@ const toSealBorrow = (item: OaSealApplication): UnifiedBorrow => ({
   expectedReturnTime: item.expectedReturnTime,
   actualBorrowTime: item.actualBorrowTime,
   status: item.status,
+  contractId: item.contractId,
+  contractNo: item.contractNo,
 });
 
 const toLicenseBorrow = (item: OaLicenseBorrow): UnifiedBorrow => ({
@@ -98,6 +103,7 @@ export const BorrowManagementPage: React.FC = () => {
   const [detailTarget, setDetailTarget] = useState<UnifiedBorrow | null>(null);
   const [handoverLogs, setHandoverLogs] = useState<OaHandoverLog[]>([]);
   const [reminderLogs, setReminderLogs] = useState<OaReminderLog[]>([]);
+  const [riskLogs, setRiskLogs] = useState<OaRiskAlert[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const fetchRows = useCallback(async () => {
@@ -160,15 +166,18 @@ export const BorrowManagementPage: React.FC = () => {
 
   const openDetail = async (target: UnifiedBorrow) => {
     setDetailTarget(target);
+    setRiskLogs([]);
     setDetailLoading(true);
     try {
       const api = target.kind === 'SEAL' ? sealApplicationApi : licenseBorrowApi;
-      const [handoverResult, reminderResult] = await Promise.all([
+      const [handoverResult, reminderResult, riskResult] = await Promise.all([
         api.handoverLogs(target.id),
         api.reminderLogs(target.id),
+        target.contractId ? contractApi.risks(target.contractId) : Promise.resolve([]),
       ]);
       setHandoverLogs(handoverResult);
       setReminderLogs(reminderResult);
+      setRiskLogs(riskResult);
     } catch (error) {
       toast.error(getErrorMessage(error, '获取借还详情失败'));
     } finally {
@@ -214,6 +223,12 @@ export const BorrowManagementPage: React.FC = () => {
         <StatCard title="借出中" value={stats?.borrowedCount ?? 0} icon={<Clock3 size={18} />} iconVariant="success" meta="印章和证照合计" />
         <StatCard title="逾期未还" value={stats?.overdueCount ?? 0} icon={<FileWarning size={18} />} iconVariant="danger" meta="需催还处理" />
         <StatCard title="证照到期" value={stats?.expiringLicenseCount ?? 0} icon={<CalendarClock size={18} />} iconVariant="warning" meta="30 天内到期" />
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-3">
+        <StatCard title="合同未用印" value={stats?.contractUnsealedRiskCount ?? 0} icon={<FileWarning size={18} />} iconVariant="warning" meta="审批通过超过3天" />
+        <StatCard title="逾期归还风险" value={stats?.overdueReturnRiskCount ?? 0} icon={<Bell size={18} />} iconVariant="danger" meta="合同关联用印" />
+        <StatCard title="未归档风险" value={stats?.unarchivedRiskCount ?? 0} icon={<Clock3 size={18} />} iconVariant="primary" meta="已用印未归档附件" />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
@@ -320,6 +335,7 @@ export const BorrowManagementPage: React.FC = () => {
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.kind === 'SEAL' ? '用印' : '证照'}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.no || '-'}</div>
+                        {item.contractNo ? <div className="mt-1 text-xs text-cyan-600 dark:text-cyan-300">{item.contractNo}</div> : null}
                       </td>
                       <td className="px-4 py-3 text-sm text-slate-700 dark:text-slate-200">{item.resourceName || '-'}</td>
                       <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.applicantName || '-'}</td>
@@ -430,6 +446,22 @@ export const BorrowManagementPage: React.FC = () => {
                   ))}
                 </div>
               ) : <div className="py-6 text-center text-sm text-slate-400">暂无催还记录</div>}
+            </div>
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">关联风险</div>
+              {riskLogs.length ? (
+                <div className="space-y-3">
+                  {riskLogs.map((risk) => (
+                    <div key={risk.id} className="rounded-lg border border-slate-100 px-3 py-3 text-sm dark:border-slate-800">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{risk.riskName}</span>
+                        <span className="text-xs text-slate-400">{risk.riskLevel} / {risk.riskStatus}</span>
+                      </div>
+                      <div className="mt-1 text-slate-600 dark:text-slate-300">{risk.handleRemark || risk.riskCode || '-'}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="py-6 text-center text-sm text-slate-400">暂无关联风险</div>}
             </div>
           </div>
         )}

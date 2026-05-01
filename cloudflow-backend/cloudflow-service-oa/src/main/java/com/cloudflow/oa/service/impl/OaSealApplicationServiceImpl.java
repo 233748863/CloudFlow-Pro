@@ -10,20 +10,24 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.OaSealHandoverLog;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.mapper.OaContractMapper;
 import com.cloudflow.oa.mapper.OaBorrowReminderLogMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.mapper.OaSealHandoverLogMapper;
 import com.cloudflow.oa.mapper.OaSealMapper;
 import com.cloudflow.oa.service.IOaSealApplicationService;
+import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.oa.util.OaBorrowConstants;
+import com.cloudflow.oa.util.OaContractConstants;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,9 +51,11 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         implements IOaSealApplicationService {
 
     private final OaSealMapper sealMapper;
+    private final OaContractMapper contractMapper;
     private final OaSealHandoverLogMapper handoverLogMapper;
     private final OaBorrowReminderLogMapper reminderLogMapper;
     private final RemoteWorkflowService remoteWorkflowService;
+    private final IOaTraceEventService traceEventService;
     private final ISysNoticeService noticeService;
 
     @Override
@@ -113,6 +119,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setTenantId(resolveTenantId());
         application.setApplicationNo(generateApplicationNo());
         application.setSealName(seal.getSealName());
+        fillContractSnapshot(application);
         application.setUserId(UserContext.getUserId());
         application.setUserName(UserContext.getUserName());
         application.setDeptId(UserContext.getDeptId());
@@ -123,7 +130,9 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setCreateTime(now);
         application.setUpdateBy(UserContext.getUserName());
         application.setUpdateTime(now);
-        return save(application);
+        boolean saved = save(application);
+        traceSeal(application, "SEAL_APPLICATION_CREATED", "用印申请创建", application.getApplicationNo());
+        return saved;
     }
 
     @Override
@@ -142,6 +151,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
                 resolveBorrowTime(application.getExpectedBorrowTime()), application.getExpectedReturnTime());
         application.setApplicationNo(persisted.getApplicationNo());
         application.setSealName(seal.getSealName());
+        fillContractSnapshot(application);
         application.setUserId(persisted.getUserId());
         application.setUserName(persisted.getUserName());
         application.setDeptId(persisted.getDeptId());
@@ -150,7 +160,9 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setDelFlag("0");
         application.setUpdateBy(UserContext.getUserName());
         application.setUpdateTime(LocalDateTime.now());
-        return updateById(application);
+        boolean updated = updateById(application);
+        traceSeal(application, "SEAL_APPLICATION_UPDATED", "用印申请更新", application.getApplicationNo());
+        return updated;
     }
 
     @Override
@@ -172,6 +184,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(LocalDateTime.now());
             updateById(update);
+            traceSeal(application, "SEAL_APPLICATION_DELETED", "用印申请删除", application.getApplicationNo());
         }
         return true;
     }
@@ -205,6 +218,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             variables.put("userName", application.getUserName());
             variables.put("deptName", application.getDeptName());
             variables.put("expectedReturnTime", formatDateTime(application.getExpectedReturnTime()));
+            variables.put("contractId", application.getContractId());
+            variables.put("contractNo", application.getContractNo());
             WorkflowCallbackStreamConstants.applyCallbackMetadata(
                     variables,
                     WorkflowCallbackStreamConstants.BUSINESS_TYPE_SEAL_APPLICATION,
@@ -223,7 +238,10 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         }
         application.setUpdateBy(UserContext.getUserName());
         application.setUpdateTime(LocalDateTime.now());
-        return updateById(application);
+        boolean updated = updateById(application);
+        updateLinkedContractStatus(application, OaContractConstants.CONTRACT_STATUS_SEALING);
+        traceSeal(application, "SEAL_APPLICATION_SUBMITTED", "用印提交审批", application.getApplicationNo());
+        return updated;
     }
 
     @Override
@@ -237,7 +255,9 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setStatus(OaBorrowConstants.STATUS_CANCELLED);
         application.setUpdateBy(UserContext.getUserName());
         application.setUpdateTime(LocalDateTime.now());
-        return updateById(application);
+        boolean updated = updateById(application);
+        traceSeal(application, "SEAL_APPLICATION_CANCELLED", "用印申请取消", application.getApplicationNo());
+        return updated;
     }
 
     @Override
@@ -269,6 +289,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         sealMapper.updateById(seal);
 
         insertHandoverLog(application, OaBorrowConstants.HANDOVER_BORROW, remark, attachmentUrl, now);
+        updateLinkedContractStatus(application, OaContractConstants.CONTRACT_STATUS_SEALING);
+        traceSeal(application, "SEAL_BORROWED", "印章借出", application.getSealName());
         return true;
     }
 
@@ -304,6 +326,9 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         }
 
         insertHandoverLog(application, OaBorrowConstants.HANDOVER_RETURN, remark, attachmentUrl, now);
+        updateLinkedContractStatus(application, StringUtils.hasText(application.getAttachmentUrl())
+                ? OaContractConstants.CONTRACT_STATUS_SEALED : OaContractConstants.CONTRACT_STATUS_SEALED);
+        traceSeal(application, "SEAL_RETURNED", "印章归还", application.getSealName());
         return true;
     }
 
@@ -317,6 +342,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         }
         insertReminder(application, OaBorrowConstants.REMINDER_MANUAL,
                 StringUtils.hasText(remark) ? remark : "请尽快归还借出的印章");
+        traceSeal(application, "SEAL_RETURN_REMINDED", "用印催还", application.getSealName());
         return true;
     }
 
@@ -342,6 +368,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
                 insertReminder(application, OaBorrowConstants.REMINDER_AUTO,
                         "用印申请已超过预计归还时间，请尽快归还：" + application.getSealName());
             }
+            traceSeal(application, "SEAL_RETURN_OVERDUE", "用印逾期", application.getSealName());
             handled++;
         }
         return handled;
@@ -366,6 +393,20 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setCopyCount(application.getCopyCount() == null || application.getCopyCount() <= 0 ? 1 : application.getCopyCount());
         application.setUseScene(StringUtils.hasText(application.getUseScene()) ? application.getUseScene() : "CONTRACT");
         application.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(application.getAttachmentUrl(), "用印申请附件"));
+    }
+
+    private void fillContractSnapshot(OaSealApplication application) {
+        if (application.getContractId() == null) {
+            return;
+        }
+        OaContract contract = contractMapper.selectById(application.getContractId());
+        if (contract == null || !"0".equals(contract.getDelFlag())) {
+            throw new IllegalArgumentException("关联合同不存在");
+        }
+        application.setContractNo(contract.getContractNo());
+        if (!StringUtils.hasText(application.getDocumentName())) {
+            application.setDocumentName(contract.getContractName());
+        }
     }
 
     private LocalDateTime resolveBorrowTime(LocalDateTime expectedBorrowTime) {
@@ -472,6 +513,30 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             noticeService.sendNotice(seal.getKeeperId(), "用印逾期提醒", content, "2",
                     log.getOperatorId(), log.getOperatorName());
         }
+    }
+
+    private void updateLinkedContractStatus(OaSealApplication application, String status) {
+        if (application == null || application.getContractId() == null || !StringUtils.hasText(status)) {
+            return;
+        }
+        OaContract contract = contractMapper.selectById(application.getContractId());
+        if (contract == null || !"0".equals(contract.getDelFlag())) {
+            return;
+        }
+        contract.setSealApplicationId(application.getId());
+        contract.setStatus(status);
+        contract.setUpdateBy(StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "seal-service");
+        contract.setUpdateTime(LocalDateTime.now());
+        contractMapper.updateById(contract);
+    }
+
+    private void traceSeal(OaSealApplication application, String eventType, String title, String content) {
+        if (application == null || application.getContractId() == null) {
+            return;
+        }
+        traceEventService.record(application.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, application.getContractId(),
+                OaContractConstants.BUSINESS_TYPE_SEAL, application.getId(), eventType, title, content,
+                UserContext.getUserId(), StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system", null);
     }
 
     @SuppressWarnings("unchecked")

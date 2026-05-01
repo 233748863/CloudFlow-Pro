@@ -3,14 +3,17 @@ package com.cloudflow.oa.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseBorrow;
+import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.dto.OaBorrowManagementStatsDTO;
 import com.cloudflow.oa.domain.dto.OaBorrowManagementSummaryDTO;
+import com.cloudflow.oa.mapper.OaRiskAlertMapper;
 import com.cloudflow.oa.mapper.OaLicenseBorrowMapper;
 import com.cloudflow.oa.mapper.OaLicenseMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.service.IOaBorrowManagementService;
 import com.cloudflow.oa.util.OaBorrowConstants;
+import com.cloudflow.oa.util.OaContractConstants;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -32,6 +35,7 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
     private final OaSealApplicationMapper sealApplicationMapper;
     private final OaLicenseBorrowMapper licenseBorrowMapper;
     private final OaLicenseMapper licenseMapper;
+    private final OaRiskAlertMapper riskAlertMapper;
 
     @Override
     public OaBorrowManagementSummaryDTO getSummary() {
@@ -59,6 +63,9 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
         stats.setBorrowedCount(countApplications(OaBorrowConstants.STATUS_BORROWED) + countBorrows(OaBorrowConstants.STATUS_BORROWED));
         stats.setOverdueCount(countApplications(OaBorrowConstants.STATUS_OVERDUE) + countBorrows(OaBorrowConstants.STATUS_OVERDUE));
         stats.setExpiringLicenseCount(countExpiringLicenses(30));
+        stats.setContractUnsealedRiskCount(countOpenRisk("CONTRACT_APPROVED_UNSEALED"));
+        stats.setOverdueReturnRiskCount(countOpenRisk("SEAL_RETURN_OVERDUE"));
+        stats.setUnarchivedRiskCount(countOpenRisk("CONTRACT_SEALED_UNARCHIVED"));
         stats.setTrend(buildTrend());
         stats.setResourceUsage(buildResourceUsage());
         return stats;
@@ -112,6 +119,13 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
                 .ne(OaLicense::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                 .isNotNull(OaLicense::getExpireDate)
                 .between(OaLicense::getExpireDate, today, today.plusDays(days)));
+        return count == null ? 0 : count;
+    }
+
+    private long countOpenRisk(String riskCode) {
+        Long count = riskAlertMapper.selectCount(new LambdaQueryWrapper<OaRiskAlert>()
+                .eq(OaRiskAlert::getRiskCode, riskCode)
+                .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING));
         return count == null ? 0 : count;
     }
 

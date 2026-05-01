@@ -554,6 +554,101 @@ CREATE TABLE biz_business_trip (
 -- 十、用印与证照借用模块
 -- =========================================================
 
+-- 19. 合同台账表
+DROP TABLE IF EXISTS oa_contract;
+CREATE TABLE oa_contract (
+  contract_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '合同ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  contract_no       VARCHAR(50)     NOT NULL COMMENT '合同编号',
+  contract_name     VARCHAR(200)    NOT NULL COMMENT '合同名称',
+  counterparty_name VARCHAR(200)    NOT NULL COMMENT '相对方名称',
+  contract_type     VARCHAR(30)     NOT NULL COMMENT '合同类型(SALES销售/PURCHASE采购/SERVICE服务/OTHER其他)',
+  amount            DECIMAL(18,2)   DEFAULT 0.00 COMMENT '合同金额',
+  currency          VARCHAR(10)     DEFAULT 'CNY' COMMENT '币种',
+  owner_id          BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
+  owner_name        VARCHAR(64)     DEFAULT NULL COMMENT '负责人姓名',
+  dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  start_date        DATE            DEFAULT NULL COMMENT '合同开始日期',
+  end_date          DATE            DEFAULT NULL COMMENT '合同结束日期',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '合同附件URL(多个用逗号分隔)',
+  archive_attachment_url VARCHAR(1000) DEFAULT NULL COMMENT '归档附件URL(多个用逗号分隔)',
+  instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '审批流程实例ID',
+  seal_application_id BIGINT(20)    DEFAULT NULL COMMENT '关联合同用印申请ID',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/SEALING/SEALED/ACTIVE/EXPIRED/TERMINATED/CANCELLED)',
+  risk_level        VARCHAR(20)     DEFAULT 'LOW' COMMENT '风险等级(LOW/MEDIUM/HIGH/CRITICAL)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (contract_id),
+  UNIQUE KEY uk_contract_no_tenant (contract_no, tenant_id),
+  KEY idx_contract_tenant (tenant_id),
+  KEY idx_contract_owner (owner_id),
+  KEY idx_contract_dept (dept_id),
+  KEY idx_contract_status (status),
+  KEY idx_contract_end_date (end_date),
+  KEY idx_contract_seal (seal_application_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='OA合同台账表';
+
+-- 19.1 OA统一链路事件表
+DROP TABLE IF EXISTS oa_trace_event;
+CREATE TABLE oa_trace_event (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  business_type     VARCHAR(30)     NOT NULL COMMENT '主业务类型(CONTRACT/APPROVAL/SEAL)',
+  business_id       BIGINT(20)      NOT NULL COMMENT '主业务ID',
+  related_type      VARCHAR(30)     DEFAULT NULL COMMENT '关联类型',
+  related_id        BIGINT(20)      DEFAULT NULL COMMENT '关联ID',
+  event_type        VARCHAR(50)     NOT NULL COMMENT '事件类型',
+  event_title       VARCHAR(100)    NOT NULL COMMENT '事件标题',
+  event_content     VARCHAR(1000)   DEFAULT NULL COMMENT '事件内容',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
+  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
+  event_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '事件时间',
+  snapshot_json     JSON            DEFAULT NULL COMMENT '事件快照JSON',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (id),
+  KEY idx_trace_business (business_type, business_id),
+  KEY idx_trace_related (related_type, related_id),
+  KEY idx_trace_tenant_time (tenant_id, event_time)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='OA全链路事件表';
+
+-- 19.2 OA风险提醒表
+DROP TABLE IF EXISTS oa_risk_alert;
+CREATE TABLE oa_risk_alert (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  business_type     VARCHAR(30)     NOT NULL COMMENT '业务类型(CONTRACT/SEAL/APPROVAL)',
+  business_id       BIGINT(20)      NOT NULL COMMENT '业务ID',
+  risk_code         VARCHAR(50)     NOT NULL COMMENT '风险编码',
+  risk_name         VARCHAR(100)    NOT NULL COMMENT '风险名称',
+  risk_level        VARCHAR(20)     DEFAULT 'MEDIUM' COMMENT '风险等级(LOW/MEDIUM/HIGH/CRITICAL)',
+  risk_status       VARCHAR(20)     DEFAULT 'OPEN' COMMENT '状态(OPEN/HANDLING/CLOSED/IGNORED)',
+  risk_source       VARCHAR(20)     DEFAULT 'RULE' COMMENT '来源(RULE/MANUAL)',
+  owner_id          BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
+  owner_name        VARCHAR(64)     DEFAULT NULL COMMENT '负责人姓名',
+  detected_time     DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '发现时间',
+  handled_time      DATETIME        DEFAULT NULL COMMENT '处理时间',
+  handler_id        BIGINT(20)      DEFAULT NULL COMMENT '处理人ID',
+  handler_name      VARCHAR(64)     DEFAULT NULL COMMENT '处理人姓名',
+  handle_remark     VARCHAR(1000)   DEFAULT NULL COMMENT '处理说明',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_risk_business (business_type, business_id),
+  KEY idx_risk_status (risk_status),
+  KEY idx_risk_level (risk_level),
+  KEY idx_risk_source (risk_source),
+  KEY idx_risk_owner (owner_id),
+  KEY idx_risk_tenant_time (tenant_id, detected_time)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='OA风险提醒表';
+
 -- 20. 印章台账表
 DROP TABLE IF EXISTS oa_seal;
 CREATE TABLE oa_seal (
@@ -585,6 +680,8 @@ CREATE TABLE oa_seal_application (
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   instance_id       VARCHAR(64)     DEFAULT NULL COMMENT '流程实例ID',
   application_no    VARCHAR(50)     NOT NULL COMMENT '用印申请编号',
+  contract_id       BIGINT(20)      DEFAULT NULL COMMENT '关联合同ID',
+  contract_no       VARCHAR(50)     DEFAULT NULL COMMENT '关联合同编号',
   seal_id           BIGINT(20)      NOT NULL COMMENT '印章ID',
   seal_name         VARCHAR(100)    DEFAULT NULL COMMENT '印章名称快照',
   user_id           BIGINT(20)      NOT NULL COMMENT '申请人ID',
@@ -612,6 +709,7 @@ CREATE TABLE oa_seal_application (
   UNIQUE KEY uk_seal_application_no (application_no),
   KEY idx_seal_app_tenant (tenant_id),
   KEY idx_seal_app_seal (seal_id),
+  KEY idx_seal_app_contract (contract_id),
   KEY idx_seal_app_user (user_id),
   KEY idx_seal_app_status (status),
   KEY idx_seal_app_return_time (expected_return_time)
