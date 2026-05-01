@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AlertTriangle, FileText, Send, X } from 'lucide-react';
 import type { FormDefinition } from '../types';
-import { Button, Input, Textarea } from '@/components/common';
+import { Button, DatePicker, Input, Textarea } from '@/components/common';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './common/select';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { cn } from '@/utils/cn';
@@ -137,9 +137,21 @@ export const FormRenderer = ({
       );
     }
 
+    if (field.type === 'DATE') {
+      return (
+        <DatePicker
+          type="date"
+          value={formData[field.id] ?? ''}
+          placeholder={field.placeholder}
+          onChange={(event) => handleChange(field.id, event.target.value)}
+          className={cn('h-11', hasError && 'border-red-300 bg-red-50')}
+        />
+      );
+    }
+
     return (
       <Input
-        type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
+        type={field.type === 'NUMBER' ? 'number' : 'text'}
         value={formData[field.id] ?? ''}
         placeholder={field.placeholder}
         onChange={(event) => handleChange(field.id, normalizeFieldValue(field.type, event.target.value))}
@@ -150,7 +162,7 @@ export const FormRenderer = ({
 
   if (!formDef?.fields || formDef.fields.length === 0) {
     return (
-      <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
+      <div className="mx-auto flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
         <div className="border-b border-slate-100 bg-white px-6 py-4">
           <div className="flex items-center justify-between gap-4">
             <h3 className="flex items-center gap-2 font-bold text-slate-800">
@@ -186,7 +198,7 @@ export const FormRenderer = ({
   }
 
   return (
-    <div className="mx-auto max-w-2xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-fade-in-up">
+    <div className="mx-auto flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-fade-in-up">
       <div className="border-b border-slate-100 bg-white px-6 py-4">
         <div className="flex items-center justify-between gap-4">
           <h3 className="flex items-center gap-2 font-bold text-slate-800">
@@ -203,9 +215,13 @@ export const FormRenderer = ({
         </div>
       </div>
 
-      <div className="max-h-[60vh] space-y-5 overflow-y-auto p-6">
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-x-5 gap-y-5 overflow-y-auto p-6 sm:grid-cols-2">
         {formDef.fields.map((field) => (
-          <div key={field.id} id={`field-${field.id}`} className="space-y-2">
+          <div
+            key={field.id}
+            id={`field-${field.id}`}
+            className={cn('space-y-2', field.type === 'TEXTAREA' && 'sm:col-span-2')}
+          >
             <label className="block text-sm font-semibold text-slate-700">
               {field.label}
               {field.required ? <span className="ml-1 text-red-500">*</span> : null}
