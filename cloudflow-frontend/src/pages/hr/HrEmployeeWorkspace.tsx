@@ -14,6 +14,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
@@ -466,7 +467,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       setEmployeeDetail(await getEmployeeDetail(employeeId));
     } catch (error) {
       console.error(error);
-      toast.error('员工详情加载失败');
+      toast.error(getErrorMessage(error, '员工详情加载失败'));
     } finally {
       setDetailLoading(false);
     }
@@ -478,7 +479,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       setContracts(normalizeRows<EmployeeContract>(await listEmployeeContracts(employeeId)));
     } catch (error) {
       console.error(error);
-      toast.error('员工合同加载失败');
+      toast.error(getErrorMessage(error, '员工合同加载失败'));
     } finally {
       setContractsLoading(false);
     }
@@ -490,7 +491,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       setDocuments(normalizeRows<EmployeeDocument>(await listEmployeeDocuments(employeeId)));
     } catch (error) {
       console.error(error);
-      toast.error('员工证件加载失败');
+      toast.error(getErrorMessage(error, '员工证件加载失败'));
     } finally {
       setDocumentsLoading(false);
     }
@@ -502,7 +503,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       setContacts(normalizeRows<EmergencyContact>(await listEmergencyContacts(employeeId)));
     } catch (error) {
       console.error(error);
-      toast.error('紧急联系人加载失败');
+      toast.error(getErrorMessage(error, '紧急联系人加载失败'));
     } finally {
       setContactsLoading(false);
     }
@@ -597,7 +598,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       setContractDialogOpen(true);
     } catch (error) {
       console.error(error);
-      toast.error('合同详情获取失败');
+      toast.error(getErrorMessage(error, '合同详情获取失败'));
     }
   };
 
@@ -616,7 +617,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       setDocumentDialogOpen(true);
     } catch (error) {
       console.error(error);
-      toast.error('证件详情获取失败');
+      toast.error(getErrorMessage(error, '证件详情获取失败'));
     }
   };
 
@@ -635,7 +636,7 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
       setContactDialogOpen(true);
     } catch (error) {
       console.error(error);
-      toast.error('紧急联系人详情获取失败');
+      toast.error(getErrorMessage(error, '紧急联系人详情获取失败'));
     }
   };
 

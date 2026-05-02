@@ -20,13 +20,13 @@ public class SchedulePlanCreateDTO {
     private String planName;
     
     /**
-     * 目标类型：EMPLOYEE-员工 DEPT-部门
+     * 目标类型：EMPLOYEE-员工 POST-岗位 DEPT-部门
      */
     @NotBlank(message = "目标类型不能为空")
     private String targetType;
     
     /**
-     * 目标ID（员工ID或部门ID）
+     * 目标ID（员工ID、岗位ID或部门ID）
      */
     @NotNull(message = "目标ID不能为空")
     private Long targetId;

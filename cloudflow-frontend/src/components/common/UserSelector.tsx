@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getUsers } from '../../services/api/workflow';
 import { Search, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
 
 // 用户简要信息类型（从 API 返回）
@@ -53,7 +54,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
       const data = await getUsers();
       setUsers(data);
     } catch (error) {
-      toast.error('加载用户列表失败');
+      toast.error(getErrorMessage(error, '加载用户列表失败'));
     } finally {
       setLoading(false);
     }

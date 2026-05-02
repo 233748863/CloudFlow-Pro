@@ -1,16 +1,54 @@
-import React, { useState } from 'react';
-import { CalendarClock, Edit3, Save } from 'lucide-react';
-import { getAttendanceRule, saveAttendanceRule, AttendanceRule } from '@/services/api/admin';
+import React, { useMemo, useState } from 'react';
+import {
+  CalendarClock,
+  CalendarDays,
+  CheckCircle2,
+  MapPin,
+  Plus,
+  Save,
+  Trash2,
+  Users,
+  Wifi,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import {
+  AttendanceRuleAssignment,
+  AttendanceRuleConfig,
+  HrScheduleRule,
+  HrShift,
+  WorkCalendarDay,
+  createHrScheduleRule,
+  createHrScheduleRuleAssignment,
+  createWorkCalendarDay,
+  deleteHrScheduleRule,
+  deleteHrScheduleRuleAssignment,
+  deleteWorkCalendarDay,
+  listHrScheduleRuleAssignments,
+  listHrScheduleRules,
+  listHrShifts,
+  listWorkCalendarDays,
+  updateHrScheduleRule,
+  updateWorkCalendarDay,
+} from '@/services/api/hr';
 import { useMount } from '@/hooks/useMount';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
   Button,
   DatePicker,
   Input,
   Label,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   Switch,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
   Textarea,
 } from '@/components/common';
-import { toast } from 'sonner';
 
 const WEEKDAYS = [
   { value: 1, label: '周一' },
@@ -22,211 +60,285 @@ const WEEKDAYS = [
   { value: 7, label: '周日' },
 ];
 
-const createDefaultRule = (): AttendanceRule => ({
-  ruleName: '默认考勤组',
-  checkInTime: '09:00:00',
-  checkOutTime: '18:00:00',
-  elasticMinutes: 30,
-  workDays: '[1,2,3,4,5]',
-  lunchBreakStart: '12:00:00',
-  lunchBreakEnd: '13:00:00',
-  overtimeEnabled: 0,
+const RULE_TYPE_LABEL: Record<string, string> = {
+  FIXED: '固定班',
+  ROTATION: '轮班',
+  FLEXIBLE: '弹性',
+  COMPREHENSIVE: '综合工时',
+};
+
+const TARGET_LABEL: Record<string, string> = {
+  DEPT: '部门',
+  POST: '岗位',
+  EMPLOYEE: '员工',
+};
+
+const DAY_TYPE_LABEL: Record<string, string> = {
+  WORKDAY: '工作日',
+  REST: '休息日',
+  HOLIDAY: '节假日',
+};
+
+const defaultConfig = (shiftId?: number): AttendanceRuleConfig => ({
+  shiftId,
+  workDays: [1, 2, 3, 4, 5],
+  checkMethods: ['GPS', 'WIFI', 'FACE'],
+  locationPoints: [{ name: '总部园区', latitude: 39.9042, longitude: 116.4074, radius: 500 }],
+  wifiConfigs: [{ ssid: 'CloudFlow-Office' }],
+  overtimeEnabled: true,
   overtimeMinMinutes: 30,
-  lateToleranceCount: 3,
+  lateToleranceCount: 0,
   severeLateMinutes: 60,
   absentMinutes: 240,
-  photoRequired: 0,
-  enabled: 1,
-  radius: 200,
+  photoRequired: false,
+  radius: 500,
 });
 
-const InlineState: React.FC<{
-  title: string;
-  description?: string;
-  icon?: React.ReactNode;
-  className?: string;
-  actions?: React.ReactNode;
-}> = ({ title, description, icon, className, actions }) => (
-  <div className={['flex flex-col items-center justify-center px-6 py-10 text-center', className].filter(Boolean).join(' ')}>
-    <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-      {icon || <CalendarClock className="h-4 w-4" />}
-    </div>
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div> : null}
-    {actions ? <div className="mt-4">{actions}</div> : null}
+const parseConfig = (value?: string): AttendanceRuleConfig => {
+  if (!value) {
+    return defaultConfig();
+  }
+  try {
+    return { ...defaultConfig(), ...JSON.parse(value) };
+  } catch {
+    return defaultConfig();
+  }
+};
+
+const normalizeTime = (value?: string) => (value || '').slice(0, 5);
+
+const formatTodayDate = () => new Date().toISOString().slice(0, 10);
+
+const addDays = (days: number) => {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+  <div className="space-y-2">
+    <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300">{label}</Label>
+    {children}
   </div>
 );
 
-const FieldBlock: React.FC<{
-  title: string;
-  children: React.ReactNode;
-}> = ({ title, children }) => (
-  <section className="border-b border-slate-100 px-4 py-4 last:border-b-0 dark:border-slate-800">
-    <div className="mb-3">
+const Panel = ({ title, icon, children }: { title: string; icon: React.ReactNode; children: React.ReactNode }) => (
+  <section className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="flex items-center gap-2 border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+      <div className="text-slate-500 dark:text-slate-400">{icon}</div>
       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
     </div>
-    {children}
+    <div className="p-4">{children}</div>
   </section>
 );
 
-const ToggleRow: React.FC<{
-  title: string;
-  checked: boolean;
-  onCheckedChange: (checked: boolean) => void;
-  disabled: boolean;
-}> = ({ title, checked, onCheckedChange, disabled }) => (
-  <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
-    <Switch checked={checked} onCheckedChange={onCheckedChange} disabled={disabled} />
-  </div>
-);
+const toRulePayload = (rule: HrScheduleRule, config: AttendanceRuleConfig) => ({
+  ruleName: rule.ruleName,
+  ruleType: rule.ruleType,
+  ruleConfig: JSON.stringify(config),
+  description: rule.description || '',
+  status: rule.status ?? 1,
+});
 
-const ReadonlyTextBlock: React.FC<{
-  value?: string | null;
-  placeholder?: string;
-  mono?: boolean;
-}> = ({ value, placeholder = '未配置', mono = false }) => (
-  <div
-    className={[
-      'min-h-[112px] whitespace-pre-wrap break-all rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300',
-      mono ? 'font-mono' : '',
-    ].filter(Boolean).join(' ')}
-  >
-    {value?.trim() || placeholder}
-  </div>
-);
+const createDraftRule = (shiftId?: number): HrScheduleRule => ({
+  id: 0,
+  ruleName: '新考勤规则',
+  ruleType: 'FIXED',
+  ruleConfig: JSON.stringify(defaultConfig(shiftId)),
+  description: '',
+  status: 1,
+});
 
 const AttendanceRulePage: React.FC = () => {
-  const [rule, setRule] = useState<AttendanceRule | null>(null);
+  const [rules, setRules] = useState<HrScheduleRule[]>([]);
+  const [shifts, setShifts] = useState<HrShift[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [draft, setDraft] = useState<HrScheduleRule | null>(null);
+  const [config, setConfig] = useState<AttendanceRuleConfig>(defaultConfig());
+  const [assignments, setAssignments] = useState<AttendanceRuleAssignment[]>([]);
+  const [calendarDays, setCalendarDays] = useState<WorkCalendarDay[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [workDays, setWorkDays] = useState<number[]>([1, 2, 3, 4, 5]);
-
-  useMount(() => {
-    loadRule();
+  const [assignmentDraft, setAssignmentDraft] = useState({
+    targetType: 'DEPT' as 'DEPT' | 'POST' | 'EMPLOYEE',
+    targetId: '',
+    effectiveStart: formatTodayDate(),
+  });
+  const [calendarDraft, setCalendarDraft] = useState({
+    calendarDate: formatTodayDate(),
+    dayType: 'WORKDAY' as 'WORKDAY' | 'REST' | 'HOLIDAY',
+    dayName: '',
   });
 
-  const loadRule = () => {
+  useMount(() => {
+    void loadAll();
+  });
+
+  const selectedShift = useMemo(
+    () => shifts.find((item) => item.id === Number(config.shiftId)),
+    [config.shiftId, shifts],
+  );
+
+  const activeRuleId = draft?.id || selectedId;
+
+  const loadAll = async () => {
     setLoading(true);
-    getAttendanceRule()
-      .then((res) => {
-        const data = res || null;
-        if (data) {
-          setRule(data as AttendanceRule);
-          if (data.workDays) {
-            try {
-              setWorkDays(JSON.parse(data.workDays));
-            } catch {
-              setWorkDays([1, 2, 3, 4, 5]);
-            }
-          }
-        }
-      })
-      .catch(() => {
-        toast.error('加载考勤规则失败');
-      })
-      .finally(() => setLoading(false));
+    try {
+      const [ruleList, shiftList, days] = await Promise.all([
+        listHrScheduleRules(),
+        listHrShifts(),
+        listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) }),
+      ]);
+      setRules(ruleList);
+      setShifts(shiftList);
+      setCalendarDays(days);
+      const firstRule = ruleList[0] || null;
+      if (firstRule) {
+        selectRule(firstRule, false);
+      } else {
+        setDraft(createDraftRule(shiftList[0]?.id));
+        setConfig(defaultConfig(shiftList[0]?.id));
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, '加载考勤规则失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectRule = (rule: HrScheduleRule, shouldLoadAssignments = true) => {
+    setSelectedId(rule.id);
+    setDraft({ ...rule });
+    setConfig(parseConfig(rule.ruleConfig));
+    if (shouldLoadAssignments) {
+      void loadAssignments(rule.id);
+    } else {
+      listHrScheduleRuleAssignments(rule.id).then(setAssignments).catch(() => setAssignments([]));
+    }
+  };
+
+  const loadAssignments = async (ruleId: number) => {
+    try {
+      setAssignments(await listHrScheduleRuleAssignments(ruleId));
+    } catch {
+      setAssignments([]);
+    }
+  };
+
+  const updateConfig = <K extends keyof AttendanceRuleConfig>(key: K, value: AttendanceRuleConfig[K]) => {
+    setConfig((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const toggleArrayValue = (key: 'workDays' | 'checkMethods', value: number | string) => {
+    setConfig((prev) => {
+      const current = Array.isArray(prev[key]) ? [...(prev[key] as Array<number | string>)] : [];
+      const next = current.includes(value) ? current.filter((item) => item !== value) : [...current, value];
+      return { ...prev, [key]: next.sort() };
+    });
   };
 
   const handleSave = async () => {
-    if (!rule) {
-      return;
-    }
-
-    if (!rule.ruleName?.trim()) {
+    if (!draft?.ruleName.trim()) {
       toast.error('请输入规则名称');
       return;
     }
-    if (!rule.checkInTime) {
-      toast.error('请设置上班时间');
-      return;
-    }
-    if (!rule.checkOutTime) {
-      toast.error('请设置下班时间');
-      return;
-    }
-
     setSaving(true);
     try {
-      const payload = {
-        ...rule,
-        workDays: JSON.stringify(workDays),
-        enabled: rule.enabled ?? 1,
-      };
-      await saveAttendanceRule(payload);
-      toast.success('保存成功');
-      setEditing(false);
-      loadRule();
-    } catch {
-      toast.error('保存失败');
+      const payload = toRulePayload(draft, config);
+      if (draft.id) {
+        await updateHrScheduleRule(draft.id, payload);
+      } else {
+        const id = await createHrScheduleRule(payload);
+        setSelectedId(id);
+      }
+      toast.success('规则已保存');
+      await loadAll();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '保存规则失败'));
     } finally {
       setSaving(false);
     }
   };
 
-  const handleCancel = () => {
-    setEditing(false);
-    loadRule();
+  const handleDeleteRule = async () => {
+    if (!draft?.id) {
+      return;
+    }
+    try {
+      await deleteHrScheduleRule(draft.id);
+      toast.success('规则已删除');
+      setSelectedId(null);
+      setDraft(null);
+      await loadAll();
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除规则失败'));
+    }
   };
 
-  const toggleWorkDay = (day: number) => {
-    setWorkDays((prev) =>
-      prev.includes(day) ? prev.filter((value) => value !== day) : [...prev, day].sort(),
-    );
+  const handleAddAssignment = async () => {
+    if (!activeRuleId || !assignmentDraft.targetId) {
+      toast.error('请输入目标ID');
+      return;
+    }
+    try {
+      await createHrScheduleRuleAssignment(activeRuleId, {
+        targetType: assignmentDraft.targetType,
+        targetId: Number(assignmentDraft.targetId),
+        effectiveStart: assignmentDraft.effectiveStart,
+        status: 1,
+      });
+      toast.success('适用范围已添加');
+      setAssignmentDraft((prev) => ({ ...prev, targetId: '' }));
+      await loadAssignments(activeRuleId);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '添加适用范围失败'));
+    }
   };
 
-  const handleCreateRule = () => {
-    setRule(createDefaultRule());
-    setWorkDays([1, 2, 3, 4, 5]);
-    setEditing(true);
+  const handleDeleteAssignment = async (id: number) => {
+    try {
+      await deleteHrScheduleRuleAssignment(id);
+      toast.success('适用范围已删除');
+      if (activeRuleId) {
+        await loadAssignments(activeRuleId);
+      }
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除适用范围失败'));
+    }
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-4">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            <CalendarClock className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-            Attendance Rules
-          </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            考勤规则
-          </h1>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <InlineState title="正在加载考勤规则..." className="py-16" />
-        </div>
-      </div>
-    );
-  }
+  const handleSaveCalendar = async () => {
+    if (!calendarDraft.dayName.trim()) {
+      toast.error('请输入日期名称');
+      return;
+    }
+    try {
+      const existing = calendarDays.find((item) => item.calendarDate === calendarDraft.calendarDate);
+      const payload = { ...calendarDraft, source: 'MANUAL', status: 1 };
+      if (existing) {
+        await updateWorkCalendarDay(existing.id, payload);
+      } else {
+        await createWorkCalendarDay(payload);
+      }
+      toast.success('企业日历已保存');
+      setCalendarDays(await listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) }));
+    } catch (error) {
+      toast.error(getErrorMessage(error, '保存企业日历失败'));
+    }
+  };
 
-  if (!rule && !editing) {
-    return (
-      <div className="space-y-4">
-        <div className="min-w-0">
-          <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
-            <CalendarClock className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-            Attendance Rules
-          </div>
-          <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            考勤规则
-          </h1>
-        </div>
+  const handleDeleteCalendar = async (id: number) => {
+    try {
+      await deleteWorkCalendarDay(id);
+      toast.success('企业日历已删除');
+      setCalendarDays(await listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) }));
+    } catch (error) {
+      toast.error(getErrorMessage(error, '删除企业日历失败'));
+    }
+  };
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <InlineState
-            title="暂无考勤规则"
-            className="py-16"
-            actions={<Button onClick={handleCreateRule}>创建考勤规则</Button>}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  const selectedWorkDays = WEEKDAYS.filter((day) => workDays.includes(day.value));
-  const enabledLabel = rule?.enabled === 1 ? '已启用' : '未启用';
+  const locationPoint = config.locationPoints?.[0] || {};
+  const wifiText = (config.wifiConfigs || []).map((item) => item.ssid).filter(Boolean).join('\n');
 
   return (
     <div className="space-y-4">
@@ -235,259 +347,275 @@ const AttendanceRulePage: React.FC = () => {
           <CalendarClock className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
           Attendance Rules
         </div>
-        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-          考勤规则
-        </h1>
+        <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">考勤规则</h1>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          规则 {rule?.ruleName || '未命名'}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          状态 {enabledLabel}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          工作日 {selectedWorkDays.length} 天
-        </span>
-
-        <div className="ml-auto flex flex-wrap gap-2">
-          {editing ? (
-            <>
-              <Button variant="outline" size="sm" onClick={handleCancel} disabled={saving}>
-                取消
-              </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving}>
-                <Save size={14} className="mr-1.5" />
-                {saving ? '保存中...' : '保存'}
-              </Button>
-            </>
-          ) : (
-            <Button size="sm" onClick={() => setEditing(true)}>
-              <Edit3 size={14} className="mr-1.5" />
-              编辑
+      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+        <aside className="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-slate-800">
+            <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">规则组</div>
+            <Button
+              size="icon"
+              variant="outline"
+              onClick={() => {
+                setSelectedId(null);
+                setDraft(createDraftRule(shifts[0]?.id));
+                setConfig(defaultConfig(shifts[0]?.id));
+                setAssignments([]);
+              }}
+              title="新增规则"
+            >
+              <Plus size={15} />
             </Button>
-          )}
-        </div>
-      </div>
-
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <FieldBlock title="基本信息">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">规则名称</Label>
-              <Input
-                value={rule?.ruleName || ''}
-                onChange={(event) => setRule((prev) => (prev ? { ...prev, ruleName: event.target.value } : null))}
-                disabled={!editing}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">弹性时间（分钟）</Label>
-              <Input
-                type="number"
-                value={rule?.elasticMinutes || 0}
-                onChange={(event) =>
-                  setRule((prev) => (prev ? { ...prev, elasticMinutes: parseInt(event.target.value, 10) || 0 } : null))
-                }
-                disabled={!editing}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2 lg:col-span-2">
-              <ToggleRow
-                title="启用此规则"
-                checked={rule?.enabled === 1}
-                onCheckedChange={(checked) => setRule((prev) => (prev ? { ...prev, enabled: checked ? 1 : 0 } : null))}
-                disabled={!editing}
-              />
-            </div>
           </div>
-        </FieldBlock>
-
-        <FieldBlock title="上下班时间">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">上班时间</Label>
-              <DatePicker
-                type="time"
-                value={rule?.checkInTime || ''}
-                onChange={(event) => setRule((prev) => (prev ? { ...prev, checkInTime: event.target.value } : null))}
-                disabled={!editing}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">下班时间</Label>
-              <DatePicker
-                type="time"
-                value={rule?.checkOutTime || ''}
-                onChange={(event) => setRule((prev) => (prev ? { ...prev, checkOutTime: event.target.value } : null))}
-                disabled={!editing}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">午休开始</Label>
-              <DatePicker
-                type="time"
-                value={rule?.lunchBreakStart || ''}
-                onChange={(event) => setRule((prev) => (prev ? { ...prev, lunchBreakStart: event.target.value } : null))}
-                disabled={!editing}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">午休结束</Label>
-              <DatePicker
-                type="time"
-                value={rule?.lunchBreakEnd || ''}
-                onChange={(event) => setRule((prev) => (prev ? { ...prev, lunchBreakEnd: event.target.value } : null))}
-                disabled={!editing}
-              />
-            </div>
-          </div>
-        </FieldBlock>
-
-        <FieldBlock title="工作日">
-          <div className="flex flex-wrap gap-2">
-            {WEEKDAYS.map((day) => (
-              <Button
-                key={day.value}
-                type="button"
-                onClick={() => editing && toggleWorkDay(day.value)}
-                disabled={!editing}
-                variant={workDays.includes(day.value) ? 'default' : 'outline'}
-                size="sm"
-                className="rounded-lg"
-              >
-                {day.label}
-              </Button>
-            ))}
-          </div>
-        </FieldBlock>
-
-        <FieldBlock title="加班与迟到口径">
-          <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">每月迟到容忍次数</Label>
-              <Input
-                type="number"
-                value={rule?.lateToleranceCount || 0}
-                onChange={(event) =>
-                  setRule((prev) => (prev ? { ...prev, lateToleranceCount: parseInt(event.target.value, 10) || 0 } : null))
-                }
-                disabled={!editing}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">严重迟到阈值（分钟）</Label>
-              <Input
-                type="number"
-                value={rule?.severeLateMinutes || 60}
-                onChange={(event) =>
-                  setRule((prev) => (prev ? { ...prev, severeLateMinutes: parseInt(event.target.value, 10) || 60 } : null))
-                }
-                disabled={!editing}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">旷工阈值（分钟）</Label>
-              <Input
-                type="number"
-                value={rule?.absentMinutes || 240}
-                onChange={(event) =>
-                  setRule((prev) => (prev ? { ...prev, absentMinutes: parseInt(event.target.value, 10) || 240 } : null))
-                }
-                disabled={!editing}
-                className="h-11"
-              />
-            </div>
-
-            <div className="space-y-2 lg:col-span-3">
-              <ToggleRow
-                title="允许加班"
-                checked={rule?.overtimeEnabled === 1}
-                onCheckedChange={(checked) => setRule((prev) => (prev ? { ...prev, overtimeEnabled: checked ? 1 : 0 } : null))}
-                disabled={!editing}
-              />
-            </div>
-
-            {rule?.overtimeEnabled === 1 ? (
-              <div className="space-y-2 lg:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">加班最低时长（分钟）</Label>
-                <Input
-                  type="number"
-                  value={rule?.overtimeMinMinutes || 30}
-                  onChange={(event) =>
-                    setRule((prev) => (prev ? { ...prev, overtimeMinMinutes: parseInt(event.target.value, 10) || 30 } : null))
-                  }
-                  disabled={!editing}
-                  className="h-11 lg:max-w-sm"
-                />
-              </div>
+          <div className="space-y-2 p-3">
+            {loading ? (
+              <div className="rounded-lg border border-slate-200 px-3 py-8 text-center text-sm text-slate-500 dark:border-slate-800">加载中</div>
             ) : null}
+            {rules.map((rule) => {
+              const itemConfig = parseConfig(rule.ruleConfig);
+              const shift = shifts.find((item) => item.id === Number(itemConfig.shiftId));
+              const active = selectedId === rule.id;
+              return (
+                <button
+                  key={rule.id}
+                  type="button"
+                  onClick={() => selectRule(rule)}
+                  className={`w-full rounded-lg border px-3 py-3 text-left transition-colors ${
+                    active
+                      ? 'border-cyan-200 bg-cyan-50 text-cyan-900 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-100'
+                      : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-semibold">{rule.ruleName}</span>
+                    {rule.status === 1 ? <CheckCircle2 size={14} className="text-emerald-500" /> : null}
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-1.5 text-[11px]">
+                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{RULE_TYPE_LABEL[rule.ruleType] || rule.ruleType}</span>
+                    <span className="rounded-md bg-slate-100 px-1.5 py-0.5 dark:bg-slate-800">{shift?.shiftName || '未绑定班次'}</span>
+                  </div>
+                </button>
+              );
+            })}
           </div>
-        </FieldBlock>
+        </aside>
 
-        <FieldBlock title="打卡设置">
-          <div className="space-y-4">
-            <ToggleRow
-              title="需要拍照打卡"
-              checked={rule?.photoRequired === 1}
-              onCheckedChange={(checked) => setRule((prev) => (prev ? { ...prev, photoRequired: checked ? 1 : 0 } : null))}
-              disabled={!editing}
-            />
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">打卡范围半径（米）</Label>
-              <Input
-                type="number"
-                value={rule?.radius || 200}
-                onChange={(event) =>
-                  setRule((prev) => (prev ? { ...prev, radius: parseInt(event.target.value, 10) || 200 } : null))
-                }
-                disabled={!editing}
-                className="h-11 lg:max-w-sm"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Wi-Fi 配置（JSON）</Label>
-              {editing ? (
-                <Textarea
-                  value={rule?.wifiConfigs || ''}
-                  onChange={(event) => setRule((prev) => (prev ? { ...prev, wifiConfigs: event.target.value } : null))}
-                  disabled={!editing}
-                  placeholder="[]"
-                  className="min-h-[120px] font-mono text-sm"
-                />
-              ) : (
-                <ReadonlyTextBlock value={rule?.wifiConfigs} mono />
-              )}
+        <main className="space-y-4">
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              规则 {draft?.ruleName || '未命名'}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              班次 {selectedShift ? `${normalizeTime(selectedShift.startTime)}-${normalizeTime(selectedShift.endTime)}` : '未选择'}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              适用范围 {assignments.length} 项
+            </span>
+            <div className="ml-auto flex flex-wrap gap-2">
+              {draft?.id ? (
+                <Button variant="outline" size="sm" onClick={handleDeleteRule}>
+                  <Trash2 size={14} className="mr-1.5" />
+                  删除
+                </Button>
+              ) : null}
+              <Button size="sm" onClick={handleSave} disabled={saving || !draft}>
+                <Save size={14} className="mr-1.5" />
+                {saving ? '保存中...' : '保存规则'}
+              </Button>
             </div>
           </div>
-        </FieldBlock>
 
-        <FieldBlock title="备注">
-          {editing ? (
-            <Textarea
-              value={rule?.remark || ''}
-              onChange={(event) => setRule((prev) => (prev ? { ...prev, remark: event.target.value } : null))}
-              disabled={!editing}
-              className="min-h-[120px]"
-            />
-          ) : (
-            <ReadonlyTextBlock value={rule?.remark} placeholder="未填写" />
-          )}
-        </FieldBlock>
+          <Tabs defaultValue="rule">
+            <TabsList>
+              <TabsTrigger value="rule">规则配置</TabsTrigger>
+              <TabsTrigger value="assignment">适用范围</TabsTrigger>
+              <TabsTrigger value="calendar">企业日历</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="rule" className="space-y-4">
+              <Panel title="基础与班次" icon={<CalendarClock size={16} />}>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <Field label="规则名称">
+                    <Input value={draft?.ruleName || ''} onChange={(event) => setDraft((prev) => (prev ? { ...prev, ruleName: event.target.value } : prev))} />
+                  </Field>
+                  <Field label="规则类型">
+                    <Select value={draft?.ruleType || 'FIXED'} onValueChange={(value) => setDraft((prev) => (prev ? { ...prev, ruleType: value } : prev))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="FIXED">固定班</SelectItem>
+                        <SelectItem value="ROTATION">轮班</SelectItem>
+                        <SelectItem value="FLEXIBLE">弹性工作制</SelectItem>
+                        <SelectItem value="COMPREHENSIVE">综合工时制</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="绑定班次">
+                    <Select value={String(config.shiftId || '')} onValueChange={(value) => updateConfig('shiftId', Number(value))}>
+                      <SelectTrigger><SelectValue placeholder="选择班次" /></SelectTrigger>
+                      <SelectContent>
+                        {shifts.map((shift) => (
+                          <SelectItem key={shift.id} value={String(shift.id)}>
+                            {shift.shiftName} {normalizeTime(shift.startTime)}-{normalizeTime(shift.endTime)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                  <Field label="启用规则">
+                    <div className="flex h-11 items-center rounded-xl border border-slate-200 px-4 dark:border-slate-800">
+                      <Switch checked={(draft?.status ?? 1) === 1} onCheckedChange={(checked) => setDraft((prev) => (prev ? { ...prev, status: checked ? 1 : 0 } : prev))} />
+                    </div>
+                  </Field>
+                  <Field label="备注">
+                    <Input value={draft?.description || ''} onChange={(event) => setDraft((prev) => (prev ? { ...prev, description: event.target.value } : prev))} />
+                  </Field>
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {WEEKDAYS.map((day) => (
+                    <Button key={day.value} type="button" size="sm" variant={config.workDays?.includes(day.value) ? 'default' : 'outline'} onClick={() => toggleArrayValue('workDays', day.value)}>
+                      {day.label}
+                    </Button>
+                  ))}
+                </div>
+              </Panel>
+
+              <div className="grid gap-4 xl:grid-cols-2">
+                <Panel title="打卡方式与地点" icon={<MapPin size={16} />}>
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {['GPS', 'WIFI', 'FACE'].map((method) => (
+                      <Button key={method} type="button" size="sm" variant={config.checkMethods?.includes(method) ? 'default' : 'outline'} onClick={() => toggleArrayValue('checkMethods', method)}>
+                        {method}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Field label="地点名称">
+                      <Input value={locationPoint.name || ''} onChange={(event) => updateConfig('locationPoints', [{ ...locationPoint, name: event.target.value }])} />
+                    </Field>
+                    <Field label="打卡半径(米)">
+                      <Input type="number" value={config.radius || 0} onChange={(event) => updateConfig('radius', Number(event.target.value || 0))} />
+                    </Field>
+                    <Field label="纬度">
+                      <Input type="number" value={locationPoint.latitude || ''} onChange={(event) => updateConfig('locationPoints', [{ ...locationPoint, latitude: Number(event.target.value || 0) }])} />
+                    </Field>
+                    <Field label="经度">
+                      <Input type="number" value={locationPoint.longitude || ''} onChange={(event) => updateConfig('locationPoints', [{ ...locationPoint, longitude: Number(event.target.value || 0) }])} />
+                    </Field>
+                  </div>
+                  <div className="mt-4">
+                    <Field label="Wi-Fi SSID（一行一个）">
+                      <Textarea
+                        value={wifiText}
+                        onChange={(event) => updateConfig('wifiConfigs', event.target.value.split('\n').filter(Boolean).map((ssid) => ({ ssid })))}
+                        className="min-h-[96px]"
+                      />
+                    </Field>
+                  </div>
+                </Panel>
+
+                <Panel title="异常与加班口径" icon={<Wifi size={16} />}>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <Field label="每月迟到容忍次数">
+                      <Input type="number" value={config.lateToleranceCount || 0} onChange={(event) => updateConfig('lateToleranceCount', Number(event.target.value || 0))} />
+                    </Field>
+                    <Field label="严重迟到阈值(分钟)">
+                      <Input type="number" value={config.severeLateMinutes || 0} onChange={(event) => updateConfig('severeLateMinutes', Number(event.target.value || 0))} />
+                    </Field>
+                    <Field label="旷工阈值(分钟)">
+                      <Input type="number" value={config.absentMinutes || 0} onChange={(event) => updateConfig('absentMinutes', Number(event.target.value || 0))} />
+                    </Field>
+                    <Field label="加班最小时长(分钟)">
+                      <Input type="number" value={config.overtimeMinMinutes || 0} onChange={(event) => updateConfig('overtimeMinMinutes', Number(event.target.value || 0))} />
+                    </Field>
+                    <Field label="允许加班">
+                      <div className="flex h-11 items-center rounded-xl border border-slate-200 px-4 dark:border-slate-800">
+                        <Switch checked={config.overtimeEnabled !== false} onCheckedChange={(checked) => updateConfig('overtimeEnabled', checked)} />
+                      </div>
+                    </Field>
+                    <Field label="拍照/人脸增强">
+                      <div className="flex h-11 items-center rounded-xl border border-slate-200 px-4 dark:border-slate-800">
+                        <Switch checked={Boolean(config.photoRequired)} onCheckedChange={(checked) => updateConfig('photoRequired', checked)} />
+                      </div>
+                    </Field>
+                  </div>
+                </Panel>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="assignment" className="space-y-4">
+              <Panel title="适用范围" icon={<Users size={16} />}>
+                <div className="grid gap-3 lg:grid-cols-[160px_1fr_180px_auto]">
+                  <Select value={assignmentDraft.targetType} onValueChange={(value) => setAssignmentDraft((prev) => ({ ...prev, targetType: value as 'DEPT' | 'POST' | 'EMPLOYEE' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DEPT">部门</SelectItem>
+                      <SelectItem value="POST">岗位</SelectItem>
+                      <SelectItem value="EMPLOYEE">员工</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input placeholder="目标ID" value={assignmentDraft.targetId} onChange={(event) => setAssignmentDraft((prev) => ({ ...prev, targetId: event.target.value }))} />
+                  <DatePicker type="date" value={assignmentDraft.effectiveStart} onChange={(event) => setAssignmentDraft((prev) => ({ ...prev, effectiveStart: event.target.value }))} />
+                  <Button onClick={handleAddAssignment} disabled={!activeRuleId}>
+                    <Plus size={14} className="mr-1.5" />
+                    添加
+                  </Button>
+                </div>
+
+                <div className="mt-4 divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                  {assignments.length === 0 ? (
+                    <div className="px-4 py-8 text-center text-sm text-slate-500">暂无适用范围</div>
+                  ) : assignments.map((item) => (
+                    <div key={item.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{TARGET_LABEL[item.targetType]}</span>
+                      <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.targetName || item.targetId}</span>
+                      <span className="text-xs text-slate-500">{item.effectiveStart} 起</span>
+                      <Button className="ml-auto" variant="ghost" size="icon" onClick={() => handleDeleteAssignment(item.id)}>
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </TabsContent>
+
+            <TabsContent value="calendar" className="space-y-4">
+              <Panel title="企业日历" icon={<CalendarDays size={16} />}>
+                <div className="grid gap-3 lg:grid-cols-[180px_180px_1fr_auto]">
+                  <DatePicker type="date" value={calendarDraft.calendarDate} onChange={(event) => setCalendarDraft((prev) => ({ ...prev, calendarDate: event.target.value }))} />
+                  <Select value={calendarDraft.dayType} onValueChange={(value) => setCalendarDraft((prev) => ({ ...prev, dayType: value as 'WORKDAY' | 'REST' | 'HOLIDAY' }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="WORKDAY">工作日</SelectItem>
+                      <SelectItem value="REST">休息日</SelectItem>
+                      <SelectItem value="HOLIDAY">节假日</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input placeholder="日期名称" value={calendarDraft.dayName} onChange={(event) => setCalendarDraft((prev) => ({ ...prev, dayName: event.target.value }))} />
+                  <Button onClick={handleSaveCalendar}>
+                    <Save size={14} className="mr-1.5" />
+                    保存
+                  </Button>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                  {calendarDays.map((item) => (
+                    <div key={item.id} className="flex items-center gap-3 rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-800">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">{item.calendarDate}</div>
+                        <div className="mt-1 text-xs text-slate-500">{item.dayName || DAY_TYPE_LABEL[item.dayType]}</div>
+                      </div>
+                      <span className="rounded-md bg-slate-100 px-2 py-1 text-xs dark:bg-slate-800">{DAY_TYPE_LABEL[item.dayType]}</span>
+                      <Button variant="ghost" size="icon" onClick={() => handleDeleteCalendar(item.id)}>
+                        <Trash2 size={15} />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
+            </TabsContent>
+          </Tabs>
+        </main>
       </div>
     </div>
   );

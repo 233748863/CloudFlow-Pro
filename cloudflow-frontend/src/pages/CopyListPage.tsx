@@ -30,6 +30,7 @@ import {
 import { BaseDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { ProcessTrace } from '../components/ProcessTrace';
 import { cn } from '@/utils/cn';
 
@@ -233,8 +234,8 @@ export const CopyListPage: React.FC = () => {
       toast.success('已标记为已读');
       void fetchList(false);
       void fetchUnreadCount();
-    } catch {
-      toast.error('标记已读失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '标记已读失败'));
     }
   };
 
@@ -250,8 +251,8 @@ export const CopyListPage: React.FC = () => {
       setSelectedIds(new Set());
       void fetchList(false);
       void fetchUnreadCount();
-    } catch {
-      toast.error('批量标记失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '批量标记失败'));
     }
   };
 

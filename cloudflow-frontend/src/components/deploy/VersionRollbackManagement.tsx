@@ -11,6 +11,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common';
 import { Button, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
@@ -198,7 +199,7 @@ export const VersionRollbackManagement: React.FC = () => {
         setSelectedProcess(String(first.definitionId || ''));
       }
     } catch (error) {
-      toast.error('加载流程列表失败');
+      toast.error(getErrorMessage(error, '加载流程列表失败'));
       console.error(error);
     }
   };
@@ -213,7 +214,7 @@ export const VersionRollbackManagement: React.FC = () => {
       const data = await listRollbackVersions(selectedProcess);
       setVersions(Array.isArray(data) ? data : []);
     } catch (error) {
-      toast.error('加载可回滚版本失败');
+      toast.error(getErrorMessage(error, '加载可回滚版本失败'));
       console.error(error);
     } finally {
       setLoading(false);
@@ -230,7 +231,7 @@ export const VersionRollbackManagement: React.FC = () => {
       const data = await listRollbackHistory(selectedProcess);
       setHistory(Array.isArray(data) ? data : []);
     } catch (error) {
-      toast.error('加载回滚历史失败');
+      toast.error(getErrorMessage(error, '加载回滚历史失败'));
       console.error(error);
     } finally {
       setLoading(false);
@@ -282,7 +283,7 @@ export const VersionRollbackManagement: React.FC = () => {
       const data = await getVersionSnapshot(version.processDefId, version.version);
       setSnapshotModal(data as VersionSnapshot);
     } catch (error) {
-      toast.error('加载快照详情失败');
+      toast.error(getErrorMessage(error, '加载快照详情失败'));
       console.error(error);
     }
   };
@@ -294,7 +295,7 @@ export const VersionRollbackManagement: React.FC = () => {
       setForceRollback(false);
       setRollbackModal({ version, impact });
     } catch (error) {
-      toast.error('分析回滚影响失败');
+      toast.error(getErrorMessage(error, '分析回滚影响失败'));
       console.error(error);
     }
   };
@@ -325,7 +326,7 @@ export const VersionRollbackManagement: React.FC = () => {
       await loadVersions();
       await loadHistory();
     } catch (error) {
-      toast.error('版本回滚失败');
+      toast.error(getErrorMessage(error, '版本回滚失败'));
       console.error(error);
     }
   };

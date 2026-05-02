@@ -7,6 +7,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { Button, LoadingSpinner, Switch } from '@/components/common';
 import { cn } from '@/utils/cn';
@@ -190,7 +191,7 @@ const WorkflowMonitor: React.FC = () => {
       setLastUpdate(new Date());
     } catch (error) {
       console.error('加载流程监控数据失败:', error);
-      toast.error('加载流程监控数据失败');
+      toast.error(getErrorMessage(error, '加载流程监控数据失败'));
     } finally {
       setLoading(false);
     }

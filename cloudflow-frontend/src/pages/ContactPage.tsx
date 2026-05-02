@@ -177,7 +177,7 @@ export const ContactPage: React.FC = () => {
       if (response && typeof response === 'object') {
         setSelectedUser(response);
       } else {
-        toast.error('获取用户详情失败');
+        toast.error(getErrorMessage(response, '获取用户详情失败'));
       }
     } catch (error) {
       toast.error(getErrorMessage(error, '获取用户详情失败'));

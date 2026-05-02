@@ -12,12 +12,12 @@ import java.time.LocalDate;
 public class SchedulePlanQueryDTO {
     
     /**
-     * 目标类型：EMPLOYEE-员工 DEPT-部门
+     * 目标类型：EMPLOYEE-员工 POST-岗位 DEPT-部门
      */
     private String targetType;
     
     /**
-     * 目标ID（员工ID或部门ID）
+     * 目标ID（员工ID、岗位ID或部门ID）
      */
     private Long targetId;
     

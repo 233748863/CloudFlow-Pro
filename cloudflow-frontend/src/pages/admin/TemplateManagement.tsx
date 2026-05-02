@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -293,7 +294,7 @@ export const TemplateManagement: React.FC = () => {
       setCategories(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('加载模板分类失败:', error);
-      toast.error('加载模板分类失败');
+      toast.error(getErrorMessage(error, '加载模板分类失败'));
     } finally {
       setCategoryLoading(false);
     }
@@ -322,7 +323,7 @@ export const TemplateManagement: React.FC = () => {
       setTotal(Number(data?.total || 0));
     } catch (error) {
       console.error('加载模板列表失败:', error);
-      toast.error('加载模板列表失败');
+      toast.error(getErrorMessage(error, '加载模板列表失败'));
     } finally {
       setTemplateLoading(false);
     }
@@ -486,7 +487,7 @@ export const TemplateManagement: React.FC = () => {
       await Promise.all([loadTemplates(), loadCategories()]);
     } catch (error) {
       console.error('保存模板失败:', error);
-      toast.error('保存模板失败');
+      toast.error(getErrorMessage(error, '保存模板失败'));
     } finally {
       setSavingTemplate(false);
     }
@@ -523,7 +524,7 @@ export const TemplateManagement: React.FC = () => {
       await Promise.all([loadCategories(), loadTemplates()]);
     } catch (error) {
       console.error('保存分类失败:', error);
-      toast.error('保存分类失败');
+      toast.error(getErrorMessage(error, '保存分类失败'));
     } finally {
       setSavingCategory(false);
     }

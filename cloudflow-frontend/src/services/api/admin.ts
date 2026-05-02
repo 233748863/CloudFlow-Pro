@@ -4,6 +4,7 @@ import {
   createHrScheduleRule,
   createHrShift,
   getHrAttendanceMonthly,
+  getEffectiveAttendanceRule,
   hrCheckIn,
   hrCheckOut,
   listHrAttendanceRecords,
@@ -114,8 +115,13 @@ const parseCoordinates = (location?: string) => {
 };
 
 const mapHrRuleToAttendanceRule = async () => {
-  const [rules, shifts] = await Promise.all([listHrScheduleRules(), listHrShifts()]);
+  const [effectiveRule, rules, shifts] = await Promise.all([
+    getEffectiveAttendanceRule().catch(() => null),
+    listHrScheduleRules(),
+    listHrShifts(),
+  ]);
   const targetRule =
+    (effectiveRule?.ruleId ? rules.find((rule) => rule.id === effectiveRule.ruleId) : null) ??
     rules.find((rule) => rule.status === 1 && rule.ruleType === 'FIXED') ??
     rules.find((rule) => rule.status === 1) ??
     rules[0];
@@ -125,29 +131,29 @@ const mapHrRuleToAttendanceRule = async () => {
   }
 
   const ruleConfig = parseJsonSafely<Record<string, unknown>>(targetRule.ruleConfig) ?? {};
-  const shiftId = Number(ruleConfig.shiftId);
+  const shiftId = Number(effectiveRule?.shiftId ?? ruleConfig.shiftId);
   const shift = shifts.find((item) => item.id === shiftId);
   const workDays = Array.isArray(ruleConfig.workDays) ? ruleConfig.workDays : DEFAULT_WORK_DAYS;
 
   return {
     ruleId: targetRule.id,
     ruleName: targetRule.ruleName,
-    checkInTime: normalizeTime(shift?.startTime || (ruleConfig.checkInTime as string | undefined), '09:00:00'),
-    checkOutTime: normalizeTime(shift?.endTime || (ruleConfig.checkOutTime as string | undefined), '18:00:00'),
-    elasticMinutes: shift?.lateThreshold ?? Number(ruleConfig.elasticMinutes ?? 15),
+    checkInTime: normalizeTime(effectiveRule?.checkInTime || shift?.startTime || (ruleConfig.checkInTime as string | undefined), '09:00:00'),
+    checkOutTime: normalizeTime(effectiveRule?.checkOutTime || shift?.endTime || (ruleConfig.checkOutTime as string | undefined), '18:00:00'),
+    elasticMinutes: effectiveRule?.lateThreshold ?? shift?.lateThreshold ?? Number(ruleConfig.elasticMinutes ?? 15),
     workDays: JSON.stringify(workDays),
     lunchBreakStart: normalizeTime(ruleConfig.lunchBreakStart as string | undefined, '12:00:00'),
     lunchBreakEnd: normalizeTime(ruleConfig.lunchBreakEnd as string | undefined, '13:00:00'),
-    overtimeEnabled: ruleConfig.overtimeEnabled ? 1 : 0,
-    overtimeMinMinutes: Number(ruleConfig.overtimeMinMinutes ?? 30),
+    overtimeEnabled: (effectiveRule?.overtimeEnabled ?? ruleConfig.overtimeEnabled) ? 1 : 0,
+    overtimeMinMinutes: Number(effectiveRule?.overtimeMinMinutes ?? ruleConfig.overtimeMinMinutes ?? 30),
     lateToleranceCount: Number(ruleConfig.lateToleranceCount ?? 0),
-    severeLateMinutes: Number(ruleConfig.severeLateMinutes ?? 60),
-    absentMinutes: Number(ruleConfig.absentMinutes ?? 240),
-    photoRequired: ruleConfig.photoRequired ? 1 : 0,
+    severeLateMinutes: Number(effectiveRule?.severeLateMinutes ?? ruleConfig.severeLateMinutes ?? 60),
+    absentMinutes: Number(effectiveRule?.absentMinutes ?? ruleConfig.absentMinutes ?? 240),
+    photoRequired: (effectiveRule?.photoRequired ?? ruleConfig.photoRequired) ? 1 : 0,
     enabled: targetRule.status ?? 1,
     locationPoints: stringifyConfigField(ruleConfig.locationPoints),
     wifiConfigs: stringifyConfigField(ruleConfig.wifiConfigs),
-    radius: Number(ruleConfig.radius ?? 200),
+    radius: Number(effectiveRule?.radius ?? ruleConfig.radius ?? 200),
     remark: targetRule.description || (ruleConfig.remark as string | undefined) || '',
   } satisfies AttendanceRule;
 };

@@ -9,6 +9,7 @@ import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.hr.client.AuthServiceClient;
 import com.cloudflow.hr.client.vo.DeptVO;
+import com.cloudflow.hr.domain.bo.AttendanceRuleResolution;
 import com.cloudflow.hr.domain.dto.AttendanceAnomalyQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceMonthlyQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceReportExportDTO;
@@ -19,6 +20,7 @@ import com.cloudflow.hr.domain.vo.AttendanceMonthlyVO;
 import com.cloudflow.hr.domain.vo.AttendanceRateVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.*;
+import com.cloudflow.hr.service.AttendanceRuleResolver;
 import com.cloudflow.hr.service.AttendanceStatisticsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -62,9 +64,6 @@ import java.nio.file.Paths;
 @RequiredArgsConstructor
 public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsService {
 
-    private static final String TARGET_EMPLOYEE = "EMPLOYEE";
-    private static final String TARGET_DEPT = "DEPT";
-    private static final String PLAN_STATUS_PUBLISHED = "PUBLISHED";
     private static final int DEFAULT_WORKDAY_MINUTES = 480;
 
     private final AttendanceMonthlyMapper attendanceMonthlyMapper;
@@ -72,9 +71,9 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     private final EmployeeMapper employeeMapper;
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final OvertimeApplicationMapper overtimeApplicationMapper;
-    private final SchedulePlanMapper schedulePlanMapper;
     private final ShiftMapper shiftMapper;
     private final AuthServiceClient authServiceClient;
+    private final AttendanceRuleResolver attendanceRuleResolver;
 
     /**
      * 生成月度考勤汇总（批量生成所有员工）
@@ -130,10 +129,9 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
         LocalDate startDate = yearMonth.atDay(1);
         LocalDate endDate = yearMonth.atEndOfMonth();
 
-        // 按生效排班计算应出勤天数，避免把无排班工作日误统计为应出勤。
         Set<LocalDate> scheduledDates = resolveScheduledDates(employee, startDate, endDate);
         int workDays = scheduledDates.size();
-        Map<LocalDate, SchedulePlan> effectiveSchedulePlans = resolveEffectiveSchedulePlans(employee, startDate, endDate);
+        Map<LocalDate, AttendanceRuleResolution> effectiveRules = resolveEffectiveRules(employee, startDate, endDate);
 
         // 统计打卡记录
         List<LeaveApplication> approvedLeaves = listApprovedLeavesForCoverage(tenantId, employeeId, startDate, endDate);
@@ -148,13 +146,14 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
         );
 
         // 统计请假天数
-        BigDecimal leaveDays = calculateLeaveDays(approvedLeaves, startDate, endDate, effectiveSchedulePlans);
+        BigDecimal leaveDays = calculateLeaveDays(approvedLeaves, startDate, endDate, effectiveRules);
 
         // 统计加班时长
-        BigDecimal overtimeHours = calculateOvertimeHours(tenantId, employeeId, year, month);
+        BigDecimal overtimeHours = calculateOvertimeHours(tenantId, employeeId, year, month, employee);
 
         // 计算实际出勤天数
         int actualDays = attendanceStats.get("actualDays");
+        int lateTimes = applyLateTolerance(attendanceStats.get("lateTimes"), effectiveRules);
 
         // 出勤率仅按排班日内的实际到岗计算，避免临时加班把出勤率抬高到 100% 以上。
         BigDecimal attendanceRate = calculateAttendanceRate(attendanceStats.get("scheduledActualDays"), workDays);
@@ -176,7 +175,7 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
             monthly.setMonth(month);
             monthly.setWorkDays(workDays);
             monthly.setActualDays(actualDays);
-            monthly.setLateTimes(attendanceStats.get("lateTimes"));
+            monthly.setLateTimes(lateTimes);
             monthly.setEarlyTimes(attendanceStats.get("earlyTimes"));
             monthly.setAbsentDays(attendanceStats.get("absentDays"));
             monthly.setMissingTimes(attendanceStats.get("missingTimes"));
@@ -189,7 +188,7 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
             // 更新现有记录
             monthly.setWorkDays(workDays);
             monthly.setActualDays(actualDays);
-            monthly.setLateTimes(attendanceStats.get("lateTimes"));
+            monthly.setLateTimes(lateTimes);
             monthly.setEarlyTimes(attendanceStats.get("earlyTimes"));
             monthly.setAbsentDays(attendanceStats.get("absentDays"));
             monthly.setMissingTimes(attendanceStats.get("missingTimes"));
@@ -523,6 +522,9 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
                 if ("LATE".equals(record.getStatus())) {
                     lateTimes++;
                 }
+                if ("SEVERE_LATE".equals(record.getStatus())) {
+                    lateTimes++;
+                }
                 if ("EARLY".equals(record.getStatus())) {
                     earlyTimes++;
                 }
@@ -551,7 +553,7 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     private BigDecimal calculateLeaveDays(List<LeaveApplication> leaves,
                                           LocalDate startDate,
                                           LocalDate endDate,
-                                          Map<LocalDate, SchedulePlan> effectiveSchedulePlans) {
+                                          Map<LocalDate, AttendanceRuleResolution> effectiveRules) {
         if (leaves == null || leaves.isEmpty()) {
             return BigDecimal.ZERO.setScale(2, RoundingMode.HALF_UP);
         }
@@ -563,7 +565,7 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
                     leave,
                     startDate,
                     endDate,
-                    effectiveSchedulePlans,
+                    effectiveRules,
                     shiftWorkMinutesCache
             ));
         }
@@ -573,7 +575,7 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     private BigDecimal calculateLeaveDaysWithinRange(LeaveApplication leave,
                                                      LocalDate startDate,
                                                      LocalDate endDate,
-                                                     Map<LocalDate, SchedulePlan> effectiveSchedulePlans,
+                                                     Map<LocalDate, AttendanceRuleResolution> effectiveRules,
                                                      Map<Long, Integer> shiftWorkMinutesCache) {
         if (leave == null || leave.getStartTime() == null || leave.getEndTime() == null) {
             return BigDecimal.ZERO;
@@ -592,16 +594,22 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
             return calculateHourlyLeaveDays(
                     overlapStart,
                     overlapEndExclusive,
-                    effectiveSchedulePlans,
+                    effectiveRules,
                     shiftWorkMinutesCache
             );
         }
 
-        long overlapDays = ChronoUnit.DAYS.between(
-                overlapStart.toLocalDate(),
-                overlapEndExclusive.minusNanos(1).toLocalDate()
-        ) + 1;
-        return BigDecimal.valueOf(overlapDays);
+        BigDecimal leaveDays = BigDecimal.ZERO;
+        LocalDate current = overlapStart.toLocalDate();
+        LocalDate leaveEnd = overlapEndExclusive.minusNanos(1).toLocalDate();
+        while (!current.isAfter(leaveEnd)) {
+            AttendanceRuleResolution resolution = effectiveRules.get(current);
+            if (resolution != null && attendanceRuleResolver.isWorkday(resolution)) {
+                leaveDays = leaveDays.add(BigDecimal.ONE);
+            }
+            current = current.plusDays(1);
+        }
+        return leaveDays;
     }
 
     private List<LeaveApplication> listApprovedLeavesForCoverage(Long tenantId, Long employeeId,
@@ -639,7 +647,7 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
 
     private BigDecimal calculateHourlyLeaveDays(LocalDateTime overlapStart,
                                                 LocalDateTime overlapEndExclusive,
-                                                Map<LocalDate, SchedulePlan> effectiveSchedulePlans,
+                                                Map<LocalDate, AttendanceRuleResolution> effectiveRules,
                                                 Map<Long, Integer> shiftWorkMinutesCache) {
         BigDecimal leaveDays = BigDecimal.ZERO;
         LocalDateTime current = overlapStart;
@@ -650,8 +658,9 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
                     ? overlapEndExclusive
                     : dayEndExclusive;
             long leaveMinutes = Duration.between(current, segmentEnd).toMinutes();
-            if (leaveMinutes > 0) {
-                int workMinutes = resolveWorkMinutes(currentDate, effectiveSchedulePlans, shiftWorkMinutesCache);
+            AttendanceRuleResolution resolution = effectiveRules.get(currentDate);
+            if (leaveMinutes > 0 && resolution != null && attendanceRuleResolver.isWorkday(resolution)) {
+                int workMinutes = resolveWorkMinutes(currentDate, effectiveRules, shiftWorkMinutesCache);
                 leaveDays = leaveDays.add(
                         BigDecimal.valueOf(leaveMinutes)
                                 .divide(BigDecimal.valueOf(workMinutes), 4, RoundingMode.HALF_UP)
@@ -663,13 +672,13 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     }
 
     private int resolveWorkMinutes(LocalDate attendanceDate,
-                                   Map<LocalDate, SchedulePlan> effectiveSchedulePlans,
+                                   Map<LocalDate, AttendanceRuleResolution> effectiveRules,
                                    Map<Long, Integer> shiftWorkMinutesCache) {
-        SchedulePlan schedulePlan = effectiveSchedulePlans.get(attendanceDate);
-        if (schedulePlan == null || schedulePlan.getShiftId() == null) {
+        AttendanceRuleResolution resolution = effectiveRules.get(attendanceDate);
+        if (resolution == null || resolution.getShift() == null || resolution.getShift().getId() == null) {
             return DEFAULT_WORKDAY_MINUTES;
         }
-        return shiftWorkMinutesCache.computeIfAbsent(schedulePlan.getShiftId(), this::loadShiftWorkMinutes);
+        return shiftWorkMinutesCache.computeIfAbsent(resolution.getShift().getId(), this::loadShiftWorkMinutes);
     }
 
     private Integer loadShiftWorkMinutes(Long shiftId) {
@@ -684,42 +693,34 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     }
 
     private Set<LocalDate> resolveScheduledDates(Employee employee, LocalDate startDate, LocalDate endDate) {
-        return resolveEffectiveSchedulePlans(employee, startDate, endDate).keySet();
+        return resolveEffectiveRules(employee, startDate, endDate).entrySet().stream()
+                .filter(entry -> attendanceRuleResolver.isWorkday(entry.getValue()))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toSet());
     }
 
-    private Map<LocalDate, SchedulePlan> resolveEffectiveSchedulePlans(Employee employee,
-                                                                       LocalDate startDate,
-                                                                       LocalDate endDate) {
-        Map<LocalDate, SchedulePlan> effectivePlans = new HashMap<>();
-
-        if (employee.getDeptId() != null) {
-            mergePublishedPlans(
-                    effectivePlans,
-                    schedulePlanMapper.selectByDateRange(employee.getTenantId(), TARGET_DEPT, employee.getDeptId(), startDate, endDate)
-            );
+    private int applyLateTolerance(int lateTimes, Map<LocalDate, AttendanceRuleResolution> effectiveRules) {
+        if (lateTimes <= 0 || effectiveRules == null || effectiveRules.isEmpty()) {
+            return lateTimes;
         }
-
-        mergePublishedPlans(
-                effectivePlans,
-                schedulePlanMapper.selectByDateRange(employee.getTenantId(), TARGET_EMPLOYEE, employee.getId(), startDate, endDate)
-        );
-
-        effectivePlans.entrySet().removeIf(entry -> entry.getValue() == null
-                || entry.getValue().getScheduleDate() == null
-                || entry.getValue().getShiftId() == null);
-        return effectivePlans;
+        int tolerance = effectiveRules.values().stream()
+                .filter(item -> item != null && item.getConfig() != null)
+                .map(item -> AttendanceRuleResolverImpl.readInt(item.getConfig(), "lateToleranceCount", 0))
+                .findFirst()
+                .orElse(0);
+        return Math.max(lateTimes - tolerance, 0);
     }
 
-    private void mergePublishedPlans(Map<LocalDate, SchedulePlan> effectivePlans, List<SchedulePlan> plans) {
-        if (plans == null || plans.isEmpty()) {
-            return;
+    private Map<LocalDate, AttendanceRuleResolution> resolveEffectiveRules(Employee employee,
+                                                                           LocalDate startDate,
+                                                                           LocalDate endDate) {
+        Map<LocalDate, AttendanceRuleResolution> effectiveRules = new HashMap<>();
+        LocalDate current = startDate;
+        while (!current.isAfter(endDate)) {
+            effectiveRules.put(current, attendanceRuleResolver.resolve(employee, current));
+            current = current.plusDays(1);
         }
-        for (SchedulePlan plan : plans) {
-            if (plan == null || !PLAN_STATUS_PUBLISHED.equals(plan.getStatus()) || plan.getScheduleDate() == null) {
-                continue;
-            }
-            effectivePlans.put(plan.getScheduleDate(), plan);
-        }
+        return effectiveRules;
     }
 
     private boolean isEffectiveAttendanceRecord(AttendanceRecord record) {
@@ -729,6 +730,7 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
         switch (record.getStatus()) {
             case "NORMAL":
             case "LATE":
+            case "SEVERE_LATE":
             case "EARLY":
             case "SUPPLEMENT":
                 return true;
@@ -740,11 +742,18 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     /**
      * 统计加班时长
      */
-    private BigDecimal calculateOvertimeHours(Long tenantId, Long employeeId, Integer year, Integer month) {
+    private BigDecimal calculateOvertimeHours(Long tenantId, Long employeeId, Integer year, Integer month, Employee employee) {
         Map<String, Object> overtimeStats = overtimeApplicationMapper.getOvertimeStatistics(
                 tenantId, employeeId, year, month);
-        
-        return getBigDecimalFromMap(overtimeStats, "totalHours");
+
+        BigDecimal totalHours = getBigDecimalFromMap(overtimeStats, "totalHours");
+        if (totalHours.compareTo(BigDecimal.ZERO) <= 0) {
+            return BigDecimal.ZERO;
+        }
+        AttendanceRuleResolution resolution = attendanceRuleResolver.resolve(employee, YearMonth.of(year, month).atDay(1));
+        int minMinutes = AttendanceRuleResolverImpl.readInt(resolution.getConfig(), "overtimeMinMinutes", 30);
+        BigDecimal minHours = BigDecimal.valueOf(minMinutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
+        return totalHours.compareTo(minHours) < 0 ? BigDecimal.ZERO : totalHours;
     }
 
     /**
@@ -780,7 +789,11 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
     }
 
     private boolean shouldQueryRecordAnomalies(String anomalyType) {
-        return anomalyType == null || "LATE".equals(anomalyType) || "EARLY".equals(anomalyType);
+        return anomalyType == null
+                || "LATE".equals(anomalyType)
+                || "SEVERE_LATE".equals(anomalyType)
+                || "EARLY".equals(anomalyType)
+                || "ABSENT".equals(anomalyType);
     }
 
     private boolean shouldBuildDerivedAnomalies(String anomalyType) {
@@ -802,7 +815,26 @@ public class AttendanceStatisticsServiceImpl implements AttendanceStatisticsServ
 
         List<AttendanceAnomalyVO> derivedAnomalies = new ArrayList<>();
         for (Employee employee : employees) {
-            Map<LocalDate, SchedulePlan> scheduledPlans = resolveEffectiveSchedulePlans(employee, startDate, endDate);
+            Map<LocalDate, AttendanceRuleResolution> effectiveRules = resolveEffectiveRules(employee, startDate, endDate);
+            Map<LocalDate, SchedulePlan> scheduledPlans = new HashMap<>();
+            for (Map.Entry<LocalDate, AttendanceRuleResolution> entry : effectiveRules.entrySet()) {
+                if (!attendanceRuleResolver.isWorkday(entry.getValue())) {
+                    continue;
+                }
+                SchedulePlan plan = entry.getValue().getSchedulePlan();
+                if (plan == null && entry.getValue().getShift() != null) {
+                    plan = new SchedulePlan();
+                    plan.setTenantId(employee.getTenantId());
+                    plan.setTargetType("RULE");
+                    plan.setTargetId(entry.getValue().getRule().getId());
+                    plan.setShiftId(entry.getValue().getShift().getId());
+                    plan.setScheduleDate(entry.getKey());
+                    plan.setStatus("PUBLISHED");
+                }
+                if (plan != null) {
+                    scheduledPlans.put(entry.getKey(), plan);
+                }
+            }
             Map<LocalDate, List<AttendanceRecord>> recordsByDate = listEffectiveAttendanceRecordsByDate(
                     tenantId,
                     employee.getId(),

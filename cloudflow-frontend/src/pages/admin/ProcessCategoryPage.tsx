@@ -16,6 +16,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -349,7 +350,7 @@ const ProcessCategoryPage: React.FC = () => {
       setFlatList(normalized);
     } catch (error) {
       console.error('加载流程分类失败:', error);
-      toast.error('加载流程分类失败');
+      toast.error(getErrorMessage(error, '加载流程分类失败'));
     } finally {
       setLoading(false);
     }
@@ -418,7 +419,7 @@ const ProcessCategoryPage: React.FC = () => {
       setModalOpen(true);
     } catch (error) {
       console.error('加载分类详情失败:', error);
-      toast.error('加载分类详情失败');
+      toast.error(getErrorMessage(error, '加载分类详情失败'));
     }
   };
 

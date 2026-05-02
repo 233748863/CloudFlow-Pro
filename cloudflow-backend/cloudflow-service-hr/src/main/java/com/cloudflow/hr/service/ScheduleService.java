@@ -3,6 +3,7 @@ package com.cloudflow.hr.service;
 import com.cloudflow.hr.domain.dto.*;
 import com.cloudflow.hr.domain.vo.ScheduleCalendarVO;
 import com.cloudflow.hr.domain.vo.SchedulePlanVO;
+import com.cloudflow.hr.domain.vo.ScheduleRuleAssignmentVO;
 import com.cloudflow.hr.domain.vo.ScheduleRuleVO;
 import com.cloudflow.hr.domain.vo.ShiftVO;
 
@@ -84,6 +85,26 @@ public interface ScheduleService {
      * @param id 规则ID
      */
     void deleteScheduleRule(Long id);
+
+    /**
+     * 创建排班规则适用范围。
+     */
+    Long createScheduleRuleAssignment(Long ruleId, ScheduleRuleAssignmentDTO dto);
+
+    /**
+     * 查询排班规则适用范围。
+     */
+    List<ScheduleRuleAssignmentVO> listScheduleRuleAssignments(Long ruleId);
+
+    /**
+     * 删除排班规则适用范围。
+     */
+    void deleteScheduleRuleAssignment(Long assignmentId);
+
+    /**
+     * 删除某条排班规则的全部适用范围。
+     */
+    void deleteScheduleRuleAssignments(Long ruleId);
     
     // ==================== 排班计划管理 ====================
     

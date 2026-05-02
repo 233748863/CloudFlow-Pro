@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { getRoles } from '../../services/api/workflow';
 import { Search, X, Check, Shield } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
 
 // 角色信息类型（兼容 API 返回的 RoleInfo）
@@ -54,7 +55,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
       const data = await getRoles();
       setRoles(data);
     } catch (error) {
-      toast.error('加载角色列表失败');
+      toast.error(getErrorMessage(error, '加载角色列表失败'));
     } finally {
       setLoading(false);
     }

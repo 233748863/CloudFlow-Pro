@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Edit, Plus, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
   addConfig,
   deleteConfig,
@@ -289,7 +290,7 @@ export const ConfigList = () => {
       }
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('参数删除失败');
+      toast.error(getErrorMessage(deleteError, '参数删除失败'));
     }
   };
 

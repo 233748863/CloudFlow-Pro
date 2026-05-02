@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ArrowLeftRight, Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
   AuditLogQuery,
   deleteAuditLogs,
@@ -198,7 +199,7 @@ export const AuditLogPage: React.FC = () => {
       setDetailLog(log);
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载审计详情失败');
+      toast.error(getErrorMessage(fetchError, '加载审计详情失败'));
     }
   };
 
@@ -214,7 +215,7 @@ export const AuditLogPage: React.FC = () => {
       await loadData();
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('删除审计日志失败');
+      toast.error(getErrorMessage(deleteError, '删除审计日志失败'));
     }
   };
 

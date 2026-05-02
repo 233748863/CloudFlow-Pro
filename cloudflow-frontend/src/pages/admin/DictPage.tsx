@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Edit, Plus, RefreshCw, RotateCcw, Search, Tag, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -391,7 +392,7 @@ export const DictPage: React.FC = () => {
       await loadDictTypes(payload.dictType);
     } catch (error) {
       console.error('保存字典类型失败:', error);
-      toast.error('保存字典类型失败');
+      toast.error(getErrorMessage(error, '保存字典类型失败'));
     }
   };
 
@@ -440,7 +441,7 @@ export const DictPage: React.FC = () => {
       await loadDictData(currentType);
     } catch (error) {
       console.error('保存字典数据失败:', error);
-      toast.error('保存字典数据失败');
+      toast.error(getErrorMessage(error, '保存字典数据失败'));
     }
   };
 

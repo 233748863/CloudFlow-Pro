@@ -7,6 +7,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -182,7 +183,7 @@ export const HrEmployeePage: React.FC = () => {
       setPositionOptions(normalizeRows<PositionOption>(positionRes));
     } catch (error) {
       console.error(error);
-      toast.error('员工数据加载失败');
+      toast.error(getErrorMessage(error, '员工数据加载失败'));
     } finally {
       setLoading(false);
     }
@@ -277,7 +278,7 @@ export const HrEmployeePage: React.FC = () => {
       setDialogOpen(true);
     } catch (error) {
       console.error(error);
-      toast.error('员工详情获取失败');
+      toast.error(getErrorMessage(error, '员工详情获取失败'));
     }
   };
 

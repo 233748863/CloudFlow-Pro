@@ -5,6 +5,7 @@ import { getNoticeList, markNoticeRead, deleteNotice, getUnreadCount } from '@/s
 import type { Notice } from '@/services/api/notice';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 type TabType = 'all' | 'unread' | 'read';
 
@@ -67,7 +68,7 @@ export const MobileMessages: React.FC = () => {
         setSelectedMessage({ ...notice, isRead: true });
       }
     } catch (err: any) {
-      toast.error('标记已读失败');
+      toast.error(getErrorMessage(err, '标记已读失败'));
     }
   };
 
@@ -87,7 +88,7 @@ export const MobileMessages: React.FC = () => {
       }
       toast.success('删除成功');
     } catch (err: any) {
-      toast.error('删除失败');
+      toast.error(getErrorMessage(err, '删除失败'));
     } finally {
       setDeleting(null);
     }

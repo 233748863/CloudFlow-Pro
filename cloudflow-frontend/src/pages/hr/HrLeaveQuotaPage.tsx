@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { CalendarRange, Coins, RefreshCcw, Search, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -453,7 +454,7 @@ export const HrLeaveQuotaPage: React.FC = () => {
         });
       } catch (error) {
         console.error(error);
-        toast.error('假期额度基础数据加载失败');
+        toast.error(getErrorMessage(error, '假期额度基础数据加载失败'));
       } finally {
         setPageLoading(false);
       }

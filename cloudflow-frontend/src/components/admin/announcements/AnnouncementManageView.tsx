@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeft, Megaphone, RefreshCw, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { Announcement, AnnouncementScope, AnnouncementType } from '@/types';
 import {
   deleteAnnouncement,
@@ -115,7 +116,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
       setTotal(result.total || 0);
     } catch (error) {
       console.error('获取公告管理列表失败', error);
-      toast.error('获取公告列表失败');
+      toast.error(getErrorMessage(error, '获取公告列表失败'));
       setManageList([]);
       setTotal(0);
     } finally {
@@ -240,7 +241,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
       await fetchManageList();
     } catch (error) {
       console.error('更新置顶状态失败', error);
-      toast.error('操作失败');
+      toast.error(getErrorMessage(error, '操作失败'));
     }
   };
 
@@ -253,7 +254,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
       setIsReadStatusOpen(true);
     } catch (error) {
       console.error('获取阅读统计失败', error);
-      toast.error('获取阅读统计失败');
+      toast.error(getErrorMessage(error, '获取阅读统计失败'));
     } finally {
       setStatsLoading(false);
     }
@@ -585,7 +586,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
             closeConfirm();
           } catch (error) {
             console.error('执行公告管理操作失败', error);
-            toast.error('操作失败');
+            toast.error(getErrorMessage(error, '操作失败'));
           }
         }}
       />

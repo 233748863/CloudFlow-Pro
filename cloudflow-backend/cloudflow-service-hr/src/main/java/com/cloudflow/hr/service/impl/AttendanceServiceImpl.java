@@ -6,22 +6,28 @@ import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
+import com.cloudflow.hr.domain.bo.AttendanceRuleResolution;
 import com.cloudflow.hr.domain.dto.AttendanceCheckDTO;
 import com.cloudflow.hr.domain.dto.AttendanceRecordQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceSupplementDTO;
 import com.cloudflow.hr.domain.entity.AttendanceRecord;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.SchedulePlan;
+import com.cloudflow.hr.domain.entity.ScheduleRule;
 import com.cloudflow.hr.domain.entity.Shift;
 import com.cloudflow.hr.domain.vo.AttendanceDailyVO;
 import com.cloudflow.hr.domain.vo.AttendanceRecordVO;
+import com.cloudflow.hr.domain.vo.EffectiveAttendanceRuleVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.exception.HrSystemException;
 import com.cloudflow.hr.mapper.AttendanceRecordMapper;
 import com.cloudflow.hr.mapper.EmployeeMapper;
-import com.cloudflow.hr.mapper.SchedulePlanMapper;
+import com.cloudflow.hr.mapper.ScheduleRuleMapper;
 import com.cloudflow.hr.mapper.ShiftMapper;
+import com.cloudflow.hr.service.AttendanceRuleResolver;
 import com.cloudflow.hr.service.AttendanceService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -32,6 +38,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -51,27 +58,22 @@ public class AttendanceServiceImpl implements AttendanceService {
     private static final String CHECK_METHOD_SUPPLEMENT = "SUPPLEMENT";
     private static final String STATUS_NORMAL = "NORMAL";
     private static final String STATUS_LATE = "LATE";
+    private static final String STATUS_SEVERE_LATE = "SEVERE_LATE";
     private static final String STATUS_EARLY = "EARLY";
     private static final String STATUS_MISSING = "MISSING";
     private static final String STATUS_SUPPLEMENT = "SUPPLEMENT";
     private static final String STATUS_APPROVING = "APPROVING";
     private static final String STATUS_REJECTED = "REJECTED";
-    private static final String TARGET_EMPLOYEE = "EMPLOYEE";
-    private static final String TARGET_DEPT = "DEPT";
-    private static final String PLAN_STATUS_PUBLISHED = "PUBLISHED";
-
-    // GPS 打卡允许距离，单位米。
-    private static final double GPS_ALLOWED_DISTANCE = 500.0;
-    private static final double COMPANY_LATITUDE = 39.9042;
-    private static final double COMPANY_LONGITUDE = 116.4074;
-    private static final List<String> WIFI_WHITELIST = List.of("CompanyWiFi", "CompanyWiFi-5G", "CompanyGuest");
+    private static final String STATUS_ABSENT = "ABSENT";
 
     private final AttendanceRecordMapper attendanceRecordMapper;
     private final EmployeeMapper employeeMapper;
-    private final SchedulePlanMapper schedulePlanMapper;
     private final ShiftMapper shiftMapper;
+    private final ScheduleRuleMapper scheduleRuleMapper;
+    private final AttendanceRuleResolver attendanceRuleResolver;
     private final WorkflowServiceClient workflowServiceClient;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -95,16 +97,18 @@ public class AttendanceServiceImpl implements AttendanceService {
         validateAttendanceEligibleEmployee(employee, "补卡申请");
         validateSupplementConflict(employee.getId(), dto.getAttendanceDate(), dto.getCheckType(), null);
 
-        SchedulePlan schedulePlan = getSchedulePlan(employee, dto.getAttendanceDate());
+        AttendanceRuleResolution resolution = attendanceRuleResolver.resolve(employee, dto.getAttendanceDate());
 
         AttendanceRecord record = new AttendanceRecord();
         record.setTenantId(employee.getTenantId());
         record.setEmployeeId(employee.getId());
         record.setAttendanceDate(dto.getAttendanceDate());
-        // 无排班时也允许补卡，兼容临时加班、临时到岗等非计划性出勤。
-        record.setShiftId(schedulePlan != null ? schedulePlan.getShiftId() : null);
+        record.setRuleId(resolution.getRule().getId());
+        record.setShiftId(resolution.getShift() != null ? resolution.getShift().getId() : null);
         record.setCheckType(dto.getCheckType());
         record.setCheckTime(dto.getCheckTime());
+        record.setExpectedTime(resolveExpectedTime(dto.getAttendanceDate(), dto.getCheckType(), resolution.getShift()));
+        record.setDeviationMinutes(resolveDeviationMinutes(dto.getCheckType(), dto.getCheckTime(), record.getExpectedTime()));
         record.setCheckMethod(CHECK_METHOD_SUPPLEMENT);
         record.setStatus(STATUS_MISSING);
         record.setRemark(dto.getReason());
@@ -140,15 +144,17 @@ public class AttendanceServiceImpl implements AttendanceService {
         validateAttendanceEligibleEmployee(employee, "补卡申请编辑");
         validateSupplementConflict(employee.getId(), dto.getAttendanceDate(), dto.getCheckType(), id);
 
-        SchedulePlan schedulePlan = getSchedulePlan(employee, dto.getAttendanceDate());
+        AttendanceRuleResolution resolution = attendanceRuleResolver.resolve(employee, dto.getAttendanceDate());
 
         record.setTenantId(employee.getTenantId());
         record.setEmployeeId(employee.getId());
         record.setAttendanceDate(dto.getAttendanceDate());
-        // 编辑补卡时保持与新增一致：无排班也允许提交业务单据。
-        record.setShiftId(schedulePlan != null ? schedulePlan.getShiftId() : null);
+        record.setRuleId(resolution.getRule().getId());
+        record.setShiftId(resolution.getShift() != null ? resolution.getShift().getId() : null);
         record.setCheckType(dto.getCheckType());
         record.setCheckTime(dto.getCheckTime());
+        record.setExpectedTime(resolveExpectedTime(dto.getAttendanceDate(), dto.getCheckType(), resolution.getShift()));
+        record.setDeviationMinutes(resolveDeviationMinutes(dto.getCheckType(), dto.getCheckTime(), record.getExpectedTime()));
         record.setCheckMethod(CHECK_METHOD_SUPPLEMENT);
         record.setStatus(STATUS_MISSING);
         record.setProcessInstanceId(null);
@@ -244,19 +250,16 @@ public class AttendanceServiceImpl implements AttendanceService {
     public AttendanceDailyVO getDailyAttendance(Long employeeId, LocalDate date) {
         Employee employee = getEmployeeByIdWithinTenant(employeeId);
         List<AttendanceRecord> records = attendanceRecordMapper.selectByEmployeeAndDateAll(employee.getId(), date);
-        SchedulePlan schedulePlan = getSchedulePlan(employee, date);
+        AttendanceRuleResolution resolution = attendanceRuleResolver.resolve(employee, date);
 
         AttendanceDailyVO vo = new AttendanceDailyVO();
         vo.setEmployeeId(employee.getId());
         vo.setEmployeeName(employee.getName());
         vo.setAttendanceDate(date);
 
-        if (schedulePlan != null) {
-            vo.setShiftId(schedulePlan.getShiftId());
-            Shift shift = shiftMapper.selectById(schedulePlan.getShiftId());
-            if (shift != null) {
-                vo.setShiftName(shift.getShiftName());
-            }
+        if (resolution.getShift() != null) {
+            vo.setShiftId(resolution.getShift().getId());
+            vo.setShiftName(resolution.getShift().getShiftName());
         }
 
         AttendanceRecordVO checkInVO = null;
@@ -272,8 +275,15 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         vo.setCheckInRecord(checkInVO);
         vo.setCheckOutRecord(checkOutVO);
-        calculateAttendanceStatus(vo, checkInVO, checkOutVO, schedulePlan != null);
+        calculateAttendanceStatus(vo, checkInVO, checkOutVO, attendanceRuleResolver.isWorkday(resolution));
         return vo;
+    }
+
+    @Override
+    public EffectiveAttendanceRuleVO getEffectiveRule(Long employeeId, LocalDate date) {
+        Employee employee = employeeId == null ? resolveAttendanceEmployee(null) : getEmployeeByIdWithinTenant(employeeId);
+        AttendanceRuleResolution resolution = attendanceRuleResolver.resolve(employee, date == null ? LocalDate.now() : date);
+        return attendanceRuleResolver.toEffectiveRuleVO(resolution);
     }
 
     private void doCheckAttendance(AttendanceCheckDTO dto) {
@@ -290,26 +300,24 @@ public class AttendanceServiceImpl implements AttendanceService {
             throw new HrBusinessException("今天已经打过" + label + "，请勿重复打卡");
         }
 
-        SchedulePlan schedulePlan = getSchedulePlan(employee, today);
-        Shift shift = null;
-        if (schedulePlan != null) {
-            shift = shiftMapper.selectById(schedulePlan.getShiftId());
-            if (shift == null || !employee.getTenantId().equals(shift.getTenantId())) {
-                throw new HrBusinessException("班次信息不存在");
-            }
-        }
+        AttendanceRuleResolution resolution = attendanceRuleResolver.resolve(employee, today);
+        Shift shift = resolution.getShift();
 
-        validateCheckMethod(dto);
-        String status = determineAttendanceStatus(dto.getCheckType(), now.toLocalTime(), shift);
+        validateCheckMethod(dto, resolution);
+        LocalDateTime expectedTime = resolveExpectedTime(today, dto.getCheckType(), shift);
+        int deviationMinutes = resolveDeviationMinutes(dto.getCheckType(), now, expectedTime);
+        String status = determineAttendanceStatus(dto.getCheckType(), now.toLocalTime(), shift, resolution.getConfig(), attendanceRuleResolver.isWorkday(resolution));
 
         AttendanceRecord record = new AttendanceRecord();
         record.setTenantId(employee.getTenantId());
         record.setEmployeeId(employee.getId());
         record.setAttendanceDate(today);
-        // 无排班时也允许打卡，兼容临时加班、外勤返岗等高频场景。
+        record.setRuleId(resolution.getRule().getId());
         record.setShiftId(shift != null ? shift.getId() : null);
         record.setCheckType(dto.getCheckType());
         record.setCheckTime(now);
+        record.setExpectedTime(expectedTime);
+        record.setDeviationMinutes(deviationMinutes);
         record.setCheckMethod(dto.getCheckMethod());
         record.setLocation(dto.getLocation());
         record.setStatus(status);
@@ -317,13 +325,17 @@ public class AttendanceServiceImpl implements AttendanceService {
         attendanceRecordMapper.insert(record);
     }
 
-    private void validateCheckMethod(AttendanceCheckDTO dto) {
+    private void validateCheckMethod(AttendanceCheckDTO dto, AttendanceRuleResolution resolution) {
+        List<String> checkMethods = readStringList(resolution.getConfig(), "checkMethods", List.of("GPS", "WIFI", "FACE"));
+        if (!checkMethods.contains(dto.getCheckMethod())) {
+            throw new HrBusinessException("当前规则不允许该打卡方式: " + dto.getCheckMethod());
+        }
         switch (dto.getCheckMethod()) {
             case "GPS":
-                validateGpsLocation(dto.getLatitude(), dto.getLongitude());
+                validateGpsLocation(dto.getLatitude(), dto.getLongitude(), resolution.getConfig());
                 break;
             case "WIFI":
-                validateWifiSsid(dto.getWifiSsid());
+                validateWifiSsid(dto.getWifiSsid(), resolution.getConfig());
                 break;
             case "FACE":
                 validateFaceToken(dto.getFaceToken());
@@ -333,15 +345,34 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
     }
 
-    private void validateGpsLocation(Double latitude, Double longitude) {
+    private void validateGpsLocation(Double latitude, Double longitude, Map<String, Object> config) {
         if (latitude == null || longitude == null) {
             throw new HrBusinessException("GPS 定位信息不完整");
         }
 
-        double distance = calculateDistance(latitude, longitude, COMPANY_LATITUDE, COMPANY_LONGITUDE);
-        if (distance > GPS_ALLOWED_DISTANCE) {
+        List<Map<String, Object>> points = readMapList(config, "locationPoints");
+        if (points.isEmpty()) {
+            return;
+        }
+
+        int radius = readInt(config, "radius", 500);
+        double minDistance = Double.MAX_VALUE;
+        for (Map<String, Object> point : points) {
+            Double targetLatitude = readDouble(point, "latitude");
+            Double targetLongitude = readDouble(point, "longitude");
+            Integer pointRadius = readNullableInt(point, "radius");
+            if (targetLatitude == null || targetLongitude == null) {
+                continue;
+            }
+            double distance = calculateDistance(latitude, longitude, targetLatitude, targetLongitude);
+            minDistance = Math.min(minDistance, distance);
+            if (distance <= (pointRadius == null ? radius : pointRadius)) {
+                return;
+            }
+        }
+        if (minDistance != Double.MAX_VALUE) {
             throw new HrBusinessException(String.format("GPS 定位超出允许范围，当前距离 %.0f 米，允许范围 %.0f 米",
-                    distance, GPS_ALLOWED_DISTANCE));
+                    minDistance, (double) radius));
         }
     }
 
@@ -356,11 +387,12 @@ public class AttendanceServiceImpl implements AttendanceService {
         return earthRadius * c;
     }
 
-    private void validateWifiSsid(String wifiSsid) {
+    private void validateWifiSsid(String wifiSsid, Map<String, Object> config) {
         if (wifiSsid == null || wifiSsid.trim().isEmpty()) {
             throw new HrBusinessException("WiFi SSID 不能为空");
         }
-        if (!WIFI_WHITELIST.contains(wifiSsid)) {
+        List<String> whitelist = readWifiWhitelist(config);
+        if (!whitelist.isEmpty() && !whitelist.contains(wifiSsid)) {
             throw new HrBusinessException("WiFi SSID 不在白名单中: " + wifiSsid);
         }
     }
@@ -371,9 +403,12 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
     }
 
-    private String determineAttendanceStatus(String checkType, LocalTime checkTime, Shift shift) {
-        // 无排班时无法判断迟到或早退，默认按正常打卡处理。
-        if (shift == null) {
+    private String determineAttendanceStatus(String checkType,
+                                             LocalTime checkTime,
+                                             Shift shift,
+                                             Map<String, Object> config,
+                                             boolean workday) {
+        if (!workday || shift == null) {
             return STATUS_NORMAL;
         }
 
@@ -381,6 +416,14 @@ public class AttendanceServiceImpl implements AttendanceService {
             LocalTime startTime = shift.getStartTime();
             int lateThreshold = shift.getLateThreshold() == null ? 0 : shift.getLateThreshold();
             if (startTime != null && checkTime.isAfter(startTime.plusMinutes(lateThreshold))) {
+                int absentMinutes = readInt(config, "absentMinutes", 240);
+                if (checkTime.isAfter(startTime.plusMinutes(absentMinutes))) {
+                    return STATUS_ABSENT;
+                }
+                int severeLateMinutes = readInt(config, "severeLateMinutes", 60);
+                if (checkTime.isAfter(startTime.plusMinutes(severeLateMinutes))) {
+                    return STATUS_SEVERE_LATE;
+                }
                 return STATUS_LATE;
             }
         }
@@ -394,33 +437,6 @@ public class AttendanceServiceImpl implements AttendanceService {
         }
 
         return STATUS_NORMAL;
-    }
-
-    private SchedulePlan getSchedulePlan(Employee employee, LocalDate date) {
-        Long tenantId = employee.getTenantId();
-
-        LambdaQueryWrapper<SchedulePlan> employeeWrapper = new LambdaQueryWrapper<>();
-        employeeWrapper.eq(SchedulePlan::getTenantId, tenantId)
-                .eq(SchedulePlan::getTargetType, TARGET_EMPLOYEE)
-                .eq(SchedulePlan::getTargetId, employee.getId())
-                .eq(SchedulePlan::getScheduleDate, date)
-                .eq(SchedulePlan::getStatus, PLAN_STATUS_PUBLISHED);
-        SchedulePlan employeePlan = schedulePlanMapper.selectOne(employeeWrapper);
-        if (employeePlan != null) {
-            return employeePlan;
-        }
-
-        if (employee.getDeptId() == null) {
-            return null;
-        }
-
-        LambdaQueryWrapper<SchedulePlan> deptWrapper = new LambdaQueryWrapper<>();
-        deptWrapper.eq(SchedulePlan::getTenantId, tenantId)
-                .eq(SchedulePlan::getTargetType, TARGET_DEPT)
-                .eq(SchedulePlan::getTargetId, employee.getDeptId())
-                .eq(SchedulePlan::getScheduleDate, date)
-                .eq(SchedulePlan::getStatus, PLAN_STATUS_PUBLISHED);
-        return schedulePlanMapper.selectOne(deptWrapper);
     }
 
     private Employee resolveAttendanceEmployee(Long employeeId) {
@@ -539,6 +555,12 @@ public class AttendanceServiceImpl implements AttendanceService {
                 vo.setShiftName(shift.getShiftName());
             }
         }
+        if (record.getRuleId() != null) {
+            ScheduleRule rule = scheduleRuleMapper.selectById(record.getRuleId());
+            if (rule != null) {
+                vo.setRuleName(rule.getRuleName());
+            }
+        }
         return vo;
     }
 
@@ -548,12 +570,16 @@ public class AttendanceServiceImpl implements AttendanceService {
                                            boolean hasSchedule) {
         if (checkInVO == null && checkOutVO == null) {
             // 无排班且无打卡记录时，不应误判为旷工。
-            vo.setAttendanceStatus(hasSchedule ? "ABSENT" : STATUS_NORMAL);
+            vo.setAttendanceStatus(hasSchedule ? STATUS_ABSENT : STATUS_NORMAL);
             return;
         }
 
         if (checkInVO == null || checkOutVO == null) {
             vo.setAttendanceStatus(STATUS_MISSING);
+        } else if (STATUS_ABSENT.equals(checkInVO.getStatus())) {
+            vo.setAttendanceStatus(STATUS_ABSENT);
+        } else if (STATUS_SEVERE_LATE.equals(checkInVO.getStatus())) {
+            vo.setAttendanceStatus(STATUS_SEVERE_LATE);
         } else if (STATUS_LATE.equals(checkInVO.getStatus())) {
             vo.setAttendanceStatus(STATUS_LATE);
         } else if (STATUS_EARLY.equals(checkOutVO.getStatus())) {
@@ -567,5 +593,127 @@ public class AttendanceServiceImpl implements AttendanceService {
             Duration duration = Duration.between(checkInVO.getCheckTime(), checkOutVO.getCheckTime());
             vo.setWorkMinutes((int) Math.max(duration.toMinutes(), 0));
         }
+    }
+
+    private LocalDateTime resolveExpectedTime(LocalDate attendanceDate, String checkType, Shift shift) {
+        if (attendanceDate == null || shift == null) {
+            return null;
+        }
+        if (CHECK_TYPE_IN.equals(checkType) && shift.getStartTime() != null) {
+            return attendanceDate.atTime(shift.getStartTime());
+        }
+        if (CHECK_TYPE_OUT.equals(checkType) && shift.getEndTime() != null) {
+            LocalDate expectedDate = shift.getEndTime().isBefore(shift.getStartTime()) ? attendanceDate.plusDays(1) : attendanceDate;
+            return expectedDate.atTime(shift.getEndTime());
+        }
+        return null;
+    }
+
+    private int resolveDeviationMinutes(String checkType, LocalDateTime checkTime, LocalDateTime expectedTime) {
+        if (checkTime == null || expectedTime == null) {
+            return 0;
+        }
+        return (int) Duration.between(expectedTime, checkTime).toMinutes();
+    }
+
+    private int readInt(Map<String, Object> config, String key, int fallback) {
+        Object value = config == null ? null : config.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.toString());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return fallback;
+    }
+
+    private Integer readNullableInt(Map<String, Object> config, String key) {
+        Object value = config == null ? null : config.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.toString());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private Double readDouble(Map<String, Object> config, String key) {
+        Object value = config == null ? null : config.get(key);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value != null) {
+            try {
+                return Double.parseDouble(value.toString());
+            } catch (NumberFormatException ignored) {
+            }
+        }
+        return null;
+    }
+
+    private List<String> readStringList(Map<String, Object> config, String key, List<String> fallback) {
+        Object value = config == null ? null : config.get(key);
+        if (value instanceof List<?> list) {
+            return list.stream().map(String::valueOf).collect(Collectors.toList());
+        }
+        if (value instanceof String text && !text.isBlank()) {
+            return List.of(text.split(","));
+        }
+        return fallback;
+    }
+
+    private List<Map<String, Object>> readMapList(Map<String, Object> config, String key) {
+        Object value = config == null ? null : config.get(key);
+        if (value instanceof List<?> list) {
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    Map<String, Object> typed = new HashMap<>();
+                    map.forEach((mapKey, mapValue) -> typed.put(String.valueOf(mapKey), mapValue));
+                    result.add(typed);
+                }
+            }
+            return result;
+        }
+        return List.of();
+    }
+
+    private List<String> readWifiWhitelist(Map<String, Object> config) {
+        Object value = config == null ? null : config.get("wifiConfigs");
+        if (value instanceof List<?> list) {
+            List<String> result = new ArrayList<>();
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> map) {
+                    Object ssid = map.get("ssid");
+                    if (ssid != null) {
+                        result.add(String.valueOf(ssid));
+                    }
+                } else if (item != null) {
+                    result.add(String.valueOf(item));
+                }
+            }
+            return result;
+        }
+        if (value instanceof String text && !text.isBlank()) {
+            try {
+                List<Map<String, Object>> parsed = objectMapper.readValue(text, new TypeReference<List<Map<String, Object>>>() {
+                });
+                return parsed.stream()
+                        .map(item -> item.get("ssid"))
+                        .filter(item -> item != null)
+                        .map(String::valueOf)
+                        .collect(Collectors.toList());
+            } catch (Exception ignored) {
+                return List.of(text.split(","));
+            }
+        }
+        return List.of();
     }
 }

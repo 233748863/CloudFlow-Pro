@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bell, Check, ChevronRight, Inbox, Info, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { AnnouncementDetailModal } from '@/components/common/AnnouncementDetailModal';
 import { useAnnouncementStore, useAnnouncementUnreadCount } from '@/stores/announcementStore';
 import type { Announcement } from '@/types';
@@ -79,8 +80,8 @@ export const AnnouncementBell: React.FC = () => {
       await markAllAsRead();
       toast.success('所有公告已标记为已读');
       setSelectedAnnouncement((previous) => (previous ? { ...previous, isRead: true } : previous));
-    } catch {
-      toast.error('标记公告已读失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '标记公告已读失败'));
     }
   }
 

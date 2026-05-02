@@ -8,6 +8,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -195,7 +196,7 @@ export const HrProbationPage: React.FC = () => {
       setEmployees(normalizeRows<HrEmployee>(employeeRes));
     } catch (error) {
       console.error(error);
-      toast.error('员工列表加载失败');
+      toast.error(getErrorMessage(error, '员工列表加载失败'));
     } finally {
       setLoading(false);
     }
@@ -210,7 +211,7 @@ export const HrProbationPage: React.FC = () => {
       setRejectExtensionDays(detailRes.extensionDays ? String(detailRes.extensionDays) : '');
     } catch (error) {
       console.error(error);
-      toast.error('转正申请详情加载失败');
+      toast.error(getErrorMessage(error, '转正申请详情加载失败'));
     } finally {
       setDetailLoading(false);
     }
@@ -242,7 +243,7 @@ export const HrProbationPage: React.FC = () => {
       console.error(error);
       setApplications([]);
       setDetail(null);
-      toast.error('转正申请列表加载失败');
+      toast.error(getErrorMessage(error, '转正申请列表加载失败'));
     } finally {
       setListLoading(false);
     }

@@ -43,6 +43,16 @@ public class AttendanceRecordVO {
      * 考勤日期
      */
     private LocalDate attendanceDate;
+
+    /**
+     * 生效规则ID
+     */
+    private Long ruleId;
+
+    /**
+     * 生效规则名称
+     */
+    private String ruleName;
     
     /**
      * 班次ID
@@ -63,6 +73,16 @@ public class AttendanceRecordVO {
      * 打卡时间
      */
     private LocalDateTime checkTime;
+
+    /**
+     * 规则期望打卡时间
+     */
+    private LocalDateTime expectedTime;
+
+    /**
+     * 偏差分钟数
+     */
+    private Integer deviationMinutes;
     
     /**
      * 打卡方式：GPS-定位打卡 WIFI-WiFi打卡 FACE-人脸识别
@@ -75,7 +95,7 @@ public class AttendanceRecordVO {
     private String location;
     
     /**
-     * 状态：NORMAL-正常 LATE-迟到 EARLY-早退 MISSING-缺卡 SUPPLEMENT-补卡
+     * 状态：NORMAL-正常 LATE-迟到 SEVERE_LATE-严重迟到 EARLY-早退 ABSENT-旷工 MISSING-缺卡 SUPPLEMENT-补卡
      */
     private String status;
     

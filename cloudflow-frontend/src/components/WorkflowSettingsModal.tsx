@@ -7,6 +7,7 @@ import { getDeptTree } from '../services/api/auth';
 import { FormDefinition } from '../types';
 import { SysRole, SysUser, SysDept } from '../services/api/auth';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { WORKFLOW_CATEGORY_OPTIONS, normalizeWorkflowCategory } from '../utils/workflowCategory';
 
 const SELECT_NONE_VALUE = '__NONE__';
@@ -130,7 +131,7 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
       } catch (error) {
         console.error('加载部门列表失败:', error);
         if (!cancelled) {
-          toast.error('加载部门列表失败');
+          toast.error(getErrorMessage(error, '加载部门列表失败'));
         }
       } finally {
         if (!cancelled) {

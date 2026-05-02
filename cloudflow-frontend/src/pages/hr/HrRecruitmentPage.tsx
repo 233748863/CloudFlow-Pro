@@ -8,6 +8,7 @@ import {
   UserRoundSearch,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import {
   Button,
@@ -234,7 +235,7 @@ export const HrRecruitmentPage: React.FC = () => {
       setPositionOptions(Array.isArray(positionRes) ? positionRes : []);
     } catch (error) {
       console.error(error);
-      toast.error('招聘数据加载失败');
+      toast.error(getErrorMessage(error, '招聘数据加载失败'));
     } finally {
       setLoading(false);
     }

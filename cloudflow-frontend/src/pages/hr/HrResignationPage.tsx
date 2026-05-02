@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { FilePlus2, LogOut, RefreshCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -215,7 +216,7 @@ export const HrResignationPage: React.FC = () => {
       setEmployees(normalizeRows<HrEmployee>(employeeRes));
     } catch (error) {
       console.error(error);
-      toast.error('员工列表加载失败');
+      toast.error(getErrorMessage(error, '员工列表加载失败'));
     } finally {
       setLoading(false);
     }
@@ -236,7 +237,7 @@ export const HrResignationPage: React.FC = () => {
       );
     } catch (error) {
       console.error(error);
-      toast.error('离职详情加载失败');
+      toast.error(getErrorMessage(error, '离职详情加载失败'));
     } finally {
       setDetailLoading(false);
     }
@@ -268,7 +269,7 @@ export const HrResignationPage: React.FC = () => {
       setApplications([]);
       setDetail(null);
       setHandovers([]);
-      toast.error('离职申请列表加载失败');
+      toast.error(getErrorMessage(error, '离职申请列表加载失败'));
     } finally {
       setListLoading(false);
     }

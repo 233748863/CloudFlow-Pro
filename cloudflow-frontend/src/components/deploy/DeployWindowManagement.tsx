@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Clock3, Edit2, Plus, Power, PowerOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { DeployActionButton } from '@/components/deploy/DeployActionButton';
 import { Button, Input, Textarea } from '@/components/common';
@@ -144,7 +145,7 @@ export const DeployWindowManagement: React.FC = () => {
       const data = await listDeployWindows();
       setWindows(Array.isArray(data) ? data : []);
     } catch (error) {
-      toast.error('加载发布窗口失败');
+      toast.error(getErrorMessage(error, '加载发布窗口失败'));
       console.error(error);
     } finally {
       setLoading(false);
@@ -237,7 +238,7 @@ export const DeployWindowManagement: React.FC = () => {
       resetDialog();
       await loadWindows();
     } catch (error) {
-      toast.error('保存发布窗口失败');
+      toast.error(getErrorMessage(error, '保存发布窗口失败'));
       console.error(error);
     }
   };
@@ -253,7 +254,7 @@ export const DeployWindowManagement: React.FC = () => {
       setDeleteTarget(null);
       await loadWindows();
     } catch (error) {
-      toast.error('删除发布窗口失败');
+      toast.error(getErrorMessage(error, '删除发布窗口失败'));
       console.error(error);
     }
   };
@@ -268,7 +269,7 @@ export const DeployWindowManagement: React.FC = () => {
       toast.success(enabled ? '窗口已禁用' : '窗口已启用');
       await loadWindows();
     } catch (error) {
-      toast.error('切换窗口状态失败');
+      toast.error(getErrorMessage(error, '切换窗口状态失败'));
       console.error(error);
     }
   };

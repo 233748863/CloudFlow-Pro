@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Layers3, RefreshCcw, Search, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, type BaseDialogWidth } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import {
@@ -6731,7 +6732,7 @@ export const HrSalaryPage: React.FC = () => {
       setCurrentTaxConfig(taxConfigRes);
     } catch (error) {
       console.error(error);
-      toast.error('薪酬基础数据加载失败');
+      toast.error(getErrorMessage(error, '薪酬基础数据加载失败'));
     } finally {
       setFoundationLoading(false);
     }
@@ -6767,7 +6768,7 @@ export const HrSalaryPage: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error('员工薪资列表加载失败');
+      toast.error(getErrorMessage(error, '员工薪资列表加载失败'));
     } finally {
       setEmployeeSalaryListLoading(false);
     }
@@ -6812,7 +6813,7 @@ export const HrSalaryPage: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error('调薪申请列表加载失败');
+      toast.error(getErrorMessage(error, '调薪申请列表加载失败'));
     } finally {
       setAdjustmentListLoading(false);
     }
@@ -6833,7 +6834,7 @@ export const HrSalaryPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setStructureDetail(null);
-      toast.error('薪资结构详情加载失败');
+      toast.error(getErrorMessage(error, '薪资结构详情加载失败'));
     } finally {
       setStructureDetailLoading(false);
     }
@@ -6846,7 +6847,7 @@ export const HrSalaryPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setEmployeeSalaryDetail(null);
-      toast.error('员工薪资详情加载失败');
+      toast.error(getErrorMessage(error, '员工薪资详情加载失败'));
     } finally {
       setEmployeeSalaryDetailLoading(false);
     }
@@ -6860,7 +6861,7 @@ export const HrSalaryPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setEmployeeSalaryHistory([]);
-      toast.error('员工薪资档案历史加载失败');
+      toast.error(getErrorMessage(error, '员工薪资档案历史加载失败'));
     } finally {
       setEmployeeSalaryHistoryLoading(false);
     }
@@ -6874,7 +6875,7 @@ export const HrSalaryPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setEmployeeAdjustmentHistory([]);
-      toast.error('调薪履历加载失败');
+      toast.error(getErrorMessage(error, '调薪履历加载失败'));
     } finally {
       setEmployeeAdjustmentHistoryLoading(false);
     }
@@ -7005,7 +7006,7 @@ export const HrSalaryPage: React.FC = () => {
       console.error(error);
       setEmployeeInsuranceLedgerPage(null);
       setEmployeeInsuranceLedgerCatalog([]);
-      toast.error('员工社保台账加载失败');
+      toast.error(getErrorMessage(error, '员工社保台账加载失败'));
     } finally {
       setEmployeeInsuranceListLoading(false);
     }
@@ -7019,7 +7020,7 @@ export const HrSalaryPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setEmployeeAllTaxDeductions([]);
-      toast.error('专项扣除记录加载失败');
+      toast.error(getErrorMessage(error, '专项扣除记录加载失败'));
     } finally {
       setTaxDeductionListLoading(false);
     }
@@ -7066,7 +7067,7 @@ export const HrSalaryPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setAdjustmentDetail(null);
-      toast.error('调薪申请详情加载失败');
+      toast.error(getErrorMessage(error, '调薪申请详情加载失败'));
     } finally {
       setAdjustmentDetailLoading(false);
     }
@@ -7238,7 +7239,7 @@ export const HrSalaryPage: React.FC = () => {
       } catch (error) {
         console.error(error);
         setAssignStructurePreview(null);
-        toast.error('分配表单加载薪资结构失败');
+        toast.error(getErrorMessage(error, '分配表单加载薪资结构失败'));
       }
     };
 
@@ -7280,7 +7281,7 @@ export const HrSalaryPage: React.FC = () => {
         console.error(error);
         setAdjustmentBaseline(null);
         setAdjustmentFormHistory([]);
-        toast.error('调薪表单加载员工现薪失败');
+        toast.error(getErrorMessage(error, '调薪表单加载员工现薪失败'));
       }
     };
 
@@ -7341,7 +7342,7 @@ export const HrSalaryPage: React.FC = () => {
       setStructureDialogOpen(true);
     } catch (error) {
       console.error(error);
-      toast.error('薪资结构编辑数据加载失败');
+      toast.error(getErrorMessage(error, '薪资结构编辑数据加载失败'));
     } finally {
       setActionLoading(false);
     }

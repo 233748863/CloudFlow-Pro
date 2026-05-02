@@ -4,6 +4,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.domain.dto.*;
 import com.cloudflow.hr.domain.vo.ScheduleCalendarVO;
 import com.cloudflow.hr.domain.vo.SchedulePlanVO;
+import com.cloudflow.hr.domain.vo.ScheduleRuleAssignmentVO;
 import com.cloudflow.hr.domain.vo.ScheduleRuleVO;
 import com.cloudflow.hr.domain.vo.ShiftVO;
 import com.cloudflow.hr.service.ScheduleService;
@@ -151,6 +152,12 @@ public class ScheduleController {
         List<ScheduleRuleVO> list = scheduleService.listScheduleRules();
         return R.ok(list);
     }
+
+    @GetMapping("/rule")
+    public R<List<ScheduleRuleVO>> listScheduleRulesAlias() {
+        log.info("接收获取排班规则列表请求");
+        return R.ok(scheduleService.listScheduleRules());
+    }
     
     /**
      * 删除排班规则
@@ -162,6 +169,33 @@ public class ScheduleController {
     public R<Void> deleteScheduleRule(@PathVariable Long id) {
         log.info("接收删除排班规则请求，ID: {}", id);
         scheduleService.deleteScheduleRule(id);
+        return R.ok();
+    }
+
+    @PostMapping("/rule/{id}/assignments")
+    public R<Long> createScheduleRuleAssignment(@PathVariable Long id,
+                                                @Validated @RequestBody ScheduleRuleAssignmentDTO dto) {
+        log.info("接收创建排班规则适用范围请求，ruleId: {}, targetType: {}, targetId: {}", id, dto.getTargetType(), dto.getTargetId());
+        return R.ok(scheduleService.createScheduleRuleAssignment(id, dto));
+    }
+
+    @GetMapping("/rule/{id}/assignments")
+    public R<List<ScheduleRuleAssignmentVO>> listScheduleRuleAssignments(@PathVariable Long id) {
+        log.info("接收查询排班规则适用范围请求，ruleId: {}", id);
+        return R.ok(scheduleService.listScheduleRuleAssignments(id));
+    }
+
+    @DeleteMapping("/rule/assignments/{assignmentId}")
+    public R<Void> deleteScheduleRuleAssignment(@PathVariable Long assignmentId) {
+        log.info("接收删除排班规则适用范围请求，assignmentId: {}", assignmentId);
+        scheduleService.deleteScheduleRuleAssignment(assignmentId);
+        return R.ok();
+    }
+
+    @DeleteMapping("/rule/{id}/assignments")
+    public R<Void> deleteScheduleRuleAssignments(@PathVariable Long id) {
+        log.info("接收删除排班规则全部适用范围请求，ruleId: {}", id);
+        scheduleService.deleteScheduleRuleAssignments(id);
         return R.ok();
     }
     

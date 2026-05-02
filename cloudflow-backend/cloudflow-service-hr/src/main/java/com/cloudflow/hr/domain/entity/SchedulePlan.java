@@ -33,6 +33,7 @@ public class SchedulePlan {
     /**
      * 目标类型
      * EMPLOYEE - 员工：为单个员工排班
+     * POST - 岗位：为岗位排班
      * DEPT - 部门：为整个部门排班
      */
     private String targetType;

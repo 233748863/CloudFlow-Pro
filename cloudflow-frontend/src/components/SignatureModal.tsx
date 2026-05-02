@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common';
 import { Button, Input, Textarea } from '@/components/common';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
 import { getUserList } from '../services/api/auth';
 import { addSignature, reductionSignature } from '../services/api/workflow';
@@ -43,7 +44,7 @@ export const SignatureModal: React.FC<SignatureModalProps> = ({
         })
         .catch((error) => {
           console.error('加载用户列表失败:', error);
-          toast.error('加载用户列表失败');
+          toast.error(getErrorMessage(error, '加载用户列表失败'));
         });
     }
   }, [isOpen, users.length]);
