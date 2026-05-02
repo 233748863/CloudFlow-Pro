@@ -7,6 +7,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
   deleteSysLogs,
   getSysLogDetail,
@@ -302,7 +303,7 @@ export const OperationLogPage: React.FC = () => {
     } catch (fetchError) {
       console.error(fetchError);
       setTrendData([]);
-      toast.error('加载趋势数据失败');
+      toast.error(getErrorMessage(fetchError, '加载趋势数据失败'));
     } finally {
       setTrendLoading(false);
     }
@@ -360,7 +361,7 @@ export const OperationLogPage: React.FC = () => {
       setDetailLog(log);
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载日志详情失败');
+      toast.error(getErrorMessage(fetchError, '加载日志详情失败'));
     }
   };
 
@@ -376,7 +377,7 @@ export const OperationLogPage: React.FC = () => {
       await Promise.all([loadData(), loadTrend()]);
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('删除日志失败');
+      toast.error(getErrorMessage(deleteError, '删除日志失败'));
     }
   };
 

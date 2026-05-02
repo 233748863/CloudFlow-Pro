@@ -8,6 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
   Button,
   DatePicker,
@@ -593,8 +594,8 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
       await updateWorkTaskStatus(taskId, newStatus);
       toast.success('协作任务状态已更新');
       void fetchTasks(false);
-    } catch {
-      toast.error('更新任务状态失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '更新任务状态失败'));
     }
   };
 

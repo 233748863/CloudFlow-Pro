@@ -21,7 +21,11 @@ export interface ApiErrorResponse {
   /** 错误代码 */
   code: string;
   /** 错误消息 */
-  message: string;
+  message?: string;
+  /** 兼容 R 响应错误消息 */
+  msg?: string;
+  /** 兼容旧格式错误消息 */
+  error?: string;
   /** 字段级别的错误列表 */
   errors?: FieldError[];
   /** 附加数据 */
@@ -93,7 +97,7 @@ export function handleApiError(
   // 获取错误响应数据
   const errorData = error.response?.data;
   const errorCode = errorData?.code;
-  const errorMessage = customMessage || errorData?.message || error.message || '操作失败';
+  const errorMessage = customMessage || errorData?.message || errorData?.msg || errorData?.error || error.message || '操作失败';
 
   // 根据错误代码进行特殊处理
   switch (errorCode) {
@@ -153,7 +157,7 @@ function handleConflictError(
   errorData: ApiErrorResponse | undefined,
   onConflict?: ConflictResolver
 ): void {
-  const message = errorData?.message || '资源已存在';
+  const message = errorData?.message || errorData?.msg || errorData?.error || '资源已存在';
   const suggestions = errorData?.data?.suggestions as string[] | undefined;
 
   if (onConflict) {
@@ -179,7 +183,7 @@ function handleRunningInstancesWarning(
   errorData: ApiErrorResponse | undefined,
   onConfirm?: ConfirmCallback
 ): void {
-  const message = errorData?.message || '该流程有正在运行的实例';
+  const message = errorData?.message || errorData?.msg || errorData?.error || '该流程有正在运行的实例';
   const affectedWorkflows = errorData?.data?.affectedWorkflows as string[] | undefined;
 
   if (onConfirm) {
@@ -204,7 +208,7 @@ function handleRunningInstancesWarning(
  * 显示字段级别的错误信息
  */
 function handleValidationError(errorData: ApiErrorResponse | undefined): void {
-  const message = errorData?.message || '请求参数验证失败';
+  const message = errorData?.message || errorData?.msg || errorData?.error || '请求参数验证失败';
   const fieldErrors = errorData?.errors;
 
   if (fieldErrors && fieldErrors.length > 0) {
@@ -229,7 +233,7 @@ function handleValidationError(errorData: ApiErrorResponse | undefined): void {
  * 处理模板正在使用中的错误
  */
 function handleTemplateInUseError(errorData: ApiErrorResponse | undefined): void {
-  const message = errorData?.message || '该模板正在被使用，无法删除';
+  const message = errorData?.message || errorData?.msg || errorData?.error || '该模板正在被使用，无法删除';
   const usageCount = errorData?.data?.usageCount as number | undefined;
 
   toast.error(message, {
@@ -242,7 +246,7 @@ function handleTemplateInUseError(errorData: ApiErrorResponse | undefined): void
  * 处理不支持的节点类型错误
  */
 function handleUnsupportedNodeTypesError(errorData: ApiErrorResponse | undefined): void {
-  const message = errorData?.message || '流程包含不支持的节点类型';
+  const message = errorData?.message || errorData?.msg || errorData?.error || '流程包含不支持的节点类型';
   const unsupportedTypes = errorData?.data?.unsupportedTypes as string[] | undefined;
 
   toast.error(message, {

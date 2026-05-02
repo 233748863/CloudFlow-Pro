@@ -8,9 +8,12 @@
         <result column="tenant_id" property="tenantId"/>
         <result column="employee_id" property="employeeId"/>
         <result column="attendance_date" property="attendanceDate"/>
+        <result column="rule_id" property="ruleId"/>
         <result column="shift_id" property="shiftId"/>
         <result column="check_type" property="checkType"/>
         <result column="check_time" property="checkTime"/>
+        <result column="expected_time" property="expectedTime"/>
+        <result column="deviation_minutes" property="deviationMinutes"/>
         <result column="check_method" property="checkMethod"/>
         <result column="location" property="location"/>
         <result column="status" property="status"/>
@@ -25,8 +28,8 @@
 
     <!-- 通用查询结果列 -->
     <sql id="Base_Column_List">
-        id, tenant_id, employee_id, attendance_date, shift_id, check_type, check_time,
-        check_method, location, status, process_instance_id, remark,
+        id, tenant_id, employee_id, attendance_date, rule_id, shift_id, check_type, check_time,
+        expected_time, deviation_minutes, check_method, location, status, process_instance_id, remark,
         create_time, update_time, create_by, update_by, deleted
     </sql>
 

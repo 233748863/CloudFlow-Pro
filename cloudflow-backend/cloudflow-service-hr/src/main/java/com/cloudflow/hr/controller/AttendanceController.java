@@ -6,6 +6,7 @@ import com.cloudflow.hr.domain.dto.AttendanceRecordQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceSupplementDTO;
 import com.cloudflow.hr.domain.vo.AttendanceDailyVO;
 import com.cloudflow.hr.domain.vo.AttendanceRecordVO;
+import com.cloudflow.hr.domain.vo.EffectiveAttendanceRuleVO;
 import com.cloudflow.hr.service.AttendanceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -109,5 +110,12 @@ public class AttendanceController {
             @RequestParam @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
         log.info("查询日考勤，employeeId: {}, date: {}", employeeId, date);
         return R.ok(attendanceService.getDailyAttendance(employeeId, date));
+    }
+
+    @GetMapping("/rule/effective")
+    public R<EffectiveAttendanceRuleVO> getEffectiveRule(
+            @RequestParam(required = false) Long employeeId,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date) {
+        return R.ok(attendanceService.getEffectiveRule(employeeId, date));
     }
 }

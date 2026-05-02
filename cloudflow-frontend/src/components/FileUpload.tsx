@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { Upload, X, FileText, Image as ImageIcon, Loader2, Paperclip } from 'lucide-react';
 import { uploadFile } from '../services/api/file';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { useConfigInt, useConfigValue } from '../hooks/useSystemConfig';
 import { SYS_UPLOAD_MAX_FILE_SIZE, SYS_UPLOAD_ALLOWED_TYPES } from '../constants/sysConfig';
 
@@ -98,8 +99,8 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         onChange(allUrls.join(','));
         toast.success(`成功上传 ${newUrls.length} 个文件`);
       }
-    } catch {
-      toast.error('文件上传失败');
+    } catch (error) {
+      toast.error(getErrorMessage(error, '文件上传失败'));
     } finally {
       setUploading(false);
       // 清空input，允许重复选择同一文件

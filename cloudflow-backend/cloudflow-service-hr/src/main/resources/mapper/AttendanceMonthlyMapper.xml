@@ -17,14 +17,16 @@
             ar.remark AS remark,
             CASE ar.status
                 WHEN 'LATE' THEN '迟到'
+                WHEN 'SEVERE_LATE' THEN '严重迟到'
                 WHEN 'EARLY' THEN '早退'
+                WHEN 'ABSENT' THEN '旷工'
                 WHEN 'MISSING' THEN '缺卡'
                 ELSE ar.status
             END AS anomalyTypeName
         FROM hr_attendance_record ar
         INNER JOIN hr_employee e ON ar.employee_id = e.id
         WHERE ar.tenant_id = #{tenantId}
-          AND ar.status IN ('LATE', 'EARLY')
+          AND ar.status IN ('LATE', 'SEVERE_LATE', 'EARLY', 'ABSENT')
           AND ar.deleted = 0
           AND e.deleted = 0
           <if test="employeeId != null">

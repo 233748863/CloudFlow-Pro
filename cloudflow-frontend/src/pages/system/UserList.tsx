@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -241,7 +242,7 @@ export const UserList = () => {
       setRoles(normalized.rows);
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载角色失败');
+      toast.error(getErrorMessage(fetchError, '加载角色失败'));
     }
   };
 
@@ -251,7 +252,7 @@ export const UserList = () => {
       setDeptTree(Array.isArray(response) ? response : []);
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载部门失败');
+      toast.error(getErrorMessage(fetchError, '加载部门失败'));
     }
   };
 
@@ -262,7 +263,7 @@ export const UserList = () => {
       setTenants(normalized.rows);
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载租户失败');
+      toast.error(getErrorMessage(fetchError, '加载租户失败'));
     }
   };
 
@@ -450,7 +451,7 @@ export const UserList = () => {
       await fetchUsers();
     } catch (submitError) {
       console.error(submitError);
-      toast.error('保存用户失败');
+      toast.error(getErrorMessage(submitError, '保存用户失败'));
     }
   };
 
@@ -466,7 +467,7 @@ export const UserList = () => {
       await fetchUsers();
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('删除用户失败');
+      toast.error(getErrorMessage(deleteError, '删除用户失败'));
     }
   };
 
@@ -508,7 +509,7 @@ export const UserList = () => {
       setResetPasswordForm({ password: '', confirmPassword: '' });
     } catch (resetError) {
       console.error(resetError);
-      toast.error('重置密码失败');
+      toast.error(getErrorMessage(resetError, '重置密码失败'));
     } finally {
       setResettingPassword(false);
     }

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowRightLeft, FilePlus2, RefreshCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -250,7 +251,7 @@ export const HrTransferPage: React.FC = () => {
       }));
     } catch (error) {
       console.error(error);
-      toast.error('调岗基础数据加载失败');
+      toast.error(getErrorMessage(error, '调岗基础数据加载失败'));
     } finally {
       setLoading(false);
     }
@@ -263,7 +264,7 @@ export const HrTransferPage: React.FC = () => {
       setDetail(detailRes);
     } catch (error) {
       console.error(error);
-      toast.error('调岗申请详情加载失败');
+      toast.error(getErrorMessage(error, '调岗申请详情加载失败'));
     } finally {
       setDetailLoading(false);
     }
@@ -293,7 +294,7 @@ export const HrTransferPage: React.FC = () => {
       console.error(error);
       setApplications([]);
       setDetail(null);
-      toast.error('调岗申请列表加载失败');
+      toast.error(getErrorMessage(error, '调岗申请列表加载失败'));
     } finally {
       setListLoading(false);
     }

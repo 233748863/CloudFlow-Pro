@@ -7,6 +7,7 @@ import {
   UserRoundPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -240,7 +241,7 @@ export const HrOnboardingPage: React.FC = () => {
       }));
     } catch (error) {
       console.error(error);
-      toast.error('入职基础数据加载失败');
+      toast.error(getErrorMessage(error, '入职基础数据加载失败'));
     } finally {
       setLoading(false);
     }
@@ -278,7 +279,7 @@ export const HrOnboardingPage: React.FC = () => {
       console.error(error);
       setCurrentApplication(null);
       setTasks([]);
-      toast.error('入职申请加载失败');
+      toast.error(getErrorMessage(error, '入职申请加载失败'));
     } finally {
       setDetailLoading(false);
     }
@@ -318,7 +319,7 @@ export const HrOnboardingPage: React.FC = () => {
       await loadApplicationDetail(nextId);
     } catch (error) {
       console.error(error);
-      toast.error('入职申请列表加载失败');
+      toast.error(getErrorMessage(error, '入职申请列表加载失败'));
     } finally {
       setListLoading(false);
     }

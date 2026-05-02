@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { LogOut, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -211,7 +212,7 @@ export const OnlineUserPage: React.FC = () => {
       await loadData();
     } catch (logoutError) {
       console.error(logoutError);
-      toast.error('强制下线失败');
+      toast.error(getErrorMessage(logoutError, '强制下线失败'));
     }
   };
 

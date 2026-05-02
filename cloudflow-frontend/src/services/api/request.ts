@@ -16,6 +16,17 @@ export interface ApiResponse<T = any> {
   data: T;
 }
 
+function getResponseErrorMessage(data: unknown, fallback = '网络请求失败') {
+  if (data && typeof data === 'object') {
+    const record = data as Record<string, unknown>;
+    const message = record.message ?? record.msg ?? record.error;
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim();
+    }
+  }
+  return fallback;
+}
+
 // 扩展 AxiosRequestConfig 以支持静默模式
 // 扩展 AxiosInstance 方法签名，因为响应拦截器已解包 res.data，实际返回业务数据而非 AxiosResponse
 declare module 'axios' {
@@ -236,12 +247,15 @@ request.interceptors.response.use(
        if (responseData && typeof responseData === 'object' && 'code' in responseData) {
          // 标准化错误响应，使用增强的错误处理器
          handleApiError(error as AxiosError<ApiErrorResponse>, { silent: isSilent });
+         const msg = getResponseErrorMessage(responseData, error.message || '网络请求失败');
+         return Promise.reject(new Error(msg));
        } else {
          // 旧格式的错误响应，使用原有的处理方式
+         const msg = getResponseErrorMessage(responseData, error.message || '网络请求失败');
          if (!isSilent) {
-           const msg = (responseData as any)?.msg || error.message || '网络请求失败';
            toast.error(msg);
          }
+         return Promise.reject(new Error(msg));
        }
     } else {
        // 其他错误

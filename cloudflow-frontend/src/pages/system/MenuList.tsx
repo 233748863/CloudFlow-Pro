@@ -12,6 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -331,7 +332,7 @@ export const MenuList = () => {
       await fetchMenus();
     } catch (submitError) {
       console.error(submitError);
-      toast.error('保存菜单失败');
+      toast.error(getErrorMessage(submitError, '保存菜单失败'));
     }
   };
 

@@ -11,6 +11,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -312,7 +313,7 @@ export const RoleList = () => {
       );
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载菜单失败');
+      toast.error(getErrorMessage(fetchError, '加载菜单失败'));
     }
   };
 
@@ -333,7 +334,7 @@ export const RoleList = () => {
       );
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载部门失败');
+      toast.error(getErrorMessage(fetchError, '加载部门失败'));
     }
   };
 
@@ -344,7 +345,7 @@ export const RoleList = () => {
       setTenants(normalized.rows);
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载租户失败');
+      toast.error(getErrorMessage(fetchError, '加载租户失败'));
     }
   };
 
@@ -519,7 +520,7 @@ export const RoleList = () => {
       await fetchRoles();
     } catch (submitError) {
       console.error(submitError);
-      toast.error('保存角色失败');
+      toast.error(getErrorMessage(submitError, '保存角色失败'));
     }
   };
 
@@ -551,7 +552,7 @@ export const RoleList = () => {
       }
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('删除角色失败');
+      toast.error(getErrorMessage(deleteError, '删除角色失败'));
     }
   };
 

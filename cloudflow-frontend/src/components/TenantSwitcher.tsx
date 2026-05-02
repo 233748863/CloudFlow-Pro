@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Building2, Check, ChevronDown, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { useAuth } from '@/context/AuthContext';
 import { getTenantList } from '@/services/api/tenant';
 
@@ -104,7 +105,7 @@ export const TenantSwitcher: React.FC = () => {
     } catch (error) {
       console.error('获取租户列表失败:', error);
       if (!silent) {
-        toast.error('获取租户列表失败');
+        toast.error(getErrorMessage(error, '获取租户列表失败'));
       }
     } finally {
       setLoading(false);

@@ -9,6 +9,7 @@ import {
   UserRoundPlus,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -316,7 +317,7 @@ export const HrOfferPage: React.FC = () => {
       );
     } catch (error) {
       console.error(error);
-      toast.error('Offer 页面基础数据加载失败');
+      toast.error(getErrorMessage(error, 'Offer 页面基础数据加载失败'));
     } finally {
       setLoading(false);
     }
@@ -346,7 +347,7 @@ export const HrOfferPage: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error('Offer 列表加载失败');
+      toast.error(getErrorMessage(error, 'Offer 列表加载失败'));
     } finally {
       setListLoading(false);
     }
@@ -359,7 +360,7 @@ export const HrOfferPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setCurrentOffer(null);
-      toast.error('Offer 详情加载失败');
+      toast.error(getErrorMessage(error, 'Offer 详情加载失败'));
     } finally {
       setDetailLoading(false);
     }

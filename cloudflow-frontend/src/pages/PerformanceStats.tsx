@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Download, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
@@ -200,7 +201,7 @@ const PerformanceStats: React.FC = () => {
       setStats(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('加载性能统计失败:', error);
-      toast.error('加载性能统计失败');
+      toast.error(getErrorMessage(error, '加载性能统计失败'));
     } finally {
       setLoading(false);
     }

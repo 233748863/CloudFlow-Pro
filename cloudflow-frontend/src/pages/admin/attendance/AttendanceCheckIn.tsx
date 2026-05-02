@@ -10,7 +10,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/common';
-import { checkIn, getAttendanceRule, AttendanceRule } from '@/services/api/admin';
+import { checkIn } from '@/services/api/admin';
+import { EffectiveAttendanceRule, getEffectiveAttendanceRule } from '@/services/api/hr';
 import { useAuth } from '@/context/AuthContext';
 import { useHrSelfServiceEligibility } from '@/hooks/useHrSelfServiceEligibility';
 import { useMount } from '@/hooks/useMount';
@@ -105,7 +106,7 @@ const AttendanceCheckIn: React.FC = () => {
   const [currentTime, setCurrentTime] = useState(new Date());
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [rule, setRule] = useState<AttendanceRule | null>(null);
+  const [rule, setRule] = useState<EffectiveAttendanceRule | null>(null);
   const [ruleLoading, setRuleLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success: boolean; msg: string } | null>(null);
@@ -122,7 +123,7 @@ const AttendanceCheckIn: React.FC = () => {
   }, []);
 
   useMount(() => {
-    void getAttendanceRule()
+    void getEffectiveAttendanceRule()
       .then((response) => {
         setRule(response || null);
       })
@@ -223,6 +224,23 @@ const AttendanceCheckIn: React.FC = () => {
     hour12: false,
   });
   const shiftLabel = `${rule?.checkInTime || '--:--'} - ${rule?.checkOutTime || '--:--'}`;
+  const sourceLabel =
+    rule?.sourceType === 'EMPLOYEE'
+      ? `员工规则 ${rule.sourceTargetName || ''}`
+      : rule?.sourceType === 'POST'
+        ? `岗位规则 ${rule.sourceTargetName || ''}`
+        : rule?.sourceType === 'DEPT'
+          ? `部门规则 ${rule.sourceTargetName || ''}`
+          : '默认规则';
+  const dayTypeLabel =
+    rule?.dayType === 'WORKDAY'
+      ? '工作日'
+      : rule?.dayType === 'HOLIDAY'
+        ? '节假日'
+        : rule?.dayType === 'REST'
+          ? '休息日'
+          : '未设置日历';
+  const methodLabel = rule?.checkMethods?.join(' / ') || '--';
 
   const phaseInfo = useMemo(() => {
     if (ruleLoading) {
@@ -240,8 +258,8 @@ const AttendanceCheckIn: React.FC = () => {
     }
 
     const now = currentTime.getTime();
-    const checkInTime = buildTimeDate(rule.checkInTime, currentTime).getTime();
-    const checkOutTime = buildTimeDate(rule.checkOutTime, currentTime).getTime();
+    const checkInTime = buildTimeDate(rule.checkInTime || '09:00', currentTime).getTime();
+    const checkOutTime = buildTimeDate(rule.checkOutTime || '18:00', currentTime).getTime();
 
     if (now < checkInTime) {
       return {
@@ -309,7 +327,10 @@ const AttendanceCheckIn: React.FC = () => {
           {dateLabel}
         </span>
         <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          班次 {shiftLabel}
+          规则 {rule?.ruleName || '未配置'}
+        </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          {dayTypeLabel}
         </span>
         <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
           {locationSummary}
@@ -435,6 +456,18 @@ const AttendanceCheckIn: React.FC = () => {
               label="当前阶段"
               value={phaseInfo.title}
               icon={<Calendar size={15} />}
+            />
+            <SideItem
+              label="规则来源"
+              value={sourceLabel}
+              description={rule?.ruleName}
+              icon={<CheckCircle2 size={15} />}
+            />
+            <SideItem
+              label="允许方式"
+              value={methodLabel}
+              description={`半径 ${rule?.radius ?? '--'} 米`}
+              icon={<MapPin size={15} />}
             />
             <SideItem
               label="定位状态"

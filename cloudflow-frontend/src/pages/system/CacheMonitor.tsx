@@ -12,6 +12,7 @@ import {
   X,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import {
   CacheKeyDetail,
   deleteCacheByPrefix,
@@ -276,7 +277,7 @@ export const CacheMonitor = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error('获取缓存信息失败');
+      toast.error(getErrorMessage(error, '获取缓存信息失败'));
     } finally {
       setLoading(false);
     }
@@ -290,7 +291,7 @@ export const CacheMonitor = () => {
       setKeyTree(buildKeyTree(keyList));
     } catch (error) {
       console.error(error);
-      toast.error('获取 Key 列表失败');
+      toast.error(getErrorMessage(error, '获取 Key 列表失败'));
     } finally {
       setKeysLoading(false);
     }
@@ -331,7 +332,7 @@ export const CacheMonitor = () => {
       setKeyDetail(detail);
     } catch (error) {
       console.error(error);
-      toast.error('获取 Key 详情失败');
+      toast.error(getErrorMessage(error, '获取 Key 详情失败'));
       setKeyDetail(null);
     } finally {
       setDetailLoading(false);

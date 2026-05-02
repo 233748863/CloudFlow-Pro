@@ -8,6 +8,7 @@ import {
   SquarePen,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -180,7 +181,7 @@ export const HrHeadcountPage: React.FC = () => {
       setPostOptions(normalizeRows<PostOption>(postRes));
     } catch (error) {
       console.error(error);
-      toast.error('编制基础选项加载失败');
+      toast.error(getErrorMessage(error, '编制基础选项加载失败'));
     }
   };
 
@@ -218,7 +219,7 @@ export const HrHeadcountPage: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error('编制列表加载失败');
+      toast.error(getErrorMessage(error, '编制列表加载失败'));
     } finally {
       setListLoading(false);
     }
@@ -233,7 +234,7 @@ export const HrHeadcountPage: React.FC = () => {
     } catch (error) {
       console.error(error);
       setStatistics(null);
-      toast.error('编制统计加载失败');
+      toast.error(getErrorMessage(error, '编制统计加载失败'));
     } finally {
       setDetailLoading(false);
     }

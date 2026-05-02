@@ -494,14 +494,61 @@ CREATE TABLE hr_schedule_rule (
   KEY idx_status (status)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='排班规则表';
 
--- 3. 排班计划表
+-- 3. 排班规则分配表
+DROP TABLE IF EXISTS hr_schedule_rule_assignment;
+CREATE TABLE hr_schedule_rule_assignment (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  rule_id           BIGINT(20)      NOT NULL COMMENT '规则ID',
+  target_type       VARCHAR(20)     NOT NULL COMMENT '目标类型：DEPT-部门 POST-岗位 EMPLOYEE-员工',
+  target_id         BIGINT(20)      NOT NULL COMMENT '目标ID',
+  effective_start   DATE            NOT NULL COMMENT '生效开始日期',
+  effective_end     DATE            DEFAULT NULL COMMENT '生效结束日期',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_rule_id (rule_id),
+  KEY idx_target (tenant_id, target_type, target_id),
+  KEY idx_effective_range (effective_start, effective_end),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='排班规则分配表';
+
+-- 4. 企业工作日历表
+DROP TABLE IF EXISTS hr_work_calendar;
+CREATE TABLE hr_work_calendar (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
+  calendar_date     DATE            NOT NULL COMMENT '日期',
+  day_type          VARCHAR(20)     NOT NULL COMMENT '日期类型：WORKDAY-工作日 REST-休息日 HOLIDAY-节假日',
+  day_name          VARCHAR(100)    DEFAULT NULL COMMENT '日期名称',
+  source            VARCHAR(20)     NOT NULL DEFAULT 'MANUAL' COMMENT '来源：MANUAL-手工维护 SYSTEM-系统生成',
+  status            TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '状态：0-禁用 1-启用',
+  create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_tenant_calendar_date (tenant_id, calendar_date),
+  KEY idx_tenant_id (tenant_id),
+  KEY idx_calendar_date (calendar_date),
+  KEY idx_day_type (day_type),
+  KEY idx_status (status)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='企业工作日历表';
+
+-- 5. 排班计划表
 DROP TABLE IF EXISTS hr_schedule_plan;
 CREATE TABLE hr_schedule_plan (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
   plan_name         VARCHAR(100)    NOT NULL COMMENT '计划名称',
-  target_type       VARCHAR(20)     NOT NULL COMMENT '目标类型：EMPLOYEE-员工 DEPT-部门',
-  target_id         BIGINT(20)      NOT NULL COMMENT '目标ID（员工ID或部门ID）',
+  target_type       VARCHAR(20)     NOT NULL COMMENT '目标类型：EMPLOYEE-员工 POST-岗位 DEPT-部门',
+  target_id         BIGINT(20)      NOT NULL COMMENT '目标ID（员工ID、岗位ID或部门ID）',
   shift_id          BIGINT(20)      NOT NULL COMMENT '班次ID',
   schedule_date     DATE            NOT NULL COMMENT '排班日期',
   status            VARCHAR(20)     NOT NULL DEFAULT 'DRAFT' COMMENT '状态：DRAFT-草稿 PUBLISHED-已发布 CANCELLED-已取消',
@@ -518,19 +565,22 @@ CREATE TABLE hr_schedule_plan (
   KEY idx_target_date (tenant_id, target_type, target_id, schedule_date)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='排班计划表';
 
--- 4. 打卡记录表
+-- 6. 打卡记录表
 DROP TABLE IF EXISTS hr_attendance_record;
 CREATE TABLE hr_attendance_record (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id         BIGINT(20)      NOT NULL COMMENT '租户ID',
   employee_id       BIGINT(20)      NOT NULL COMMENT '员工ID',
   attendance_date   DATE            NOT NULL COMMENT '考勤日期',
+  rule_id           BIGINT(20)      DEFAULT NULL COMMENT '生效规则ID',
   shift_id          BIGINT(20)      DEFAULT NULL COMMENT '班次ID',
   check_type        VARCHAR(20)     NOT NULL COMMENT '打卡类型：CHECK_IN-上班打卡 CHECK_OUT-下班打卡',
   check_time        DATETIME        NOT NULL COMMENT '打卡时间',
+  expected_time     DATETIME        DEFAULT NULL COMMENT '规则期望打卡时间',
+  deviation_minutes INT(11)         DEFAULT NULL COMMENT '偏差分钟数，迟到为正，早退为负',
   check_method      VARCHAR(20)     NOT NULL COMMENT '打卡方式：GPS-定位打卡 WIFI-WiFi打卡 FACE-人脸识别 SUPPLEMENT-补卡',
   location          VARCHAR(500)    DEFAULT NULL COMMENT '打卡位置（GPS坐标或WiFi SSID）',
-  status            VARCHAR(20)     NOT NULL DEFAULT 'NORMAL' COMMENT '状态：NORMAL-正常 LATE-迟到 EARLY-早退 MISSING-缺卡 SUPPLEMENT-补卡',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'NORMAL' COMMENT '状态：NORMAL-正常 LATE-迟到 SEVERE_LATE-严重迟到 EARLY-早退 ABSENT-旷工 MISSING-缺卡 SUPPLEMENT-补卡',
   process_instance_id VARCHAR(100)  DEFAULT NULL COMMENT '补卡流程实例ID',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   create_time       DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -542,6 +592,7 @@ CREATE TABLE hr_attendance_record (
   KEY idx_tenant_id (tenant_id),
   KEY idx_employee_id (employee_id),
   KEY idx_attendance_date (attendance_date),
+  KEY idx_rule_id (rule_id),
   KEY idx_shift_id (shift_id),
   KEY idx_check_type (check_type),
   KEY idx_status (status),

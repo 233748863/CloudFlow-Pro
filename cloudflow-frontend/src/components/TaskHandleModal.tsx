@@ -21,6 +21,7 @@ import { BaseDialog } from '@/components/common';
 import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
 import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { ProcessTrace } from './ProcessTrace';
 import { SignatureModal } from './SignatureModal';
@@ -417,7 +418,7 @@ export const TaskHandleModal = ({
         })
         .catch((error) => {
           console.error('加载历史节点失败:', error);
-          toast.error('加载历史节点失败');
+          toast.error(getErrorMessage(error, '加载历史节点失败'));
           setHistoryNodesLoaded(true);
         });
     }

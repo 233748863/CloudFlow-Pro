@@ -546,6 +546,12 @@ WHERE tenant_id = 100000;
 DELETE FROM cloud_flow_db.hr_schedule_plan
 WHERE tenant_id = 100000;
 
+DELETE FROM cloud_flow_db.hr_work_calendar
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_schedule_rule_assignment
+WHERE tenant_id = 100000;
+
 DELETE FROM cloud_flow_db.hr_reporting_line
 WHERE tenant_id = 100000;
 
@@ -4723,17 +4729,35 @@ INSERT INTO cloud_flow_db.hr_job_level (tenant_id, level_code, level_name, level
 (100000, 'M6', '高级副总裁', 'M', 6, '管理序列六级', 1);
 
 -- 插入示例班次数据
-INSERT INTO cloud_flow_db.hr_shift (tenant_id, shift_code, shift_name, start_time, end_time, break_minutes, late_threshold, early_threshold, work_minutes, color, status) VALUES
-(100000, 'MORNING', '早班', '08:00:00', '17:00:00', 60, 15, 15, 480, '#1890ff', 1),
-(100000, 'AFTERNOON', '中班', '13:00:00', '22:00:00', 60, 15, 15, 480, '#52c41a', 1),
-(100000, 'NIGHT', '晚班', '22:00:00', '07:00:00', 60, 15, 15, 480, '#722ed1', 1),
-(100000, 'STANDARD', '标准班', '09:00:00', '18:00:00', 60, 15, 15, 480, '#1890ff', 1);
+INSERT INTO cloud_flow_db.hr_shift (id, tenant_id, shift_code, shift_name, start_time, end_time, break_minutes, late_threshold, early_threshold, work_minutes, color, status) VALUES
+(100, 100000, 'MORNING', '早班', '08:00:00', '17:00:00', 60, 15, 15, 480, '#1890ff', 1),
+(101, 100000, 'AFTERNOON', '中班', '13:00:00', '22:00:00', 60, 15, 15, 480, '#52c41a', 1),
+(102, 100000, 'NIGHT', '晚班', '22:00:00', '07:00:00', 60, 15, 15, 480, '#722ed1', 1),
+(103, 100000, 'STANDARD', '标准班', '09:00:00', '18:00:00', 60, 15, 15, 480, '#1890ff', 1);
 
 -- 插入示例排班规则数据
-INSERT INTO cloud_flow_db.hr_schedule_rule (tenant_id, rule_name, rule_type, rule_config, description, status) VALUES
-(100000, '固定早班制', 'FIXED', '{"shiftId": 100}', '每天固定早班，适用于行政人员', 1),
-(100000, '三班轮换制', 'ROTATION', '{"cycle": 7, "shifts": [100, 101, 102]}', '早中晚三班轮换，适用于生产线', 1),
-(100000, '弹性工作制', 'FLEXIBLE', '{"coreTime": {"start": "10:00", "end": "16:00"}, "dailyHours": 8}', '核心时间段必须在岗，其他时间灵活安排', 1);
+INSERT INTO cloud_flow_db.hr_schedule_rule (id, tenant_id, rule_name, rule_type, rule_config, description, status) VALUES
+(100, 100000, '标准考勤制', 'FIXED', '{"shiftId": 103, "workDays": [1,2,3,4,5], "checkMethods": ["GPS","WIFI","FACE"], "locationPoints": [{"name":"总部园区A座","latitude":39.9042,"longitude":116.4074,"radius":500}], "wifiConfigs": [{"ssid":"CloudFlow-Office"},{"ssid":"CloudFlow-Delivery"},{"ssid":"CloudFlow-QA"}], "overtimeEnabled": true, "overtimeMinMinutes": 30, "lateToleranceCount": 0, "severeLateMinutes": 60, "absentMinutes": 240, "photoRequired": false, "radius": 500}', '默认工作日考勤规则，适用于大多数办公室员工', 1),
+(101, 100000, '生产轮班制', 'ROTATION', '{"shiftId": 100, "workDays": [1,2,3,4,5,6], "checkMethods": ["GPS","WIFI"], "locationPoints": [{"name":"制造园区","latitude":31.2304,"longitude":121.4737,"radius":800}], "wifiConfigs": [{"ssid":"CloudFlow-Factory"}], "overtimeEnabled": true, "overtimeMinMinutes": 60, "lateToleranceCount": 0, "severeLateMinutes": 30, "absentMinutes": 180, "photoRequired": true, "radius": 800}', '生产和交付岗位六天排班规则', 1),
+(102, 100000, '弹性工作制', 'FLEXIBLE', '{"shiftId": 103, "workDays": [1,2,3,4,5], "checkMethods": ["GPS","WIFI","FACE"], "coreTime": {"start": "10:00", "end": "16:00"}, "dailyHours": 8, "locationPoints": [{"name":"总部园区A座","latitude":39.9042,"longitude":116.4074,"radius":1000}], "wifiConfigs": [{"ssid":"CloudFlow-Office"}], "overtimeEnabled": true, "overtimeMinMinutes": 30, "lateToleranceCount": 3, "severeLateMinutes": 90, "absentMinutes": 300, "photoRequired": false, "radius": 1000}', '研发和销售岗位弹性规则', 1);
+
+INSERT INTO cloud_flow_db.hr_schedule_rule_assignment (
+  tenant_id, rule_id, target_type, target_id, effective_start, effective_end, status, create_by, update_by
+) VALUES
+(100000, 100, 'DEPT', 103, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin'),
+(100000, 101, 'POST', 6, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin'),
+(100000, 102, 'POST', 8, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin'),
+(100000, 102, 'EMPLOYEE', 1002, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_work_calendar (
+  tenant_id, calendar_date, day_type, day_name, source, status, create_by, update_by
+) VALUES
+(100000, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'WORKDAY', '演示工作日', 'MANUAL', 1, 'admin', 'admin'),
+(100000, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'WORKDAY', '演示工作日', 'MANUAL', 1, 'admin', 'admin'),
+(100000, CURDATE(), 'WORKDAY', '今日工作日', 'MANUAL', 1, 'admin', 'admin'),
+(100000, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 'REST', '企业休息日', 'MANUAL', 1, 'admin', 'admin'),
+(100000, DATE_ADD(CURDATE(), INTERVAL 2 DAY), 'WORKDAY', '调休上班日', 'MANUAL', 1, 'admin', 'admin'),
+(100000, DATE_ADD(CURDATE(), INTERVAL 3 DAY), 'HOLIDAY', '公司福利假', 'MANUAL', 1, 'admin', 'admin');
 
 -- 插入示例假期类型数据
 INSERT INTO cloud_flow_db.hr_leave_type (tenant_id, leave_code, leave_name, need_quota, is_paid, unit, quota_rule, expiry_rule, status) VALUES
@@ -4755,13 +4779,6 @@ INSERT INTO cloud_flow_db.hr_leave_type (tenant_id, leave_code, leave_name, need
 -- HR 假勤演示数据（从 OA 迁移）
 -- =========================================================
 
-UPDATE cloud_flow_db.hr_schedule_rule
-SET rule_name = '标准考勤制',
-    rule_config = '{"shiftId": 103, "workDays": [1,2,3,4,5], "overtimeEnabled": true, "overtimeMinMinutes": 30, "lateToleranceCount": 0, "severeLateMinutes": 60, "absentMinutes": 240, "photoRequired": false, "radius": 200}',
-    description = '标准工作日考勤规则，供 HR 假勤演示数据使用'
-WHERE tenant_id = 100000
-  AND rule_type = 'FIXED';
-
 INSERT INTO cloud_flow_db.hr_schedule_plan (
   id, tenant_id, plan_name, target_type, target_id, shift_id, schedule_date, status,
   create_time, update_time, create_by, update_by
@@ -4777,32 +4794,40 @@ INSERT INTO cloud_flow_db.hr_schedule_plan (
 (11009, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1);
 
 INSERT INTO cloud_flow_db.hr_attendance_record (
-  id, tenant_id, employee_id, attendance_date, shift_id, check_type, check_time, check_method,
+  id, tenant_id, employee_id, attendance_date, rule_id, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method,
   location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(9301, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE, 'GPS',
+(9301, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, 3, 'GPS',
  '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常上班打卡', NOW(), NOW(), 1, 1, 0),
-(9302, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 12 MINUTE, 'GPS',
+(9302, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 12 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 12, 'GPS',
  '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常下班打卡', NOW(), NOW(), 1, 1, 0),
-(9303, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 35 MINUTE, 'GPS',
+(9303, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 35 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 35, 'GPS',
  '上海市黄浦区总部园区A座', 'NORMAL', NULL, '项目联调后下班', NOW(), NOW(), 1, 1, 0),
-(9304, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 56 MINUTE, 'WIFI',
+(9304, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 102, 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 56 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, -4, 'WIFI',
  'CloudFlow-Office', 'NORMAL', NULL, '会议前提前到岗', NOW(), NOW(), 1, 1, 0),
-(9305, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 6 MINUTE, 'WIFI',
+(9305, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 102, 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 6 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 6, 'WIFI',
  'CloudFlow-Office', 'NORMAL', NULL, '正常签退', NOW(), NOW(), 1, 1, 0),
-(9306, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR, 'GPS',
+(9306, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_OUT',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR,
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 60, 'GPS',
  '浦东新区客户现场机房', 'NORMAL', NULL, '客户现场支持后签退', NOW(), NOW(), 1, 1, 0),
-(9001, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE, 'SUPPLEMENT',
+(9001, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 3, 'SUPPLEMENT',
  '上海市黄浦区总部园区A座', 'APPROVING', 'demo_inst_007', '因地铁故障导致漏打卡，实际已于 09:03 到达公司。', DATE_SUB(NOW(), INTERVAL 9 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR), 5, 5, 0),
-(9002, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 42 MINUTE, 'SUPPLEMENT',
+(9002, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 42 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 42, 'SUPPLEMENT',
  '浦东新区客户现场机房', 'SUPPLEMENT', 'demo_inst_008', '客户现场部署支持，未在公司网络范围内打卡。', DATE_SUB(NOW(), INTERVAL 30 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), 9, 9, 0);
 
 INSERT INTO cloud_flow_db.hr_leave_quota (
@@ -6909,11 +6934,12 @@ INSERT INTO cloud_flow_db.hr_probation_confirmation (
 -- =========================================================
 
 INSERT INTO cloud_flow_db.hr_attendance_record (
-  id, tenant_id, employee_id, attendance_date, shift_id, check_type, check_time, check_method,
+  id, tenant_id, employee_id, attendance_date, rule_id, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method,
   location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(9311, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 18 MINUTE, 'SUPPLEMENT',
+(9311, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 102, 103, 'CHECK_IN',
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 18 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 18, 'SUPPLEMENT',
  '苏州智造客户园区 A2 楼', 'APPROVING', 'seed_hr_inst_att_001',
  '前一日参与客户现场晨会与上线巡检，因外勤网络限制未完成公司内网打卡，现补充签到。', DATE_SUB(NOW(), INTERVAL 20 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), 8, 8, 0);
 
@@ -7463,17 +7489,17 @@ INSERT INTO cloud_flow_db.hr_schedule_plan (
 (11021, 100000, '韩悦标准班次', 'EMPLOYEE', 1020, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1);
 
 INSERT INTO cloud_flow_db.hr_attendance_record (
-  id, tenant_id, employee_id, attendance_date, shift_id, check_type, check_time, check_method,
+  id, tenant_id, employee_id, attendance_date, rule_id, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method,
   location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(9312, 100000, 1016, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 58 MINUTE, 'WIFI', 'CloudFlow-Delivery', 'NORMAL', NULL, '客户培训前到岗准备资料', NOW(), NOW(), 16, 16, 0),
-(9313, 100000, 1016, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 22 MINUTE, 'WIFI', 'CloudFlow-Delivery', 'NORMAL', NULL, '完成交付培训后下班', NOW(), NOW(), 16, 16, 0),
-(9314, 100000, 1018, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 5 MINUTE, 'GPS', '浦东新区客户园区', 'NORMAL', NULL, '上午外出拜访重点客户', NOW(), NOW(), 18, 18, 0),
-(9315, 100000, 1018, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 36 MINUTE, 'GPS', '浦东新区客户园区', 'NORMAL', NULL, '完成续约方案讲解后签退', NOW(), NOW(), 18, 18, 0),
-(9316, 100000, 1019, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 8 HOUR + INTERVAL 41 MINUTE, 'GPS', '总部机房', 'NORMAL', NULL, '早间执行例行巡检', NOW(), NOW(), 19, 19, 0),
-(9317, 100000, 1019, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 21 HOUR + INTERVAL 16 MINUTE, 'GPS', '总部机房', 'NORMAL', NULL, '配合发布窗口值守后下班', NOW(), NOW(), 19, 19, 0),
-(9318, 100000, 1020, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 2 MINUTE, 'WIFI', 'CloudFlow-QA', 'NORMAL', NULL, '执行移动端回归测试前签到', NOW(), NOW(), 20, 20, 0),
-(9319, 100000, 1020, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 8 MINUTE, 'WIFI', 'CloudFlow-QA', 'NORMAL', NULL, '完成回归测试与报告输出', NOW(), NOW(), 20, 20, 0);
+(9312, 100000, 1016, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 101, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 58 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, -2, 'WIFI', 'CloudFlow-Delivery', 'NORMAL', NULL, '客户培训前到岗准备资料', NOW(), NOW(), 16, 16, 0),
+(9313, 100000, 1016, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 101, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 22 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 22, 'WIFI', 'CloudFlow-Delivery', 'NORMAL', NULL, '完成交付培训后下班', NOW(), NOW(), 16, 16, 0),
+(9314, 100000, 1018, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 102, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 5 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 5, 'GPS', '浦东新区客户园区', 'NORMAL', NULL, '上午外出拜访重点客户', NOW(), NOW(), 18, 18, 0),
+(9315, 100000, 1018, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 102, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 36 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 36, 'GPS', '浦东新区客户园区', 'NORMAL', NULL, '完成续约方案讲解后签退', NOW(), NOW(), 18, 18, 0),
+(9316, 100000, 1019, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 8 HOUR + INTERVAL 41 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, -19, 'GPS', '总部机房', 'NORMAL', NULL, '早间执行例行巡检', NOW(), NOW(), 19, 19, 0),
+(9317, 100000, 1019, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 21 HOUR + INTERVAL 16 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 196, 'GPS', '总部机房', 'NORMAL', NULL, '配合发布窗口值守后下班', NOW(), NOW(), 19, 19, 0),
+(9318, 100000, 1020, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 2 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, 2, 'WIFI', 'CloudFlow-QA', 'NORMAL', NULL, '执行移动端回归测试前签到', NOW(), NOW(), 20, 20, 0),
+(9319, 100000, 1020, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 8 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 8, 'WIFI', 'CloudFlow-QA', 'NORMAL', NULL, '完成回归测试与报告输出', NOW(), NOW(), 20, 20, 0);
 
 INSERT INTO cloud_flow_db.hr_leave_quota (
   id, tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota,

@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, DatePicker } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -638,7 +639,7 @@ export const HrPerformancePage: React.FC = () => {
       }
     } catch (error) {
       console.error(error);
-      toast.error('绩效目标加载失败');
+      toast.error(getErrorMessage(error, '绩效目标加载失败'));
     } finally {
       setLoading(false);
     }
@@ -651,7 +652,7 @@ export const HrPerformancePage: React.FC = () => {
       setCurrentObjective(detail);
     } catch (error) {
       console.error(error);
-      toast.error('绩效目标树加载失败');
+      toast.error(getErrorMessage(error, '绩效目标树加载失败'));
     } finally {
       setTreeLoading(false);
     }
@@ -866,7 +867,7 @@ export const HrPerformancePage: React.FC = () => {
     if (!employeeLoaded && !employeeLoading) {
       void loadEmployees().catch((error) => {
         console.error(error);
-        toast.error('员工列表加载失败');
+        toast.error(getErrorMessage(error, '员工列表加载失败'));
       });
     }
     if (node.assigneeType === 'DEPT' && !node.categoryCode) {

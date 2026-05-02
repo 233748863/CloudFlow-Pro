@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BarChart3, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { Button } from '@/components/common';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
 import { cn } from '@/utils/cn';
@@ -99,7 +100,7 @@ export const DeployStatistics: React.FC = () => {
         setSelectedProcess(String(first.definitionId || ''));
       }
     } catch (error) {
-      toast.error('加载流程列表失败');
+      toast.error(getErrorMessage(error, '加载流程列表失败'));
       console.error(error);
     }
   };
@@ -116,7 +117,7 @@ export const DeployStatistics: React.FC = () => {
       setStats(data as DeployStats);
     } catch (error) {
       setStats(null);
-      toast.error('加载发布统计失败');
+      toast.error(getErrorMessage(error, '加载发布统计失败'));
       console.error(error);
     } finally {
       setLoading(false);

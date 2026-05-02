@@ -10,6 +10,7 @@ import {
   ShieldAlert,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { Button, Input, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
@@ -356,7 +357,7 @@ const AlertList: React.FC = () => {
       setAnomalyAlerts([]);
     } catch (error) {
       console.error('加载告警数据失败:', error);
-      toast.error('加载告警数据失败');
+      toast.error(getErrorMessage(error, '加载告警数据失败'));
     } finally {
       setLoading(false);
     }
@@ -443,7 +444,7 @@ const AlertList: React.FC = () => {
       await loadAlerts();
     } catch (error) {
       console.error('处理告警失败:', error);
-      toast.error('处理告警失败');
+      toast.error(getErrorMessage(error, '处理告警失败'));
     }
   };
 
@@ -460,7 +461,7 @@ const AlertList: React.FC = () => {
       await loadAlerts();
     } catch (error) {
       console.error('处置超时告警失败:', error);
-      toast.error('处置超时告警失败');
+      toast.error(getErrorMessage(error, '处置超时告警失败'));
     }
   };
 
@@ -477,7 +478,7 @@ const AlertList: React.FC = () => {
       await loadAlerts();
     } catch (error) {
       console.error('解决告警失败:', error);
-      toast.error('解决告警失败');
+      toast.error(getErrorMessage(error, '解决告警失败'));
     }
   };
 

@@ -78,6 +78,7 @@ import {
 } from "../services/api/workflow";
 import { getRoleOptions, getUserList, getDeptTree } from "../services/api/auth";
 import { toast } from "sonner";
+import { getErrorMessage } from '@/utils/errorMessage';
 import { downloadBlob } from "../utils/download";
 import { ConfirmDialog } from "./common/ConfirmDialog";
 import {
@@ -3838,7 +3839,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       toast.success("流程已保存");
     } catch (e) {
       console.error(e);
-      toast.error("保存失败");
+      toast.error(getErrorMessage(e, "保存失败"));
     } finally {
       setSaving(false);
     }
@@ -3890,7 +3891,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       toast.success("流程已发布并上线！");
     } catch (e) {
       console.error(e);
-      toast.error("发布失败");
+      toast.error(getErrorMessage(e, "发布失败"));
     } finally {
       setSaving(false);
     }

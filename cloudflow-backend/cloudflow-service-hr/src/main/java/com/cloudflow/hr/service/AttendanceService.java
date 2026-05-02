@@ -5,6 +5,7 @@ import com.cloudflow.hr.domain.dto.AttendanceRecordQueryDTO;
 import com.cloudflow.hr.domain.dto.AttendanceSupplementDTO;
 import com.cloudflow.hr.domain.vo.AttendanceDailyVO;
 import com.cloudflow.hr.domain.vo.AttendanceRecordVO;
+import com.cloudflow.hr.domain.vo.EffectiveAttendanceRuleVO;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -107,4 +108,9 @@ public interface AttendanceService {
      * @return 每日考勤VO
      */
     AttendanceDailyVO getDailyAttendance(Long employeeId, LocalDate date);
+
+    /**
+     * 获取员工指定日期生效考勤规则。
+     */
+    EffectiveAttendanceRuleVO getEffectiveRule(Long employeeId, LocalDate date);
 }

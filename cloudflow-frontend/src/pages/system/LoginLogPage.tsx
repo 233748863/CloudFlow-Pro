@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -193,7 +194,7 @@ export const LoginLogPage: React.FC = () => {
       setDetailLog(log);
     } catch (fetchError) {
       console.error(fetchError);
-      toast.error('加载登录详情失败');
+      toast.error(getErrorMessage(fetchError, '加载登录详情失败'));
     }
   };
 
@@ -218,7 +219,7 @@ export const LoginLogPage: React.FC = () => {
       await fetchPage();
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('删除登录日志失败');
+      toast.error(getErrorMessage(deleteError, '删除登录日志失败'));
     }
   };
 

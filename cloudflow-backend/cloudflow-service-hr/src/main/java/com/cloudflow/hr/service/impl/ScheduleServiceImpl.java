@@ -3,18 +3,22 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.vo.DeptVO;
+import com.cloudflow.hr.client.vo.PostVO;
 import com.cloudflow.hr.domain.dto.*;
 import com.cloudflow.hr.domain.entity.Employee;
 import com.cloudflow.hr.domain.entity.SchedulePlan;
 import com.cloudflow.hr.domain.entity.ScheduleRule;
+import com.cloudflow.hr.domain.entity.ScheduleRuleAssignment;
 import com.cloudflow.hr.domain.entity.Shift;
 import com.cloudflow.hr.domain.vo.ScheduleCalendarVO;
 import com.cloudflow.hr.domain.vo.SchedulePlanVO;
+import com.cloudflow.hr.domain.vo.ScheduleRuleAssignmentVO;
 import com.cloudflow.hr.domain.vo.ScheduleRuleVO;
 import com.cloudflow.hr.domain.vo.ShiftVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.EmployeeMapper;
 import com.cloudflow.hr.mapper.SchedulePlanMapper;
+import com.cloudflow.hr.mapper.ScheduleRuleAssignmentMapper;
 import com.cloudflow.hr.mapper.ScheduleRuleMapper;
 import com.cloudflow.hr.mapper.ShiftMapper;
 import com.cloudflow.hr.service.DeptPostSyncService;
@@ -48,9 +52,13 @@ public class ScheduleServiceImpl implements ScheduleService {
     private static final int DEFAULT_BREAK_MINUTES = 0;
     private static final int DEFAULT_THRESHOLD_MINUTES = 15;
     private static final String DEFAULT_SHIFT_COLOR = "#1890ff";
+    private static final String TARGET_EMPLOYEE = "EMPLOYEE";
+    private static final String TARGET_POST = "POST";
+    private static final String TARGET_DEPT = "DEPT";
 
     private final ShiftMapper shiftMapper;
     private final ScheduleRuleMapper scheduleRuleMapper;
+    private final ScheduleRuleAssignmentMapper scheduleRuleAssignmentMapper;
     private final SchedulePlanMapper schedulePlanMapper;
     private final EmployeeMapper employeeMapper;
     private final DeptPostSyncService deptPostSyncService;
@@ -334,6 +342,71 @@ public class ScheduleServiceImpl implements ScheduleService {
         scheduleRuleMapper.deleteById(id);
         
         log.info("排班规则删除成功，ID: {}", id);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createScheduleRuleAssignment(Long ruleId, ScheduleRuleAssignmentDTO dto) {
+        Long tenantId = SecurityUtils.getTenantId();
+        ScheduleRule rule = scheduleRuleMapper.selectById(ruleId);
+        if (rule == null || !tenantId.equals(rule.getTenantId())) {
+            throw new HrBusinessException("排班规则不存在或无权限访问");
+        }
+        validateTargetType(dto.getTargetType());
+        validateTarget(dto.getTargetType(), dto.getTargetId(), tenantId);
+        if (dto.getEffectiveEnd() != null && dto.getEffectiveEnd().isBefore(dto.getEffectiveStart())) {
+            throw new HrBusinessException("生效结束日期不能早于开始日期");
+        }
+
+        ScheduleRuleAssignment assignment = new ScheduleRuleAssignment();
+        BeanUtils.copyProperties(dto, assignment);
+        assignment.setTenantId(tenantId);
+        assignment.setRuleId(ruleId);
+        assignment.setStatus(dto.getStatus() == null ? 1 : dto.getStatus());
+        scheduleRuleAssignmentMapper.insert(assignment);
+        return assignment.getId();
+    }
+
+    @Override
+    public List<ScheduleRuleAssignmentVO> listScheduleRuleAssignments(Long ruleId) {
+        Long tenantId = SecurityUtils.getTenantId();
+        ScheduleRule rule = scheduleRuleMapper.selectById(ruleId);
+        if (rule == null || !tenantId.equals(rule.getTenantId())) {
+            throw new HrBusinessException("排班规则不存在或无权限访问");
+        }
+        LambdaQueryWrapper<ScheduleRuleAssignment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ScheduleRuleAssignment::getTenantId, tenantId)
+                .eq(ScheduleRuleAssignment::getRuleId, ruleId)
+                .orderByAsc(ScheduleRuleAssignment::getTargetType)
+                .orderByDesc(ScheduleRuleAssignment::getEffectiveStart);
+        return scheduleRuleAssignmentMapper.selectList(wrapper).stream()
+                .map(this::convertToScheduleRuleAssignmentVO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteScheduleRuleAssignment(Long assignmentId) {
+        Long tenantId = SecurityUtils.getTenantId();
+        ScheduleRuleAssignment assignment = scheduleRuleAssignmentMapper.selectById(assignmentId);
+        if (assignment == null || !tenantId.equals(assignment.getTenantId())) {
+            throw new HrBusinessException("排班规则适用范围不存在");
+        }
+        scheduleRuleAssignmentMapper.deleteById(assignmentId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteScheduleRuleAssignments(Long ruleId) {
+        Long tenantId = SecurityUtils.getTenantId();
+        ScheduleRule rule = scheduleRuleMapper.selectById(ruleId);
+        if (rule == null || !tenantId.equals(rule.getTenantId())) {
+            throw new HrBusinessException("排班规则不存在或无权限访问");
+        }
+        LambdaQueryWrapper<ScheduleRuleAssignment> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ScheduleRuleAssignment::getTenantId, tenantId)
+                .eq(ScheduleRuleAssignment::getRuleId, ruleId);
+        scheduleRuleAssignmentMapper.delete(wrapper);
     }
     
     // ==================== 私有辅助方法 ====================
@@ -744,7 +817,7 @@ public class ScheduleServiceImpl implements ScheduleService {
             throw new HrBusinessException("目标类型不能为空");
         }
         
-        if (!"EMPLOYEE".equals(targetType) && !"DEPT".equals(targetType)) {
+        if (!TARGET_EMPLOYEE.equals(targetType) && !TARGET_POST.equals(targetType) && !TARGET_DEPT.equals(targetType)) {
             throw new HrBusinessException("不支持的目标类型：" + targetType);
         }
     }
@@ -756,16 +829,24 @@ public class ScheduleServiceImpl implements ScheduleService {
      * @param tenantId 租户ID
      */
     private void validateTarget(String targetType, Long targetId, Long tenantId) {
-        if ("DEPT".equals(targetType) && deptPostSyncService.validateDeptId(targetId)) {
+        if (TARGET_DEPT.equals(targetType) && deptPostSyncService.validateDeptId(targetId)) {
             return;
         }
-        if ("EMPLOYEE".equals(targetType)) {
+        if (TARGET_POST.equals(targetType) && deptPostSyncService.validatePostId(targetId)) {
+            return;
+        }
+        if (TARGET_EMPLOYEE.equals(targetType)) {
             // 验证员工是否存在
             Employee employee = employeeMapper.selectById(targetId);
             if (employee == null || !employee.getTenantId().equals(tenantId)) {
                 throw new HrBusinessException("员工不存在或无权限访问：" + targetId);
             }
-        } else if ("DEPT".equals(targetType)) {
+        } else if (TARGET_POST.equals(targetType)) {
+            PostVO post = deptPostSyncService.getCachedPost(targetId);
+            if (post == null) {
+                throw new HrBusinessException("岗位不存在：" + targetId);
+            }
+        } else if (TARGET_DEPT.equals(targetType)) {
             // 验证部门是否存在
             DeptVO dept = deptPostSyncService.getCachedDept(targetId);
             if (dept == null) {
@@ -805,23 +886,56 @@ public class ScheduleServiceImpl implements ScheduleService {
         }
         
         // 查询目标名称
-        if ("EMPLOYEE".equals(plan.getTargetType())) {
+        if (TARGET_EMPLOYEE.equals(plan.getTargetType())) {
             Employee employee = employeeMapper.selectById(plan.getTargetId());
             if (employee != null) {
                 vo.setTargetName(employee.getName());
             }
-        } else if ("DEPT".equals(plan.getTargetType())) {
+        } else if (TARGET_POST.equals(plan.getTargetType())) {
+            PostVO post = deptPostSyncService.getCachedPost(plan.getTargetId());
+            if (post != null) {
+                vo.setTargetName(post.getPostName());
+            }
+        } else if (TARGET_DEPT.equals(plan.getTargetType())) {
             DeptVO dept = deptPostSyncService.getCachedDept(plan.getTargetId());
             if (dept != null) {
                 vo.setTargetName(dept.getDeptName());
             }
         }
         
-        if ("DEPT".equals(plan.getTargetType()) && vo.getTargetName() == null) {
+        if (TARGET_DEPT.equals(plan.getTargetType()) && vo.getTargetName() == null) {
             DeptVO dept = getDeptFromCacheOrSync(plan.getTargetId());
             vo.setTargetName(dept != null ? dept.getDeptName() : "未知部门");
         }
+        if (TARGET_POST.equals(plan.getTargetType()) && vo.getTargetName() == null) {
+            PostVO post = deptPostSyncService.getCachedPost(plan.getTargetId());
+            vo.setTargetName(post != null ? post.getPostName() : "未知岗位");
+        }
         return vo;
+    }
+
+    private ScheduleRuleAssignmentVO convertToScheduleRuleAssignmentVO(ScheduleRuleAssignment assignment) {
+        ScheduleRuleAssignmentVO vo = new ScheduleRuleAssignmentVO();
+        BeanUtils.copyProperties(assignment, vo);
+        vo.setStatusDesc(assignment.getStatus() != null && assignment.getStatus() == 1 ? "启用" : "禁用");
+        vo.setTargetName(resolveAssignmentTargetName(assignment));
+        return vo;
+    }
+
+    private String resolveAssignmentTargetName(ScheduleRuleAssignment assignment) {
+        if (TARGET_EMPLOYEE.equals(assignment.getTargetType())) {
+            Employee employee = employeeMapper.selectById(assignment.getTargetId());
+            return employee == null ? String.valueOf(assignment.getTargetId()) : employee.getName();
+        }
+        if (TARGET_POST.equals(assignment.getTargetType())) {
+            PostVO post = deptPostSyncService.getCachedPost(assignment.getTargetId());
+            return post == null ? String.valueOf(assignment.getTargetId()) : post.getPostName();
+        }
+        if (TARGET_DEPT.equals(assignment.getTargetType())) {
+            DeptVO dept = deptPostSyncService.getCachedDept(assignment.getTargetId());
+            return dept == null ? String.valueOf(assignment.getTargetId()) : dept.getDeptName();
+        }
+        return String.valueOf(assignment.getTargetId());
     }
 
     /**

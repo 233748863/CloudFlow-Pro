@@ -11,6 +11,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -321,7 +322,7 @@ export const FileList = () => {
       await Promise.all([fetchData(query), loadStorageSummary()]);
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('删除失败');
+      toast.error(getErrorMessage(deleteError, '删除失败'));
     }
   };
 

@@ -48,6 +48,7 @@ import {
   checkOperationSafety 
 } from '../../services/api/workflow';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { parseWorkflowGraphDefinition } from '../../utils/workflowGraph';
 import { useWorkflowPermission } from '../../hooks/useWorkflowPermission';
 import { WORKFLOW_CATEGORY_OPTIONS, getWorkflowCategoryLabel, normalizeWorkflowCategory } from '../../utils/workflowCategory';
@@ -373,7 +374,7 @@ export const ProcessManagement = () => {
       }
     } catch (error) {
       console.error('加载流程列表失败:', error);
-      toast.error('加载流程列表失败');
+      toast.error(getErrorMessage(error, '加载流程列表失败'));
     } finally {
       setLoading(false);
     }
@@ -504,7 +505,7 @@ export const ProcessManagement = () => {
       }
     } catch (error) {
       console.error('批量修改分类失败:', error);
-      toast.error('批量修改分类失败');
+      toast.error(getErrorMessage(error, '批量修改分类失败'));
     } finally {
       setLoading(false);
     }
@@ -570,7 +571,7 @@ export const ProcessManagement = () => {
       }
     } catch (error) {
       console.error('批量添加标签失败:', error);
-      toast.error('批量添加标签失败');
+      toast.error(getErrorMessage(error, '批量添加标签失败'));
     } finally {
       setLoading(false);
     }

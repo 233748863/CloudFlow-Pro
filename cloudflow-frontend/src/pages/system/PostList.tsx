@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Edit, Plus, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { addPost, deletePost, getPostList, updatePost, type SysPost } from '../../services/api/system';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
@@ -268,7 +269,7 @@ export const PostList = () => {
       }
     } catch (deleteError) {
       console.error(deleteError);
-      toast.error('岗位删除失败');
+      toast.error(getErrorMessage(deleteError, '岗位删除失败'));
     }
   };
 

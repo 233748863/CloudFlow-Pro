@@ -14,6 +14,7 @@ import {
   XCircle,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
 import { Button, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
 import { cn } from '@/utils/cn';
@@ -168,7 +169,7 @@ export const DeployApprovalManagement: React.FC = () => {
         setSubmittedApprovals(Array.isArray(data) ? data : []);
       }
     } catch (error) {
-      toast.error('加载审批数据失败');
+      toast.error(getErrorMessage(error, '加载审批数据失败'));
       console.error(error);
     } finally {
       setLoading(false);
@@ -210,7 +211,7 @@ export const DeployApprovalManagement: React.FC = () => {
         processName: detail.processName || detail.processKey,
       });
     } catch (error) {
-      toast.error('加载审批详情失败');
+      toast.error(getErrorMessage(error, '加载审批详情失败'));
       console.error(error);
     }
   };
@@ -232,7 +233,7 @@ export const DeployApprovalManagement: React.FC = () => {
       setComment('');
       await loadData();
     } catch (error) {
-      toast.error('审批操作失败');
+      toast.error(getErrorMessage(error, '审批操作失败'));
       console.error(error);
     }
   };
@@ -248,7 +249,7 @@ export const DeployApprovalManagement: React.FC = () => {
       setCancelTarget(null);
       await loadData();
     } catch (error) {
-      toast.error('取消审批失败');
+      toast.error(getErrorMessage(error, '取消审批失败'));
       console.error(error);
     }
   };

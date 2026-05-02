@@ -13,6 +13,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, Pagination } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
@@ -157,7 +158,7 @@ export const ArchivedWorkflows: React.FC = () => {
       setSelectedIds((current) => current.filter((id) => records.some((item: ArchivedWorkflow) => item.workflowId === id)));
     } catch (error) {
       console.error('加载归档流程失败:', error);
-      toast.error('加载归档流程失败');
+      toast.error(getErrorMessage(error, '加载归档流程失败'));
     } finally {
       setLoading(false);
     }
