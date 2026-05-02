@@ -8,7 +8,7 @@
  */
 
 import React, { useState } from 'react';
-import { Dialog } from './dialog';
+import { ModalOverlay } from './ModalOverlay';
 import { Button } from './button';
 import { Input } from './input';
 import { Label } from './label';
@@ -67,10 +67,17 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
     onClose();
   };
 
+  if (!open) {
+    return null;
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/32">
-        <div className="mx-4 w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
+    <ModalOverlay
+      className="bg-slate-900/32 p-4"
+      closeOnEscape
+      onClose={onClose}
+    >
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
           {/* 对话框头部 */}
           <div className="border-b border-slate-100 px-5 py-4">
             <h2 className="text-lg font-semibold text-gray-900">资源冲突</h2>
@@ -175,8 +182,7 @@ export const ConflictResolutionDialog: React.FC<ConflictResolutionDialogProps> =
               确认
             </Button>
           </div>
-        </div>
       </div>
-    </Dialog>
+    </ModalOverlay>
   );
 };

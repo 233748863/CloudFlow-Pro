@@ -41,6 +41,7 @@ export {
 } from './table';
 
 export { BaseDialog } from './BaseDialog';
+export { ModalOverlay } from './ModalOverlay';
 export { ConfirmDialog } from './ConfirmDialog';
 export * from './ConflictResolutionDialog';
 export * from './date-picker';

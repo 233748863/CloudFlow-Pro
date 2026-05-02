@@ -20,7 +20,7 @@ import {
   showWarning,
   ApiErrorResponse,
 } from '@/utils/errorHandler';
-import { WarningConfirmDialog } from '@/components/common';
+import { ModalOverlay, WarningConfirmDialog } from '@/components/common';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 
 interface VersionHistoryProps {
@@ -361,7 +361,10 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
       {/* 回滚对话框 */}
       {showRollbackModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-[2px]">
+        <ModalOverlay
+          className="bg-slate-950/40 px-4 backdrop-blur-[2px]"
+          onClose={() => setShowRollbackModal(false)}
+        >
           <div className="mx-4 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80">
             <div className="border-b border-slate-100 px-5 py-4">
               <h3 className="text-lg font-semibold">版本回滚</h3>
@@ -398,7 +401,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               </button>
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
 
       {/* 运行实例警告对话框 */}
@@ -422,7 +425,10 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
 
       {/* 版本对比模态框（简化版，实际应该更详细） */}
       {showCompareModal && comparison && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 backdrop-blur-[2px]">
+        <ModalOverlay
+          className="bg-slate-950/40 px-4 backdrop-blur-[2px]"
+          onClose={() => setShowCompareModal(false)}
+        >
           <div className="mx-4 max-h-[80vh] w-full max-w-4xl overflow-auto rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] ring-1 ring-slate-200/80">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
               <h3 className="text-lg font-semibold">版本对比</h3>
@@ -442,7 +448,7 @@ export const VersionHistory: React.FC<VersionHistoryProps> = ({
               {/* 这里应该显示详细的对比结果 */}
             </div>
           </div>
-        </div>
+        </ModalOverlay>
       )}
     </div>
   );
