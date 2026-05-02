@@ -7,7 +7,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaRiskAlert;
@@ -53,18 +53,8 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     @Override
     public PageResult<OaContract> queryPage(OaContract query, PageQuery pageQuery) {
-        LambdaQueryWrapper<OaContract> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(query.getContractId() != null, OaContract::getContractId, query.getContractId())
-                .eq(StringUtils.hasText(query.getContractType()), OaContract::getContractType, query.getContractType())
-                .eq(StringUtils.hasText(query.getStatus()), OaContract::getStatus, query.getStatus())
-                .eq(StringUtils.hasText(query.getRiskLevel()), OaContract::getRiskLevel, query.getRiskLevel())
-                .like(StringUtils.hasText(query.getContractNo()), OaContract::getContractNo, query.getContractNo())
-                .like(StringUtils.hasText(query.getContractName()), OaContract::getContractName, query.getContractName())
-                .like(StringUtils.hasText(query.getCounterpartyName()), OaContract::getCounterpartyName, query.getCounterpartyName())
-                .eq(OaContract::getDelFlag, "0");
-        DataScopeHelper.apply(wrapper, OaContract::getOwnerId, OaContract::getDeptId);
-        wrapper.orderByDesc(OaContract::getCreateTime);
-        Page<OaContract> page = page(pageQuery.build(), wrapper);
+        Page<OaContract> page = baseMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.listScope("dept_id", "owner_id"));
         return PageResult.build(page);
     }
 

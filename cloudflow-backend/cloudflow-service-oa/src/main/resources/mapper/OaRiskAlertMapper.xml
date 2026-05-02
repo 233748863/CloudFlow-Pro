@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaRiskAlertMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.OaRiskAlert">
+        SELECT *
+        FROM oa_risk_alert
+        <where>
+            <if test="query != null">
+                <if test="query.businessType != null and query.businessType != ''">
+                    AND business_type = #{query.businessType}
+                </if>
+                <if test="query.businessId != null">
+                    AND business_id = #{query.businessId}
+                </if>
+                <if test="query.riskStatus != null and query.riskStatus != ''">
+                    AND risk_status = #{query.riskStatus}
+                </if>
+                <if test="query.riskLevel != null and query.riskLevel != ''">
+                    AND risk_level = #{query.riskLevel}
+                </if>
+                <if test="query.riskSource != null and query.riskSource != ''">
+                    AND risk_source = #{query.riskSource}
+                </if>
+                <if test="query.riskName != null and query.riskName != ''">
+                    AND risk_name LIKE CONCAT('%', #{query.riskName}, '%')
+                </if>
+                <if test="query.riskCode != null and query.riskCode != ''">
+                    AND risk_code LIKE CONCAT('%', #{query.riskCode}, '%')
+                </if>
+            </if>
+        </where>
+        ORDER BY detected_time DESC, id DESC
+    </select>
+
+</mapper>

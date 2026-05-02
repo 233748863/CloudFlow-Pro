@@ -2,9 +2,11 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
@@ -40,6 +42,17 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
 
     @Autowired
     private BizPurchaseRequestMapper purchaseRequestMapper;
+
+    @Override
+    public Page<BizPaymentRequest> queryPage(Integer pageNum, Integer pageSize, String status, String paymentType, Long userId) {
+        return (Page<BizPaymentRequest>) baseMapper.selectPageByDataScope(
+                new Page<>(pageNum, pageSize), status, paymentType, userId, DataScopeUtils.listScope());
+    }
+
+    @Override
+    public List<BizPaymentRequest> listForExport(String status, String paymentType, Long userId) {
+        return baseMapper.selectListByDataScope(status, paymentType, userId, DataScopeUtils.listScope());
+    }
 
     @Override
     public String generatePaymentNo() {

@@ -1,5 +1,6 @@
 package com.cloudflow.oa.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 
@@ -10,6 +11,16 @@ import java.util.Map;
  * 付款申请Service接口
  */
 public interface IPaymentRequestService extends IService<BizPaymentRequest> {
+
+    /**
+     * 分页查询付款申请列表
+     */
+    Page<BizPaymentRequest> queryPage(Integer pageNum, Integer pageSize, String status, String paymentType, Long userId);
+
+    /**
+     * 查询付款申请导出列表
+     */
+    List<BizPaymentRequest> listForExport(String status, String paymentType, Long userId);
 
     /**
      * 生成付款单号

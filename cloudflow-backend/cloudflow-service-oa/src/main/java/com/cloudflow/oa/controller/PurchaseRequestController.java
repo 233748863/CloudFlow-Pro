@@ -2,10 +2,8 @@ package com.cloudflow.oa.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
@@ -13,7 +11,6 @@ import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
 import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -32,8 +29,7 @@ public class PurchaseRequestController {
                                             @RequestParam(required = false) String status,
                                             @RequestParam(required = false) Long supplierId,
                                             @RequestParam(required = false) Long userId) {
-        Page<BizPurchaseRequest> page = new Page<>(pageNum, pageSize);
-        return R.ok(purchaseRequestService.page(page, buildQueryWrapper(status, supplierId, userId)));
+        return R.ok(purchaseRequestService.queryPage(pageNum, pageSize, status, supplierId, userId));
     }
 
     @GetMapping("/{id}")
@@ -117,16 +113,5 @@ public class PurchaseRequestController {
         } catch (IllegalArgumentException | IllegalStateException e) {
             return R.fail(e.getMessage());
         }
-    }
-
-    private LambdaQueryWrapper<BizPurchaseRequest> buildQueryWrapper(String status, Long supplierId, Long userId) {
-        LambdaQueryWrapper<BizPurchaseRequest> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(StringUtils.hasText(status), BizPurchaseRequest::getStatus, status)
-                .eq(supplierId != null, BizPurchaseRequest::getSupplierId, supplierId)
-                .eq(userId != null, BizPurchaseRequest::getUserId, userId)
-                .eq(BizPurchaseRequest::getDelFlag, "0");
-        DataScopeHelper.apply(wrapper, BizPurchaseRequest::getUserId, BizPurchaseRequest::getDeptId);
-        wrapper.orderByDesc(BizPurchaseRequest::getCreateTime);
-        return wrapper;
     }
 }

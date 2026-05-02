@@ -68,12 +68,12 @@ public class DataScopeInnerInterceptor implements DataScopeInterceptor {
             return;
         }
 
-        // 获取部门ID列表和用户名
+        // 获取部门ID列表和用户ID
         List<Long> deptIds = dataScope.getDeptList();
-        String username = dataScope.getUsername();
+        Long userId = dataScope.getUserId();
 
         // 构建带权限过滤的SQL
-        String newSql = buildFilteredSql(originalSql, dataScope, deptIds, username);
+        String newSql = buildFilteredSql(originalSql, dataScope, deptIds, userId);
         
         // 更新SQL
         mpBs.sql(newSql);
@@ -85,44 +85,46 @@ public class DataScopeInnerInterceptor implements DataScopeInterceptor {
      * @param originalSql 原始SQL
      * @param dataScope 数据权限参数
      * @param deptIds 部门ID列表
-     * @param username 用户名
+     * @param userId 用户ID
      * @return 过滤后的SQL
      */
     private String buildFilteredSql(String originalSql, DataScope dataScope, 
-                                    List<Long> deptIds, String username) {
+                                    List<Long> deptIds, Long userId) {
         String funcType = dataScope.getFunc().getType();
+        boolean hasUserColumn = dataScope.getScopeUserIdName() != null
+            && !dataScope.getScopeUserIdName().trim().isEmpty();
+        boolean hasDeptColumn = dataScope.getScopeDeptName() != null
+            && !dataScope.getScopeDeptName().trim().isEmpty();
         
         // 1. 无数据权限限制,返回0条数据
-        if ((deptIds == null || deptIds.isEmpty()) && 
-            (username == null || username.trim().isEmpty())) {
+        if ((deptIds == null || deptIds.isEmpty()) && userId == null) {
             return String.format("SELECT %s FROM (%s) temp_data_scope WHERE 1 = 2",
                 funcType, originalSql);
         }
         
         // 2. 本人权限 + 部门权限
-        if (username != null && !username.trim().isEmpty() && 
-            deptIds != null && !deptIds.isEmpty()) {
+        if (userId != null && hasUserColumn && deptIds != null && !deptIds.isEmpty() && hasDeptColumn) {
             String deptIdsStr = deptIds.stream()
                 .map(String::valueOf)
                 .reduce((a, b) -> a + "," + b)
                 .orElse("");
             return String.format(
-                "SELECT %s FROM (%s) temp_data_scope WHERE temp_data_scope.%s = '%s' OR temp_data_scope.%s IN (%s)",
+                "SELECT %s FROM (%s) temp_data_scope WHERE temp_data_scope.%s = %d OR temp_data_scope.%s IN (%s)",
                 funcType, originalSql, 
-                dataScope.getScopeUserName(), username,
+                dataScope.getScopeUserIdName(), userId,
                 dataScope.getScopeDeptName(), deptIdsStr);
         }
         
         // 3. 仅本人权限
-        if (username != null && !username.trim().isEmpty()) {
+        if (userId != null && hasUserColumn) {
             return String.format(
-                "SELECT %s FROM (%s) temp_data_scope WHERE temp_data_scope.%s = '%s'",
+                "SELECT %s FROM (%s) temp_data_scope WHERE temp_data_scope.%s = %d",
                 funcType, originalSql, 
-                dataScope.getScopeUserName(), username);
+                dataScope.getScopeUserIdName(), userId);
         }
         
         // 4. 仅部门权限
-        if (deptIds != null && !deptIds.isEmpty()) {
+        if (deptIds != null && !deptIds.isEmpty() && hasDeptColumn) {
             String deptIdsStr = deptIds.stream()
                 .map(String::valueOf)
                 .reduce((a, b) -> a + "," + b)
@@ -133,8 +135,8 @@ public class DataScopeInnerInterceptor implements DataScopeInterceptor {
                 dataScope.getScopeDeptName(), deptIdsStr);
         }
         
-        // 默认返回原始SQL
-        return originalSql;
+        return String.format("SELECT %s FROM (%s) temp_data_scope WHERE 1 = 2",
+            funcType, originalSql);
     }
 
     /**

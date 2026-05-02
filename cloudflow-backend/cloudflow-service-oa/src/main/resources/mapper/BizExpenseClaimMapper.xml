@@ -32,6 +32,42 @@
         </collection>
     </resultMap>
 
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.BizExpenseClaim">
+        SELECT *
+        FROM biz_expense_claim
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectListByDataScope" resultType="com.cloudflow.oa.domain.BizExpenseClaim">
+        SELECT *
+        FROM biz_expense_claim
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="category != null and category != ''">
+                AND category = #{category}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
     <select id="selectClaimWithItems" resultMap="ClaimWithItemsMap">
         SELECT 
             c.*, 

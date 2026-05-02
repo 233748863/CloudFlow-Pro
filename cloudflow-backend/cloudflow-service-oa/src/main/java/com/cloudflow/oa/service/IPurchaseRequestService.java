@@ -1,5 +1,6 @@
 package com.cloudflow.oa.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
@@ -10,6 +11,8 @@ import com.cloudflow.oa.domain.dto.PurchaseReceiptDTO;
  * 行政采购申请 Service。
  */
 public interface IPurchaseRequestService extends IService<BizPurchaseRequest> {
+
+    Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId);
 
     BizPurchaseRequest getRequestWithItems(Long id);
 

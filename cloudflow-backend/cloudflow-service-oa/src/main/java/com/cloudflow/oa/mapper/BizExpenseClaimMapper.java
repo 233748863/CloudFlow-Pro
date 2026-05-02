@@ -1,6 +1,9 @@
 package com.cloudflow.oa.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.datascope.DataScope;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -14,6 +17,17 @@ import java.util.Map;
  */
 @Mapper
 public interface BizExpenseClaimMapper extends BaseMapper<BizExpenseClaim> {
+
+    IPage<BizExpenseClaim> selectPageByDataScope(Page<BizExpenseClaim> page,
+                                                 @Param("status") String status,
+                                                 @Param("category") String category,
+                                                 @Param("userId") Long userId,
+                                                 @Param("dataScope") DataScope dataScope);
+
+    List<BizExpenseClaim> selectListByDataScope(@Param("status") String status,
+                                                @Param("category") String category,
+                                                @Param("userId") Long userId,
+                                                @Param("dataScope") DataScope dataScope);
 
     /**
      * 查询报销申请详情（含明细）

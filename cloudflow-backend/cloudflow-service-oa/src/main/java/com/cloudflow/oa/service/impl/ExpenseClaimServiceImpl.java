@@ -1,10 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
@@ -46,6 +48,17 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     
     @Autowired
     private RemoteWorkflowService remoteWorkflowService;
+
+    @Override
+    public Page<BizExpenseClaim> queryPage(Integer pageNum, Integer pageSize, String status, String category, Long userId) {
+        return (Page<BizExpenseClaim>) baseMapper.selectPageByDataScope(
+                new Page<>(pageNum, pageSize), status, category, userId, DataScopeUtils.listScope());
+    }
+
+    @Override
+    public List<BizExpenseClaim> listForExport(String status, String category, Long userId) {
+        return baseMapper.selectListByDataScope(status, category, userId, DataScopeUtils.listScope());
+    }
 
     @Override
     public BizExpenseClaim getClaimWithItems(Long id) {

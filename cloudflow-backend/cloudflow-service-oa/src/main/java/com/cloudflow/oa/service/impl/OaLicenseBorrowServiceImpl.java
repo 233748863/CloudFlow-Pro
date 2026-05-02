@@ -7,7 +7,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaLicense;
@@ -53,16 +53,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
 
     @Override
     public PageResult<OaLicenseBorrow> queryPage(OaLicenseBorrow query, PageQuery pageQuery) {
-        LambdaQueryWrapper<OaLicenseBorrow> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(query.getLicenseId() != null, OaLicenseBorrow::getLicenseId, query.getLicenseId())
-                .eq(query.getUserId() != null, OaLicenseBorrow::getUserId, query.getUserId())
-                .eq(StringUtils.hasText(query.getStatus()), OaLicenseBorrow::getStatus, query.getStatus())
-                .like(StringUtils.hasText(query.getBorrowNo()), OaLicenseBorrow::getBorrowNo, query.getBorrowNo())
-                .like(StringUtils.hasText(query.getLicenseName()), OaLicenseBorrow::getLicenseName, query.getLicenseName())
-                .eq(OaLicenseBorrow::getDelFlag, "0");
-        DataScopeHelper.apply(wrapper, OaLicenseBorrow::getUserId, OaLicenseBorrow::getDeptId);
-        wrapper.orderByDesc(OaLicenseBorrow::getCreateTime);
-        Page<OaLicenseBorrow> page = page(pageQuery.build(), wrapper);
+        Page<OaLicenseBorrow> page = baseMapper.selectPageByDataScope(pageQuery.build(), query, DataScopeUtils.listScope());
         return PageResult.build(page);
     }
 

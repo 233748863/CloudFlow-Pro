@@ -1,13 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BusinessTrip;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
@@ -38,23 +37,7 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
 
     @Override
     public IPage<BusinessTrip> queryPage(BusinessTrip query, int pageNum, int pageSize) {
-        LambdaQueryWrapper<BusinessTrip> wrapper = new LambdaQueryWrapper<>();
-        if (query.getUserId() != null) {
-            wrapper.eq(BusinessTrip::getUserId, query.getUserId());
-        }
-        if (StringUtils.hasText(query.getStatus())) {
-            wrapper.eq(BusinessTrip::getStatus, query.getStatus());
-        }
-        if (StringUtils.hasText(query.getDestination())) {
-            wrapper.like(BusinessTrip::getDestination, query.getDestination());
-        }
-        wrapper.and(w -> w.isNull(BusinessTrip::getDelFlag).or().ne(BusinessTrip::getDelFlag, "2"));
-
-        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
-        DataScopeHelper.apply(wrapper, BusinessTrip::getUserId, BusinessTrip::getDeptId);
-
-        wrapper.orderByDesc(BusinessTrip::getCreateTime);
-        return page(new Page<>(pageNum, pageSize), wrapper);
+        return baseMapper.selectPageByDataScope(new Page<>(pageNum, pageSize), query, DataScopeUtils.listScope());
     }
 
     @Override

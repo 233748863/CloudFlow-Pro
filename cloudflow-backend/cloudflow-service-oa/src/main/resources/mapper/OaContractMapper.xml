@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaContractMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.OaContract">
+        SELECT *
+        FROM oa_contract
+        <where>
+            <if test="query != null">
+                <if test="query.contractId != null">
+                    AND contract_id = #{query.contractId}
+                </if>
+                <if test="query.contractType != null and query.contractType != ''">
+                    AND contract_type = #{query.contractType}
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND status = #{query.status}
+                </if>
+                <if test="query.riskLevel != null and query.riskLevel != ''">
+                    AND risk_level = #{query.riskLevel}
+                </if>
+                <if test="query.contractNo != null and query.contractNo != ''">
+                    AND contract_no LIKE CONCAT('%', #{query.contractNo}, '%')
+                </if>
+                <if test="query.contractName != null and query.contractName != ''">
+                    AND contract_name LIKE CONCAT('%', #{query.contractName}, '%')
+                </if>
+                <if test="query.counterpartyName != null and query.counterpartyName != ''">
+                    AND counterparty_name LIKE CONCAT('%', #{query.counterpartyName}, '%')
+                </if>
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

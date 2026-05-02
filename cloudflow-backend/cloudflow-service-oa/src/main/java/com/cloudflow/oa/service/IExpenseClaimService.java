@@ -1,5 +1,6 @@
 package com.cloudflow.oa.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 
@@ -10,6 +11,16 @@ import java.util.Map;
  * 报销申请Service接口
  */
 public interface IExpenseClaimService extends IService<BizExpenseClaim> {
+
+    /**
+     * 分页查询报销申请列表
+     */
+    Page<BizExpenseClaim> queryPage(Integer pageNum, Integer pageSize, String status, String category, Long userId);
+
+    /**
+     * 查询报销申请导出列表
+     */
+    List<BizExpenseClaim> listForExport(String status, String category, Long userId);
 
     /**
      * 查询报销申请详情（含明细）

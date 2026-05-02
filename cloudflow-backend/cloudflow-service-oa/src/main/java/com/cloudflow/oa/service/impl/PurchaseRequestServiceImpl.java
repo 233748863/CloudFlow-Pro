@@ -2,10 +2,12 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseItem;
@@ -64,6 +66,12 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private final IConsumableService consumableService;
     private final IPaymentRequestService paymentRequestService;
     private final RemoteWorkflowService remoteWorkflowService;
+
+    @Override
+    public Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId) {
+        return (Page<BizPurchaseRequest>) baseMapper.selectPageByDataScope(
+                new Page<>(pageNum, pageSize), status, supplierId, userId, DataScopeUtils.listScope());
+    }
 
     @Override
     public BizPurchaseRequest getRequestWithItems(Long id) {

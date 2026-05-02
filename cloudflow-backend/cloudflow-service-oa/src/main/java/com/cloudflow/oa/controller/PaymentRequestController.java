@@ -1,10 +1,8 @@
 package com.cloudflow.oa.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.datascope.DataScopeHelper;
 import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.BizPaymentRequest;
@@ -16,11 +14,9 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 付款申请 Controller
@@ -42,8 +38,7 @@ public class PaymentRequestController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String paymentType,
             @RequestParam(required = false) Long userId) {
-        Page<BizPaymentRequest> page = new Page<>(pageNum, pageSize);
-        return R.ok(paymentRequestService.page(page, buildQueryWrapper(status, paymentType, userId)));
+        return R.ok(paymentRequestService.queryPage(pageNum, pageSize, status, paymentType, userId));
     }
 
     /**
@@ -55,8 +50,7 @@ public class PaymentRequestController {
                        @RequestParam(required = false) String paymentType,
                        @RequestParam(required = false) Long userId,
                        HttpServletResponse response) {
-        // 统一复用列表筛选与数据权限逻辑，保证导出结果与页面一致。
-        List<PaymentRequestExportVo> rows = paymentRequestService.list(buildQueryWrapper(status, paymentType, userId))
+        List<PaymentRequestExportVo> rows = paymentRequestService.listForExport(status, paymentType, userId)
                 .stream()
                 .map(PaymentRequestExportVo::from)
                 .toList();
@@ -155,21 +149,5 @@ public class PaymentRequestController {
     @GetMapping("/stats/dept")
     public R<List<DynamicMapVO>> getMonthlyPaymentByDept(@RequestParam String month) {
         return R.ok(paymentRequestService.getMonthlyPaymentByDept(month).stream().map(DynamicMapVO::from).toList());
-    }
-
-    /**
-     * 统一构建列表与导出的查询条件，确保两处结果保持一致。
-     */
-    private LambdaQueryWrapper<BizPaymentRequest> buildQueryWrapper(String status, String paymentType, Long userId) {
-        LambdaQueryWrapper<BizPaymentRequest> wrapper = new LambdaQueryWrapper<>();
-        // 空字符串不作为过滤条件，例如 paymentType="" 表示不过滤类型
-        wrapper.eq(StringUtils.hasText(status), BizPaymentRequest::getStatus, status)
-                .eq(StringUtils.hasText(paymentType), BizPaymentRequest::getPaymentType, paymentType)
-                .eq(userId != null, BizPaymentRequest::getUserId, userId)
-                .eq(BizPaymentRequest::getDelFlag, "0");
-
-        DataScopeHelper.apply(wrapper, BizPaymentRequest::getUserId, BizPaymentRequest::getDeptId);
-        wrapper.orderByDesc(BizPaymentRequest::getCreateTime);
-        return wrapper;
     }
 }

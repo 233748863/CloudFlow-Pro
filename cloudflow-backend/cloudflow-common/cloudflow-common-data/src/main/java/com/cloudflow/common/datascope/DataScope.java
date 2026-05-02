@@ -26,15 +26,13 @@ public class DataScope extends HashMap<String, Object> {
 
     /**
      * 部门权限范围字段名称
-     * 默认为dept_id,可根据实际表结构修改
      */
     private String scopeDeptName = "dept_id";
 
     /**
      * 本人权限范围字段名称
-     * 默认为create_by,可根据实际表结构修改
      */
-    private String scopeUserName = "create_by";
+    private String scopeUserIdName = "user_id";
 
     /**
      * 具体的部门数据范围
@@ -43,17 +41,16 @@ public class DataScope extends HashMap<String, Object> {
     private List<Long> deptList = new ArrayList<>();
 
     /**
-     * 具体查询的用户名
+     * 具体查询的用户ID
      * 用于本人权限范围的过滤
      */
-    private String username;
+    private Long userId;
 
     /**
-     * 是否只查询本部门
-     * true: 仅查询本部门数据
-     * false: 查询本部门及下级部门数据
+     * 仅按用户字段过滤
+     * 适用于没有dept_id的业务表
      */
-    private Boolean isOnly = false;
+    private boolean userOnly = false;
 
     /**
      * SQL函数类型
@@ -82,13 +79,24 @@ public class DataScope extends HashMap<String, Object> {
     }
 
     /**
-     * 设置是否只查询本部门(链式调用)
-     * 
-     * @param isOnly 是否只查询本部门
+     * 设置用户ID(链式调用)
+     *
+     * @param userId 用户ID
      * @return 当前DataScope实例
      */
-    public DataScope only(boolean isOnly) {
-        this.isOnly = isOnly;
+    public DataScope userId(Long userId) {
+        this.userId = userId;
+        return this;
+    }
+
+    /**
+     * 设置仅按用户字段过滤(链式调用)
+     *
+     * @param userOnly 是否仅按用户字段过滤
+     * @return 当前DataScope实例
+     */
+    public DataScope userOnly(boolean userOnly) {
+        this.userOnly = userOnly;
         return this;
     }
 

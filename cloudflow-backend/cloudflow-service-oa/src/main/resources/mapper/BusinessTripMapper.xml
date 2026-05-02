@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.BusinessTripMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.BusinessTrip">
+        SELECT *
+        FROM biz_business_trip
+        <where>
+            <if test="query != null">
+                <if test="query.userId != null">
+                    AND user_id = #{query.userId}
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND status = #{query.status}
+                </if>
+                <if test="query.destination != null and query.destination != ''">
+                    AND destination LIKE CONCAT('%', #{query.destination}, '%')
+                </if>
+            </if>
+            AND (del_flag IS NULL OR del_flag != '2')
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

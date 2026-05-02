@@ -5,18 +5,16 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
-import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.domain.DutySchedule;
 import com.cloudflow.oa.mapper.DutyScheduleMapper;
 import com.cloudflow.oa.service.IDutyScheduleService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
 import java.util.List;
 
 /**
@@ -29,29 +27,7 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
 
     @Override
     public IPage<DutySchedule> queryPage(DutySchedule query, int pageNum, int pageSize) {
-        LambdaQueryWrapper<DutySchedule> wrapper = new LambdaQueryWrapper<>();
-        if (query.getUserId() != null) {
-            wrapper.eq(DutySchedule::getUserId, query.getUserId());
-        }
-        if (query.getDeptId() != null) {
-            wrapper.eq(DutySchedule::getDeptId, query.getDeptId());
-        }
-        if (StringUtils.hasText(query.getScheduleType())) {
-            wrapper.eq(DutySchedule::getScheduleType, query.getScheduleType());
-        }
-        if (StringUtils.hasText(query.getStatus())) {
-            wrapper.eq(DutySchedule::getStatus, query.getStatus());
-        }
-        if (query.getDutyDate() != null) {
-            wrapper.eq(DutySchedule::getDutyDate, query.getDutyDate());
-        }
-        wrapper.and(w -> w.isNull(DutySchedule::getDelFlag).or().ne(DutySchedule::getDelFlag, "2"));
-
-        // 数据权限过滤：根据当前用户的权限类型，自动追加部门/用户过滤条件
-        DataScopeHelper.apply(wrapper, DutySchedule::getUserId, DutySchedule::getDeptId);
-
-        wrapper.orderByDesc(DutySchedule::getDutyDate);
-        return page(new Page<>(pageNum, pageSize), wrapper);
+        return baseMapper.selectPageByDataScope(new Page<>(pageNum, pageSize), query, DataScopeUtils.listScope());
     }
 
     @Override

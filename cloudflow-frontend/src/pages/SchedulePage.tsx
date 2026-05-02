@@ -113,21 +113,21 @@ const EVENT_TYPE_META: Record<
 > = {
   MEETING: {
     label: '会议',
-    color: '#06b6d4',
+    color: '#0e7490',
     badgeClass: 'bg-cyan-500/10 text-cyan-700 ring-1 ring-cyan-200 dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-900',
     softClass: 'bg-cyan-50 text-cyan-700 dark:bg-cyan-950/30 dark:text-cyan-200',
     hint: '适合评审、同步和客户沟通等需要明确地点或固定时段的安排。',
   },
   WORK: {
     label: '工作',
-    color: '#10b981',
+    color: '#047857',
     badgeClass: 'bg-emerald-500/10 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900',
     softClass: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200',
     hint: '适合项目推进、交付节点和需要整块时间推进的任务。',
   },
   PERSONAL: {
     label: '个人',
-    color: '#f59e0b',
+    color: '#b45309',
     badgeClass: 'bg-amber-500/10 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900',
     softClass: 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-200',
     hint: '适合个人安排、生活提醒和不需要额外资源绑定的事项。',
@@ -521,6 +521,7 @@ export const SchedulePage = () => {
             allDay: item.isAllDay,
             backgroundColor: meta.color,
             borderColor: meta.color,
+            display: 'block',
             classNames: ['cf-event', `cf-event--${item.type.toLowerCase()}`],
             extendedProps: {
               originalTitle: item.title,
@@ -1034,9 +1035,51 @@ export const SchedulePage = () => {
                   }
                   .schedule-calendar .fc-event {
                     cursor: pointer;
-                    border: none !important;
-                    border-radius: 10px !important;
-                    box-shadow: none !important;
+                    border: 1px solid rgba(255, 255, 255, 0.68) !important;
+                    border-radius: 8px !important;
+                    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.16) !important;
+                    overflow: hidden;
+                  }
+                  .schedule-calendar .fc-daygrid-event {
+                    margin: 2px 4px 0 !important;
+                  }
+                  .schedule-calendar .fc-daygrid-dot-event {
+                    align-items: stretch;
+                    background: var(--fc-event-bg-color) !important;
+                    border-color: var(--fc-event-border-color) !important;
+                    color: #ffffff !important;
+                    padding: 0 !important;
+                  }
+                  .schedule-calendar .fc-daygrid-dot-event:hover,
+                  .schedule-calendar .fc-daygrid-dot-event:focus {
+                    background: var(--fc-event-bg-color) !important;
+                    color: #ffffff !important;
+                  }
+                  .schedule-calendar .fc-daygrid-dot-event .fc-daygrid-event-dot {
+                    display: none;
+                  }
+                  .schedule-calendar .fc-daygrid-more-link {
+                    margin: 3px 4px 0;
+                    border-radius: 6px;
+                    background: #f1f5f9;
+                    color: #0f172a;
+                    font-size: 0.75rem;
+                    font-weight: 700;
+                    line-height: 1.6;
+                    padding: 0 6px;
+                  }
+                  .schedule-calendar .fc-daygrid-more-link:hover {
+                    background: #e2e8f0;
+                    color: #0f172a;
+                    text-decoration: none;
+                  }
+                  .dark .schedule-calendar .fc-daygrid-more-link {
+                    background: #1e293b;
+                    color: #e2e8f0;
+                  }
+                  .dark .schedule-calendar .fc-daygrid-more-link:hover {
+                    background: #334155;
+                    color: #f8fafc;
                   }
                   .schedule-calendar .fc-event-main { padding: 0 !important; }
                   .schedule-calendar .fc-timegrid-axis,

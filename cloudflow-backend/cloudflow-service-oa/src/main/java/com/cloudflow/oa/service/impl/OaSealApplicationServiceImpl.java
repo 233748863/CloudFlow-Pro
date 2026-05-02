@@ -8,7 +8,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.datascope.DataScopeHelper;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
@@ -60,16 +60,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     @Override
     public PageResult<OaSealApplication> queryPage(OaSealApplication query, PageQuery pageQuery) {
-        LambdaQueryWrapper<OaSealApplication> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(query.getSealId() != null, OaSealApplication::getSealId, query.getSealId())
-                .eq(query.getUserId() != null, OaSealApplication::getUserId, query.getUserId())
-                .eq(StringUtils.hasText(query.getStatus()), OaSealApplication::getStatus, query.getStatus())
-                .like(StringUtils.hasText(query.getApplicationNo()), OaSealApplication::getApplicationNo, query.getApplicationNo())
-                .like(StringUtils.hasText(query.getDocumentName()), OaSealApplication::getDocumentName, query.getDocumentName())
-                .eq(OaSealApplication::getDelFlag, "0");
-        DataScopeHelper.apply(wrapper, OaSealApplication::getUserId, OaSealApplication::getDeptId);
-        wrapper.orderByDesc(OaSealApplication::getCreateTime);
-        Page<OaSealApplication> page = page(pageQuery.build(), wrapper);
+        Page<OaSealApplication> page = baseMapper.selectPageByDataScope(pageQuery.build(), query, DataScopeUtils.listScope());
         return PageResult.build(page);
     }
 

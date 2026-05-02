@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.DutyScheduleMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.DutySchedule">
+        SELECT *
+        FROM sys_duty_schedule
+        <where>
+            <if test="query != null">
+                <if test="query.userId != null">
+                    AND user_id = #{query.userId}
+                </if>
+                <if test="query.deptId != null">
+                    AND dept_id = #{query.deptId}
+                </if>
+                <if test="query.scheduleType != null and query.scheduleType != ''">
+                    AND schedule_type = #{query.scheduleType}
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND status = #{query.status}
+                </if>
+                <if test="query.dutyDate != null">
+                    AND duty_date = #{query.dutyDate}
+                </if>
+            </if>
+            AND (del_flag IS NULL OR del_flag != '2')
+        </where>
+        ORDER BY duty_date DESC
+    </select>
+
+</mapper>

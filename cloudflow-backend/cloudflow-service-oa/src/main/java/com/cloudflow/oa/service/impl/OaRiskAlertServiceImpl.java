@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.dto.OaRiskAssignDTO;
 import com.cloudflow.oa.domain.dto.OaRiskStatsDTO;
@@ -35,10 +36,8 @@ public class OaRiskAlertServiceImpl extends ServiceImpl<OaRiskAlertMapper, OaRis
 
     @Override
     public PageResult<OaRiskAlert> queryPage(OaRiskAlert query, PageQuery pageQuery) {
-        LambdaQueryWrapper<OaRiskAlert> wrapper = buildQueryWrapper(query);
-        DataScopeHelperAdapter.applyByOwner(wrapper);
-        wrapper.orderByDesc(OaRiskAlert::getDetectedTime).orderByDesc(OaRiskAlert::getId);
-        Page<OaRiskAlert> page = page(pageQuery.build(), wrapper);
+        Page<OaRiskAlert> page = baseMapper.selectPageByDataScope(
+                pageQuery.build(), query, DataScopeUtils.userOnlyScope("owner_id"));
         return PageResult.build(page);
     }
 
@@ -142,21 +141,6 @@ public class OaRiskAlertServiceImpl extends ServiceImpl<OaRiskAlertMapper, OaRis
         return updated;
     }
 
-    private LambdaQueryWrapper<OaRiskAlert> buildQueryWrapper(OaRiskAlert query) {
-        LambdaQueryWrapper<OaRiskAlert> wrapper = new LambdaQueryWrapper<>();
-        if (query == null) {
-            return wrapper;
-        }
-        wrapper.eq(StringUtils.hasText(query.getBusinessType()), OaRiskAlert::getBusinessType, query.getBusinessType())
-                .eq(query.getBusinessId() != null, OaRiskAlert::getBusinessId, query.getBusinessId())
-                .eq(StringUtils.hasText(query.getRiskStatus()), OaRiskAlert::getRiskStatus, query.getRiskStatus())
-                .eq(StringUtils.hasText(query.getRiskLevel()), OaRiskAlert::getRiskLevel, query.getRiskLevel())
-                .eq(StringUtils.hasText(query.getRiskSource()), OaRiskAlert::getRiskSource, query.getRiskSource())
-                .like(StringUtils.hasText(query.getRiskName()), OaRiskAlert::getRiskName, query.getRiskName())
-                .like(StringUtils.hasText(query.getRiskCode()), OaRiskAlert::getRiskCode, query.getRiskCode());
-        return wrapper;
-    }
-
     private void normalizeRisk(OaRiskAlert risk) {
         if (risk == null) {
             throw new IllegalArgumentException("风险记录不能为空");
@@ -239,19 +223,5 @@ public class OaRiskAlertServiceImpl extends ServiceImpl<OaRiskAlertMapper, OaRis
 
     private Long resolveTenantId() {
         return UserContext.getTenantId() == null ? OaBorrowConstants.DEFAULT_TENANT_ID : UserContext.getTenantId();
-    }
-
-    private static final class DataScopeHelperAdapter {
-        private DataScopeHelperAdapter() {
-        }
-
-        private static void applyByOwner(LambdaQueryWrapper<OaRiskAlert> wrapper) {
-            Integer dsType = UserContext.getDsType();
-            if (dsType == null || dsType == 0) {
-                return;
-            }
-            Long userId = UserContext.getUserId();
-            wrapper.eq(OaRiskAlert::getOwnerId, userId == null ? -1L : userId);
-        }
     }
 }

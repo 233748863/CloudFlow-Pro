@@ -44,6 +44,42 @@
         </collection>
     </resultMap>
 
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.BizPurchaseRequest">
+        SELECT *
+        FROM biz_purchase_request
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="supplierId != null">
+                AND supplier_id = #{supplierId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectListByDataScope" resultType="com.cloudflow.oa.domain.BizPurchaseRequest">
+        SELECT *
+        FROM biz_purchase_request
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="supplierId != null">
+                AND supplier_id = #{supplierId}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
     <select id="selectRequestWithItems" resultMap="PurchaseRequestWithItemsMap">
         SELECT
             r.*,

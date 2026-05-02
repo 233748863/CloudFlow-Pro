@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.OaSealApplicationMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.OaSealApplication">
+        SELECT *
+        FROM oa_seal_application
+        <where>
+            <if test="query != null">
+                <if test="query.sealId != null">
+                    AND seal_id = #{query.sealId}
+                </if>
+                <if test="query.userId != null">
+                    AND user_id = #{query.userId}
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND status = #{query.status}
+                </if>
+                <if test="query.applicationNo != null and query.applicationNo != ''">
+                    AND application_no LIKE CONCAT('%', #{query.applicationNo}, '%')
+                </if>
+                <if test="query.documentName != null and query.documentName != ''">
+                    AND document_name LIKE CONCAT('%', #{query.documentName}, '%')
+                </if>
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+</mapper>

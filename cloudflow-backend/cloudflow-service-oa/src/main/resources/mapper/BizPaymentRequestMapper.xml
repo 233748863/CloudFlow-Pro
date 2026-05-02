@@ -2,6 +2,42 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.cloudflow.oa.mapper.BizPaymentRequestMapper">
 
+    <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.BizPaymentRequest">
+        SELECT *
+        FROM biz_payment_request
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="paymentType != null and paymentType != ''">
+                AND payment_type = #{paymentType}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="selectListByDataScope" resultType="com.cloudflow.oa.domain.BizPaymentRequest">
+        SELECT *
+        FROM biz_payment_request
+        <where>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+            <if test="paymentType != null and paymentType != ''">
+                AND payment_type = #{paymentType}
+            </if>
+            <if test="userId != null">
+                AND user_id = #{userId}
+            </if>
+            AND del_flag = '0'
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
     <select id="selectMonthlyPaymentByDept" resultType="map">
         SELECT 
             dept_name,
