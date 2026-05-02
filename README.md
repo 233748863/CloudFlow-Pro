@@ -1,749 +1,298 @@
-# CloudFlow Pro - 企业级低代码工作流平台
+# CloudFlow Pro
+
+CloudFlow Pro 是一个面向企业办公、流程审批和人力资源场景的低代码工作流平台。当前仓库已经从早期的 4 服务形态演进为网关、认证、工作流、OA、HR、前端和监控配套的多模块工程，README 已按当前代码结构重写。
 
 <div align="center">
 
-**基于 Spring Cloud Alibaba + React 的生产级微服务工作流解决方案**
-
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.4-brightgreen)](https://spring.io/projects/spring-boot)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2.6-brightgreen)](https://spring.io/projects/spring-boot)
 [![Spring Cloud](https://img.shields.io/badge/Spring%20Cloud-2023.0.1-blue)](https://spring.io/projects/spring-cloud)
-[![React](https://img.shields.io/badge/React-19.2-61dafb)](https://react.dev/)
-[![MyBatis Plus](https://img.shields.io/badge/MyBatis%20Plus-3.5.7-red)](https://baomidou.com/)
+[![Spring Cloud Alibaba](https://img.shields.io/badge/Spring%20Cloud%20Alibaba-2023.0.1.0-blue)](https://github.com/alibaba/spring-cloud-alibaba)
+[![React](https://img.shields.io/badge/React-19.2.0-61dafb)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-6.4.1-646cff)](https://vite.dev/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
-[在线演示](http://demo.cloudflow.com) | [API文档](http://localhost:9000/doc.html)
+[API 文档](http://localhost:9000/doc.html) | [前端入口](http://localhost:3000)
 
 </div>
 
----
+## 📌 当前状态
 
-## 📖 项目简介
+| 项 | 当前仓库状态 |
+| --- | --- |
+| 后端版本 | `cloudflow-backend` Maven 版本 `1.0.0` |
+| 前端版本 | `cloudflow-frontend` package 版本 `0.0.0` |
+| 后端服务 | 网关、认证、工作流、OA、HR |
+| 公共能力 | 16 个 `cloudflow-common-*` 子模块 |
+| Controller | 业务服务 84 个，公共 SSE 1 个 |
+| 前端页面 | `src/pages` 下 94 个 TSX 页面组件 |
+| 数据库结构 | `01`-`04` 脚本合计 135 张结构表 |
+| 本地一键启动 | `start-cloudflow.ps1` 启动 5 个后端服务和前端 |
+| Docker Compose | 已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、Prometheus、Grafana、前端；HR 容器尚未编排 |
 
-CloudFlow Pro 是一套**生产就绪**的企业级微服务工作流平台，集成了可视化流程设计、动态表单、RBAC权限、实时监控告警、完整OA模块等核心能力。通过"低代码+AI"的方式，帮助企业快速构建复杂的业务流程应用。
+## ✨ 核心能力
 
-**当前版本**: v2.0  
-**代码规模**: 46个后端Controller + 60+前端页面 + 39张数据库表  
-**核心能力**: 已完成 Phase 2 监控告警模块，系统功能完整
+- ⚙️ 工作流：流程设计、动态表单、模板库、版本管理、抄送、会签、加签、减签、委派、发布窗口、发布审批、回滚、归档、流程监控、超时告警、异常告警、性能统计。
+- 🛡️ 系统治理：认证登录、滑块验证码、Sa-Token 会话、RBAC 权限、菜单权限、数据权限、多租户、字典、参数配置、文件管理、操作日志、审计日志、在线用户、Redis 缓存监控。
+- 💼 OA：公告、日程、会议室、通讯录、访客、资产、耗材、车辆、费用报销、付款申请、采购申请、合同、风险告警、印章、证照、值班排班、知识库、离线同步、前端错误上报。
+- 👥 HR：组织编制、岗位族、职级、职位、员工档案、合同、入职、转正、调岗、离职、考勤、请假、加班、排班、薪酬、社保、个税、绩效、招聘、候选人、面试、Offer、HR 审计。
+- 📱 前端体验：React 19、Vite、Tailwind CSS 4、路由守卫、响应式页面、PWA、离线同步、工作台组件、流程设计器、模板库、监控看板、HR 工作区。
 
----
+## 🏗️ 技术栈
 
-## ✨ 核心特性
+### 🚀 后端
 
-### 🚀 生产级架构
-- **微服务化** - 网关、认证、工作流、OA服务独立部署，支持水平扩展
-- **高可用** - Nacos服务注册与配置中心，支持集群部署
-- **高性能** - 完整的索引优化、连接池配置、异步处理、Redis缓存
-- **安全加固** - JWT认证、滑块验证码、数据加密、审计日志、数据权限
+| 技术 | 版本 |
+| --- | --- |
+| JDK | 17 |
+| Spring Boot | 3.2.6 |
+| Spring Cloud | 2023.0.1 |
+| Spring Cloud Alibaba | 2023.0.1.0 |
+| Nacos | 2.3.0 |
+| MySQL Driver | 8.0.33 |
+| MyBatis Plus | 3.5.7 |
+| Sa-Token | 1.45.0 |
+| Redisson | 3.27.0 |
+| Dynamic Datasource | 4.3.1 |
+| Knife4j | 4.5.0 |
+| FastExcel | 1.0.0 |
+| Apache POI | 5.2.5 |
+| Javers | 7.6.2 |
+| Hutool | 5.8.26 |
 
-### ⚙️ 强大的工作流引擎（13个Controller）
-- **可视化设计** - SVG拖拽式流程建模，支持复杂流程图
-- **复杂流转** - 并行网关、排他网关、SpEL动态表达式路由、子流程
-- **会签机制** - 支持顺序会签、并行会签、一票否决、按比例通过
-- **任务管理** - 任务委派、转办、加签、减签、催办、附件管理
-- **流程监控** - 实时监控流程执行状态、性能统计、异常检测（Phase 2）
-- **超时控制** - 节点超时自动处理、多级告警（提醒/警告/严重）
-- **版本管理** - 流程版本控制、版本对比、一键回滚
-- **模板库** - 预置流程模板、一键创建、模板分类管理
-- **归档管理** - 历史流程归档、批量归档、归档恢复
-- **发布增强** - 发布窗口、发布审批、影响分析、回滚历史
+### 🎨 前端
 
-### 📝 低代码表单能力
-- **动态表单** - 拖拽生成JSON Schema表单，支持20+组件类型
-- **双重校验** - 前后端统一校验规则，保证数据一致性
-- **表单版本** - 表单版本管理，支持历史版本查看
-- **AI赋能** - 集成Gemini API，自然语言生成业务代码
+| 技术 | 版本 |
+| --- | --- |
+| React | 19.2.0 |
+| TypeScript | 5.8.2 |
+| Vite | 6.4.1 |
+| Tailwind CSS | 4.1.18 |
+| React Router | 7.13.0 |
+| TanStack React Query | 5.90.20 |
+| Zustand | 5.0.11 |
+| dnd-kit | 6.3.1 / 10.0.0 |
+| FullCalendar | 6.1.20 |
+| Lucide React | 0.555.0 |
+| vite-plugin-pwa | 1.2.0 |
 
-### 🛡️ 企业级权限管理（10个Controller）
-- **RBAC模型** - 用户、角色、部门、菜单四级权限控制
-- **数据权限** - 支持全部、自定义、本级及下级、本级、本人五种数据范围
-- **多租户** - 完整的租户隔离，支持SaaS模式部署
-- **安全认证** - JWT + Redis分布式会话，自研滑块验证码
-- **缓存监控** - Redis缓存监控、缓存清理、缓存统计
-- **参数配置** - 系统参数配置、业务配置、配置热更新
+## 🔌 服务与端口
 
-### 📊 实时监控告警（Phase 2 - 已完成）
-- **流程监控** - 实时监控流程执行状态、节点耗时、任务分布
-- **超时检测** - 自动检测超时任务和流程，多级告警（提醒/警告/严重）
-- **异常检测** - 自动检测执行失败、死锁、无处理人、数据不一致
-- **性能统计** - 流程执行时长、成功率、节点性能趋势分析
-- **告警管理** - 告警查询、告警处理、告警升级、告警统计
-
-### 💼 完整的OA模块（23个Controller）
-- **考勤管理** - GPS打卡、请假、补卡、加班、出差申请、考勤统计
-- **资产管理** - 资产登记、领用、归还、维修、盘点、二维码管理
-- **车辆管理** - 车辆档案、用车申请、用车记录、油耗统计、费用管理
-- **会议室** - 会议室预订、签到、自动释放、使用统计
-- **公告中心** - 公告发布、阅读统计、附件管理、置顶管理
-- **通讯录** - 企业通讯录、组织架构展示、用户详情
-- **访客管理** - 访客预约、登记、签离、访客统计
-- **值班排班** - 值班计划、排班管理、签到签退、换班申请
-- **费用管理** - 费用报销、付款申请、费用统计、月度分析
-- **耗材管理** - 耗材登记、库存管理、低库存预警、出入库记录
-
-### 📱 移动端适配
-- **响应式设计** - 自动检测设备类型，切换桌面端/移动端路由
-- **移动端页面** - 10+移动端专属页面，优化触控体验
-- **离线同步** - 支持离线数据上传、增量数据下载、冲突解决
-
----
-
-## 🏗️ 技术架构
-
-### 后端技术栈
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| Spring Boot | 3.2.4 | 基础框架 |
-| Spring Cloud | 2023.0.1 | 微服务框架 |
-| Spring Cloud Alibaba | 2023.0.1.0 | 阿里巴巴微服务套件 |
-| Spring Cloud Gateway | 4.1.x | API网关 |
-| Nacos | 2.3.x | 服务注册与配置中心 |
-| OpenFeign | 4.1.x | 服务调用 |
-| MySQL | 8.0.33 | 关系型数据库 |
-| Redis | 7.0+ | 缓存与消息队列 |
-| MyBatis Plus | 3.5.7 | ORM框架 |
-| Redisson | 3.27.0 | 分布式锁 |
-| Hutool | 5.8.26 | Java工具类库 |
-| Knife4j | 4.5.0 | API文档 |
-| EasyExcel | 3.3.4 | Excel导入导出 |
-| ZXing | 3.5.3 | 二维码生成 |
-| Groovy | 3.0.19 | 脚本引擎 |
-| Javers | 7.6.2 | 对象差异比较 |
-
-### 前端技术栈
-| 技术 | 版本 | 说明 |
-|------|------|------|
-| React | 19.2 | UI框架 |
-| Vite | 6.4 | 构建工具 |
-| TypeScript | 5.8 | 类型系统 |
-| Tailwind CSS | 4.1 | CSS框架 |
-| Zustand | 5.0 | 状态管理 |
-| React Query | 5.90 | 数据请求 |
-| React Router | 7.13 | 路由管理 |
-| dnd-kit | 6.3 | 拖拽功能 |
-| Lucide React | 0.555 | 图标库 |
-| FullCalendar | 6.1 | 日历组件 |
-| date-fns | 4.1 | 日期处理 |
-
-### 公共模块能力（15个模块）
-- **cloudflow-common-core** - 核心工具类、常量、异常处理
-- **cloudflow-common-security** - JWT认证、权限校验、滑块验证码
-- **cloudflow-common-redis** - Redis封装、分布式锁、缓存管理
-- **cloudflow-common-data** - 数据权限、MyBatis Plus配置
-- **cloudflow-common-datasource** - 多数据源、动态数据源
-- **cloudflow-common-log** - 操作日志、审计日志
-- **cloudflow-common-audit** - 数据变更审计、对象差异比较
-- **cloudflow-common-idempotent** - 接口幂等性
-- **cloudflow-common-ratelimiter** - 接口限流
-- **cloudflow-common-encrypt** - 数据加密、字段加密
-- **cloudflow-common-excel** - Excel导入导出
-- **cloudflow-common-oss** - 对象存储、文件上传
-- **cloudflow-common-sse** - 服务端推送、实时通知
-- **cloudflow-common-job** - 定时任务
-- **cloudflow-common-seata** - 分布式事务
-
-### 架构特点
-- **微服务架构** - 4个独立服务（网关、认证、工作流、OA）
-- **配置中心** - Nacos统一配置管理，支持动态刷新
-- **服务发现** - 自动服务注册与发现，支持负载均衡
-- **分布式锁** - Redisson实现分布式锁，防止并发问题
-- **异步处理** - 线程池异步执行，提升系统吞吐量
-- **实时推送** - SSE服务端推送，实时通知更新
-- **数据权限** - 基于注解的数据权限过滤
-- **审计日志** - 完整的操作日志和数据变更审计
-
----
+| 服务 | 模块 | 默认端口 | 说明 |
+| --- | --- | --- | --- |
+| 前端开发服务 | `cloudflow-frontend` | `3000` | Vite，本地开发入口 |
+| 网关 | `cloudflow-gateway` | `9000` | 统一入口，路由 `/auth`、`/workflow`、`/oa`、`/hr`、`/ws` |
+| 认证服务 | `cloudflow-auth` | `9001` | 登录、租户、系统管理、文件、日志 |
+| 工作流服务 | `cloudflow-service-workflow` | `9002` | 流程引擎、流程监控、模板、版本、发布 |
+| OA 服务 | `cloudflow-service-oa` | `9003` | 办公、行政、合同、知识库、同步 |
+| HR 服务 | `cloudflow-service-hr` | `9005` | 人力资源业务 |
+| Nacos | Docker / 本地安装 | `8848` | 注册中心和配置中心 |
+| MySQL | Docker / 本地安装 | `3306` | 默认库名 `cloud_flow_db` |
+| Redis | Docker / 本地安装 | `6379` | 缓存、会话、分布式能力 |
+| Prometheus | Docker Compose | `9090` | 采集 Actuator 指标 |
+| Grafana | Docker Compose | `3000` | 默认外部端口和前端开发端口冲突，可用 `GRAFANA_PORT` 调整 |
 
 ## 📂 项目结构
 
-```
+```text
 CloudFlow Pro/
-├── cloudflow-backend/              # 后端工程
-│   ├── cloudflow-gateway/          # API网关服务 (9000)
-│   ├── cloudflow-auth/             # 认证中心 (9001) - 10个Controller
-│   ├── cloudflow-service-workflow/ # 工作流核心服务 (9002) - 13个Controller
-│   ├── cloudflow-service-oa/       # OA办公服务 (9003) - 23个Controller
-│   ├── cloudflow-common/           # 公共模块 - 15个子模块
-│   │   ├── cloudflow-common-core/      # 核心工具类
-│   │   ├── cloudflow-common-security/  # 安全认证
-│   │   ├── cloudflow-common-redis/     # Redis封装
-│   │   ├── cloudflow-common-data/      # 数据权限
-│   │   ├── cloudflow-common-log/       # 日志管理
-│   │   ├── cloudflow-common-audit/     # 审计日志
-│   │   ├── cloudflow-common-excel/     # Excel处理
-│   │   ├── cloudflow-common-oss/       # 对象存储
-│   │   ├── cloudflow-common-sse/       # 实时推送
-│   │   └── ...                         # 其他公共模块
-│   └── DB/                         # 数据库脚本
-│       ├── 01.cloudflow-common.sql     # 基础模块（15张表）
-│       ├── 02.cloudflow-workflow.sql   # 工作流模块（39张表）
-│       └── 04.cloudflow-oa.sql         # OA模块（20+张表）
-├── cloudflow-frontend/             # 前端工程 (3000)
-│   ├── src/
-│   │   ├── pages/                  # 页面组件（60+页面）
-│   │   ├── mobile/                 # 移动端页面（10+页面）
-│   │   ├── components/             # 通用组件
-│   │   ├── services/               # API服务
-│   │   ├── stores/                 # 状态管理
-│   │   └── utils/                  # 工具函数
-│   └── public/                     # 静态资源
-├── config/                         # Nacos配置文件
-├── docker/                         # Docker镜像构建
-└── README.md                       # 项目说明
+├── cloudflow-backend/
+│   ├── cloudflow-gateway/              # Spring Cloud Gateway
+│   ├── cloudflow-auth/                 # 认证与系统管理
+│   ├── cloudflow-service-workflow/     # 工作流核心服务
+│   ├── cloudflow-service-oa/           # OA 办公服务
+│   ├── cloudflow-service-hr/           # HR 人力资源服务
+│   ├── cloudflow-common/               # 16 个公共子模块
+│   └── DB/                             # 数据库结构、种子和演示脚本
+├── cloudflow-frontend/
+│   ├── src/pages/                      # 页面与业务工作区
+│   ├── src/components/                 # 业务组件和通用组件
+│   ├── src/services/api/               # 前端 API 封装
+│   ├── src/stores/                     # Zustand 状态
+│   └── src/utils/                      # 工具函数
+├── config/                             # Nacos Data ID 配置文件
+├── docker/                             # 服务镜像、Nginx、监控配置
+├── docker-compose.yml                  # 容器编排，当前未包含 HR 服务
+├── push_nacos_config.py                # 批量推送 Nacos 配置
+├── start-cloudflow.ps1                 # Windows / PowerShell 本地全服务启动
+└── start-cloudflow.bat                 # PowerShell 启动脚本封装
 ```
 
----
+## 🗄️ 数据库脚本
 
-## 🚀 快速开始
+| 文件 | 作用 | 结构表数量 |
+| --- | --- | --- |
+| `01.cloudflow-common.sql` | 租户、部门、用户、角色、菜单、岗位、文件、日志、字典、参数 | 15 |
+| `02.cloudflow-workflow.sql` | 流程定义、实例、任务、会签、模板、版本、归档、监控、告警 | 41 |
+| `03.cloudflow-hr.sql` | HR 组织、人事、考勤、薪酬、绩效、招聘、审计 | 43 |
+| `04.cloudflow-oa.sql` | OA、行政、资产、车辆、费用、合同、印章、证照、访客、知识库 | 36 |
+| `05.cloudflow-clear-all.sql` | 清理业务数据 | 0 |
+| `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板和演示业务数据 | 4 |
+| `07.cloudflow-performance-demo.sql` | 监控与性能演示数据 | 0 |
 
-### 环境要求
-- **JDK**: 17+
-- **Maven**: 3.8+
-- **Node.js**: 18+
-- **MySQL**: 8.0+
-- **Redis**: 6.0+
-- **Nacos**: 2.3+
+执行 `06.cloudflow-business-seed.sql` 后可使用以下账号登录，密码均为 `123456`：`admin`、`li`、`wang`、`zhao`、`zhang`。
 
-### 1. 数据库初始化
+## 🚀 本地快速启动
 
-```bash
-# 创建数据库
-mysql -u root -p -e "CREATE DATABASE cloud_flow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+### ✅ 1. 环境要求
 
-# 执行初始化脚本（按顺序）
-cd cloudflow-backend/DB
-mysql -u root -p cloud_flow_db < 01.cloudflow-common.sql    # 基础模块（15张表）
-mysql -u root -p cloud_flow_db < 02.cloudflow-workflow.sql  # 工作流模块（39张表）
-mysql -u root -p cloud_flow_db < 04.cloudflow-oa.sql        # OA模块（20+张表）
+- JDK 17
+- Maven 3.8+
+- Node.js 18、20 或 22
+- MySQL 8.0+
+- Redis 7.x
+- Nacos 2.3.x
+- Python 3.9+，仅用于 `push_nacos_config.py`
+
+### 🧱 2. 初始化数据库
+
+PowerShell 示例：
+
+```powershell
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS cloud_flow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+Get-Content .\cloudflow-backend\DB\01.cloudflow-common.sql | mysql -u root -p cloud_flow_db
+Get-Content .\cloudflow-backend\DB\02.cloudflow-workflow.sql | mysql -u root -p cloud_flow_db
+Get-Content .\cloudflow-backend\DB\03.cloudflow-hr.sql | mysql -u root -p cloud_flow_db
+Get-Content .\cloudflow-backend\DB\04.cloudflow-oa.sql | mysql -u root -p cloud_flow_db
+Get-Content .\cloudflow-backend\DB\06.cloudflow-business-seed.sql | mysql -u root -p cloud_flow_db
 ```
 
-**默认账号**：
-- 管理员：`admin` / `123456`
-- 部门经理：`li` / `123456`
-- 财务专员：`wang` / `123456`
-- HR经理：`zhao` / `123456`
-- 普通员工：`zhang` / `123456`
-
-### 2. 启动Nacos
+Bash 示例：
 
 ```bash
-# 下载Nacos 2.3.0
-wget https://github.com/alibaba/nacos/releases/download/2.3.0/nacos-server-2.3.0.tar.gz
-tar -xzf nacos-server-2.3.0.tar.gz
-cd nacos/bin
-
-# 单机模式启动
-sh startup.sh -m standalone  # Linux/Mac
-startup.cmd -m standalone    # Windows
-
-# 访问控制台: http://localhost:8848/nacos
-# 默认账号: nacos / nacos
+mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS cloud_flow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p cloud_flow_db < cloudflow-backend/DB/01.cloudflow-common.sql
+mysql -u root -p cloud_flow_db < cloudflow-backend/DB/02.cloudflow-workflow.sql
+mysql -u root -p cloud_flow_db < cloudflow-backend/DB/03.cloudflow-hr.sql
+mysql -u root -p cloud_flow_db < cloudflow-backend/DB/04.cloudflow-oa.sql
+mysql -u root -p cloud_flow_db < cloudflow-backend/DB/06.cloudflow-business-seed.sql
 ```
 
-### 3. 配置Nacos
+### 📤 3. 推送 Nacos 配置
 
-将 `config/` 目录下的配置文件导入Nacos：
-- `cloudflow-common.yaml` - 公共配置（数据库、Redis）
-- `cloudflow-gateway.yaml` - 网关配置
-- `cloudflow-auth.yaml` - 认证服务配置
-- `cloudflow-service-workflow.yaml` - 工作流服务配置
-- `cloudflow-oa.yaml` - OA服务配置
+`config/` 下当前有 6 个标准 Data ID：`cloudflow-common.yaml`、`cloudflow-gateway.yaml`、`cloudflow-auth.yaml`、`cloudflow-service-workflow.yaml`、`cloudflow-service-hr.yaml`、`cloudflow-oa.yaml`。这些配置文件带有当前开发环境默认地址，首次运行前应把 MySQL、Redis、Nacos 地址和密码改成自己的环境值。
 
-### 4. 启动后端服务
-
-**方式一：IDE启动（推荐开发环境）**
-
-按顺序启动以下服务：
-1. `CloudFlowAuthApplication` - 认证服务 (9001)
-2. `CloudFlowWorkflowApplication` - 工作流服务 (9002)
-3. `CloudFlowOaApplication` - OA服务 (9003)
-4. `CloudFlowGatewayApplication` - 网关服务 (9000)
-
-**方式二：命令行启动**
-
-```bash
-cd cloudflow-backend
-
-# 编译打包
-mvn clean package -DskipTests
-
-# 启动认证服务
-java -jar cloudflow-auth/target/cloudflow-auth-1.0.0.jar
-
-# 启动工作流服务
-java -jar cloudflow-service-workflow/target/cloudflow-service-workflow-1.0.0.jar
-
-# 启动OA服务
-java -jar cloudflow-service-oa/target/cloudflow-service-oa-1.0.0.jar
-
-# 启动网关服务
-java -jar cloudflow-gateway/target/cloudflow-gateway-1.0.0.jar
+```powershell
+python -m pip install requests
+$env:NACOS_SERVER = "http://localhost:8848"
+$env:NACOS_NAMESPACE = "0ccb9313-39d8-4a58-9fa5-ce834b77e60d"
+$env:NACOS_USERNAME = "nacos"
+$env:NACOS_PASSWORD = "nacos"
+python .\push_nacos_config.py
 ```
 
-### 5. 启动前端
+### 📦 4. 安装前端依赖
 
-```bash
-cd cloudflow-frontend
+```powershell
+cd .\cloudflow-frontend
+npm ci
+cd ..
+```
 
-# 安装依赖
-npm install
+### ▶️ 5. 一键启动全服务
 
-# 启动开发服务器
+```powershell
+.\start-cloudflow.bat
+```
+
+等价 PowerShell 命令：
+
+```powershell
+pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
+```
+
+脚本会编译并安装后端内部依赖，启动网关、认证、工作流、OA、HR 和前端；运行日志写入 `.cloudflow-runtime/logs/`。
+
+### 🌐 6. 访问入口
+
+- 前端：`http://localhost:3000`
+- 网关：`http://localhost:9000`
+- API 文档：`http://localhost:9000/doc.html`
+- Nacos：`http://localhost:8848/nacos`
+- 工作流健康检查：`http://localhost:9002/actuator/health`
+- HR 健康检查：`http://localhost:9005/actuator/health`
+
+## 🧰 手动启动
+
+后端编译：
+
+```powershell
+cd .\cloudflow-backend
+mvn -pl cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-hr -am -DskipTests -Dmaven.test.skip=true -Dmdep.analyze.skip=true install
+```
+
+单服务启动示例：
+
+```powershell
+cd .\cloudflow-backend\cloudflow-auth
+mvn -Dspring-boot.run.mainClass=com.cloudflow.auth.AuthApplication spring-boot:run
+```
+
+前端启动：
+
+```powershell
+cd .\cloudflow-frontend
 npm run dev
-
-# 访问地址: http://localhost:3000
 ```
 
-### 6. 验证部署
+## 🐳 Docker Compose
 
-- **前端**: http://localhost:3000
-- **网关**: http://localhost:9000
-- **API文档**: http://localhost:9000/doc.html
-- **Nacos**: http://localhost:8848/nacos
-- **健康检查**: http://localhost:9002/actuator/health
-
----
-
-## 🐳 Docker部署
-
-### 使用Docker Compose（推荐）
+当前 `docker-compose.yml` 适合启动基础容器化环境和监控面板：
 
 ```bash
-# 1. 配置环境变量
 cp .env.example .env
-# 编辑 .env 文件，修改数据库密码等敏感信息
-
-# 2. 启动所有服务
-docker-compose up -d
-
-# 3. 查看服务状态
-docker-compose ps
-
-# 4. 查看日志
-docker-compose logs -f cloudflow-workflow
-
-# 5. 停止服务
-docker-compose down
+docker compose up -d
+docker compose ps
 ```
 
-服务端口映射：
-- MySQL: 3306
-- Redis: 6379
-- Nacos: 8848
-- 网关: 9000
-- 认证: 9001
-- 工作流: 9002
-- OA: 9003
-- 前端: 3000
+当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、Prometheus、Grafana、前端，尚未包含 `cloudflow-service-hr`；如需完整 HR 演示，以本地脚本启动 HR 服务，或补充 HR Dockerfile、Compose service、Prometheus target 和数据库初始化挂载。
 
----
+Docker 访问入口：
 
-## 📚 功能模块
+- 前端 Nginx：`http://localhost`
+- 网关：`http://localhost:9000`
+- Nacos：`http://localhost:8848/nacos`
+- Prometheus：`http://localhost:9090`
+- Grafana：默认 `http://localhost:3000`，可通过 `.env` 的 `GRAFANA_PORT` 修改
 
-### 工作台
-- **仪表盘** - 待办统计、流程统计、快捷入口、数据可视化
-- **我的日程** - 日历视图、事件管理、会议提醒
+## 🔧 开发命令
 
-### 办公协同（7个功能）
-- **会议室管理** - 预订、签到、自动释放、使用统计
-- **公告中心** - 发布、阅读统计、附件管理、置顶管理
-- **考勤打卡** - GPS定位打卡、考勤统计、异常处理
-- **补卡申请** - 补卡/外勤申请流程、审批记录
-- **加班申请** - 加班申请与审批、加班统计
-- **出差申请** - 出差申请与行程管理、出差统计
-- **通讯录** - 企业通讯录、组织架构、用户详情
+后端：
 
-### 流程中心（5个功能）
-- **发起流程** - 流程模板库、快速发起、草稿保存
-- **我的申请** - 申请记录、进度跟踪、流程撤回
-- **审批待办** - 待办列表、批量审批、任务委派
-- **抄送我的** - 抄送记录、查看详情、已读标记
-- **模板库** - 流程模板浏览、一键使用、模板分类
-
-### 流程管理（10个功能）
-- **流程设计** - 可视化流程设计器、节点配置、流程验证
-- **流程监控** - 实时监控、性能统计、异常检测
-- **发布管理** - 版本管理、灰度发布、发布审批
-- **表单设计** - 动态表单设计器、组件库、表单预览
-- **批量编辑** - 流程分类、标签管理、批量操作
-- **流程分类** - 分类管理、权限控制、分类树
-- **流程导入** - 批量导入、模板导入、导入验证
-- **归档管理** - 历史流程归档、查询、归档恢复
-- **告警管理** - 超时告警、异常告警处理、告警统计
-- **性能统计** - 流程性能分析、趋势图表、性能优化建议
-
-### 行政管理（8个功能）
-- **组织架构** - 部门管理、人员管理、组织树
-- **资产管理** - 资产登记、领用、归还、盘点、二维码
-- **车辆管理** - 车辆档案、用车申请、用车记录、油耗统计
-- **用车申请** - 在线申请、审批流程、车辆调度
-- **用车记录** - 行驶记录、油耗统计、费用分析
-- **考勤规则** - 考勤规则配置、班次管理、节假日设置
-- **访客管理** - 访客预约、登记、签离、访客统计
-- **值班排班** - 值班计划、排班管理、签到签退、换班申请
-
-### 系统管理（12个功能）
-- **用户管理** - 用户增删改查、密码重置、批量导入
-- **角色管理** - 角色权限配置、数据权限、角色分配
-- **菜单管理** - 菜单树管理、权限标识、菜单图标
-- **文件管理** - 文件上传、下载、预览、文件统计
-- **源码生成** - AI代码生成、模板定制、代码预览
-- **租户管理** - 租户增删改查、配额管理、租户切换
-- **操作日志** - 操作记录、审计追踪、日志导出
-- **审计日志** - 数据变更记录、合规审计、差异对比
-- **岗位管理** - 岗位配置、人员分配、岗位权限
-- **参数配置** - 系统参数、业务配置、配置热更新
-- **缓存监控** - Redis监控、缓存清理、缓存统计
-- **字典管理** - 数据字典、下拉选项、字典分类
-
----
-
-## 🔧 开发指南
-
-### 后端开发
-
-**添加新的业务模块**：
-1. 在 `cloudflow-backend` 下创建新模块
-2. 配置 `pom.xml` 依赖
-3. 实现 Controller、Service、Mapper
-4. 配置 Nacos 配置文件
-5. 在网关配置路由
-
-**数据权限使用**：
-```java
-@DataScope(deptAlias = "d", userAlias = "u")
-public List<User> selectUserList(User user) {
-    // 自动注入数据权限SQL
-}
+```powershell
+cd .\cloudflow-backend
+mvn -DskipTests -Dmaven.test.skip=true -Dmdep.analyze.skip=true install
 ```
 
-**分布式锁使用**：
-```java
-@Autowired
-private RedissonClient redissonClient;
+前端：
 
-RLock lock = redissonClient.getLock("lock:key");
-try {
-    if (lock.tryLock(10, 30, TimeUnit.SECONDS)) {
-        // 业务逻辑
-    }
-} finally {
-    lock.unlock();
-}
+```powershell
+cd .\cloudflow-frontend
+npm run type-check
+npm run check-imports
+npm run build
 ```
 
-**审计日志使用**：
-```java
-@AuditLog(module = "用户管理", operation = "修改用户")
-public void updateUser(User user) {
-    // 自动记录数据变更
-}
+## ⚙️ 配置说明
+
+- 前端默认把 `/api` 和 `/ws` 代理到 `VITE_API_BASE_URL`，未设置时为 `http://localhost:9000`。
+- `GEMINI_API_KEY` 用于前端 AI 代码生成能力，通过 Vite `define` 注入。
+- 后端优先读取 Nacos 配置，本地 `application.yml` 是后备配置。
+- `config/*.yaml` 和部分 `application.yml` 中存在开发环境地址和默认密码，公开部署前必须改为环境变量、Nacos 密文或独立密钥管理。
+
+## 📖 API 文档
+
+启动后访问 Knife4j：`http://localhost:9000/doc.html`。README 不再维护逐接口清单，接口以 Controller 注解和在线文档为准，避免多次迭代后文档与代码漂移。
+
+## 🤝 贡献
+
+```bash
+git checkout -b feature/your-feature
+git commit -m "feat: describe your change"
+git push origin feature/your-feature
 ```
 
-### 前端开发
+提交 PR 前建议至少执行后端编译和前端类型检查。
 
-**添加新页面**：
-1. 在 `src/pages` 创建页面组件
-2. 在 `src/router.tsx` 配置路由
-3. 在 `src/services/api` 添加API接口
-4. 使用 Zustand 管理状态
+## 📄 许可证
 
-**API调用示例**：
-```typescript
-import { request } from '@/utils/request';
-
-export const getWorkflowList = (params: any) => {
-  return request.get('/workflow/list', { params });
-};
-```
-
-**状态管理示例**：
-```typescript
-import { create } from 'zustand';
-
-export const useUserStore = create((set) => ({
-  user: null,
-  setUser: (user) => set({ user }),
-}));
-```
-
----
-
-## 📖 API文档
-
-### 工作流服务 API（13个Controller）
-
-#### 1. WorkflowController - 流程核心
-- `POST /workflow/start` - 启动流程
-- `POST /workflow/complete` - 完成任务
-- `GET /workflow/tasks` - 获取待办任务
-- `GET /workflow/instances` - 获取流程实例
-- `GET /workflow/trace/{instanceId}` - 获取流程轨迹
-
-#### 2. AlertController - 告警管理
-- `GET /workflow/alerts/timeout` - 获取超时告警
-- `GET /workflow/alerts/anomaly` - 获取异常告警
-- `POST /workflow/alerts/resolve` - 处理告警
-
-#### 3. WorkflowMonitorController - 流程监控
-- `GET /workflow/monitor/overview` - 监控概览
-- `GET /workflow/monitor/trend` - 流程趋势
-- `GET /workflow/monitor/performance` - 性能统计
-
-#### 4. TemplateController - 模板管理
-- `GET /workflow/templates` - 获取模板列表
-- `POST /workflow/templates` - 创建模板
-- `POST /workflow/templates/{id}/use` - 使用模板
-
-#### 5. VersionController - 版本管理
-- `GET /workflow/versions/{workflowId}` - 获取版本历史
-- `POST /workflow/versions/rollback` - 版本回滚
-- `GET /workflow/versions/compare` - 版本对比
-
-#### 6. ImportExportController - 导入导出
-- `POST /workflow/export` - 导出流程
-- `POST /workflow/import` - 导入流程
-- `POST /workflow/validate` - 验证导入文件
-
-#### 7. BatchOperationController - 批量操作
-- `POST /workflow/batch/archive` - 批量归档
-- `POST /workflow/batch/restore` - 批量恢复
-- `POST /workflow/batch/delete` - 批量删除
-
-#### 8. DeployEnhancementController - 发布增强
-- `GET /workflow/deploy/window` - 检查发布窗口
-- `POST /workflow/deploy/approval` - 提交发布审批
-- `POST /workflow/deploy/rollback` - 回滚发布
-- `GET /workflow/deploy/impact` - 影响分析
-
-#### 9. ProcessCategoryController - 流程分类
-- `GET /workflow/category/tree` - 获取分类树
-- `POST /workflow/category` - 创建分类
-- `PUT /workflow/category` - 更新分类
-
-#### 10. ProcessCopyController - 抄送管理
-- `GET /workflow/copy/list` - 获取抄送列表
-- `POST /workflow/copy/read` - 标记已读
-- `GET /workflow/copy/unread` - 获取未读数量
-
-#### 11. WorkflowEnhanceController - 流程增强
-- `POST /workflow/addSign` - 加签
-- `POST /workflow/removeSign` - 减签
-- `POST /workflow/delegate` - 委派任务
-- `GET /workflow/flowchart/{instanceId}` - 获取流程图
-
-#### 12. AuditLogController - 审计日志
-- `GET /workflow/audit/list` - 获取审计日志列表
-- `GET /workflow/audit/{id}` - 获取审计日志详情
-- `DELETE /workflow/audit/expired` - 删除过期日志
-
-#### 13. PermissionTestController - 权限测试
-- `GET /workflow/permission/test` - 权限测试接口
-
-### 认证服务 API（10个Controller）
-
-#### 1. AuthController - 认证核心
-- `POST /auth/login` - 用户登录
-- `POST /auth/register` - 用户注册
-- `POST /auth/logout` - 用户登出
-- `GET /auth/info` - 获取用户信息
-- `GET /auth/routers` - 获取路由菜单
-- `POST /auth/switchTenant` - 切换租户
-
-#### 2. CaptchaController - 验证码
-- `GET /auth/captcha/slider` - 获取滑块验证码
-- `POST /auth/captcha/check` - 验证滑块
-
-#### 3. SysUserController - 用户管理
-- `GET /system/user/list` - 获取用户列表
-- `GET /system/user/{userId}` - 获取用户详情
-- `POST /system/user` - 创建用户
-- `PUT /system/user` - 更新用户
-- `DELETE /system/user/{userIds}` - 删除用户
-
-#### 4. SysRoleController - 角色管理
-- `GET /system/role/list` - 获取角色列表
-- `GET /system/role/{roleId}` - 获取角色详情
-- `POST /system/role` - 创建角色
-- `PUT /system/role` - 更新角色
-- `DELETE /system/role/{roleIds}` - 删除角色
-
-#### 5. SysMenuController - 菜单管理
-- `GET /system/menu/list` - 获取菜单列表
-- `GET /system/menu/{menuId}` - 获取菜单详情
-- `POST /system/menu` - 创建菜单
-- `PUT /system/menu` - 更新菜单
-- `DELETE /system/menu/{menuId}` - 删除菜单
-
-#### 6. SysDeptController - 部门管理
-- `GET /system/dept/tree` - 获取部门树
-- `GET /system/dept/{deptId}` - 获取部门详情
-- `POST /system/dept` - 创建部门
-- `PUT /system/dept` - 更新部门
-- `DELETE /system/dept/{deptId}` - 删除部门
-
-#### 7. SysPostController - 岗位管理
-- `GET /system/post/list` - 获取岗位列表
-- `GET /system/post/{postId}` - 获取岗位详情
-- `POST /system/post` - 创建岗位
-- `PUT /system/post` - 更新岗位
-- `DELETE /system/post/{postIds}` - 删除岗位
-
-#### 8. SysTenantController - 租户管理
-- `GET /system/tenant/list` - 获取租户列表
-- `GET /system/tenant/{tenantId}` - 获取租户详情
-- `POST /system/tenant` - 创建租户
-- `PUT /system/tenant` - 更新租户
-- `DELETE /system/tenant/{tenantId}` - 删除租户
-
-#### 9. SysConfigController - 参数配置
-- `GET /system/config/list` - 获取配置列表
-- `GET /system/config/{configId}` - 获取配置详情
-- `GET /system/config/key/{configKey}` - 根据Key获取配置
-- `POST /system/config` - 创建配置
-- `PUT /system/config` - 更新配置
-- `DELETE /system/config/{configIds}` - 删除配置
-
-#### 10. CacheMonitorController - 缓存监控
-- `GET /system/cache/info` - 获取缓存信息
-- `GET /system/cache/keys` - 获取缓存键列表
-- `GET /system/cache/value` - 获取缓存值
-- `DELETE /system/cache/key` - 删除缓存键
-- `DELETE /system/cache/prefix` - 按前缀删除缓存
-
-### OA服务 API（23个Controller）
-
-#### 考勤管理（3个Controller）
-- **AttendanceController** - 考勤打卡、考勤规则、考勤统计
-- **AttendanceAppealController** - 补卡申请、外勤申请
-- **OvertimeController** - 加班申请、加班审批
-
-#### 资产管理（2个Controller）
-- **AssetController** - 资产登记、领用、归还、维修、盘点、二维码
-- **ConsumableController** - 耗材管理、库存管理、低库存预警
-
-#### 车辆管理（1个Controller）
-- **VehicleController** - 车辆档案、用车申请、用车记录、油耗统计、费用管理
-
-#### 会议室管理（1个Controller）
-- **MeetingRoomController** - 会议室预订、签到、自动释放、使用统计
-
-#### 公告管理（2个Controller）
-- **SysAnnouncementController** - 公告发布、阅读统计、附件管理
-- **SysNoticeController** - 系统通知、消息推送
-
-#### 日程管理（1个Controller）
-- **SysScheduleController** - 日程管理、会议预订、日程统计
-
-#### 通讯录（1个Controller）
-- **ContactController** - 企业通讯录、组织架构、用户详情
-
-#### 访客管理（1个Controller）
-- **VisitorController** - 访客预约、登记、签离、访客统计
-
-#### 值班管理（1个Controller）
-- **DutyScheduleController** - 值班计划、排班管理、签到签退、换班申请
-
-#### 费用管理（3个Controller）
-- **ExpenseClaimController** - 费用报销、报销审批、费用统计
-- **PaymentRequestController** - 付款申请、付款审批、付款统计
-- **LeaveController** - 请假申请、请假审批、请假统计
-
-#### 出差管理（1个Controller）
-- **BusinessTripController** - 出差申请、出差审批、出差统计
-
-#### 其他（6个Controller）
-- **WorkplaceController** - 工作台、待办统计、快捷入口
-- **WorkTaskController** - 任务管理、任务看板
-- **SyncController** - 离线同步、数据上传、冲突解决
-- **ErrorReportController** - 前端错误上报
-
----
-
-## 🎯 路线图
-
-### ✅ 已完成
-- [x] Phase 1: 基础架构与核心功能
-  - [x] 微服务架构搭建（4个服务）
-  - [x] 工作流引擎实现（13个Controller）
-  - [x] 动态表单设计器
-  - [x] RBAC权限管理（10个Controller）
-  - [x] 完整OA模块（23个Controller）
-- [x] Phase 2: 性能优化与监控告警
-  - [x] 流程监控服务
-  - [x] 超时检测与告警
-  - [x] 异常检测与告警
-  - [x] 性能统计与分析
-  - [x] 监控API接口（3个Controller）
-
-### 🚧 进行中
-- [ ] Phase 3: 高级功能增强
-  - [ ] 流程模拟执行
-  - [ ] 智能推荐引擎
-  - [ ] 移动端原生APP
-
-### 📅 计划中
-- [ ] Phase 4: 企业级增强
-  - [ ] 分布式事务（Seata）
-  - [ ] 链路追踪（SkyWalking）
-  - [ ] 消息队列（RocketMQ）
-  - [ ] 数据报表（ECharts）
-
----
-
-## 🤝 贡献指南
-
-欢迎贡献代码、提出问题和建议！
-
-1. Fork 本仓库
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 提交 Pull Request
-
----
-
-## 📊 项目统计
-
-- **代码行数**: 50,000+ 行（后端 30,000+ / 前端 20,000+）
-- **后端Controller**: 46个（工作流13 + 认证10 + OA 23）
-- **前端页面**: 60+ 页面（桌面端 + 移动端）
-- **数据库表**: 70+ 张表（基础15 + 工作流39 + OA 20+）
-- **公共模块**: 15个企业级能力模块
-- **API接口**: 200+ 个RESTful接口
-
----
-
-## 📄 开源协议
-
-本项目采用 [MIT License](LICENSE) 开源协议。
-
----
-
-## 💬 联系方式
-
-- **问题反馈**: [GitHub Issues](https://github.com/your-repo/issues)
-- **技术交流**: 欢迎提交 PR 或 Issue
-- **商务合作**: contact@cloudflow.com
-
----
-
-## 🙏 致谢
-
-感谢以下开源项目：
-- [Spring Cloud Alibaba](https://github.com/alibaba/spring-cloud-alibaba)
-- [React](https://github.com/facebook/react)
-- [MyBatis Plus](https://github.com/baomidou/mybatis-plus)
-- [Redisson](https://github.com/redisson/redisson)
-- [Tailwind CSS](https://github.com/tailwindlabs/tailwindcss)
-- [Nacos](https://github.com/alibaba/nacos)
-
----
-
-<div align="center">
-
-**⭐ 如果这个项目对你有帮助，请给一个 Star ⭐**
-
-Made with ❤️ by CloudFlow Team
-
-**当前由派大星AI API系统免费提供运行**
-
-</div>
+本项目采用 [MIT License](LICENSE)。
