@@ -33,7 +33,7 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 512
-   OR menu_id BETWEEN 600 AND 617
+   OR menu_id BETWEEN 600 AND 621
    OR menu_id BETWEEN 700 AND 739
    OR menu_id BETWEEN 212 AND 213;
 
@@ -744,6 +744,14 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(505, '考勤规则',   7, 12, '/hr/att
 INSERT INTO cloud_flow_db.sys_menu VALUES(600, '用户管理',   6, 1, '/system/users',       'pages/system/UserList',        NULL, 0, 0, 'C', '0', '0', 'system:user:list',           'Users',           'admin', NOW(), '', null, '用户管理');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(601, '角色管理',   6, 2, '/system/roles',       'pages/system/RoleList',        NULL, 0, 0, 'C', '0', '0', 'system:role:list',           'ShieldCheck',     'admin', NOW(), '', null, '角色管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(618, '角色查询',   601, 1, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:role:query',          '#',               'admin', NOW(), '', null, '角色查询权限');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(619, '角色新增',   601, 2, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:role:add',            '#',               'admin', NOW(), '', null, '角色新增权限');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(620, '角色编辑',   601, 3, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:role:edit',           '#',               'admin', NOW(), '', null, '角色编辑权限');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(621, '角色删除',   601, 4, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:role:remove',         '#',               'admin', NOW(), '', null, '角色删除权限');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(602, '菜单管理',   6, 3, '/system/menus',       'pages/system/MenuList',        NULL, 0, 0, 'C', '0', '0', 'system:menu:list',           'LayoutDashboard', 'admin', NOW(), '', null, '菜单管理');
 

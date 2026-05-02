@@ -10,7 +10,7 @@ import {
   saveProcessDefinition,
   getFormDefinitions,
 } from '../services/api/workflow';
-import { getRoleList, getUserList } from '../services/api/auth';
+import { getRoleOptions, getUserList } from '../services/api/auth';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { normalizeWorkflowCategory } from '../utils/workflowCategory';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -62,7 +62,7 @@ const loadWorkflowDesignContext = async (): Promise<WorkflowDesignContextPayload
       toast.warning('表单列表加载失败，暂时无法绑定表单');
       return [];
     }),
-    getRoleList().catch((err) => {
+    getRoleOptions().catch((err) => {
       logWorkflow.warn('鍔犺浇瑙掕壊鍒楄〃澶辫触:', err);
       toast.warning('角色列表加载失败，部分审批人配置不可用');
       return [];

@@ -76,7 +76,7 @@ import {
   deployProcessDefinition,
   exportWorkflow,
 } from "../services/api/workflow";
-import { getRoleList, getUserList, getDeptTree } from "../services/api/auth";
+import { getRoleOptions, getUserList, getDeptTree } from "../services/api/auth";
 import { toast } from "sonner";
 import { downloadBlob } from "../utils/download";
 import { ConfirmDialog } from "./common/ConfirmDialog";
@@ -557,7 +557,7 @@ const ApproverValueSelector = ({
             return;
           }
           setLoading(true);
-          const res: any = await getRoleList();
+          const res: any = await getRoleOptions();
           const next = Array.isArray(res) ? res : res?.data || res?.rows || [];
           writeApproverCache("ROLE", next);
           if (!cancelled) setRoles(next);

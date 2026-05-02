@@ -1,17 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Building2,
-  CheckCircle2,
   ChevronDown,
   ChevronRight,
   Edit,
-  FolderTree,
   Plus,
   RefreshCw,
   Search,
   Shield,
   Trash2,
-  Users,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
@@ -43,6 +40,7 @@ import {
   updateRole,
 } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 
 type TreeNode = {
@@ -218,6 +216,7 @@ const TreeCheckboxList: React.FC<{
 };
 
 export const RoleList = () => {
+  const { user } = useAuth();
   const [roles, setRoles] = useState<RoleRecord[]>([]);
   const [total, setTotal] = useState(0);
   const [menuTree, setMenuTree] = useState<TreeNode[]>([]);
@@ -361,8 +360,12 @@ export const RoleList = () => {
 
   const hasActiveFilters = Boolean(query.roleName || query.roleKey);
   const isEdit = Boolean(editingRole);
-  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
-  const availableParents = flatMenus;
+  const permissions = user?.permissions || [];
+  const hasRolePermission = (permission: string) =>
+    permissions.includes(permission) || permissions.includes('*:*:*') || permissions.includes('*');
+  const canAddRole = hasRolePermission('system:role:add');
+  const canEditRole = hasRolePermission('system:role:edit');
+  const canRemoveRole = hasRolePermission('system:role:remove');
 
   const handleRefresh = () => {
     void fetchRoles();
@@ -392,6 +395,16 @@ export const RoleList = () => {
   };
 
   const handleOpenModal = (role?: RoleRecord) => {
+    if (role && !canEditRole) {
+      toast.error('没有编辑角色权限');
+      return;
+    }
+
+    if (!role && !canAddRole) {
+      toast.error('没有新增角色权限');
+      return;
+    }
+
     if (role) {
       setEditingRole(role);
       setFormData({
@@ -472,6 +485,16 @@ export const RoleList = () => {
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
 
+    if (editingRole?.roleId && !canEditRole) {
+      toast.error('没有编辑角色权限');
+      return;
+    }
+
+    if (!editingRole?.roleId && !canAddRole) {
+      toast.error('没有新增角色权限');
+      return;
+    }
+
     if (!formData.roleName.trim() || !formData.roleKey.trim()) {
       toast.error('请完整填写角色名称和权限字符');
       return;
@@ -502,6 +525,12 @@ export const RoleList = () => {
 
   const handleDelete = async () => {
     if (!pendingDeleteRole) {
+      return;
+    }
+
+    if (!canRemoveRole) {
+      toast.error('没有删除角色权限');
+      setPendingDeleteRole(null);
       return;
     }
 
@@ -581,10 +610,12 @@ export const RoleList = () => {
                 <RefreshCw size={15} className={cn(loading && 'animate-spin')} />
                 刷新
               </Button>
-              <Button size="sm" onClick={() => handleOpenModal()}>
-                <Plus size={15} />
-                新增角色
-              </Button>
+              {canAddRole ? (
+                <Button size="sm" onClick={() => handleOpenModal()}>
+                  <Plus size={15} />
+                  新增角色
+                </Button>
+              ) : null}
             </div>
           </div>
         }
@@ -673,12 +704,14 @@ export const RoleList = () => {
                               icon: <Edit size={15} />,
                               onClick: () => handleOpenModal(role),
                               tone: 'neutral',
+                              hidden: !canEditRole,
                             },
                             {
                               label: '删除角色',
                               icon: <Trash2 size={15} />,
                               onClick: () => setPendingDeleteRole(role),
                               tone: 'danger',
+                              hidden: !canRemoveRole,
                             },
                           ]}
                         />
