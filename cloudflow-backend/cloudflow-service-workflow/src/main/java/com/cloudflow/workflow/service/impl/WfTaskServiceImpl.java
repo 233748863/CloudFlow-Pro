@@ -12,6 +12,7 @@ import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
+import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.event.WorkflowEventPublisher;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
@@ -55,6 +56,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
     @Autowired
     private WfTaskMapper taskMapper;
     @Autowired
+    private TaskMonitorMapper taskMonitorMapper;
+    @Autowired
     private WfTaskHistoryMapper taskHistoryMapper;
     @Autowired
     private WfProcessInstanceMapper processInstanceMapper;
@@ -66,6 +69,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
     private WfTaskUrgeMapper taskUrgeMapper;
     @Autowired
     private WfTaskAddSignMapper wfTaskAddSignMapper;
+    @Autowired
+    private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
     @Autowired
     private SysUserMapper sysUserMapper;
     @Autowired
@@ -141,6 +146,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 // 保存历史记录
                 WfTaskHistory history = new WfTaskHistory();
                 history.setHistoryId(UUID.randomUUID().toString());
+                history.setTenantId(task.getTenantId());
                 history.setTaskId(task.getTaskId());
                 history.setInstanceId(task.getInstanceId());
                 history.setNodeName(task.getNodeName());
@@ -156,6 +162,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     history.setDurationSeconds((int) durationSeconds);
                 }
                 taskHistoryMapper.insert(history);
+                completeTaskMonitor(task, history.getCreateTime(), normalizedAction);
 
                 // 删除当前任务
                 taskMapper.deleteById(taskId);
@@ -274,6 +281,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             // 保存驳回历史
             WfTaskHistory history = new WfTaskHistory();
             history.setHistoryId(UUID.randomUUID().toString());
+            history.setTenantId(task.getTenantId());
             history.setTaskId(task.getTaskId());
             history.setInstanceId(task.getInstanceId());
             history.setNodeName(task.getNodeName());
@@ -300,6 +308,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 history.setDurationSeconds((int) durationSeconds);
             }
             taskHistoryMapper.insert(history);
+            completeTaskMonitor(task, history.getCreateTime(), "REJECT");
 
             // 删除当前任务
             taskMapper.deleteById(taskId);
@@ -497,9 +506,12 @@ public class WfTaskServiceImpl implements IWfTaskService {
         }
 
         Long count = taskReadMapper.selectCount(new LambdaQueryWrapper<WfTaskRead>()
-                .eq(WfTaskRead::getTaskId, taskId).eq(WfTaskRead::getUserId, userId));
+                .eq(WfTaskRead::getTenantId, task.getTenantId())
+                .eq(WfTaskRead::getTaskId, taskId)
+                .eq(WfTaskRead::getUserId, userId));
         if (count == 0) {
             WfTaskRead read = new WfTaskRead();
+            read.setTenantId(task.getTenantId());
             read.setTaskId(taskId);
             read.setUserId(userId);
             read.setReadTime(LocalDateTime.now());
@@ -527,6 +539,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         permissionService.checkUrgePermission(instance);
 
         WfTaskUrge urge = new WfTaskUrge();
+        urge.setTenantId(instance.getTenantId());
         urge.setTaskId(taskId);
         urge.setSenderId(currentUserId);
         urge.setRecipientId(task.getAssignee());
@@ -588,6 +601,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         newTask.setStatus(WfTaskStatus.TODO.getCode());
         newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
+        createTaskMonitor(instance, newTask);
 
         sysNoticeService.sendNotice(delegateId, "任务转办通知",
             String.format("您收到一个转办任务: %s (流程: %s)", task.getNodeName(), instance.getTitle()),
@@ -613,6 +627,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
 
         WfTaskHistory history = new WfTaskHistory();
         history.setHistoryId(UUID.randomUUID().toString());
+        history.setTenantId(task.getTenantId());
         history.setTaskId(taskId);
         history.setInstanceId(task.getInstanceId());
         history.setNodeName(task.getNodeName());
@@ -626,6 +641,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             history.setDurationSeconds((int) java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds());
         }
         taskHistoryMapper.insert(history);
+        completeTaskMonitor(task, history.getCreateTime(), "COUNTERSIGN_" + voteResult);
 
         if ("PASSED".equals(countersignResult) || "REJECTED".equals(countersignResult)) {
             WfProcessInstance instance = requireTaskInstanceForOperation(task, "会签处理");
@@ -654,6 +670,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 }
                 notifyInitiator(instance, task.getNodeName(), "APPROVE", "会签已通过");
             }
+            workflowEventPublisher.publishTaskCompleted(instance, taskId, task.getNodeKey(), task.getNodeName(),
+                "COUNTERSIGN_" + voteResult, comment);
         }
         return R.ok(countersignResult);
     }
@@ -1186,7 +1204,6 @@ public class WfTaskServiceImpl implements IWfTaskService {
                     newTask.setStatus(WfTaskStatus.TODO.getCode());
                     newTask.setCreateTime(LocalDateTime.now());
                     newTask.setCandidateRoles("CS:" + countersignId);
-                    taskMapper.insert(newTask);
 
                     addedCount++;
 
@@ -1207,6 +1224,9 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         toUserName = toUser.getNickName() != null ? toUser.getNickName() : toUser.getUserName();
                     }
                     newTask.setAssigneeName(toUserName);
+                    taskMapper.insert(newTask);
+                    WfProcessInstance addSignInstance = processInstanceMapper.selectById(task.getInstanceId());
+                    createTaskMonitor(addSignInstance, newTask);
                     
                     addSign.setSignUserIds(String.valueOf(userId));
                     addSign.setSignUserNames(toUserName);
@@ -1352,6 +1372,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         // 记录减签历史
                         WfTaskHistory history = new WfTaskHistory();
                         history.setHistoryId(UUID.randomUUID().toString());
+                        history.setTenantId(userTask.getTenantId());
                         history.setTaskId(userTask.getTaskId());
                         history.setInstanceId(task.getInstanceId());
                         history.setNodeName(task.getNodeName());
@@ -1362,6 +1383,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                         history.setAction("REDUCTION_SIGN");
                         history.setCreateTime(LocalDateTime.now());
                         taskHistoryMapper.insert(history);
+                        completeTaskMonitor(userTask, history.getCreateTime(), "REDUCTION_SIGN");
 
                         removedCount++;
                     }
@@ -1430,6 +1452,58 @@ public class WfTaskServiceImpl implements IWfTaskService {
             throw WorkflowException.invalidState("任务与流程实例租户不一致，拒绝继续" + operation + "操作");
         }
         return instance;
+    }
+
+    private void createTaskMonitor(WfProcessInstance instance, WfTask task) {
+        try {
+            if (instance != null) {
+                processMonitorService.incrementTaskCount(instance.getInstanceId());
+            }
+
+            TaskMonitor monitor = new TaskMonitor();
+            monitor.setTenantId(task.getTenantId());
+            monitor.setTaskId(task.getTaskId());
+            monitor.setInstanceId(task.getInstanceId());
+            monitor.setNodeKey(task.getNodeKey());
+            monitor.setTaskName(task.getNodeName());
+            monitor.setAssigneeId(task.getAssignee());
+            monitor.setAssigneeName(task.getAssigneeName());
+            monitor.setCreateTimeTask(task.getCreateTime());
+            monitor.setClaimTime(task.getCreateTime());
+            monitor.setWaitDuration(0L);
+            monitor.setHandleDuration(0L);
+            monitor.setTotalDuration(0L);
+            monitor.setStatus("PENDING");
+            monitor.setCreateTime(task.getCreateTime());
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.insert(monitor);
+        } catch (Exception e) {
+            log.warn("[createTaskMonitor] 记录任务监控失败, instanceId={}, taskId={}, error={}",
+                instance != null ? instance.getInstanceId() : task.getInstanceId(), task.getTaskId(), e.getMessage());
+        }
+    }
+
+    private void completeTaskMonitor(WfTask task, LocalDateTime completeTime, String action) {
+        try {
+            TaskMonitor monitor = taskMonitorMapper.selectByTaskId(task.getTaskId());
+            if (monitor == null) {
+                return;
+            }
+
+            LocalDateTime finishedAt = completeTime != null ? completeTime : LocalDateTime.now();
+            monitor.setCompleteTime(finishedAt);
+            if (monitor.getCreateTimeTask() != null) {
+                long totalDuration = java.time.Duration.between(monitor.getCreateTimeTask(), finishedAt).toMillis();
+                monitor.setTotalDuration(totalDuration);
+                monitor.setHandleDuration(totalDuration);
+            }
+            monitor.setStatus("COMPLETED");
+            monitor.setAction(action);
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.updateById(monitor);
+        } catch (Exception e) {
+            log.warn("[completeTaskMonitor] 更新任务监控失败, taskId={}, error={}", task.getTaskId(), e.getMessage());
+        }
     }
 
     /**

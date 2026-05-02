@@ -39,6 +39,7 @@ import { Input } from './common/input';
 import { Switch } from './common/switch';
 import { Textarea } from './common/textarea';
 import { Button } from './common/button';
+import { DatePicker } from './common/date-picker';
 import { cn } from '@/utils/cn';
 
 interface Props {
@@ -75,11 +76,22 @@ const PreviewControl: React.FC<{ field: FormField }> = ({ field }) => {
     );
   }
 
+  if (field.type === 'DATE') {
+    return (
+      <DatePicker
+        disabled
+        type="date"
+        placeholder="选择日期"
+        className="pointer-events-none h-10"
+      />
+    );
+  }
+
   return (
     <Input
       disabled
-      type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
-      placeholder={field.type === 'DATE' ? '' : '输入示例'}
+      type={field.type === 'NUMBER' ? 'number' : 'text'}
+      placeholder="输入示例"
       className="pointer-events-none"
     />
   );
@@ -328,12 +340,20 @@ const FormPreview: React.FC<{
                   ))}
                 </SelectContent>
               </Select>
-            ) : (
-              <Input
-                type={field.type === 'NUMBER' ? 'number' : field.type === 'DATE' ? 'date' : 'text'}
+            ) : field.type === 'DATE' ? (
+              <DatePicker
+                type="date"
                 value={formData[field.id] || ''}
                 onChange={(e) => handleChange(field.id, e.target.value)}
-                placeholder={field.type === 'DATE' ? '' : `请输入${field.label}`}
+                placeholder={`请选择${field.label}`}
+                className={errors[field.id] ? 'border-rose-300 bg-rose-50 dark:border-rose-900/70 dark:bg-rose-950/30' : ''}
+              />
+            ) : (
+              <Input
+                type={field.type === 'NUMBER' ? 'number' : 'text'}
+                value={formData[field.id] || ''}
+                onChange={(e) => handleChange(field.id, e.target.value)}
+                placeholder={`请输入${field.label}`}
                 className={errors[field.id] ? 'border-rose-300 bg-rose-50 dark:border-rose-900/70 dark:bg-rose-950/30' : ''}
               />
             )}

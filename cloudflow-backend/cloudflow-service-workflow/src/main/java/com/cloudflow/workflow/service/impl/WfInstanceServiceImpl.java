@@ -982,6 +982,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             // 记录任务作废历史
             WfTaskHistory h = new WfTaskHistory();
             h.setHistoryId(UUID.randomUUID().toString());
+            h.setTenantId(task.getTenantId() != null ? task.getTenantId() : instance.getTenantId());
             h.setTaskId(task.getTaskId());
             h.setInstanceId(instanceId);
             h.setNodeKey(task.getNodeKey());

@@ -13,6 +13,7 @@ public class ProcessTrend {
     private String date;
     private Integer started;
     private Integer completed;
+    private Integer running;
     private Integer timeout;
     private Integer anomaly;
 }

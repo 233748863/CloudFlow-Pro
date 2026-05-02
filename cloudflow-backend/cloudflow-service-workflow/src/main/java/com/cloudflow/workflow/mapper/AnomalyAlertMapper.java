@@ -20,19 +20,21 @@ public interface AnomalyAlertMapper extends BaseMapper<AnomalyAlert> {
     /**
      * 根据日期统计数量
      */
-    Integer countByDate(@Param("startDate") LocalDateTime startDate);
+    Integer countByDate(@Param("startDate") LocalDateTime startDate,
+                        @Param("tenantId") Long tenantId);
 
     /**
      * 统计未解决的异常数量
      */
-    Integer countUnresolved();
+    Integer countUnresolved(@Param("tenantId") Long tenantId);
 
     /**
      * 查询异常告警列表
      */
     List<AnomalyAlert> selectAnomalyAlerts(@Param("anomalyType") String anomalyType,
                                           @Param("severity") String severity,
-                                          @Param("resolved") Boolean resolved);
+                                          @Param("resolved") Boolean resolved,
+                                          @Param("tenantId") Long tenantId);
 
     /**
      * 查询未解决的告警

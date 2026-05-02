@@ -27,6 +27,7 @@
         SELECT COUNT(*)
         FROM wf_timeout_alert
         WHERE alert_time >= #{startDate}
+        AND tenant_id = #{tenantId}
     </select>
 
     <!-- 根据告警级别统计数量 -->
@@ -34,8 +35,8 @@
         SELECT COUNT(*)
         FROM wf_timeout_alert
         WHERE timeout_level = #{alertLevel}
-        AND (escalated = 'N' OR escalated IS NULL)
-        AND tenant_id = 100000
+        AND resolved = 'N'
+        AND tenant_id = #{tenantId}
     </select>
 
     <!-- 查询超时告警列表 -->
@@ -60,6 +61,7 @@
             ta.update_time
         FROM wf_timeout_alert ta
         <where>
+            ta.tenant_id = #{tenantId}
             <if test="alertType != null and alertType != ''">
                 AND ta.alert_type = #{alertType}
             </if>

@@ -9,6 +9,8 @@ import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.WfTaskHistory;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
+import com.cloudflow.workflow.domain.monitor.TaskMonitor;
+import com.cloudflow.workflow.mapper.TaskMonitorMapper;
 import com.cloudflow.workflow.mapper.WfProcessDefinitionMapper;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
@@ -63,6 +65,9 @@ public class TaskTimeoutJob {
 
     @Autowired
     private WfProcessDefinitionMapper processDefinitionMapper;
+
+    @Autowired
+    private TaskMonitorMapper taskMonitorMapper;
 
     @Autowired
     private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
@@ -205,6 +210,7 @@ public class TaskTimeoutJob {
             // 1. 保存历史记录
             WfTaskHistory history = new WfTaskHistory();
             history.setHistoryId(UUID.randomUUID().toString());
+            history.setTenantId(task.getTenantId() != null ? task.getTenantId() : instance.getTenantId());
             history.setTaskId(task.getTaskId());
             history.setInstanceId(task.getInstanceId());
             history.setNodeName(task.getNodeName());
@@ -215,6 +221,7 @@ public class TaskTimeoutJob {
             history.setAction("AUTO_PASS_FALLBACK");
             history.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(history);
+            completeTaskMonitor(task, history.getCreateTime(), "AUTO_PASS_FALLBACK");
             
             // 2. 删除当前任务
             taskMapper.deleteById(task.getTaskId());
@@ -235,6 +242,28 @@ public class TaskTimeoutJob {
             
         } catch (Exception e) {
             log.error("[TaskTimeoutJob] 简化处理逻辑也失败了, taskId={}, error={}", task.getTaskId(), e.getMessage(), e);
+        }
+    }
+
+    private void completeTaskMonitor(WfTask task, LocalDateTime completeTime, String action) {
+        try {
+            TaskMonitor monitor = taskMonitorMapper.selectByTaskId(task.getTaskId());
+            if (monitor == null) {
+                return;
+            }
+            LocalDateTime finishedAt = completeTime != null ? completeTime : LocalDateTime.now();
+            monitor.setCompleteTime(finishedAt);
+            if (monitor.getCreateTimeTask() != null) {
+                long totalDuration = java.time.Duration.between(monitor.getCreateTimeTask(), finishedAt).toMillis();
+                monitor.setTotalDuration(totalDuration);
+                monitor.setHandleDuration(totalDuration);
+            }
+            monitor.setStatus("COMPLETED");
+            monitor.setAction(action);
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.updateById(monitor);
+        } catch (Exception e) {
+            log.warn("[TaskTimeoutJob] 更新超时任务监控失败, taskId={}, error={}", task.getTaskId(), e.getMessage());
         }
     }
     

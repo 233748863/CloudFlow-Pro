@@ -22,5 +22,6 @@ public interface PerformanceStatsMapper extends BaseMapper<PerformanceStats> {
      */
     List<PerformanceStats> selectPerformanceStats(@Param("startDate") LocalDate startDate,
                                                   @Param("endDate") LocalDate endDate,
-                                                  @Param("processDefKey") String processDefKey);
+                                                  @Param("processDefKey") String processDefKey,
+                                                  @Param("tenantId") Long tenantId);
 }

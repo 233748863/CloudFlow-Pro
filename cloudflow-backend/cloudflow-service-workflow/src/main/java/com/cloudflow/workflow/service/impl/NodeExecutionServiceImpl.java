@@ -7,6 +7,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.RedisCache;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
 import com.cloudflow.workflow.domain.*;
+import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.domain.system.SysDept;
@@ -62,6 +63,8 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
     private WfProcessInstanceMapper processInstanceMapper;
     @Autowired
     private WfTaskMapper taskMapper;
+    @Autowired
+    private TaskMonitorMapper taskMonitorMapper;
     @Autowired
     private WfProcessSnapshotMapper snapshotMapper;
     @Autowired
@@ -247,6 +250,7 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         task.setStatus(WfTaskStatus.TODO.getCode());
         task.setCreateTime(LocalDateTime.now());
         taskMapper.insert(task);
+        recordTaskMonitor(instance, task);
 
         // P2-9: 全局监听器 — 审批任务分配后回调
         globalListenerDispatcher.fireAssignment(instance, task, node);
@@ -266,6 +270,32 @@ public class NodeExecutionServiceImpl implements INodeExecutionService {
         // 发布任务分配事件
         String assigneeName = task.getAssigneeName();
         workflowEventPublisher.publishTaskAssigned(instance, task.getTaskId(), node.getId(), node.getTitle(), task.getAssignee(), assigneeName);
+    }
+
+    private void recordTaskMonitor(WfProcessInstance instance, WfTask task) {
+        try {
+            processMonitorService.incrementTaskCount(instance.getInstanceId());
+
+            TaskMonitor monitor = new TaskMonitor();
+            monitor.setTenantId(task.getTenantId());
+            monitor.setTaskId(task.getTaskId());
+            monitor.setInstanceId(task.getInstanceId());
+            monitor.setNodeKey(task.getNodeKey());
+            monitor.setTaskName(task.getNodeName());
+            monitor.setAssigneeId(task.getAssignee());
+            monitor.setAssigneeName(task.getAssigneeName());
+            monitor.setCreateTimeTask(task.getCreateTime());
+            monitor.setClaimTime(task.getCreateTime());
+            monitor.setWaitDuration(0L);
+            monitor.setHandleDuration(0L);
+            monitor.setTotalDuration(0L);
+            monitor.setStatus("PENDING");
+            monitor.setCreateTime(task.getCreateTime());
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.insert(monitor);
+        } catch (Exception e) {
+            log.warn("[recordTaskMonitor] 记录任务监控失败, taskId={}, error={}", task.getTaskId(), e.getMessage());
+        }
     }
 
     private String resolveUserDisplayName(Long userId) {

@@ -52,6 +52,7 @@
         SELECT COUNT(*)
         FROM wf_anomaly_alert aa
         WHERE aa.create_time >= #{startDate}
+          AND aa.tenant_id = #{tenantId}
     </select>
 
     <!-- 统计未解决的异常数量 -->
@@ -59,6 +60,7 @@
         SELECT COUNT(*)
         FROM wf_anomaly_alert aa
         WHERE aa.resolved = 'N'
+          AND aa.tenant_id = #{tenantId}
     </select>
 
     <!-- 查询异常告警列表 -->
@@ -67,6 +69,7 @@
             <include refid="AnomalyAlertColumns"/>
         FROM wf_anomaly_alert aa
         <where>
+            aa.tenant_id = #{tenantId}
             <if test="anomalyType != null and anomalyType != ''">
                 AND aa.anomaly_type = #{anomalyType}
             </if>

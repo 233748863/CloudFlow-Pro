@@ -93,6 +93,9 @@ public class WorkflowSagaServiceImpl implements IWorkflowSagaService {
             // 3. 记录补偿历史
             WfTaskHistory compensationHistory = new WfTaskHistory();
             compensationHistory.setHistoryId(UUID.randomUUID().toString());
+            if (instance != null) {
+                compensationHistory.setTenantId(instance.getTenantId());
+            }
             compensationHistory.setInstanceId(instanceId);
             compensationHistory.setNodeName("系统补偿");
             compensationHistory.setNodeKey("SAGA_COMPENSATION");

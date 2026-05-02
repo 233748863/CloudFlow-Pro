@@ -10,6 +10,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.*;
+import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -48,6 +49,8 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Autowired private WfNotificationConfigMapper notificationConfigMapper;
     @Autowired private WfNotificationLogMapper notificationLogMapper;
     @Autowired private WfUrgeEffectMapper urgeEffectMapper;
+    @Autowired private TaskMonitorMapper taskMonitorMapper;
+    @Autowired private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
     @Autowired private RedissonClient redissonClient;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -84,6 +87,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         task.setAssignee(toUserId);
         task.setAssigneeName(toUserName);
         taskMapper.updateById(task);
+        updateTaskMonitorAssignee(task, null, "DELEGATE", null);
 
         sendNotification("TASK_DELEGATE", toUserId, "任务转办通知",
                 String.format("用户 %s 将任务 [%s] 转办给您", fromUserName, task.getNodeName()));
@@ -125,6 +129,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         task.setStatus("DELEGATED");
         task.setCandidateRoles("DELEGATE_RETURN:" + delegation.getDelegationId());
         taskMapper.updateById(task);
+        completeTaskMonitor(task, LocalDateTime.now(), "DELEGATE_WITH_RETURN");
 
         // 3. 创建新任务给被委派人
         WfTask delegatedTask = new WfTask();
@@ -141,6 +146,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         // 关联原任务，被委派人完成后用于回溯
         delegatedTask.setCandidateRoles("DELEGATE_FROM:" + taskId + ":" + delegation.getDelegationId());
         taskMapper.insert(delegatedTask);
+        createTaskMonitor(delegatedTask);
 
         // 4. 记录历史
         WfTaskHistory h = new WfTaskHistory();
@@ -218,6 +224,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             t.setTenantId(taskTenantId);
             t.setCreateTime(LocalDateTime.now());
             taskMapper.insert(t);
+            createTaskMonitor(t);
             sendNotification("TASK_ASSIGN", userIds.get(i), "加签任务", "您收到" + label + "任务");
         }
     }
@@ -334,6 +341,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             task.setAssignee(operatorId);
             task.setAssigneeName(userName);
             taskMapper.updateById(task);
+            updateTaskMonitorAssignee(task, "CLAIMED", "CLAIM", LocalDateTime.now());
             candidate.setStatus("CLAIMED");
             candidate.setClaimTime(LocalDateTime.now());
             candidateMapper.updateById(candidate);
@@ -367,7 +375,10 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         if (CollectionUtils.isEmpty(currentTasks)) {
             throw WorkflowException.validationError("流程已结束或已被处理，无法撤回");
         }
-        for (WfTask t : currentTasks) { taskMapper.deleteById(t.getTaskId()); }
+        for (WfTask t : currentTasks) {
+            completeTaskMonitor(t, LocalDateTime.now(), "WITHDRAW_CANCEL");
+            taskMapper.deleteById(t.getTaskId());
+        }
 
         WfTask newTask = new WfTask();
         newTask.setTaskId(UUID.randomUUID().toString());
@@ -380,6 +391,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         newTask.setTenantId(instance.getTenantId());
         newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
+        createTaskMonitor(newTask);
 
         WfTaskHistory wh = new WfTaskHistory();
         wh.setHistoryId(UUID.randomUUID().toString());
@@ -426,6 +438,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         rh.setCreateTime(LocalDateTime.now());
         taskHistoryMapper.insert(rh);
 
+        completeTaskMonitor(task, rh.getCreateTime(), "REJECT_TO_PREVIOUS");
         taskMapper.deleteById(taskId);
         WfTask newTask = new WfTask();
         newTask.setTaskId(UUID.randomUUID().toString());
@@ -438,6 +451,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         newTask.setTenantId(resolveTaskTenantId(task));
         newTask.setCreateTime(LocalDateTime.now());
         taskMapper.insert(newTask);
+        createTaskMonitor(newTask);
 
         sendNotification("TASK_REJECT", prev.getOperatorId(), "驳回通知",
                 "任务 [" + task.getNodeName() + "] 被驳回，意见：" + comment);
@@ -548,6 +562,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
                 h.setTenantId(resolveTaskTenantId(task));
                 h.setCreateTime(LocalDateTime.now());
                 taskHistoryMapper.insert(h);
+                completeTaskMonitor(task, h.getCreateTime(), action);
                 taskMapper.deleteById(taskId);
                 success++;
             } catch (Exception e) { fail++; failedIds.add(taskId); }
@@ -597,6 +612,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
             h.setCreateTime(LocalDateTime.now());
             taskHistoryMapper.insert(h);
 
+            completeTaskMonitor(t, h.getCreateTime(), "REMOVE_SIGN");
             taskMapper.deleteById(t.getTaskId());
             removed++;
 
@@ -701,6 +717,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         } catch (Exception e) { /* ignore */ }
 
         taskHistoryMapper.insert(h);
+        completeTaskMonitor(task, h.getCreateTime(), action);
         taskMapper.deleteById(taskId);
 
         return R.ok();
@@ -1057,6 +1074,91 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
         }
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
         return instance != null ? instance.getTenantId() : null;
+    }
+
+    private void createTaskMonitor(WfTask task) {
+        try {
+            if (task == null) {
+                return;
+            }
+            processMonitorService.incrementTaskCount(task.getInstanceId());
+
+            TaskMonitor monitor = new TaskMonitor();
+            monitor.setTenantId(resolveTaskTenantId(task));
+            monitor.setTaskId(task.getTaskId());
+            monitor.setInstanceId(task.getInstanceId());
+            monitor.setNodeKey(task.getNodeKey());
+            monitor.setTaskName(task.getNodeName());
+            monitor.setAssigneeId(task.getAssignee());
+            monitor.setAssigneeName(task.getAssigneeName());
+            monitor.setCreateTimeTask(task.getCreateTime());
+            monitor.setClaimTime(task.getCreateTime());
+            monitor.setWaitDuration(0L);
+            monitor.setHandleDuration(0L);
+            monitor.setTotalDuration(0L);
+            monitor.setStatus("PENDING");
+            monitor.setCreateTime(task.getCreateTime());
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.insert(monitor);
+        } catch (Exception e) {
+            log.warn("[createTaskMonitor] 记录P4任务监控失败, taskId={}, error={}",
+                    task != null ? task.getTaskId() : null, e.getMessage());
+        }
+    }
+
+    private void completeTaskMonitor(WfTask task, LocalDateTime completeTime, String action) {
+        try {
+            if (task == null) {
+                return;
+            }
+            TaskMonitor monitor = taskMonitorMapper.selectByTaskId(task.getTaskId());
+            if (monitor == null) {
+                return;
+            }
+
+            LocalDateTime finishedAt = completeTime != null ? completeTime : LocalDateTime.now();
+            monitor.setCompleteTime(finishedAt);
+            if (monitor.getCreateTimeTask() != null) {
+                long totalDuration = java.time.Duration.between(monitor.getCreateTimeTask(), finishedAt).toMillis();
+                monitor.setTotalDuration(totalDuration);
+                monitor.setHandleDuration(totalDuration);
+            }
+            monitor.setStatus("COMPLETED");
+            monitor.setAction(action);
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.updateById(monitor);
+        } catch (Exception e) {
+            log.warn("[completeTaskMonitor] 更新P4任务监控失败, taskId={}, error={}",
+                    task != null ? task.getTaskId() : null, e.getMessage());
+        }
+    }
+
+    private void updateTaskMonitorAssignee(WfTask task, String status, String action, LocalDateTime claimTime) {
+        try {
+            if (task == null) {
+                return;
+            }
+            TaskMonitor monitor = taskMonitorMapper.selectByTaskId(task.getTaskId());
+            if (monitor == null) {
+                return;
+            }
+            monitor.setAssigneeId(task.getAssignee());
+            monitor.setAssigneeName(task.getAssigneeName());
+            if (status != null) {
+                monitor.setStatus(status);
+            }
+            if (action != null) {
+                monitor.setAction(action);
+            }
+            if (claimTime != null) {
+                monitor.setClaimTime(claimTime);
+            }
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.updateById(monitor);
+        } catch (Exception e) {
+            log.warn("[updateTaskMonitorAssignee] 更新P4任务监控处理人失败, taskId={}, error={}",
+                    task != null ? task.getTaskId() : null, e.getMessage());
+        }
     }
 
     private Integer calculateEffectiveness(Long before, Long after) {

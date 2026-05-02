@@ -35,7 +35,7 @@ public interface ProcessMonitorMapper extends BaseMapper<ProcessMonitor> {
     /**
      * 统计待办任务数量
      */
-    Integer countPendingTasks();
+    Integer countPendingTasks(@Param("tenantId") Long tenantId);
 
     /**
      * 获取平均完成时间
@@ -66,7 +66,12 @@ public interface ProcessMonitorMapper extends BaseMapper<ProcessMonitor> {
     /**
      * 根据实例ID查询
      */
-    ProcessMonitor selectByInstanceId(@Param("instanceId") String instanceId);
+    ProcessMonitor selectByInstanceId(@Param("instanceId") String instanceId,
+                                      @Param("tenantId") Long tenantId);
+
+    default ProcessMonitor selectByInstanceId(String instanceId) {
+        return selectByInstanceId(instanceId, null);
+    }
     
     /**
      * 查询正在运行的流程

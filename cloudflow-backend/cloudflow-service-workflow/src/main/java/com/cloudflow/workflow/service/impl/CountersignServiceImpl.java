@@ -5,8 +5,12 @@ import com.cloudflow.workflow.service.ICountersignService;
 import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.*;
+import com.cloudflow.workflow.domain.monitor.TaskMonitor;
+import com.cloudflow.workflow.domain.system.SysUser;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
+import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
@@ -50,6 +54,18 @@ public class CountersignServiceImpl implements ICountersignService {
     private WfTaskMapper taskMapper;
 
     @Autowired
+    private WfProcessInstanceMapper processInstanceMapper;
+
+    @Autowired
+    private TaskMonitorMapper taskMonitorMapper;
+
+    @Autowired
+    private IProcessMonitorService processMonitorService;
+
+    @Autowired
+    private SysUserMapper sysUserMapper;
+
+    @Autowired
     private RedissonClient redissonClient;
 
     @Autowired
@@ -78,7 +94,7 @@ public class CountersignServiceImpl implements ICountersignService {
     public String createCountersignTask(String instanceId, String nodeKey, String nodeName,
                                          String signType, Integer passPercent, List<Long> assigneeIds) {
         log.info("[createCountersignTask] 创建会签任务, instanceId={}, nodeKey={}, signType={}, assignees={}",
-                instanceId, nodeKey, signType, assigneeIds.size());
+                instanceId, nodeKey, signType, assigneeIds == null ? 0 : assigneeIds.size());
 
         if (assigneeIds == null || assigneeIds.isEmpty()) {
             throw WorkflowException.validationError("会签参与人不能为空");
@@ -93,9 +109,15 @@ public class CountersignServiceImpl implements ICountersignService {
             throw WorkflowException.validationError("PERCENT 类型的通过比例必须在 1-100 之间");
         }
 
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(instanceId);
+        }
+
         // 1. 创建会签主记录
         WfCountersignTask csTask = new WfCountersignTask();
         csTask.setCountersignId(UUID.randomUUID().toString());
+        csTask.setTenantId(instance.getTenantId());
         csTask.setInstanceId(instanceId);
         csTask.setNodeKey(nodeKey);
         csTask.setNodeName(nodeName);
@@ -124,32 +146,19 @@ public class CountersignServiceImpl implements ICountersignService {
         if ("SEQUENTIAL".equals(signType)) {
             // 顺序签署：只为第一个人创建任务
             Long firstAssignee = assigneeIds.get(0);
-            WfTask task = new WfTask();
-            task.setTaskId(UUID.randomUUID().toString());
-            task.setInstanceId(instanceId);
-            task.setNodeKey(nodeKey);
-            task.setNodeName(nodeName + " (顺序签署 1/" + assigneeIds.size() + ")");
-            task.setAssignee(firstAssignee);
-            task.setStatus("TODO");
-            task.setCreateTime(LocalDateTime.now());
-            task.setCandidateRoles("CS:" + csTask.getCountersignId());
+            WfTask task = buildCountersignTask(instance, csTask, firstAssignee,
+                    nodeName + " (顺序签署 1/" + assigneeIds.size() + ")");
             taskMapper.insert(task);
+            createTaskMonitor(instance, task);
 
             log.info("[createCountersignTask] 顺序签署任务创建成功, countersignId={}, 第1个签署人={}, 共{}人",
                     csTask.getCountersignId(), firstAssignee, assigneeIds.size());
         } else {
             // ALL/ANY/PERCENT：为每个参与人同时创建独立的任务
             for (Long assigneeId : assigneeIds) {
-                WfTask task = new WfTask();
-                task.setTaskId(UUID.randomUUID().toString());
-                task.setInstanceId(instanceId);
-                task.setNodeKey(nodeKey);
-                task.setNodeName(nodeName + " (会签)");
-                task.setAssignee(assigneeId);
-                task.setStatus("TODO");
-                task.setCreateTime(LocalDateTime.now());
-                task.setCandidateRoles("CS:" + csTask.getCountersignId());
+                WfTask task = buildCountersignTask(instance, csTask, assigneeId, nodeName + " (会签)");
                 taskMapper.insert(task);
+                createTaskMonitor(instance, task);
             }
 
             log.info("[createCountersignTask] 会签任务创建成功, countersignId={}, totalCount={}",
@@ -217,6 +226,7 @@ public class CountersignServiceImpl implements ICountersignService {
             if (!"VOTING".equals(csTask.getStatus())) {
                 log.warn("[vote] 会签已结束, countersignId={}, status={}", countersignId, csTask.getStatus());
                 // 会签已结束，删除当前任务
+                completeTaskMonitor(task, LocalDateTime.now(), "COUNTERSIGN_CLOSED");
                 taskMapper.deleteById(taskId);
                 return csTask.getStatus();
             }
@@ -234,6 +244,7 @@ public class CountersignServiceImpl implements ICountersignService {
             // 7. 记录投票
             WfCountersignVote vote = new WfCountersignVote();
             vote.setVoteId(UUID.randomUUID().toString());
+            vote.setTenantId(csTask.getTenantId() != null ? csTask.getTenantId() : task.getTenantId());
             vote.setCountersignId(countersignId);
             vote.setTaskId(taskId);
             vote.setVoterId(voterId);
@@ -272,6 +283,7 @@ public class CountersignServiceImpl implements ICountersignService {
             }
 
             // 10. 删除当前投票人的任务
+            completeTaskMonitor(task, vote.getVoteTime(), "COUNTERSIGN_" + voteResult);
             taskMapper.deleteById(taskId);
 
             // 11. 顺序签署模式：如果仍在投票中，为下一个人创建任务
@@ -405,17 +417,12 @@ public class CountersignServiceImpl implements ICountersignService {
             countersignTaskMapper.updateById(csTask);
 
             // 为下一个签署人创建任务
-            WfTask task = new WfTask();
-            task.setTaskId(UUID.randomUUID().toString());
-            task.setInstanceId(csTask.getInstanceId());
-            task.setNodeKey(csTask.getNodeKey());
-            task.setNodeName(csTask.getNodeName().replace(" (会签)", "")
-                    + " (顺序签署 " + (nextIndex + 1) + "/" + csTask.getTotalCount() + ")");
-            task.setAssignee(nextAssignee);
-            task.setStatus("TODO");
-            task.setCreateTime(LocalDateTime.now());
-            task.setCandidateRoles("CS:" + csTask.getCountersignId());
+            WfProcessInstance instance = processInstanceMapper.selectById(csTask.getInstanceId());
+            WfTask task = buildCountersignTask(instance, csTask, nextAssignee,
+                    csTask.getNodeName().replace(" (会签)", "")
+                            + " (顺序签署 " + (nextIndex + 1) + "/" + csTask.getTotalCount() + ")");
             taskMapper.insert(task);
+            createTaskMonitor(instance, task);
 
             // 发送通知给下一个签署人
             try {
@@ -454,7 +461,9 @@ public class CountersignServiceImpl implements ICountersignService {
             );
 
             if (remainingTasks != null && !remainingTasks.isEmpty()) {
+                LocalDateTime now = LocalDateTime.now();
                 for (WfTask task : remainingTasks) {
+                    completeTaskMonitor(task, now, "COUNTERSIGN_CANCEL");
                     taskMapper.deleteById(task.getTaskId());
                 }
                 log.info("[cleanupRemainingTasks] 清理剩余任务 {} 个, countersignId={}",
@@ -638,5 +647,87 @@ public class CountersignServiceImpl implements ICountersignService {
             log.info("[checkAndCompleteCountersign] 会签继续进行, countersignId={}, remaining={}",
                     csTask.getCountersignId(), csTask.getTotalCount() - csTask.getVotedCount());
         }
+    }
+
+    private WfTask buildCountersignTask(WfProcessInstance instance, WfCountersignTask csTask,
+                                        Long assigneeId, String taskName) {
+        WfTask task = new WfTask();
+        task.setTaskId(UUID.randomUUID().toString());
+        task.setTenantId(csTask.getTenantId() != null
+                ? csTask.getTenantId()
+                : (instance != null ? instance.getTenantId() : null));
+        task.setInstanceId(csTask.getInstanceId());
+        task.setNodeKey(csTask.getNodeKey());
+        task.setNodeName(taskName);
+        task.setAssignee(assigneeId);
+        task.setAssigneeName(resolveUserDisplayName(assigneeId));
+        task.setStatus("TODO");
+        task.setCreateTime(LocalDateTime.now());
+        task.setCandidateRoles("CS:" + csTask.getCountersignId());
+        return task;
+    }
+
+    private void createTaskMonitor(WfProcessInstance instance, WfTask task) {
+        try {
+            if (instance != null) {
+                processMonitorService.incrementTaskCount(instance.getInstanceId());
+            }
+
+            TaskMonitor monitor = new TaskMonitor();
+            monitor.setTenantId(task.getTenantId());
+            monitor.setTaskId(task.getTaskId());
+            monitor.setInstanceId(task.getInstanceId());
+            monitor.setNodeKey(task.getNodeKey());
+            monitor.setTaskName(task.getNodeName());
+            monitor.setAssigneeId(task.getAssignee());
+            monitor.setAssigneeName(task.getAssigneeName());
+            monitor.setCreateTimeTask(task.getCreateTime());
+            monitor.setClaimTime(task.getCreateTime());
+            monitor.setWaitDuration(0L);
+            monitor.setHandleDuration(0L);
+            monitor.setTotalDuration(0L);
+            monitor.setStatus("PENDING");
+            monitor.setCreateTime(task.getCreateTime());
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.insert(monitor);
+        } catch (Exception e) {
+            log.warn("[createTaskMonitor] 记录会签任务监控失败, taskId={}, error={}", task.getTaskId(), e.getMessage());
+        }
+    }
+
+    private void completeTaskMonitor(WfTask task, LocalDateTime completeTime, String action) {
+        try {
+            TaskMonitor monitor = taskMonitorMapper.selectByTaskId(task.getTaskId());
+            if (monitor == null) {
+                return;
+            }
+
+            LocalDateTime finishedAt = completeTime != null ? completeTime : LocalDateTime.now();
+            monitor.setCompleteTime(finishedAt);
+            if (monitor.getCreateTimeTask() != null) {
+                long totalDuration = java.time.Duration.between(monitor.getCreateTimeTask(), finishedAt).toMillis();
+                monitor.setTotalDuration(totalDuration);
+                monitor.setHandleDuration(totalDuration);
+            }
+            monitor.setStatus("COMPLETED");
+            monitor.setAction(action);
+            monitor.setUpdateTime(LocalDateTime.now());
+            taskMonitorMapper.updateById(monitor);
+        } catch (Exception e) {
+            log.warn("[completeTaskMonitor] 更新会签任务监控失败, taskId={}, error={}", task.getTaskId(), e.getMessage());
+        }
+    }
+
+    private String resolveUserDisplayName(Long userId) {
+        if (userId == null) {
+            return null;
+        }
+        SysUser user = sysUserMapper.selectById(userId);
+        if (user == null) {
+            return null;
+        }
+        return org.springframework.util.StringUtils.hasText(user.getNickName())
+                ? user.getNickName()
+                : user.getUserName();
     }
 }

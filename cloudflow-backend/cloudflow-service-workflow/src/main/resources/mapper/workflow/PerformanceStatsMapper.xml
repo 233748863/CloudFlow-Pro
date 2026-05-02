@@ -31,6 +31,7 @@
     <select id="selectPerformanceStats" resultMap="PerformanceStatsResult">
         SELECT 
             id,
+            tenant_id,
             stat_date,
             process_def_key,
             process_def_name,
@@ -49,6 +50,7 @@
             CASE WHEN total_count > 0 THEN ROUND((anomaly_count * 100.0 / total_count), 2) ELSE 0 END as anomaly_rate
         FROM wf_performance_stats
         <where>
+            tenant_id = #{tenantId}
             <if test="startDate != null">
                 AND stat_date >= #{startDate}
             </if>

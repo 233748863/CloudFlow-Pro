@@ -8458,4 +8458,364 @@ INSERT INTO cloud_flow_db.wf_audit_log (
  '重点客户续约流程标准化，需要统一客户成功、销售、财务和总经理审批节点。', '发布V1版本，并同步续约评审说明、影响分析和审批通知。', 'SUCCESS', NULL, '10.10.0.53',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36', 100000);
 
+-- =========================================================
+-- 工作流监控数据回填：从模拟流程实例、任务和节点轨迹派生监控表
+-- =========================================================
+
+DELETE FROM cloud_flow_db.wf_timeout_alert
+WHERE target_id LIKE 'test_inst_%'
+   OR target_id LIKE 'demo_inst_%'
+   OR target_id LIKE 'seed_inst_%'
+   OR target_id LIKE 'seed_hr_inst_%'
+   OR target_id LIKE 'test_task_%'
+   OR target_id LIKE 'demo_task_%'
+   OR target_id LIKE 'seed_task_%';
+
+DELETE FROM cloud_flow_db.wf_anomaly_alert
+WHERE instance_id LIKE 'test_inst_%'
+   OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'seed_inst_%'
+   OR instance_id LIKE 'seed_hr_inst_%';
+
+DELETE FROM cloud_flow_db.wf_node_monitor
+WHERE instance_id LIKE 'test_inst_%'
+   OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'seed_inst_%'
+   OR instance_id LIKE 'seed_hr_inst_%';
+
+DELETE FROM cloud_flow_db.wf_task_monitor
+WHERE task_id LIKE 'test_task_%'
+   OR task_id LIKE 'demo_task_%'
+   OR task_id LIKE 'seed_task_%'
+   OR instance_id LIKE 'test_inst_%'
+   OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'seed_inst_%'
+   OR instance_id LIKE 'seed_hr_inst_%';
+
+DELETE FROM cloud_flow_db.wf_process_monitor
+WHERE instance_id LIKE 'test_inst_%'
+   OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'seed_inst_%'
+   OR instance_id LIKE 'seed_hr_inst_%';
+
+INSERT INTO cloud_flow_db.wf_process_monitor (
+  tenant_id, instance_id, process_def_id, process_def_key, process_def_name, business_key,
+  status, start_time, end_time, duration, node_count, task_count, start_user_id, start_user_name,
+  error_message, create_time, update_time
+)
+SELECT
+  i.tenant_id,
+  i.instance_id,
+  i.definition_id,
+  i.process_def_key,
+  COALESCE(d.process_name, i.title, i.process_def_key),
+  i.business_key,
+  i.status,
+  i.start_time,
+  i.end_time,
+  CASE WHEN i.end_time IS NOT NULL THEN TIMESTAMPDIFF(MICROSECOND, i.start_time, i.end_time) DIV 1000 ELSE NULL END,
+  (SELECT COUNT(*) FROM cloud_flow_db.wf_node_record nr WHERE nr.instance_id = i.instance_id),
+  (
+    (SELECT COUNT(*) FROM cloud_flow_db.wf_task t WHERE t.instance_id = i.instance_id)
+    + (SELECT COUNT(DISTINCT h.task_id) FROM cloud_flow_db.wf_task_history h WHERE h.instance_id = i.instance_id)
+  ),
+  i.start_user_id,
+  i.start_user_name,
+  NULL,
+  COALESCE(i.create_time, i.start_time, NOW()),
+  COALESCE(i.update_time, NOW())
+FROM cloud_flow_db.wf_process_instance i
+LEFT JOIN cloud_flow_db.wf_process_definition d
+  ON d.definition_id = i.definition_id
+WHERE i.instance_id LIKE 'test_inst_%'
+   OR i.instance_id LIKE 'demo_inst_%'
+   OR i.instance_id LIKE 'seed_inst_%'
+   OR i.instance_id LIKE 'seed_hr_inst_%'
+ON DUPLICATE KEY UPDATE
+  tenant_id = VALUES(tenant_id),
+  process_def_id = VALUES(process_def_id),
+  process_def_key = VALUES(process_def_key),
+  process_def_name = VALUES(process_def_name),
+  business_key = VALUES(business_key),
+  status = VALUES(status),
+  start_time = VALUES(start_time),
+  end_time = VALUES(end_time),
+  duration = VALUES(duration),
+  node_count = VALUES(node_count),
+  task_count = VALUES(task_count),
+  start_user_id = VALUES(start_user_id),
+  start_user_name = VALUES(start_user_name),
+  error_message = VALUES(error_message),
+  create_time = VALUES(create_time),
+  update_time = VALUES(update_time);
+
+INSERT INTO cloud_flow_db.wf_task_monitor (
+  tenant_id, task_id, instance_id, node_key, task_name, assignee_id, assignee_name,
+  create_time_task, claim_time, complete_time, wait_duration, handle_duration, total_duration,
+  status, action, create_time, update_time
+)
+SELECT
+  t.tenant_id,
+  t.task_id,
+  t.instance_id,
+  t.node_key,
+  t.node_name,
+  t.assignee,
+  t.assignee_name,
+  t.create_time,
+  t.create_time,
+  h.last_history_time,
+  0,
+  CASE
+    WHEN h.last_history_time IS NOT NULL THEN TIMESTAMPDIFF(MICROSECOND, t.create_time, h.last_history_time) DIV 1000
+    ELSE TIMESTAMPDIFF(MICROSECOND, t.create_time, NOW()) DIV 1000
+  END,
+  CASE
+    WHEN h.last_history_time IS NOT NULL THEN TIMESTAMPDIFF(MICROSECOND, t.create_time, h.last_history_time) DIV 1000
+    ELSE TIMESTAMPDIFF(MICROSECOND, t.create_time, NOW()) DIV 1000
+  END,
+  CASE
+    WHEN t.status IN ('DONE', 'APPROVED', 'COMPLETED') OR h.last_action IN ('APPROVE', 'REJECT', 'AUTO_PASS_FALLBACK') THEN 'COMPLETED'
+    ELSE 'PENDING'
+  END,
+  h.last_action,
+  COALESCE(t.create_time, NOW()),
+  NOW()
+FROM cloud_flow_db.wf_task t
+LEFT JOIN (
+  SELECT
+    h1.task_id,
+    MAX(h1.create_time) AS last_history_time,
+    SUBSTRING_INDEX(GROUP_CONCAT(h1.action ORDER BY h1.create_time DESC SEPARATOR ','), ',', 1) AS last_action
+  FROM cloud_flow_db.wf_task_history h1
+  GROUP BY h1.task_id
+) h ON h.task_id = t.task_id
+WHERE t.task_id LIKE 'test_task_%'
+   OR t.task_id LIKE 'demo_task_%'
+   OR t.task_id LIKE 'seed_task_%'
+   OR t.instance_id LIKE 'test_inst_%'
+   OR t.instance_id LIKE 'demo_inst_%'
+   OR t.instance_id LIKE 'seed_inst_%'
+   OR t.instance_id LIKE 'seed_hr_inst_%'
+ON DUPLICATE KEY UPDATE
+  tenant_id = VALUES(tenant_id),
+  instance_id = VALUES(instance_id),
+  node_key = VALUES(node_key),
+  task_name = VALUES(task_name),
+  assignee_id = VALUES(assignee_id),
+  assignee_name = VALUES(assignee_name),
+  create_time_task = VALUES(create_time_task),
+  claim_time = VALUES(claim_time),
+  complete_time = VALUES(complete_time),
+  wait_duration = VALUES(wait_duration),
+  handle_duration = VALUES(handle_duration),
+  total_duration = VALUES(total_duration),
+  status = VALUES(status),
+  action = VALUES(action),
+  create_time = VALUES(create_time),
+  update_time = VALUES(update_time);
+
+INSERT INTO cloud_flow_db.wf_node_monitor (
+  tenant_id, instance_id, node_id, node_key, node_name, node_type, start_time, end_time,
+  duration, status, error_message, retry_count, create_time, update_time
+)
+SELECT
+  nr.tenant_id,
+  nr.instance_id,
+  nr.node_key,
+  nr.node_key,
+  nr.node_name,
+  nr.node_type,
+  nr.start_time,
+  nr.end_time,
+  nr.duration_ms,
+  nr.status,
+  NULL,
+  0,
+  nr.create_time,
+  COALESCE(nr.event_time, nr.create_time, NOW())
+FROM cloud_flow_db.wf_node_record nr
+WHERE nr.instance_id LIKE 'test_inst_%'
+   OR nr.instance_id LIKE 'demo_inst_%'
+   OR nr.instance_id LIKE 'seed_inst_%'
+   OR nr.instance_id LIKE 'seed_hr_inst_%';
+
+INSERT INTO cloud_flow_db.wf_timeout_alert (
+  tenant_id, alert_type, target_id, target_name, timeout_level, timeout_duration, threshold,
+  assignee_id, assignee_name, alert_time, notification_sent, escalated, resolved, create_time, update_time
+)
+SELECT
+  tm.tenant_id,
+  'TASK',
+  tm.task_id,
+  tm.task_name,
+  CASE
+    WHEN tm.total_duration >= 14400000 THEN 'CRITICAL'
+    WHEN tm.total_duration >= 7200000 THEN 'WARNING'
+    ELSE 'REMIND'
+  END,
+  tm.total_duration,
+  CASE
+    WHEN tm.total_duration >= 14400000 THEN 14400000
+    WHEN tm.total_duration >= 7200000 THEN 7200000
+    ELSE 3600000
+  END,
+  tm.assignee_id,
+  tm.assignee_name,
+  NOW(),
+  'Y',
+  'N',
+  'N',
+  NOW(),
+  NOW()
+FROM cloud_flow_db.wf_task_monitor tm
+WHERE tm.status = 'PENDING'
+  AND tm.total_duration >= 3600000
+  AND (
+    tm.task_id LIKE 'test_task_%'
+    OR tm.task_id LIKE 'demo_task_%'
+    OR tm.task_id LIKE 'seed_task_%'
+  );
+
+INSERT INTO cloud_flow_db.wf_timeout_alert (
+  tenant_id, alert_type, target_id, target_name, timeout_level, timeout_duration, threshold,
+  assignee_id, assignee_name, alert_time, notification_sent, escalated, resolved, create_time, update_time
+)
+SELECT
+  pm.tenant_id,
+  'PROCESS',
+  pm.instance_id,
+  pm.process_def_name,
+  CASE
+    WHEN TIMESTAMPDIFF(MICROSECOND, pm.start_time, NOW()) DIV 1000 >= 14400000 THEN 'CRITICAL'
+    WHEN TIMESTAMPDIFF(MICROSECOND, pm.start_time, NOW()) DIV 1000 >= 7200000 THEN 'WARNING'
+    ELSE 'REMIND'
+  END,
+  TIMESTAMPDIFF(MICROSECOND, pm.start_time, NOW()) DIV 1000,
+  CASE
+    WHEN TIMESTAMPDIFF(MICROSECOND, pm.start_time, NOW()) DIV 1000 >= 14400000 THEN 14400000
+    WHEN TIMESTAMPDIFF(MICROSECOND, pm.start_time, NOW()) DIV 1000 >= 7200000 THEN 7200000
+    ELSE 3600000
+  END,
+  NULL,
+  NULL,
+  NOW(),
+  'Y',
+  'N',
+  'N',
+  NOW(),
+  NOW()
+FROM cloud_flow_db.wf_process_monitor pm
+WHERE pm.status = 'RUNNING'
+  AND TIMESTAMPDIFF(MICROSECOND, pm.start_time, NOW()) DIV 1000 >= 3600000
+  AND (
+    pm.instance_id LIKE 'test_inst_%'
+    OR pm.instance_id LIKE 'demo_inst_%'
+    OR pm.instance_id LIKE 'seed_inst_%'
+    OR pm.instance_id LIKE 'seed_hr_inst_%'
+  );
+
+DELETE ps
+FROM cloud_flow_db.wf_performance_stats ps
+JOIN (
+  SELECT DISTINCT tenant_id, DATE(start_time) AS stat_date, process_def_key
+  FROM cloud_flow_db.wf_process_monitor
+  WHERE tenant_id = 100000
+) scope
+  ON scope.tenant_id = ps.tenant_id
+ AND scope.stat_date = ps.stat_date
+ AND scope.process_def_key = ps.process_def_key;
+
+INSERT INTO cloud_flow_db.wf_performance_stats (
+  tenant_id, stat_date, process_def_key, process_def_name, total_count, completed_count, failed_count,
+  timeout_count, anomaly_count, avg_duration, min_duration, max_duration, create_time, update_time
+)
+SELECT
+  g.tenant_id,
+  g.stat_date,
+  g.process_def_key,
+  g.process_def_name,
+  g.total_count,
+  g.completed_count,
+  g.failed_count,
+  COALESCE(t.timeout_count, 0),
+  COALESCE(a.anomaly_count, 0),
+  g.avg_duration,
+  g.min_duration,
+  g.max_duration,
+  NOW(),
+  NOW()
+FROM (
+  SELECT
+    pm.tenant_id,
+    DATE(pm.start_time) AS stat_date,
+    pm.process_def_key,
+    MAX(pm.process_def_name) AS process_def_name,
+    COUNT(*) AS total_count,
+    SUM(CASE WHEN pm.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_count,
+    SUM(CASE WHEN pm.status IN ('FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED') THEN 1 ELSE 0 END) AS failed_count,
+    COALESCE(ROUND(AVG(pm.duration)), 0) AS avg_duration,
+    COALESCE(MIN(pm.duration), 0) AS min_duration,
+    COALESCE(MAX(pm.duration), 0) AS max_duration
+  FROM cloud_flow_db.wf_process_monitor pm
+  WHERE pm.tenant_id = 100000
+    AND pm.status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED')
+  GROUP BY pm.tenant_id, DATE(pm.start_time), pm.process_def_key
+) g
+LEFT JOIN (
+  SELECT
+    x.tenant_id,
+    DATE(x.alert_time) AS stat_date,
+    x.process_def_key,
+    COUNT(*) AS timeout_count
+  FROM (
+    SELECT ta.tenant_id, ta.alert_time, pm.process_def_key
+    FROM cloud_flow_db.wf_timeout_alert ta
+    JOIN cloud_flow_db.wf_process_monitor pm
+      ON ta.alert_type = 'PROCESS'
+     AND pm.tenant_id = ta.tenant_id
+     AND pm.instance_id = ta.target_id
+    WHERE ta.resolved = 'N'
+    UNION ALL
+    SELECT ta.tenant_id, ta.alert_time, pm.process_def_key
+    FROM cloud_flow_db.wf_timeout_alert ta
+    JOIN cloud_flow_db.wf_task_monitor tm
+      ON ta.alert_type = 'TASK'
+     AND tm.tenant_id = ta.tenant_id
+     AND tm.task_id = ta.target_id
+    JOIN cloud_flow_db.wf_process_monitor pm
+      ON pm.tenant_id = tm.tenant_id
+     AND pm.instance_id = tm.instance_id
+    WHERE ta.resolved = 'N'
+  ) x
+  GROUP BY x.tenant_id, DATE(x.alert_time), x.process_def_key
+) t
+  ON t.tenant_id = g.tenant_id
+ AND t.stat_date = g.stat_date
+ AND t.process_def_key = g.process_def_key
+LEFT JOIN (
+  SELECT
+    aa.tenant_id,
+    DATE(aa.create_time) AS stat_date,
+    aa.process_def_key,
+    COUNT(*) AS anomaly_count
+  FROM cloud_flow_db.wf_anomaly_alert aa
+  WHERE aa.resolved = 'N'
+  GROUP BY aa.tenant_id, DATE(aa.create_time), aa.process_def_key
+) a
+  ON a.tenant_id = g.tenant_id
+ AND a.stat_date = g.stat_date
+ AND a.process_def_key = g.process_def_key
+ON DUPLICATE KEY UPDATE
+  process_def_name = VALUES(process_def_name),
+  total_count = VALUES(total_count),
+  completed_count = VALUES(completed_count),
+  failed_count = VALUES(failed_count),
+  timeout_count = VALUES(timeout_count),
+  anomaly_count = VALUES(anomaly_count),
+  avg_duration = VALUES(avg_duration),
+  min_duration = VALUES(min_duration),
+  max_duration = VALUES(max_duration),
+  update_time = VALUES(update_time);
+
 SET FOREIGN_KEY_CHECKS = 1;

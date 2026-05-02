@@ -117,4 +117,12 @@ public class ProcessMonitor {
             this.processDefName = processName;
         }
     }
+
+    public Long getDurationMs() {
+        return durationMs != null ? durationMs : duration;
+    }
+
+    public void setDurationMs(Long durationMs) {
+        this.durationMs = durationMs;
+    }
 }

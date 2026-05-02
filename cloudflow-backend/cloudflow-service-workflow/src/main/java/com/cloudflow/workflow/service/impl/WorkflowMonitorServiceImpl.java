@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.workflow.domain.monitor.*;
+import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.service.WorkflowMonitorService;
 import lombok.RequiredArgsConstructor;
@@ -38,11 +39,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
     public MonitorOverview getMonitorOverview() {
         log.info("获取监控概览数据");
         
-        // 从当前登录用户获取租户ID
-        Long tenantId = SecurityUtils.getTenantId();
-        if (tenantId == null) {
-            tenantId = 100000L; // 降级使用默认租户ID
-        }
+        Long tenantId = resolveTenantId();
         
         MonitorOverview overview = new MonitorOverview();
         LocalDateTime todayStart = LocalDateTime.now().withHour(0).withMinute(0).withSecond(0);
@@ -50,17 +47,17 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         // 今日统计
         overview.setTodayStarted(processMonitorMapper.countByDateAndStatus(todayStart, null, tenantId));
         overview.setTodayCompleted(processMonitorMapper.countByDateAndStatus(todayStart, "COMPLETED", tenantId));
-        overview.setTodayTimeout(timeoutAlertMapper.countByDate(todayStart));
-        overview.setTodayAnomaly(anomalyAlertMapper.countByDate(todayStart));
+        overview.setTodayTimeout(timeoutAlertMapper.countByDate(todayStart, tenantId));
+        overview.setTodayAnomaly(anomalyAlertMapper.countByDate(todayStart, tenantId));
         
         // 当前状态
         overview.setRunningCount(processMonitorMapper.countByStatus("RUNNING", tenantId));
-        overview.setPendingTaskCount(processMonitorMapper.countPendingTasks());
+        overview.setPendingTaskCount(processMonitorMapper.countPendingTasks(tenantId));
         
         // 告警统计
-        overview.setWarningAlertCount(timeoutAlertMapper.countByLevel("WARNING"));
-        overview.setCriticalAlertCount(timeoutAlertMapper.countByLevel("CRITICAL"));
-        overview.setUnresolvedAnomalyCount(anomalyAlertMapper.countUnresolved());
+        overview.setWarningAlertCount(timeoutAlertMapper.countByLevel("WARNING", tenantId));
+        overview.setCriticalAlertCount(timeoutAlertMapper.countByLevel("CRITICAL", tenantId));
+        overview.setUnresolvedAnomalyCount(anomalyAlertMapper.countUnresolved(tenantId));
         
         // 性能指标
         overview.setAvgCompletionTimeMs(processMonitorMapper.getAvgCompletionTime(tenantId));
@@ -73,11 +70,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
     public List<ProcessTrend> getProcessTrend(Integer days, String processDefKey) {
         log.info("获取流程趋势数据: days={}, processDefKey={}", days, processDefKey);
         
-        // 从当前登录用户获取租户ID
-        Long tenantId = SecurityUtils.getTenantId();
-        if (tenantId == null) {
-            tenantId = 100000L; // 降级使用默认租户ID
-        }
+        Long tenantId = resolveTenantId();
         
         LocalDateTime startDate = LocalDateTime.now().minusDays(days);
         return processMonitorMapper.getProcessTrend(startDate, processDefKey, tenantId);
@@ -91,6 +84,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         
         Page<ProcessMonitor> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<ProcessMonitor> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ProcessMonitor::getTenantId, resolveTenantId());
         
         if (StringUtils.hasText(processDefKey)) {
             wrapper.eq(ProcessMonitor::getProcessDefKey, processDefKey);
@@ -115,7 +109,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
     @Override
     public ProcessMonitor getProcessMonitor(String instanceId) {
         log.info("获取流程监控详情: instanceId={}", instanceId);
-        return processMonitorMapper.selectByInstanceId(instanceId);
+        return processMonitorMapper.selectByInstanceId(instanceId, resolveTenantId());
     }
 
     @Override
@@ -126,6 +120,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         
         Page<TimeoutAlert> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<TimeoutAlert> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TimeoutAlert::getTenantId, resolveTenantId());
         
         if (StringUtils.hasText(alertType)) {
             wrapper.eq(TimeoutAlert::getAlertType, alertType);
@@ -153,6 +148,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         if (alert == null) {
             throw new RuntimeException("告警不存在");
         }
+        checkTenantAccess(alert.getTenantId());
         
         if ("notify".equals(action)) {
             // 发送通知
@@ -175,6 +171,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         
         Page<AnomalyAlert> page = new Page<>(pageNum, pageSize);
         LambdaQueryWrapper<AnomalyAlert> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(AnomalyAlert::getTenantId, resolveTenantId());
         
         if (StringUtils.hasText(anomalyType)) {
             wrapper.eq(AnomalyAlert::getAnomalyType, anomalyType);
@@ -202,6 +199,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         if (alert == null) {
             throw new RuntimeException("告警不存在");
         }
+        checkTenantAccess(alert.getTenantId());
         
         alert.setResolved("Y");
         alert.setResolveNote(resolveNote);
@@ -218,7 +216,19 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         log.info("获取性能统计数据: startDate={}, endDate={}, processDefKey={}", 
                 startDate, endDate, processDefKey);
         
-        return performanceStatsMapper.selectPerformanceStats(startDate, endDate, processDefKey);
+        return performanceStatsMapper.selectPerformanceStats(startDate, endDate, processDefKey, resolveTenantId());
+    }
+
+    private Long resolveTenantId() {
+        Long tenantId = SecurityUtils.getTenantId();
+        return tenantId != null ? tenantId : 100000L;
+    }
+
+    private void checkTenantAccess(Long dataTenantId) {
+        Long tenantId = resolveTenantId();
+        if (dataTenantId != null && !dataTenantId.equals(tenantId)) {
+            throw new PermissionDeniedException("无权访问该租户监控数据");
+        }
     }
 
     /**

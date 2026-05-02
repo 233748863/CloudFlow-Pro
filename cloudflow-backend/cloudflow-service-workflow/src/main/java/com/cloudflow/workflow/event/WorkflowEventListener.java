@@ -2,8 +2,13 @@ package com.cloudflow.workflow.event;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfNodeRecord;
+import com.cloudflow.workflow.domain.monitor.NodeMonitor;
+import com.cloudflow.workflow.mapper.NodeMonitorMapper;
+import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfNodeRecordMapper;
+import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +21,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -41,6 +47,15 @@ public class WorkflowEventListener {
 
     @Autowired
     private WfNodeRecordMapper nodeRecordMapper;
+
+    @Autowired
+    private NodeMonitorMapper nodeMonitorMapper;
+
+    @Autowired
+    private WfProcessInstanceMapper processInstanceMapper;
+
+    @Autowired
+    private IProcessMonitorService processMonitorService;
 
     /** 用于安全序列化 extraData */
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -145,6 +160,8 @@ public class WorkflowEventListener {
             record.setStartTime(event.getEventTime());
             record.setCreateTime(event.getEventTime());
             nodeRecordMapper.insert(record);
+            createNodeMonitor(event.getInstanceId(), event.getNodeKey(), event.getNodeName(),
+                    event.getNodeType(), event.getEventTime());
         } catch (Exception e) {
             log.error("[事件监听] 处理节点开始事件失败: nodeKey={}, error={}", event.getNodeKey(), e.getMessage(), e);
         }
@@ -197,6 +214,8 @@ public class WorkflowEventListener {
                 record.setCreateTime(now);
                 nodeRecordMapper.insert(record);
             }
+            completeNodeMonitor(event.getInstanceId(), event.getNodeKey(), event.getNodeName(),
+                    event.getNodeType(), now, event.getDurationMs());
         } catch (Exception e) {
             log.error("[事件监听] 处理节点完成事件失败: nodeKey={}, error={}", event.getNodeKey(), e.getMessage(), e);
         }
@@ -235,6 +254,8 @@ public class WorkflowEventListener {
                 record.setStartTime(event.getEventTime());
                 record.setCreateTime(event.getEventTime());
                 nodeRecordMapper.insert(record);
+                createNodeMonitor(event.getInstanceId(), event.getNodeKey(), event.getNodeName(),
+                        "APPROVAL", event.getEventTime());
             }
         } catch (Exception e) {
             log.error("[事件监听] 处理任务分配事件失败: taskId={}, error={}", event.getTaskId(), e.getMessage(), e);
@@ -291,6 +312,8 @@ public class WorkflowEventListener {
                 record.setCreateTime(now);
                 nodeRecordMapper.insert(record);
             }
+            completeNodeMonitor(event.getInstanceId(), event.getNodeKey(), event.getNodeName(),
+                    "APPROVAL", now, 0L);
         } catch (Exception e) {
             log.error("[事件监听] 处理任务完成事件失败: taskId={}, error={}", event.getTaskId(), e.getMessage(), e);
         }
@@ -308,6 +331,104 @@ public class WorkflowEventListener {
                         .eq(WfNodeRecord::getStatus, "RUNNING")
                         .set(WfNodeRecord::getStatus, "COMPLETED")
                         .set(WfNodeRecord::getEndTime, LocalDateTime.now()));
+        closeRunningNodeMonitors(instanceId);
+    }
+
+    private void createNodeMonitor(String instanceId, String nodeKey, String nodeName,
+                                   String nodeType, LocalDateTime eventTime) {
+        try {
+            NodeMonitor monitor = new NodeMonitor();
+            WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+            monitor.setTenantId(instance != null ? instance.getTenantId() : null);
+            monitor.setInstanceId(instanceId);
+            monitor.setNodeId(nodeKey);
+            monitor.setNodeKey(nodeKey);
+            monitor.setNodeName(nodeName);
+            monitor.setNodeType(nodeType);
+            monitor.setStartTime(eventTime);
+            monitor.setStatus("RUNNING");
+            monitor.setRetryCount(0);
+            monitor.setCreateTime(eventTime);
+            monitor.setUpdateTime(eventTime);
+            nodeMonitorMapper.insert(monitor);
+            processMonitorService.incrementNodeCount(instanceId);
+        } catch (Exception e) {
+            log.warn("[事件监听] 记录节点监控失败: instanceId={}, nodeKey={}, error={}",
+                    instanceId, nodeKey, e.getMessage());
+        }
+    }
+
+    private void completeNodeMonitor(String instanceId, String nodeKey, String nodeName,
+                                     String nodeType, LocalDateTime completeTime, long durationMs) {
+        try {
+            NodeMonitor monitor = nodeMonitorMapper.selectOne(
+                    new LambdaQueryWrapper<NodeMonitor>()
+                            .eq(NodeMonitor::getInstanceId, instanceId)
+                            .eq(NodeMonitor::getNodeKey, nodeKey)
+                            .eq(NodeMonitor::getStatus, "RUNNING")
+                            .orderByDesc(NodeMonitor::getStartTime)
+                            .last("LIMIT 1"));
+
+            if (monitor == null) {
+                createCompletedNodeMonitor(instanceId, nodeKey, nodeName, nodeType, completeTime, durationMs);
+                return;
+            }
+
+            monitor.setStatus("COMPLETED");
+            monitor.setEndTime(completeTime);
+            if (durationMs > 0) {
+                monitor.setDuration(durationMs);
+            } else if (monitor.getStartTime() != null) {
+                monitor.setDuration(Duration.between(monitor.getStartTime(), completeTime).toMillis());
+            }
+            monitor.setUpdateTime(LocalDateTime.now());
+            nodeMonitorMapper.updateById(monitor);
+        } catch (Exception e) {
+            log.warn("[事件监听] 更新节点监控失败: instanceId={}, nodeKey={}, error={}",
+                    instanceId, nodeKey, e.getMessage());
+        }
+    }
+
+    private void createCompletedNodeMonitor(String instanceId, String nodeKey, String nodeName,
+                                            String nodeType, LocalDateTime completeTime, long durationMs) {
+        NodeMonitor monitor = new NodeMonitor();
+        WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
+        monitor.setTenantId(instance != null ? instance.getTenantId() : null);
+        monitor.setInstanceId(instanceId);
+        monitor.setNodeId(nodeKey);
+        monitor.setNodeKey(nodeKey);
+        monitor.setNodeName(nodeName);
+        monitor.setNodeType(nodeType);
+        monitor.setStartTime(completeTime);
+        monitor.setEndTime(completeTime);
+        monitor.setDuration(Math.max(durationMs, 0L));
+        monitor.setStatus("COMPLETED");
+        monitor.setRetryCount(0);
+        monitor.setCreateTime(completeTime);
+        monitor.setUpdateTime(completeTime);
+        nodeMonitorMapper.insert(monitor);
+        processMonitorService.incrementNodeCount(instanceId);
+    }
+
+    private void closeRunningNodeMonitors(String instanceId) {
+        try {
+            LocalDateTime now = LocalDateTime.now();
+            List<NodeMonitor> runningMonitors = nodeMonitorMapper.selectList(
+                    new LambdaQueryWrapper<NodeMonitor>()
+                            .eq(NodeMonitor::getInstanceId, instanceId)
+                            .eq(NodeMonitor::getStatus, "RUNNING"));
+            for (NodeMonitor monitor : runningMonitors) {
+                monitor.setStatus("COMPLETED");
+                monitor.setEndTime(now);
+                if (monitor.getStartTime() != null) {
+                    monitor.setDuration(Duration.between(monitor.getStartTime(), now).toMillis());
+                }
+                monitor.setUpdateTime(now);
+                nodeMonitorMapper.updateById(monitor);
+            }
+        } catch (Exception e) {
+            log.warn("[事件监听] 关闭节点监控失败: instanceId={}, error={}", instanceId, e.getMessage());
+        }
     }
 
     /**

@@ -23,7 +23,7 @@ import java.time.LocalDateTime;
  */
 @Slf4j
 @RestController
-@RequestMapping("/api/workflow/audit-logs")
+@RequestMapping("/audit-logs")
 public class AuditLogController {
 
     @Autowired

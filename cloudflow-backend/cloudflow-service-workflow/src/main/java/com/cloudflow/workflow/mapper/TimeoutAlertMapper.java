@@ -20,19 +20,22 @@ public interface TimeoutAlertMapper extends BaseMapper<TimeoutAlert> {
     /**
      * 根据日期统计数量
      */
-    Integer countByDate(@Param("startDate") LocalDateTime startDate);
+    Integer countByDate(@Param("startDate") LocalDateTime startDate,
+                        @Param("tenantId") Long tenantId);
 
     /**
      * 根据告警级别统计数量
      */
-    Integer countByLevel(@Param("alertLevel") String alertLevel);
+    Integer countByLevel(@Param("alertLevel") String alertLevel,
+                         @Param("tenantId") Long tenantId);
 
     /**
      * 查询超时告警列表
      */
     List<TimeoutAlert> selectTimeoutAlerts(@Param("alertType") String alertType,
                                           @Param("alertLevel") String alertLevel,
-                                          @Param("resolved") Boolean resolved);
+                                          @Param("resolved") Boolean resolved,
+                                          @Param("tenantId") Long tenantId);
 
     /**
      * 查询未解决的告警
