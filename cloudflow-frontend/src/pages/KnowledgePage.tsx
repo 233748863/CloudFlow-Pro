@@ -48,7 +48,7 @@ import {
 } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import { AnnouncementScope, Role } from '@/types';
-import { getDeptTree, getRoleList, type SysRole } from '@/services/api/auth';
+import { getDeptTree, getRoleOptions, type SysRole } from '@/services/api/auth';
 import {
   knowledgeApi,
   type KnowledgeDocument,
@@ -315,7 +315,7 @@ const KnowledgePage: React.FC = () => {
   }, [viewMode, unreadOnly, pageNum, pageSize]);
 
   useEffect(() => {
-    void Promise.all([getDeptTree(), getRoleList()])
+    void Promise.all([getDeptTree(), getRoleOptions()])
       .then(([deptResponse, roleResponse]) => {
         setDeptTree(normalizeDeptTreeResponse(deptResponse));
         setRoles(normalizeRoleListResponse(roleResponse));

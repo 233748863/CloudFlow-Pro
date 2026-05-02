@@ -298,7 +298,9 @@ export interface UserBrief {
 export interface RoleInfo {
   id: string;
   name: string;
-  code: Role;
+  code: Role | string;
+  key?: string;
+  roleKey?: string;
   description?: string;
 }
 

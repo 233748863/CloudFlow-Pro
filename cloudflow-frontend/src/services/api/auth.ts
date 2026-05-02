@@ -44,6 +44,13 @@ export interface SysRole {
   remark?: string;
 }
 
+/** 角色选择项数据 */
+export interface RoleOption {
+  roleId: number;
+  roleName: string;
+  roleKey: string;
+}
+
 /** 系统菜单数据 */
 export interface SysMenu {
   menuId?: number;
@@ -251,6 +258,10 @@ export const deleteUser = (userIds: number[]) => {
 
 export const getRoleList = (params?: PageQuery) => {
   return request.get('/auth/system/role/list', { params });
+};
+
+export const getRoleOptions = (): Promise<RoleOption[]> => {
+  return request.get('/auth/system/role/optionselect');
 };
 
 export const addRole = (data: SysRole) => {

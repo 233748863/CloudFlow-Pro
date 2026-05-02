@@ -4,6 +4,7 @@
  */
 
 import request from "./request";
+import { getRoleOptions } from "./auth";
 import {
   PageResult,
   ProcessInstance,
@@ -443,8 +444,15 @@ export async function getUsers(): Promise<UserBrief[]> {
  * Gateway route: /auth/** → cloudflow-auth (StripPrefix=1)
  */
 export async function getRoles(): Promise<RoleInfo[]> {
-  logApiCall("GET", "/auth/system/role/list");
-  return request.get("/auth/system/role/list").then(extractList);
+  logApiCall("GET", "/auth/system/role/optionselect");
+  const roles = await getRoleOptions();
+  return roles.map((role) => ({
+    id: String(role.roleId),
+    name: role.roleName,
+    code: role.roleKey,
+    key: role.roleKey,
+    roleKey: role.roleKey,
+  }));
 }
 
 // ==================== 流程抄送相关 API ====================

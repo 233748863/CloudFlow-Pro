@@ -8,6 +8,7 @@ import {
 import { MainLayout } from "@/layouts/MainLayout";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { RoleGuard } from "@/components/RoleGuard";
+import { PermissionRouteGuard } from "@/components/PermissionRouteGuard";
 import { Login } from "@/pages/Login";
 import { Register } from "@/pages/Register";
 import { isMobileDevice } from "@/utils/device";
@@ -723,9 +724,11 @@ const desktopRoutes = [
           {
             path: "/system/roles",
             element: (
-              <Suspense fallback={<Loading />}>
-                <RoleList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:role:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <RoleList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {

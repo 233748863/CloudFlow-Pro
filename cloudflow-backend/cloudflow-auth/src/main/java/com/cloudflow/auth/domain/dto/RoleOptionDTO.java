@@ -1,0 +1,14 @@
+package com.cloudflow.auth.domain.dto;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class RoleOptionDTO {
+    private Long roleId;
+    private String roleName;
+    private String roleKey;
+}

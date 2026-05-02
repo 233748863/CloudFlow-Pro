@@ -2,6 +2,7 @@ package com.cloudflow.auth.controller;
 
 import com.cloudflow.auth.annotation.HasPermission;
 import com.cloudflow.auth.domain.SysRole;
+import com.cloudflow.auth.domain.dto.RoleOptionDTO;
 import com.cloudflow.auth.service.ISysRoleService;
 import com.cloudflow.common.core.domain.R;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,6 +21,11 @@ public class SysRoleController {
     @HasPermission("system:role:list")
     public R<List<SysRole>> list(SysRole role) {
         return R.ok(roleService.selectRoleList(role));
+    }
+
+    @GetMapping("/optionselect")
+    public R<List<RoleOptionDTO>> optionselect() {
+        return R.ok(roleService.selectRoleOptions());
     }
 
     @GetMapping("/{roleId}")

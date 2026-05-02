@@ -3,6 +3,7 @@ package com.cloudflow.auth.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.domain.SysRoleMenu;
+import com.cloudflow.auth.domain.dto.RoleOptionDTO;
 import com.cloudflow.auth.mapper.SysRoleMapper;
 import com.cloudflow.auth.mapper.SysRoleMenuMapper;
 import com.cloudflow.auth.service.ISysMenuService;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 角色服务实现
@@ -46,6 +48,18 @@ public class SysRoleServiceImpl implements ISysRoleService {
         }
         wrapper.orderByAsc(SysRole::getRoleSort);
         return roleMapper.selectList(wrapper);
+    }
+
+    @Override
+    public List<RoleOptionDTO> selectRoleOptions() {
+        LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysRole::getStatus, "0")
+                .eq(SysRole::getDelFlag, "0")
+                .orderByAsc(SysRole::getRoleSort)
+                .orderByAsc(SysRole::getRoleId);
+        return roleMapper.selectList(wrapper).stream()
+                .map(role -> new RoleOptionDTO(role.getRoleId(), role.getRoleName(), role.getRoleKey()))
+                .collect(Collectors.toList());
     }
 
     @Override
