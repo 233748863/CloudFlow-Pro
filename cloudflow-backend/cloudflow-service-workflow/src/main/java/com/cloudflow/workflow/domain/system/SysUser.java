@@ -9,8 +9,11 @@ import lombok.Data;
 public class SysUser {
     @TableId
     private Long userId;
+    private Long tenantId;
     private String userName;
     private String nickName;
     private String email;
     private Long deptId;
+    private String status;
+    private String delFlag;
 }

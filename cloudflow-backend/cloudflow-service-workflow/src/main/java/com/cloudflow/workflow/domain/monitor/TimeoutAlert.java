@@ -56,9 +56,28 @@ public class TimeoutAlert {
     
     /** 已升级: Y/N */
     private String escalated;
+
+    /** 升级接收人ID */
+    private Long escalatedToId;
+
+    /** 升级接收人名称 */
+    private String escalatedToName;
+
+    /** 升级时间 */
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime escalatedTime;
     
     /** 是否已解决: Y/N */
     private String resolved;
+
+    /** 解决人ID */
+    private Long resolvedById;
+
+    /** 解决人名称 */
+    private String resolvedByName;
+
+    /** 解决说明 */
+    private String resolveNote;
     
     /** 解决时间 */
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

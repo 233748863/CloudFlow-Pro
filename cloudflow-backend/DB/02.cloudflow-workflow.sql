@@ -897,13 +897,20 @@ CREATE TABLE wf_timeout_alert (
     alert_time DATETIME NOT NULL COMMENT '告警时间',
     notification_sent CHAR(1) NOT NULL DEFAULT 'N' COMMENT '是否已发送通知',
     escalated CHAR(1) NOT NULL DEFAULT 'N' COMMENT '是否已升级',
+    escalated_to_id BIGINT COMMENT '升级接收人ID',
+    escalated_to_name VARCHAR(100) COMMENT '升级接收人姓名',
+    escalated_time DATETIME COMMENT '升级时间',
     resolved CHAR(1) NOT NULL DEFAULT 'N' COMMENT '是否已解决',
+    resolved_by_id BIGINT COMMENT '解决人ID',
+    resolved_by_name VARCHAR(100) COMMENT '解决人姓名',
+    resolve_note TEXT COMMENT '解决说明',
     resolve_time DATETIME COMMENT '解决时间',
     create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_tenant_level (tenant_id, timeout_level),
     INDEX idx_target (alert_type, target_id),
     INDEX idx_resolved (tenant_id, resolved),
+    INDEX idx_escalation_todo (tenant_id, escalated, escalated_to_id, resolved, escalated_time),
     INDEX idx_alert_time (alert_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='超时告警表';
 

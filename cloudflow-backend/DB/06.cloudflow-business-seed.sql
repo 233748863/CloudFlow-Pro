@@ -29,13 +29,12 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_menu
 WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
-   OR menu_id BETWEEN 100 AND 211
+   OR menu_id BETWEEN 100 AND 214
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
-   OR menu_id BETWEEN 500 AND 512
+   OR menu_id BETWEEN 500 AND 513
    OR menu_id BETWEEN 600 AND 621
-   OR menu_id BETWEEN 700 AND 739
-   OR menu_id BETWEEN 212 AND 213;
+   OR menu_id BETWEEN 700 AND 739;
 
 DELETE FROM cloud_flow_db.sys_post
 WHERE post_id BETWEEN 1 AND 11;

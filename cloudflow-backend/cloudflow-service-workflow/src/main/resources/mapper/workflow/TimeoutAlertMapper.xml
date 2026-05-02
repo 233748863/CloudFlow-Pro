@@ -16,7 +16,13 @@
         <result property="alertTime" column="alert_time"/>
         <result property="notificationSent" column="notification_sent"/>
         <result property="escalated" column="escalated"/>
+        <result property="escalatedToId" column="escalated_to_id"/>
+        <result property="escalatedToName" column="escalated_to_name"/>
+        <result property="escalatedTime" column="escalated_time"/>
         <result property="resolved" column="resolved"/>
+        <result property="resolvedById" column="resolved_by_id"/>
+        <result property="resolvedByName" column="resolved_by_name"/>
+        <result property="resolveNote" column="resolve_note"/>
         <result property="resolveTime" column="resolve_time"/>
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
@@ -55,7 +61,13 @@
             ta.alert_time,
             ta.notification_sent,
             ta.escalated,
+            ta.escalated_to_id,
+            ta.escalated_to_name,
+            ta.escalated_time,
             ta.resolved,
+            ta.resolved_by_id,
+            ta.resolved_by_name,
+            ta.resolve_note,
             ta.resolve_time,
             ta.create_time,
             ta.update_time
@@ -98,7 +110,13 @@
             ta.alert_time,
             ta.notification_sent,
             ta.escalated,
+            ta.escalated_to_id,
+            ta.escalated_to_name,
+            ta.escalated_time,
             ta.resolved,
+            ta.resolved_by_id,
+            ta.resolved_by_name,
+            ta.resolve_note,
             ta.resolve_time,
             ta.create_time,
             ta.update_time

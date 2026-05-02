@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  CheckCircle2,
   Clock3,
   Eye,
   RefreshCw,
@@ -17,13 +18,16 @@ import {
   AnomalyAlert,
   TimeoutAlert,
   getAnomalyAlerts,
+  getTimeoutEscalationTasks,
   getTimeoutAlerts,
   handleTimeoutAlert,
   resolveAnomalyAlert,
+  resolveTimeoutAlert,
 } from '@/services/api/monitor';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 
-type AlertType = 'timeout' | 'anomaly';
+type AlertType = 'timeout' | 'escalation' | 'anomaly';
 type AlertFilters = {
   alertLevel: '' | 'REMIND' | 'WARNING' | 'CRITICAL';
   severity: '' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
@@ -227,20 +231,83 @@ const ResolveModal: React.FC<{
   </BaseDialog>
 );
 
+const TimeoutResolveModal: React.FC<{
+  alert: TimeoutAlert | null;
+  note: string;
+  setNote: (value: string) => void;
+  onClose: () => void;
+  onSubmit: () => void;
+}> = ({ alert, note, setNote, onClose, onSubmit }) => (
+  <BaseDialog
+    open={Boolean(alert)}
+    title="处置超时告警"
+    onClose={onClose}
+    maxWidthClassName="max-w-2xl"
+    footer={
+      <>
+        <Button variant="outline" onClick={onClose}>
+          取消
+        </Button>
+        <Button onClick={onSubmit} disabled={!note.trim()}>
+          确认处置
+        </Button>
+      </>
+    }
+  >
+    {alert ? (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {alert.targetName}
+          </div>
+          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            {alert.alertType === 'TASK' ? '任务超时' : '流程超时'} / 目标 ID: {alert.targetId}
+          </div>
+          <div className="mt-1 text-sm leading-6 text-slate-500 dark:text-slate-400">
+            升级给: {alert.escalatedToName || '-'} / 升级时间: {formatDateTime(alert.escalatedTime)}
+          </div>
+        </div>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-200">
+            处置说明
+          </label>
+          <Textarea
+            rows={4}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="填写排查结果、沟通情况和处理结论"
+          />
+        </div>
+      </div>
+    ) : null}
+  </BaseDialog>
+);
+
 const AlertList: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AlertType>('timeout');
   const [timeoutAlerts, setTimeoutAlerts] = useState<TimeoutAlert[]>([]);
+  const [escalationTasks, setEscalationTasks] = useState<TimeoutAlert[]>([]);
   const [anomalyAlerts, setAnomalyAlerts] = useState<AnomalyAlert[]>([]);
   const [loading, setLoading] = useState(false);
   const [keyword, setKeyword] = useState('');
   const [detailAlert, setDetailAlert] = useState<AnomalyAlert | null>(null);
   const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert | null>(null);
+  const [selectedTimeoutAlert, setSelectedTimeoutAlert] = useState<TimeoutAlert | null>(null);
   const [resolveNote, setResolveNote] = useState('');
+  const [timeoutResolveNote, setTimeoutResolveNote] = useState('');
   const [filters, setFilters] = useState<AlertFilters>({
     alertLevel: '',
     severity: '',
     resolved: '',
   });
+  const { user } = useAuth();
+  const isMonitorAdmin = ['ADMIN', 'MANAGER', 'admin', 'manager'].includes(String(user?.role || ''));
+
+  useEffect(() => {
+    if (!isMonitorAdmin) {
+      setActiveTab('escalation');
+    }
+  }, [isMonitorAdmin]);
 
   const loadAlerts = async () => {
     try {
@@ -268,13 +335,25 @@ const AlertList: React.FC = () => {
         anomalyParams.resolved = filters.resolved === 'true';
       }
 
-      const [timeoutData, anomalyData] = await Promise.all([
+      const monitorRequests = isMonitorAdmin ? Promise.all([
         getTimeoutAlerts(timeoutParams),
+        getTimeoutEscalationTasks({ pageNum: 1, pageSize: 100 }),
         getAnomalyAlerts(anomalyParams),
-      ]);
+      ]) : null;
 
-      setTimeoutAlerts(timeoutData.rows || timeoutData.records || []);
-      setAnomalyAlerts(anomalyData.rows || anomalyData.records || []);
+      if (monitorRequests) {
+        const [timeoutData, escalationData, anomalyData] = await monitorRequests;
+        setTimeoutAlerts(timeoutData.rows || timeoutData.records || []);
+        setEscalationTasks(escalationData.rows || escalationData.records || []);
+        setAnomalyAlerts(anomalyData.rows || anomalyData.records || []);
+        return;
+      }
+
+      const escalationRequest = getTimeoutEscalationTasks({ pageNum: 1, pageSize: 100 });
+      const escalationData = await escalationRequest;
+      setTimeoutAlerts([]);
+      setEscalationTasks(escalationData.rows || escalationData.records || []);
+      setAnomalyAlerts([]);
     } catch (error) {
       console.error('加载告警数据失败:', error);
       toast.error('加载告警数据失败');
@@ -285,7 +364,7 @@ const AlertList: React.FC = () => {
 
   useEffect(() => {
     void loadAlerts();
-  }, [filters]);
+  }, [filters, isMonitorAdmin]);
 
   const filteredTimeoutAlerts = useMemo(() => {
     const keywordValue = keyword.trim().toLowerCase();
@@ -300,6 +379,27 @@ const AlertList: React.FC = () => {
     );
   }, [keyword, timeoutAlerts]);
 
+  const filteredEscalationTasks = useMemo(() => {
+    const keywordValue = keyword.trim().toLowerCase();
+    return escalationTasks.filter((alert) => {
+      if (filters.alertLevel && alert.timeoutLevel !== filters.alertLevel) {
+        return false;
+      }
+
+      if (filters.resolved && (alert.resolved === 'Y') !== (filters.resolved === 'true')) {
+        return false;
+      }
+
+      if (!keywordValue) {
+        return true;
+      }
+
+      return [alert.targetName, alert.assigneeName, alert.escalatedToName, alert.targetId]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keywordValue));
+    });
+  }, [keyword, escalationTasks, filters.alertLevel, filters.resolved]);
+
   const filteredAnomalyAlerts = useMemo(() => {
     const keywordValue = keyword.trim().toLowerCase();
     if (!keywordValue) {
@@ -313,15 +413,23 @@ const AlertList: React.FC = () => {
     );
   }, [keyword, anomalyAlerts]);
 
-  const currentList = activeTab === 'timeout' ? filteredTimeoutAlerts : filteredAnomalyAlerts;
+  const currentList =
+    activeTab === 'timeout'
+      ? filteredTimeoutAlerts
+      : activeTab === 'escalation'
+        ? filteredEscalationTasks
+        : filteredAnomalyAlerts;
   const currentPendingCount = currentList.filter((alert) => alert.resolved !== 'Y').length;
   const currentFocusCount =
-    activeTab === 'timeout'
-      ? filteredTimeoutAlerts.filter((alert) => alert.timeoutLevel === 'CRITICAL').length
+    activeTab === 'timeout' || activeTab === 'escalation'
+      ? (activeTab === 'escalation' ? filteredEscalationTasks : filteredTimeoutAlerts).filter(
+          (alert) => alert.timeoutLevel === 'CRITICAL',
+        ).length
       : filteredAnomalyAlerts.filter((alert) => ['CRITICAL', 'HIGH'].includes(alert.severity)).length;
 
   const hasActiveFilters = Boolean(keyword || filters.alertLevel || filters.severity || filters.resolved);
-  const currentTabLabel = activeTab === 'timeout' ? '超时告警' : '异常告警';
+  const currentTabLabel =
+    activeTab === 'timeout' ? '超时告警' : activeTab === 'escalation' ? '我的升级待办' : '异常告警';
 
   const handleResetFilters = () => {
     setKeyword('');
@@ -330,12 +438,29 @@ const AlertList: React.FC = () => {
 
   const handleTimeoutAction = async (alertId: number, action: string) => {
     try {
-      await handleTimeoutAlert(alertId, action);
-      toast.success(action === 'notify' ? '已发送通知' : '已升级处理');
+      const result = await handleTimeoutAlert(alertId, action);
+      toast.success(action === 'notify' ? '已发送通知' : result.message || '已升级处理');
       await loadAlerts();
     } catch (error) {
       console.error('处理告警失败:', error);
       toast.error('处理告警失败');
+    }
+  };
+
+  const handleResolveTimeout = async () => {
+    if (!selectedTimeoutAlert || !timeoutResolveNote.trim()) {
+      return;
+    }
+
+    try {
+      await resolveTimeoutAlert(selectedTimeoutAlert.id, timeoutResolveNote.trim());
+      toast.success('超时告警已处置');
+      setTimeoutResolveNote('');
+      setSelectedTimeoutAlert(null);
+      await loadAlerts();
+    } catch (error) {
+      console.error('处置超时告警失败:', error);
+      toast.error('处置超时告警失败');
     }
   };
 
@@ -366,17 +491,35 @@ const AlertList: React.FC = () => {
               <SegmentedControl className="min-h-9">
                 <SegmentedControlItem
                   size="sm"
+                  disabled={!isMonitorAdmin}
                   active={activeTab === 'timeout'}
                   count={timeoutAlerts.length}
-                  onClick={() => setActiveTab('timeout')}
+                  onClick={() => {
+                    if (isMonitorAdmin) {
+                      setActiveTab('timeout');
+                    }
+                  }}
                 >
                   超时告警
                 </SegmentedControlItem>
                 <SegmentedControlItem
                   size="sm"
+                  active={activeTab === 'escalation'}
+                  count={escalationTasks.length}
+                  onClick={() => setActiveTab('escalation')}
+                >
+                  我的升级待办
+                </SegmentedControlItem>
+                <SegmentedControlItem
+                  size="sm"
+                  disabled={!isMonitorAdmin}
                   active={activeTab === 'anomaly'}
                   count={anomalyAlerts.length}
-                  onClick={() => setActiveTab('anomaly')}
+                  onClick={() => {
+                    if (isMonitorAdmin) {
+                      setActiveTab('anomaly');
+                    }
+                  }}
                 >
                   异常告警
                 </SegmentedControlItem>
@@ -391,7 +534,7 @@ const AlertList: React.FC = () => {
                   value={keyword}
                   onChange={(event) => setKeyword(event.target.value)}
                   placeholder={
-                    activeTab === 'timeout'
+                    activeTab === 'timeout' || activeTab === 'escalation'
                       ? '按目标名称、处理人或目标 ID 搜索'
                       : '按流程、类型或异常内容搜索'
                   }
@@ -399,7 +542,7 @@ const AlertList: React.FC = () => {
                 />
               </div>
 
-              {activeTab === 'timeout' ? (
+              {activeTab === 'timeout' || activeTab === 'escalation' ? (
                 <div className="w-full sm:w-36">
                   <Select
                     value={filters.alertLevel || 'all'}
@@ -497,25 +640,39 @@ const AlertList: React.FC = () => {
 
             {loading ? (
               <InlineState
-                title={activeTab === 'timeout' ? '正在加载超时告警' : '正在加载异常告警'}
+                title={
+                  activeTab === 'anomaly'
+                    ? '正在加载异常告警'
+                    : activeTab === 'escalation'
+                      ? '正在加载升级待办'
+                      : '正在加载超时告警'
+                }
                 loading
               />
             ) : currentList.length === 0 ? (
               <InlineState
                 icon={
-                  activeTab === 'timeout' ? (
-                    <Clock3 className="h-5 w-5" />
-                  ) : (
+                  activeTab === 'anomaly' ? (
                     <AlertTriangle className="h-5 w-5" />
+                  ) : activeTab === 'escalation' ? (
+                    <CheckCircle2 className="h-5 w-5" />
+                  ) : (
+                    <Clock3 className="h-5 w-5" />
                   )
                 }
-                title={activeTab === 'timeout' ? '暂无超时告警' : '暂无异常告警'}
+                title={
+                  activeTab === 'anomaly'
+                    ? '暂无异常告警'
+                    : activeTab === 'escalation'
+                      ? '暂无升级待办'
+                      : '暂无超时告警'
+                }
               />
             ) : (
               <div>
 
-                {activeTab === 'timeout'
-                  ? filteredTimeoutAlerts.map((alert) => {
+                {activeTab === 'timeout' || activeTab === 'escalation'
+                  ? (activeTab === 'escalation' ? filteredEscalationTasks : filteredTimeoutAlerts).map((alert) => {
                       const levelMeta = getTimeoutLevelMeta(alert.timeoutLevel);
 
                       return (
@@ -559,22 +716,24 @@ const AlertList: React.FC = () => {
                             <div>目标 ID: {alert.targetId}</div>
                             <div>处理人: {alert.assigneeName || '未分配'}</div>
                             <div>通知状态: {alert.notificationSent === 'Y' ? '已通知' : '未通知'}</div>
+                            <div>升级给: {alert.escalatedToName || '-'}</div>
                           </div>
 
                           <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
                             <div>告警时间: {formatDateTime(alert.alertTime || alert.createTime)}</div>
                             <div>处理状态: {alert.resolved === 'Y' ? '已处理' : '待处理'}</div>
                             <div>升级状态: {alert.escalated === 'Y' ? '已升级' : '未升级'}</div>
+                            <div>升级时间: {formatDateTime(alert.escalatedTime)}</div>
                           </div>
 
                           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-                            {alert.notificationSent !== 'Y' ? (
+                            {activeTab === 'timeout' && alert.notificationSent !== 'Y' ? (
                               <Button size="sm" onClick={() => void handleTimeoutAction(alert.id, 'notify')}>
                                 <Send className="h-4 w-4" />
                                 发送通知
                               </Button>
                             ) : null}
-                            {alert.timeoutLevel === 'CRITICAL' && alert.escalated !== 'Y' ? (
+                            {activeTab === 'timeout' && alert.timeoutLevel === 'CRITICAL' && alert.escalated !== 'Y' ? (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -582,6 +741,19 @@ const AlertList: React.FC = () => {
                               >
                                 <ShieldAlert className="h-4 w-4" />
                                 升级处理
+                              </Button>
+                            ) : null}
+                            {activeTab === 'escalation' && alert.resolved !== 'Y' ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setTimeoutResolveNote('');
+                                  setSelectedTimeoutAlert(alert);
+                                }}
+                              >
+                                <CheckCircle2 className="h-4 w-4" />
+                                处置
                               </Button>
                             ) : null}
                           </div>
@@ -691,6 +863,17 @@ const AlertList: React.FC = () => {
           setSelectedAlert(null);
         }}
         onSubmit={() => void handleResolve()}
+      />
+
+      <TimeoutResolveModal
+        alert={selectedTimeoutAlert}
+        note={timeoutResolveNote}
+        setNote={setTimeoutResolveNote}
+        onClose={() => {
+          setTimeoutResolveNote('');
+          setSelectedTimeoutAlert(null);
+        }}
+        onSubmit={() => void handleResolveTimeout()}
       />
     </>
   );

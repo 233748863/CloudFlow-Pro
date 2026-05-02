@@ -43,11 +43,26 @@ export interface TimeoutAlert {
   assigneeName?: string;
   notificationSent: 'Y' | 'N';
   escalated: 'Y' | 'N';
+  escalatedToId?: number;
+  escalatedToName?: string;
+  escalatedTime?: string;
   resolved?: 'Y' | 'N';
+  resolvedById?: number;
+  resolvedByName?: string;
+  resolveNote?: string;
   alertTime: string;
   resolveTime?: string;
   createTime: string;
   updateTime?: string;
+}
+
+export interface TimeoutAlertHandleResult {
+  alertId: number;
+  action: string;
+  escalatedToId?: number;
+  escalatedToName?: string;
+  escalatedTime?: string;
+  message?: string;
 }
 
 /**
@@ -167,8 +182,28 @@ export async function getTimeoutAlerts(params?: {
 /**
  * 处理超时告警
  */
-export async function handleTimeoutAlert(alertId: number, action: string): Promise<void> {
+export async function handleTimeoutAlert(
+  alertId: number,
+  action: string,
+): Promise<TimeoutAlertHandleResult> {
   return request.post(`/workflow/monitor/timeout/${alertId}/handle`, { action });
+}
+
+/**
+ * 获取我的超时告警升级待办
+ */
+export async function getTimeoutEscalationTasks(params?: {
+  pageNum?: number;
+  pageSize?: number;
+}): Promise<any> {
+  return request.get('/workflow/monitor/timeout/escalation-tasks', { params });
+}
+
+/**
+ * 解决超时告警
+ */
+export async function resolveTimeoutAlert(alertId: number, resolveNote: string): Promise<TimeoutAlert> {
+  return request.post(`/workflow/monitor/timeout/${alertId}/resolve`, { resolveNote });
 }
 
 // ==================== 异常告警 API ====================
@@ -236,6 +271,8 @@ export default {
   // 超时告警
   getTimeoutAlerts,
   handleTimeoutAlert,
+  getTimeoutEscalationTasks,
+  resolveTimeoutAlert,
   
   // 异常告警
   getAnomalyAlerts,
