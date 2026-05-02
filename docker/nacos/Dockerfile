@@ -1,7 +1,7 @@
 # Nacos Server Dockerfile
 # 基于官方 Nacos 镜像
 
-FROM nacos/nacos-server:v2.3.0-slim
+FROM nacos/nacos-server:v2.5.0-slim
 
 # 设置环境变量
 ENV MODE=standalone \
