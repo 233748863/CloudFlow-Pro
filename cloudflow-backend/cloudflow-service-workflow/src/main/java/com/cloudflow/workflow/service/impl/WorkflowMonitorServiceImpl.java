@@ -2,11 +2,24 @@ package com.cloudflow.workflow.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.*;
+import com.cloudflow.workflow.domain.system.SysDept;
+import com.cloudflow.workflow.domain.system.SysRole;
+import com.cloudflow.workflow.domain.system.SysUser;
+import com.cloudflow.workflow.domain.system.SysUserRole;
+import com.cloudflow.workflow.exception.BusinessException;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.mapper.*;
+import com.cloudflow.workflow.mapper.system.SysDeptMapper;
+import com.cloudflow.workflow.mapper.system.SysRoleMapper;
+import com.cloudflow.workflow.mapper.system.SysUserMapper;
+import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
+import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.WorkflowMonitorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +29,9 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 工作流监控服务实现
@@ -34,6 +49,19 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
     private final TimeoutAlertMapper timeoutAlertMapper;
     private final AnomalyAlertMapper anomalyAlertMapper;
     private final PerformanceStatsMapper performanceStatsMapper;
+    private final TaskMonitorMapper taskMonitorMapper;
+    private final WfTaskMapper wfTaskMapper;
+    private final WfProcessInstanceMapper processInstanceMapper;
+    private final SysUserMapper sysUserMapper;
+    private final SysDeptMapper sysDeptMapper;
+    private final SysRoleMapper sysRoleMapper;
+    private final SysUserRoleMapper sysUserRoleMapper;
+    private final INotificationService notificationService;
+
+    private static final String ACTION_NOTIFY = "notify";
+    private static final String ACTION_ESCALATE = "escalate";
+    private static final String EVENT_TIMEOUT_ALERT_ESCALATED = "TIMEOUT_ALERT_ESCALATED";
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Override
     public MonitorOverview getMonitorOverview() {
@@ -141,26 +169,84 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
 
     @Override
     @Transactional
-    public void handleTimeoutAlert(Long alertId, String action) {
+    public TimeoutAlertHandleResult handleTimeoutAlert(Long alertId, String action) {
         log.info("处理超时告警: alertId={}, action={}", alertId, action);
         
         TimeoutAlert alert = timeoutAlertMapper.selectById(alertId);
         if (alert == null) {
-            throw new RuntimeException("告警不存在");
+            throw new BusinessException("ALERT_NOT_FOUND", "告警不存在");
         }
         checkTenantAccess(alert.getTenantId());
         
-        if ("notify".equals(action)) {
-            // 发送通知
+        if (ACTION_NOTIFY.equals(action)) {
             alert.setNotificationSent("Y");
+            alert.setUpdateTime(LocalDateTime.now());
             timeoutAlertMapper.updateById(alert);
             log.info("已发送超时告警通知: alertId={}", alertId);
-        } else if ("escalate".equals(action)) {
-            // 升级处理
-            alert.setEscalated("Y");
-            timeoutAlertMapper.updateById(alert);
-            log.info("已升级超时告警: alertId={}", alertId);
+            return new TimeoutAlertHandleResult(alertId, action, null, null, null, "已发送通知");
         }
+
+        if (ACTION_ESCALATE.equals(action)) {
+            return escalateTimeoutAlert(alert);
+        }
+
+        throw new BusinessException("INVALID_ALERT_ACTION", "不支持的告警处理动作");
+    }
+
+    @Override
+    public PageResult<TimeoutAlert> getTimeoutEscalationTasks(Integer pageNum, Integer pageSize) {
+        Long currentUserId = requireCurrentUserId();
+        Page<TimeoutAlert> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<TimeoutAlert> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(TimeoutAlert::getTenantId, resolveTenantId())
+                .eq(TimeoutAlert::getEscalated, "Y")
+                .eq(TimeoutAlert::getResolved, "N");
+
+        if (!SecurityUtils.isAdmin(currentUserId)) {
+            wrapper.eq(TimeoutAlert::getEscalatedToId, currentUserId);
+        }
+
+        wrapper.orderByDesc(TimeoutAlert::getEscalatedTime)
+                .orderByDesc(TimeoutAlert::getAlertTime);
+
+        Page<TimeoutAlert> resultPage = timeoutAlertMapper.selectPage(page, wrapper);
+        return new PageResult<>(resultPage.getRecords(), resultPage.getTotal(),
+                resultPage.getCurrent(), resultPage.getSize());
+    }
+
+    @Override
+    @Transactional
+    public TimeoutAlert resolveTimeoutAlert(Long alertId, String resolveNote) {
+        TimeoutAlert alert = timeoutAlertMapper.selectById(alertId);
+        if (alert == null) {
+            throw new BusinessException("ALERT_NOT_FOUND", "告警不存在");
+        }
+        checkTenantAccess(alert.getTenantId());
+
+        if ("Y".equals(alert.getResolved())) {
+            return alert;
+        }
+
+        if (!"Y".equals(alert.getEscalated()) || alert.getEscalatedToId() == null) {
+            throw new BusinessException("ALERT_NOT_ESCALATED", "未升级告警不能通过升级处置关闭");
+        }
+
+        Long currentUserId = requireCurrentUserId();
+        if (!SecurityUtils.isAdmin(currentUserId) && !Objects.equals(alert.getEscalatedToId(), currentUserId)) {
+            throw new PermissionDeniedException("仅升级接收人或管理员可处置该告警");
+        }
+        if (!StringUtils.hasText(resolveNote)) {
+            throw new BusinessException("RESOLVE_NOTE_REQUIRED", "处理说明不能为空");
+        }
+
+        alert.setResolved("Y");
+        alert.setResolvedById(currentUserId);
+        alert.setResolvedByName(resolveCurrentUserName());
+        alert.setResolveNote(resolveNote.trim());
+        alert.setResolveTime(LocalDateTime.now());
+        alert.setUpdateTime(LocalDateTime.now());
+        timeoutAlertMapper.updateById(alert);
+        return alert;
     }
 
     @Override
@@ -229,6 +315,240 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         if (dataTenantId != null && !dataTenantId.equals(tenantId)) {
             throw new PermissionDeniedException("无权访问该租户监控数据");
         }
+    }
+
+    private TimeoutAlertHandleResult escalateTimeoutAlert(TimeoutAlert alert) {
+        if ("Y".equals(alert.getResolved())) {
+            throw new BusinessException("ALERT_ALREADY_RESOLVED", "已解决告警不能升级");
+        }
+
+        if ("Y".equals(alert.getEscalated()) && alert.getEscalatedToId() != null) {
+            return buildEscalationResult(alert, "告警已升级");
+        }
+
+        SysUser recipient = resolveEscalationRecipient(alert);
+        LocalDateTime now = LocalDateTime.now();
+        alert.setEscalated("Y");
+        alert.setEscalatedToId(recipient.getUserId());
+        alert.setEscalatedToName(getDisplayName(recipient));
+        alert.setEscalatedTime(now);
+        alert.setUpdateTime(now);
+        timeoutAlertMapper.updateById(alert);
+
+        notificationService.sendNotification(
+                recipient.getUserId(),
+                "超时告警升级待办",
+                buildEscalationNoticeContent(alert),
+                EVENT_TIMEOUT_ALERT_ESCALATED
+        );
+
+        log.info("超时告警已升级: alertId={}, escalatedToId={}", alert.getId(), recipient.getUserId());
+        return buildEscalationResult(alert, "已升级给 " + alert.getEscalatedToName());
+    }
+
+    private TimeoutAlertHandleResult buildEscalationResult(TimeoutAlert alert, String message) {
+        String escalatedTime = alert.getEscalatedTime() != null
+                ? alert.getEscalatedTime().format(DATE_TIME_FORMATTER)
+                : null;
+        return new TimeoutAlertHandleResult(
+                alert.getId(),
+                ACTION_ESCALATE,
+                alert.getEscalatedToId(),
+                alert.getEscalatedToName(),
+                escalatedTime,
+                message
+        );
+    }
+
+    private String buildEscalationNoticeContent(TimeoutAlert alert) {
+        long timeoutHours = alert.getTimeoutDuration() == null
+                ? 0L
+                : Math.max(1L, (long) Math.ceil(alert.getTimeoutDuration() / 3600000.0));
+        return String.format(
+                "告警「%s」已升级给您处置。类型：%s，级别：%s，目标ID：%s，已超时：%d小时。",
+                alert.getTargetName(),
+                "TASK".equals(alert.getAlertType()) ? "任务超时" : "流程超时",
+                alert.getTimeoutLevel(),
+                alert.getTargetId(),
+                timeoutHours
+        );
+    }
+
+    private SysUser resolveEscalationRecipient(TimeoutAlert alert) {
+        Long tenantId = alert.getTenantId() != null ? alert.getTenantId() : resolveTenantId();
+        Long sourceUserId = resolveEscalationSourceUserId(alert, tenantId);
+        SysUser sourceUser = sourceUserId != null ? selectActiveUser(sourceUserId, tenantId) : null;
+        SysUser leader = resolveDeptLeader(sourceUser, tenantId);
+        if (leader != null) {
+            return leader;
+        }
+
+        SysUser manager = sourceUser != null && sourceUser.getDeptId() != null
+                ? resolveFirstUserByRole("manager", tenantId, sourceUser.getDeptId())
+                : null;
+        if (manager != null) {
+            return manager;
+        }
+
+        SysUser admin = resolveFirstUserByRole("admin", tenantId, null);
+        if (admin != null) {
+            return admin;
+        }
+
+        throw new BusinessException("ESCALATION_RECIPIENT_NOT_FOUND", "未找到可接收升级告警的用户");
+    }
+
+    private Long resolveEscalationSourceUserId(TimeoutAlert alert, Long tenantId) {
+        if ("TASK".equals(alert.getAlertType())) {
+            if (alert.getAssigneeId() != null) {
+                return alert.getAssigneeId();
+            }
+            WfTask task = wfTaskMapper.selectById(alert.getTargetId());
+            if (task != null && isSameTenant(task.getTenantId(), tenantId)) {
+                return task.getAssignee();
+            }
+            TaskMonitor taskMonitor = taskMonitorMapper.selectByTaskId(alert.getTargetId());
+            if (taskMonitor != null && isSameTenant(taskMonitor.getTenantId(), tenantId)) {
+                return taskMonitor.getAssigneeId();
+            }
+            return null;
+        }
+
+        if ("PROCESS".equals(alert.getAlertType())) {
+            WfProcessInstance instance = processInstanceMapper.selectById(alert.getTargetId());
+            if (instance != null && isSameTenant(instance.getTenantId(), tenantId)) {
+                return instance.getStartUserId();
+            }
+            ProcessMonitor monitor = processMonitorMapper.selectByInstanceId(alert.getTargetId(), tenantId);
+            return monitor != null ? monitor.getStartUserId() : null;
+        }
+
+        return null;
+    }
+
+    private SysUser resolveDeptLeader(SysUser sourceUser, Long tenantId) {
+        if (sourceUser == null || sourceUser.getDeptId() == null) {
+            return null;
+        }
+
+        SysDept dept = sysDeptMapper.selectById(sourceUser.getDeptId());
+        if (dept != null && isSameTenant(dept.getTenantId(), tenantId)) {
+            SysUser leader = resolveLeaderFromDeptField(dept, tenantId);
+            if (leader != null) {
+                return leader;
+            }
+        }
+
+        return null;
+    }
+
+    private SysUser resolveLeaderFromDeptField(SysDept dept, Long tenantId) {
+        if (dept == null || !StringUtils.hasText(dept.getLeader())) {
+            return null;
+        }
+
+        String leaderValue = dept.getLeader().trim();
+        try {
+            SysUser leaderById = selectActiveUser(Long.valueOf(leaderValue), tenantId);
+            if (leaderById != null) {
+                return leaderById;
+            }
+        } catch (NumberFormatException ignored) {
+            // leader 字段兼容 userName / nickName。
+        }
+
+        LambdaQueryWrapper<SysUser> wrapper = activeUserWrapper(tenantId)
+                .and(query -> query.eq(SysUser::getUserName, leaderValue)
+                        .or()
+                        .eq(SysUser::getNickName, leaderValue))
+                .orderByAsc(SysUser::getUserId)
+                .last("LIMIT 1");
+        return sysUserMapper.selectOne(wrapper);
+    }
+
+    private SysUser resolveFirstUserByRole(String roleKey, Long tenantId, Long preferredDeptId) {
+        SysRole role = sysRoleMapper.selectOne(new LambdaQueryWrapper<SysRole>()
+                .eq(SysRole::getTenantId, tenantId)
+                .eq(SysRole::getRoleKey, roleKey)
+                .eq(SysRole::getStatus, "0")
+                .eq(SysRole::getDelFlag, "0")
+                .last("LIMIT 1"));
+        if (role == null) {
+            return null;
+        }
+
+        List<Long> userIds = sysUserRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
+                        .eq(SysUserRole::getTenantId, tenantId)
+                        .eq(SysUserRole::getRoleId, role.getRoleId()))
+                .stream()
+                .map(SysUserRole::getUserId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (userIds.isEmpty()) {
+            return null;
+        }
+
+        if (preferredDeptId != null) {
+            SysUser deptUser = selectFirstActiveUser(userIds, tenantId, preferredDeptId);
+            return deptUser;
+        }
+
+        return selectFirstActiveUser(userIds, tenantId, null);
+    }
+
+    private SysUser selectFirstActiveUser(List<Long> userIds, Long tenantId, Long deptId) {
+        if (userIds == null || userIds.isEmpty()) {
+            return null;
+        }
+        LambdaQueryWrapper<SysUser> wrapper = activeUserWrapper(tenantId)
+                .in(SysUser::getUserId, userIds)
+                .orderByAsc(SysUser::getUserId)
+                .last("LIMIT 1");
+        if (deptId != null) {
+            wrapper.eq(SysUser::getDeptId, deptId);
+        }
+        return sysUserMapper.selectOne(wrapper);
+    }
+
+    private SysUser selectActiveUser(Long userId, Long tenantId) {
+        if (userId == null) {
+            return null;
+        }
+        return sysUserMapper.selectOne(activeUserWrapper(tenantId)
+                .eq(SysUser::getUserId, userId)
+                .last("LIMIT 1"));
+    }
+
+    private LambdaQueryWrapper<SysUser> activeUserWrapper(Long tenantId) {
+        return new LambdaQueryWrapper<SysUser>()
+                .eq(SysUser::getTenantId, tenantId)
+                .eq(SysUser::getStatus, "0")
+                .eq(SysUser::getDelFlag, "0");
+    }
+
+    private boolean isSameTenant(Long dataTenantId, Long tenantId) {
+        return dataTenantId == null || Objects.equals(dataTenantId, tenantId);
+    }
+
+    private Long requireCurrentUserId() {
+        Long userId = SecurityUtils.getUserId();
+        if (userId == null) {
+            throw new PermissionDeniedException("用户未登录");
+        }
+        return userId;
+    }
+
+    private String resolveCurrentUserName() {
+        String userName = UserContext.getUserName();
+        return StringUtils.hasText(userName) ? userName : String.valueOf(requireCurrentUserId());
+    }
+
+    private String getDisplayName(SysUser user) {
+        if (user == null) {
+            return null;
+        }
+        return StringUtils.hasText(user.getNickName()) ? user.getNickName() : user.getUserName();
     }
 
     /**

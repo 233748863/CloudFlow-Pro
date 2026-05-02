@@ -116,13 +116,36 @@ public class WorkflowMonitorController {
      * 处理超时告警
      */
     @Operation(summary = "处理超时告警", description = "发送通知或升级处理超时告警")
-    @SaCheckRole("admin")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
     @PostMapping("/timeout/{alertId}/handle")
-    public R<?> handleTimeoutAlert(
+    public R<TimeoutAlertHandleResult> handleTimeoutAlert(
             @PathVariable Long alertId,
             @RequestBody HandleAlertRequest request) {
-        monitorService.handleTimeoutAlert(alertId, request.getAction());
-        return R.ok("处理成功");
+        return R.ok(monitorService.handleTimeoutAlert(alertId, request.getAction()));
+    }
+
+    /**
+     * 获取我的超时告警升级待办
+     */
+    @Operation(summary = "获取超时告警升级待办", description = "查询当前用户需要处置的超时告警升级记录")
+    @SaCheckLogin
+    @GetMapping("/timeout/escalation-tasks")
+    public R<PageResult<TimeoutAlert>> getTimeoutEscalationTasks(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        return R.ok(monitorService.getTimeoutEscalationTasks(pageNum, pageSize));
+    }
+
+    /**
+     * 解决超时告警
+     */
+    @Operation(summary = "解决超时告警", description = "升级接收人或管理员填写处置说明并关闭超时告警")
+    @SaCheckLogin
+    @PostMapping("/timeout/{alertId}/resolve")
+    public R<TimeoutAlert> resolveTimeoutAlert(
+            @PathVariable Long alertId,
+            @RequestBody ResolveAlertRequest request) {
+        return R.ok(monitorService.resolveTimeoutAlert(alertId, request.getResolveNote()));
     }
 
     // ==================== 异常告警 ====================

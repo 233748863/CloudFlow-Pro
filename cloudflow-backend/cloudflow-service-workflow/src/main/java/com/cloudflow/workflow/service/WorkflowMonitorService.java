@@ -46,7 +46,17 @@ public interface WorkflowMonitorService {
     /**
      * 处理超时告警
      */
-    void handleTimeoutAlert(Long alertId, String action);
+    TimeoutAlertHandleResult handleTimeoutAlert(Long alertId, String action);
+
+    /**
+     * 获取当前用户的升级待办
+     */
+    PageResult<TimeoutAlert> getTimeoutEscalationTasks(Integer pageNum, Integer pageSize);
+
+    /**
+     * 解决超时告警
+     */
+    TimeoutAlert resolveTimeoutAlert(Long alertId, String resolveNote);
 
     /**
      * 获取异常告警列表

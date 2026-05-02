@@ -90,6 +90,11 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
   </tr>
 );
 
+const metricCardClassName = 'items-center gap-3 rounded-lg p-4';
+const metricIconClassName = 'h-9 w-9 rounded-lg';
+const metricValueClassName = 'text-xl leading-6';
+const metricMetaClassName = 'mt-0.5 truncate text-xs';
+
 export const BorrowManagementPage: React.FC = () => {
   const [rows, setRows] = useState<UnifiedBorrow[]>([]);
   const [total, setTotal] = useState(0);
@@ -218,32 +223,29 @@ export const BorrowManagementPage: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="行政待处理" value={stats?.pendingBorrowCount ?? 0} icon={<CheckCircle2 size={18} />} iconVariant="primary" meta="审批通过待借出" />
-        <StatCard title="借出中" value={stats?.borrowedCount ?? 0} icon={<Clock3 size={18} />} iconVariant="success" meta="印章和证照合计" />
-        <StatCard title="逾期未还" value={stats?.overdueCount ?? 0} icon={<FileWarning size={18} />} iconVariant="danger" meta="需催还处理" />
-        <StatCard title="证照到期" value={stats?.expiringLicenseCount ?? 0} icon={<CalendarClock size={18} />} iconVariant="warning" meta="30 天内到期" />
-      </div>
-
-      <div className="grid gap-3 md:grid-cols-3">
-        <StatCard title="合同未用印" value={stats?.contractUnsealedRiskCount ?? 0} icon={<FileWarning size={18} />} iconVariant="warning" meta="审批通过超过3天" />
-        <StatCard title="逾期归还风险" value={stats?.overdueReturnRiskCount ?? 0} icon={<Bell size={18} />} iconVariant="danger" meta="合同关联用印" />
-        <StatCard title="未归档风险" value={stats?.unarchivedRiskCount ?? 0} icon={<Clock3 size={18} />} iconVariant="primary" meta="已用印未归档附件" />
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <StatCard title="行政待处理" value={stats?.pendingBorrowCount ?? 0} icon={<CheckCircle2 size={18} />} iconVariant="primary" meta="审批通过待借出" className={metricCardClassName} iconClassName={metricIconClassName} valueClassName={metricValueClassName} metaClassName={metricMetaClassName} />
+        <StatCard title="借出中" value={stats?.borrowedCount ?? 0} icon={<Clock3 size={18} />} iconVariant="success" meta="印章和证照合计" className={metricCardClassName} iconClassName={metricIconClassName} valueClassName={metricValueClassName} metaClassName={metricMetaClassName} />
+        <StatCard title="逾期未还" value={stats?.overdueCount ?? 0} icon={<FileWarning size={18} />} iconVariant="danger" meta="需催还处理" className={metricCardClassName} iconClassName={metricIconClassName} valueClassName={metricValueClassName} metaClassName={metricMetaClassName} />
+        <StatCard title="证照到期" value={stats?.expiringLicenseCount ?? 0} icon={<CalendarClock size={18} />} iconVariant="warning" meta="30 天内到期" className={metricCardClassName} iconClassName={metricIconClassName} valueClassName={metricValueClassName} metaClassName={metricMetaClassName} />
+        <StatCard title="合同未用印" value={stats?.contractUnsealedRiskCount ?? 0} icon={<FileWarning size={18} />} iconVariant="warning" meta="审批通过超过3天" className={metricCardClassName} iconClassName={metricIconClassName} valueClassName={metricValueClassName} metaClassName={metricMetaClassName} />
+        <StatCard title="逾期归还风险" value={stats?.overdueReturnRiskCount ?? 0} icon={<Bell size={18} />} iconVariant="danger" meta="合同关联用印" className={metricCardClassName} iconClassName={metricIconClassName} valueClassName={metricValueClassName} metaClassName={metricMetaClassName} />
+        <StatCard title="未归档风险" value={stats?.unarchivedRiskCount ?? 0} icon={<Clock3 size={18} />} iconVariant="primary" meta="已用印未归档附件" className={metricCardClassName} iconClassName={metricIconClassName} valueClassName={metricValueClassName} metaClassName={metricMetaClassName} />
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="mb-2.5 flex items-center gap-2 text-sm font-medium text-slate-900 dark:text-slate-100">
             <TrendingUp className="h-4 w-4 text-cyan-600" />
             借还趋势
           </div>
-          <div className="flex h-32 items-end gap-2">
+          <div className="flex h-28 items-end gap-2">
             {(stats?.trend || []).map((item) => {
               const totalCount = item.sealCount + item.licenseCount;
-              const height = Math.max(8, Math.round((totalCount / maxTrend) * 96));
+              const height = Math.max(8, Math.round((totalCount / maxTrend) * 80));
               return (
                 <div key={item.date} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                  <div className="flex h-24 w-full items-end justify-center rounded-lg bg-slate-50 px-1 dark:bg-slate-900">
+                  <div className="flex h-20 w-full items-end justify-center rounded-lg bg-slate-50 px-1 dark:bg-slate-900">
                     <div className="w-full max-w-8 rounded-t-md bg-cyan-500" style={{ height }} title={`${item.date} ${totalCount} 次`} />
                   </div>
                   <span className="w-full truncate text-center text-[11px] text-slate-400">{item.date.slice(5)}</span>
@@ -252,9 +254,9 @@ export const BorrowManagementPage: React.FC = () => {
             })}
           </div>
         </div>
-        <div className="rounded-xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">资源使用排行</div>
-          <div className="space-y-3">
+        <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="mb-2.5 text-sm font-medium text-slate-900 dark:text-slate-100">资源使用排行</div>
+          <div className="space-y-2.5">
             {(stats?.resourceUsage || []).slice(0, 5).map((item) => (
               <div key={`${item.businessType}-${item.resourceId}`} className="space-y-1.5">
                 <div className="flex items-center justify-between gap-3 text-xs">

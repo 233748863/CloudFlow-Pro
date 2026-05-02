@@ -9,6 +9,9 @@ import lombok.Data;
 public class SysRole {
     @TableId
     private Long roleId;
+    private Long tenantId;
     private String roleName;
     private String roleKey;
+    private String status;
+    private String delFlag;
 }
