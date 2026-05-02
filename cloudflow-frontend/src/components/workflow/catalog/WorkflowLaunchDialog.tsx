@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertTriangle } from 'lucide-react';
-import { BaseDialog } from '@/components/common';
+import { BaseDialog, ModalOverlay } from '@/components/common';
 import { Button, EmptyState, LoadingSpinner } from '@/components/common';
 import { FormRenderer } from '@/components/FormRenderer';
 import type { FormDefinition, WorkflowDefinition } from '@/types';
@@ -30,9 +30,9 @@ export const WorkflowLaunchDialog: React.FC<WorkflowLaunchDialogProps> = ({
 
   if (workflow.formId && boundForm) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 p-4 backdrop-blur-[2px]">
+      <ModalOverlay className="p-4">
         <FormRenderer formDef={boundForm} onCancel={onClose} onSubmit={onSubmit} />
-      </div>
+      </ModalOverlay>
     );
   }
 

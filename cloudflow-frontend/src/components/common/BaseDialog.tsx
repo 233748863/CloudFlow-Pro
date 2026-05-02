@@ -1,8 +1,7 @@
 import React, { useEffect, useId, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { lockBodyScroll } from '@/utils/bodyScrollLock';
+import { ModalOverlay } from '@/components/common/ModalOverlay';
 
 export type BaseDialogWidth = 'narrow' | 'normal' | 'wide' | 'extra-wide' | 'full';
 
@@ -73,7 +72,6 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
       }
     };
 
-    const unlockBodyScroll = lockBodyScroll();
     window.addEventListener('keydown', handleEscape);
     window.requestAnimationFrame(() => {
       const firstFocusable = dialogRef.current?.querySelector<HTMLElement>(
@@ -83,7 +81,6 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
     });
 
     return () => {
-      unlockBodyScroll();
       window.removeEventListener('keydown', handleEscape);
       previousActiveElementRef.current?.focus?.();
       previousActiveElementRef.current = null;
@@ -94,17 +91,12 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
     return null;
   }
 
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/48 p-2 backdrop-blur-sm sm:p-4"
-      style={zIndex === 50 ? undefined : { zIndex }}
-      onClick={() => {
-        if (closeOnClickOutside) {
-          onClose();
-        }
-      }}
-      role="dialog"
-      aria-modal="true"
+  return (
+    <ModalOverlay
+      closeOnClickOutside={closeOnClickOutside}
+      closeOnEscape={false}
+      onClose={onClose}
+      zIndex={zIndex}
       aria-labelledby={titleId}
     >
       <div
@@ -161,7 +153,6 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
           </div>
         ) : null}
       </div>
-    </div>,
-    document.body,
+    </ModalOverlay>
   );
 };

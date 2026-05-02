@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 
+import { ModalOverlay } from '@/components/common/ModalOverlay';
 import { cn } from '@/utils/cn';
 
 const DialogContext = React.createContext<{
@@ -58,11 +59,14 @@ export const DialogContent = ({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center sm:items-center">
-      <div className="fixed inset-0 z-50 bg-slate-900/32 transition-opacity animate-in fade-in-0" onClick={() => onOpenChange(false)} />
+    <ModalOverlay
+      className="items-start justify-center bg-slate-900/32 p-0 transition-opacity animate-in fade-in-0 sm:items-center"
+      closeOnClickOutside
+      onClose={() => onOpenChange(false)}
+    >
       <div
         className={cn(
-          'fixed z-50 grid w-full max-h-[90vh] gap-4 overflow-y-auto border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)] duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-2xl md:w-full dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_22px_44px_rgba(2,6,23,0.52)]',
+          'relative z-10 grid w-full max-h-[90vh] gap-4 overflow-y-auto border border-slate-200 bg-white p-5 shadow-[0_22px_44px_rgba(15,23,42,0.14)] duration-200 animate-in fade-in-0 zoom-in-95 sm:rounded-2xl md:w-full dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_22px_44px_rgba(2,6,23,0.52)]',
           !disableDefaultMaxWidth && 'sm:max-w-lg',
           className
         )}
@@ -76,7 +80,7 @@ export const DialogContent = ({
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4"><line x1="18" x2="6" y1="6" y2="18"/><line x1="6" x2="18" y1="6" y2="18"/></svg>
         </button>
       </div>
-    </div>
+    </ModalOverlay>
   );
 };
 

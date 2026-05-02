@@ -13,7 +13,7 @@ import {
   LoaderCircle, RefreshCw
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { ConfirmDialog } from '@/components/common';
+import { ConfirmDialog, ModalOverlay } from '@/components/common';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
@@ -617,7 +617,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
+    <ModalOverlay className="bg-slate-950/50 p-4 backdrop-blur-[3px]">
       <div className="flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)]">
         <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-start justify-between gap-4">
@@ -737,7 +737,7 @@ const WeekCalendar: React.FC<WeekCalendarProps> = ({ room, onClose, onBookRoom }
           )}
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 };
 
@@ -775,7 +775,7 @@ const RoomFormModal: React.FC<{
   const isEdit = room && room.roomId;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
+    <ModalOverlay className="bg-slate-950/50 p-4 backdrop-blur-[3px]">
       <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)] animate-in fade-in zoom-in duration-200">
         <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
           <div className="flex items-start justify-between gap-4">
@@ -837,7 +837,7 @@ const RoomFormModal: React.FC<{
           </Button>
         </div>
       </div>
-    </div>
+    </ModalOverlay>
   );
 };
 
@@ -1521,7 +1521,7 @@ export const MeetingRoomPage = () => {
 
       {/* 预订弹窗 */}
       {selectedRoom && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4 backdrop-blur-[3px]">
+        <ModalOverlay className="bg-slate-950/50 p-4 backdrop-blur-[3px]">
       <div className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_28px_56px_rgba(2,6,23,0.56)] animate-in fade-in zoom-in duration-200">
             <div className="border-b border-slate-100 px-5 py-4 dark:border-slate-800">
               <div className="flex items-start justify-between gap-4">
@@ -1603,8 +1603,8 @@ export const MeetingRoomPage = () => {
                 <CheckCircle2 size={16} className="mr-2" />确认预订
               </Button>
             </div>
-          </div>
         </div>
+        </ModalOverlay>
       )}
 
       {/* 会议室表单弹窗 */}
