@@ -3,6 +3,7 @@ import request from '@/services/api/request'
 export type WorkflowRecord = Record<string, unknown>
 
 export interface WorkflowPageResult<T extends WorkflowRecord = WorkflowRecord> {
+  list?: T[]
   records?: T[]
   rows?: T[]
   total?: number
@@ -122,6 +123,7 @@ export interface ImportResult extends WorkflowRecord {
 export const normalizeWorkflowRows = <T extends WorkflowRecord>(data: WorkflowPageResult<T> | T[] | null | undefined): T[] => {
   if (!data) return []
   if (Array.isArray(data)) return data
+  if (Array.isArray(data.list)) return data.list
   if (Array.isArray(data.records)) return data.records
   if (Array.isArray(data.rows)) return data.rows
   return []
@@ -130,7 +132,7 @@ export const normalizeWorkflowRows = <T extends WorkflowRecord>(data: WorkflowPa
 export const getWorkflowTotal = <T extends WorkflowRecord>(data: WorkflowPageResult<T> | T[] | null | undefined, fallback = 0) => {
   if (!data) return fallback
   if (Array.isArray(data)) return data.length
-  return Number(data.total ?? data.records?.length ?? data.rows?.length ?? fallback)
+  return Number(data.total ?? data.list?.length ?? data.records?.length ?? data.rows?.length ?? fallback)
 }
 
 const buildPageQuery = (params?: WorkflowRecord) => {
@@ -233,11 +235,62 @@ export const getTaskGroups = (params?: WorkflowRecord) =>
 export const getTodoTasks = (params?: WorkflowRecord) =>
   request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/todo', { params: buildPageQuery({ pageSize: 80, ...params }) })
 
+export const getDoneTasks = (params?: WorkflowRecord) =>
+  request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/done', { params: buildPageQuery({ pageSize: 80, ...params }) })
+
 export const getMyInstances = (params?: WorkflowRecord) =>
   request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/my-instances', { params: buildPageQuery({ pageSize: 80, ...params }) })
 
+export const startProcess = (data: WorkflowRecord) =>
+  request.post<WorkflowRecord>('/workflow/start', data)
+
+export const completeTask = (data: WorkflowRecord) =>
+  request.post<WorkflowRecord>('/workflow/complete', data)
+
+export const recallProcess = (instanceId: string | number) =>
+  request.post<WorkflowRecord>('/workflow/recall', { instanceId: String(instanceId) })
+
+export const readWorkflowTask = (taskId: string | number) =>
+  request.post<void>(`/workflow/task/read/${taskId}`)
+
+export const urgeWorkflowTask = (taskId: string | number, reason: string) =>
+  request.post<WorkflowRecord>('/workflow/task/urge', { taskId: String(taskId), reason })
+
+export const getTaskCounts = () =>
+  request.get<WorkflowRecord>('/workflow/tasks/count')
+
+export const getProcessInstance = (instanceId: string | number) =>
+  request.get<WorkflowRecord>(`/workflow/instance/${instanceId}`)
+
+export const getProcessTrace = (instanceId: string | number) =>
+  request.get<WorkflowRecord>(`/workflow/instance/${instanceId}/trace`)
+
 export const getCopyUnreadCount = () =>
   request.get<number>('/workflow/copy/unread-count')
+
+export const getMyCopyList = (params?: WorkflowRecord) =>
+  request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/copy/list', { params: buildPageQuery(params) })
+
+export const markCopyAsRead = (copyId: string | number) =>
+  request.post<void>(`/workflow/copy/read/${copyId}`)
+
+export const batchMarkCopyAsRead = (copyIds: Array<string | number>) =>
+  request.post<void>('/workflow/copy/batch-read', { copyIds: copyIds.map((id) => Number(id)).filter((id) => !Number.isNaN(id)) })
+
+export const getWorkflowTemplates = (params?: WorkflowRecord) =>
+  request.get<WorkflowPageResult<WorkflowRecord>>('/workflow/templates', { params })
+
+export const getWorkflowTemplateTags = (limit = 12) =>
+  request.get<string[]>('/workflow/templates/tags', { params: { limit } })
+
+export const getWorkflowTemplateCategories = () =>
+  request.get<WorkflowRecord[]>('/workflow/templates/categories')
+
+export const getWorkflowTemplate = (id: string | number) =>
+  request.get<WorkflowRecord>(`/workflow/templates/${id}`)
+
+export const createWorkflowFromTemplate = (id: string | number, data: WorkflowRecord) =>
+  request.post<WorkflowRecord>(`/workflow/templates/${id}/create-workflow`, data)
 
 export const listDeployWindows = () =>
   request.get<DeployWindow[]>('/workflow/deploy/window/list')

@@ -41,6 +41,7 @@ import SystemPostPage from '@/pages/system/SystemPostPage.vue'
 import SystemRolePage from '@/pages/system/SystemRolePage.vue'
 import SystemTenantPage from '@/pages/system/SystemTenantPage.vue'
 import SystemUserPage from '@/pages/system/SystemUserPage.vue'
+import ProcessCenterPage from '@/pages/workflow/ProcessCenterPage.vue'
 import WorkflowAdminPage from '@/pages/workflow/WorkflowAdminPage.vue'
 import NotFoundPage from '@/pages/NotFoundPage.vue'
 import ServiceUnavailablePage from '@/pages/ServiceUnavailablePage.vue'
@@ -60,6 +61,7 @@ const resolveComponent = (meta: CloudFlowRouteMeta) => {
     return meta.mobile ? MobileDashboardPage : DashboardPage
   }
   if (meta.path === '/schedule') return SchedulePage
+  if (['/workplace', '/my-apps', '/tasks', '/my-copies', '/templates'].includes(meta.path)) return ProcessCenterPage
   if (['/announcement', '/office/announcement'].includes(meta.path)) return OfficeAnnouncementPage
   if (meta.path === '/office/contact') return OfficeContactPage
   if (meta.path === '/office/knowledge') return OfficeKnowledgePage
