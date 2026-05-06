@@ -2,6 +2,7 @@ package com.cloudflow.auth.domain;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableField;
@@ -21,6 +22,7 @@ public class SysUser implements Serializable {
     private String email;
     private String phonenumber;
     private String sex;
+    @JsonIgnore
     private String password;
     private String status;
     private String delFlag;

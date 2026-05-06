@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -30,10 +31,12 @@ public class GlobalExceptionHandler {
      * 业务异常
      */
     @ExceptionHandler(ServiceException.class)
-    public R<?> handleServiceException(ServiceException e, HttpServletRequest request) {
+    public ResponseEntity<R<?>> handleServiceException(ServiceException e, HttpServletRequest request) {
         log.error("业务异常: {}", e.getMessage());
         Integer code = e.getCode();
-        return code != null ? R.fail(code, e.getMessage()) : R.fail(e.getMessage());
+        int status = resolveHttpStatus(code, HttpStatus.BAD_REQUEST.value());
+        R<?> body = R.fail(code != null ? code : status, e.getMessage());
+        return ResponseEntity.status(status).body(body);
     }
 
     /**
@@ -116,18 +119,27 @@ public class GlobalExceptionHandler {
     /**
      * 拦截未知的运行时异常
      */
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(RuntimeException.class)
     public R<?> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
         log.error("请求地址'{}',发生未知异常.", request.getRequestURI(), e);
-        return R.fail(e.getMessage());
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), e.getMessage());
     }
 
     /**
      * 系统异常
      */
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     @ExceptionHandler(Exception.class)
     public R<?> handleException(Exception e, HttpServletRequest request) {
         log.error("请求地址'{}',发生系统异常.", request.getRequestURI(), e);
-        return R.fail("系统异常，请联系管理员");
+        return R.fail(HttpStatus.INTERNAL_SERVER_ERROR.value(), "系统异常，请联系管理员");
+    }
+
+    private int resolveHttpStatus(Integer code, int defaultStatus) {
+        if (code == null) {
+            return defaultStatus;
+        }
+        return HttpStatus.resolve(code) != null ? code : defaultStatus;
     }
 }

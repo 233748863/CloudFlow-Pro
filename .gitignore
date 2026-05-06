@@ -45,6 +45,9 @@ target/
 captcha_*.png
 *-smoke.png
 .cloudflow-runtime/
+audit.json
+vite-*.log
+vite-*.err.log
 
 # Environment variables
 .env
