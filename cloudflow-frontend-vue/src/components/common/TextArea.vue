@@ -4,6 +4,7 @@ withDefaults(defineProps<{
   label?: string
   placeholder?: string
   disabled?: boolean
+  readonly?: boolean
   required?: boolean
   rows?: number
   error?: string
@@ -11,6 +12,7 @@ withDefaults(defineProps<{
 }>(), {
   rows: 4,
   disabled: false,
+  readonly: false,
   required: false
 })
 
@@ -30,6 +32,7 @@ const emit = defineEmits<{
       :value="modelValue ?? ''"
       :placeholder="placeholder"
       :disabled="disabled"
+      :readonly="readonly"
       :required="required"
       :rows="rows"
       class="input min-h-[96px] resize-y py-2"

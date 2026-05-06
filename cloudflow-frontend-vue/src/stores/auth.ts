@@ -46,8 +46,13 @@ export const useAuthStore = defineStore('auth', {
       return currentUser
     },
     async loginWithToken(token: string) {
-      setAuthToken(token)
-      await this.refreshUser()
+      this.loading = true
+      try {
+        setAuthToken(token)
+        await this.refreshUser()
+      } finally {
+        this.loading = false
+      }
     },
     async logout() {
       if (getAuthToken()) {

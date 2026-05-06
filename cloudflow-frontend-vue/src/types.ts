@@ -38,6 +38,70 @@ export interface ApiResponse<T = unknown> {
   data: T
 }
 
+export enum NodeType {
+  START = 'START',
+  APPROVAL = 'APPROVAL',
+  CONDITION = 'CONDITION',
+  PARALLEL = 'PARALLEL',
+  END = 'END',
+  NOTIFICATION = 'NOTIFICATION',
+  SCRIPT = 'SCRIPT',
+  TIMER = 'TIMER',
+  SUBPROCESS = 'SUBPROCESS',
+  MANUAL = 'MANUAL',
+  COPY = 'COPY'
+}
+
+export interface WorkflowGraphNode {
+  id: string
+  type: string
+  title?: string
+  condition?: string
+  branchStrategy?: 'PARALLEL' | 'RACE' | 'EXCLUSIVE'
+  approverType?: 'ROLE' | 'USER' | 'USERS' | 'INITIATOR' | 'DEPT_MANAGER' | 'DIRECT_LEADER' | 'DEPT'
+  approverValue?: string
+  signType?: 'ALL' | 'ANY' | 'PERCENT' | 'SEQUENTIAL'
+  passPercent?: number
+  description?: string
+  slaHours?: number
+  slaAction?: 'AUTO_PASS' | 'AUTO_REJECT'
+  retry?: {
+    maxRetries: number
+    delayMs: number
+  }
+  props?: Record<string, unknown>
+  [key: string]: unknown
+}
+
+export interface WorkflowGraphEdge {
+  id?: string
+  source: string
+  target: string
+  condition?: string
+  isDefault?: boolean | number | string
+  [key: string]: unknown
+}
+
+export interface WorkflowGraphDefinition {
+  nodes: WorkflowGraphNode[]
+  edges: WorkflowGraphEdge[]
+}
+
+export interface WorkflowDefinition {
+  id: string
+  name: string
+  key: string
+  version: number
+  formId?: string
+  graph: WorkflowGraphDefinition
+  description?: string
+  category?: string
+  tags?: string
+  startPermissionType?: string
+  startPermissionValue?: string
+  deptId?: number
+}
+
 export enum AnnouncementType {
   NOTIFICATION = '1',
   ANNOUNCEMENT = '2',

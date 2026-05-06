@@ -177,6 +177,7 @@ function addDays(days: number) {
 }
 
 const normalizeTime = (value?: string) => (value || '').slice(0, 5)
+const toArray = <T,>(value: T[] | null | undefined): T[] => Array.isArray(value) ? value : []
 
 const createDraftRule = (shiftId?: number): HrScheduleRule => ({
   id: 0,
@@ -195,6 +196,9 @@ const shiftOptions = computed<SelectOption[]>(() =>
     value: shift.id,
     label: `${shift.shiftName} ${normalizeTime(shift.startTime)}-${normalizeTime(shift.endTime)}`
   }))
+)
+const visibleRules = computed(() =>
+  rules.value.filter((rule): rule is HrScheduleRule => Boolean(rule))
 )
 
 const activeRuleId = computed(() => draft.value?.id || selectedId.value)
@@ -216,7 +220,7 @@ const toRulePayload = (rule: HrScheduleRule, ruleConfig: AttendanceRuleConfig) =
 
 const loadAssignments = async (ruleId: number) => {
   try {
-    assignments.value = await listHrScheduleRuleAssignments(ruleId)
+    assignments.value = toArray(await listHrScheduleRuleAssignments(ruleId))
   } catch {
     assignments.value = []
   }
@@ -229,7 +233,7 @@ const selectRule = (rule: HrScheduleRule, shouldLoadAssignments = true) => {
   if (shouldLoadAssignments) {
     void loadAssignments(rule.id)
   } else {
-    listHrScheduleRuleAssignments(rule.id).then((items) => { assignments.value = items }).catch(() => { assignments.value = [] })
+    listHrScheduleRuleAssignments(rule.id).then((items) => { assignments.value = toArray(items) }).catch(() => { assignments.value = [] })
   }
 }
 
@@ -241,10 +245,10 @@ const loadAll = async () => {
       listHrShifts(),
       listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) })
     ])
-    rules.value = ruleList
-    shifts.value = shiftList
-    calendarDays.value = days
-    const firstRule = ruleList[0] || null
+    rules.value = toArray(ruleList).filter((rule): rule is HrScheduleRule => Boolean(rule))
+    shifts.value = toArray(shiftList)
+    calendarDays.value = toArray(days)
+    const firstRule = rules.value[0] || null
     if (firstRule) {
       selectRule(firstRule, false)
     } else {
@@ -348,7 +352,7 @@ const handleSaveCalendar = async () => {
       await createWorkCalendarDay(payload)
     }
     toast.success('企业日历已保存')
-    calendarDays.value = await listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) })
+    calendarDays.value = toArray(await listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) }))
   } catch (error) {
     toast.error(getErrorMessage(error, '保存企业日历失败'))
   }
@@ -358,7 +362,7 @@ const handleDeleteCalendar = async (id: number) => {
   try {
     await deleteWorkCalendarDay(id)
     toast.success('企业日历已删除')
-    calendarDays.value = await listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) })
+    calendarDays.value = toArray(await listWorkCalendarDays({ startDate: addDays(-7), endDate: addDays(14) }))
   } catch (error) {
     toast.error(getErrorMessage(error, '删除企业日历失败'))
   }
@@ -398,7 +402,7 @@ onMounted(() => {
         <div class="space-y-2 p-3">
           <div v-if="loading" class="rounded-lg border border-slate-200 px-3 py-8 text-center text-sm text-slate-500 dark:border-slate-800">加载中</div>
           <button
-            v-for="rule in rules"
+            v-for="rule in visibleRules"
             :key="rule.id"
             type="button"
             class="w-full rounded-lg border px-3 py-3 text-left transition-colors"
@@ -446,14 +450,14 @@ onMounted(() => {
           <Button :variant="activeTab === 'calendar' ? 'primary' : 'outline'" size="sm" @click="activeTab = 'calendar'">企业日历</Button>
         </div>
 
-        <div v-if="activeTab === 'rule'" class="space-y-4">
+        <div v-if="activeTab === 'rule' && draft" class="space-y-4">
           <Panel title="基础与班次">
             <template #icon><CalendarClock class="h-4 w-4 text-slate-500" /></template>
             <div class="grid gap-4 lg:grid-cols-3">
-              <Input v-model="draft!.ruleName" label="规则名称" />
+              <Input v-model="draft.ruleName" label="规则名称" />
               <label class="space-y-2">
                 <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">规则类型</span>
-                <Select v-model="draft!.ruleType" :options="ruleTypeOptions" />
+                <Select v-model="draft.ruleType" :options="ruleTypeOptions" />
               </label>
               <label class="space-y-2">
                 <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">绑定班次</span>
@@ -461,9 +465,9 @@ onMounted(() => {
               </label>
               <label class="space-y-2">
                 <span class="text-xs font-semibold text-slate-600 dark:text-slate-300">启用规则</span>
-                <Select v-model="draft!.status" :options="statusOptions" />
+                <Select v-model="draft.status" :options="statusOptions" />
               </label>
-              <Input v-model="draft!.description" label="备注" />
+              <Input v-model="draft.description" label="备注" />
             </div>
             <div class="mt-4 flex flex-wrap gap-2">
               <Button
@@ -524,6 +528,13 @@ onMounted(() => {
             </Panel>
           </div>
         </div>
+
+        <Panel v-else-if="activeTab === 'rule'" title="规则配置">
+          <template #icon><CalendarClock class="h-4 w-4 text-slate-500" /></template>
+          <div class="rounded-lg border border-dashed border-slate-200 px-4 py-10 text-center text-sm text-slate-500 dark:border-slate-800">
+            规则数据加载中
+          </div>
+        </Panel>
 
         <Panel v-else-if="activeTab === 'assignment'" title="适用范围">
           <template #icon><Users class="h-4 w-4 text-slate-500" /></template>
