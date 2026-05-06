@@ -134,7 +134,7 @@ const defaultFieldsJson = JSON.stringify([{ id: 'field1', type: 'TEXT', label: '
 
 export const workflowPageConfigs: WorkflowPageConfig[] = [
   {
-    paths: ['/workflow', '/workflow/design'],
+    paths: ['/workflow/definitions'],
     title: '流程设计',
     eyebrow: 'Workflow Design',
     description: '维护流程定义、表单绑定、版本状态和发布入口',

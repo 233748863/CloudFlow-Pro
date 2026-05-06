@@ -4,6 +4,11 @@ import MobileLayout from '@/layouts/MobileLayout.vue'
 import AuthPage from '@/pages/AuthPage.vue'
 import DashboardPage from '@/pages/DashboardPage.vue'
 import MobileDashboardPage from '@/pages/MobileDashboardPage.vue'
+import MobileMessagesPage from '@/pages/MobileMessagesPage.vue'
+import MobileProfilePage from '@/pages/MobileProfilePage.vue'
+import MobileReimbursementPage from '@/pages/MobileReimbursementPage.vue'
+import MobileVehicleBookingPage from '@/pages/MobileVehicleBookingPage.vue'
+import ProfilePage from '@/pages/ProfilePage.vue'
 import SchedulePage from '@/pages/SchedulePage.vue'
 import PlaceholderPage from '@/pages/PlaceholderPage.vue'
 import AdminBorrowManagementPage from '@/pages/admin/AdminBorrowManagementPage.vue'
@@ -42,7 +47,11 @@ import SystemRolePage from '@/pages/system/SystemRolePage.vue'
 import SystemTenantPage from '@/pages/system/SystemTenantPage.vue'
 import SystemUserPage from '@/pages/system/SystemUserPage.vue'
 import ProcessCenterPage from '@/pages/workflow/ProcessCenterPage.vue'
+import TemplateManagementPage from '@/pages/workflow/TemplateManagementPage.vue'
 import WorkflowAdminPage from '@/pages/workflow/WorkflowAdminPage.vue'
+import WorkflowCreatePage from '@/pages/workflow/WorkflowCreatePage.vue'
+import WorkflowDesignPage from '@/pages/workflow/WorkflowDesignPage.vue'
+import WorkflowVersionHistoryPage from '@/pages/workflow/WorkflowVersionHistoryPage.vue'
 import NotFoundPage from '@/pages/NotFoundPage.vue'
 import ServiceUnavailablePage from '@/pages/ServiceUnavailablePage.vue'
 import ForbiddenPage from '@/pages/ForbiddenPage.vue'
@@ -60,8 +69,17 @@ const resolveComponent = (meta: CloudFlowRouteMeta) => {
   if (meta.path === '/' || meta.path === '/dashboard') {
     return meta.mobile ? MobileDashboardPage : DashboardPage
   }
+  if (meta.mobile && meta.path === '/vehicle/booking') return MobileVehicleBookingPage
+  if (meta.mobile && meta.path === '/profile') return MobileProfilePage
+  if (meta.mobile && meta.path === '/messages') return MobileMessagesPage
+  if (meta.mobile && meta.path === '/reimbursement/request') return MobileReimbursementPage
+  if (meta.path === '/profile') return ProfilePage
   if (meta.path === '/schedule') return SchedulePage
   if (['/workplace', '/my-apps', '/tasks', '/my-copies', '/templates'].includes(meta.path)) return ProcessCenterPage
+  if (meta.path === '/workflow/create') return WorkflowCreatePage
+  if (['/workflow', '/workflow/design'].includes(meta.path)) return WorkflowDesignPage
+  if (meta.path === '/workflow/versions/:workflowId') return WorkflowVersionHistoryPage
+  if (meta.path === '/templates/manage') return TemplateManagementPage
   if (['/announcement', '/office/announcement'].includes(meta.path)) return OfficeAnnouncementPage
   if (meta.path === '/office/contact') return OfficeContactPage
   if (meta.path === '/office/knowledge') return OfficeKnowledgePage

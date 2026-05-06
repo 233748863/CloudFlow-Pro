@@ -6,7 +6,7 @@ const route = useRoute()
 const tabs = [
   { path: '/dashboard', label: '首页', icon: Home },
   { path: '/workplace', label: '工作台', icon: PlayCircle },
-  { path: '/announcement', label: '消息', icon: MessageSquare },
+  { path: '/messages', label: '消息', icon: MessageSquare },
   { path: '/profile', label: '我的', icon: User }
 ]
 </script>

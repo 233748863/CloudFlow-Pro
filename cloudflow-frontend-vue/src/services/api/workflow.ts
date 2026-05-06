@@ -120,6 +120,28 @@ export interface ImportResult extends WorkflowRecord {
   message?: string
 }
 
+export interface WorkflowVersionRecord extends WorkflowRecord {
+  id?: string
+  versionNumber?: string | number
+  changeType?: string
+  changeLog?: string
+  createdAt?: string
+  createdBy?: string
+  createdByName?: string
+  isRollback?: boolean
+  rollbackFromVersion?: string | number
+}
+
+export interface VersionComparison extends WorkflowRecord {
+  fromVersion?: string | number
+  toVersion?: string | number
+  addedNodes?: WorkflowRecord[]
+  removedNodes?: WorkflowRecord[]
+  modifiedNodes?: WorkflowRecord[]
+  addedEdges?: WorkflowRecord[]
+  removedEdges?: WorkflowRecord[]
+}
+
 export const normalizeWorkflowRows = <T extends WorkflowRecord>(data: WorkflowPageResult<T> | T[] | null | undefined): T[] => {
   if (!data) return []
   if (Array.isArray(data)) return data
@@ -168,6 +190,18 @@ export const deployProcessDefinition = (definitionId: string | number) =>
 
 export const deleteProcessDefinition = (definitionId: string | number) =>
   request.delete<void>(`/workflow/definition/${definitionId}`)
+
+export const getWorkflowVersions = (workflowId: string | number) =>
+  request.get<WorkflowVersionRecord[]>(`/workflow/versions/workflow/${workflowId}`)
+
+export const compareWorkflowVersions = (fromVersionId: string | number, toVersionId: string | number) =>
+  request.get<VersionComparison>('/workflow/versions/compare', { params: { fromVersionId, toVersionId } })
+
+export const checkWorkflowRunningInstances = (workflowId: string | number) =>
+  request.get<{ hasRunningInstances?: boolean }>(`/workflow/versions/check-running/${workflowId}`)
+
+export const rollbackWorkflowVersion = (data: WorkflowRecord) =>
+  request.post<WorkflowRecord>('/workflow/versions/rollback', data)
 
 export const getFormDefinitions = (params?: WorkflowRecord) =>
   request.get<WorkflowPageResult<FormDefinitionSummary>>('/workflow/forms', { params: buildPageQuery(params) })

@@ -132,3 +132,22 @@ export const buildAuthUser = (userInfo: UserInfo): User => ({
 
 export const switchTenant = (tenantId: number) =>
   request.post<{ token: string; tenantId: number; message: string }>('/auth/switchTenant', { tenantId })
+
+export interface UpdateProfilePayload {
+  nickName: string
+  email?: string
+  phone?: string
+}
+
+export const updateProfile = (data: UpdateProfilePayload) =>
+  request.put<void>('/auth/profile', {
+    nickName: data.nickName,
+    email: data.email,
+    phonenumber: data.phone
+  })
+
+export const changeProfilePassword = async (oldPassword: string, newPassword: string) =>
+  request.put<void>('/auth/profile/password', {
+    oldPassword: await hashPassword(oldPassword),
+    newPassword: await hashPassword(newPassword)
+  })
