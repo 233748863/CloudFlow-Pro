@@ -9,7 +9,7 @@ withDefaults(defineProps<{
 
 <template>
   <span
-    class="inline-flex items-center rounded-md px-2 py-1 text-xs font-medium"
+    class="inline-flex items-center whitespace-nowrap rounded-md px-2 py-1 text-xs font-medium"
     :class="{
       'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200': tone === 'slate',
       'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-200': tone === 'green',

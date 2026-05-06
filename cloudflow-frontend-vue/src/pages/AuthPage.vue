@@ -133,7 +133,10 @@ const handleCaptchaVerify = async (captchaToken: string) => {
       if (!response?.token) throw new Error('登录失败，未获取到有效凭证')
       await auth.loginWithToken(response.token)
       toast.success('登录成功')
-      void router.push(String(route.query.redirect || '/'))
+      const redirect = typeof route.query.redirect === 'string' && !['/login', '/register'].includes(route.query.redirect)
+        ? route.query.redirect
+        : '/'
+      await router.replace(redirect)
       return
     }
 
@@ -176,7 +179,8 @@ onMounted(() => {
 </script>
 
 <template>
-  <div class="cf-auth-page">
+  <div class="cf-auth-root">
+    <div class="cf-auth-page">
     <div class="cf-auth-bg" />
     <div class="cf-auth-decor">
       <div class="cf-auth-orb cf-auth-orb--top" />
@@ -372,13 +376,14 @@ onMounted(() => {
 
       <div class="cf-auth-copyright">© {{ currentYear }} CloudFlow Pro. All rights reserved.</div>
     </div>
-  </div>
+    </div>
 
-  <AuthCaptchaDialog
-    :open="captchaIntent !== null"
-    :title="captchaTitle"
-    :description="captchaDescription"
-    @close="captchaIntent = null"
-    @verify="handleCaptchaVerify"
-  />
+    <AuthCaptchaDialog
+      :open="captchaIntent !== null"
+      :title="captchaTitle"
+      :description="captchaDescription"
+      @close="captchaIntent = null"
+      @verify="handleCaptchaVerify"
+    />
+  </div>
 </template>

@@ -4,8 +4,44 @@ import MobileLayout from '@/layouts/MobileLayout.vue'
 import AuthPage from '@/pages/AuthPage.vue'
 import DashboardPage from '@/pages/DashboardPage.vue'
 import MobileDashboardPage from '@/pages/MobileDashboardPage.vue'
+import SchedulePage from '@/pages/SchedulePage.vue'
 import PlaceholderPage from '@/pages/PlaceholderPage.vue'
+import AdminBorrowManagementPage from '@/pages/admin/AdminBorrowManagementPage.vue'
+import AdminLedgerPage from '@/pages/admin/AdminLedgerPage.vue'
+import AttendanceCheckIn from '@/pages/admin/attendance/AttendanceCheckIn.vue'
 import AttendanceRule from '@/pages/admin/attendance/AttendanceRule.vue'
+import AttendanceSupplement from '@/pages/admin/attendance/AttendanceSupplement.vue'
+import OfficeAnnouncementPage from '@/pages/office/OfficeAnnouncementPage.vue'
+import OfficeContactPage from '@/pages/office/OfficeContactPage.vue'
+import OfficeKnowledgePage from '@/pages/office/OfficeKnowledgePage.vue'
+import HrAttendanceStatisticsPage from '@/pages/hr/HrAttendanceStatisticsPage.vue'
+import HrApplicationPage from '@/pages/hr/HrApplicationPage.vue'
+import HrDashboardPage from '@/pages/hr/HrDashboardPage.vue'
+import HrEmployeePage from '@/pages/hr/HrEmployeePage.vue'
+import HrHeadcountPage from '@/pages/hr/HrHeadcountPage.vue'
+import HrLifecyclePage from '@/pages/hr/HrLifecyclePage.vue'
+import HrLeaveQuotaPage from '@/pages/hr/HrLeaveQuotaPage.vue'
+import HrOfferPage from '@/pages/hr/HrOfferPage.vue'
+import HrOrganizationPage from '@/pages/hr/HrOrganizationPage.vue'
+import HrPerformancePage from '@/pages/hr/HrPerformancePage.vue'
+import HrRecruitmentPage from '@/pages/hr/HrRecruitmentPage.vue'
+import HrSalaryPage from '@/pages/hr/HrSalaryPage.vue'
+import HrSchedulePage from '@/pages/hr/HrSchedulePage.vue'
+import SystemAuditLogPage from '@/pages/system/SystemAuditLogPage.vue'
+import SystemCachePage from '@/pages/system/SystemCachePage.vue'
+import SystemCodeGenerationPage from '@/pages/system/SystemCodeGenerationPage.vue'
+import SystemConfigPage from '@/pages/system/SystemConfigPage.vue'
+import SystemDictPage from '@/pages/system/SystemDictPage.vue'
+import SystemFilePage from '@/pages/system/SystemFilePage.vue'
+import SystemLogPage from '@/pages/system/SystemLogPage.vue'
+import SystemMenuPage from '@/pages/system/SystemMenuPage.vue'
+import SystemOnlineUserPage from '@/pages/system/SystemOnlineUserPage.vue'
+import SystemOrgStructurePage from '@/pages/system/SystemOrgStructurePage.vue'
+import SystemPostPage from '@/pages/system/SystemPostPage.vue'
+import SystemRolePage from '@/pages/system/SystemRolePage.vue'
+import SystemTenantPage from '@/pages/system/SystemTenantPage.vue'
+import SystemUserPage from '@/pages/system/SystemUserPage.vue'
+import WorkflowAdminPage from '@/pages/workflow/WorkflowAdminPage.vue'
 import NotFoundPage from '@/pages/NotFoundPage.vue'
 import ServiceUnavailablePage from '@/pages/ServiceUnavailablePage.vue'
 import ForbiddenPage from '@/pages/ForbiddenPage.vue'
@@ -14,6 +50,7 @@ import ChunkLoadErrorPage from '@/pages/ChunkLoadErrorPage.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNavigationStore } from '@/stores/navigation'
 import { desktopRouteCatalog, mobileRouteCatalog, type CloudFlowRouteMeta } from './routeCatalog'
+import { workflowPagePaths } from '@/pages/workflow/workflowPageConfigs'
 import { isMobileDevice } from '@/utils/device'
 import { resolveDocumentTitle } from '@/router/title'
 import { useRoutePrefetch } from '@/composables/useRoutePrefetch'
@@ -22,7 +59,55 @@ const resolveComponent = (meta: CloudFlowRouteMeta) => {
   if (meta.path === '/' || meta.path === '/dashboard') {
     return meta.mobile ? MobileDashboardPage : DashboardPage
   }
+  if (meta.path === '/schedule') return SchedulePage
+  if (['/announcement', '/office/announcement'].includes(meta.path)) return OfficeAnnouncementPage
+  if (meta.path === '/office/contact') return OfficeContactPage
+  if (meta.path === '/office/knowledge') return OfficeKnowledgePage
+  if (meta.path === '/hr/attendance/checkin') return AttendanceCheckIn
   if (meta.path === '/hr/attendance/rule') return AttendanceRule
+  if (meta.path === '/hr/attendance/statistics') return HrAttendanceStatisticsPage
+  if (meta.path === '/hr/attendance/supplement') return AttendanceSupplement
+  if (meta.path === '/hr/dashboard') return HrDashboardPage
+  if (meta.path === '/hr/employees') return HrEmployeePage
+  if (meta.path === '/hr/organization') return HrOrganizationPage
+  if (meta.path.startsWith('/hr/salary')) return HrSalaryPage
+  if (meta.path === '/hr/recruitment') return HrRecruitmentPage
+  if (meta.path === '/hr/headcount') return HrHeadcountPage
+  if (meta.path === '/hr/schedule') return HrSchedulePage
+  if (meta.path === '/hr/offer') return HrOfferPage
+  if (['/hr/onboarding', '/hr/probation', '/hr/transfer', '/hr/resignation'].includes(meta.path)) return HrLifecyclePage
+  if (meta.path === '/hr/performance') return HrPerformancePage
+  if (meta.path === '/hr/leave/quota') return HrLeaveQuotaPage
+  if (['/hr/leave/application', '/hr/overtime/applications'].includes(meta.path)) return HrApplicationPage
+  if (meta.path === '/admin/borrow-management') return AdminBorrowManagementPage
+  if (
+    meta.path.startsWith('/admin/') ||
+    [
+      '/meeting-room',
+      '/office/business-trip',
+      '/expense/claim',
+      '/payment/request',
+      '/office/purchase-request',
+      '/office/seal-application',
+      '/office/license-borrow',
+      '/office/contracts'
+    ].includes(meta.path)
+  ) return AdminLedgerPage
+  if (workflowPagePaths.includes(meta.path)) return WorkflowAdminPage
+  if (meta.path === '/users') return SystemOrgStructurePage
+  if (meta.path === '/code') return SystemCodeGenerationPage
+  if (meta.path === '/system/config') return SystemConfigPage
+  if (meta.path === '/system/cache') return SystemCachePage
+  if (meta.path === '/system/dict') return SystemDictPage
+  if (meta.path === '/system/audit-log') return SystemAuditLogPage
+  if (['/system/log', '/system/login-log'].includes(meta.path)) return SystemLogPage
+  if (meta.path === '/system/online') return SystemOnlineUserPage
+  if (meta.path === '/system/users') return SystemUserPage
+  if (meta.path === '/system/roles') return SystemRolePage
+  if (meta.path === '/system/menus') return SystemMenuPage
+  if (meta.path === '/system/files') return SystemFilePage
+  if (meta.path === '/system/tenant') return SystemTenantPage
+  if (meta.path === '/system/post') return SystemPostPage
   return PlaceholderPage
 }
 
