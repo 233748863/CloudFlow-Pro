@@ -5,6 +5,7 @@ import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.dto.BusinessRuleDTO;
+import com.cloudflow.oa.domain.dto.BusinessRuleHitRecordDTO;
 import com.cloudflow.oa.mapper.OaContractMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.service.IOaRiskAlertService;
@@ -103,13 +104,15 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     }
 
     private int scanHighAmountMissingAttachment() {
-        BigDecimal threshold = resolveContractRiskThreshold();
+        BusinessRuleDTO rule = resolveContractRiskRule();
+        BigDecimal threshold = rule == null || rule.getThresholdValue() == null ? HIGH_AMOUNT_THRESHOLD : rule.getThresholdValue();
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
                 .eq(OaContract::getDelFlag, "0")
                 .ge(OaContract::getAmount, threshold)
                 .and(wrapper -> wrapper.isNull(OaContract::getAttachmentUrl).or().eq(OaContract::getAttachmentUrl, "")));
         int created = 0;
         for (OaContract contract : contracts) {
+            recordRuleHit(rule, contract, threshold);
             if (createRisk(contract, "CONTRACT_HIGH_AMOUNT_ATTACHMENT_MISSING", "高额合同缺少附件", OaContractConstants.RISK_LEVEL_HIGH,
                     "合同金额大于" + threshold + "且未上传合同附件")) {
                 created++;
@@ -139,19 +142,40 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
         return created;
     }
 
-    private BigDecimal resolveContractRiskThreshold() {
+    private BusinessRuleDTO resolveContractRiskRule() {
         try {
             var result = remoteBusinessRuleService.getEffectiveRule("oa.contract.risk.threshold");
             if (result != null && result.isSuccess()) {
                 BusinessRuleDTO rule = result.getData();
                 if (rule != null && Integer.valueOf(1).equals(rule.getEnabled()) && rule.getThresholdValue() != null) {
-                    return rule.getThresholdValue();
+                    return rule;
                 }
             }
         } catch (Exception ignored) {
-            return HIGH_AMOUNT_THRESHOLD;
+            return null;
         }
-        return HIGH_AMOUNT_THRESHOLD;
+        return null;
+    }
+
+    private void recordRuleHit(BusinessRuleDTO rule, OaContract contract, BigDecimal threshold) {
+        if (contract == null) {
+            return;
+        }
+        try {
+            BusinessRuleHitRecordDTO record = new BusinessRuleHitRecordDTO();
+            record.setTenantId(contract.getTenantId());
+            record.setRuleCode(rule == null ? "oa.contract.risk.threshold" : rule.getRuleCode());
+            record.setBusinessType(OaContractConstants.BUSINESS_TYPE_CONTRACT);
+            record.setBusinessId(contract.getContractId());
+            record.setThresholdValue(threshold);
+            record.setActualValue(contract.getAmount() == null ? BigDecimal.ZERO : contract.getAmount());
+            String effect = rule == null || !StringUtils.hasText(rule.getEffect()) ? "WARN" : rule.getEffect().trim().toUpperCase();
+            record.setEffect(effect);
+            record.setHitResult(effect);
+            remoteBusinessRuleService.recordHit(record);
+        } catch (Exception ignored) {
+            // 风险扫描不能因治理留痕失败而中断。
+        }
     }
 
     private int scanSealedUnarchived() {

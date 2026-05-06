@@ -12,6 +12,7 @@ import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
 import com.cloudflow.oa.domain.VehicleExpense;
 import com.cloudflow.oa.domain.dto.BusinessRuleDTO;
+import com.cloudflow.oa.domain.dto.BusinessRuleHitRecordDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
@@ -347,6 +348,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
         String effect = StringUtils.hasText(rule.getEffect()) ? rule.getEffect().trim().toUpperCase() : "WARN";
         String message = "报销金额 " + totalAmount + " 超过规则阈值 " + rule.getThresholdValue();
+        recordRuleHit(rule, "EXPENSE_CLAIM", claim.getId(), totalAmount, effect);
         if ("BLOCK".equals(effect)) {
             throw new IllegalArgumentException(message);
         }
@@ -355,6 +357,24 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                     "RULE_WARN", "报销规则预警", message,
                     UserContext.getUserId(), UserContext.getUserName(), null);
             log.warn("报销申请触发规则预警，claimId={}, {}", claim.getId(), message);
+        }
+    }
+
+    private void recordRuleHit(BusinessRuleDTO rule, String businessType, Long businessId, BigDecimal actualValue, String effect) {
+        try {
+            BusinessRuleHitRecordDTO record = new BusinessRuleHitRecordDTO();
+            record.setTenantId(UserContext.getTenantId());
+            record.setRuleCode(rule.getRuleCode());
+            record.setBusinessType(businessType);
+            record.setBusinessId(businessId);
+            record.setThresholdValue(rule.getThresholdValue());
+            record.setActualValue(actualValue);
+            record.setEffect(effect);
+            record.setHitResult(effect);
+            remoteBusinessRuleService.recordHit(record);
+        } catch (Exception e) {
+            log.warn("写入业务规则命中记录失败，ruleCode={}, businessType={}, businessId={}",
+                    rule == null ? null : rule.getRuleCode(), businessType, businessId, e);
         }
     }
 

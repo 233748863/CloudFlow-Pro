@@ -248,6 +248,41 @@ function Wait-ServiceReady {
     return $false
 }
 
+function Wait-AllServicesReady {
+    param(
+        [object[]]$PendingServices,
+        [datetime]$Deadline
+    )
+
+    $remaining = @($PendingServices)
+    $failed = @()
+
+    while ($remaining.Count -gt 0 -and (Get-Date) -lt $Deadline) {
+        $nextRemaining = @()
+
+        foreach ($item in $remaining) {
+            $process = Get-ListenerProcess -Port $item.Service.Port
+            if (& $item.ExpectedProcess $item.Service $process) {
+                Write-Host ("{0,-10} 已就绪，端口 {1}, PID {2}" -f $item.Service.Name, $item.Service.Port, $process.ProcessId)
+            } else {
+                $nextRemaining += $item
+            }
+        }
+
+        $remaining = $nextRemaining
+        if ($remaining.Count -gt 0) {
+            Start-Sleep -Seconds 3
+        }
+    }
+
+    foreach ($item in $remaining) {
+        Write-Host ("{0,-10} 启动超时，端口 {1}" -f $item.Service.Name, $item.Service.Port)
+        $failed += $item.Service
+    }
+
+    return $failed
+}
+
 New-RuntimeDirectories
 
 Write-Host "启动 CloudFlow 前后端..."
@@ -279,13 +314,7 @@ $pending += @{
 }
 
 $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
-$failed = @()
-foreach ($item in $pending) {
-    $ready = Wait-ServiceReady -Service $item.Service -ExpectedProcess $item.ExpectedProcess -Deadline $deadline
-    if (-not $ready) {
-        $failed += $item.Service
-    }
-}
+$failed = @(Wait-AllServicesReady -PendingServices $pending -Deadline $deadline)
 
 if ($failed.Count -gt 0) {
     Write-Host "启动未完成，查看日志：$LogRoot"

@@ -42,6 +42,8 @@ CloudFlow Pro 是一个面向企业办公、流程审批和人力资源场景的
 - 工作台接口增强：`/oa/workplace/summary` 聚合待办、抄送、公告、日程、会议室、HR 提醒、合同/车辆/证照/资产风险、最近动态和服务健康状态；前端 `/` 与 `/dashboard` 保持原版仪表盘体验。
 - 审计追踪增强：OA 统一时间线接口为 `/oa/timeline`，复用 `oa_trace_event` 输出合同、用印、证照、车辆、资产、报销、采购、知识库等业务事件。
 - 业务规则中心：系统规则接口为 `/auth/system/rules`，首版固定支持 `hr.leave.quota.limit`、`oa.expense.amount.limit`、`oa.contract.risk.threshold` 三个阈值规则，执行结果为 `BLOCK`、`WARN`、`PASS`。
+- 规则治理 V2：规则中心支持草稿版本、发布、回滚和命中记录；OA/HR 规则执行写入 `/auth/system/rules/hit-records`。
+- 审计复盘 V2：新增 `/oa/audit/events` 审计台账、CSV 导出和 `/oa/timeline/{id}/diff` 快照差异。
 
 ## 🏗️ 技术栈
 

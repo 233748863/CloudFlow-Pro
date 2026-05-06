@@ -9,6 +9,7 @@ import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.BusinessRuleClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.BusinessRuleDTO;
+import com.cloudflow.hr.client.dto.BusinessRuleHitRecordDTO;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.*;
@@ -1528,11 +1529,30 @@ public class LeaveServiceImpl implements LeaveService {
         }
         String effect = rule.getEffect() == null ? "WARN" : rule.getEffect().trim().toUpperCase();
         String message = "请假时长 " + duration + " 超过规则阈值 " + rule.getThresholdValue();
+        recordRuleHit(rule, leaveApplication, duration, effect);
         if ("BLOCK".equals(effect)) {
             throw new HrBusinessException("LEAVE_RULE_BLOCKED", message);
         }
         if ("WARN".equals(effect)) {
             log.warn("请假申请触发规则预警，applicationId={}, {}", leaveApplication.getId(), message);
+        }
+    }
+
+    private void recordRuleHit(BusinessRuleDTO rule, LeaveApplication leaveApplication, BigDecimal actualValue, String effect) {
+        try {
+            BusinessRuleHitRecordDTO record = new BusinessRuleHitRecordDTO();
+            record.setTenantId(leaveApplication.getTenantId());
+            record.setRuleCode(rule.getRuleCode());
+            record.setBusinessType("LEAVE_APPLICATION");
+            record.setBusinessId(leaveApplication.getId());
+            record.setThresholdValue(rule.getThresholdValue());
+            record.setActualValue(actualValue);
+            record.setEffect(effect);
+            record.setHitResult(effect);
+            businessRuleClient.recordHit(record);
+        } catch (Exception e) {
+            log.warn("写入业务规则命中记录失败，ruleCode={}, applicationId={}",
+                    rule == null ? null : rule.getRuleCode(), leaveApplication == null ? null : leaveApplication.getId(), e);
         }
     }
 

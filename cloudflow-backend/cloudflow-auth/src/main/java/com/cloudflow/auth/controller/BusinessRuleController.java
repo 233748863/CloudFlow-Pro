@@ -2,6 +2,8 @@ package com.cloudflow.auth.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.auth.domain.BusinessRule;
+import com.cloudflow.auth.domain.BusinessRuleHitRecord;
+import com.cloudflow.auth.domain.BusinessRuleVersion;
 import com.cloudflow.auth.service.IBusinessRuleService;
 import com.cloudflow.common.core.domain.R;
 import lombok.RequiredArgsConstructor;
@@ -54,6 +56,60 @@ public class BusinessRuleController {
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
+    }
+
+    @PostMapping("/draft")
+    public R<BusinessRuleVersion> draft(@RequestBody BusinessRule rule) {
+        try {
+            return R.ok(businessRuleService.createDraft(rule));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/versions/{versionId}/publish")
+    public R<Void> publish(@PathVariable Long versionId) {
+        try {
+            return R.result(businessRuleService.publishVersion(versionId));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{ruleId}/rollback/{versionId}")
+    public R<Void> rollback(@PathVariable Long ruleId, @PathVariable Long versionId) {
+        try {
+            return R.result(businessRuleService.rollbackToVersion(ruleId, versionId));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/versions")
+    public R<Page<BusinessRuleVersion>> versions(@RequestParam(required = false) Long ruleId,
+                                                 @RequestParam(required = false) String ruleCode,
+                                                 @RequestParam(required = false) String status,
+                                                 @RequestParam(defaultValue = "1") Integer pageNum,
+                                                 @RequestParam(defaultValue = "10") Integer pageSize) {
+        try {
+            return R.ok(businessRuleService.queryVersions(ruleId, ruleCode, status, pageNum, pageSize));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/hit-records")
+    public R<Page<BusinessRuleHitRecord>> hitRecords(@RequestParam(required = false) String ruleCode,
+                                                     @RequestParam(required = false) String businessType,
+                                                     @RequestParam(required = false) String hitResult,
+                                                     @RequestParam(defaultValue = "1") Integer pageNum,
+                                                     @RequestParam(defaultValue = "10") Integer pageSize) {
+        return R.ok(businessRuleService.queryHitRecords(ruleCode, businessType, hitResult, pageNum, pageSize));
+    }
+
+    @PostMapping("/hit-records")
+    public R<Void> recordHit(@RequestBody BusinessRuleHitRecord record) {
+        return R.result(businessRuleService.recordHit(record));
     }
 
     @PutMapping("/{id}/enabled")

@@ -1,10 +1,12 @@
 package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.oa.domain.dto.TimelineDiffDTO;
 import com.cloudflow.oa.domain.dto.TimelineEventDTO;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,5 +34,11 @@ public class TimelineController {
                 .stream()
                 .map(TimelineEventDTO::from)
                 .toList());
+    }
+
+    @GetMapping("/{id}/diff")
+    public R<TimelineDiffDTO> diff(@PathVariable Long id) {
+        TimelineDiffDTO diff = traceEventService.diff(id);
+        return diff == null ? R.fail("时间线事件不存在") : R.ok(diff);
     }
 }

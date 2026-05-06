@@ -261,6 +261,11 @@ const BusinessRulePage = React.lazy(() =>
     default: module.BusinessRulePage,
   })),
 );
+const AuditEventPage = React.lazy(() =>
+  import("./pages/system/AuditEventPage").then((module) => ({
+    default: module.AuditEventPage,
+  })),
+);
 const CacheMonitor = React.lazy(() =>
   import("./pages/system/CacheMonitor").then((module) => ({
     default: module.CacheMonitor,
@@ -1195,6 +1200,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <BusinessRulePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/system/audit-events",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <AuditEventPage />
               </Suspense>
             ),
           },

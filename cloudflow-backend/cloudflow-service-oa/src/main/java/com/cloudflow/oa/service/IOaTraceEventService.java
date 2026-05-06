@@ -1,7 +1,10 @@
 package com.cloudflow.oa.service;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.OaTraceEvent;
+import com.cloudflow.oa.domain.dto.AuditEventQueryDTO;
+import com.cloudflow.oa.domain.dto.TimelineDiffDTO;
 
 import java.util.List;
 
@@ -23,4 +26,8 @@ public interface IOaTraceEventService extends IService<OaTraceEvent> {
     List<OaTraceEvent> listByFilter(String businessType, Long businessId, String relatedType, Long relatedId, Integer limit);
 
     List<OaTraceEvent> listRecent(Integer limit);
+
+    Page<OaTraceEvent> queryAuditEvents(AuditEventQueryDTO query);
+
+    TimelineDiffDTO diff(Long eventId);
 }

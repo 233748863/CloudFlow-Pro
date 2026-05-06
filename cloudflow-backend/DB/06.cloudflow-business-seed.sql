@@ -33,8 +33,16 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 513
-   OR menu_id BETWEEN 600 AND 632
+   OR menu_id BETWEEN 600 AND 635
    OR menu_id BETWEEN 700 AND 739;
+
+DELETE FROM cloud_flow_db.sys_business_rule_hit_record
+WHERE tenant_id = 100000
+  AND rule_code IN ('hr.leave.quota.limit', 'oa.expense.amount.limit', 'oa.contract.risk.threshold');
+
+DELETE FROM cloud_flow_db.sys_business_rule_version
+WHERE tenant_id = 100000
+  AND rule_code IN ('hr.leave.quota.limit', 'oa.expense.amount.limit', 'oa.contract.risk.threshold');
 
 DELETE FROM cloud_flow_db.sys_business_rule
 WHERE tenant_id = 100000
@@ -800,6 +808,12 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(631, '规则编辑',   630, 1, '',    
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(632, '规则启停',   630, 2, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:rule:enabled',      '#',               'admin', NOW(), '', null, '业务规则启停权限');
 
+INSERT INTO cloud_flow_db.sys_menu VALUES(633, '规则发布',   630, 3, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:rule:publish',      '#',               'admin', NOW(), '', null, '业务规则发布权限');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(634, '规则回滚',   630, 4, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:rule:rollback',     '#',               'admin', NOW(), '', null, '业务规则回滚权限');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(635, '审计台账',   6, 16, '/system/audit-events','pages/system/AuditEventPage',     NULL, 0, 0, 'C', '0', '0', 'system:audit:events',      'FileClock',       'admin', NOW(), '', null, 'OA业务审计台账');
+
 INSERT INTO cloud_flow_db.sys_menu VALUES(7,   '人力资源',   0, 7, 'hr',                   NULL,                             NULL, 0, 0, 'M', '0', '0', '',                     'Users',           'admin', NOW(), '', null, '人力资源目录');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(720, 'HR工作台',   7, 1, '/hr/dashboard',       'pages/hr/HrDashboardPage',      NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view',    'LayoutDashboard', 'admin', NOW(), '', null, 'HR桌面端工作台');
@@ -1535,6 +1549,15 @@ VALUES
 (100000, 'hr.leave.quota.limit', '请假时长阈值', 'HR', 5.00, 'WARN', 1, 10, '请假提交时超过阈值按规则效果处理', 'admin', NOW(), '', NULL),
 (100000, 'oa.expense.amount.limit', '报销金额阈值', 'OA', 5000.00, 'WARN', 1, 10, '报销提交时超过阈值按规则效果处理', 'admin', NOW(), '', NULL),
 (100000, 'oa.contract.risk.threshold', '合同高额风险阈值', 'OA', 100000.00, 'WARN', 1, 10, '合同风险扫描高额合同附件检查阈值', 'admin', NOW(), '', NULL);
+
+INSERT INTO cloud_flow_db.sys_business_rule_version
+(tenant_id, rule_id, rule_code, version_no, threshold_value, effect, enabled, priority, remark, status, publisher_name, published_time, snapshot_json, create_by, create_time, update_by, update_time)
+SELECT tenant_id, id, rule_code, 1, threshold_value, effect, enabled, priority, remark, 'PUBLISHED', 'admin', NOW(),
+       JSON_OBJECT('id', id, 'tenantId', tenant_id, 'ruleCode', rule_code, 'ruleName', rule_name, 'module', module, 'thresholdValue', threshold_value, 'effect', effect, 'enabled', enabled, 'priority', priority, 'remark', remark),
+       'admin', NOW(), 'admin', NOW()
+FROM cloud_flow_db.sys_business_rule
+WHERE tenant_id = 100000
+  AND rule_code IN ('hr.leave.quota.limit', 'oa.expense.amount.limit', 'oa.contract.risk.threshold');
 
 -- =========================================================
 -- Phase 2: 性能优化与监控告警配置（全局）

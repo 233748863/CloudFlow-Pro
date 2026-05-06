@@ -356,6 +356,50 @@ CREATE TABLE sys_business_rule (
   KEY idx_rule_module_enabled (module, enabled)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='业务规则表';
 
+DROP TABLE IF EXISTS sys_business_rule_version;
+CREATE TABLE sys_business_rule_version (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '版本ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  rule_id           BIGINT(20)      NOT NULL COMMENT '规则ID',
+  rule_code         VARCHAR(100)    NOT NULL COMMENT '规则编码',
+  version_no        INT             NOT NULL COMMENT '版本号',
+  threshold_value   DECIMAL(18,2)   DEFAULT NULL COMMENT '阈值',
+  effect            VARCHAR(16)     NOT NULL DEFAULT 'WARN' COMMENT '命中效果：BLOCK/WARN/PASS',
+  enabled           TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '是否启用：1启用 0停用',
+  priority          INT             NOT NULL DEFAULT 100 COMMENT '优先级',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  status            VARCHAR(16)     NOT NULL DEFAULT 'DRAFT' COMMENT '版本状态：DRAFT/PUBLISHED/ARCHIVED',
+  publisher_name    VARCHAR(64)     DEFAULT NULL COMMENT '发布人',
+  published_time    DATETIME        DEFAULT NULL COMMENT '发布时间',
+  snapshot_json     JSON            DEFAULT NULL COMMENT '规则快照',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_rule_version (rule_id, version_no),
+  KEY idx_rule_code_status (tenant_id, rule_code, status),
+  KEY idx_rule_status_time (rule_id, status, published_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='业务规则版本表';
+
+DROP TABLE IF EXISTS sys_business_rule_hit_record;
+CREATE TABLE sys_business_rule_hit_record (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '命中记录ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  rule_code         VARCHAR(100)    NOT NULL COMMENT '规则编码',
+  business_type     VARCHAR(64)     NOT NULL COMMENT '业务类型',
+  business_id       BIGINT(20)      DEFAULT NULL COMMENT '业务ID',
+  threshold_value   DECIMAL(18,2)   DEFAULT NULL COMMENT '阈值',
+  actual_value      DECIMAL(18,2)   DEFAULT NULL COMMENT '实际值',
+  effect            VARCHAR(16)     NOT NULL COMMENT '命中效果',
+  hit_result        VARCHAR(16)     NOT NULL COMMENT '处理结果',
+  created_time      DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '命中时间',
+  PRIMARY KEY (id),
+  KEY idx_rule_hit_code_time (tenant_id, rule_code, created_time),
+  KEY idx_rule_hit_business (business_type, business_id),
+  KEY idx_rule_hit_result (hit_result, created_time)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='业务规则命中记录表';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================
