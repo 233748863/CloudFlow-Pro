@@ -4,11 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaSealApplication;
+import com.cloudflow.oa.domain.dto.BusinessRuleDTO;
 import com.cloudflow.oa.mapper.OaContractMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.service.IOaRiskAlertService;
 import com.cloudflow.oa.service.IOaRiskScanService;
 import com.cloudflow.oa.service.ISysNoticeService;
+import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.util.OaBorrowConstants;
 import com.cloudflow.oa.util.OaContractConstants;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +35,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     private final OaSealApplicationMapper sealApplicationMapper;
     private final IOaRiskAlertService riskAlertService;
     private final ISysNoticeService noticeService;
+    private final RemoteBusinessRuleService remoteBusinessRuleService;
 
     @Override
     public int scanContractRisks() {
@@ -100,14 +103,15 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     }
 
     private int scanHighAmountMissingAttachment() {
+        BigDecimal threshold = resolveContractRiskThreshold();
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
                 .eq(OaContract::getDelFlag, "0")
-                .ge(OaContract::getAmount, HIGH_AMOUNT_THRESHOLD)
+                .ge(OaContract::getAmount, threshold)
                 .and(wrapper -> wrapper.isNull(OaContract::getAttachmentUrl).or().eq(OaContract::getAttachmentUrl, "")));
         int created = 0;
         for (OaContract contract : contracts) {
             if (createRisk(contract, "CONTRACT_HIGH_AMOUNT_ATTACHMENT_MISSING", "高额合同缺少附件", OaContractConstants.RISK_LEVEL_HIGH,
-                    "合同金额大于100000且未上传合同附件")) {
+                    "合同金额大于" + threshold + "且未上传合同附件")) {
                 created++;
             }
         }
@@ -133,6 +137,21 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
             }
         }
         return created;
+    }
+
+    private BigDecimal resolveContractRiskThreshold() {
+        try {
+            var result = remoteBusinessRuleService.getEffectiveRule("oa.contract.risk.threshold");
+            if (result != null && result.isSuccess()) {
+                BusinessRuleDTO rule = result.getData();
+                if (rule != null && Integer.valueOf(1).equals(rule.getEnabled()) && rule.getThresholdValue() != null) {
+                    return rule.getThresholdValue();
+                }
+            }
+        } catch (Exception ignored) {
+            return HIGH_AMOUNT_THRESHOLD;
+        }
+        return HIGH_AMOUNT_THRESHOLD;
     }
 
     private int scanSealedUnarchived() {

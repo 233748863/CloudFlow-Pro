@@ -19,6 +19,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import BusinessTimeline from '@/components/common/BusinessTimeline';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   borrowAsset,
@@ -877,6 +878,8 @@ const AssetList: React.FC = () => {
                 </div>
               </DetailSection>
             ) : null}
+
+            <BusinessTimeline businessType="ASSET" businessId={detailAsset.assetId} />
           </>
         ) : null}
       </BaseDialog>

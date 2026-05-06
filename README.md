@@ -37,6 +37,12 @@ CloudFlow Pro 是一个面向企业办公、流程审批和人力资源场景的
 - 👥 HR：组织编制、岗位族、职级、职位、员工档案、合同、入职、转正、调岗、离职、考勤、请假、加班、排班、薪酬、社保、个税、绩效、招聘、候选人、面试、Offer、HR 审计。
 - 📱 前端体验：React 19、Vite、Tailwind CSS 4、路由守卫、响应式页面、PWA、离线同步、工作台组件、流程设计器、模板库、监控看板、HR 工作区。
 
+## 🧩 近期增量
+
+- 工作台接口增强：`/oa/workplace/summary` 聚合待办、抄送、公告、日程、会议室、HR 提醒、合同/车辆/证照/资产风险、最近动态和服务健康状态；前端 `/` 与 `/dashboard` 保持原版仪表盘体验。
+- 审计追踪增强：OA 统一时间线接口为 `/oa/timeline`，复用 `oa_trace_event` 输出合同、用印、证照、车辆、资产、报销、采购、知识库等业务事件。
+- 业务规则中心：系统规则接口为 `/auth/system/rules`，首版固定支持 `hr.leave.quota.limit`、`oa.expense.amount.limit`、`oa.contract.risk.threshold` 三个阈值规则，执行结果为 `BLOCK`、`WARN`、`PASS`。
+
 ## 🏗️ 技术栈
 
 ### 🚀 后端
@@ -260,7 +266,7 @@ Docker 访问入口：
 
 ```powershell
 cd .\cloudflow-backend
-mvn -DskipTests -Dmaven.test.skip=true -Dmdep.analyze.skip=true install
+mvn -DskipTests "-Dmaven.test.skip=true" "-Dmdep.analyze.skip=true" install
 ```
 
 前端：
@@ -268,7 +274,6 @@ mvn -DskipTests -Dmaven.test.skip=true -Dmdep.analyze.skip=true install
 ```powershell
 cd .\cloudflow-frontend
 npm run type-check
-npm run check-imports
 npm run build
 ```
 

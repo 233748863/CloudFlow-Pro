@@ -40,4 +40,13 @@ public class WorkplaceController {
         Long userId = UserContext.getUserId();
         return R.ok(workplaceService.getRecentTasks(userId, limit));
     }
+
+    /**
+     * 获取工作台最近动态。
+     */
+    @GetMapping("/timeline")
+    public R<List<WorkplaceSummaryDTO.ActivityItem>> getTimeline(@RequestParam(value = "limit", defaultValue = "20") Integer limit) {
+        Long userId = UserContext.getUserId();
+        return R.ok(workplaceService.getTimeline(userId, limit));
+    }
 }

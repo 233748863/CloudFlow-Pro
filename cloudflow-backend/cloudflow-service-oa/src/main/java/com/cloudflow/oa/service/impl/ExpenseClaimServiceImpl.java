@@ -11,11 +11,14 @@ import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
 import com.cloudflow.oa.domain.VehicleExpense;
+import com.cloudflow.oa.domain.dto.BusinessRuleDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.IExpenseClaimService;
+import com.cloudflow.oa.service.IOaTraceEventService;
+import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +51,12 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     
     @Autowired
     private RemoteWorkflowService remoteWorkflowService;
+
+    @Autowired
+    private RemoteBusinessRuleService remoteBusinessRuleService;
+
+    @Autowired
+    private IOaTraceEventService traceEventService;
 
     @Override
     public Page<BizExpenseClaim> queryPage(Integer pageNum, Integer pageSize, String status, String category, Long userId) {
@@ -153,6 +162,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         if (claim.getUserId() == null) {
             claim.setUserId(UserContext.getUserId());
         }
+
+        evaluateExpenseAmountRule(claim);
         
         // 更新状态为审批中
         claim.setStatus("PENDING");
@@ -323,5 +334,39 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                     OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(item.getReceiptUrl(), "报销明细凭证附件")
             );
         }
+    }
+
+    private void evaluateExpenseAmountRule(BizExpenseClaim claim) {
+        BusinessRuleDTO rule = getRule("oa.expense.amount.limit");
+        if (rule == null || rule.getThresholdValue() == null || !Integer.valueOf(1).equals(rule.getEnabled())) {
+            return;
+        }
+        BigDecimal totalAmount = claim.getTotalAmount() == null ? BigDecimal.ZERO : claim.getTotalAmount();
+        if (totalAmount.compareTo(rule.getThresholdValue()) <= 0) {
+            return;
+        }
+        String effect = StringUtils.hasText(rule.getEffect()) ? rule.getEffect().trim().toUpperCase() : "WARN";
+        String message = "报销金额 " + totalAmount + " 超过规则阈值 " + rule.getThresholdValue();
+        if ("BLOCK".equals(effect)) {
+            throw new IllegalArgumentException(message);
+        }
+        if ("WARN".equals(effect)) {
+            traceEventService.record(null, "EXPENSE_CLAIM", claim.getId(), "BUSINESS_RULE", null,
+                    "RULE_WARN", "报销规则预警", message,
+                    UserContext.getUserId(), UserContext.getUserName(), null);
+            log.warn("报销申请触发规则预警，claimId={}, {}", claim.getId(), message);
+        }
+    }
+
+    private BusinessRuleDTO getRule(String ruleCode) {
+        try {
+            R<BusinessRuleDTO> result = remoteBusinessRuleService.getEffectiveRule(ruleCode);
+            if (result != null && result.isSuccess()) {
+                return result.getData();
+            }
+        } catch (Exception e) {
+            log.warn("读取业务规则失败，ruleCode={}", ruleCode, e);
+        }
+        return null;
     }
 }

@@ -2,22 +2,31 @@ package com.cloudflow.oa.service.impl;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.oa.domain.OaRiskAlert;
+import com.cloudflow.oa.domain.OaTraceEvent;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.dto.WorkplaceSummaryDTO;
 import com.cloudflow.oa.domain.dto.RecentTaskDTO;
+import com.cloudflow.oa.service.IOaRiskAlertService;
+import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.service.IWorkplaceService;
 import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.service.ISysScheduleService;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.cloudflow.oa.util.OaContractConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,11 +50,19 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     
     @Autowired
     private ISysAnnouncementService announcementService;
+
+    @Autowired
+    private IOaRiskAlertService riskAlertService;
+
+    @Autowired
+    private IOaTraceEventService traceEventService;
     
     @Override
     public WorkplaceSummaryDTO getWorkplaceSummary(Long userId) {
         WorkplaceSummaryDTO summary = new WorkplaceSummaryDTO();
-        
+        Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth = new HashMap<>();
+        summary.setServiceHealth(serviceHealth);
+
         try {
             // 1. 用户信息 (从SecurityUtils获取当前用户信息)
             WorkplaceSummaryDTO.UserInfo userInfo = new WorkplaceSummaryDTO.UserInfo();
@@ -62,6 +79,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             
             // 2. 统计数据
             WorkplaceSummaryDTO.Statistics statistics = new WorkplaceSummaryDTO.Statistics();
+            WorkplaceSummaryDTO.Stats stats = new WorkplaceSummaryDTO.Stats();
             
             // 待办任务数量 - 通过远程工作流服务获取
             try {
@@ -72,43 +90,57 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                     int todoCount = counts.getOrDefault("todo", 0);
                     int doingCount = counts.getOrDefault("doing", 0);
                     statistics.setPendingTasks(todoCount + doingCount);
+                    stats.setPendingTasks(todoCount + doingCount);
+                    markService(serviceHealth, "workflow", true, "OK");
                     log.debug("待办任务数量: todo={}, doing={}, 合计={}", todoCount, doingCount, todoCount + doingCount);
                 } else {
                     log.warn("获取待办任务数量返回异常，使用默认值0");
                     statistics.setPendingTasks(0);
+                    stats.setPendingTasks(0);
+                    markService(serviceHealth, "workflow", false, "工作流统计返回异常");
                 }
             } catch (Exception e) {
                 log.warn("获取待办任务数量失败，使用默认值0", e);
                 statistics.setPendingTasks(0);
+                stats.setPendingTasks(0);
+                markService(serviceHealth, "workflow", false, "工作流服务不可用");
             }
             
             // 今日日程数量
             LocalDate today = LocalDate.now();
             String todayStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE);
+            List<SysScheduleEvent> todayEvents = new ArrayList<>();
             try {
-                List<SysScheduleEvent> todayEvents = scheduleService.getMyEvents(
+                todayEvents = scheduleService.getMyEvents(
                     userId, 
                     todayStr, 
                     todayStr
                 );
                 statistics.setTodaySchedules(todayEvents != null ? todayEvents.size() : 0);
+                stats.setTodaySchedules(todayEvents != null ? todayEvents.size() : 0);
                 log.debug("今日日程数量: {}", statistics.getTodaySchedules());
             } catch (Exception e) {
                 log.warn("获取今日日程数量失败", e);
                 statistics.setTodaySchedules(0);
+                stats.setTodaySchedules(0);
+                markService(serviceHealth, "oa.schedule", false, "日程服务不可用");
             }
             
             // 未读消息数量
             try {
                 long unreadCount = noticeService.getUnreadCount(userId);
                 statistics.setUnreadMessages((int) unreadCount);
+                stats.setUnreadMessages((int) unreadCount);
                 log.debug("未读消息数量: {}", statistics.getUnreadMessages());
             } catch (Exception e) {
                 log.warn("获取未读消息数量失败", e);
                 statistics.setUnreadMessages(0);
+                stats.setUnreadMessages(0);
+                markService(serviceHealth, "oa.notice", false, "通知服务不可用");
             }
             
             summary.setStatistics(statistics);
+            summary.setStats(stats);
         
             // 3. 快捷操作
             List<WorkplaceSummaryDTO.QuickAction> quickActions = new ArrayList<>();
@@ -140,9 +172,9 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             summary.setQuickActions(quickActions);
         
             // 4. 最新公告 (最多3条)
+            List<WorkplaceSummaryDTO.AnnouncementItem> announcements = new ArrayList<>();
             try {
                 List<SysAnnouncement> allAnnouncements = announcementService.getMyAnnouncements(userId);
-                List<WorkplaceSummaryDTO.AnnouncementItem> announcements = new ArrayList<>();
                 
                 if (allAnnouncements != null && !allAnnouncements.isEmpty()) {
                     announcements = allAnnouncements.stream()
@@ -158,12 +190,32 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                             return dto;
                         })
                         .collect(Collectors.toList());
+                    stats.setUnreadAnnouncements((int) allAnnouncements.stream()
+                            .filter(announcement -> !Boolean.TRUE.equals(announcement.getIsRead()))
+                            .count());
+                } else {
+                    stats.setUnreadAnnouncements(0);
                 }
                 summary.setAnnouncements(announcements);
+                markService(serviceHealth, "oa.announcement", true, "OK");
                 log.debug("获取最新公告数量: {}", announcements.size());
             } catch (Exception e) {
                 log.warn("获取最新公告失败", e);
                 summary.setAnnouncements(new ArrayList<>());
+                stats.setUnreadAnnouncements(0);
+                markService(serviceHealth, "oa.announcement", false, "公告服务不可用");
+            }
+
+            summary.setTodayItems(buildTodayItems(todayEvents, announcements));
+            summary.setRiskItems(loadRiskItems(serviceHealth, stats));
+            List<WorkplaceSummaryDTO.ActivityItem> activities = getTimeline(userId, 8);
+            stats.setRecentActivities(activities.size());
+            summary.setRecentActivities(activities);
+            if (!serviceHealth.containsKey("oa")) {
+                markService(serviceHealth, "oa", true, "OK");
+            }
+            if (!serviceHealth.containsKey("hr")) {
+                markService(serviceHealth, "hr", true, "未接入HR提醒数据源");
             }
             
         } catch (Exception e) {
@@ -171,8 +223,13 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             // 返回空数据而不是抛出异常，确保前端能正常显示
             summary.setUser(new WorkplaceSummaryDTO.UserInfo());
             summary.setStatistics(new WorkplaceSummaryDTO.Statistics());
+            summary.setStats(new WorkplaceSummaryDTO.Stats());
             summary.setQuickActions(new ArrayList<>());
             summary.setAnnouncements(new ArrayList<>());
+            summary.setTodayItems(new ArrayList<>());
+            summary.setRiskItems(new ArrayList<>());
+            summary.setRecentActivities(new ArrayList<>());
+            markService(serviceHealth, "oa", false, "工作台聚合失败");
         }
         
         return summary;
@@ -226,5 +283,141 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             log.error("获取最近任务失败", e);
             return new ArrayList<>();
         }
+    }
+
+    @Override
+    public List<WorkplaceSummaryDTO.ActivityItem> getTimeline(Long userId, Integer limit) {
+        int safeLimit = normalizeLimit(limit, 20);
+        try {
+            return traceEventService.listRecent(safeLimit).stream()
+                    .map(this::toActivityItem)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取工作台最近动态失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.TodayItem> buildTodayItems(List<SysScheduleEvent> events,
+                                                                List<WorkplaceSummaryDTO.AnnouncementItem> announcements) {
+        List<WorkplaceSummaryDTO.TodayItem> items = new ArrayList<>();
+        if (events != null) {
+            for (SysScheduleEvent event : events) {
+                WorkplaceSummaryDTO.TodayItem item = new WorkplaceSummaryDTO.TodayItem();
+                item.setId("schedule-" + event.getEventId());
+                item.setType("SCHEDULE");
+                item.setTitle(event.getTitle());
+                item.setDescription(event.getDescription());
+                item.setTime(event.getStartTime() != null ? event.getStartTime().toString() : null);
+                item.setStatus("TODO");
+                item.setPath(event.getRoomId() != null ? "/meeting-room" : "/calendar");
+                items.add(item);
+            }
+        }
+        if (announcements != null) {
+            for (WorkplaceSummaryDTO.AnnouncementItem announcement : announcements) {
+                if (items.size() >= 8) {
+                    break;
+                }
+                WorkplaceSummaryDTO.TodayItem item = new WorkplaceSummaryDTO.TodayItem();
+                item.setId("announcement-" + announcement.getId());
+                item.setType("ANNOUNCEMENT");
+                item.setTitle(announcement.getTitle());
+                item.setDescription(Boolean.TRUE.equals(announcement.getIsRead()) ? "已读公告" : "未读公告");
+                item.setTime(announcement.getPublishTime());
+                item.setStatus(Boolean.TRUE.equals(announcement.getIsRead()) ? "DONE" : "TODO");
+                item.setPath("/announcements");
+                items.add(item);
+            }
+        }
+        return items.stream()
+                .sorted(Comparator.comparing(WorkplaceSummaryDTO.TodayItem::getTime,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .limit(8)
+                .collect(Collectors.toList());
+    }
+
+    private List<WorkplaceSummaryDTO.RiskItem> loadRiskItems(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,
+                                                             WorkplaceSummaryDTO.Stats stats) {
+        try {
+            List<OaRiskAlert> risks = riskAlertService.list(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaRiskAlert>()
+                    .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING)
+                    .orderByDesc(OaRiskAlert::getDetectedTime)
+                    .orderByDesc(OaRiskAlert::getId)
+                    .last("LIMIT 8"));
+            stats.setOpenRisks(risks.size());
+            markService(serviceHealth, "oa.risk", true, "OK");
+            return risks.stream().map(this::toRiskItem).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取风险提醒失败", e);
+            stats.setOpenRisks(0);
+            markService(serviceHealth, "oa.risk", false, "风险服务不可用");
+            return new ArrayList<>();
+        }
+    }
+
+    private WorkplaceSummaryDTO.RiskItem toRiskItem(OaRiskAlert risk) {
+        WorkplaceSummaryDTO.RiskItem item = new WorkplaceSummaryDTO.RiskItem();
+        item.setId(risk.getId());
+        item.setBusinessType(risk.getBusinessType());
+        item.setBusinessId(risk.getBusinessId());
+        item.setTitle(risk.getRiskName());
+        item.setLevel(risk.getRiskLevel());
+        item.setStatus(risk.getRiskStatus());
+        item.setOwnerName(risk.getOwnerName());
+        item.setPath(resolveBusinessPath(risk.getBusinessType(), risk.getBusinessId()));
+        return item;
+    }
+
+    private WorkplaceSummaryDTO.ActivityItem toActivityItem(OaTraceEvent event) {
+        WorkplaceSummaryDTO.ActivityItem item = new WorkplaceSummaryDTO.ActivityItem();
+        item.setId(String.valueOf(event.getId()));
+        item.setType(event.getEventType());
+        item.setTitle(event.getEventTitle());
+        item.setContent(event.getEventContent());
+        item.setOperatorName(event.getOperatorName());
+        item.setEventTime(event.getEventTime() == null ? LocalDateTime.now() : event.getEventTime());
+        item.setPath(resolveBusinessPath(event.getBusinessType(), event.getBusinessId()));
+        return item;
+    }
+
+    private String resolveBusinessPath(String businessType, Long businessId) {
+        if (!StringUtils.hasText(businessType) || businessId == null) {
+            return "/dashboard";
+        }
+        String normalized = businessType.trim().toUpperCase();
+        if (OaContractConstants.BUSINESS_TYPE_CONTRACT.equals(normalized)) {
+            return "/contract/" + businessId;
+        }
+        if ("ASSET".equals(normalized)) {
+            return "/asset/" + businessId;
+        }
+        if ("VEHICLE".equals(normalized)) {
+            return "/vehicle/" + businessId;
+        }
+        if ("LICENSE".equals(normalized)) {
+            return "/license/" + businessId;
+        }
+        if ("EXPENSE_CLAIM".equals(normalized) || "EXPENSE".equals(normalized)) {
+            return "/expense/claim/" + businessId;
+        }
+        return "/dashboard";
+    }
+
+    private void markService(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,
+                             String name,
+                             boolean healthy,
+                             String message) {
+        WorkplaceSummaryDTO.ServiceStatus status = new WorkplaceSummaryDTO.ServiceStatus();
+        status.setStatus(healthy ? "UP" : "DOWN");
+        status.setMessage(message);
+        serviceHealth.put(name, status);
+    }
+
+    private int normalizeLimit(Integer limit, int defaultLimit) {
+        if (limit == null || limit <= 0) {
+            return defaultLimit;
+        }
+        return Math.min(limit, 100);
     }
 }

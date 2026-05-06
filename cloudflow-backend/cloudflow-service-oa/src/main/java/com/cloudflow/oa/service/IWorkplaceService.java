@@ -27,4 +27,13 @@ public interface IWorkplaceService {
      * @return 最近任务列表
      */
     List<RecentTaskDTO> getRecentTasks(Long userId, Integer limit);
+
+    /**
+     * 获取工作台最近动态。
+     *
+     * @param userId 用户ID
+     * @param limit 返回数量限制
+     * @return 最近动态列表
+     */
+    List<WorkplaceSummaryDTO.ActivityItem> getTimeline(Long userId, Integer limit);
 }

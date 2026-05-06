@@ -19,6 +19,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import BusinessTimeline from '@/components/common/BusinessTimeline';
 import {
   Button,
   DatePicker,
@@ -868,6 +869,8 @@ const VehicleList: React.FC = () => {
                 </div>
               </DetailSection>
             ) : null}
+
+            <BusinessTimeline businessType="VEHICLE" businessId={detailVehicle.vehicleId} />
           </>
         ) : null}
       </BaseDialog>

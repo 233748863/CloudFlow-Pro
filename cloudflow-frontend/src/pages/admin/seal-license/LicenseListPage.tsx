@@ -1,10 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { BadgeCheck, Bell, Edit, FileClock, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
+import { BadgeCheck, Bell, Edit, Eye, FileClock, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
+import BusinessTimeline from '@/components/common/BusinessTimeline';
 import FileUpload from '@/components/FileUpload';
 import { licenseApi, licenseRenewalApi, OaLicense, OaLicenseRenewal } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
@@ -118,6 +119,13 @@ const TableStateRow: React.FC<{ colSpan: number; title: string }> = ({ colSpan, 
   </tr>
 );
 
+const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ label, value }) => (
+  <div className="border-b border-slate-100 pb-3 dark:border-slate-800">
+    <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
+    <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+  </div>
+);
+
 export const LicenseListPage: React.FC = () => {
   const [rows, setRows] = useState<OaLicense[]>([]);
   const [total, setTotal] = useState(0);
@@ -125,6 +133,7 @@ export const LicenseListPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaLicense>(emptyForm);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [detailLicense, setDetailLicense] = useState<OaLicense | null>(null);
   const [renewalDialogOpen, setRenewalDialogOpen] = useState(false);
   const [renewalLicense, setRenewalLicense] = useState<OaLicense | null>(null);
   const [renewalForm, setRenewalForm] = useState<OaLicenseRenewal>(emptyRenewalForm);
@@ -370,6 +379,7 @@ export const LicenseListPage: React.FC = () => {
                           align="end"
                           iconOnly
                           actions={[
+                            { label: '详情', icon: <Eye size={14} />, onClick: () => setDetailLicense(item), tone: 'neutral' },
                             { label: '编辑', icon: <Edit size={14} />, onClick: () => { setForm({ ...item }); setDialogOpen(true); }, tone: 'primary' },
                             { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !item.expireDate },
                             { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' },
@@ -429,6 +439,41 @@ export const LicenseListPage: React.FC = () => {
           <div className="space-y-2"><Label>证照附件</Label><FileUpload value={form.attachmentUrl || ''} onChange={(urls) => setForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} /></div>
           <div className="space-y-2"><Label>备注</Label><Textarea className="min-h-[100px] resize-none" value={form.remark || ''} onChange={(event) => setForm((prev) => ({ ...prev, remark: event.target.value }))} /></div>
         </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={Boolean(detailLicense)}
+        title={detailLicense?.licenseName || '证照详情'}
+        onClose={() => setDetailLicense(null)}
+        width="wide"
+        headerAside={detailLicense ? getStatusBadge(detailLicense.status) : null}
+        footer={<Button variant="outline" onClick={() => setDetailLicense(null)}>关闭</Button>}
+      >
+        {detailLicense ? (
+          <div className="space-y-4">
+            <div className="grid gap-x-6 gap-y-3 md:grid-cols-2 xl:grid-cols-3">
+              <DetailField label="证照编码" value={detailLicense.licenseCode} />
+              <DetailField label="证照类型" value={TYPE_LABELS[detailLicense.licenseType] || detailLicense.licenseType} />
+              <DetailField label="证照编号" value={detailLicense.licenseNo} />
+              <DetailField label="签发机构" value={detailLicense.issuer} />
+              <DetailField label="签发日期" value={detailLicense.issueDate} />
+              <DetailField label="到期日期" value={detailLicense.expireDate} />
+              <DetailField label="保管人" value={detailLicense.keeperName} />
+              <DetailField label="存放位置" value={detailLicense.location} />
+              <DetailField label="创建时间" value={detailLicense.createTime} />
+            </div>
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">附件</div>
+              <AttachmentLinks value={detailLicense.attachmentUrl} />
+            </div>
+            {detailLicense.remark ? (
+              <div className="rounded-xl border border-slate-200 px-4 py-4 text-sm leading-6 text-slate-600 dark:border-slate-800 dark:text-slate-300">
+                {detailLicense.remark}
+              </div>
+            ) : null}
+            <BusinessTimeline businessType="LICENSE" businessId={detailLicense.licenseId} />
+          </div>
+        ) : null}
       </BaseDialog>
 
       <BaseDialog

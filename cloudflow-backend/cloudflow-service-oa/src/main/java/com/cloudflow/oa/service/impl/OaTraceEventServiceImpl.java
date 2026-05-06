@@ -80,7 +80,36 @@ public class OaTraceEventServiceImpl extends ServiceImpl<OaTraceEventMapper, OaT
                 .orderByAsc(OaTraceEvent::getId));
     }
 
+    @Override
+    public List<OaTraceEvent> listByFilter(String businessType, Long businessId, String relatedType, Long relatedId, Integer limit) {
+        int safeLimit = normalizeLimit(limit);
+        return list(new LambdaQueryWrapper<OaTraceEvent>()
+                .eq(StringUtils.hasText(businessType), OaTraceEvent::getBusinessType, businessType)
+                .eq(businessId != null, OaTraceEvent::getBusinessId, businessId)
+                .eq(StringUtils.hasText(relatedType), OaTraceEvent::getRelatedType, relatedType)
+                .eq(relatedId != null, OaTraceEvent::getRelatedId, relatedId)
+                .orderByAsc(OaTraceEvent::getEventTime)
+                .orderByAsc(OaTraceEvent::getId)
+                .last("LIMIT " + safeLimit));
+    }
+
+    @Override
+    public List<OaTraceEvent> listRecent(Integer limit) {
+        int safeLimit = normalizeLimit(limit);
+        return list(new LambdaQueryWrapper<OaTraceEvent>()
+                .orderByDesc(OaTraceEvent::getEventTime)
+                .orderByDesc(OaTraceEvent::getId)
+                .last("LIMIT " + safeLimit));
+    }
+
     private Long resolveTenantId() {
         return UserContext.getTenantId() == null ? OaBorrowConstants.DEFAULT_TENANT_ID : UserContext.getTenantId();
+    }
+
+    private int normalizeLimit(Integer limit) {
+        if (limit == null || limit <= 0) {
+            return 20;
+        }
+        return Math.min(limit, 100);
     }
 }

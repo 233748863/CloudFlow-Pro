@@ -1,12 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
+import { AlertTriangle, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
+import BusinessTimeline from '@/components/common/BusinessTimeline';
 import FileUpload from '@/components/FileUpload';
-import { contractApi, OaContract, OaRiskAlert, OaTraceEvent } from '@/services/api/contractRisk';
+import { contractApi, OaContract, OaRiskAlert } from '@/services/api/contractRisk';
 import { OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
@@ -109,7 +110,6 @@ export const ContractPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaContract>(emptyForm);
   const [detail, setDetail] = useState<OaContract | null>(null);
-  const [timeline, setTimeline] = useState<OaTraceEvent[]>([]);
   const [risks, setRisks] = useState<OaRiskAlert[]>([]);
   const [sealApplications, setSealApplications] = useState<OaSealApplication[]>([]);
   const [linkSealId, setLinkSealId] = useState('');
@@ -162,19 +162,16 @@ export const ContractPage: React.FC = () => {
 
   const openDetail = async (item: OaContract) => {
     setDetail(item);
-    setTimeline([]);
     setRisks([]);
     setLinkSealId('');
     setDetailLoading(true);
     try {
-      const [contract, timelineResult, riskResult, sealResult] = await Promise.all([
+      const [contract, riskResult, sealResult] = await Promise.all([
         contractApi.getInfo(item.contractId!),
-        contractApi.timeline(item.contractId!),
         contractApi.risks(item.contractId!),
         sealApplicationApi.list({ pageNum: 1, pageSize: 50, status: 'APPROVED' }),
       ]);
       setDetail(contract);
-      setTimeline(timelineResult);
       setRisks(riskResult);
       setSealApplications(normalizeRows(sealResult));
     } catch (error) {
@@ -511,28 +508,7 @@ export const ContractPage: React.FC = () => {
               ) : <div className="py-6 text-center text-sm text-slate-400">暂无风险记录</div>}
             </div>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
-              <div className="mb-3 text-sm font-medium text-slate-900 dark:text-slate-100">链路时间线</div>
-              {timeline.length ? (
-                <div className="space-y-3">
-                  {timeline.map((event) => (
-                    <div key={event.id} className="flex gap-3 rounded-lg border border-slate-100 px-3 py-3 dark:border-slate-800">
-                      <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-50 text-cyan-600 dark:bg-cyan-950/30 dark:text-cyan-200">
-                        <CheckCircle2 size={14} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{event.eventTitle}</div>
-                          <div className="text-xs text-slate-400">{formatDateTimeDisplay(event.eventTime)}</div>
-                        </div>
-                        <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{event.eventContent || '-'}</div>
-                        <div className="mt-1 text-xs text-slate-400">{event.operatorName || 'system'} / {event.eventType}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : <div className="py-6 text-center text-sm text-slate-400">暂无链路事件</div>}
-            </div>
+            <BusinessTimeline businessType="CONTRACT" businessId={detail.contractId} />
           </div>
         ) : null}
       </BaseDialog>

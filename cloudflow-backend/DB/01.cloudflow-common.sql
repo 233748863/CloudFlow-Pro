@@ -333,6 +333,29 @@ CREATE TABLE sys_config (
   KEY idx_config_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='系统参数配置表';
 
+-- 16. 业务规则表
+DROP TABLE IF EXISTS sys_business_rule;
+CREATE TABLE sys_business_rule (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '规则ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  rule_code         VARCHAR(100)    NOT NULL COMMENT '规则编码',
+  rule_name         VARCHAR(100)    NOT NULL COMMENT '规则名称',
+  module            VARCHAR(32)     NOT NULL COMMENT '所属模块',
+  threshold_value   DECIMAL(18,2)   DEFAULT NULL COMMENT '阈值',
+  effect            VARCHAR(16)     NOT NULL DEFAULT 'WARN' COMMENT '命中效果：BLOCK/WARN/PASS',
+  enabled           TINYINT(1)      NOT NULL DEFAULT 1 COMMENT '是否启用：1启用 0停用',
+  priority          INT             NOT NULL DEFAULT 100 COMMENT '优先级，数值越小越优先',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_rule_tenant_code (tenant_id, rule_code),
+  KEY idx_rule_code_enabled (tenant_id, rule_code, enabled),
+  KEY idx_rule_module_enabled (module, enabled)
+) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='业务规则表';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================

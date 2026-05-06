@@ -19,4 +19,8 @@ public interface IOaTraceEventService extends IService<OaTraceEvent> {
     List<OaTraceEvent> listByBusiness(String businessType, Long businessId);
 
     List<OaTraceEvent> listByRelated(String relatedType, Long relatedId);
+
+    List<OaTraceEvent> listByFilter(String businessType, Long businessId, String relatedType, Long relatedId, Integer limit);
+
+    List<OaTraceEvent> listRecent(Integer limit);
 }

@@ -256,6 +256,11 @@ const ConfigList = React.lazy(() =>
     default: module.ConfigList,
   })),
 );
+const BusinessRulePage = React.lazy(() =>
+  import("./pages/system/BusinessRulePage").then((module) => ({
+    default: module.BusinessRulePage,
+  })),
+);
 const CacheMonitor = React.lazy(() =>
   import("./pages/system/CacheMonitor").then((module) => ({
     default: module.CacheMonitor,
@@ -1182,6 +1187,14 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <ConfigList />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/system/rules",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <BusinessRulePage />
               </Suspense>
             ),
           },

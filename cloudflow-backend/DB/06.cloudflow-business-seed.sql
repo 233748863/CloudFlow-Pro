@@ -33,8 +33,12 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 513
-   OR menu_id BETWEEN 600 AND 621
+   OR menu_id BETWEEN 600 AND 632
    OR menu_id BETWEEN 700 AND 739;
+
+DELETE FROM cloud_flow_db.sys_business_rule
+WHERE tenant_id = 100000
+  AND rule_code IN ('hr.leave.quota.limit', 'oa.expense.amount.limit', 'oa.contract.risk.threshold');
 
 DELETE FROM cloud_flow_db.sys_post
 WHERE post_id BETWEEN 1 AND 11;
@@ -790,6 +794,12 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(616, '登录日志',   6, 13, '/system
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(617, '在线用户',   6, 14, '/system/online',      'pages/system/OnlineUserPage',   NULL, 0, 0, 'C', '0', '0', 'system:online:list',       'Monitor',         'admin', NOW(), '', null, '在线用户管理');
 
+INSERT INTO cloud_flow_db.sys_menu VALUES(630, '规则中心',   6, 15, '/system/rules',       'pages/system/BusinessRulePage', NULL, 0, 0, 'C', '0', '0', 'system:rule:list',         'ListChecks',      'admin', NOW(), '', null, '业务规则阈值配置');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(631, '规则编辑',   630, 1, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:rule:edit',         '#',               'admin', NOW(), '', null, '业务规则编辑权限');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(632, '规则启停',   630, 2, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:rule:enabled',      '#',               'admin', NOW(), '', null, '业务规则启停权限');
+
 INSERT INTO cloud_flow_db.sys_menu VALUES(7,   '人力资源',   0, 7, 'hr',                   NULL,                             NULL, 0, 0, 'M', '0', '0', '',                     'Users',           'admin', NOW(), '', null, '人力资源目录');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(720, 'HR工作台',   7, 1, '/hr/dashboard',       'pages/hr/HrDashboardPage',      NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view',    'LayoutDashboard', 'admin', NOW(), '', null, 'HR桌面端工作台');
@@ -1517,6 +1527,14 @@ INSERT INTO cloud_flow_db.sys_config VALUES(67, 100000, '网关-默认租户ID',
 INSERT INTO cloud_flow_db.sys_config VALUES(68, 100000, 'OSS-是否启用HTTPS',             'sys.oss.isHttps',               'N',        'Y', '0', 'admin', NOW(), '', null, '对象存储是否使用HTTPS协议');
 
 INSERT INTO cloud_flow_db.sys_config VALUES(69, 100000, 'OSS-默认访问策略',              'sys.oss.accessPolicy',          '1',        'Y', '0', 'admin', NOW(), '', null, '桶默认访问策略：0私有 1公共读 2公共读写');
+
+-- 13. 初始化业务规则数据
+INSERT INTO cloud_flow_db.sys_business_rule
+(tenant_id, rule_code, rule_name, module, threshold_value, effect, enabled, priority, remark, create_by, create_time, update_by, update_time)
+VALUES
+(100000, 'hr.leave.quota.limit', '请假时长阈值', 'HR', 5.00, 'WARN', 1, 10, '请假提交时超过阈值按规则效果处理', 'admin', NOW(), '', NULL),
+(100000, 'oa.expense.amount.limit', '报销金额阈值', 'OA', 5000.00, 'WARN', 1, 10, '报销提交时超过阈值按规则效果处理', 'admin', NOW(), '', NULL),
+(100000, 'oa.contract.risk.threshold', '合同高额风险阈值', 'OA', 100000.00, 'WARN', 1, 10, '合同风险扫描高额合同附件检查阈值', 'admin', NOW(), '', NULL);
 
 -- =========================================================
 -- Phase 2: 性能优化与监控告警配置（全局）

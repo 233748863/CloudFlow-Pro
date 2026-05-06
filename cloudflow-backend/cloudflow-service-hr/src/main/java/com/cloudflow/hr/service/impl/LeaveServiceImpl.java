@@ -6,7 +6,9 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.IdUtils;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.hr.client.BusinessRuleClient;
 import com.cloudflow.hr.client.WorkflowServiceClient;
+import com.cloudflow.hr.client.dto.BusinessRuleDTO;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
 import com.cloudflow.hr.config.HrWorkflowProcessKeyProperties;
 import com.cloudflow.hr.domain.dto.*;
@@ -66,6 +68,7 @@ public class LeaveServiceImpl implements LeaveService {
     private final LeaveApplicationMapper leaveApplicationMapper;
     private final EmployeeMapper employeeMapper;
     private final WorkflowServiceClient workflowServiceClient;
+    private final BusinessRuleClient businessRuleClient;
     private final ObjectMapper objectMapper;
     private final HrWorkflowProcessKeyProperties workflowProcessKeyProperties;
 
@@ -1433,6 +1436,8 @@ public class LeaveServiceImpl implements LeaveService {
         
         // 查询假期类型
         LeaveType leaveType = leaveTypeMapper.selectById(leaveApplication.getLeaveTypeId());
+
+        evaluateLeaveQuotaLimitRule(leaveApplication);
         
         // 如果需要额度，冻结额度
         if (leaveType.getNeedQuota()) {
@@ -1510,6 +1515,37 @@ public class LeaveServiceImpl implements LeaveService {
         }
         
         log.info("请假申请提交成功，ID: {}", id);
+    }
+
+    private void evaluateLeaveQuotaLimitRule(LeaveApplication leaveApplication) {
+        BusinessRuleDTO rule = getBusinessRule("hr.leave.quota.limit");
+        if (rule == null || rule.getThresholdValue() == null || !Integer.valueOf(1).equals(rule.getEnabled())) {
+            return;
+        }
+        BigDecimal duration = leaveApplication.getDuration() == null ? BigDecimal.ZERO : leaveApplication.getDuration();
+        if (duration.compareTo(rule.getThresholdValue()) <= 0) {
+            return;
+        }
+        String effect = rule.getEffect() == null ? "WARN" : rule.getEffect().trim().toUpperCase();
+        String message = "请假时长 " + duration + " 超过规则阈值 " + rule.getThresholdValue();
+        if ("BLOCK".equals(effect)) {
+            throw new HrBusinessException("LEAVE_RULE_BLOCKED", message);
+        }
+        if ("WARN".equals(effect)) {
+            log.warn("请假申请触发规则预警，applicationId={}, {}", leaveApplication.getId(), message);
+        }
+    }
+
+    private BusinessRuleDTO getBusinessRule(String ruleCode) {
+        try {
+            R<BusinessRuleDTO> result = businessRuleClient.getEffectiveRule(ruleCode);
+            if (result != null && result.isSuccess()) {
+                return result.getData();
+            }
+        } catch (Exception e) {
+            log.warn("读取业务规则失败，ruleCode={}", ruleCode, e);
+        }
+        return null;
     }
 
     @Override

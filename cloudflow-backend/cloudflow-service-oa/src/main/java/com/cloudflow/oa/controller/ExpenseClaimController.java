@@ -109,7 +109,11 @@ public class ExpenseClaimController {
     @SysLog("提交报销申请")
     @PostMapping("/submit/{id}")
     public R<Void> submit(@PathVariable Long id) {
-        return expenseClaimService.submitClaim(id) ? R.ok() : R.fail("提交失败");
+        try {
+            return expenseClaimService.submitClaim(id) ? R.ok() : R.fail("提交失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     /**
