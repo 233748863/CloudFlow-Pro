@@ -123,6 +123,7 @@ WHERE form_id IN (
 
 DELETE FROM cloud_flow_db.wf_process_definition
 WHERE definition_id IN (
+  'wf_reimburse_v2_legacy',
   'wf_reimburse',
   'wf_leave',
   'wf_contract',
@@ -175,74 +176,90 @@ WHERE id LIKE 'cat-%'
 DELETE FROM cloud_flow_db.wf_task_read
 WHERE task_id LIKE 'test_task_%'
    OR task_id LIKE 'demo_task_%'
+   OR task_id LIKE 'hotdemo_task_%'
    OR task_id LIKE 'seed_task_%';
 
 DELETE FROM cloud_flow_db.wf_task_urge
 WHERE task_id LIKE 'test_task_%'
    OR task_id LIKE 'demo_task_%'
+   OR task_id LIKE 'hotdemo_task_%'
    OR task_id LIKE 'seed_task_%';
 
 DELETE FROM cloud_flow_db.wf_task_attachment
 WHERE attachment_id LIKE 'demo_att_%'
+   OR attachment_id LIKE 'hotdemo_att_%'
    OR attachment_id LIKE 'seed_att_%';
 
 DELETE FROM cloud_flow_db.wf_task_candidate
 WHERE task_id LIKE 'demo_task_%'
+   OR task_id LIKE 'hotdemo_task_%'
    OR task_id LIKE 'seed_task_%';
 
 DELETE FROM cloud_flow_db.wf_task_delegation
 WHERE delegation_id LIKE 'demo_delegate_%'
+   OR delegation_id LIKE 'hotdemo_delegate_%'
    OR delegation_id LIKE 'seed_delegate_%';
 
 DELETE FROM cloud_flow_db.wf_task_add_sign
 WHERE add_sign_id LIKE 'demo_addsign_%'
+   OR add_sign_id LIKE 'hotdemo_addsign_%'
    OR add_sign_id LIKE 'seed_addsign_%';
 
 DELETE FROM cloud_flow_db.wf_countersign_vote
 WHERE vote_id LIKE 'demo_vote_%'
+   OR vote_id LIKE 'hotdemo_vote_%'
    OR vote_id LIKE 'seed_vote_%'
    OR countersign_id LIKE 'demo_cs_%'
+   OR countersign_id LIKE 'hotdemo_cs_%'
    OR countersign_id LIKE 'seed_cs_%'
    OR countersign_id LIKE 'cs_inst_%';
 
 DELETE FROM cloud_flow_db.wf_countersign_task
 WHERE countersign_id LIKE 'demo_cs_%'
+   OR countersign_id LIKE 'hotdemo_cs_%'
    OR countersign_id LIKE 'seed_cs_%'
    OR countersign_id LIKE 'cs_inst_%';
 
 DELETE FROM cloud_flow_db.wf_process_snapshot
 WHERE snapshot_id LIKE 'demo_snap_%'
+   OR snapshot_id LIKE 'hotdemo_snap_%'
    OR snapshot_id LIKE 'seed_snap_%';
 
 DELETE FROM cloud_flow_db.wf_node_record
 WHERE instance_id LIKE 'test_inst_%'
    OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'hotdemo_inst_%'
    OR instance_id LIKE 'seed_inst_%'
    OR instance_id LIKE 'seed_hr_inst_%';
 
 DELETE FROM cloud_flow_db.wf_process_copy
 WHERE instance_id LIKE 'test_inst_%'
    OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'hotdemo_inst_%'
    OR instance_id LIKE 'seed_inst_%'
    OR instance_id LIKE 'seed_hr_inst_%';
 
 DELETE FROM cloud_flow_db.wf_task_history
 WHERE history_id LIKE 'test_hist_%'
    OR history_id LIKE 'demo_hist_%'
+   OR history_id LIKE 'hotdemo_hist_%'
    OR history_id LIKE 'seed_hist_%';
 
 DELETE FROM cloud_flow_db.wf_task
 WHERE task_id LIKE 'test_task_%'
    OR task_id LIKE 'demo_task_%'
+   OR task_id LIKE 'hotdemo_task_%'
    OR task_id LIKE 'seed_task_%'
    OR instance_id LIKE 'test_inst_%'
    OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'hotdemo_inst_%'
    OR instance_id LIKE 'seed_inst_%'
    OR instance_id LIKE 'seed_hr_inst_%';
 
 DELETE FROM cloud_flow_db.wf_process_instance
 WHERE instance_id LIKE 'test_inst_%'
    OR instance_id LIKE 'demo_inst_%'
+   OR instance_id LIKE 'hotdemo_inst_%'
    OR instance_id LIKE 'seed_inst_%'
    OR instance_id LIKE 'seed_hr_inst_%';
 
@@ -256,11 +273,15 @@ WHERE log_id LIKE 'demo_notice_%'
 
 DELETE FROM cloud_flow_db.wf_urge_effect
 WHERE task_id LIKE 'demo_task_%'
+   OR task_id LIKE 'hotdemo_task_%'
    OR task_id LIKE 'seed_task_%';
 
 DELETE FROM cloud_flow_db.wf_notification_config
 WHERE config_id LIKE 'demo_notify_%'
    OR config_id LIKE 'seed_notify_%';
+
+DELETE FROM cloud_flow_db.wf_hot_update_record
+WHERE executed_by = 'seed.hotupdate';
 
 DELETE FROM cloud_flow_db.wf_deploy_impact
 WHERE id BETWEEN 98001 AND 98007;
@@ -1671,6 +1692,7 @@ INSERT INTO cloud_flow_db.wf_form_definition (form_id, form_name, fields_json, c
 
 -- 核心流程定义（nodes + edges）
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
+('wf_reimburse_v2_legacy', '财务报销流程（旧版）', 'biz_reimburse', 2, 'PUBLISHED', 0, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"n2","type":"APPROVAL","title":"票据与行程复核","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","REJECT","RETURN"]}},{"id":"b2","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->b2","source":"n2","target":"b2"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW()),
 ('wf_reimburse', '财务报销流程', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b1","type":"END","title":"流程结束"},{"id":"b2","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount >= 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end_b2","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end_b1","source":"b1","target":"end_b1"},{"id":"b2->end_b2","source":"b2","target":"end_b2"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
@@ -7092,6 +7114,14 @@ INSERT INTO cloud_flow_db.wf_process_instance (
  3, '王财务', 'RUNNING', DATE_SUB(NOW(), INTERVAL 7 HOUR), NULL,
  '{"paymentNo":"FK202604070011","amount":56800,"payee":"苏州云链网络科技有限公司","project":"苏州智造上线保障周"}', 'URGENT',
  'WF-FK202604070011', 102, 'wang', 'wang', DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 4 HOUR), '0'),
+('hotdemo_inst_001', 100000, 'biz_reimburse', 'wf_reimburse_v2_legacy', 'HOTUPD_EXPENSE:001', '热更新演示-兼容节点报销单',
+ 8, '前端测试', 'RUNNING', DATE_SUB(NOW(), INTERVAL 26 HOUR), NULL,
+ '{"claimNo":"HUBX202605070001","amount":3680,"category":"TRAVEL","scenario":"compatible"}', 'HIGH',
+ 'WF-HOTUP-BX-001', 106, 'test_fe', 'wang', DATE_SUB(NOW(), INTERVAL 26 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR), '0'),
+('hotdemo_inst_002', 100000, 'biz_reimburse', 'wf_reimburse_v2_legacy', 'HOTUPD_EXPENSE:002', '热更新演示-旧节点复核报销单',
+ 5, '张三', 'RUNNING', DATE_SUB(NOW(), INTERVAL 22 HOUR), NULL,
+ '{"claimNo":"HUBX202605070002","amount":4260,"category":"TRAVEL","scenario":"incompatible"}', 'NORMAL',
+ 'WF-HOTUP-BX-002', 101, 'zhang', 'wang', DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 14 HOUR), '0'),
 ('seed_hr_inst_recruit_001', 100000, 'biz_recruit', 'wf_recruit', 'recruit_2011', '前端开发工程师（交付方向）招聘申请',
  4, '赵HR', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 205 DAY), DATE_SUB(NOW(), INTERVAL 200 DAY),
  '{"requestNo":"HRRQ202509140011","position":"前端开发工程师","headcount":1}', 'NORMAL',
@@ -7132,6 +7162,10 @@ INSERT INTO cloud_flow_db.wf_task (
  DATE_SUB(NOW(), INTERVAL 24 HOUR), DATE_ADD(NOW(), INTERVAL 1 DAY)),
 ('seed_task_payment_ops_001', 100000, 'seed_inst_payment_ops_001', 'b2', '总经理审批', 1, 'Admin', 'TODO', 'URGENT',
  DATE_SUB(NOW(), INTERVAL 4 HOUR), DATE_ADD(NOW(), INTERVAL 12 HOUR)),
+('hotdemo_task_001', 100000, 'hotdemo_inst_001', 'b2', '财务总监审批', 3, '王财务', 'TODO', 'HIGH',
+ DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_ADD(NOW(), INTERVAL 18 HOUR)),
+('hotdemo_task_002', 100000, 'hotdemo_inst_002', 'n2', '票据与行程复核', 3, '王财务', 'TODO', 'NORMAL',
+ DATE_SUB(NOW(), INTERVAL 14 HOUR), DATE_ADD(NOW(), INTERVAL 10 HOUR)),
 ('seed_task_hr_att_001', 100000, 'seed_hr_inst_att_001', 'n1', '直属上级审批', 2, '李经理', 'TODO', 'NORMAL',
  DATE_SUB(NOW(), INTERVAL 20 HOUR), DATE_ADD(NOW(), INTERVAL 8 HOUR)),
 ('seed_task_hr_leave_001', 100000, 'seed_hr_inst_leave_001', 'n2', 'HR备案', 4, '赵HR', 'TODO', 'NORMAL',
@@ -7165,6 +7199,14 @@ INSERT INTO cloud_flow_db.wf_task_history (
  3, '王财务', 'SUBMIT', '提交上线保障周尾款付款申请。', 120, DATE_SUB(NOW(), INTERVAL 7 HOUR)),
 ('seed_hist_payment_ops_002', 100000, 'seed_task_done_payment_ops_002', 'seed_inst_payment_ops_001', '财务主管审批', 'n1',
  3, '王财务', 'APPROVE', '付款资料齐全，提交总经理审批。', 1800, DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+('hotdemo_hist_001', 100000, 'hotdemo_task_done_001', 'hotdemo_inst_001', '提交报销', 'root',
+ 8, '前端测试', 'SUBMIT', '提交热更新兼容场景报销单。', 120, DATE_SUB(NOW(), INTERVAL 26 HOUR)),
+('hotdemo_hist_002', 100000, 'hotdemo_task_done_002', 'hotdemo_inst_001', '直属上级审批', 'n1',
+ 2, '李经理', 'APPROVE', '差旅真实性已确认，提交财务总监审批。', 4200, DATE_SUB(NOW(), INTERVAL 18 HOUR)),
+('hotdemo_hist_003', 100000, 'hotdemo_task_done_003', 'hotdemo_inst_002', '提交报销', 'root',
+ 5, '张三', 'SUBMIT', '提交热更新旧节点场景报销单。', 120, DATE_SUB(NOW(), INTERVAL 22 HOUR)),
+('hotdemo_hist_004', 100000, 'hotdemo_task_done_004', 'hotdemo_inst_002', '直属上级审批', 'n1',
+ 2, '李经理', 'APPROVE', '主管审批通过，进入票据与行程复核。', 3600, DATE_SUB(NOW(), INTERVAL 14 HOUR)),
 ('seed_hist_hr_recruit_001', 100000, 'seed_task_done_hr_recruit_001', 'seed_hr_inst_recruit_001', '提交招聘需求', 'root',
  4, '赵HR', 'SUBMIT', '提交交付方向前端工程师招聘需求。', 120, DATE_SUB(NOW(), INTERVAL 205 DAY)),
 ('seed_hist_hr_recruit_002', 100000, 'seed_task_done_hr_recruit_002', 'seed_hr_inst_recruit_001', '部门总监审批', 'n1',
@@ -7259,6 +7301,18 @@ INSERT INTO cloud_flow_db.wf_node_record (
  DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 4 HOUR), 7200000, '{"decision":"APPROVE"}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 4 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR)),
 (100000, 'seed_inst_payment_ops_001', 'biz_payment', 'b2', '总经理审批', 'APPROVAL', 'RUNNING', 1, 'Admin',
  DATE_SUB(NOW(), INTERVAL 4 HOUR), NULL, NULL, '{"contract":"上线保障周服务合同"}', 'NODE_CREATED', DATE_SUB(NOW(), INTERVAL 4 HOUR), DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+(100000, 'hotdemo_inst_001', 'biz_reimburse', 'root', '提交报销', 'START', 'COMPLETED', 8, '前端测试',
+ DATE_SUB(NOW(), INTERVAL 26 HOUR), DATE_SUB(NOW(), INTERVAL 26 HOUR) + INTERVAL 2 MINUTE, 120000, '{"amount":3680.00}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 26 HOUR), DATE_SUB(NOW(), INTERVAL 26 HOUR)),
+(100000, 'hotdemo_inst_001', 'biz_reimburse', 'n1', '直属上级审批', 'APPROVAL', 'COMPLETED', 2, '李经理',
+ DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR), 14400000, '{"decision":"APPROVE"}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 22 HOUR)),
+(100000, 'hotdemo_inst_001', 'biz_reimburse', 'b2', '财务总监审批', 'APPROVAL', 'RUNNING', 3, '王财务',
+ DATE_SUB(NOW(), INTERVAL 18 HOUR), NULL, NULL, '{"compatibility":"READY"}', 'NODE_CREATED', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR)),
+(100000, 'hotdemo_inst_002', 'biz_reimburse', 'root', '提交报销', 'START', 'COMPLETED', 5, '张三',
+ DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 22 HOUR) + INTERVAL 2 MINUTE, 120000, '{"amount":4260.00}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 22 HOUR), DATE_SUB(NOW(), INTERVAL 22 HOUR)),
+(100000, 'hotdemo_inst_002', 'biz_reimburse', 'n1', '直属上级审批', 'APPROVAL', 'COMPLETED', 2, '李经理',
+ DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 14 HOUR), 14400000, '{"decision":"APPROVE"}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 14 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR)),
+(100000, 'hotdemo_inst_002', 'biz_reimburse', 'n2', '票据与行程复核', 'APPROVAL', 'RUNNING', 3, '王财务',
+ DATE_SUB(NOW(), INTERVAL 14 HOUR), NULL, NULL, '{"compatibility":"LEGACY_ONLY"}', 'NODE_CREATED', DATE_SUB(NOW(), INTERVAL 14 HOUR), DATE_SUB(NOW(), INTERVAL 14 HOUR)),
 (100000, 'seed_hr_inst_att_001', 'attendance_appeal', 'root', '提交申请', 'START', 'COMPLETED', 8, '前端测试',
  DATE_SUB(NOW(), INTERVAL 20 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR) + INTERVAL 1 MINUTE, 60000, '{"type":"SUPPLEMENT"}', 'NODE_COMPLETED', DATE_SUB(NOW(), INTERVAL 20 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR)),
 (100000, 'seed_hr_inst_att_001', 'attendance_appeal', 'n1', '直属上级审批', 'APPROVAL', 'RUNNING', 2, '李经理',
@@ -8531,6 +8585,17 @@ INSERT INTO cloud_flow_db.wf_audit_log (
 ('seed_audit_006', 'DEPLOY', 'workflow_template', 'seed_tpl_customer_renewal_001', '重点客户续约评审', '12', '郑雅宁', DATE_SUB(NOW(), INTERVAL 6 DAY),
  '重点客户续约流程标准化，需要统一客户成功、销售、财务和总经理审批节点。', '发布V1版本，并同步续约评审说明、影响分析和审批通知。', 'SUCCESS', NULL, '10.10.0.53',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36', 100000);
+
+INSERT INTO cloud_flow_db.wf_hot_update_record (
+  process_key, from_version, to_version, migration_mode, total_instances, migrated_count,
+  skipped_count, failed_count, executed_by, executed_at, details_json, tenant_id
+) VALUES
+('biz_reimburse', 2, 3, 'COMPATIBLE', 2, 1, 1, 0, 'seed.hotupdate', DATE_SUB(NOW(), INTERVAL 9 DAY),
+ '[{"instanceId":"hotdemo_hist_inst_001","processNo":"WF-HOTUP-BX-101","currentNodeKey":"b2","currentNodeTitle":"财务总监审批","status":"MIGRATED"},{"instanceId":"hotdemo_hist_inst_002","processNo":"WF-HOTUP-BX-102","currentNodeKey":"n2","currentNodeTitle":"票据与行程复核","status":"SKIPPED","reason":"当前节点 [n2] 在新版本中不存在"}]', 100000),
+('biz_reimburse', 2, 3, 'FORCE', 2, 1, 0, 1, 'seed.hotupdate', DATE_SUB(NOW(), INTERVAL 7 DAY),
+ '[{"instanceId":"hotdemo_hist_inst_011","processNo":"WF-HOTUP-BX-111","currentNodeKey":"b2","currentNodeTitle":"财务总监审批","status":"MIGRATED"},{"instanceId":"hotdemo_hist_inst_012","processNo":"WF-HOTUP-BX-112","currentNodeKey":"n2","currentNodeTitle":"票据与行程复核","status":"FAILED","reason":"强制模式：节点 [n2] 不兼容，实例已终止"}]', 100000),
+('biz_reimburse', 2, 3, 'RESTART', 2, 2, 0, 0, 'seed.hotupdate', DATE_SUB(NOW(), INTERVAL 4 DAY),
+ '[{"instanceId":"hotdemo_hist_inst_021","processNo":"WF-HOTUP-BX-121","currentNodeKey":"b2","currentNodeTitle":"财务总监审批","status":"RESTARTED","reason":"重启模式：旧实例已终止，需手动用新版本重新发起"},{"instanceId":"hotdemo_hist_inst_022","processNo":"WF-HOTUP-BX-122","currentNodeKey":"n2","currentNodeTitle":"票据与行程复核","status":"RESTARTED","reason":"重启模式：旧实例已终止，需手动用新版本重新发起"}]', 100000);
 
 -- =========================================================
 -- 工作流监控数据回填：从模拟流程实例、任务和节点轨迹派生监控表

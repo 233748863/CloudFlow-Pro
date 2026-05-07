@@ -711,6 +711,28 @@ CREATE TABLE wf_deploy_impact (
   KEY idx_tenant_id (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发布影响表';
 
+--
+DROP TABLE IF EXISTS wf_hot_update_record;
+CREATE TABLE wf_hot_update_record (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  process_key       VARCHAR(128)    NOT NULL COMMENT '流程Key',
+  from_version      INT             NOT NULL COMMENT '源版本号',
+  to_version        INT             NOT NULL COMMENT '目标版本号',
+  migration_mode    VARCHAR(32)     NOT NULL COMMENT '迁移模式: COMPATIBLE/FORCE/RESTART',
+  total_instances   INT             DEFAULT 0 COMMENT '受影响实例总数',
+  migrated_count    INT             DEFAULT 0 COMMENT '成功迁移数',
+  skipped_count     INT             DEFAULT 0 COMMENT '跳过数',
+  failed_count      INT             DEFAULT 0 COMMENT '失败数',
+  executed_by       VARCHAR(64)     DEFAULT NULL COMMENT '执行人',
+  executed_at       DATETIME        DEFAULT NULL COMMENT '执行时间',
+  details_json      TEXT            DEFAULT NULL COMMENT '迁移详情JSON',
+  tenant_id         BIGINT(20)      DEFAULT NULL COMMENT '租户ID',
+  PRIMARY KEY (id),
+  KEY idx_process_key (process_key),
+  KEY idx_executed_at (executed_at),
+  KEY idx_tenant_id (tenant_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流热更新记录';
+
 -- =========================================================
 --
 -- =========================================================

@@ -1003,6 +1003,109 @@ export async function permanentDeleteWorkflows(
   });
 }
 
+// ==================== 流程模拟测试 ====================
+
+export interface SimulationRequest {
+  definitionId: string;
+  variables?: Record<string, unknown>;
+  simulateAllBranches?: boolean;
+  maxDepth?: number;
+}
+
+export interface SimulationNodeDetail {
+  nodeId: string;
+  nodeType: string;
+  title: string;
+  reached: boolean;
+  conditionResult?: boolean;
+  resolvedAssignees: string[];
+  branchTaken?: string;
+  warnings: string[];
+}
+
+export interface SimulationPath {
+  nodeIds: string[];
+  nodeTitles: string[];
+  terminationType: string;
+}
+
+export interface SimulationResult {
+  success: boolean;
+  paths: SimulationPath[];
+  warnings: string[];
+  errors: string[];
+  nodeDetails: SimulationNodeDetail[];
+  totalNodes: number;
+  reachableNodes: number;
+  unreachableNodes: string[];
+}
+
+export async function simulateProcess(data: SimulationRequest): Promise<SimulationResult> {
+  return request.post('/workflow/simulation/run', data);
+}
+
+export async function validateDefinition(definitionId: string): Promise<SimulationResult> {
+  return request.post('/workflow/simulation/validate', { definitionId });
+}
+
+// ==================== 流程热更新 ====================
+
+export interface HotUpdateRequest {
+  processKey: string;
+  targetVersion?: number;
+  migrationMode: 'COMPATIBLE' | 'FORCE' | 'RESTART';
+  instanceIds?: string[];
+  dryRun?: boolean;
+}
+
+export interface HotUpdateInstanceDetail {
+  instanceId: string;
+  processNo: string;
+  currentNodeKey: string;
+  currentNodeTitle: string;
+  status: 'MIGRATED' | 'SKIPPED' | 'FAILED' | 'RESTARTED';
+  reason?: string;
+  newInstanceId?: string;
+}
+
+export interface HotUpdateResult {
+  success: boolean;
+  totalInstances: number;
+  migratedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  details: HotUpdateInstanceDetail[];
+  fromVersion: number;
+  toVersion: number;
+  message?: string;
+}
+
+export interface HotUpdateRecord {
+  id: number;
+  processKey: string;
+  fromVersion: number;
+  toVersion: number;
+  migrationMode: string;
+  totalInstances: number;
+  migratedCount: number;
+  skippedCount: number;
+  failedCount: number;
+  executedBy: string;
+  executedAt: string;
+}
+
+export async function analyzeHotUpdate(data: HotUpdateRequest): Promise<HotUpdateResult> {
+  return request.post('/workflow/hot-update/analyze', data);
+}
+
+export async function executeHotUpdate(data: HotUpdateRequest): Promise<HotUpdateResult> {
+  return request.post('/workflow/hot-update/execute', data);
+}
+
+export async function getHotUpdateHistory(processKey: string): Promise<HotUpdateRecord[]> {
+  return request.get('/workflow/hot-update/history', { params: { processKey } });
+}
+
 // ==================== 导出所有 API ====================
 
 export default {
@@ -1071,4 +1174,13 @@ export default {
   getArchivedWorkflows,
   restoreWorkflows,
   permanentDeleteWorkflows,
+
+  // 流程模拟测试
+  simulateProcess,
+  validateDefinition,
+
+  // 流程热更新
+  analyzeHotUpdate,
+  executeHotUpdate,
+  getHotUpdateHistory,
 };

@@ -81,6 +81,7 @@ import { toast } from "sonner";
 import { getErrorMessage } from '@/utils/errorMessage';
 import { downloadBlob } from "../utils/download";
 import { ConfirmDialog } from "./common/ConfirmDialog";
+import { SimulationDialog } from "./SimulationDialog";
 import {
   Select,
   SelectTrigger,
@@ -2932,6 +2933,7 @@ const WorkflowToolbar = ({
   onOpenSettings,
   onViewVersionHistory,
   onExport,
+  onSimulate,
   saving,
 }: {
   workflowName: string;
@@ -2949,6 +2951,7 @@ const WorkflowToolbar = ({
   onOpenSettings: () => void;
   onViewVersionHistory?: () => void;
   onExport?: () => void;
+  onSimulate?: () => void;
   saving: boolean;
 }) => {
   return (
@@ -3010,6 +3013,18 @@ const WorkflowToolbar = ({
             title="导出流程"
           >
             导出
+          </Button>
+        )}
+        {/* 模拟测试按钮 - 仅在流程已保存时显示 */}
+        {workflowId && !workflowId.startsWith("new_") && onSimulate && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onSimulate}
+            className="shrink-0 whitespace-nowrap"
+            title="模拟测试流程"
+          >
+            模拟测试
           </Button>
         )}
         <div className="flex shrink-0 items-center gap-1 rounded-md border border-slate-200 bg-white p-1 dark:border-slate-800 dark:bg-slate-950">
@@ -3203,6 +3218,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
     [graphModel, selectedGraphNode],
   );
   const [saving, setSaving] = useState(false);
+  const [simulationOpen, setSimulationOpen] = useState(false);
   const [workflowName, setWorkflowName] = useState(
     workflow?.name || "未命名流程",
   );
@@ -4079,6 +4095,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           }}
           onViewVersionHistory={handleViewVersionHistory}
           onExport={handleExport}
+          onSimulate={() => setSimulationOpen(true)}
           saving={saving}
         />
 
@@ -4241,6 +4258,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           onCancel={() =>
             setConfirmDialog({ open: false, message: "", onConfirm: () => {} })
           }
+        />
+
+        {/* 模拟测试对话框 */}
+        <SimulationDialog
+          open={simulationOpen}
+          onClose={() => setSimulationOpen(false)}
+          definitionId={currentWorkflowId}
         />
       </div>
     </FlowNodeActionsContext.Provider>
