@@ -1,14 +1,18 @@
-const TOKEN_KEY = 'cloudflow_pro_token';
 const USER_KEY = 'cloudflow_pro_user';
 
-export const getAuthToken = () => localStorage.getItem(TOKEN_KEY);
+// Token is managed via httpOnly cookie for all HTTP requests.
+// We keep an in-memory copy solely for WebSocket connections,
+// which cannot use cookies during the handshake.
+let inMemoryToken: string | null = null;
+
+export const getAuthToken = (): string | null => inMemoryToken;
 
 export const setAuthToken = (token: string) => {
-  localStorage.setItem(TOKEN_KEY, token);
+  inMemoryToken = token;
 };
 
 export const removeAuthToken = () => {
-  localStorage.removeItem(TOKEN_KEY);
+  inMemoryToken = null;
 };
 
 export const getStoredAuthUser = () => localStorage.getItem(USER_KEY);

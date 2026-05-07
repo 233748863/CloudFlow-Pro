@@ -139,10 +139,10 @@ export const getTenantOptions = (): Promise<TenantOption[]> => {
 export const login = async (
   tenantCode: string,
   username: string,
-  password?: string,
-  captchaToken?: string,
+  password: string,
+  captchaToken: string,
 ): Promise<LoginResponse> => {
-  const hashedPassword = password ? await hashPassword(password) : await hashPassword('123456');
+  const hashedPassword = await hashPassword(password);
   return request.post('/auth/login', { tenantCode, username, password: hashedPassword, captchaToken });
 };
 

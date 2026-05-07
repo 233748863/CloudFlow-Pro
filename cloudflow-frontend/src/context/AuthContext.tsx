@@ -4,7 +4,7 @@ import { User } from '@/types';
 import { getInfo, logout as logoutApi, switchTenant as switchTenantApi, type UserInfo } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import { clearAuthSession } from '@/utils/sessionCleanup';
-import { getAuthToken, setAuthToken, setStoredAuthUser } from '@/utils/authStorage';
+import { setAuthToken, setStoredAuthUser } from '@/utils/authStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -41,20 +41,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = getAuthToken();
-      if (token) {
-        try {
-          const userInfo = await getInfo();
-          if (userInfo) {
-            const currentUser = buildAuthUser(userInfo);
-            setUser(currentUser);
-            setStoredAuthUser(currentUser);
-          }
-        } catch (error) {
-          logger.error('Failed to get user info:', error);
-          clearAuthSession();
-          toast.error('登录状态已过期，请重新登录');
+      try {
+        const userInfo = await getInfo();
+        if (userInfo) {
+          const currentUser = buildAuthUser(userInfo);
+          setUser(currentUser);
+          setStoredAuthUser(currentUser);
         }
+      } catch (error) {
+        logger.error('Failed to get user info:', error);
+        clearAuthSession();
       }
 
       setLoading(false);
@@ -81,18 +77,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const login = async (token: string) => {
+    // Store token in memory for WebSocket connections (httpOnly cookie handles HTTP requests)
     setAuthToken(token);
     await refreshUser();
   };
 
   const logout = async () => {
-    const token = getAuthToken();
-    if (token) {
-      try {
-        await logoutApi();
-      } catch (error) {
-        logger.warn('调用登出接口失败，继续执行本地退出', error);
-      }
+    try {
+      await logoutApi();
+    } catch (error) {
+      logger.warn('调用登出接口失败，继续执行本地退出', error);
     }
 
     clearAuthSession();
@@ -102,6 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const switchTenant = async (tenantId: number) => {
     try {
       const response = await switchTenantApi(tenantId);
+      // Store new token in memory for WebSocket connections
       setAuthToken(response.token);
 
       const userInfo = await getInfo();

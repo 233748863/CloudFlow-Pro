@@ -28,7 +28,9 @@ import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -78,8 +80,11 @@ public class AuthController {
     @Autowired
     private LoginLogService loginLogService;
 
+    @Autowired
+    private com.cloudflow.auth.service.LoginLockService loginLockService;
+
     @PostMapping("/login")
-    public R<DynamicMapVO> login(@RequestBody @Validated LoginBody form, HttpServletRequest request) {
+    public R<DynamicMapVO> login(@RequestBody @Validated LoginBody form, HttpServletRequest request, HttpServletResponse response) {
         long startAt = System.currentTimeMillis();
         String username = trimValue(form.getUsername());
 
@@ -108,6 +113,17 @@ public class AuthController {
             return R.fail(tenantError);
         }
 
+        if (loginLockService.isLocked(username, tenant.getTenantId())) {
+            loginLogService.recordLoginFailure(
+                username,
+                tenant.getTenantId(),
+                request,
+                "账号已锁定",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("登录失败次数过多，账号已锁定15分钟，请稍后再试");
+        }
+
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getUserName, username);
         queryWrapper.eq(SysUser::getTenantId, tenant.getTenantId());
@@ -121,19 +137,18 @@ public class AuthController {
                 "用户不存在",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("用户不存在");
+            return R.fail("用户名或密码错误");
         }
 
-        // 明确拦截停用/删除账号，避免继续进入后续流程后抛出模糊 500。
         if ("2".equals(user.getDelFlag())) {
             loginLogService.recordLoginFailure(
                 username,
                 user.getTenantId(),
                 request,
-                "账号不存在",
+                "账号已删除",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("账号不存在");
+            return R.fail("用户名或密码错误");
         }
 
         if (!"0".equals(user.getStatus())) {
@@ -144,10 +159,11 @@ public class AuthController {
                 "账号已停用",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("账号已停用");
+            return R.fail("用户名或密码错误");
         }
 
         if (!BCrypt.checkpw(form.getPassword(), user.getPassword())) {
+            loginLockService.recordFailure(username, user.getTenantId());
             loginLogService.recordLoginFailure(
                 username,
                 user.getTenantId(),
@@ -155,13 +171,15 @@ public class AuthController {
                 "密码错误",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("密码错误");
+            return R.fail("用户名或密码错误");
         }
 
         String loginIp = getClientIp(request);
         user.setLoginIp(loginIp);
         user.setLoginDate(LocalDateTime.now());
         sysUserMapper.updateById(user);
+
+        loginLockService.clearFailures(username, tenant.getTenantId());
 
         UserInfo userInfo = sysUserService.findUserInfo(username, tenant.getTenantId());
         if (userInfo == null) {
@@ -202,6 +220,8 @@ public class AuthController {
             request,
             System.currentTimeMillis() - startAt
         );
+
+        setAuthCookie(response, token);
 
         Map<String, String> result = new HashMap<>();
         result.put("token", token);
@@ -425,7 +445,7 @@ public class AuthController {
      * 清除 Token 和用户相关的所有缓存
      */
     @PostMapping("/logout")
-    public R<?> logout(HttpServletRequest request) {
+    public R<?> logout(HttpServletRequest request, HttpServletResponse response) {
         String rawToken = resolveRawToken(request);
 
         Map<String, Object> userMap = tokenService.verifyToken(rawToken);
@@ -451,6 +471,8 @@ public class AuthController {
             tokenService.deleteToken(rawToken);
         }
 
+        clearAuthCookie(response);
+
         return R.ok("退出成功");
     }
 
@@ -460,10 +482,41 @@ public class AuthController {
 
     private String resolveRawToken(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
-        if (!StringUtils.hasText(token)) {
-            return null;
+        if (StringUtils.hasText(token)) {
+            return token.startsWith("Bearer ") ? token.substring(7) : token;
         }
-        return token.startsWith("Bearer ") ? token.substring(7) : token;
+        // Fallback: read from httpOnly cookie
+        Cookie[] cookies = request.getCookies();
+        if (cookies != null) {
+            for (Cookie cookie : cookies) {
+                if ("cf_token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+        return null;
+    }
+
+    private static final String AUTH_COOKIE_NAME = "cf_token";
+
+    private void setAuthCookie(HttpServletResponse response, String token) {
+        Cookie cookie = new Cookie(AUTH_COOKIE_NAME, token);
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setAttribute("SameSite", "Lax");
+        cookie.setMaxAge(7 * 24 * 60 * 60);
+        response.addCookie(cookie);
+    }
+
+    private void clearAuthCookie(HttpServletResponse response) {
+        Cookie cookie = new Cookie(AUTH_COOKIE_NAME, "");
+        cookie.setHttpOnly(true);
+        cookie.setSecure(true);
+        cookie.setPath("/");
+        cookie.setAttribute("SameSite", "Lax");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
     }
 
     private Long toLong(Object value) {
@@ -604,7 +657,7 @@ public class AuthController {
      * 允许超级管理员切换到指定租户，以便查看和管理该租户的数据
      */
     @PostMapping("/switchTenant")
-    public R<DynamicMapVO> switchTenant(@RequestBody SwitchTenantDTO dto, HttpServletRequest request) {
+    public R<DynamicMapVO> switchTenant(@RequestBody SwitchTenantDTO dto, HttpServletRequest request, HttpServletResponse response) {
         String rawToken = resolveRawToken(request);
         Map<String, Object> userMap = tokenService.verifyToken(rawToken);
         if (userMap == null) {
@@ -635,6 +688,8 @@ public class AuthController {
         }
 
         String newToken = tokenService.createToken(userMap);
+
+        setAuthCookie(response, newToken);
 
         Map<String, Object> result = new HashMap<>();
         result.put("token", newToken);

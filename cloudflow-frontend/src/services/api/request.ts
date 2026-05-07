@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
 import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
 import { clearAuthSession } from '@/utils/sessionCleanup';
-import { getAuthToken, getStoredAuthUser } from '@/utils/authStorage';
+import { getStoredAuthUser } from '@/utils/authStorage';
 
 const appBasePath = import.meta.env.BASE_URL === '/'
   ? ''
@@ -121,6 +121,7 @@ const request = axios.create({
   // 在生产环境使用环境变量 VITE_API_BASE_URL，在开发环境使用 /api (走代理)
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: API_TIMEOUT, // 30秒超时
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -140,15 +141,9 @@ request.interceptors.request.use(
       return Promise.reject(new Error('网络连接已断开'));
     }
 
-    // 从 localStorage 获取 token
-    const token = getAuthToken();
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
-    }
+    // Token 通过 httpOnly cookie 自动携带，无需手动设置 Authorization header
 
     // 从 localStorage 获取 tenantId 并添加到请求头
-    // 注意：tenantId 在用户登录后会被存储在 user 对象中
-    // 我们需要从 localStorage 中获取完整的用户信息来提取 tenantId
     try {
       const userStr = getStoredAuthUser();
       if (userStr) {
