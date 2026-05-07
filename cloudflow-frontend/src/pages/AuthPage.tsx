@@ -65,7 +65,7 @@ const TenantSelect: React.FC<TenantSelectProps> = ({
 export const AuthPage: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user, loading } = useAuth();
   const routeMode = resolveModeByPathname(location.pathname);
 
   const [mode, setMode] = useState<AuthMode>(routeMode);
@@ -97,6 +97,21 @@ export const AuthPage: React.FC = () => {
       setMode(routeMode);
     }
   }, [mode, routeMode]);
+
+  const resolveRedirectTarget = () => {
+    const redirect = new URLSearchParams(location.search).get('redirect');
+    return redirect && !['/login', '/register'].includes(redirect) ? redirect : '/';
+  };
+
+  useEffect(() => {
+    if (loading || !user || user.forcePasswordChange) {
+      return;
+    }
+
+    if (location.pathname === '/login' || location.pathname === '/register') {
+      navigate(resolveRedirectTarget(), { replace: true });
+    }
+  }, [loading, user, location.pathname, location.search, navigate]);
 
   useEffect(() => {
     let active = true;
@@ -205,10 +220,7 @@ export const AuthPage: React.FC = () => {
             navigate('/login', { replace: true });
             return;
           }
-          const redirect = typeof new URLSearchParams(location.search).get('redirect') === 'string'
-            ? new URLSearchParams(location.search).get('redirect')
-            : null;
-          navigate(redirect && !['/login', '/register'].includes(redirect) ? redirect : '/');
+          navigate(resolveRedirectTarget(), { replace: true });
           return;
         }
 
