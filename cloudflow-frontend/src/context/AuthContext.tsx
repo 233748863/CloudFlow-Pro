@@ -43,6 +43,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   useEffect(() => {
     const initAuth = async () => {
+      const currentPath = window.location.pathname;
+      const shouldSkipProbe = currentPath === '/login' || currentPath === '/register';
+      if (shouldSkipProbe) {
+        setLoading(false);
+        return;
+      }
+
       try {
         const userInfo = await getInfo();
         if (userInfo) {

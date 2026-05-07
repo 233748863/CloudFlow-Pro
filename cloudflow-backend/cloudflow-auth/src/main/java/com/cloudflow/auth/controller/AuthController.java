@@ -239,7 +239,7 @@ public class AuthController {
             System.currentTimeMillis() - startAt
         );
 
-        setAuthCookie(response, token);
+        setAuthCookie(request, response, token);
 
         Map<String, Object> result = new HashMap<>();
         result.put("token", token);
@@ -494,7 +494,7 @@ public class AuthController {
             tokenService.deleteToken(rawToken);
         }
 
-        clearAuthCookie(response);
+        clearAuthCookie(request, response);
 
         return R.ok("退出成功");
     }
@@ -513,24 +513,39 @@ public class AuthController {
 
     private static final String AUTH_COOKIE_NAME = "Authorization";
 
-    private void setAuthCookie(HttpServletResponse response, String token) {
+    private void setAuthCookie(HttpServletRequest request, HttpServletResponse response, String token) {
         Cookie cookie = new Cookie(AUTH_COOKIE_NAME, token);
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        cookie.setSecure(isSecureRequest(request));
         cookie.setPath("/");
         cookie.setAttribute("SameSite", "Lax");
         cookie.setMaxAge(7 * 24 * 60 * 60);
         response.addCookie(cookie);
     }
 
-    private void clearAuthCookie(HttpServletResponse response) {
+    private void clearAuthCookie(HttpServletRequest request, HttpServletResponse response) {
         Cookie cookie = new Cookie(AUTH_COOKIE_NAME, "");
         cookie.setHttpOnly(true);
-        cookie.setSecure(true);
+        cookie.setSecure(isSecureRequest(request));
         cookie.setPath("/");
         cookie.setAttribute("SameSite", "Lax");
         cookie.setMaxAge(0);
         response.addCookie(cookie);
+    }
+
+    private boolean isSecureRequest(HttpServletRequest request) {
+        if (request == null) {
+            return false;
+        }
+        if (request.isSecure()) {
+            return true;
+        }
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        if (StringUtils.hasText(forwardedProto) && "https".equalsIgnoreCase(forwardedProto)) {
+            return true;
+        }
+        String forwardedSsl = request.getHeader("X-Forwarded-Ssl");
+        return StringUtils.hasText(forwardedSsl) && "on".equalsIgnoreCase(forwardedSsl);
     }
 
     private Long toLong(Object value) {
@@ -703,7 +718,7 @@ public class AuthController {
 
         String newToken = tokenService.createToken(userMap);
 
-        setAuthCookie(response, newToken);
+        setAuthCookie(request, response, newToken);
 
         Map<String, Object> result = new HashMap<>();
         result.put("token", newToken);

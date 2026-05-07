@@ -245,7 +245,8 @@ router.beforeEach(async (to) => {
 
   if (!authInitialized) {
     authInitialized = true
-    await auth.init()
+    const shouldSkipProbe = to.path === '/login' || to.path === '/register'
+    await auth.init({ skipProbe: shouldSkipProbe })
   }
 
   document.title = resolveDocumentTitle(to.meta.title)

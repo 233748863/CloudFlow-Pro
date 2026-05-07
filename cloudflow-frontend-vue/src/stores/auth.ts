@@ -9,6 +9,10 @@ interface AuthState {
   loading: boolean
 }
 
+interface InitOptions {
+  skipProbe?: boolean
+}
+
 export const useAuthStore = defineStore('auth', {
   state: (): AuthState => ({
     user: null,
@@ -23,9 +27,11 @@ export const useAuthStore = defineStore('auth', {
     }
   },
   actions: {
-    async init() {
+    async init(options: InitOptions = {}) {
       try {
-        await this.refreshUser()
+        if (!options.skipProbe) {
+          await this.refreshUser()
+        }
       } catch {
         clearAuthSession()
       } finally {
