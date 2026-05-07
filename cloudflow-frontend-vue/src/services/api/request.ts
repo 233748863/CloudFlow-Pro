@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosResponse, InternalAxiosRequestConfig } from 'axios'
 import type { ApiResponse } from '@/types'
-import { getAuthToken, getStoredAuthUser } from '@/utils/authStorage'
+import { getStoredAuthUser } from '@/utils/authStorage'
 import { clearAuthSession } from '@/utils/sessionCleanup'
 
 const API_TIMEOUT = 30000
@@ -113,6 +113,7 @@ declare module 'axios' {
 const request = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
   timeout: API_TIMEOUT,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -126,11 +127,6 @@ request.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     if (!isOnline) {
       return Promise.reject(new Error('网络连接已断开'))
-    }
-
-    const token = getAuthToken()
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
     }
 
     try {

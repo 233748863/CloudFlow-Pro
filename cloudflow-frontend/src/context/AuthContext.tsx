@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { toast } from 'sonner';
+import { ForcePasswordChangeDialog } from '@/components/auth/ForcePasswordChangeDialog';
 import { User } from '@/types';
 import { getInfo, logout as logoutApi, switchTenant as switchTenantApi, type UserInfo } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
@@ -33,6 +34,7 @@ const buildAuthUser = (userInfo: UserInfo): User => ({
   createTime: userInfo.createTime,
   avatar: userInfo.avatar,
   permissions: userInfo.permissions || [],
+  forcePasswordChange: userInfo.forcePasswordChange,
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -120,6 +122,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, switchTenant }}>
       {children}
+      <ForcePasswordChangeDialog
+        open={Boolean(user?.forcePasswordChange)}
+        onChanged={async () => {
+          await refreshUser();
+        }}
+        onLogout={logout}
+      />
     </AuthContext.Provider>
   );
 };

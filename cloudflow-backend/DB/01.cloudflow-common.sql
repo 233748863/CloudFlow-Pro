@@ -85,6 +85,7 @@ CREATE TABLE sys_user (
   password          VARCHAR(100)    DEFAULT '' COMMENT '密码',
   status            CHAR(1)         DEFAULT '0' COMMENT '帐号状态（0正常 1停用）',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  pwd_reset_required CHAR(1)        DEFAULT '0' COMMENT '是否首次登录强制改密（0否 1是）',
   login_ip          VARCHAR(128)    DEFAULT '' COMMENT '最后登录IP',
   login_date        DATETIME        DEFAULT NULL COMMENT '最后登录时间',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',

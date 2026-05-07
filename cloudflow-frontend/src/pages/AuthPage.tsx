@@ -201,7 +201,10 @@ export const AuthPage: React.FC = () => {
         if (response?.token) {
           await login(response.token);
           toast.success('登录成功');
-          navigate('/');
+          const redirect = typeof new URLSearchParams(location.search).get('redirect') === 'string'
+            ? new URLSearchParams(location.search).get('redirect')
+            : null;
+          navigate(redirect && !['/login', '/register'].includes(redirect) ? redirect : '/');
           return;
         }
 

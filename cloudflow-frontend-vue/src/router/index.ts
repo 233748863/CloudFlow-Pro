@@ -265,6 +265,10 @@ router.beforeEach(async (to) => {
     }
   }
 
+  if (auth.user?.forcePasswordChange && !['/login', '/register'].includes(to.path)) {
+    return true
+  }
+
   const permissions = (to.meta.permissions || []) as string[]
   if (permissions.length > 0 && !permissions.some((permission) => auth.hasPermission(permission))) {
     return {

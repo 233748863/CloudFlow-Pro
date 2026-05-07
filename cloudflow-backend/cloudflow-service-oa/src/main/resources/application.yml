@@ -59,7 +59,7 @@ sa-token:
   token-name: Authorization
   token-prefix: Bearer
   is-read-header: true
-  is-read-cookie: false
+  is-read-cookie: true
   is-read-body: false
   is-concurrent: false
   is-share: false

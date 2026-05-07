@@ -23,6 +23,7 @@ export interface User {
   createTime?: string
   avatar?: string
   permissions?: string[]
+  forcePasswordChange?: boolean
 }
 
 export interface PageResult<T> {

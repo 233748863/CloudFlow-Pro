@@ -5,6 +5,7 @@ import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.domain.SysPost;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.mapper.SysDeptMapper;
+import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.auth.service.ISysPostService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.common.core.domain.R;
@@ -40,6 +41,7 @@ public class RemoteAuthController {
     private final SysDeptMapper sysDeptMapper;
     private final ISysPostService postService;
     private final ISysUserService userService;
+    private final ForcePasswordChangeService forcePasswordChangeService;
 
     @Inner(allowedServices = {HR_SERVICE})
     @GetMapping("/dept/tree")
@@ -125,6 +127,7 @@ public class RemoteAuthController {
         if (!StringUtils.hasText(user.getStatus())) {
             user.setStatus("0");
         }
+        user.setPwdResetRequired(ForcePasswordChangeService.REQUIRED);
         userService.insertUser(user);
         return R.ok(user.getUserId());
     }

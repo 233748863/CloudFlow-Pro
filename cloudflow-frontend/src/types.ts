@@ -23,6 +23,7 @@ export interface User {
   createTime?: string;
   avatar?: string;
   permissions?: string[];
+  forcePasswordChange?: boolean;
 }
 
 // --- 动态表单类型 ---

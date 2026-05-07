@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { buildAuthUser, getInfo, logout as logoutApi, switchTenant as switchTenantApi } from '@/services/api/auth'
 import type { User } from '@/types'
 import { clearAuthSession } from '@/utils/sessionCleanup'
-import { getAuthToken, setAuthToken, setStoredAuthUser } from '@/utils/authStorage'
+import { setAuthToken, setStoredAuthUser } from '@/utils/authStorage'
 
 interface AuthState {
   user: User | null
@@ -24,12 +24,6 @@ export const useAuthStore = defineStore('auth', {
   },
   actions: {
     async init() {
-      const token = getAuthToken()
-      if (!token) {
-        this.loading = false
-        return
-      }
-
       try {
         await this.refreshUser()
       } catch {
@@ -55,12 +49,10 @@ export const useAuthStore = defineStore('auth', {
       }
     },
     async logout() {
-      if (getAuthToken()) {
-        try {
-          await logoutApi()
-        } catch {
-          // local logout still proceeds
-        }
+      try {
+        await logoutApi()
+      } catch {
+        // local logout still proceeds
       }
       clearAuthSession()
       this.user = null

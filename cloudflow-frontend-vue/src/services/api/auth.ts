@@ -1,5 +1,4 @@
 import request from '@/services/api/request'
-import { hashPassword } from '@/utils/crypto'
 import type { User } from '@/types'
 
 export interface TenantOption {
@@ -10,6 +9,7 @@ export interface TenantOption {
 export interface LoginResponse {
   token: string
   expiresIn?: number
+  forcePasswordChange?: boolean
 }
 
 export interface CaptchaResponse {
@@ -56,6 +56,7 @@ export interface UserInfo {
   status?: string
   createTime?: string
   permissions?: string[]
+  forcePasswordChange?: boolean
 }
 
 interface AuthInfoResponse {
@@ -74,20 +75,16 @@ export const checkCaptcha = (data: CaptchaCheckRequest) => request.post<CaptchaC
 export const login = async (
   tenantCode: string,
   username: string,
-  password?: string,
-  captchaToken?: string
+  password: string,
+  captchaToken: string
 ) => {
-  const hashedPassword = password ? await hashPassword(password) : await hashPassword('123456')
-  return request.post<LoginResponse>('/auth/login', { tenantCode, username, password: hashedPassword, captchaToken })
+  return request.post<LoginResponse>('/auth/login', { tenantCode, username, password, captchaToken })
 }
 
 export const logout = () => request.post<void>('/auth/logout')
 
 export const register = async (data: RegisterData) => {
-  const payload = { ...data }
-  if (payload.password) payload.password = await hashPassword(payload.password)
-  if (payload.confirmPassword) payload.confirmPassword = await hashPassword(payload.confirmPassword)
-  return request.post<void>('/auth/register', payload)
+  return request.post<void>('/auth/register', { ...data })
 }
 
 export const getInfo = async (): Promise<UserInfo> => {
@@ -108,7 +105,8 @@ export const getInfo = async (): Promise<UserInfo> => {
     phone: String(user.phone || user.phonenumber || ''),
     status: String(user.status || 'ACTIVE'),
     createTime: user.createTime != null ? String(user.createTime) : undefined,
-    permissions: Array.isArray(data?.permissions) ? data.permissions : []
+    permissions: Array.isArray(data?.permissions) ? data.permissions : [],
+    forcePasswordChange: Boolean(data?.forcePasswordChange ?? user.forcePasswordChange)
   }
 }
 
@@ -127,7 +125,8 @@ export const buildAuthUser = (userInfo: UserInfo): User => ({
   status: userInfo.status || 'ACTIVE',
   createTime: userInfo.createTime,
   avatar: userInfo.avatar,
-  permissions: userInfo.permissions || []
+  permissions: userInfo.permissions || [],
+  forcePasswordChange: userInfo.forcePasswordChange
 })
 
 export const switchTenant = (tenantId: number) =>
@@ -148,6 +147,6 @@ export const updateProfile = (data: UpdateProfilePayload) =>
 
 export const changeProfilePassword = async (oldPassword: string, newPassword: string) =>
   request.put<void>('/auth/profile/password', {
-    oldPassword: await hashPassword(oldPassword),
-    newPassword: await hashPassword(newPassword)
+    oldPassword,
+    newPassword
   })

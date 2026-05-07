@@ -26,6 +26,7 @@ public class SysUser implements Serializable {
     private String password;
     private String status;
     private String delFlag;
+    private String pwdResetRequired;
     private String loginIp;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
 

@@ -8,12 +8,18 @@
   </RouterView>
   <ToastHost />
   <AnnouncementPopup />
+  <ForcePasswordChangeDialog
+    :open="Boolean(auth.user?.forcePasswordChange)"
+    @changed="auth.refreshUser"
+    @logout="auth.logout"
+  />
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import ToastHost from '@/components/ToastHost.vue'
+import ForcePasswordChangeDialog from '@/components/auth/ForcePasswordChangeDialog.vue'
 import NavigationProgress from '@/components/common/NavigationProgress.vue'
 import AnnouncementPopup from '@/components/common/AnnouncementPopup.vue'
 import OfflineBanner from '@/components/common/OfflineBanner.vue'
@@ -57,7 +63,7 @@ watch(
 watch(
   () => route.fullPath,
   () => {
-    if (auth.isAuthenticated) {
+    if (auth.isAuthenticated && !auth.user?.forcePasswordChange) {
       void announcementStore.fetchAnnouncements()
     }
   }

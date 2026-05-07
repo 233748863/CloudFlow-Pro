@@ -1,6 +1,5 @@
 package com.cloudflow.auth.service.impl;
 
-import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.domain.SysRole;
@@ -13,8 +12,11 @@ import com.cloudflow.auth.mapper.SysRoleMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.mapper.SysUserPostMapper;
 import com.cloudflow.auth.mapper.SysUserRoleMapper;
+import com.cloudflow.auth.service.ForcePasswordChangeService;
+import com.cloudflow.auth.service.InitialPasswordService;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.PasswordService;
 import com.cloudflow.auth.service.SysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
@@ -62,6 +64,12 @@ public class SysUserServiceImpl implements ISysUserService {
 
     @Autowired
     private SysTenantService tenantService;
+
+    @Autowired
+    private PasswordService passwordService;
+
+    @Autowired
+    private InitialPasswordService initialPasswordService;
 
     // ==================== 带缓存的核心方法（参考 Poco） ====================
 
@@ -229,12 +237,14 @@ public class SysUserServiceImpl implements ISysUserService {
             throw new IllegalStateException("当前租户用户数已达上限，无法新增用户");
         }
 
+        boolean forcePasswordChange = false;
         if (StringUtils.hasText(user.getPassword())) {
-            user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
+            user.setPassword(passwordService.encodePassword(user.getPassword()));
         } else {
-            String defaultPwdSha256 = "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92";
-            user.setPassword(BCrypt.hashpw(defaultPwdSha256, BCrypt.gensalt()));
+            user.setPassword(passwordService.encodePassword(initialPasswordService.requireInitialPassword(targetTenantId)));
+            forcePasswordChange = true;
         }
+        user.setPwdResetRequired(forcePasswordChange ? ForcePasswordChangeService.REQUIRED : ForcePasswordChangeService.NOT_REQUIRED);
 
         int result = sysUserMapper.insert(user);
 
@@ -276,7 +286,7 @@ public class SysUserServiceImpl implements ISysUserService {
         }
 
         if (StringUtils.hasText(user.getPassword())) {
-            user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
+            user.setPassword(passwordService.encodePassword(user.getPassword()));
         } else {
             user.setPassword(null);
         }
@@ -391,7 +401,8 @@ public class SysUserServiceImpl implements ISysUserService {
 
         SysUser user = new SysUser();
         user.setUserId(userId);
-        user.setPassword(BCrypt.hashpw(password, BCrypt.gensalt()));
+        user.setPassword(passwordService.encodePassword(password));
+        user.setPwdResetRequired(ForcePasswordChangeService.REQUIRED);
         return sysUserMapper.updateById(user);
     }
 

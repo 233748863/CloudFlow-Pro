@@ -1,14 +1,15 @@
-const TOKEN_KEY = 'cloudflow_pro_token'
 const USER_KEY = 'cloudflow_pro_user'
 
-export const getAuthToken = () => localStorage.getItem(TOKEN_KEY)
+let inMemoryToken: string | null = null
+
+export const getAuthToken = () => inMemoryToken
 
 export const setAuthToken = (token: string) => {
-  localStorage.setItem(TOKEN_KEY, token)
+  inMemoryToken = token
 }
 
 export const removeAuthToken = () => {
-  localStorage.removeItem(TOKEN_KEY)
+  inMemoryToken = null
 }
 
 export const getStoredAuthUser = () => localStorage.getItem(USER_KEY)

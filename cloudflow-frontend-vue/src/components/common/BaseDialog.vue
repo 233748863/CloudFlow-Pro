@@ -10,11 +10,13 @@ const props = withDefaults(defineProps<{
   width?: DialogWidth
   closeOnEscape?: boolean
   closeOnClickOutside?: boolean
+  hideCloseButton?: boolean
   zIndex?: number
 }>(), {
   width: 'normal',
   closeOnEscape: true,
   closeOnClickOutside: false,
+  hideCloseButton: false,
   zIndex: 50
 })
 
@@ -84,7 +86,7 @@ onUnmounted(() => {
         <div ref="dialogRef" class="max-h-[90vh] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_28px_70px_-30px_rgba(15,23,42,0.34)] dark:border-slate-700 dark:bg-slate-950" :class="widthClasses" @click.stop>
           <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4 dark:border-slate-800">
             <h3 :id="dialogId" class="text-base font-semibold text-slate-900 dark:text-slate-100">{{ title }}</h3>
-            <button type="button" class="-mr-2 rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label="关闭弹窗" @click="emit('close')">
+            <button v-if="!hideCloseButton" type="button" class="-mr-2 rounded-xl p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-800 dark:hover:text-slate-200" aria-label="关闭弹窗" @click="emit('close')">
               <Icon name="x" size="md" />
             </button>
           </div>

@@ -87,7 +87,7 @@ sa-token:
   is-share: false
   is-read-body: false
   is-read-header: true
-  is-read-cookie: false
+  is-read-cookie: true
   is-log: false
 
 feign:

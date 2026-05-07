@@ -46,6 +46,7 @@ public class SysUserController {
     @HasPermission("system:user:add")
     public R<?> add(@RequestBody SysUser user) {
         try {
+            user.setPwdResetRequired("1");
             return R.ok(userService.insertUser(user));
         } catch (IllegalStateException ex) {
             return R.fail(ex.getMessage());

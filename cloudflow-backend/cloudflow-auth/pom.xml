@@ -70,6 +70,10 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-audit</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-ratelimiter</artifactId>
+        </dependency>
 
         <!-- 文件存储模块（本地存储/MinIO/阿里云 OSS） -->
         <dependency>

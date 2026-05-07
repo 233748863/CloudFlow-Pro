@@ -20,6 +20,7 @@ interface BaseDialogProps {
   panelClassName?: string;
   closeOnClickOutside?: boolean;
   closeOnEscape?: boolean;
+  hideCloseButton?: boolean;
   zIndex?: number;
 }
 
@@ -38,6 +39,7 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
   panelClassName,
   closeOnClickOutside = false,
   closeOnEscape = true,
+  hideCloseButton = false,
   zIndex = 50,
 }) => {
   const titleId = useId();
@@ -123,14 +125,16 @@ export const BaseDialog: React.FC<BaseDialogProps> = ({
           </div>
           <div className="ml-4 flex items-center gap-2">
             {headerAside}
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
-              aria-label="关闭弹窗"
-            >
-              <X size={18} />
-            </button>
+            {hideCloseButton ? null : (
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700 dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+                aria-label="关闭弹窗"
+              >
+                <X size={18} />
+              </button>
+            )}
           </div>
         </div>
         <div

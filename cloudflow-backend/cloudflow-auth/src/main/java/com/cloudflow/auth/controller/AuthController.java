@@ -1,7 +1,5 @@
 package com.cloudflow.auth.controller;
 
-import cn.hutool.crypto.digest.BCrypt;
-import java.time.LocalDateTime;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.LoginBody;
 import com.cloudflow.auth.domain.RegisterBody;
@@ -17,12 +15,16 @@ import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
+import com.cloudflow.auth.service.PasswordService;
 import com.cloudflow.auth.service.LoginLogService;
 import com.cloudflow.auth.service.SysTenantService;
+import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.TokenService;
+import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
+import com.cloudflow.common.ratelimiter.enums.LimitType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
@@ -31,6 +33,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -82,6 +85,12 @@ public class AuthController {
 
     @Autowired
     private com.cloudflow.auth.service.LoginLockService loginLockService;
+
+    @Autowired
+    private PasswordService passwordService;
+
+    @Autowired
+    private ForcePasswordChangeService forcePasswordChangeService;
 
     @PostMapping("/login")
     public R<DynamicMapVO> login(@RequestBody @Validated LoginBody form, HttpServletRequest request, HttpServletResponse response) {
@@ -162,7 +171,8 @@ public class AuthController {
             return R.fail("用户名或密码错误");
         }
 
-        if (!BCrypt.checkpw(form.getPassword(), user.getPassword())) {
+        PasswordService.PasswordMatchResult passwordMatchResult = passwordService.matchesPassword(form.getPassword(), user.getPassword());
+        if (!passwordMatchResult.matched()) {
             loginLockService.recordFailure(username, user.getTenantId());
             loginLogService.recordLoginFailure(
                 username,
@@ -178,6 +188,12 @@ public class AuthController {
         user.setLoginIp(loginIp);
         user.setLoginDate(LocalDateTime.now());
         sysUserMapper.updateById(user);
+        if (passwordMatchResult.legacyPlaintextMatch()) {
+            SysUser passwordUpgrade = new SysUser();
+            passwordUpgrade.setUserId(user.getUserId());
+            passwordUpgrade.setPassword(passwordService.encodePassword(form.getPassword()));
+            sysUserMapper.updateById(passwordUpgrade);
+        }
 
         loginLockService.clearFailures(username, tenant.getTenantId());
 
@@ -208,6 +224,8 @@ public class AuthController {
         loginUser.put("avatar", user.getAvatar());
         loginUser.put("roles", userInfo.getRoles());
         loginUser.put("permissions", userInfo.getPermissions());
+        boolean forcePasswordChange = forcePasswordChangeService.isRequired(user);
+        loginUser.put("forcePasswordChange", forcePasswordChange);
 
         Map<String, Object> dsInfo = calcDataScopeInfo(user.getUserId(), user.getDeptId());
         loginUser.put("dsType", dsInfo.get("dsType"));
@@ -223,8 +241,9 @@ public class AuthController {
 
         setAuthCookie(response, token);
 
-        Map<String, String> result = new HashMap<>();
+        Map<String, Object> result = new HashMap<>();
         result.put("token", token);
+        result.put("forcePasswordChange", forcePasswordChange);
         return R.ok(DynamicMapVO.from(result));
     }
 
@@ -271,6 +290,7 @@ public class AuthController {
     }
 
     @GetMapping("/tenant/options")
+    @RateLimiter(count = 10, time = 60, limitType = LimitType.IP, message = "租户列表请求过于频繁，请稍后再试")
     public R<List<TenantOption>> tenantOptions() {
         List<SysTenant> tenants = TenantBroker.applyWithoutTenant(ignored ->
                 tenantService.list(
@@ -323,6 +343,7 @@ public class AuthController {
         user.setStatus(cachedUser.getStatus());
         user.setCreateTime(cachedUser.getCreateTime());
         user.setAvatar(cachedUser.getAvatar());
+        user.setPwdResetRequired(cachedUser.getPwdResetRequired());
         Long tenantId = resolveTenantId(userMap, cachedUser);
         user.setTenantId(tenantId);
         user.setDeptId(resolveDeptId(userMap, cachedUser));
@@ -343,6 +364,7 @@ public class AuthController {
         data.put("user", user);
         data.put("roles", resolveStringCollection(userMap.get("roles"), userInfo.getRoles()));
         data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
+        data.put("forcePasswordChange", forcePasswordChangeService.isRequired(cachedUser));
 
         return R.ok(DynamicMapVO.from(data));
     }
@@ -405,13 +427,14 @@ public class AuthController {
             return R.fail(404, "用户不存在");
         }
 
-        if (!BCrypt.checkpw(oldPassword, existing.getPassword())) {
+        if (!passwordService.matchesPassword(oldPassword, existing.getPassword()).matched()) {
             return R.fail("当前密码错误");
         }
 
         SysUser update = new SysUser();
         update.setUserId(userId);
-        update.setPassword(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
+        update.setPassword(passwordService.encodePassword(newPassword));
+        update.setPwdResetRequired(ForcePasswordChangeService.NOT_REQUIRED);
 
         TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.updateById(update));
         sysUserService.evictUserInfoCache(existing.getUserName(), existing.getTenantId());
@@ -485,19 +508,10 @@ public class AuthController {
         if (StringUtils.hasText(token)) {
             return token.startsWith("Bearer ") ? token.substring(7) : token;
         }
-        // Fallback: read from httpOnly cookie
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
-            for (Cookie cookie : cookies) {
-                if ("cf_token".equals(cookie.getName())) {
-                    return cookie.getValue();
-                }
-            }
-        }
-        return null;
+        return resolveCookieToken(request);
     }
 
-    private static final String AUTH_COOKIE_NAME = "cf_token";
+    private static final String AUTH_COOKIE_NAME = "Authorization";
 
     private void setAuthCookie(HttpServletResponse response, String token) {
         Cookie cookie = new Cookie(AUTH_COOKIE_NAME, token);
@@ -710,6 +724,19 @@ public class AuthController {
             return false;
         }
         return rolesObj != null && "ADMIN".equalsIgnoreCase(String.valueOf(rolesObj));
+    }
+
+    public static String resolveCookieToken(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if (AUTH_COOKIE_NAME.equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 
     public static class TenantOption {

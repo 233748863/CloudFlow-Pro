@@ -1,5 +1,4 @@
 import request from '@/services/api/request';
-import { hashPassword } from '@/utils/crypto';
 import { Role } from '@/types';
 
 // ==================== 系统管理类型定义 ====================
@@ -79,6 +78,7 @@ export interface PageQuery {
 export interface LoginResponse {
   token: string;
   expiresIn?: number;
+  forcePasswordChange?: boolean;
 }
 
 export interface TenantOption {
@@ -102,6 +102,7 @@ export interface UserInfo {
   status?: string;
   createTime?: string;
   permissions?: string[];
+  forcePasswordChange?: boolean;
 }
 
 export interface CaptchaResponse {
@@ -142,8 +143,7 @@ export const login = async (
   password: string,
   captchaToken: string,
 ): Promise<LoginResponse> => {
-  const hashedPassword = await hashPassword(password);
-  return request.post('/auth/login', { tenantCode, username, password: hashedPassword, captchaToken });
+  return request.post('/auth/login', { tenantCode, username, password, captchaToken });
 };
 
 /**
@@ -154,15 +154,7 @@ export const logout = async (): Promise<void> => {
 };
 
 export const register = async (data: RegisterData): Promise<void> => {
-  // 发送前对密码进行哈希
-  const registerData = { ...data };
-  if (registerData.password) {
-    registerData.password = await hashPassword(registerData.password);
-  }
-  if (registerData.confirmPassword) {
-    registerData.confirmPassword = await hashPassword(registerData.confirmPassword);
-  }
-  return request.post('/auth/register', registerData);
+  return request.post('/auth/register', { ...data });
 };
 
 export const getCaptcha = (): Promise<CaptchaResponse> => {
@@ -202,6 +194,7 @@ export const getInfo = async (): Promise<UserInfo> => {
     status: user.status,
     createTime: user.createTime,
     permissions: Array.isArray(data?.permissions) ? data.permissions : [],
+    forcePasswordChange: Boolean(data?.forcePasswordChange ?? user.forcePasswordChange),
   } as UserInfo;
 }
 
@@ -247,7 +240,7 @@ export const updateUser = (data: SysUser) => {
 
 export const resetUserPassword = async (userId: number, password: string): Promise<void> => {
   const data: ResetPasswordRequest = {
-    password: await hashPassword(password),
+    password,
   };
   return request.put(`/auth/system/user/${userId}/password`, data);
 };
@@ -349,14 +342,9 @@ export const changeProfilePassword = async (
   oldPassword: string,
   newPassword: string,
 ): Promise<void> => {
-  const [oldPasswordHash, newPasswordHash] = await Promise.all([
-    hashPassword(oldPassword),
-    hashPassword(newPassword),
-  ]);
-
   const data: ChangeProfilePasswordRequest = {
-    oldPassword: oldPasswordHash,
-    newPassword: newPasswordHash,
+    oldPassword,
+    newPassword,
   };
   return request.put('/auth/profile/password', data);
 };

@@ -9,6 +9,7 @@ import org.springframework.web.servlet.HandlerInterceptor;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.Cookie;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -52,6 +53,9 @@ public class UserContextInterceptor implements HandlerInterceptor {
         String token = request.getHeader("Authorization");
         if (!StringUtils.hasText(token)) {
             token = request.getParameter("token");
+        }
+        if (!StringUtils.hasText(token)) {
+            token = resolveCookieToken(request);
         }
         if (StringUtils.hasText(token) && token.startsWith("Bearer ")) {
             return token.substring(7);
@@ -160,6 +164,19 @@ public class UserContextInterceptor implements HandlerInterceptor {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    private String resolveCookieToken(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
+        if (cookies == null) {
+            return null;
+        }
+        for (Cookie cookie : cookies) {
+            if ("Authorization".equals(cookie.getName()) && StringUtils.hasText(cookie.getValue())) {
+                return cookie.getValue();
+            }
+        }
+        return null;
     }
 
     @Override

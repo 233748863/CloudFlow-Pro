@@ -60,10 +60,13 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
         String token = request.getHeaders().getFirst("Authorization");
         if (token == null || !token.startsWith("Bearer ")) {
+            token = resolveCookieToken(exchange);
+        }
+        if (token == null || token.isBlank()) {
             return unauthorized(exchange);
         }
 
-        String rawToken = token.substring(7);
+        String rawToken = token.startsWith("Bearer ") ? token.substring(7) : token;
 
         Map<String, Object> loginUser = tokenService.verifyToken(rawToken);
         if (loginUser == null) {
@@ -91,6 +94,18 @@ public class AuthFilter implements GlobalFilter, Ordered {
         String body = "{\"code\":401,\"msg\":\"未授权或Token已过期\"}";
         DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
         return response.writeWith(Mono.just(buffer));
+    }
+
+    private String resolveCookieToken(ServerWebExchange exchange) {
+        try {
+            if (exchange.getRequest().getCookies().containsKey("Authorization")) {
+                return exchange.getRequest().getCookies().getFirst("Authorization") != null
+                        ? exchange.getRequest().getCookies().getFirst("Authorization").getValue()
+                        : null;
+            }
+        } catch (Exception ignored) {
+        }
+        return null;
     }
 
     @Override

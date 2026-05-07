@@ -1,5 +1,4 @@
 import request from '@/services/api/request'
-import { hashPassword } from '@/utils/crypto'
 
 export interface PageQuery {
   pageNum?: number
@@ -151,7 +150,7 @@ export const updateUser = (data: SysUser) =>
   request.put<void>('/auth/system/user', data)
 
 export const resetUserPassword = async (userId: number, password: string) =>
-  request.put<void>(`/auth/system/user/${userId}/password`, { password: await hashPassword(password) })
+  request.put<void>(`/auth/system/user/${userId}/password`, { password })
 
 export const deleteUser = (userIds: number[]) =>
   request.delete<void>(`/auth/system/user/${userIds.join(',')}`)

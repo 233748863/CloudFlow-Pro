@@ -44,7 +44,6 @@ import {
   updateUser,
 } from '../../services/api/auth';
 import { getTenantList } from '../../services/api/tenant';
-import { hashPassword } from '../../utils/crypto';
 import { cn } from '@/utils/cn';
 
 interface DeptItem {
@@ -428,10 +427,7 @@ export const UserList = () => {
           userId: editingUser.userId,
           roleIds: selectedRoleIds,
         };
-
-        if (updateData.password) {
-          updateData.password = await hashPassword(updateData.password);
-        } else {
+        if (!updateData.password) {
           delete updateData.password;
         }
 
@@ -442,7 +438,9 @@ export const UserList = () => {
           ...formData,
           roleIds: selectedRoleIds,
         };
-        createData.password = await hashPassword(createData.password || '123456');
+        if (!createData.password) {
+          delete createData.password;
+        }
         await addUser(createData);
         toast.success('用户创建成功');
       }
@@ -827,7 +825,7 @@ export const UserList = () => {
                 onChange={(event) =>
                   setFormData((current) => ({ ...current, password: event.target.value }))
                 }
-                placeholder={isEdit ? '留空则不修改密码' : '留空默认使用 123456'}
+                placeholder={isEdit ? '留空则不修改密码' : '留空使用系统初始密码'}
               />
             </div>
 

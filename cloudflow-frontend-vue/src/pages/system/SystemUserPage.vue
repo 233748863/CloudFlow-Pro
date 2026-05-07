@@ -220,6 +220,7 @@ onMounted(() => void fetchUsers())
         <Input v-model="form.nickName" label="昵称" required />
         <Input v-model="form.email" label="邮箱" type="email" />
         <Input v-model="form.phonenumber" label="手机号" />
+        <Input v-if="!editingUser" v-model="form.password" label="登录密码" type="password" placeholder="留空使用系统初始密码" />
         <label class="space-y-2"><span class="text-sm font-medium">性别</span><Select v-model="form.sex" :options="sexOptions" /></label>
         <label class="space-y-2"><span class="text-sm font-medium">状态</span><Select v-model="form.status" :options="formStatusOptions" /></label>
         <div class="md:col-span-2">
@@ -237,6 +238,7 @@ onMounted(() => void fetchUsers())
     </BaseDialog>
 
     <BaseDialog :show="passwordDialogOpen" title="重置密码" width="narrow" @close="passwordDialogOpen = false">
+      <div class="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">重置后原密码立即失效，用户下次登录需先修改密码。</div>
       <Input v-model="newPassword" label="新密码" type="password" required />
       <template #footer><div class="flex justify-end gap-3"><Button variant="outline" @click="passwordDialogOpen = false">取消</Button><Button :disabled="saving" @click="savePassword"><Save class="h-4 w-4" />保存</Button></div></template>
     </BaseDialog>

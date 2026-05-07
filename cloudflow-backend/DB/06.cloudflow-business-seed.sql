@@ -655,23 +655,23 @@ INSERT INTO cloud_flow_db.sys_role VALUES(4, 100000, 'HR',      'hr',       4, '
 INSERT INTO cloud_flow_db.sys_role VALUES(5, 100000, 'EMPLOYEE','employee', 5, '2', 4, NULL, '0', '0', 'admin', NOW(), '', null, '普通员工，仅能发起申请');
 
 -- 4. 初始化用户数据 (密码统一为: 123456, 存储格式为 BCrypt(SHA256(明文密码)))
-INSERT INTO cloud_flow_db.sys_user VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '超级管理员', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(1,  100000, 100, 'admin', 'Admin', 'admin@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '超级管理员', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(2,  100000, 101, 'li', '李经理', 'li@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '研发部经理', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(2,  100000, 101, 'li', '李经理', 'li@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '研发部经理', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(3,  100000, 102, 'wang', '王财务', 'wang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '财务专员', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(3,  100000, 102, 'wang', '王财务', 'wang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '财务专员', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(4,  100000, 103, 'zhao', '赵HR', 'zhao@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, 'HR经理', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(4,  100000, 103, 'zhao', '赵HR', 'zhao@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, 'HR经理', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(5,  100000, 101, 'zhang', '张三', 'zhang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '研发工程师', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(5,  100000, 101, 'zhang', '张三', 'zhang@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '研发工程师', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(6,  100000, 104, 'liu', '刘法务', 'liu@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '法务总监', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(6,  100000, 104, 'liu', '刘法务', 'liu@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '法务总监', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(7,  100000, 105, 'chen', '陈IT', 'chen@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '系统管理员', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(7,  100000, 105, 'chen', '陈IT', 'chen@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '系统管理员', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(8,  100000, 106, 'test_fe', '前端测试', 'test_fe@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '前端组员工', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(8,  100000, 106, 'test_fe', '前端测试', 'test_fe@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '前端组员工', '');
 
-INSERT INTO cloud_flow_db.sys_user VALUES(9,  100000, 107, 'test_be', '后端测试', 'test_be@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', null, 'admin', NOW(), '', null, '后端组员工', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(9,  100000, 107, 'test_be', '后端测试', 'test_be@cloudflow.com', '15888888888', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', null, 'admin', NOW(), '', null, '后端组员工', '');
 
 -- 5. 初始化用户角色关联
 INSERT INTO cloud_flow_db.sys_user_role VALUES(1, 1, 100000);
@@ -7369,17 +7369,17 @@ INSERT INTO cloud_flow_db.sys_dept VALUES(117, 100000, 112, '0,100,112',  '华�
 INSERT INTO cloud_flow_db.sys_dept VALUES(118, 100000, 113, '0,100,113',  '运维保障组',   1, 'xu_ops',      '15888888919', 'xu.ops@cloudflow.com',      '0', '0', 'admin', NOW(), '', NULL);
 INSERT INTO cloud_flow_db.sys_dept VALUES(119, 100000, 101, '0,100,101',  '测试组',       3, 'han_qa',      '15888888920', 'han.qa@cloudflow.com',      '0', '0', 'admin', NOW(), '', NULL);
 
-INSERT INTO cloud_flow_db.sys_user VALUES(10, 100000, 109, 'sun_pm',      '孙雨澄', 'sun.pm@cloudflow.com',      '15888888910', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '产品部负责人', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(11, 100000, 110, 'wu_delivery', '吴思远', 'wu.delivery@cloudflow.com', '15888888911', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '实施交付部负责人', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(12, 100000, 111, 'zheng_cs',    '郑雅宁', 'zheng.cs@cloudflow.com',    '15888888912', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '客户成功部负责人', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(13, 100000, 112, 'he_sales',    '何嘉树', 'he.sales@cloudflow.com',    '15888888913', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '销售部负责人', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(14, 100000, 113, 'tang_ops',    '唐志远', 'tang.ops@cloudflow.com',    '15888888914', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '运维部负责人', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(15, 100000, 114, 'song_product','宋清妍', 'song.product@cloudflow.com','15888888915', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '产品经理', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(16, 100000, 115, 'gao_delivery','高牧',   'gao.delivery@cloudflow.com','15888888916', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '实施顾问', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(17, 100000, 116, 'xu_cs',       '徐珂',   'xu.cs@cloudflow.com',       '15888888917', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '客户成功专员', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(18, 100000, 117, 'peng_sales',  '彭骁',   'peng.sales@cloudflow.com',  '15888888918', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '销售顾问', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(19, 100000, 118, 'xu_ops',      '许磊',   'xu.ops@cloudflow.com',      '15888888919', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '运维工程师', '');
-INSERT INTO cloud_flow_db.sys_user VALUES(20, 100000, 119, 'han_qa',      '韩悦',   'han.qa@cloudflow.com',      '15888888920', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '', NULL, 'admin', NOW(), '', NULL, '测试工程师', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(10, 100000, 109, 'sun_pm',      '孙雨澄', 'sun.pm@cloudflow.com',      '15888888910', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '产品部负责人', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(11, 100000, 110, 'wu_delivery', '吴思远', 'wu.delivery@cloudflow.com', '15888888911', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '实施交付部负责人', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(12, 100000, 111, 'zheng_cs',    '郑雅宁', 'zheng.cs@cloudflow.com',    '15888888912', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '客户成功部负责人', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(13, 100000, 112, 'he_sales',    '何嘉树', 'he.sales@cloudflow.com',    '15888888913', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '销售部负责人', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(14, 100000, 113, 'tang_ops',    '唐志远', 'tang.ops@cloudflow.com',    '15888888914', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '运维部负责人', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(15, 100000, 114, 'song_product','宋清妍', 'song.product@cloudflow.com','15888888915', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '产品经理', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(16, 100000, 115, 'gao_delivery','高牧',   'gao.delivery@cloudflow.com','15888888916', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '实施顾问', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(17, 100000, 116, 'xu_cs',       '徐珂',   'xu.cs@cloudflow.com',       '15888888917', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '客户成功专员', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(18, 100000, 117, 'peng_sales',  '彭骁',   'peng.sales@cloudflow.com',  '15888888918', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '销售顾问', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(19, 100000, 118, 'xu_ops',      '许磊',   'xu.ops@cloudflow.com',      '15888888919', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '运维工程师', '');
+INSERT INTO cloud_flow_db.sys_user VALUES(20, 100000, 119, 'han_qa',      '韩悦',   'han.qa@cloudflow.com',      '15888888920', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '测试工程师', '');
 
 INSERT INTO cloud_flow_db.sys_user_role VALUES(10, 2, 100000);
 INSERT INTO cloud_flow_db.sys_user_role VALUES(11, 2, 100000);

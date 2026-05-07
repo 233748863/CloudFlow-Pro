@@ -425,7 +425,6 @@ public class OnboardingServiceImpl implements OnboardingService {
         userCreateDTO.setEmail(application.getEmail());
         userCreateDTO.setPhonenumber(application.getPhone());
         userCreateDTO.setSex(resolveUserSex(application.getGender()));
-        userCreateDTO.setPassword("123456");
         userCreateDTO.setStatus(0);
         userCreateDTO.setPostIds(Collections.singletonList(application.getPostId()));
 
