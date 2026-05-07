@@ -4,6 +4,9 @@ global:
   external_labels:
     project: cloudflow-pro
 
+rule_files:
+  - /etc/prometheus/alerts.yml
+
 scrape_configs:
   # 采集 Prometheus 自身运行指标，便于确认采集链路是否正常。
   - job_name: prometheus
@@ -48,3 +51,12 @@ scrape_configs:
           - oa:9003
         labels:
           service: oa
+
+  # 采集 HR 服务指标，用于观察人力资源模块运行状态。
+  - job_name: cloudflow-hr
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - hr:9005
+        labels:
+          service: hr

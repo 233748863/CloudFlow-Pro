@@ -27,7 +27,7 @@ CloudFlow Pro 是一个面向企业办公、流程审批和人力资源场景的
 | 前端页面 | `src/pages` 下 94 个 TSX 页面组件 |
 | 数据库结构 | `01`-`04` 脚本合计 135 张结构表 |
 | 本地一键启动 | `start-cloudflow.ps1` 启动 5 个后端服务和前端 |
-| Docker Compose | 已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、Prometheus、Grafana、前端；HR 容器尚未编排 |
+| Docker Compose | 已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、HR、Prometheus、Grafana、前端 |
 
 ## ✨ 核心能力
 
@@ -119,7 +119,7 @@ CloudFlow Pro/
 │   └── src/utils/                      # 工具函数
 ├── config/                             # Nacos Data ID 配置文件
 ├── docker/                             # 服务镜像、Nginx、监控配置
-├── docker-compose.yml                  # 容器编排，当前未包含 HR 服务
+├── docker-compose.yml                  # 容器编排，覆盖基础设施、微服务、前端与监控
 ├── push_nacos_config.py                # 批量推送 Nacos 配置
 ├── start-cloudflow.ps1                 # Windows / PowerShell 本地全服务启动
 └── start-cloudflow.bat                 # PowerShell 启动脚本封装
@@ -244,7 +244,7 @@ npm run dev
 
 ## 🐳 Docker Compose
 
-当前 `docker-compose.yml` 适合启动基础容器化环境和监控面板：
+当前 `docker-compose.yml` 可启动完整容器化环境和监控面板：
 
 ```bash
 cp .env.example .env
@@ -252,15 +252,27 @@ docker compose up -d
 docker compose ps
 ```
 
-当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、Prometheus、Grafana、前端，尚未包含 `cloudflow-service-hr`；如需完整 HR 演示，以本地脚本启动 HR 服务，或补充 HR Dockerfile、Compose service、Prometheus target 和数据库初始化挂载。
+当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、HR、Prometheus、Grafana、前端；首次启动会导入 `01` 至 `04` 号结构脚本，并执行关键表校验。
 
 Docker 访问入口：
 
-- 前端 Nginx：`http://localhost`
+- 前端 Nginx：`https://localhost`
 - 网关：`http://localhost:9000`
 - Nacos：`http://localhost:8848/nacos`
 - Prometheus：`http://localhost:9090`
 - Grafana：默认 `http://localhost:3000`，可通过 `.env` 的 `GRAFANA_PORT` 修改
+
+容器启动脚本：
+
+```bash
+sh ./scripts/start.sh
+```
+
+容器日志清理脚本：
+
+```bash
+sh ./scripts/clean-logs.sh
+```
 
 ## 🔧 开发命令
 

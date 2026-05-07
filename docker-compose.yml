@@ -27,8 +27,9 @@ services:
       # 按顺序加载初始化 SQL（Docker 按文件名字母序执行 initdb.d 中的脚本）
       - ./cloudflow-backend/DB/01.cloudflow-common.sql:/docker-entrypoint-initdb.d/01.cloudflow-common.sql:ro
       - ./cloudflow-backend/DB/02.cloudflow-workflow.sql:/docker-entrypoint-initdb.d/02.cloudflow-workflow.sql:ro
-      - ./cloudflow-backend/DB/03.cloudflow-workflow-deploy.sql:/docker-entrypoint-initdb.d/03.cloudflow-workflow-deploy.sql:ro
+      - ./cloudflow-backend/DB/03.cloudflow-hr.sql:/docker-entrypoint-initdb.d/03.cloudflow-hr.sql:ro
       - ./cloudflow-backend/DB/04.cloudflow-oa.sql:/docker-entrypoint-initdb.d/04.cloudflow-oa.sql:ro
+      - ./scripts/check-db-init.sh:/docker-entrypoint-initdb.d/99-check-init.sh:ro
     # MySQL 核心参数，修改后 docker compose restart mysql 即可生效
     command: >
       --default-authentication-plugin=mysql_native_password
@@ -49,7 +50,7 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "50m"
+        max-size: "20m"
         max-file: "3"
     networks:
       - cloudflow-network
@@ -135,7 +136,7 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "50m"
+        max-size: "20m"
         max-file: "3"
     networks:
       - cloudflow-network
@@ -189,8 +190,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "50m"
-        max-file: "5"
+        max-size: "20m"
+        max-file: "3"
     networks:
       - cloudflow-network
     deploy:
@@ -241,8 +242,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "50m"
-        max-file: "5"
+        max-size: "20m"
+        max-file: "3"
     networks:
       - cloudflow-network
     deploy:
@@ -295,8 +296,8 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "50m"
-        max-file: "5"
+        max-size: "20m"
+        max-file: "3"
     networks:
       - cloudflow-network
     deploy:
@@ -349,8 +350,58 @@ services:
     logging:
       driver: json-file
       options:
-        max-size: "50m"
-        max-file: "5"
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # HR 服务（端口 9005）
+  hr:
+    build:
+      context: .
+      dockerfile: docker/hr/Dockerfile
+    container_name: cloudflow-hr
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: nacos:8848
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+      DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+    volumes:
+      - hr_logs:/app/logs
+      - ./config/cloudflow-service-hr.yaml:/app/config/cloudflow-service-hr.yaml:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9005/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
     networks:
       - cloudflow-network
     deploy:
@@ -380,12 +431,14 @@ services:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
       - ./docker/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
     depends_on:
       - gateway
       - auth
       - workflow
       - oa
+      - hr
     logging:
       driver: json-file
       options:
@@ -450,14 +503,14 @@ services:
     volumes:
       # Nginx 日志映射到物理机
       - nginx_logs:/var/log/nginx
-      # SSL 证书目录（生产环境放入证书后取消注释 nginx.conf 中的 HTTPS 配置）
+      # SSL 证书目录（生产环境需提供 cert.pem 和 key.pem）
       - ./docker/frontend/ssl:/etc/nginx/ssl:ro
       # 可选：自定义 nginx 配置热更新（无需重新构建镜像）
       - ./docker/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - gateway
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "--no-check-certificate", "https://localhost/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -509,6 +562,8 @@ volumes:
   workflow_logs:
     driver: local
   oa_logs:
+    driver: local
+  hr_logs:
     driver: local
   # 前端日志卷
   nginx_logs:
