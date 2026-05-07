@@ -58,15 +58,10 @@ public class AuthFilter implements GlobalFilter, Ordered {
             }
         }
 
-        String token = request.getHeaders().getFirst("Authorization");
-        if (token == null || !token.startsWith("Bearer ")) {
-            token = resolveCookieToken(exchange);
-        }
-        if (token == null || token.isBlank()) {
+        String rawToken = resolveRawToken(exchange);
+        if (rawToken == null || rawToken.isBlank()) {
             return unauthorized(exchange);
         }
-
-        String rawToken = token.startsWith("Bearer ") ? token.substring(7) : token;
 
         Map<String, Object> loginUser = tokenService.verifyToken(rawToken);
         if (loginUser == null) {
@@ -75,6 +70,7 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
         ServerHttpRequest mutableReq = request.mutate()
                 .headers(headers -> {
+                    headers.set("Authorization", "Bearer " + rawToken);
                     headers.remove("X-Auth-Token");
                     headers.remove("X-User-Id");
                     headers.remove("X-User-Name");
@@ -106,6 +102,24 @@ public class AuthFilter implements GlobalFilter, Ordered {
         } catch (Exception ignored) {
         }
         return null;
+    }
+
+    private String resolveRawToken(ServerWebExchange exchange) {
+        String token = exchange.getRequest().getHeaders().getFirst("Authorization");
+        if (token == null || token.isBlank()) {
+            token = resolveCookieToken(exchange);
+        }
+        return unwrapBearerToken(token);
+    }
+
+    private String unwrapBearerToken(String token) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        if (token.startsWith("Bearer ")) {
+            return token.substring("Bearer ".length());
+        }
+        return token;
     }
 
     @Override

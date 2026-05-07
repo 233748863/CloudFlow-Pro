@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, Input, Label } from '@/components/common';
 import { changeProfilePassword } from '@/services/api/auth';
+import { useAuth } from '@/context/AuthContext';
 
 interface ForcePasswordChangeDialogProps {
   open: boolean;
-  onChanged: () => Promise<void>;
+  onChanged: () => Promise<unknown>;
   onLogout: () => Promise<void>;
 }
 
@@ -14,6 +15,7 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
   onChanged,
   onLogout,
 }) => {
+  const { clearForcePasswordChange } = useAuth();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -33,6 +35,10 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
       toast.error('两次输入的新密码不一致');
       return;
     }
+    if (oldPassword === newPassword) {
+      toast.error('新密码不能与当前密码相同');
+      return;
+    }
 
     setSaving(true);
     try {
@@ -40,8 +46,10 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
       setOldPassword('');
       setNewPassword('');
       setConfirmPassword('');
+      clearForcePasswordChange();
       await onChanged();
       toast.success('密码已更新');
+      window.location.href = '/';
     } finally {
       setSaving(false);
     }

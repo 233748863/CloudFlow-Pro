@@ -58,6 +58,7 @@ cloudflow:
 sa-token:
   token-name: Authorization
   token-prefix: Bearer
+  cookie-auto-fill-prefix: true
   is-read-header: true
   is-read-cookie: true
   is-read-body: false

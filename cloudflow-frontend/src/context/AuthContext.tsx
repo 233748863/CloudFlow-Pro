@@ -13,6 +13,7 @@ interface AuthContextType {
   login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
+  clearForcePasswordChange: () => void;
   switchTenant: (tenantId: number) => Promise<void>;
 }
 
@@ -85,6 +86,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const clearForcePasswordChange = () => {
+    setUser((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const nextUser = { ...prev, forcePasswordChange: false };
+      setStoredAuthUser(nextUser);
+      return nextUser;
+    });
+  };
+
   const login = async (token: string) => {
     // Store token in memory for WebSocket connections (httpOnly cookie handles HTTP requests)
     setAuthToken(token);
@@ -127,12 +139,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, switchTenant }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, clearForcePasswordChange, switchTenant }}>
       {children}
       <ForcePasswordChangeDialog
         open={Boolean(user?.forcePasswordChange)}
         onChanged={async () => {
-          await refreshUser();
+          const updatedUser = await refreshUser();
+          if (updatedUser && !updatedUser.forcePasswordChange) {
+            window.location.href = '/';
+          }
+          return updatedUser;
         }}
         onLogout={logout}
       />

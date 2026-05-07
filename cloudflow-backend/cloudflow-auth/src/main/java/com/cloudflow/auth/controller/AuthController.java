@@ -421,6 +421,9 @@ public class AuthController {
         if (!StringUtils.hasText(oldPassword) || !StringUtils.hasText(newPassword)) {
             return R.fail("密码不能为空");
         }
+        if (oldPassword.equals(newPassword)) {
+            return R.fail("新密码不能与当前密码相同");
+        }
 
         SysUser existing = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(userId));
         if (existing == null) {
@@ -505,16 +508,16 @@ public class AuthController {
 
     private String resolveRawToken(HttpServletRequest request) {
         String token = request.getHeader("Authorization");
-        if (StringUtils.hasText(token)) {
-            return token.startsWith("Bearer ") ? token.substring(7) : token;
+        if (!StringUtils.hasText(token)) {
+            token = resolveCookieToken(request);
         }
-        return resolveCookieToken(request);
+        return unwrapBearerToken(token);
     }
 
     private static final String AUTH_COOKIE_NAME = "Authorization";
 
     private void setAuthCookie(HttpServletRequest request, HttpServletResponse response, String token) {
-        Cookie cookie = new Cookie(AUTH_COOKIE_NAME, token);
+        Cookie cookie = new Cookie(AUTH_COOKIE_NAME, unwrapBearerToken(token));
         cookie.setHttpOnly(true);
         cookie.setSecure(isSecureRequest(request));
         cookie.setPath("/");
@@ -546,6 +549,16 @@ public class AuthController {
         }
         String forwardedSsl = request.getHeader("X-Forwarded-Ssl");
         return StringUtils.hasText(forwardedSsl) && "on".equalsIgnoreCase(forwardedSsl);
+    }
+
+    private String unwrapBearerToken(String token) {
+        if (!StringUtils.hasText(token)) {
+            return null;
+        }
+        if (token.startsWith("Bearer ")) {
+            return token.substring("Bearer ".length());
+        }
+        return token;
     }
 
     private Long toLong(Object value) {

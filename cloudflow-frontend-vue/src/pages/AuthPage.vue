@@ -133,6 +133,10 @@ const handleCaptchaVerify = async (captchaToken: string) => {
       if (!response?.token) throw new Error('登录失败，未获取到有效凭证')
       await auth.loginWithToken(response.token)
       toast.success('登录成功')
+      if (response.forcePasswordChange) {
+        await router.replace('/login')
+        return
+      }
       const redirect = typeof route.query.redirect === 'string' && !['/login', '/register'].includes(route.query.redirect)
         ? route.query.redirect
         : '/'

@@ -27,6 +27,19 @@ function getResponseErrorMessage(data: unknown, fallback = '网络请求失败')
   return fallback;
 }
 
+function isForcePasswordChangeUser() {
+  try {
+    const userStr = getStoredAuthUser();
+    if (!userStr) {
+      return false;
+    }
+    const user = JSON.parse(userStr) as { forcePasswordChange?: boolean };
+    return Boolean(user.forcePasswordChange);
+  } catch {
+    return false;
+  }
+}
+
 // 扩展 AxiosRequestConfig 以支持静默模式
 // 扩展 AxiosInstance 方法签名，因为响应拦截器已解包 res.data，实际返回业务数据而非 AxiosResponse
 declare module 'axios' {
@@ -224,6 +237,9 @@ request.interceptors.response.use(
 
     // 全局处理 401 未授权 (always show)
     if (error.response && error.response.status === 401) {
+       if (isForcePasswordChangeUser()) {
+         return Promise.reject(new Error('登录态校验中，请先完成密码修改'));
+       }
        toast.error('登录已过期，请重新登录');
        // 清除认证信息和会话缓存，并跳转登录页
        clearAuthSession();

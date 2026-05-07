@@ -81,6 +81,7 @@ mybatis-plus:
 sa-token:
   token-name: Authorization
   token-prefix: Bearer
+  cookie-auto-fill-prefix: true
   timeout: 86400
   active-timeout: -1
   is-concurrent: false

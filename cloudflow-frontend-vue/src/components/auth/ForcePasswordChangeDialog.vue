@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 import { BaseDialog, Button, Input } from '@/components/common'
 import { changeProfilePassword } from '@/services/api/auth'
 import { useToastStore } from '@/stores/toast'
 import { getErrorMessage } from '@/utils/errorMessage'
+import { useAuthStore } from '@/stores/auth'
 
 defineProps<{
   open: boolean
@@ -14,6 +16,8 @@ const emit = defineEmits<{
   logout: []
 }>()
 
+const router = useRouter()
+const auth = useAuthStore()
 const toast = useToastStore()
 const saving = ref(false)
 const form = ref({ oldPassword: '', newPassword: '', confirmPassword: '' })
@@ -27,6 +31,10 @@ async function submit() {
     toast.error('新密码至少 6 位')
     return
   }
+  if (form.value.oldPassword === form.value.newPassword) {
+    toast.error('新密码不能与当前密码相同')
+    return
+  }
   if (form.value.newPassword !== form.value.confirmPassword) {
     toast.error('两次输入的新密码不一致')
     return
@@ -37,6 +45,9 @@ async function submit() {
     form.value = { oldPassword: '', newPassword: '', confirmPassword: '' }
     toast.success('密码已更新')
     emit('changed')
+    if (auth.user && !auth.user.forcePasswordChange) {
+      await router.replace('/')
+    }
   } catch (error) {
     toast.error(getErrorMessage(error, '密码更新失败'))
   } finally {
