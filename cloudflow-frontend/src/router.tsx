@@ -234,6 +234,11 @@ const KnowledgePage = React.lazy(() => import("./pages/KnowledgePage"));
 const SealApplicationPage = React.lazy(() => import("./pages/SealApplicationPage"));
 const LicenseBorrowPage = React.lazy(() => import("./pages/LicenseBorrowPage"));
 const ContractPage = React.lazy(() => import("./pages/ContractPage"));
+const ProjectManagementPage = React.lazy(() => import("./pages/ProjectManagementPage"));
+const BudgetManagementPage = React.lazy(() => import("./pages/BudgetManagementPage"));
+const InvoiceManagementPage = React.lazy(() => import("./pages/InvoiceManagementPage"));
+const CrmManagementPage = React.lazy(() => import("./pages/CrmManagementPage"));
+const CrmCustomerWorkspacePage = React.lazy(() => import("./pages/CrmCustomerWorkspacePage"));
 const VisitorPage = React.lazy(() => import("./pages/VisitorPage"));
 const DutySchedulePage = React.lazy(() => import("./pages/DutySchedulePage"));
 const SupplierPage = React.lazy(() => import("./pages/admin/supplier/SupplierPage"));
@@ -862,6 +867,46 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <ContractPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/project",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <ProjectManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/budget",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <BudgetManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/invoice",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <InvoiceManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/customer/:customerId",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmCustomerWorkspacePage />
               </Suspense>
             ),
           },

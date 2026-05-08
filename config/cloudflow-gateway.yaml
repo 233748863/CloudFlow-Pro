@@ -28,6 +28,13 @@ spring:
           filters:
             - StripPrefix=1
 
+        - id: cloudflow-crm
+          uri: lb://cloudflow-service-crm
+          predicates:
+            - Path=/crm/**
+          filters:
+            - StripPrefix=1
+
         - id: cloudflow-hr
           uri: lb://cloudflow-service-hr
           predicates:

@@ -6,6 +6,7 @@ import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.service.ApprovalResultHandler;
+import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,6 +24,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
 
     private final BizPaymentRequestMapper paymentRequestMapper;
     private final IPurchaseRequestService purchaseRequestService;
+    private final IOaBudgetService budgetService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -37,6 +39,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
         updateStatus(dto, "REJECTED");
+        releaseBudget(dto.getBusinessId());
     }
 
     private void updateStatus(ApprovalResultDTO dto, String status) {
@@ -54,5 +57,25 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
         purchaseRequestService.updatePaymentStatus(dto.getBusinessId(), status);
         log.info("付款申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+    }
+
+    private void releaseBudget(Long paymentId) {
+        BizPaymentRequest payment = paymentRequestMapper.selectById(paymentId);
+        if (payment == null) {
+            return;
+        }
+        budgetService.releaseBudget(
+                WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                payment.getId(),
+                payment.getPaymentNo(),
+                payment.getDeptId(),
+                payment.getDeptName(),
+                payment.getProjectId(),
+                payment.getProjectName(),
+                payment.getBudgetSubjectCode(),
+                payment.getBudgetSubjectName(),
+                payment.getAmount(),
+                "付款驳回释放预算"
+        );
     }
 }

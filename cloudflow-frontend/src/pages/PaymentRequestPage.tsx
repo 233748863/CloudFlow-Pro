@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { paymentRequestApi, PaymentRequest } from '@/services/api/expense';
+import { crmApi, CrmCustomer } from '@/services/api/crm';
+import { projectApi, Project } from '@/services/api/project';
+import { budgetApi, BudgetSubject } from '@/services/api/budget';
 import FileUpload from '@/components/FileUpload';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
@@ -163,10 +166,31 @@ export const PaymentRequestPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [formData, setFormData] = useState<PaymentRequest>(createDefaultForm());
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [projectOptions, setProjectOptions] = useState<Project[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
+  const [budgetSubjectOptions, setBudgetSubjectOptions] = useState<BudgetSubject[]>([]);
 
   useEffect(() => {
     void fetchPayments();
   }, [searchParams]);
+
+  useEffect(() => {
+    const loadReferences = async () => {
+      try {
+        const [projectResult, customerResult, subjectResult] = await Promise.all([
+          projectApi.list({ pageNum: 1, pageSize: 100 }),
+          crmApi.listCustomers({ pageNum: 1, pageSize: 100 }),
+          budgetApi.listSubjects({ pageNum: 1, pageSize: 100 }),
+        ]);
+        setProjectOptions(projectResult.rows || []);
+        setCustomerOptions(customerResult.rows || []);
+        setBudgetSubjectOptions(subjectResult.rows || []);
+      } catch (error) {
+        toast.error(getErrorMessage(error, '加载付款候选数据失败'));
+      }
+    };
+    void loadReferences();
+  }, []);
 
   const fetchPayments = async () => {
     setLoading(true);
@@ -715,6 +739,91 @@ export const PaymentRequestPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="grid gap-4 md:grid-cols-3">
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                关联项目
+              </label>
+              <Select
+                value={formData.projectId ? String(formData.projectId) : 'NONE'}
+                onValueChange={(value) => {
+                  const project = projectOptions.find((item) => String(item.projectId) === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    projectId: value === 'NONE' ? undefined : Number(value),
+                    projectName: project?.projectName || '',
+                    customerId: project?.customerId || prev.customerId,
+                    customerName: project?.customerName || prev.customerName,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择项目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联项目</SelectItem>
+                  {projectOptions.map((item) => (
+                    <SelectItem key={item.projectId} value={String(item.projectId)}>
+                      {item.projectName} / {item.customerName || '无客户'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                客户
+              </label>
+              <Select
+                value={formData.customerId ? String(formData.customerId) : 'NONE'}
+                onValueChange={(value) => {
+                  const customer = customerOptions.find((item) => String(item.customerId) === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    customerId: value === 'NONE' ? undefined : Number(value),
+                    customerName: customer?.customerName || '',
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择客户" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联客户</SelectItem>
+                  {customerOptions.map((item) => (
+                    <SelectItem key={item.customerId} value={String(item.customerId)}>
+                      {item.customerName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                预算科目
+              </label>
+              <Select
+                value={formData.budgetSubjectCode || 'NONE'}
+                onValueChange={(value) => {
+                  const subject = budgetSubjectOptions.find((item) => item.subjectCode === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    budgetSubjectCode: value === 'NONE' ? '' : value,
+                    budgetSubjectName: subject?.subjectName || '',
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择预算科目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不指定预算科目</SelectItem>
+                  {budgetSubjectOptions.map((item) => (
+                    <SelectItem key={item.subjectId} value={item.subjectCode}>
+                      {item.subjectCode} / {item.subjectName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div>
             <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
               付款事由
@@ -764,6 +873,10 @@ export const PaymentRequestPage: React.FC = () => {
               <DetailRow label="期望付款日期" value={renderDetailValue(detailPayment.expectedDate)} />
               <DetailRow label="收款账号" value={renderDetailValue(detailPayment.payeeAccount)} />
               <DetailRow label="开户银行" value={renderDetailValue(detailPayment.payeeBank)} />
+              <DetailRow label="关联项目" value={renderDetailValue(detailPayment.projectName)} />
+              <DetailRow label="客户" value={renderDetailValue(detailPayment.customerName)} />
+              <DetailRow label="预算科目" value={renderDetailValue(detailPayment.budgetSubjectName || detailPayment.budgetSubjectCode)} />
+              <DetailRow label="发票状态" value={renderDetailValue(detailPayment.invoiceStatus)} />
               <DetailRow label="申请人" value={renderDetailValue(detailPayment.userName)} />
               <DetailRow label="所属部门" value={renderDetailValue(detailPayment.deptName)} />
               <DetailRow label="流程实例" value={renderDetailValue(detailPayment.instanceId)} />

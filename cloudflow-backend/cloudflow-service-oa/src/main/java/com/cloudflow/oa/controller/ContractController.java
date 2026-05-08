@@ -41,9 +41,9 @@ public class ContractController {
 
     @SysLog("新增合同")
     @PostMapping
-    public R<Void> add(@RequestBody OaContract contract) {
+    public R<Long> add(@RequestBody OaContract contract) {
         try {
-            return R.result(contractService.createContract(contract));
+            return R.ok(contractService.createContract(contract));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

@@ -29,6 +29,13 @@ export interface OaContract {
   ownerName?: string;
   deptId?: number;
   deptName?: string;
+  projectId?: number;
+  projectName?: string;
+  customerId?: number;
+  customerName?: string;
+  budgetSubjectCode?: string;
+  budgetSubjectName?: string;
+  invoiceStatus?: string;
   startDate?: string;
   endDate?: string;
   attachmentUrl?: string;

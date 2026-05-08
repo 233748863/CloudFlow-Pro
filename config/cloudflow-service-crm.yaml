@@ -1,0 +1,70 @@
+# CloudFlow CRM 客户关系管理服务配置文件
+# 此配置文件应上传到 Nacos 配置中心
+# Data ID: cloudflow-service-crm.yaml
+
+spring:
+  datasource:
+    dynamic:
+      primary: master
+      strict: false
+      datasource:
+        master:
+          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+          username: root
+          password: Juwangkeji@2025
+          driver-class-name: com.mysql.cj.jdbc.Driver
+      hikari:
+        pool-name: CRMHikariCP
+        minimum-idle: 5
+        maximum-pool-size: 20
+        connection-timeout: 30000
+        idle-timeout: 600000
+        max-lifetime: 1800000
+
+  data:
+    redis:
+      host: 192.168.1.173
+      port: 6379
+      password: Juwangkeji@2025
+      database: 0
+      timeout: 3000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-wait: -1ms
+          max-idle: 8
+          min-idle: 0
+
+cloudflow:
+  crm:
+    workflow:
+      process-keys:
+        quote: quote_approval
+        renewal: customer_renewal_review
+    health:
+      renewal-red-days: 30
+      renewal-yellow-days: 90
+      inactive-yellow-days: 30
+      overdue-red-days: 30
+
+feign:
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 10000
+  hystrix:
+    enabled: true
+
+hystrix:
+  command:
+    default:
+      execution:
+        isolation:
+          thread:
+            timeoutInMilliseconds: 10000
+
+logging:
+  level:
+    com.cloudflow.crm: DEBUG
+    com.cloudflow.crm.mapper: DEBUG

@@ -144,11 +144,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       <ForcePasswordChangeDialog
         open={Boolean(user?.forcePasswordChange)}
         onChanged={async () => {
-          const updatedUser = await refreshUser();
-          if (updatedUser && !updatedUser.forcePasswordChange) {
-            window.location.href = '/';
-          }
-          return updatedUser;
+          return refreshUser();
         }}
         onLogout={logout}
       />

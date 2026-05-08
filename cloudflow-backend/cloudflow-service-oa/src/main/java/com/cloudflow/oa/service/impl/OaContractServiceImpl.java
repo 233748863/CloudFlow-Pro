@@ -65,7 +65,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean createContract(OaContract contract) {
+    public Long createContract(OaContract contract) {
         normalizeAndValidate(contract);
         LocalDateTime now = LocalDateTime.now();
         contract.setTenantId(resolveTenantId());
@@ -82,11 +82,14 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(now);
         boolean saved = save(contract);
+        if (!saved || contract.getContractId() == null) {
+            throw new IllegalArgumentException("合同创建失败");
+        }
         traceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(), "CONTRACT_CREATED",
                 "合同创建", contract.getContractNo() + " / " + contract.getContractName(),
                 UserContext.getUserId(), resolveUserName(), null);
-        return saved;
+        return contract.getContractId();
     }
 
     @Override

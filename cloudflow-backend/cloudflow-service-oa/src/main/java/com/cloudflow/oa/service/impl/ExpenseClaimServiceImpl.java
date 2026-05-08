@@ -18,6 +18,7 @@ import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.IExpenseClaimService;
+import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
@@ -58,6 +59,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Autowired
     private IOaTraceEventService traceEventService;
+
+    @Autowired
+    private IOaBudgetService budgetService;
 
     @Override
     public Page<BizExpenseClaim> queryPage(Integer pageNum, Integer pageSize, String status, String category, Long userId) {
@@ -165,7 +169,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
 
         evaluateExpenseAmountRule(claim);
-        
+        reserveBudget(claim);
+
         // 更新状态为审批中
         claim.setStatus("PENDING");
         
@@ -210,6 +215,27 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
         
         return updateById(claim);
+    }
+
+    @Override
+    @Audit(name = "确认报销打款", spel = "#id", oldVal = "@expenseClaimServiceImpl.getById(#id)")
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmPaid(Long id) {
+        BizExpenseClaim claim = getById(id);
+        if (claim == null || !"0".equals(claim.getDelFlag())) {
+            throw new IllegalArgumentException("报销申请不存在");
+        }
+        if (!"APPROVED".equals(claim.getStatus())) {
+            throw new IllegalArgumentException("只有审批通过的报销申请可以确认打款");
+        }
+        claim.setStatus("PAID");
+        claim.setUpdateBy(UserContext.getUserName());
+        claim.setUpdateTime(LocalDateTime.now());
+        boolean updated = updateById(claim);
+        if (updated) {
+            writeoffBudget(claim);
+        }
+        return updated;
     }
 
     @Override
@@ -388,5 +414,82 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             log.warn("读取业务规则失败，ruleCode={}", ruleCode, e);
         }
         return null;
+    }
+
+    private void reserveBudget(BizExpenseClaim claim) {
+        if (claim == null || claim.getId() == null) {
+            return;
+        }
+        List<BizExpenseItem> items = claim.getItems();
+        if (items == null || items.isEmpty()) {
+            budgetService.reserveBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    claim.getId(),
+                    claim.getClaimNo(),
+                    claim.getDeptId(),
+                    claim.getDeptName(),
+                    claim.getProjectId(),
+                    claim.getProjectName(),
+                    claim.getBudgetSubjectCode(),
+                    claim.getBudgetSubjectName(),
+                    claim.getTotalAmount(),
+                    "报销提交占用预算"
+            );
+            return;
+        }
+        for (BizExpenseItem item : items) {
+            budgetService.reserveBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    claim.getId(),
+                    claim.getClaimNo(),
+                    claim.getDeptId(),
+                    claim.getDeptName(),
+                    claim.getProjectId(),
+                    claim.getProjectName(),
+                    StringUtils.hasText(item.getBudgetSubjectCode()) ? item.getBudgetSubjectCode() : claim.getBudgetSubjectCode(),
+                    StringUtils.hasText(item.getBudgetSubjectName()) ? item.getBudgetSubjectName() : claim.getBudgetSubjectName(),
+                    item.getAmount(),
+                    "报销明细占用预算"
+            );
+        }
+    }
+
+    private void writeoffBudget(BizExpenseClaim claim) {
+        if (claim == null || claim.getId() == null) {
+            return;
+        }
+        BizExpenseClaim detail = getClaimWithItems(claim.getId());
+        List<BizExpenseItem> items = detail == null ? null : detail.getItems();
+        if (items == null || items.isEmpty()) {
+            budgetService.writeoffBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    claim.getId(),
+                    claim.getClaimNo(),
+                    claim.getDeptId(),
+                    claim.getDeptName(),
+                    claim.getProjectId(),
+                    claim.getProjectName(),
+                    claim.getBudgetSubjectCode(),
+                    claim.getBudgetSubjectName(),
+                    claim.getTotalAmount(),
+                    "报销完成核销预算"
+            );
+            return;
+        }
+        for (BizExpenseItem item : items) {
+            budgetService.writeoffBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    claim.getId(),
+                    claim.getClaimNo(),
+                    claim.getDeptId(),
+                    claim.getDeptName(),
+                    claim.getProjectId(),
+                    claim.getProjectName(),
+                    StringUtils.hasText(item.getBudgetSubjectCode()) ? item.getBudgetSubjectCode() : claim.getBudgetSubjectCode(),
+                    StringUtils.hasText(item.getBudgetSubjectName()) ? item.getBudgetSubjectName() : claim.getBudgetSubjectName(),
+                    item.getAmount(),
+                    "报销明细核销预算"
+            );
+        }
     }
 }

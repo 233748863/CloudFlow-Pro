@@ -27,6 +27,8 @@ export interface PurchaseItem {
   unitPrice: number;
   amount?: number;
   receivedQuantity?: number;
+  budgetSubjectCode?: string;
+  budgetSubjectName?: string;
 }
 
 export interface PurchaseRequest {
@@ -51,6 +53,12 @@ export interface PurchaseRequest {
   attachmentUrl?: string;
   deptId?: number;
   deptName?: string;
+  projectId?: number;
+  projectName?: string;
+  customerId?: number;
+  customerName?: string;
+  budgetSubjectCode?: string;
+  budgetSubjectName?: string;
   items?: PurchaseItem[];
   createTime?: string;
   updateTime?: string;

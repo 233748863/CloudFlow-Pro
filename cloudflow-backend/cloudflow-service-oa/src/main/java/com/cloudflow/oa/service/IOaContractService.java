@@ -18,7 +18,7 @@ public interface IOaContractService extends IService<OaContract> {
 
     OaContract getContractInfo(Long id);
 
-    boolean createContract(OaContract contract);
+    Long createContract(OaContract contract);
 
     boolean updateContract(OaContract contract);
 

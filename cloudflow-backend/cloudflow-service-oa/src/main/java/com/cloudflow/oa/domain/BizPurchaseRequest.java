@@ -65,6 +65,18 @@ public class BizPurchaseRequest implements Serializable {
 
     private String deptName;
 
+    private Long projectId;
+
+    private String projectName;
+
+    private Long customerId;
+
+    private String customerName;
+
+    private String budgetSubjectCode;
+
+    private String budgetSubjectName;
+
     @TableField(fill = FieldFill.INSERT)
     private String delFlag;
 

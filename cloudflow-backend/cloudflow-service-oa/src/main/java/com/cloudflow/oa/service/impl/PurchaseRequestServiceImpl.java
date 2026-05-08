@@ -22,6 +22,7 @@ import com.cloudflow.oa.mapper.BizPurchaseItemMapper;
 import com.cloudflow.oa.mapper.BizPurchaseReceiptMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
 import com.cloudflow.oa.service.IConsumableService;
+import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import com.cloudflow.oa.service.ISupplierService;
@@ -66,6 +67,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private final IConsumableService consumableService;
     private final IPaymentRequestService paymentRequestService;
     private final RemoteWorkflowService remoteWorkflowService;
+    private final IOaBudgetService budgetService;
 
     @Override
     public Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId) {
@@ -151,6 +153,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         }
         normalizeAndValidatePurchase(purchase);
         compensateUserSnapshot(purchase);
+        reserveBudget(purchase);
         purchase.setStatus(STATUS_PENDING);
 
         try {
@@ -361,6 +364,15 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         update(wrapper);
     }
 
+    @Override
+    public void releaseBudgetOnRejected(Long purchaseId) {
+        BizPurchaseRequest purchase = getRequestWithItems(purchaseId);
+        if (purchase == null) {
+            return;
+        }
+        releaseBudget(purchase);
+    }
+
     private void normalizeAndValidatePurchase(BizPurchaseRequest purchase) {
         if (purchase == null) {
             throw new IllegalArgumentException("采购申请不能为空");
@@ -526,5 +538,73 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             return (String) data;
         }
         return null;
+    }
+
+    private void reserveBudget(BizPurchaseRequest purchase) {
+        if (purchase.getItems() == null || purchase.getItems().isEmpty()) {
+            budgetService.reserveBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    purchase.getId(),
+                    purchase.getPurchaseNo(),
+                    purchase.getDeptId(),
+                    purchase.getDeptName(),
+                    purchase.getProjectId(),
+                    purchase.getProjectName(),
+                    purchase.getBudgetSubjectCode(),
+                    purchase.getBudgetSubjectName(),
+                    purchase.getTotalAmount(),
+                    "采购提交占用预算"
+            );
+            return;
+        }
+        for (BizPurchaseItem item : purchase.getItems()) {
+            budgetService.reserveBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    purchase.getId(),
+                    purchase.getPurchaseNo(),
+                    purchase.getDeptId(),
+                    purchase.getDeptName(),
+                    purchase.getProjectId(),
+                    purchase.getProjectName(),
+                    StringUtils.hasText(item.getBudgetSubjectCode()) ? item.getBudgetSubjectCode() : purchase.getBudgetSubjectCode(),
+                    StringUtils.hasText(item.getBudgetSubjectName()) ? item.getBudgetSubjectName() : purchase.getBudgetSubjectName(),
+                    item.getAmount(),
+                    "采购明细占用预算"
+            );
+        }
+    }
+
+    private void releaseBudget(BizPurchaseRequest purchase) {
+        if (purchase.getItems() == null || purchase.getItems().isEmpty()) {
+            budgetService.releaseBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    purchase.getId(),
+                    purchase.getPurchaseNo(),
+                    purchase.getDeptId(),
+                    purchase.getDeptName(),
+                    purchase.getProjectId(),
+                    purchase.getProjectName(),
+                    purchase.getBudgetSubjectCode(),
+                    purchase.getBudgetSubjectName(),
+                    purchase.getTotalAmount(),
+                    "采购驳回释放预算"
+            );
+            return;
+        }
+        for (BizPurchaseItem item : purchase.getItems()) {
+            budgetService.releaseBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    purchase.getId(),
+                    purchase.getPurchaseNo(),
+                    purchase.getDeptId(),
+                    purchase.getDeptName(),
+                    purchase.getProjectId(),
+                    purchase.getProjectName(),
+                    StringUtils.hasText(item.getBudgetSubjectCode()) ? item.getBudgetSubjectCode() : purchase.getBudgetSubjectCode(),
+                    StringUtils.hasText(item.getBudgetSubjectName()) ? item.getBudgetSubjectName() : purchase.getBudgetSubjectName(),
+                    item.getAmount(),
+                    "采购明细释放预算"
+            );
+        }
     }
 }

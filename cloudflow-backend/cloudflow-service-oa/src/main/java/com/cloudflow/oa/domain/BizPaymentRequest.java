@@ -74,6 +74,27 @@ public class BizPaymentRequest implements Serializable {
     /** 部门名称 */
     private String deptName;
 
+    /** 关联项目ID */
+    private Long projectId;
+
+    /** 关联项目名称 */
+    private String projectName;
+
+    /** 关联客户ID */
+    private Long customerId;
+
+    /** 关联客户名称 */
+    private String customerName;
+
+    /** 预算科目编码 */
+    private String budgetSubjectCode;
+
+    /** 预算科目名称 */
+    private String budgetSubjectName;
+
+    /** 发票汇总状态 */
+    private String invoiceStatus;
+
     /** 删除标志 */
     @TableField(fill = FieldFill.INSERT)
     private String delFlag;

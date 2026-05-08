@@ -77,6 +77,21 @@ public class BusinessTrip implements Serializable {
     /** 关联项目名称 */
     private String projectName;
 
+    /** 关联项目ID */
+    private Long projectId;
+
+    /** 关联客户ID */
+    private Long customerId;
+
+    /** 关联客户名称 */
+    private String customerName;
+
+    /** 预算科目编码 */
+    private String budgetSubjectCode;
+
+    /** 预算科目名称 */
+    private String budgetSubjectName;
+
     /** 同行人员(JSON数组) */
     private String companions;
 

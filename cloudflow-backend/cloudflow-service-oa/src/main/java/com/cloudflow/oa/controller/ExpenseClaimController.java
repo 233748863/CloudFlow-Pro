@@ -9,6 +9,8 @@ import com.cloudflow.oa.domain.dto.VehicleExpenseConvertDTO;
 import com.cloudflow.oa.domain.export.ExpenseClaimExportVo;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IExpenseClaimService;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -111,6 +113,17 @@ public class ExpenseClaimController {
     public R<Void> submit(@PathVariable Long id) {
         try {
             return expenseClaimService.submitClaim(id) ? R.ok() : R.fail("提交失败");
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("确认报销打款")
+    @PostMapping("/{id}/pay")
+    @SaCheckRole(value = {"admin", "finance"}, mode = SaMode.OR)
+    public R<Void> confirmPaid(@PathVariable Long id) {
+        try {
+            return expenseClaimService.confirmPaid(id) ? R.ok() : R.fail("确认打款失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

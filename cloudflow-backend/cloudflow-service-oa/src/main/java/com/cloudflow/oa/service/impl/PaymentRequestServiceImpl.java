@@ -13,6 +13,7 @@ import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
+import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
@@ -42,6 +43,9 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
 
     @Autowired
     private BizPurchaseRequestMapper purchaseRequestMapper;
+
+    @Autowired
+    private IOaBudgetService budgetService;
 
     @Override
     public Page<BizPaymentRequest> queryPage(Integer pageNum, Integer pageSize, String status, String paymentType, Long userId) {
@@ -99,6 +103,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         if (payment.getUserId() == null) {
             payment.setUserId(UserContext.getUserId());
         }
+        reserveBudget(payment);
         
         // 更新状态为审批中
         payment.setStatus("PENDING");
@@ -167,6 +172,19 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         boolean updated = updateById(payment);
         if (updated) {
             updatePurchasePaymentStatus(id, "PAID");
+            budgetService.writeoffBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                    payment.getId(),
+                    payment.getPaymentNo(),
+                    payment.getDeptId(),
+                    payment.getDeptName(),
+                    payment.getProjectId(),
+                    payment.getProjectName(),
+                    payment.getBudgetSubjectCode(),
+                    payment.getBudgetSubjectName(),
+                    payment.getAmount(),
+                    "付款确认核销预算"
+            );
         }
         return updated;
     }
@@ -218,5 +236,21 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
                 .set(BizPurchaseRequest::getUpdateBy, UserContext.getUserName())
                 .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
         purchaseRequestMapper.update(null, wrapper);
+    }
+
+    private void reserveBudget(BizPaymentRequest payment) {
+        budgetService.reserveBudget(
+                WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                payment.getId(),
+                payment.getPaymentNo(),
+                payment.getDeptId(),
+                payment.getDeptName(),
+                payment.getProjectId(),
+                payment.getProjectName(),
+                payment.getBudgetSubjectCode(),
+                payment.getBudgetSubjectName(),
+                payment.getAmount(),
+                "付款提交占用预算"
+        );
     }
 }

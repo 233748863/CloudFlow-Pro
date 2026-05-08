@@ -1,6 +1,6 @@
 # CloudFlow Pro
 
-CloudFlow Pro 是一个面向企业办公、流程审批和人力资源场景的低代码工作流平台。当前仓库已经从早期的 4 服务形态演进为网关、认证、工作流、OA、HR、前端和监控配套的多模块工程，README 已按当前代码结构重写。
+CloudFlow Pro 是一个面向企业办公、流程审批、人力资源和客户经营场景的低代码工作流平台。当前仓库已经从早期的 4 服务形态演进为网关、认证、工作流、OA、CRM、HR、前端和监控配套的多模块工程，README 已按当前代码结构重写。
 
 <div align="center">
 
@@ -21,19 +21,20 @@ CloudFlow Pro 是一个面向企业办公、流程审批和人力资源场景的
 | --- | --- |
 | 后端版本 | `cloudflow-backend` Maven 版本 `1.0.0` |
 | 前端版本 | `cloudflow-frontend` package 版本 `0.0.0` |
-| 后端服务 | 网关、认证、工作流、OA、HR |
+| 后端服务 | 网关、认证、工作流、OA、CRM、HR |
 | 公共能力 | 16 个 `cloudflow-common-*` 子模块 |
-| Controller | 业务服务 84 个，公共 SSE 1 个 |
+| Controller | 业务服务 84+ 个，公共 SSE 1 个 |
 | 前端页面 | `src/pages` 下 94 个 TSX 页面组件 |
 | 数据库结构 | `01`-`04` 脚本合计 135 张结构表 |
-| 本地一键启动 | `start-cloudflow.ps1` 启动 5 个后端服务和前端 |
-| Docker Compose | 已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、HR、Prometheus、Grafana、前端 |
+| 本地一键启动 | `start-cloudflow.ps1` 启动 6 个后端服务和前端 |
+| Docker Compose | 已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端 |
 
 ## ✨ 核心能力
 
 - ⚙️ 工作流：流程设计、动态表单、模板库、版本管理、抄送、会签、加签、减签、委派、发布窗口、发布审批、回滚、归档、流程监控、超时告警、异常告警、性能统计。
 - 🛡️ 系统治理：认证登录、滑块验证码、Sa-Token 会话、RBAC 权限、菜单权限、数据权限、多租户、字典、参数配置、文件管理、操作日志、审计日志、在线用户、Redis 缓存监控。
-- 💼 OA：公告、日程、会议室、通讯录、访客、资产、耗材、车辆、费用报销、付款申请、采购申请、合同、风险告警、印章、证照、值班排班、知识库、离线同步、前端错误上报。
+- 💼 OA：公告、日程、会议室、通讯录、访客、资产、耗材、车辆、费用报销、付款申请、采购申请、合同、项目、预算、发票、风险告警、印章、证照、值班排班、知识库、离线同步、前端错误上报。
+- 🤝 CRM：客户、联系人、跟进、商机、报价、回款、续约、工单、客户健康度。
 - 👥 HR：组织编制、岗位族、职级、职位、员工档案、合同、入职、转正、调岗、离职、考勤、请假、加班、排班、薪酬、社保、个税、绩效、招聘、候选人、面试、Offer、HR 审计。
 - 📱 前端体验：React 19、Vite、Tailwind CSS 4、路由守卫、响应式页面、PWA、离线同步、工作台组件、流程设计器、模板库、监控看板、HR 工作区。
 
@@ -88,10 +89,11 @@ CloudFlow Pro 是一个面向企业办公、流程审批和人力资源场景的
 | 服务 | 模块 | 默认端口 | 说明 |
 | --- | --- | --- | --- |
 | 前端开发服务 | `cloudflow-frontend` | `3000` | Vite，本地开发入口 |
-| 网关 | `cloudflow-gateway` | `9000` | 统一入口，路由 `/auth`、`/workflow`、`/oa`、`/hr`、`/ws` |
+| 网关 | `cloudflow-gateway` | `9000` | 统一入口，路由 `/auth`、`/workflow`、`/oa`、`/crm`、`/hr`、`/ws` |
 | 认证服务 | `cloudflow-auth` | `9001` | 登录、租户、系统管理、文件、日志 |
 | 工作流服务 | `cloudflow-service-workflow` | `9002` | 流程引擎、流程监控、模板、版本、发布 |
 | OA 服务 | `cloudflow-service-oa` | `9003` | 办公、行政、合同、知识库、同步 |
+| CRM 服务 | `cloudflow-service-crm` | `9004` | 客户、商机、报价、回款、续约、工单 |
 | HR 服务 | `cloudflow-service-hr` | `9005` | 人力资源业务 |
 | Nacos | Docker / 本地安装 | `8848` | 注册中心和配置中心 |
 | MySQL | Docker / 本地安装 | `3306` | 默认库名 `cloud_flow_db` |
@@ -108,6 +110,7 @@ CloudFlow Pro/
 │   ├── cloudflow-auth/                 # 认证与系统管理
 │   ├── cloudflow-service-workflow/     # 工作流核心服务
 │   ├── cloudflow-service-oa/           # OA 办公服务
+│   ├── cloudflow-service-crm/          # CRM 客户关系服务
 │   ├── cloudflow-service-hr/           # HR 人力资源服务
 │   ├── cloudflow-common/               # 16 个公共子模块
 │   └── DB/                             # 数据库结构、种子和演示脚本
@@ -177,7 +180,7 @@ mysql -u root -p cloud_flow_db < cloudflow-backend/DB/06.cloudflow-business-seed
 
 ### 📤 3. 推送 Nacos 配置
 
-`config/` 下当前有 6 个标准 Data ID：`cloudflow-common.yaml`、`cloudflow-gateway.yaml`、`cloudflow-auth.yaml`、`cloudflow-service-workflow.yaml`、`cloudflow-service-hr.yaml`、`cloudflow-oa.yaml`。这些配置文件带有当前开发环境默认地址，首次运行前应把 MySQL、Redis、Nacos 地址和密码改成自己的环境值。
+`config/` 下当前有 7 个标准 Data ID：`cloudflow-common.yaml`、`cloudflow-gateway.yaml`、`cloudflow-auth.yaml`、`cloudflow-service-workflow.yaml`、`cloudflow-oa.yaml`、`cloudflow-service-crm.yaml`、`cloudflow-service-hr.yaml`。这些配置文件带有当前开发环境默认地址，首次运行前应把 MySQL、Redis、Nacos 地址和密码改成自己的环境值。
 
 ```powershell
 python -m pip install requests
@@ -208,7 +211,7 @@ cd ..
 pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
 ```
 
-脚本会编译并安装后端内部依赖，启动网关、认证、工作流、OA、HR 和前端；运行日志写入 `.cloudflow-runtime/logs/`。
+脚本会编译并安装后端内部依赖，启动网关、认证、工作流、OA、CRM、HR 和前端；运行日志写入 `.cloudflow-runtime/logs/`。
 
 ### 🌐 6. 访问入口
 
@@ -217,6 +220,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
 - API 文档：`http://localhost:9000/doc.html`
 - Nacos：`http://localhost:8848/nacos`
 - 工作流健康检查：`http://localhost:9002/actuator/health`
+- CRM 健康检查：`http://localhost:9004/actuator/health`
 - HR 健康检查：`http://localhost:9005/actuator/health`
 
 ## 🧰 手动启动
@@ -225,7 +229,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
 
 ```powershell
 cd .\cloudflow-backend
-mvn -pl cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-hr -am -DskipTests -Dmaven.test.skip=true -Dmdep.analyze.skip=true install
+mvn -pl cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-hr -am -DskipTests -Dmaven.test.skip=true -Dmdep.analyze.skip=true install
 ```
 
 单服务启动示例：
@@ -252,7 +256,7 @@ docker compose up -d
 docker compose ps
 ```
 
-当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、HR、Prometheus、Grafana、前端；首次启动会导入 `01` 至 `04` 号结构脚本，并执行关键表校验。
+当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端；首次启动会导入 `01` 至 `04` 号结构脚本，并执行关键表校验。
 
 Docker 访问入口：
 

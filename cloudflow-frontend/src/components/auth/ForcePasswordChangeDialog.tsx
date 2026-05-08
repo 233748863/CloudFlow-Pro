@@ -49,7 +49,7 @@ export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps>
       clearForcePasswordChange();
       await onChanged();
       toast.success('密码已更新');
-      window.location.href = '/';
+      window.dispatchEvent(new Event('cloudflow:password-updated'));
     } finally {
       setSaving(false);
     }

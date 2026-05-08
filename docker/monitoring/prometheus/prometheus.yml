@@ -52,6 +52,15 @@ scrape_configs:
         labels:
           service: oa
 
+  # 采集 CRM 服务指标，用于观察客户、商机、报价与回款模块运行情况。
+  - job_name: cloudflow-crm
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets:
+          - crm:9004
+        labels:
+          service: crm
+
   # 采集 HR 服务指标，用于观察人力资源模块运行状态。
   - job_name: cloudflow-hr
     metrics_path: /actuator/prometheus

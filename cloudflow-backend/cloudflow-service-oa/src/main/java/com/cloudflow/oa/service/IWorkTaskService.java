@@ -24,4 +24,10 @@ public interface IWorkTaskService extends IService<WorkTask> {
      * @return 是否成功
      */
     boolean updateStatus(Long taskId, String status);
+
+    List<WorkTask> listProjectTasks(Long projectId);
+
+    boolean removeProjectTasks(List<Long> ids);
+
+    boolean batchUpdateTree(java.util.List<com.cloudflow.oa.domain.dto.ProjectWbsTreeNodeDTO> nodes, String updateBy);
 }

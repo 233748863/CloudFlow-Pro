@@ -31,4 +31,6 @@ public interface IPurchaseRequestService extends IService<BizPurchaseRequest> {
     BizPurchaseRequest createFromSuggestion(PurchaseFromSuggestionDTO dto);
 
     void updatePaymentStatus(Long paymentRequestId, String paymentStatus);
+
+    void releaseBudgetOnRejected(Long purchaseId);
 }

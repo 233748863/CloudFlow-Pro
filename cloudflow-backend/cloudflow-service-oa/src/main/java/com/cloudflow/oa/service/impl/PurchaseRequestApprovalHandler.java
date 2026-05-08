@@ -6,6 +6,7 @@ import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
 import com.cloudflow.oa.service.ApprovalResultHandler;
+import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.time.LocalDateTime;
 public class PurchaseRequestApprovalHandler implements ApprovalResultHandler {
 
     private final BizPurchaseRequestMapper purchaseRequestMapper;
+    private final IPurchaseRequestService purchaseRequestService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -35,6 +37,7 @@ public class PurchaseRequestApprovalHandler implements ApprovalResultHandler {
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
         updateStatus(dto, "REJECTED");
+        purchaseRequestService.releaseBudgetOnRejected(dto.getBusinessId());
     }
 
     private void updateStatus(ApprovalResultDTO dto, String status) {

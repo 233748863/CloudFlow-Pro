@@ -28,6 +28,15 @@ public class WorkTask {
     
     /** 部门ID */
     private Long deptId;
+
+    /** 项目ID */
+    private Long projectId;
+
+    /** 里程碑ID */
+    private Long milestoneId;
+
+    /** WBS编码 */
+    private String wbsCode;
     
     /**
      * 0:低, 1:中, 2:高
@@ -41,6 +50,30 @@ public class WorkTask {
     
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime dueDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime plannedStartTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime plannedEndTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime baselineStartTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime baselineEndTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime actualStartTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime actualEndTime;
+
+    private java.math.BigDecimal progress;
+
+    private java.math.BigDecimal estimatedHours;
+
+    private java.math.BigDecimal actualHours;
     
     /**
      * JSON数组字符串
@@ -48,6 +81,8 @@ public class WorkTask {
     private String tags;
     
     private Long parentId;
+
+    private Integer sortOrder;
     
     private String createBy;
     

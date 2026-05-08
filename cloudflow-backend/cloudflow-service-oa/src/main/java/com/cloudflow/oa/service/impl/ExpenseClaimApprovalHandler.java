@@ -6,6 +6,8 @@ import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.service.ApprovalResultHandler;
+import com.cloudflow.oa.service.IExpenseClaimService;
+import com.cloudflow.oa.service.IOaBudgetService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,6 +23,8 @@ import java.time.LocalDateTime;
 public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
 
     private final BizExpenseClaimMapper expenseClaimMapper;
+    private final IExpenseClaimService expenseClaimService;
+    private final IOaBudgetService budgetService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -35,6 +39,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
         updateStatus(dto, "REJECTED");
+        releaseBudget(dto.getBusinessId());
     }
 
     private void updateStatus(ApprovalResultDTO dto, String status) {
@@ -51,5 +56,41 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
         }
         log.info("报销申请审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
+    }
+
+    private void releaseBudget(Long claimId) {
+        BizExpenseClaim claim = expenseClaimService.getClaimWithItems(claimId);
+        if (claim == null) {
+            return;
+        }
+        if (claim.getItems() == null || claim.getItems().isEmpty()) {
+            budgetService.releaseBudget(
+                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    claim.getId(),
+                    claim.getClaimNo(),
+                    claim.getDeptId(),
+                    claim.getDeptName(),
+                    claim.getProjectId(),
+                    claim.getProjectName(),
+                    claim.getBudgetSubjectCode(),
+                    claim.getBudgetSubjectName(),
+                    claim.getTotalAmount(),
+                    "报销驳回释放预算"
+            );
+            return;
+        }
+        claim.getItems().forEach(item -> budgetService.releaseBudget(
+                WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                claim.getId(),
+                claim.getClaimNo(),
+                claim.getDeptId(),
+                claim.getDeptName(),
+                claim.getProjectId(),
+                claim.getProjectName(),
+                item.getBudgetSubjectCode() != null && !item.getBudgetSubjectCode().isBlank() ? item.getBudgetSubjectCode() : claim.getBudgetSubjectCode(),
+                item.getBudgetSubjectName() != null && !item.getBudgetSubjectName().isBlank() ? item.getBudgetSubjectName() : claim.getBudgetSubjectName(),
+                item.getAmount(),
+                "报销明细驳回释放预算"
+        ));
     }
 }

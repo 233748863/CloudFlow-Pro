@@ -11,6 +11,8 @@ export interface ExpenseItem {
   description?: string;
   receiptUrl?: string;
   vehicleExpenseId?: number;
+  budgetSubjectCode?: string;
+  budgetSubjectName?: string;
 }
 
 export interface ExpenseClaim {
@@ -26,6 +28,13 @@ export interface ExpenseClaim {
   status?: string;
   deptId?: number;
   deptName?: string;
+  projectId?: number;
+  projectName?: string;
+  customerId?: number;
+  customerName?: string;
+  budgetSubjectCode?: string;
+  budgetSubjectName?: string;
+  invoiceStatus?: string;
   items?: ExpenseItem[];
   createTime?: string;
   updateTime?: string;
@@ -49,6 +58,13 @@ export interface PaymentRequest {
   status?: string;
   deptId?: number;
   deptName?: string;
+  projectId?: number;
+  projectName?: string;
+  customerId?: number;
+  customerName?: string;
+  budgetSubjectCode?: string;
+  budgetSubjectName?: string;
+  invoiceStatus?: string;
   createTime?: string;
   updateTime?: string;
 }
@@ -124,6 +140,9 @@ export const expenseClaimApi = {
 
   // 提交报销申请
   submit: (id: number) => request.post(`/oa/expense/claim/submit/${id}`),
+
+  // 确认报销打款
+  confirmPaid: (id: number) => request.post(`/oa/expense/claim/${id}/pay`),
 
   // 车辆费用转报销单
   convertVehicleExpense: (data: VehicleExpenseConvertRequest) =>

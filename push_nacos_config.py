@@ -7,6 +7,7 @@
 - cloudflow-gateway.yaml
 - cloudflow-auth.yaml
 - cloudflow-service-workflow.yaml
+- cloudflow-service-crm.yaml
 - cloudflow-service-hr.yaml
 - cloudflow-oa.yaml
 """
@@ -27,6 +28,7 @@ DEFAULT_CONFIG_FILES = [
     "cloudflow-gateway.yaml",
     "cloudflow-auth.yaml",
     "cloudflow-service-workflow.yaml",
+    "cloudflow-service-crm.yaml",
     "cloudflow-service-hr.yaml",
     "cloudflow-oa.yaml",
 ]

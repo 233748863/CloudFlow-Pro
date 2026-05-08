@@ -10,6 +10,9 @@ spring:
     import:
       - optional:nacos:cloudflow-gateway.yaml
       - optional:nacos:cloudflow-common.yaml?refresh=true
+      - optional:file:./config/cloudflow-gateway.yaml
+      - optional:file:../config/cloudflow-gateway.yaml
+      - optional:file:../../config/cloudflow-gateway.yaml
   cloud:
     nacos:
       server-addr: ${NACOS_SERVER:192.168.1.173:8848}
@@ -20,6 +23,62 @@ spring:
         file-extension: yaml
       discovery:
         namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+    gateway:
+      lazy-routes-initialization: true
+      routes:
+        - id: cloudflow-auth
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/auth/**
+          filters:
+            - StripPrefix=1
+
+        - id: cloudflow-workflow
+          uri: lb://cloudflow-service-workflow
+          predicates:
+            - Path=/workflow/**
+          filters:
+            - StripPrefix=1
+
+        - id: cloudflow-oa
+          uri: lb://cloudflow-oa
+          predicates:
+            - Path=/oa/**
+          filters:
+            - StripPrefix=1
+
+        - id: cloudflow-crm
+          uri: lb://cloudflow-service-crm
+          predicates:
+            - Path=/crm/**
+          filters:
+            - StripPrefix=1
+
+        - id: cloudflow-hr
+          uri: lb://cloudflow-service-hr
+          predicates:
+            - Path=/hr/**
+          filters:
+            - StripPrefix=1
+
+        - id: cloudflow-ws
+          uri: lb:ws://cloudflow-service-workflow
+          predicates:
+            - Path=/ws/**
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origin-patterns: "*"
+            allowed-methods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowed-headers: "*"
+            allow-credentials: true
+            max-age: 3600
   data:
     redis:
       host: 192.168.1.173

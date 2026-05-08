@@ -15,6 +15,9 @@ import {
 import { toast } from 'sonner';
 import FileUpload from '@/components/FileUpload';
 import { consumableApi, Consumable } from '@/services/api/consumable';
+import { crmApi, CrmCustomer } from '@/services/api/crm';
+import { projectApi, Project } from '@/services/api/project';
+import { budgetApi, BudgetSubject } from '@/services/api/budget';
 import {
   purchaseRequestApi,
   PurchaseItem,
@@ -166,6 +169,9 @@ export const PurchaseRequestPage: React.FC = () => {
   const [receiptPurchase, setReceiptPurchase] = useState<PurchaseRequest | null>(null);
   const [receiptQuantities, setReceiptQuantities] = useState<Record<number, number>>({});
   const [receiptRemark, setReceiptRemark] = useState('');
+  const [projectOptions, setProjectOptions] = useState<Project[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
+  const [budgetSubjectOptions, setBudgetSubjectOptions] = useState<BudgetSubject[]>([]);
 
   useEffect(() => {
     void fetchPurchases();
@@ -177,12 +183,18 @@ export const PurchaseRequestPage: React.FC = () => {
 
   const fetchReferences = async () => {
     try {
-      const [supplierResult, consumableResult] = await Promise.all([
+      const [supplierResult, consumableResult, projectResult, customerResult, subjectResult] = await Promise.all([
         supplierApi.list({ pageNum: 1, pageSize: 100, status: 'ACTIVE' }),
         consumableApi.list({ pageNum: 1, pageSize: 100 }) as Promise<any>,
+        projectApi.list({ pageNum: 1, pageSize: 100 }),
+        crmApi.listCustomers({ pageNum: 1, pageSize: 100 }),
+        budgetApi.listSubjects({ pageNum: 1, pageSize: 100 }),
       ]);
       setSuppliers(supplierResult.records || supplierResult.rows || []);
       setConsumables(consumableResult.records || consumableResult.rows || []);
+      setProjectOptions(projectResult.rows || []);
+      setCustomerOptions(customerResult.rows || []);
+      setBudgetSubjectOptions(subjectResult.rows || []);
     } catch (error) {
       toast.error(getErrorMessage(error, '加载采购基础数据失败'));
     }
@@ -556,6 +568,88 @@ export const PurchaseRequestPage: React.FC = () => {
             </div>
           </div>
 
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>关联项目</Label>
+              <Select
+                value={formData.projectId ? String(formData.projectId) : 'NONE'}
+                onValueChange={(value) => {
+                  const project = projectOptions.find((item) => String(item.projectId) === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    projectId: value === 'NONE' ? undefined : Number(value),
+                    projectName: project?.projectName || '',
+                    customerId: project?.customerId || prev.customerId,
+                    customerName: project?.customerName || prev.customerName,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择项目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联项目</SelectItem>
+                  {projectOptions.map((item) => (
+                    <SelectItem key={item.projectId} value={String(item.projectId)}>
+                      {item.projectName} / {item.customerName || '无客户'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>客户</Label>
+              <Select
+                value={formData.customerId ? String(formData.customerId) : 'NONE'}
+                onValueChange={(value) => {
+                  const customer = customerOptions.find((item) => String(item.customerId) === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    customerId: value === 'NONE' ? undefined : Number(value),
+                    customerName: customer?.customerName || '',
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择客户" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联客户</SelectItem>
+                  {customerOptions.map((item) => (
+                    <SelectItem key={item.customerId} value={String(item.customerId)}>
+                      {item.customerName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>默认预算科目</Label>
+              <Select
+                value={formData.budgetSubjectCode || 'NONE'}
+                onValueChange={(value) => {
+                  const subject = budgetSubjectOptions.find((item) => item.subjectCode === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    budgetSubjectCode: value === 'NONE' ? '' : value,
+                    budgetSubjectName: subject?.subjectName || '',
+                    items: (prev.items || []).map((item) => ({
+                      ...item,
+                      budgetSubjectCode: item.budgetSubjectCode || (value === 'NONE' ? '' : value),
+                      budgetSubjectName: item.budgetSubjectName || subject?.subjectName || '',
+                    })),
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择默认预算科目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不指定预算科目</SelectItem>
+                  {budgetSubjectOptions.map((item) => (
+                    <SelectItem key={item.subjectId} value={item.subjectCode}>
+                      {item.subjectCode} / {item.subjectName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
           <div className="space-y-2">
             <Label>采购事由</Label>
             <Textarea
@@ -580,7 +674,7 @@ export const PurchaseRequestPage: React.FC = () => {
             <div className="space-y-2">
               {formData.items?.map((item, index) => (
                 <div key={`${index}-${item.id || 'draft'}`} className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_120px_120px_120px_40px]">
+                  <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_140px_120px_120px_120px_40px]">
                     <div className="space-y-2">
                       <Label className="text-xs text-slate-500">耗材</Label>
                       <Select value={item.consumableId ? String(item.consumableId) : ''} onValueChange={(value) => updateItem(index, 'consumableId', Number(value))}>
@@ -589,6 +683,29 @@ export const PurchaseRequestPage: React.FC = () => {
                           {consumables.map((consumable) => (
                             <SelectItem key={consumable.consumableId} value={String(consumable.consumableId)}>
                               {consumable.name} {consumable.model ? `/${consumable.model}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">预算科目</Label>
+                      <Select value={item.budgetSubjectCode || 'NONE'} onValueChange={(value) => {
+                        const subject = budgetSubjectOptions.find((option) => option.subjectCode === value);
+                        const next = [...(formData.items || [])];
+                        next[index] = {
+                          ...next[index],
+                          budgetSubjectCode: value === 'NONE' ? '' : value,
+                          budgetSubjectName: subject?.subjectName || '',
+                        };
+                        setFormData((prev) => ({ ...prev, items: next }));
+                      }}>
+                        <SelectTrigger className="h-10"><SelectValue placeholder="预算科目" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NONE">默认科目</SelectItem>
+                          {budgetSubjectOptions.map((option) => (
+                            <SelectItem key={option.subjectId} value={option.subjectCode}>
+                              {option.subjectCode} / {option.subjectName}
                             </SelectItem>
                           ))}
                         </SelectContent>
@@ -658,6 +775,9 @@ export const PurchaseRequestPage: React.FC = () => {
               <DetailRow label="期望到货日期" value={renderDetailValue(detailPurchase.expectedDate)} />
               <DetailRow label="付款申请" value={detailPurchase.paymentRequestId ? `#${detailPurchase.paymentRequestId}` : '-'} />
               <DetailRow label="付款状态" value={getPaymentStatusBadge(detailPurchase.paymentStatus)} />
+              <DetailRow label="关联项目" value={renderDetailValue(detailPurchase.projectName)} />
+              <DetailRow label="客户" value={renderDetailValue(detailPurchase.customerName)} />
+              <DetailRow label="默认预算科目" value={renderDetailValue(detailPurchase.budgetSubjectName || detailPurchase.budgetSubjectCode)} />
               <DetailRow label="申请人" value={renderDetailValue(detailPurchase.userName)} />
               <DetailRow label="所属部门" value={renderDetailValue(detailPurchase.deptName)} />
               <DetailRow label="流程实例" value={renderDetailValue(detailPurchase.instanceId)} />

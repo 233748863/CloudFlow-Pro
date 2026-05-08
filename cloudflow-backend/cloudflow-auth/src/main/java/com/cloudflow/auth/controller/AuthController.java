@@ -332,21 +332,26 @@ public class AuthController {
         }
 
         SysUser cachedUser = userInfo.getSysUser();
+        SysUser latestUser = TenantBroker.applyWithoutTenant(ignored -> sysUserMapper.selectById(cachedUser.getUserId()));
+        if (latestUser == null) {
+            return R.fail(401, "用户信息不存在");
+        }
+        boolean forcePasswordChange = forcePasswordChangeService.isRequired(latestUser);
 
         // 构建返回对象
         SysUser user = new SysUser();
-        user.setUserId(cachedUser.getUserId());
-        user.setUserName(cachedUser.getUserName());
-        user.setNickName(cachedUser.getNickName());
-        user.setEmail(cachedUser.getEmail());
-        user.setPhonenumber(cachedUser.getPhonenumber());
-        user.setStatus(cachedUser.getStatus());
-        user.setCreateTime(cachedUser.getCreateTime());
-        user.setAvatar(cachedUser.getAvatar());
-        user.setPwdResetRequired(cachedUser.getPwdResetRequired());
-        Long tenantId = resolveTenantId(userMap, cachedUser);
+        user.setUserId(latestUser.getUserId());
+        user.setUserName(latestUser.getUserName());
+        user.setNickName(latestUser.getNickName());
+        user.setEmail(latestUser.getEmail());
+        user.setPhonenumber(latestUser.getPhonenumber());
+        user.setStatus(latestUser.getStatus());
+        user.setCreateTime(latestUser.getCreateTime());
+        user.setAvatar(latestUser.getAvatar());
+        user.setPwdResetRequired(latestUser.getPwdResetRequired());
+        Long tenantId = resolveTenantId(userMap, latestUser);
         user.setTenantId(tenantId);
-        user.setDeptId(resolveDeptId(userMap, cachedUser));
+        user.setDeptId(resolveDeptId(userMap, latestUser));
         user.setTenantName(resolveTenantName(userMap, tenantId));
 
         if (user.getAvatar() == null) {
@@ -364,7 +369,7 @@ public class AuthController {
         data.put("user", user);
         data.put("roles", resolveStringCollection(userMap.get("roles"), userInfo.getRoles()));
         data.put("permissions", resolveStringCollection(userMap.get("permissions"), userInfo.getPermissions()));
-        data.put("forcePasswordChange", forcePasswordChangeService.isRequired(cachedUser));
+        data.put("forcePasswordChange", forcePasswordChange);
 
         return R.ok(DynamicMapVO.from(data));
     }

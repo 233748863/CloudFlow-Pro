@@ -38,4 +38,8 @@ public class BizPurchaseItem implements Serializable {
     private BigDecimal amount;
 
     private Integer receivedQuantity;
+
+    private String budgetSubjectCode;
+
+    private String budgetSubjectName;
 }

@@ -25,6 +25,13 @@ const HIDDEN_WORKFLOW_KEYS = new Set([
   'status',
   'attachmentUrl',
   'id',
+  'projectId',
+  'customerId',
+  'contractId',
+  'opportunityId',
+  'quoteId',
+  'renewalId',
+  'receivableId',
 ]);
 
 const WORKFLOW_SUMMARY_KEYS = [
@@ -54,6 +61,11 @@ const WORKFLOW_SUMMARY_KEYS = [
   'startDate',
   'totalAmount',
   'amount',
+  'projectName',
+  'customerName',
+  'budgetSubjectName',
+  'quoteName',
+  'receivableName',
 ] as const;
 
 const DATE_TIME_FIELD_KEYS = new Set([
@@ -63,6 +75,14 @@ const DATE_TIME_FIELD_KEYS = new Set([
   'actualEndTime',
   'completedTime',
   'dueDate',
+  'expectedDate',
+  'validUntil',
+  'expectedSignDate',
+  'currentExpireDate',
+  'nextExpireDate',
+  'receivedDate',
+  'openedTime',
+  'resolvedTime',
 ]);
 
 const WORKFLOW_FIELD_LABELS: Record<string, string> = {
@@ -126,10 +146,44 @@ const WORKFLOW_FIELD_LABELS: Record<string, string> = {
   payeeBank: '开户行',
   amount: '付款金额',
   contractNo: '合同编号',
+  customerName: '客户名称',
+  customerCode: '客户编码',
+  customerType: '客户类型',
+  industry: '行业',
+  healthLevel: '健康度',
+  healthReason: '健康原因',
+  budgetSubjectCode: '预算科目编码',
+  budgetSubjectName: '预算科目名称',
+  invoiceStatus: '发票状态',
+  quoteNo: '报价单号',
+  quoteName: '报价名称',
+  validUntil: '报价有效期',
+  receivableNo: '回款编号',
+  receivableName: '回款名称',
+  plannedAmount: '计划回款金额',
+  receivedAmount: '已回款金额',
+  outstandingAmount: '未回款金额',
+  receivedDate: '回款日期',
+  renewalNo: '续约单号',
+  renewalName: '续约名称',
+  renewalAmount: '续约金额',
+  expectedSignDate: '预计签约日期',
+  currentExpireDate: '当前到期日',
+  nextExpireDate: '下次到期日',
+  quoteId: '报价ID',
+  receivableId: '回款ID',
+  renewalId: '续约ID',
+  customerId: '客户ID',
+  quoteStatus: '报价状态',
   urgency: '紧急程度',
   projectName: '项目名称',
   days: '天数',
   department: '部门',
+  opportunityName: '商机名称',
+  stage: '商机阶段',
+  ticketTitle: '工单标题',
+  severity: '严重度',
+  followUpTime: '跟进时间',
 };
 
 const WORKFLOW_ENUMS: Record<string, Record<string, string>> = {
@@ -180,6 +234,10 @@ const WORKFLOW_ENUMS: Record<string, Record<string, string>> = {
     TRANSFER: '转账',
     CHECK: '支票',
     CASH: '现金',
+    PURCHASE: '采购',
+    SERVICE: '服务',
+    RENT: '租金',
+    OTHER: '其他',
   },
   category: {
     TRANSPORT: '交通',
@@ -187,6 +245,55 @@ const WORKFLOW_ENUMS: Record<string, Record<string, string>> = {
     HOTEL: '住宿',
     OFFICE: '办公',
     OTHER: '其他',
+  },
+  healthLevel: {
+    GREEN: '绿色',
+    YELLOW: '黄色',
+    RED: '红色',
+  },
+  invoiceStatus: {
+    NONE: '未关联',
+    PARTIAL: '部分关联',
+    FULL: '已完成',
+    REGISTERED: '已登记',
+    BOUND: '已绑定',
+    WRITEOFF_PARTIAL: '部分核销',
+    WRITEOFF_FULL: '全部核销',
+    VOID: '已作废',
+  },
+  stage: {
+    LEAD: '线索',
+    QUALIFIED: '已确认',
+    PROPOSAL: '方案',
+    NEGOTIATION: '谈判',
+    WON: '赢单',
+    LOST: '输单',
+  },
+  severity: {
+    LOW: '低',
+    MEDIUM: '中',
+    HIGH: '高',
+    CRITICAL: '严重',
+  },
+  status: {
+    DRAFT: '草稿',
+    PENDING: '审批中',
+    APPROVED: '已通过',
+    REJECTED: '已驳回',
+    SENT: '已发送',
+    ACCEPTED: '已接受',
+    EXPIRED: '已过期',
+    PLANNED: '计划中',
+    PARTIAL_RECEIVED: '部分回款',
+    RECEIVED: '已回款',
+    NEGOTIATING: '洽谈中',
+    WON: '成功',
+    LOST: '失败',
+    CLOSED: '已关闭',
+    OPEN: '处理中',
+    HANDLING: '处理中',
+    RESOLVED: '已解决',
+    ACTIVE: '启用',
   },
 };
 
@@ -245,16 +352,6 @@ export const formatWorkflowFieldValue = (
 
   if (DATE_TIME_FIELD_KEYS.has(key)) {
     return formatDateTimeDisplay(normalized);
-  }
-
-  if (key === 'paymentType') {
-    const paymentTypeLabels: Record<string, string> = {
-      PURCHASE: '采购',
-      SERVICE: '服务',
-      RENT: '租金',
-      OTHER: '其他',
-    };
-    return paymentTypeLabels[normalized] || normalized;
   }
 
   if (key === 'category') {

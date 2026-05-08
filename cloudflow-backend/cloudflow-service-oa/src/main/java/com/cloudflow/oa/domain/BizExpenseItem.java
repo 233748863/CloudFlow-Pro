@@ -38,6 +38,12 @@ public class BizExpenseItem implements Serializable {
     /** 费用说明 */
     private String description;
 
+    /** 预算科目编码 */
+    private String budgetSubjectCode;
+
+    /** 预算科目名称 */
+    private String budgetSubjectName;
+
     /** 凭证附件URL（多个用逗号分隔） */
     private String receiptUrl;
 

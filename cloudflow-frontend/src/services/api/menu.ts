@@ -6,6 +6,7 @@ export interface MenuItem {
   parentId: number;
   orderNum: number;
   path: string;
+  query?: string;
   component?: string;
   menuType: string; // M=目录, C=菜单, F=按钮
   visible: string;

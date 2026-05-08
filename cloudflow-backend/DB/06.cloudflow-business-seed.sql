@@ -1,9 +1,9 @@
 -- =========================================================
 -- CloudFlow Pro - 统一种子数据脚本
 -- 依赖：01.cloudflow-common.sql、02.cloudflow-workflow.sql、
---       03.cloudflow-hr.sql、04.cloudflow-oa.sql 已先执行
--- 说明：原 01~04 中的初始化/演示数据已统一迁移到本文件
--- 导入顺序：全量初始化时最后执行；如已清库，可在 05 后直接执行本文件
+--       03.cloudflow-hr.sql、04.cloudflow-oa.sql、08.cloudflow-crm.sql 已先执行
+-- 说明：原 01~04 与 CRM 初始化/演示数据已统一汇总到本文件
+-- 导入顺序：全量初始化时最后执行；如已清库，可在 08 后直接执行本文件
 -- =========================================================
 
 SET NAMES utf8mb4;
@@ -29,11 +29,15 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_menu
 WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
+   OR menu_id = 8
    OR menu_id BETWEEN 100 AND 214
+   OR menu_id BETWEEN 215 AND 217
    OR menu_id BETWEEN 300 AND 399
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 513
+   OR menu_id = 514
    OR menu_id BETWEEN 600 AND 635
+   OR menu_id BETWEEN 800 AND 805
    OR menu_id BETWEEN 700 AND 739;
 
 DELETE FROM cloud_flow_db.sys_business_rule_hit_record
@@ -386,6 +390,96 @@ WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.biz_business_trip
 WHERE id BETWEEN 9000 AND 9999;
 
+DELETE FROM cloud_flow_db.oa_budget_adjustment
+WHERE adjustment_id BETWEEN 9101 AND 9199
+   OR adjustment_no IN ('TZ202605080001', 'TZ202605080002');
+
+DELETE FROM cloud_flow_db.oa_budget_line
+WHERE line_id BETWEEN 9101 AND 9199
+   OR budget_id BETWEEN 9101 AND 9199;
+
+DELETE FROM cloud_flow_db.oa_budget_plan
+WHERE budget_id BETWEEN 9101 AND 9199
+   OR budget_no IN ('YS202605080001', 'YS202605080002')
+   OR project_id BETWEEN 9301 AND 9399;
+
+DELETE FROM cloud_flow_db.oa_budget_subject
+WHERE subject_id BETWEEN 9101 AND 9199
+   OR subject_code IN ('SUB-TRAVEL', 'SUB-SERVICE', 'SUB-DELIVERY');
+
+DELETE FROM cloud_flow_db.oa_project_risk
+WHERE risk_id BETWEEN 9301 AND 9399
+   OR project_id BETWEEN 9301 AND 9399
+   OR risk_code IN ('RK202605080001', 'RK202605080002');
+
+DELETE FROM cloud_flow_db.oa_project_dependency
+WHERE dependency_id BETWEEN 9301 AND 9399
+   OR project_id BETWEEN 9301 AND 9399
+   OR predecessor_id BETWEEN 9301 AND 9399
+   OR successor_id BETWEEN 9301 AND 9399;
+
+DELETE FROM cloud_flow_db.oa_project_milestone
+WHERE milestone_id BETWEEN 9301 AND 9399
+   OR project_id BETWEEN 9301 AND 9399
+   OR milestone_code IN ('MS202605080001', 'MS202605080002', 'MS202605080003');
+
+DELETE FROM cloud_flow_db.oa_project_member
+WHERE id BETWEEN 9301 AND 9399
+   OR project_id BETWEEN 9301 AND 9399;
+
+DELETE FROM cloud_flow_db.sys_work_task
+WHERE task_id BETWEEN 9301 AND 9399
+   OR project_id BETWEEN 9301 AND 9399
+   OR wbs_code IN ('WBS-001', 'WBS-002', 'WBS-003', 'WBS-004');
+
+DELETE FROM cloud_flow_db.oa_project
+WHERE project_id BETWEEN 9301 AND 9399
+   OR project_no IN ('PRJ202605080001', 'PRJ202605080002')
+   OR contract_id IN (9201, 9202);
+
+DELETE FROM cloud_flow_db.oa_crm_follow_up
+WHERE follow_up_id BETWEEN 8801 AND 8899;
+
+DELETE FROM cloud_flow_db.oa_crm_contact
+WHERE contact_id BETWEEN 8801 AND 8899;
+
+DELETE FROM cloud_flow_db.oa_crm_quote
+WHERE quote_id BETWEEN 8801 AND 8899
+   OR quote_no IN ('BJ202605080001', 'BJ202605080002', 'BJ202605080003');
+
+DELETE FROM cloud_flow_db.oa_crm_opportunity
+WHERE opportunity_id BETWEEN 8801 AND 8899;
+
+DELETE FROM cloud_flow_db.oa_crm_receivable
+WHERE receivable_id BETWEEN 8801 AND 8899
+   OR receivable_no IN ('SK202605080001', 'SK202605080002', 'SK202605080003');
+
+DELETE FROM cloud_flow_db.oa_crm_renewal
+WHERE renewal_id BETWEEN 8801 AND 8899
+   OR renewal_no IN ('XY202605080001', 'XY202605080002');
+
+DELETE FROM cloud_flow_db.oa_crm_service_ticket
+WHERE ticket_id BETWEEN 8801 AND 8899
+   OR ticket_no IN ('GD202605080001', 'GD202605080002');
+
+DELETE FROM cloud_flow_db.oa_crm_customer
+WHERE customer_id BETWEEN 8801 AND 8899
+   OR customer_code IN ('CRM-CUST-001', 'CRM-CUST-002', 'CRM-CUST-003');
+
+DELETE FROM cloud_flow_db.oa_contract
+WHERE contract_id BETWEEN 9201 AND 9299
+   OR contract_no IN ('HT202605080001', 'HT202605080002', 'HT202605080003');
+
+DELETE FROM cloud_flow_db.oa_invoice_writeoff
+WHERE writeoff_id BETWEEN 8801 AND 8899
+   OR invoice_id BETWEEN 8801 AND 8899
+   OR business_id IN (8801, 8802, 8803, 9001, 9002);
+
+DELETE FROM cloud_flow_db.oa_invoice
+WHERE invoice_id BETWEEN 8801 AND 8899
+   OR (tenant_id = 100000 AND invoice_code IN ('OUT20260508A', 'OUT20260508B', 'OUT20260508C', 'IN20260508A', 'IN20260508B', 'IN20260508C'))
+   OR external_bill_no IN ('CRM-INV-8801', 'CRM-INV-8802', 'CRM-INV-8803', 'OA-INV-8804', 'OA-INV-8805', 'OA-INV-8806');
+
 CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_employee_contract_attachment (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
@@ -728,6 +822,7 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(4,   '流程管理',   0, 4, 'workflow
 INSERT INTO cloud_flow_db.sys_menu VALUES(5,   '行政管理',   0, 5, 'admin-mgmt',    NULL, NULL, 0, 0, 'M', '0', '0', '', 'Building2',       'admin', NOW(), '', null, '行政管理目录');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(6,   '系统管理',   0, 6, 'system',        NULL, NULL, 0, 0, 'M', '0', '0', '', 'Wrench',          'admin', NOW(), '', null, '系统管理目录');
+INSERT INTO cloud_flow_db.sys_menu VALUES(8,   '客户经营',   0, 8, 'crm',           NULL, NULL, 0, 0, 'M', '0', '0', '', 'Handshake',       'admin', NOW(), '', null, 'CRM客户经营目录');
 
 -- ═══════════════════════════════════════════════════
 -- 二级菜单（C类型）
@@ -879,8 +974,11 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(211, '采购申请',   2, 11, '/office
 INSERT INTO cloud_flow_db.sys_menu VALUES(212, '用印申请',   2, 12, '/office/seal-application', 'pages/SealApplicationPage',   NULL, 0, 0, 'C', '0', '0', 'office:seal:list',          'Stamp',           'admin', NOW(), '', null, '用印申请');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(213, '证照借用',   2, 13, '/office/license-borrow',   'pages/LicenseBorrowPage',     NULL, 0, 0, 'C', '0', '0', 'office:license:list',       'BadgeCheck',      'admin', NOW(), '', null, '证照借用申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(214, '项目管理',   2, 14, '/office/project',          'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'office:project:list',       'FolderKanban',    'admin', NOW(), '', null, '项目立项、里程碑与甘特图');
+INSERT INTO cloud_flow_db.sys_menu VALUES(215, '预算管理',   2, 15, '/office/budget',           'pages/BudgetManagementPage',  NULL, 0, 0, 'C', '0', '0', 'office:budget:list',        'Banknote',        'admin', NOW(), '', null, '部门与项目预算管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(216, '发票管理',   2, 16, '/office/invoice',          'pages/InvoiceManagementPage', NULL, 0, 0, 'C', '0', '0', 'office:invoice:list',       'Receipt',         'admin', NOW(), '', null, '发票录入、外链与核销');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(214, '合同台账',   2, 14, '/office/contracts',        'pages/ContractPage',          NULL, 0, 0, 'C', '0', '0', 'office:contract:list',      'FileSignature',   'admin', NOW(), '', null, '合同审批、用印与归档台账');
+INSERT INTO cloud_flow_db.sys_menu VALUES(217, '合同台账',   2, 17, '/office/contracts',        'pages/ContractPage',          NULL, 0, 0, 'C', '0', '0', 'office:contract:list',      'FileSignature',   'admin', NOW(), '', null, '合同审批、用印与归档台账');
 
 -- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班、供应商、耗材
 INSERT INTO cloud_flow_db.sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', NOW(), '', null, '访客预约管理');
@@ -898,6 +996,14 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(511, '证照台账',   5, 12, '/admin/
 INSERT INTO cloud_flow_db.sys_menu VALUES(512, '借还管理',   5, 13, '/admin/borrow-management',  'pages/admin/seal-license/BorrowManagementPage', NULL, 0, 0, 'C', '0', '0', 'admin:borrow:list', 'RotateCcw',     'admin', NOW(), '', null, '用印证照借还管理');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(513, '风险中心',   5, 14, '/admin/risk-alerts',        'pages/admin/RiskAlertPage',    NULL, 0, 0, 'C', '0', '0', 'admin:risk:list',          'ShieldAlert',     'admin', NOW(), '', null, '合同、审批与用印风险中心');
+INSERT INTO cloud_flow_db.sys_menu VALUES(514, '项目WBS',    5, 15, '/admin/project-wbs',       'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'admin:project:wbs',         'GitBranch',       'admin', NOW(), '', null, '项目WBS任务管理');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(800, '客户管理',   8, 1, '/office/crm?tab=customer',     'pages/CrmManagementPage',     NULL, 0, 0, 'C', '0', '0', 'crm:customer:list',         'Building2',       'admin', NOW(), '', null, '客户主数据与健康度');
+INSERT INTO cloud_flow_db.sys_menu VALUES(801, '商机管理',   8, 2, '/office/crm?tab=opportunity',  'pages/CrmManagementPage',     NULL, 0, 0, 'C', '0', '0', 'crm:opportunity:list',      'Target',          'admin', NOW(), '', null, 'CRM商机推进');
+INSERT INTO cloud_flow_db.sys_menu VALUES(802, '报价管理',   8, 3, '/office/crm?tab=quote',        'pages/CrmManagementPage',     NULL, 0, 0, 'C', '0', '0', 'crm:quote:list',            'FileText',        'admin', NOW(), '', null, 'CRM报价与审批');
+INSERT INTO cloud_flow_db.sys_menu VALUES(803, '回款管理',   8, 4, '/office/crm?tab=receivable',   'pages/CrmManagementPage',     NULL, 0, 0, 'C', '0', '0', 'crm:receivable:list',       'WalletCards',     'admin', NOW(), '', null, 'CRM回款计划与跟踪');
+INSERT INTO cloud_flow_db.sys_menu VALUES(804, '续约管理',   8, 5, '/office/crm?tab=renewal',      'pages/CrmManagementPage',     NULL, 0, 0, 'C', '0', '0', 'crm:renewal:list',          'RefreshCcw',      'admin', NOW(), '', null, 'CRM续约评审');
+INSERT INTO cloud_flow_db.sys_menu VALUES(805, '服务工单',   8, 6, '/office/crm?tab=ticket',       'pages/CrmManagementPage',     NULL, 0, 0, 'C', '0', '0', 'crm:ticket:list',           'LifeBuoy',        'admin', NOW(), '', null, 'CRM售后工单');
 
 -- 流程管理(parent_id=4)扩展菜单：Phase 2 监控告警功能（2026-02-22新增）
 INSERT INTO cloud_flow_db.sys_menu VALUES(700, '告警管理',   4, 7, '/workflow/alerts',          'pages/AlertList',              NULL, 0, 0, 'C', '0', '0', 'workflow:alert:list',       'Bell',            'admin', NOW(), '', null, '查看和处理超时告警和异常告警');
@@ -964,6 +1070,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 4, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 5, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 7, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 8, 100000);
 
 -- 工作台子菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 100, 100000);
@@ -1042,6 +1150,12 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 210, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 211, 100000);
 
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 214, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 215, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 216, 100000);
+
 -- 行政管理扩展菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 506, 100000);
 
@@ -1050,6 +1164,20 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 507, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 508, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 509, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 514, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 800, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 801, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 802, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 803, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 804, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 805, 100000);
 
 -- Phase 2 监控告警菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 700, 100000);
@@ -1064,6 +1192,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 2, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 3, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 7, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 8, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 100, 100000);
 
@@ -1090,6 +1220,20 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 208, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 209, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 210, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 215, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 216, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 800, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 801, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 802, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 803, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 804, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 300, 100000);
 
@@ -1119,6 +1263,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 3, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 4, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 5, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 8, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 100, 100000);
 
@@ -1187,6 +1333,12 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 212, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 213, 100000);
 
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 214, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 215, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 216, 100000);
+
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 506, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 507, 100000);
@@ -1196,6 +1348,20 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 510, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 511, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 512, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 514, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 800, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 801, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 802, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 803, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 804, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 805, 100000);
 
 -- Phase 2 监控告警菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 700, 100000);
@@ -1233,6 +1399,8 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 2, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 3, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 7, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 8, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 100, 100000);
 
@@ -1276,6 +1444,16 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 211, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 212, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 213, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 214, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 216, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 800, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 801, 100000);
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 802, 100000);
 
 -- Phase 2 监控告警菜单（仅查看流程监控）
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 4, 100000);
@@ -5889,40 +6067,73 @@ INSERT INTO cloud_flow_db.sys_audit_log (
 -- -----------------------------
 INSERT INTO cloud_flow_db.biz_expense_claim (
   id, tenant_id, instance_id, user_id, user_name, claim_no, category, total_amount, description, status,
-  dept_id, dept_name, del_flag, create_by, create_time, update_by, update_time
+  dept_id, dept_name, project_id, project_name, customer_id, customer_name, budget_subject_code, budget_subject_name, invoice_status,
+  del_flag, create_by, create_time, update_by, update_time
 ) VALUES
 (9001, 100000, 'demo_inst_003', 5, '张三', 'BX202603110001', 'TRAVEL', 2680.50,
  '上海至杭州客户现场差旅报销，包含高铁、住宿、市内交通与餐补。',
- 'PENDING', 101, '研发部', '0', 'zhang', DATE_SUB(NOW(), INTERVAL 16 HOUR), 'zhang', DATE_SUB(NOW(), INTERVAL 16 HOUR)),
+ 'PENDING', 101, '研发部', 9301, '景曜科技续约交付项目', 7001, '景曜科技有限公司', 'SUB-TRAVEL', '差旅费用', 'BOUND',
+ '0', 'zhang', DATE_SUB(NOW(), INTERVAL 16 HOUR), 'zhang', DATE_SUB(NOW(), INTERVAL 16 HOUR)),
 (9002, 100000, 'demo_inst_004', 3, '王财务', 'BX202603110002', 'OFFICE', 860.00,
  '财务部采购档案盒、票据夹及打印耗材的部门报销。',
- 'PAID', 102, '财务部', '0', 'wang', DATE_SUB(NOW(), INTERVAL 8 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 3 DAY));
+ 'PAID', 102, '财务部', NULL, NULL, NULL, NULL, 'SUB-OFFICE', '办公费用', 'WRITEOFF_FULL',
+ '0', 'wang', DATE_SUB(NOW(), INTERVAL 8 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 3 DAY));
 
 INSERT INTO cloud_flow_db.biz_expense_item (
-  id, tenant_id, claim_id, expense_type, amount, expense_date, description, receipt_url, vehicle_expense_id
+  id, tenant_id, claim_id, expense_type, amount, expense_date, description, budget_subject_code, budget_subject_name, receipt_url, vehicle_expense_id
 ) VALUES
-(90011, 100000, 9001, 'TRANSPORT', 560.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '上海虹桥往返杭州东高铁票', 'https://demo.cloudflow.local/files/expense/bx9001-train.jpg', NULL),
-(90012, 100000, 9001, 'HOTEL', 980.50, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州客户附近酒店住宿一晚', 'https://demo.cloudflow.local/files/expense/bx9001-hotel.jpg', NULL),
-(90013, 100000, 9001, 'MEAL', 260.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '出差期间餐补', 'https://demo.cloudflow.local/files/expense/bx9001-meal.jpg', NULL),
-(90014, 100000, 9001, 'TRANSPORT', 880.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州当地网约车与机场巴士', 'https://demo.cloudflow.local/files/expense/bx9001-taxi.jpg', NULL),
-(90021, 100000, 9002, 'OFFICE', 320.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '票据档案盒采购', 'https://demo.cloudflow.local/files/expense/bx9002-box.jpg', NULL),
-(90022, 100000, 9002, 'OFFICE', 540.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '打印耗材与财务标签纸', 'https://demo.cloudflow.local/files/expense/bx9002-print.jpg', NULL);
+(90011, 100000, 9001, 'TRANSPORT', 560.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '上海虹桥往返杭州东高铁票', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-train.jpg', NULL),
+(90012, 100000, 9001, 'HOTEL', 980.50, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州客户附近酒店住宿一晚', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-hotel.jpg', NULL),
+(90013, 100000, 9001, 'MEAL', 260.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '出差期间餐补', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-meal.jpg', NULL),
+(90014, 100000, 9001, 'TRANSPORT', 880.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '杭州当地网约车与机场巴士', 'SUB-TRAVEL', '差旅费用', 'https://demo.cloudflow.local/files/expense/bx9001-taxi.jpg', NULL),
+(90021, 100000, 9002, 'OFFICE', 320.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '票据档案盒采购', 'SUB-OFFICE', '办公费用', 'https://demo.cloudflow.local/files/expense/bx9002-box.jpg', NULL),
+(90022, 100000, 9002, 'OFFICE', 540.00, DATE_SUB(CURDATE(), INTERVAL 9 DAY), '打印耗材与财务标签纸', 'SUB-OFFICE', '办公费用', 'https://demo.cloudflow.local/files/expense/bx9002-print.jpg', NULL);
 
 -- -----------------------------
 -- 3.2 付款申请
 -- -----------------------------
 INSERT INTO cloud_flow_db.biz_payment_request (
   id, tenant_id, instance_id, user_id, user_name, payment_no, payee_name, payee_account, payee_bank, amount,
-  payment_type, reason, expected_date, attachment_url, status, dept_id, dept_name, del_flag, create_by, create_time, update_by, update_time
+  payment_type, reason, expected_date, attachment_url, status, dept_id, dept_name, project_id, project_name, customer_id, customer_name,
+  budget_subject_code, budget_subject_name, invoice_status, del_flag, create_by, create_time, update_by, update_time
 ) VALUES
 (9001, 100000, 'demo_inst_005', 3, '王财务', 'FK202603110001', '上海星河云服科技有限公司', '31050100012345678901', '建设银行上海分行', 128000.00,
  'SERVICE', '支付企业流程平台年度运维与驻场服务费（第一期）。', DATE_ADD(CURDATE(), INTERVAL 3 DAY),
  'https://demo.cloudflow.local/files/payment/fk202603110001-contract.pdf',
- 'PENDING', 102, '财务部', '0', 'wang', DATE_SUB(NOW(), INTERVAL 14 HOUR), 'wang', DATE_SUB(NOW(), INTERVAL 14 HOUR)),
+ 'PENDING', 102, '财务部', 9301, '景曜科技续约交付项目', 7001, '景曜科技有限公司', 'SUB-SERVICE', '服务费用', 'BOUND',
+ '0', 'wang', DATE_SUB(NOW(), INTERVAL 14 HOUR), 'wang', DATE_SUB(NOW(), INTERVAL 14 HOUR)),
 (9002, 100000, 'demo_inst_006', 3, '王财务', 'FK202603110002', '杭州云启科技有限公司', '6222020202020202020', '招商银行杭州分行', 32000.00,
  'PURCHASE', '支付客户演示中心升级所需显示设备采购尾款。', DATE_SUB(CURDATE(), INTERVAL 2 DAY),
  'https://demo.cloudflow.local/files/payment/fk202603110002-invoice.pdf',
- 'PAID', 102, '财务部', '0', 'wang', DATE_SUB(NOW(), INTERVAL 10 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 4 DAY));
+ 'PAID', 102, '财务部', 9302, '苏州联拓制造上线项目', 7002, '苏州联拓制造有限公司', 'SUB-PROCUREMENT', '采购费用', 'WRITEOFF_FULL',
+ '0', 'wang', DATE_SUB(NOW(), INTERVAL 10 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 4 DAY));
+
+-- -----------------------------
+-- 3.2.1 采购申请
+-- -----------------------------
+INSERT INTO cloud_flow_db.biz_purchase_request (
+  id, tenant_id, instance_id, user_id, user_name, purchase_no, supplier_id, supplier_name, supplier_contact, supplier_phone,
+  supplier_bank, supplier_account, total_amount, expected_date, reason, status, payment_status, payment_request_id, attachment_url,
+  dept_id, dept_name, project_id, project_name, customer_id, customer_name, budget_subject_code, budget_subject_name,
+  del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9003, 100000, 'demo_inst_021', 5, '张三', 'CG202605080001', 6001, '杭州云启科技有限公司', '李采购', '13800001111',
+ '招商银行杭州分行', '6222020202020202020', 32000.00, DATE_ADD(NOW(), INTERVAL 2 DAY), '客户演示中心升级所需显示设备采购。', 'APPROVED',
+ 'PAID', 9002, 'https://demo.cloudflow.local/files/purchase/cg202605080001-quote.pdf',
+ 101, '研发部', 9302, '苏州联拓制造上线项目', 7002, '苏州联拓制造有限公司', 'SUB-PROCUREMENT', '采购费用',
+ '0', 'zhang', DATE_SUB(NOW(), INTERVAL 12 DAY), 'zhang', DATE_SUB(NOW(), INTERVAL 4 DAY));
+
+INSERT INTO cloud_flow_db.biz_purchase_item (
+  id, tenant_id, purchase_id, consumable_id, consumable_name, model, unit, quantity, unit_price, amount, received_quantity, budget_subject_code, budget_subject_name
+) VALUES
+(90031, 100000, 9003, 2001, '55 寸演示显示屏', 'CF-DISPLAY-55', '台', 2, 12000.00, 24000.00, 2, 'SUB-PROCUREMENT', '采购费用'),
+(90032, 100000, 9003, 2002, '无线投屏终端', 'CF-CAST-01', '套', 2, 4000.00, 8000.00, 2, 'SUB-PROCUREMENT', '采购费用');
+
+INSERT INTO cloud_flow_db.biz_purchase_receipt (
+  id, tenant_id, purchase_id, item_id, consumable_id, consumable_name, received_quantity, operator_id, operator_name, receipt_time, remark, create_by, create_time
+) VALUES
+(90031, 100000, 9003, 90031, 2001, '55 寸演示显示屏', 2, 3, '王财务', DATE_SUB(NOW(), INTERVAL 5 DAY), '显示设备已到货并完成验收', 'wang', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(90032, 100000, 9003, 90032, 2002, '无线投屏终端', 2, 3, '王财务', DATE_SUB(NOW(), INTERVAL 5 DAY), '投屏终端已到货并完成验收', 'wang', DATE_SUB(NOW(), INTERVAL 5 DAY));
 
 -- -----------------------------
 -- 3.3 出差申请
@@ -8217,6 +8428,278 @@ INSERT INTO cloud_flow_db.wf_audit_log (
 ('seed_audit_003', 'ARCHIVE', 'workflow_template', 'tpl-ops-night-duty-legacy', '夜间值守申请旧版', '14', '唐志远', DATE_SUB(NOW(), INTERVAL 12 DAY),
  '运维值守改由统一排班看板和短信提醒管理。', '归档旧版夜间值守申请模板，避免与当前值班排班模块重复。', 'SUCCESS', NULL, '10.10.0.43',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/134.0.0.0 Safari/537.36', 100000);
+
+-- =========================================================
+-- 八点四、项目管理 / 预算管理初始化 / 演示数据
+-- =========================================================
+
+INSERT INTO cloud_flow_db.oa_project (
+  project_id, tenant_id, instance_id, project_no, project_name, project_type, customer_id, customer_name,
+  contract_id, contract_no, owner_id, owner_name, dept_id, dept_name, start_date, end_date, actual_start_date, actual_end_date,
+  budget_amount, actual_cost_amount, progress, priority, status, risk_level, source_type, source_id, source_name, baseline_version, attachment_url, remark,
+  del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9301, 100000, NULL, 'PRJ202605080001', '景曜科技续约交付项目', 'DELIVERY', 8801, '景曜科技',
+ 9201, 'HT202605080001', 12, '郑雅宁', 111, '客户成功部', DATE_SUB(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 45 DAY), DATE_SUB(CURDATE(), INTERVAL 18 DAY), NULL,
+ 368000.00, 152000.00, 62.00, 'HIGH', 'IN_PROGRESS', 'HIGH', 'CRM_OPPORTUNITY', 8801, '景曜科技 2026 年续约商机', 2, NULL, '由续约签约后转入执行，当前重点关注接口稳定性与回款协同。',
+ '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 18 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9302, 100000, NULL, 'PRJ202605080002', '苏州联拓制造二期推广项目', 'DELIVERY', 8802, '苏州联拓制造',
+ 9202, 'HT202605080002', 11, '吴思远', 110, '实施交付部', DATE_ADD(CURDATE(), INTERVAL 3 DAY), DATE_ADD(CURDATE(), INTERVAL 70 DAY), NULL, NULL,
+ 260000.00, 38000.00, 18.00, 'MEDIUM', 'APPROVED', 'MEDIUM', 'CRM_QUOTE', 8803, '苏州联拓制造二期推广报价', 1, NULL, '二期推广已获批，待项目启动会和培训资源排期。',
+ '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 12 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.oa_project_member (
+  id, tenant_id, project_id, user_id, user_name, role_code, role_name, join_date, leave_date, billable_flag,
+  del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9301, 100000, 9301, 12, '郑雅宁', 'PM', '项目经理', DATE_SUB(CURDATE(), INTERVAL 18 DAY), NULL, 1, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 18 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9302, 100000, 9301, 17, '徐珂', 'CS', '客户成功顾问', DATE_SUB(CURDATE(), INTERVAL 17 DAY), NULL, 1, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 17 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9303, 100000, 9302, 11, '吴思远', 'PM', '交付经理', DATE_SUB(CURDATE(), INTERVAL 2 DAY), NULL, 1, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9304, 100000, 9302, 16, '高牧', 'CONSULTANT', '实施顾问', DATE_SUB(CURDATE(), INTERVAL 2 DAY), NULL, 1, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.oa_project_milestone (
+  milestone_id, tenant_id, project_id, milestone_name, milestone_code, owner_id, owner_name, planned_date, actual_date,
+  baseline_date, progress, sort_order, status, remark, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9301, 100000, 9301, '续约项目启动会', 'MS202605080001', 12, '郑雅宁', DATE_SUB(CURDATE(), INTERVAL 12 DAY), DATE_SUB(CURDATE(), INTERVAL 11 DAY),
+ DATE_SUB(CURDATE(), INTERVAL 14 DAY), 100.00, 1, 'COMPLETED', '启动会已完成，明确交付和回款联动节奏。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 18 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 11 DAY)),
+(9302, 100000, 9301, '接口稳定性整改', 'MS202605080002', 17, '徐珂', DATE_SUB(CURDATE(), INTERVAL 2 DAY), NULL,
+ DATE_SUB(CURDATE(), INTERVAL 5 DAY), 70.00, 2, 'IN_PROGRESS', '夜间同步接口仍存在超时风险。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9303, 100000, 9302, '二期项目启动会', 'MS202605080003', 11, '吴思远', DATE_ADD(CURDATE(), INTERVAL 5 DAY), NULL,
+ DATE_ADD(CURDATE(), INTERVAL 2 DAY), 10.00, 1, 'PLANNED', '待客户确认培训排期后正式启动。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 3 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.oa_project_risk (
+  risk_id, tenant_id, project_id, risk_code, risk_name, risk_level, status, owner_id, owner_name, trigger_source,
+  summary, action_plan, resolved_time, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9301, 100000, 9301, 'RK202605080001', '重点客户接口超时影响续约推进', 'HIGH', 'OPEN', 17, '徐珂', 'CRM_TICKET',
+ '接口超时问题已影响景曜科技续约和回款推进。', '优先完成接口压测与夜间任务优化，关闭高严重度工单后再推进最终盖章。', NULL, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 9 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9302, 100000, 9302, 'RK202605080002', '客户预算审批尚未最终确认', 'MEDIUM', 'OPEN', 11, '吴思远', 'MANUAL',
+ '苏州联拓制造二期预算未完全锁定，可能影响启动节奏。', '交付与销售联合跟进客户预算会，提前锁定培训与现场资源。', NULL, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 4 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.sys_work_task (
+  task_id, tenant_id, title, description, assignee_id, owner_id, dept_id, project_id, milestone_id, wbs_code,
+  priority, status, due_date, planned_start_time, planned_end_time, baseline_start_time, baseline_end_time, actual_start_time, actual_end_time, progress,
+  estimated_hours, actual_hours, tags, parent_id, sort_order, create_by, create_time, update_by, update_time, del_flag
+) VALUES
+(9301, 100000, '梳理续约接口问题清单', '汇总景曜科技续约阻塞项并形成整改清单。', 17, 12, 111, 9301, 9302, 'WBS-001',
+ 2, 'DOING', DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), NULL, 80.00,
+ 24.00, 19.00, '["接口","续约","高优"]', NULL, 1, 'zheng_cs', DATE_SUB(NOW(), INTERVAL 7 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9302, 100000, '推进首期回款核销', '对接财务和客户完成首期回款凭证与核销。', 12, 12, 111, 9301, 9302, 'WBS-002',
+ 2, 'DOING', DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), NULL, 55.00,
+ 16.00, 8.00, '["回款","核销"]', 9301, 2, 'zheng_cs', DATE_SUB(NOW(), INTERVAL 5 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9303, 100000, '准备二期项目启动材料', '整理联拓制造二期推广启动会材料和培训计划。', 11, 11, 110, 9302, 9303, 'WBS-003',
+ 1, 'TODO', DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 4 DAY), NULL, NULL, 15.00,
+ 12.00, 0.00, '["启动会","培训"]', NULL, 1, 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9304, 100000, '确认客户培训账号与环境', '启动前检查培训账号、角色与测试环境。', 16, 11, 110, 9302, 9303, 'WBS-004',
+ 1, 'DOING', DATE_ADD(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, 35.00,
+ 10.00, 3.00, '["培训","环境"]', 9303, 2, 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), '0');
+
+INSERT INTO cloud_flow_db.oa_project_dependency (
+  dependency_id, tenant_id, project_id, predecessor_type, predecessor_id, successor_type, successor_id, dependency_type, lag_days, remark,
+  del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9301, 100000, 9301, 'WBS', 9301, 'WBS', 9302, 'FS', 0, '接口清单梳理完成后再推进首期回款核销。',
+ '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 4 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9302, 100000, 9302, 'MILESTONE', 9303, 'WBS', 9304, 'FS', 1, '项目启动会后 1 天完成培训环境准备。',
+ '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.oa_budget_subject (
+  subject_id, tenant_id, subject_code, subject_name, parent_id, subject_type, sort_order, enabled, remark,
+  del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9101, 100000, 'SUB-TRAVEL', '差旅费用', NULL, 'EXPENSE', 1, 1, '项目与部门差旅预算科目。', '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9102, 100000, 'SUB-SERVICE', '外包服务费', NULL, 'EXPENSE', 2, 1, '实施与技术服务采购预算科目。', '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9103, 100000, 'SUB-DELIVERY', '交付实施费', NULL, 'EXPENSE', 3, 1, '交付项目专项预算科目。', '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.oa_budget_plan (
+  budget_id, tenant_id, instance_id, budget_no, budget_name, fiscal_year, period_type, target_type, target_id, target_name,
+  dept_id, dept_name, project_id, project_name, owner_id, owner_name, total_amount, reserved_amount, actual_amount, available_amount,
+  version_no, status, remark, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9101, 100000, NULL, 'YS202605080001', '客户成功部 2026 年部门预算', 2026, 'ANNUAL', 'DEPT', 111, '客户成功部',
+ 111, '客户成功部', NULL, NULL, 12, '郑雅宁', 500000.00, 60000.00, 180000.00, 260000.00,
+ 1, 'APPROVED', '覆盖重点客户续约、出差和现场支持预算。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 16 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9102, 100000, NULL, 'YS202605080002', '景曜科技续约交付项目预算', 2026, 'ANNUAL', 'PROJECT', 9301, '景曜科技续约交付项目',
+ 111, '客户成功部', 9301, '景曜科技续约交付项目', 12, '郑雅宁', 368000.00, 40000.00, 152000.00, 176000.00,
+ 1, 'APPROVED', '项目专项预算，已进入执行阶段。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 15 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9103, 100000, NULL, 'YS202605080003', '财务部 2026 年部门预算', 2026, 'ANNUAL', 'DEPT', 102, '财务部',
+ 102, '财务部', NULL, NULL, 3, '王财务', 120000.00, 18000.00, 72000.00, 30000.00,
+ 1, 'APPROVED', '接近 80% 阈值的部门预算样例。', '0', 'wang', DATE_SUB(NOW(), INTERVAL 12 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9104, 100000, NULL, 'YS202605080004', '苏州联拓制造上线项目预算', 2026, 'ANNUAL', 'PROJECT', 9302, '苏州联拓制造上线项目',
+ 110, '实施交付部', 9302, '苏州联拓制造上线项目', 11, '吴思远', 160000.00, 22000.00, 118000.00, 20000.00,
+ 1, 'APPROVED', '接近 90% 告警阈值的项目预算样例。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 10 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.oa_budget_line (
+  line_id, tenant_id, budget_id, subject_id, subject_code, subject_name, amount, reserved_amount, actual_amount, available_amount,
+  warning_ratio, alert_ratio, block_ratio, sort_order, remark
+) VALUES
+(9101, 100000, 9101, 9101, 'SUB-TRAVEL', '差旅费用', 180000.00, 20000.00, 65000.00, 95000.00, 0.80, 0.90, 1.00, 1, '客户拜访与现场支持差旅。'),
+(9102, 100000, 9101, 9102, 'SUB-SERVICE', '外包服务费', 320000.00, 40000.00, 115000.00, 165000.00, 0.80, 0.90, 1.00, 2, '客户成功与技术支持外包。'),
+(9103, 100000, 9102, 9101, 'SUB-TRAVEL', '差旅费用', 88000.00, 12000.00, 38000.00, 38000.00, 0.80, 0.90, 1.00, 1, '景曜科技续约项目现场支持差旅。'),
+(9104, 100000, 9102, 9103, 'SUB-DELIVERY', '交付实施费', 280000.00, 28000.00, 114000.00, 138000.00, 0.80, 0.90, 1.00, 2, '项目交付与专项支持费用。'),
+(9105, 100000, 9103, 9102, 'SUB-SERVICE', '外包服务费', 120000.00, 18000.00, 72000.00, 30000.00, 0.80, 0.90, 1.00, 1, '财务部部门预算，接近预警阈值。'),
+(9106, 100000, 9104, 9103, 'SUB-DELIVERY', '交付实施费', 160000.00, 22000.00, 118000.00, 20000.00, 0.80, 0.90, 1.00, 1, '苏州联拓制造项目预算，接近告警阈值。');
+
+INSERT INTO cloud_flow_db.oa_budget_adjustment (
+  adjustment_id, tenant_id, instance_id, adjustment_no, budget_id, budget_no, adjustment_type, subject_code, subject_name,
+  change_amount, reason, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9101, 100000, NULL, 'TZ202605080001', 9102, 'YS202605080002', 'ADD', 'SUB-DELIVERY', '交付实施费',
+ 20000.00, '续约项目追加一轮夜间联调与现场支持资源。', 'PENDING', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 4 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9102, 100000, NULL, 'TZ202605080002', 9101, 'YS202605080001', 'REDUCE', 'SUB-SERVICE', '外包服务费',
+ -10000.00, '阶段性收缩非重点客户外包支持，转投重点客户续约。', 'APPROVED', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY));
+
+-- =========================================================
+-- 八点五、CRM 独立微服务初始化 / 演示数据
+-- =========================================================
+
+INSERT INTO cloud_flow_db.oa_contract (
+  contract_id, tenant_id, contract_no, contract_name, counterparty_name, contract_type, amount, currency,
+  owner_id, owner_name, dept_id, dept_name, customer_id, customer_name, invoice_status,
+  start_date, end_date, status, risk_level, remark, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(9201, 100000, 'HT202605080001', '景曜科技年度续约合同', '景曜科技有限公司', 'SALES', 368000.00, 'CNY',
+ 12, '郑雅宁', 111, '客户成功部', 8801, '景曜科技', 'NONE',
+ DATE_SUB(CURDATE(), INTERVAL 90 DAY), DATE_ADD(CURDATE(), INTERVAL 20 DAY), 'ACTIVE', 'HIGH', '重点客户续约合同，需重点跟进回款与续约。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 15 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(9202, 100000, 'HT202605080002', '苏州联拓制造二期交付合同', '苏州联拓制造有限公司', 'SALES', 260000.00, 'CNY',
+ 11, '吴思远', 110, '实施交付部', 8802, '苏州联拓制造', 'NONE',
+ DATE_SUB(CURDATE(), INTERVAL 45 DAY), DATE_ADD(CURDATE(), INTERVAL 75 DAY), 'ACTIVE', 'MEDIUM', '交付客户二期推广合同，续约窗口已进入 90 天内。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 12 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9203, 100000, 'HT202605080003', '启衡软件流程中台升级合同草稿', '启衡软件有限公司', 'SALES', 420000.00, 'CNY',
+ 13, '何嘉树', 112, '销售部', 8803, '启衡软件', 'NONE',
+ NULL, NULL, 'DRAFT', 'LOW', '由 CRM 报价转合同后的跟进草稿。', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 6 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 6 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_customer (
+  customer_id, tenant_id, customer_code, customer_name, customer_type, industry, level_code, source, customer_tags,
+  owner_id, owner_name, dept_id, dept_name, phone, email, website, province, city, address, credit_code,
+  health_level, health_reason, last_follow_up_time, next_follow_up_time, remark, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, 'CRM-CUST-001', '景曜科技', 'ENTERPRISE', '企业软件', 'VIP', 'REFERRAL', '重点客户,续约,高风险',
+ 12, '郑雅宁', 111, '客户成功部', '13800020001', 'contact@jygsoft.com', 'https://www.jygsoft.example.com', '上海', '上海', '浦东新区张江路 88 号', '91310000JYGCUST001',
+ 'RED', '30天内续约到期；回款逾期超过30天；存在高严重度未关闭工单', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 3 DAY), '重点续约客户，需客户成功和销售联合推进。', 'ACTIVE', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 15 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8802, 100000, 'CRM-CUST-002', '苏州联拓制造', 'ENTERPRISE', '智能制造', 'KEY', 'EVENT', '交付客户,回款跟进,制造业',
+ 11, '吴思远', 110, '实施交付部', '13800020002', 'it@liantuo.example.com', 'https://www.liantuo.example.com', '江苏', '苏州', '工业园区金鸡湖大道 66 号', '91320500LTZZCUST002',
+ 'YELLOW', '90天内续约到期', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_ADD(NOW(), INTERVAL 10 DAY), '交付中客户，二期推广商机与续约并行推进。', 'ACTIVE', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 12 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8803, 100000, 'CRM-CUST-003', '启衡软件', 'ENTERPRISE', 'SaaS 服务', 'NORMAL', 'CHANNEL', '商机客户,渠道合作,新签',
+ 13, '何嘉树', 112, '销售部', '13800020003', 'bd@qiheng.example.com', 'https://www.qiheng.example.com', '浙江', '杭州', '滨江区江南大道 18 号', '91330000QHRJCUST003',
+ 'GREEN', '状态正常', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 5 DAY), '正在推进流程中台升级商机。', 'ACTIVE', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 8 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 2 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_contact (
+  contact_id, tenant_id, customer_id, contact_name, gender, mobile, phone, email, position, department,
+  primary_flag, wechat, remark, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, 8801, '韩总监', 'FEMALE', '13900030001', '021-60118801', 'han.director@jygsoft.com', '信息化总监', '信息中心',
+ 1, 'han_jingyao', '重点续约决策人。', 'ACTIVE', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 14 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(8802, 100000, 8802, '邵经理', 'MALE', '13900030002', '0512-60118802', 'shao.manager@liantuo.com', '项目经理', '制造运营部',
+ 1, 'shao_liantuo', '负责交付验收与二期需求确认。', 'ACTIVE', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 11 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(8803, 100000, 8803, '罗总', 'MALE', '13900030003', '0571-60118803', 'luo.ceo@qiheng.com', '总经理', '管理层',
+ 1, 'luo_qiheng', '商机关键决策人。', 'ACTIVE', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 7 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 2 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_opportunity (
+  opportunity_id, tenant_id, customer_id, customer_name, opportunity_name, stage, source, expected_amount, win_rate,
+  expected_sign_date, owner_id, owner_name, dept_id, dept_name, contact_id, contact_name, latest_follow_up_time,
+  lost_reason, remark, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, 8803, '启衡软件', '启衡软件流程中台升级', 'NEGOTIATION', 'CHANNEL', 420000.00, 65.00,
+ DATE_ADD(CURDATE(), INTERVAL 25 DAY), 13, '何嘉树', 112, '销售部', 8803, '罗总', DATE_SUB(NOW(), INTERVAL 2 DAY),
+ NULL, '已完成首轮方案演示，等待商务条款确认。', 'OPEN', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 8 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8802, 100000, 8802, '苏州联拓制造', '苏州联拓制造二期推广', 'PROPOSAL', 'CUSTOMER_SUCCESS', 260000.00, 55.00,
+ DATE_ADD(CURDATE(), INTERVAL 40 DAY), 18, '彭骁', 117, '华东销售组', 8802, '邵经理', DATE_SUB(NOW(), INTERVAL 10 DAY),
+ NULL, '交付满意度较高，正在推进二期扩展方案。', 'OPEN', '0', 'peng_sales', DATE_SUB(NOW(), INTERVAL 11 DAY), 'peng_sales', DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_follow_up (
+  follow_up_id, tenant_id, customer_id, opportunity_id, follow_up_type, follow_up_time, next_follow_up_time,
+  content, result_summary, attachment_url, owner_id, owner_name, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, 8801, NULL, 'VISIT', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_ADD(NOW(), INTERVAL 3 DAY),
+ '客户成功团队现场复盘续约清单，确认回款与工单影响项。', '客户要求先关闭接口超时问题，再推进续约盖章。', NULL, 12, '郑雅宁', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 5 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(8802, 100000, 8802, 8802, 'PHONE', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_ADD(NOW(), INTERVAL 10 DAY),
+ '电话确认二期推广预算与培训排期。', '客户接受方案框架，需补充报价明细。', NULL, 18, '彭骁', '0', 'peng_sales', DATE_SUB(NOW(), INTERVAL 10 DAY), 'peng_sales', DATE_SUB(NOW(), INTERVAL 10 DAY)),
+(8803, 100000, 8803, 8801, 'VISIT', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 5 DAY),
+ '启衡软件现场完成升级方案演示。', '客户认可功能路线，要求补充实施资源计划。', NULL, 13, '何嘉树', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 2 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 2 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_quote (
+  quote_id, tenant_id, instance_id, quote_no, customer_id, customer_name, opportunity_id, opportunity_name,
+  quote_name, total_amount, tax_amount, currency, valid_until, owner_id, owner_name, contract_id, contract_no,
+  attachment_url, remark, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, NULL, 'BJ202605080001', 8801, '景曜科技', NULL, NULL,
+ '景曜科技 2026 年续约报价', 368000.00, 22080.00, 'CNY', DATE_ADD(CURDATE(), INTERVAL 15 DAY), 12, '郑雅宁', 9201, 'HT202605080001',
+ NULL, '续约报价已被客户接受，等待回款与续约评审联动。', 'ACCEPTED', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 14 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(8802, 100000, NULL, 'BJ202605080002', 8803, '启衡软件', 8801, '启衡软件流程中台升级',
+ '启衡软件流程中台升级报价', 420000.00, 25200.00, 'CNY', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 13, '何嘉树', NULL, NULL,
+ NULL, '正在等待客户商务确认。', 'SENT', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 7 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8803, 100000, NULL, 'BJ202605080003', 8802, '苏州联拓制造', 8802, '苏州联拓制造二期推广',
+ '苏州联拓制造二期推广报价', 260000.00, 15600.00, 'CNY', DATE_ADD(CURDATE(), INTERVAL 25 DAY), 18, '彭骁', NULL, NULL,
+ NULL, '已完成内部审批，等待发送给客户。', 'APPROVED', '0', 'peng_sales', DATE_SUB(NOW(), INTERVAL 9 DAY), 'peng_sales', DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_receivable (
+  receivable_id, tenant_id, customer_id, customer_name, contract_id, contract_no, receivable_no, receivable_name,
+  planned_amount, received_amount, outstanding_amount, due_date, received_date, invoice_status, owner_id, owner_name,
+  remark, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, 8801, '景曜科技', 9201, 'HT202605080001', 'SK202605080001', '景曜科技首期回款',
+ 120000.00, 20000.00, 100000.00, DATE_SUB(CURDATE(), INTERVAL 40 DAY), DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'WRITEOFF_PARTIAL', 12, '郑雅宁',
+ '首期回款逾期，需要和续约一并推进。', 'PARTIAL_RECEIVED', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 13 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8802, 100000, 8802, '苏州联拓制造', 9202, 'HT202605080002', 'SK202605080002', '苏州联拓制造实施尾款',
+ 90000.00, 0.00, 90000.00, DATE_ADD(CURDATE(), INTERVAL 10 DAY), NULL, 'BOUND', 11, '吴思远',
+ '交付验收通过后触发回款。', 'PLANNED', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 10 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8803, 100000, 8801, '景曜科技', 9201, 'HT202605080001', 'SK202605080003', '景曜科技年度服务回款',
+ 248000.00, 248000.00, 0.00, DATE_SUB(CURDATE(), INTERVAL 5 DAY), DATE_SUB(CURDATE(), INTERVAL 3 DAY), 'WRITEOFF_FULL', 12, '郑雅宁',
+ '年度服务款已到账。', 'RECEIVED', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 8 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+INSERT INTO cloud_flow_db.oa_invoice (
+  invoice_id, tenant_id, invoice_direction, third_party_system, external_bill_no, external_link_url,
+  invoice_code, invoice_no, invoice_type, invoice_date, gross_amount, tax_amount, seller_name, buyer_name, image_url,
+  customer_id, customer_name, contract_id, contract_no, expense_claim_id, payment_request_id, receivable_id, status, remark, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, 'OUTPUT', '金税云', 'CRM-INV-8801', 'https://tax.example.com/invoice/CRM-INV-8801',
+ 'OUT20260508A', '0008801', '增值税专用发票', DATE_SUB(CURDATE(), INTERVAL 7 DAY), 120000.00, 7200.00, 'CloudFlow 科技有限公司', '景曜科技有限公司', 'https://demo.cloudflow.local/files/invoice/output-8801.jpg',
+ 8801, '景曜科技', 9201, 'HT202605080001', NULL, NULL, 8801, 'WRITEOFF_PARTIAL', '景曜科技首期回款对应销项发票。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 7 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8802, 100000, 'OUTPUT', '金税云', 'CRM-INV-8802', 'https://tax.example.com/invoice/CRM-INV-8802',
+ 'OUT20260508B', '0008802', '增值税普通发票', DATE_SUB(CURDATE(), INTERVAL 3 DAY), 90000.00, 5400.00, 'CloudFlow 科技有限公司', '苏州联拓制造有限公司', 'https://demo.cloudflow.local/files/invoice/output-8802.jpg',
+ 8802, '苏州联拓制造', 9202, 'HT202605080002', NULL, NULL, 8802, 'BOUND', '苏州联拓制造实施尾款发票，待核销。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 3 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8803, 100000, 'OUTPUT', '金税云', 'CRM-INV-8803', 'https://tax.example.com/invoice/CRM-INV-8803',
+ 'OUT20260508C', '0008803', '增值税专用发票', DATE_SUB(CURDATE(), INTERVAL 6 DAY), 248000.00, 14880.00, 'CloudFlow 科技有限公司', '景曜科技有限公司', 'https://demo.cloudflow.local/files/invoice/output-8803.jpg',
+ 8801, '景曜科技', 9201, 'HT202605080001', NULL, NULL, 8803, 'WRITEOFF_FULL', '景曜科技年度服务款发票，已全额核销。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 6 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(8804, 100000, 'INPUT', '金税云', 'OA-INV-8804', 'https://tax.example.com/invoice/OA-INV-8804',
+ 'IN20260508A', '0008804', '增值税普通发票', DATE_SUB(CURDATE(), INTERVAL 8 DAY), 2680.50, 160.83, '上海铁路服务有限公司', 'CloudFlow 科技有限公司', 'https://demo.cloudflow.local/files/invoice/input-8804.jpg',
+ 7001, '景曜科技有限公司', NULL, NULL, 9001, NULL, NULL, 'WRITEOFF_PARTIAL', '绑定景曜科技出差报销的进项发票。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 8 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8805, 100000, 'INPUT', '金税云', 'OA-INV-8805', 'https://tax.example.com/invoice/OA-INV-8805',
+ 'IN20260508B', '0008805', '增值税专用发票', DATE_SUB(CURDATE(), INTERVAL 11 DAY), 32000.00, 1920.00, '杭州云启科技有限公司', 'CloudFlow 科技有限公司', 'https://demo.cloudflow.local/files/invoice/input-8805.jpg',
+ 7002, '苏州联拓制造有限公司', 9202, 'HT202605080002', NULL, 9002, NULL, 'WRITEOFF_FULL', '绑定采购尾款付款单的进项发票。', '0', 'wang', DATE_SUB(NOW(), INTERVAL 11 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 4 DAY)),
+(8806, 100000, 'INPUT', '金税云', 'OA-INV-8806', 'https://tax.example.com/invoice/OA-INV-8806',
+ 'IN20260508C', '0008806', '增值税普通发票', DATE_SUB(CURDATE(), INTERVAL 9 DAY), 860.00, 51.60, '云办公供应链有限公司', 'CloudFlow 科技有限公司', 'https://demo.cloudflow.local/files/invoice/input-8806.jpg',
+ NULL, NULL, NULL, NULL, 9002, NULL, NULL, 'VOID', '已作废的办公报销进项发票。', '0', 'wang', DATE_SUB(NOW(), INTERVAL 9 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+INSERT INTO cloud_flow_db.oa_invoice_writeoff (
+  writeoff_id, tenant_id, invoice_id, business_type, business_id, business_no, writeoff_amount, writeoff_date, remark, create_by, create_time
+) VALUES
+(8801, 100000, 8801, 'CRM_RECEIVABLE', 8801, 'SK202605080001', 20000.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '景曜科技首期回款已到账 2 万，先做部分核销。', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8802, 100000, 8803, 'CRM_RECEIVABLE', 8803, 'SK202605080003', 248000.00, DATE_SUB(CURDATE(), INTERVAL 3 DAY), '景曜科技年度服务回款全额核销。', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(8803, 100000, 8804, 'EXPENSE_CLAIM', 9001, 'BX202603110001', 1200.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '景曜科技出差报销先做部分核销。', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8804, 100000, 8805, 'PAYMENT_REQUEST', 9002, 'FK202603110002', 32000.00, DATE_SUB(CURDATE(), INTERVAL 4 DAY), '采购尾款付款单全额核销。', 'wang', DATE_SUB(NOW(), INTERVAL 4 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_renewal (
+  renewal_id, tenant_id, instance_id, renewal_no, customer_id, customer_name, contract_id, contract_no, renewal_name,
+  renewal_amount, expected_sign_date, current_expire_date, next_expire_date, owner_id, owner_name, summary, remark,
+  status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, NULL, 'XY202605080001', 8801, '景曜科技', 9201, 'HT202605080001', '景曜科技 2026 年续约评审',
+ 368000.00, DATE_SUB(CURDATE(), INTERVAL 5 DAY), DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 385 DAY), 12, '郑雅宁',
+ '客户要求先确认接口问题与回款安排。', '续约窗口已进入高风险区，需要销售和客户成功联合处理。', 'NEGOTIATING', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 12 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8802, 100000, NULL, 'XY202605080002', 8802, '苏州联拓制造', 9202, 'HT202605080002', '苏州联拓制造二期续约评审',
+ 260000.00, DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 75 DAY), DATE_ADD(CURDATE(), INTERVAL 440 DAY), 11, '吴思远',
+ '客户对二期扩展有意向，需跟进预算确认。', '当前风险可控，但需在 90 天窗口内完成签约。', 'PLANNED', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 10 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY));
+
+INSERT INTO cloud_flow_db.oa_crm_service_ticket (
+  ticket_id, tenant_id, customer_id, customer_name, ticket_no, ticket_title, severity, issue_type, owner_id, owner_name,
+  opened_time, resolved_time, due_time, description, solution, attachment_url, status, del_flag, create_by, create_time, update_by, update_time
+) VALUES
+(8801, 100000, 8801, '景曜科技', 'GD202605080001', '景曜科技接口超时问题', 'HIGH', 'PRODUCT', 17, '徐珂',
+ DATE_SUB(NOW(), INTERVAL 9 DAY), NULL, DATE_ADD(NOW(), INTERVAL 1 DAY), '客户反馈夜间批量同步接口超时，已影响续约决策。', NULL, NULL, 'OPEN', '0', 'xu_cs', DATE_SUB(NOW(), INTERVAL 9 DAY), 'xu_cs', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8802, 100000, 8802, '苏州联拓制造', 'GD202605080002', '培训账号权限确认', 'LOW', 'SERVICE', 16, '高牧',
+ DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), '客户培训账号需补充权限。', '已补充培训账号和菜单权限。', NULL, 'RESOLVED', '0', 'gao_delivery', DATE_SUB(NOW(), INTERVAL 6 DAY), 'gao_delivery', DATE_SUB(NOW(), INTERVAL 4 DAY));
 
 -- =========================================================
 -- 九、组织扩充后的运营轨迹数据：操作日志、前端异常、HR审计、催办效果

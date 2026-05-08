@@ -27,6 +27,11 @@ export interface BusinessTrip {
   emergencyPhone?: string;
   /** 关联项目名称 */
   projectName?: string;
+  projectId?: number;
+  customerId?: number;
+  customerName?: string;
+  budgetSubjectCode?: string;
+  budgetSubjectName?: string;
   companions?: string;
   reason: string;
   itinerary?: string;

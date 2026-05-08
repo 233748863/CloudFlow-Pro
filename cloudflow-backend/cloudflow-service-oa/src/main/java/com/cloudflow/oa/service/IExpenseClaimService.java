@@ -48,6 +48,11 @@ public interface IExpenseClaimService extends IService<BizExpenseClaim> {
     boolean submitClaim(Long id);
 
     /**
+     * 确认报销完成打款。
+     */
+    boolean confirmPaid(Long id);
+
+    /**
      * 车辆费用转报销单
      */
     boolean convertVehicleExpenseToClaim(List<Long> vehicleExpenseIds, Long userId);

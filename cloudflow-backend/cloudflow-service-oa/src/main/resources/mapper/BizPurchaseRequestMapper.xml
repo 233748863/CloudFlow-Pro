@@ -41,6 +41,8 @@
             <result property="unitPrice" column="unit_price"/>
             <result property="amount" column="item_amount"/>
             <result property="receivedQuantity" column="received_quantity"/>
+            <result property="budgetSubjectCode" column="item_budget_subject_code"/>
+            <result property="budgetSubjectName" column="item_budget_subject_name"/>
         </collection>
     </resultMap>
 
@@ -93,7 +95,9 @@
             i.quantity,
             i.unit_price,
             i.amount AS item_amount,
-            i.received_quantity
+            i.received_quantity,
+            i.budget_subject_code AS item_budget_subject_code,
+            i.budget_subject_name AS item_budget_subject_name
         FROM biz_purchase_request r
         LEFT JOIN biz_purchase_item i ON r.id = i.purchase_id
         WHERE r.id = #{id} AND r.del_flag = '0'

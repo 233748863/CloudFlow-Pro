@@ -178,6 +178,19 @@ export const getInfo = async (): Promise<UserInfo> => {
   // 后端返回格式 { user: {...}, roles: [...], permissions: [...] }
   // 需要将其扁平化为 UserInfo 格式
   const user = (data?.user || data) as Record<string, unknown> & { dept?: { deptName?: string } };
+  const toBooleanFlag = (value: unknown): boolean => {
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (typeof value === 'number') {
+      return value === 1;
+    }
+    if (typeof value === 'string') {
+      const normalized = value.trim().toLowerCase();
+      return normalized === '1' || normalized === 'true' || normalized === 'y' || normalized === 'yes';
+    }
+    return false;
+  };
   return {
     userId: user.userId,
     userName: user.userName,
@@ -194,7 +207,7 @@ export const getInfo = async (): Promise<UserInfo> => {
     status: user.status,
     createTime: user.createTime,
     permissions: Array.isArray(data?.permissions) ? data.permissions : [],
-    forcePasswordChange: Boolean(data?.forcePasswordChange ?? user.forcePasswordChange),
+    forcePasswordChange: toBooleanFlag(data?.forcePasswordChange ?? user.forcePasswordChange),
   } as UserInfo;
 }
 

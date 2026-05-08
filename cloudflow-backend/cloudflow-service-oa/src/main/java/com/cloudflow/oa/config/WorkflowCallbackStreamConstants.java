@@ -36,6 +36,9 @@ public final class WorkflowCallbackStreamConstants {
     public static final String BUSINESS_TYPE_LICENSE_BORROW = "license_borrow";
     public static final String BUSINESS_TYPE_LICENSE_RENEWAL = "license_renewal";
     public static final String BUSINESS_TYPE_CONTRACT = "biz_contract";
+    public static final String BUSINESS_TYPE_PROJECT = "project_approval";
+    public static final String BUSINESS_TYPE_BUDGET_PLAN = "budget_plan";
+    public static final String BUSINESS_TYPE_BUDGET_ADJUSTMENT = "budget_adjustment";
 
     /**
      * 给流程变量补齐回调所需的公共元数据。

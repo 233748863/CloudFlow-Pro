@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
@@ -8,6 +9,9 @@ import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import FileUpload from '@/components/FileUpload';
 import { contractApi, OaContract, OaRiskAlert } from '@/services/api/contractRisk';
+import { crmApi, CrmCustomer } from '@/services/api/crm';
+import { projectApi, Project } from '@/services/api/project';
+import { budgetApi, BudgetSubject } from '@/services/api/budget';
 import { OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
@@ -103,6 +107,8 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
 );
 
 export const ContractPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [rows, setRows] = useState<OaContract[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -116,6 +122,9 @@ export const ContractPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [projectOptions, setProjectOptions] = useState<Project[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
+  const [budgetSubjectOptions, setBudgetSubjectOptions] = useState<BudgetSubject[]>([]);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -140,6 +149,40 @@ export const ContractPage: React.FC = () => {
   useEffect(() => {
     void fetchRows();
   }, [fetchRows]);
+
+  useEffect(() => {
+    const loadReferences = async () => {
+      try {
+        const [projectResult, customerResult, subjectResult] = await Promise.all([
+          projectApi.list({ pageNum: 1, pageSize: 100 }),
+          crmApi.listCustomers({ pageNum: 1, pageSize: 100 }),
+          budgetApi.listSubjects({ pageNum: 1, pageSize: 100 }),
+        ]);
+        setProjectOptions(projectResult.rows || []);
+        setCustomerOptions(customerResult.rows || []);
+        setBudgetSubjectOptions(subjectResult.rows || []);
+      } catch (error) {
+        toast.error(getErrorMessage(error, '加载合同候选数据失败'));
+      }
+    };
+    void loadReferences();
+  }, []);
+
+  useEffect(() => {
+    const state = location.state as { focusContractId?: number } | null;
+    if (!state?.focusContractId) {
+      return;
+    }
+    const focusContractId = state.focusContractId;
+    const openFocusedDetail = async () => {
+      try {
+        await openDetail({ contractId: focusContractId } as OaContract);
+      } finally {
+        navigate(location.pathname, { replace: true, state: {} });
+      }
+    };
+    void openFocusedDetail();
+  }, [location.pathname, location.state, navigate]);
 
   const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
   const pendingCount = useMemo(() => rows.filter((item) => item.status === 'PENDING').length, [rows]);
@@ -410,6 +453,82 @@ export const ContractPage: React.FC = () => {
               <DatePicker className="h-11" type="date" value={form.endDate || ''} onChange={(event) => setForm((prev) => ({ ...prev, endDate: event.target.value }))} />
             </div>
           </div>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>关联项目</Label>
+              <Select
+                value={form.projectId ? String(form.projectId) : 'NONE'}
+                onValueChange={(value) => {
+                  const project = projectOptions.find((item) => String(item.projectId) === value);
+                  setForm((prev) => ({
+                    ...prev,
+                    projectId: value === 'NONE' ? undefined : Number(value),
+                    projectName: project?.projectName || '',
+                    customerId: project?.customerId || prev.customerId,
+                    customerName: project?.customerName || prev.customerName,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择项目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联项目</SelectItem>
+                  {projectOptions.map((item) => (
+                    <SelectItem key={item.projectId} value={String(item.projectId)}>
+                      {item.projectName} / {item.customerName || '无客户'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>客户</Label>
+              <Select
+                value={form.customerId ? String(form.customerId) : 'NONE'}
+                onValueChange={(value) => {
+                  const customer = customerOptions.find((item) => String(item.customerId) === value);
+                  setForm((prev) => ({
+                    ...prev,
+                    customerId: value === 'NONE' ? undefined : Number(value),
+                    customerName: customer?.customerName || '',
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择客户" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联客户</SelectItem>
+                  {customerOptions.map((item) => (
+                    <SelectItem key={item.customerId} value={String(item.customerId)}>
+                      {item.customerName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>预算科目</Label>
+              <Select
+                value={form.budgetSubjectCode || 'NONE'}
+                onValueChange={(value) => {
+                  const subject = budgetSubjectOptions.find((item) => item.subjectCode === value);
+                  setForm((prev) => ({
+                    ...prev,
+                    budgetSubjectCode: value === 'NONE' ? '' : value,
+                    budgetSubjectName: subject?.subjectName || '',
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择预算科目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不指定预算科目</SelectItem>
+                  {budgetSubjectOptions.map((item) => (
+                    <SelectItem key={item.subjectId} value={item.subjectCode}>
+                      {item.subjectCode} / {item.subjectName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
           <div className="space-y-2">
             <Label>合同附件</Label>
             <FileUpload value={form.attachmentUrl || ''} onChange={(urls) => setForm((prev) => ({ ...prev, attachmentUrl: urls }))} maxCount={5} />
@@ -448,6 +567,10 @@ export const ContractPage: React.FC = () => {
                 ['金额', `${detail.currency || 'CNY'} ${Number(detail.amount || 0).toLocaleString()}`],
                 ['负责人', detail.ownerName],
                 ['部门', detail.deptName],
+                ['关联项目', detail.projectName],
+                ['客户', detail.customerName],
+                ['预算科目', detail.budgetSubjectName || detail.budgetSubjectCode],
+                ['发票状态', detail.invoiceStatus],
                 ['开始日期', detail.startDate],
                 ['结束日期', detail.endDate],
                 ['流程实例', detail.instanceId],

@@ -36,6 +36,12 @@ $BackendServices = @(
         MainClass = "com.cloudflow.oa.OaApplication"
     },
     @{
+        Name = "crm"
+        Port = 9004
+        Module = "cloudflow-service-crm"
+        MainClass = "com.cloudflow.crm.CrmApplication"
+    },
+    @{
         Name = "hr"
         Port = 9005
         Module = "cloudflow-service-hr"
@@ -148,7 +154,7 @@ function Install-BackendDependencies {
     $errLog = Join-Path $LogRoot "backend-install-$stamp.err.log"
     $mvnArgs = @(
         "-pl",
-        "cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-hr",
+        "cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-hr",
         "-am",
         "-DskipTests",
         "-Dmaven.test.skip=true",

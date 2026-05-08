@@ -2,6 +2,9 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Clock3, Download, Edit, Eye, Paperclip, Plus, Receipt, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '@/services/api/expense';
+import { crmApi, CrmCustomer } from '@/services/api/crm';
+import { projectApi, Project } from '@/services/api/project';
+import { budgetApi, BudgetSubject } from '@/services/api/budget';
 import FileUpload from '@/components/FileUpload';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
@@ -80,7 +83,7 @@ const EXPENSE_TYPE_LABELS: Record<string, string> = {
 };
 
 interface ConfirmState {
-  type: 'delete' | 'submit';
+  type: 'delete' | 'submit' | 'pay';
   id: number;
   title: string;
   message: string;
@@ -197,10 +200,31 @@ export const ExpenseClaimPage: React.FC = () => {
   const [detailLoading, setDetailLoading] = useState(false);
   const [formData, setFormData] = useState<ExpenseClaim>(createDefaultForm());
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
+  const [projectOptions, setProjectOptions] = useState<Project[]>([]);
+  const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
+  const [budgetSubjectOptions, setBudgetSubjectOptions] = useState<BudgetSubject[]>([]);
 
   useEffect(() => {
     void fetchClaims();
   }, [searchParams]);
+
+  useEffect(() => {
+    const loadReferences = async () => {
+      try {
+        const [projectResult, customerResult, subjectResult] = await Promise.all([
+          projectApi.list({ pageNum: 1, pageSize: 100 }),
+          crmApi.listCustomers({ pageNum: 1, pageSize: 100 }),
+          budgetApi.listSubjects({ pageNum: 1, pageSize: 100 }),
+        ]);
+        setProjectOptions(projectResult.rows || []);
+        setCustomerOptions(customerResult.rows || []);
+        setBudgetSubjectOptions(subjectResult.rows || []);
+      } catch (error) {
+        toast.error(getErrorMessage(error, '加载报销候选数据失败'));
+      }
+    };
+    void loadReferences();
+  }, []);
 
   const fetchClaims = async () => {
     setLoading(true);
@@ -364,6 +388,16 @@ export const ExpenseClaimPage: React.FC = () => {
     });
   };
 
+  const openPayConfirm = (id: number) => {
+    setConfirmState({
+      type: 'pay',
+      id,
+      title: '确认报销打款',
+      message: '确认后报销单将标记为已打款，并同步触发预算核销。',
+      confirmText: '确认打款',
+    });
+  };
+
   const handleConfirmAction = async () => {
     if (!confirmState) {
       return;
@@ -376,6 +410,9 @@ export const ExpenseClaimPage: React.FC = () => {
       if (currentState.type === 'delete') {
         await expenseClaimApi.remove([currentState.id]);
         toast.success('删除成功');
+      } else if (currentState.type === 'pay') {
+        await expenseClaimApi.confirmPaid(currentState.id);
+        toast.success('已确认打款');
       } else {
         await expenseClaimApi.submit(currentState.id);
         toast.success('提交成功');
@@ -384,7 +421,10 @@ export const ExpenseClaimPage: React.FC = () => {
       await fetchClaims();
       setDetailClaim((prev) => (prev?.id === currentState.id ? null : prev));
     } catch (error) {
-      toast.error(getErrorMessage(error, currentState.type === 'delete' ? '删除失败' : '提交失败'));
+      toast.error(getErrorMessage(
+        error,
+        currentState.type === 'delete' ? '删除失败' : currentState.type === 'pay' ? '确认打款失败' : '提交失败',
+      ));
     }
   };
 
@@ -617,6 +657,14 @@ export const ExpenseClaimPage: React.FC = () => {
                                 className: 'rounded-lg',
                               },
                               {
+                                label: '打款',
+                                icon: <Receipt size={14} />,
+                                onClick: () => openPayConfirm(item.id!),
+                                tone: 'success',
+                                hidden: item.status !== 'APPROVED',
+                                className: 'rounded-lg',
+                              },
+                              {
                                 label: '删除',
                                 icon: <Trash2 size={14} />,
                                 onClick: () => openDeleteConfirm(item.id!),
@@ -690,6 +738,90 @@ export const ExpenseClaimPage: React.FC = () => {
             <div className="space-y-2">
               <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">汇总金额</Label>
               <Input className="h-11" value={formatAmount(formTotalAmount)} disabled />
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">关联项目</Label>
+              <Select
+                value={formData.projectId ? String(formData.projectId) : 'NONE'}
+                onValueChange={(value) => {
+                  const project = projectOptions.find((item) => String(item.projectId) === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    projectId: value === 'NONE' ? undefined : Number(value),
+                    projectName: project?.projectName || '',
+                    customerId: project?.customerId || prev.customerId,
+                    customerName: project?.customerName || prev.customerName,
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择项目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联项目</SelectItem>
+                  {projectOptions.map((item) => (
+                    <SelectItem key={item.projectId} value={String(item.projectId)}>
+                      {item.projectName} / {item.customerName || '无客户'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">客户</Label>
+              <Select
+                value={formData.customerId ? String(formData.customerId) : 'NONE'}
+                onValueChange={(value) => {
+                  const customer = customerOptions.find((item) => String(item.customerId) === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    customerId: value === 'NONE' ? undefined : Number(value),
+                    customerName: customer?.customerName || '',
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择客户" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不关联客户</SelectItem>
+                  {customerOptions.map((item) => (
+                    <SelectItem key={item.customerId} value={String(item.customerId)}>
+                      {item.customerName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">预算科目</Label>
+              <Select
+                value={formData.budgetSubjectCode || 'NONE'}
+                onValueChange={(value) => {
+                  const subject = budgetSubjectOptions.find((item) => item.subjectCode === value);
+                  setFormData((prev) => ({
+                    ...prev,
+                    budgetSubjectCode: value === 'NONE' ? '' : value,
+                    budgetSubjectName: subject?.subjectName || '',
+                    items: (prev.items || []).map((item) => ({
+                      ...item,
+                      budgetSubjectCode: value === 'NONE' ? '' : value,
+                      budgetSubjectName: subject?.subjectName || '',
+                    })),
+                  }));
+                }}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="选择预算科目" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不指定预算科目</SelectItem>
+                  {budgetSubjectOptions.map((item) => (
+                    <SelectItem key={item.subjectId} value={item.subjectCode}>
+                      {item.subjectCode} / {item.subjectName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
@@ -820,6 +952,10 @@ export const ExpenseClaimPage: React.FC = () => {
               <DetailRow label="所属部门" value={renderDetailValue(detailClaim.deptName)} />
               <DetailRow label="报销类别" value={CATEGORY_LABELS[detailClaim.category] || detailClaim.category || '-'} />
               <DetailRow label="总金额" value={formatAmount(detailClaim.totalAmount)} />
+              <DetailRow label="关联项目" value={renderDetailValue(detailClaim.projectName)} />
+              <DetailRow label="客户" value={renderDetailValue(detailClaim.customerName)} />
+              <DetailRow label="预算科目" value={renderDetailValue(detailClaim.budgetSubjectName || detailClaim.budgetSubjectCode)} />
+              <DetailRow label="发票状态" value={renderDetailValue(detailClaim.invoiceStatus)} />
               <DetailRow label="明细数量" value={`${detailClaim.items?.length || 0} 条`} />
               <DetailRow label="流程实例" value={renderDetailValue(detailClaim.instanceId)} />
               <DetailRow label="创建时间" value={formatDateTimeDisplay(detailClaim.createTime)} />

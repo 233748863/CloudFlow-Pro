@@ -23,6 +23,7 @@ interface MenuTreeItem {
   label: string;
   icon: React.ElementType;
   path?: string;
+  query?: string;
   children?: MenuTreeItem[];
 }
 
@@ -60,13 +61,21 @@ export const MainLayout = () => {
         children:
           group.children
             ?.filter((child) => child.menuType === 'C' && child.visible === '0')
-            .map((child) => ({
-              id: child.path,
-              label: child.menuName,
-              icon: getIcon(child.icon),
-              path: child.path,
-            })) || [],
+            .map((child) => {
+              const rawPath = child.path || '';
+              const [purePath, inlineQuery] = rawPath.split('?');
+              return {
+                id: rawPath,
+                label: child.menuName,
+                icon: getIcon(child.icon),
+                path: purePath || rawPath,
+                query: child.query || inlineQuery,
+              };
+            }) || [],
       }));
+
+  const buildRouteKey = (path?: string, query?: string) =>
+    path ? `${path}${query ? `?${query}` : ''}` : '';
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -105,11 +114,18 @@ export const MainLayout = () => {
     setExpandedGroups((prev) => {
       for (const group of menuTree) {
         const match = group.children?.find((child) => {
+          const childKey = buildRouteKey(child.path, child.query);
+          const currentKey = `${location.pathname}${location.search}`;
           if (child.path === '/') {
-            return location.pathname === '/';
+            return currentKey === '/';
           }
-
-          return child.path && (location.pathname === child.path || location.pathname.startsWith(`${child.path}/`));
+          if (!child.path) {
+            return false;
+          }
+          if (child.query) {
+            return currentKey === childKey;
+          }
+          return location.pathname === child.path || location.pathname.startsWith(`${child.path}/`);
         });
 
         if (match && !prev.includes(group.id)) {
@@ -160,17 +176,31 @@ export const MainLayout = () => {
     [menuTree],
   );
 
-  const isActive = (path?: string) => {
+  const matchesMenuRoute = (path?: string, query?: string) => {
     if (!path) {
       return false;
     }
 
+    const currentKey = `${location.pathname}${location.search}`;
+    const targetKey = buildRouteKey(path, query);
+    const isCrmCustomerWorkspaceRoute = location.pathname.startsWith('/office/crm/customer/');
+
     if (path === '/') {
-      return location.pathname === '/';
+      return currentKey === '/';
+    }
+
+    if (isCrmCustomerWorkspaceRoute && path === '/office/crm' && query === 'tab=customer') {
+      return true;
+    }
+
+    if (query) {
+      return currentKey === targetKey;
     }
 
     return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
+
+  const isActive = (path?: string, query?: string) => matchesMenuRoute(path, query);
 
   const activeLabel = useMemo(() => {
     if (location.pathname === '/profile') {
@@ -180,8 +210,15 @@ export const MainLayout = () => {
       };
     }
 
+    if (location.pathname.startsWith('/office/crm/customer/')) {
+      return {
+        group: '客户经营',
+        item: '客户管理',
+      };
+    }
+
     for (const group of menuTree) {
-      const child = group.children?.find((item) => isActive(item.path));
+      const child = group.children?.find((item) => isActive(item.path, item.query));
       if (child) {
         return {
           group: group.label,
@@ -194,7 +231,7 @@ export const MainLayout = () => {
       group: '工作台',
       item: '仪表盘',
     };
-  }, [menuTree, location.pathname]);
+  }, [location.pathname, menuTree]);
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups((prev) =>
@@ -257,13 +294,13 @@ export const MainLayout = () => {
           {sidebarCollapsed ? (
             <div className="space-y-1">
               {flatItems.map((item) => {
-                const active = isActive(item.path);
+                const active = isActive(item.path, item.query);
                 return (
                   <button
                     key={item.id}
                     type="button"
                     title={`${item.groupLabel} / ${item.label}`}
-                    onClick={() => item.path && navigate(item.path)}
+                    onClick={() => item.path && navigate(buildRouteKey(item.path, item.query))}
                     className={cn(
                       'cf-side-link h-10 w-10 justify-center gap-0 px-0',
                       active && 'cf-side-link-active',
@@ -278,7 +315,7 @@ export const MainLayout = () => {
             <div className="space-y-4">
               {menuTree.map((group) => {
                 const expanded = expandedGroups.includes(group.id);
-                const groupActive = Boolean(group.children?.some((child) => isActive(child.path)));
+                const groupActive = Boolean(group.children?.some((child) => isActive(child.path, child.query)));
                 const parentButtonActive = groupActive && !expanded;
 
                 return (
@@ -310,10 +347,10 @@ export const MainLayout = () => {
                           <button
                             key={child.id}
                             type="button"
-                            onClick={() => child.path && navigate(child.path)}
+                            onClick={() => child.path && navigate(buildRouteKey(child.path, child.query))}
                             className={cn(
                               'cf-side-link cf-side-link-sm',
-                              isActive(child.path) && 'cf-side-link-active',
+                              isActive(child.path, child.query) && 'cf-side-link-active',
                             )}
                           >
                             <child.icon size={16} className="shrink-0" />

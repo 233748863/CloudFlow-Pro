@@ -33,6 +33,13 @@ public class OaContract implements Serializable {
     private String ownerName;
     private Long deptId;
     private String deptName;
+    private Long projectId;
+    private String projectName;
+    private Long customerId;
+    private String customerName;
+    private String budgetSubjectCode;
+    private String budgetSubjectName;
+    private String invoiceStatus;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate startDate;

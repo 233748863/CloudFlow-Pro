@@ -29,6 +29,7 @@ services:
       - ./cloudflow-backend/DB/02.cloudflow-workflow.sql:/docker-entrypoint-initdb.d/02.cloudflow-workflow.sql:ro
       - ./cloudflow-backend/DB/03.cloudflow-hr.sql:/docker-entrypoint-initdb.d/03.cloudflow-hr.sql:ro
       - ./cloudflow-backend/DB/04.cloudflow-oa.sql:/docker-entrypoint-initdb.d/04.cloudflow-oa.sql:ro
+      - ./cloudflow-backend/DB/08.cloudflow-crm.sql:/docker-entrypoint-initdb.d/08.cloudflow-crm.sql:ro
       - ./scripts/check-db-init.sh:/docker-entrypoint-initdb.d/99-check-init.sh:ro
     # MySQL 核心参数，修改后 docker compose restart mysql 即可生效
     command: >
@@ -363,6 +364,57 @@ services:
           cpus: '0.25'
           memory: 256M
 
+  # CRM 服务（端口 9004）
+  crm:
+    build:
+      context: .
+      dockerfile: docker/crm/Dockerfile
+    container_name: cloudflow-crm
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: nacos:8848
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+      DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-cloudflow_2026}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+    volumes:
+      - crm_logs:/app/logs
+      - upload_data:/data/cloudflow/uploads
+      - ./config/cloudflow-service-crm.yaml:/app/config/cloudflow-service-crm.yaml:ro
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      nacos:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9004/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    networks:
+      - cloudflow-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
   # HR 服务（端口 9005）
   hr:
     build:
@@ -438,6 +490,7 @@ services:
       - auth
       - workflow
       - oa
+      - crm
       - hr
     logging:
       driver: json-file
@@ -562,6 +615,8 @@ volumes:
   workflow_logs:
     driver: local
   oa_logs:
+    driver: local
+  crm_logs:
     driver: local
   hr_logs:
     driver: local
