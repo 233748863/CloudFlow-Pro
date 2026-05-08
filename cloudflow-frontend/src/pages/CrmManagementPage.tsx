@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Eye, FolderKanban, Handshake, LifeBuoy, Plus, ReceiptText, RefreshCcw, Send, Target, TriangleAlert, UserRound, Wallet } from 'lucide-react';
+import { Eye, FolderKanban, Handshake, LifeBuoy, Plus, ReceiptText, RefreshCcw, Send, ShieldAlert, Target, TriangleAlert, UserRound, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -487,6 +487,32 @@ export default function CrmManagementPage() {
               <div>阶段停留超时商机</div>
               <div className="text-xs text-slate-500">{dashboard.stalledOpportunities.length} 条</div>
             </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">联动闭环</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <div>待完善 OA 草稿</div>
+              <div className="text-xs text-slate-500">{dashboard.crossModuleTodos.length} 条</div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
+              <div>预算超阈值 / 发票异常</div>
+              <div className="text-xs text-slate-500">{dashboard.budgetAlerts.length + dashboard.invoiceExceptions.length} 条</div>
+            </div>
+            {dashboard.crossModuleTodos.slice(0, 2).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => navigate(item.path || '/dashboard')}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
+              >
+                <div>{item.title || '-'}</div>
+                <div className="text-xs text-slate-500">{item.sourceLabel || item.module || '-'} / {renderStatus(item.status)}</div>
+              </button>
+            ))}
           </CardContent>
         </Card>
       </div>

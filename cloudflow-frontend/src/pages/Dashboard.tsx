@@ -30,9 +30,14 @@ import {
   UserDashboardQuickActions,
   UserDashboardRecentUsage,
   UserDashboardRecentUsageItem,
+  UserDashboardRiskItem,
+  UserDashboardRiskPanel,
   UserDashboardStats,
   UserDashboardStatsData,
+  UserDashboardTodoItem,
+  UserDashboardTodoPanel,
 } from '@/components/user/dashboard';
+import { getWorkplaceSummary, RiskItem, TodayItem } from '@/services/api/workplace';
 
 type DashboardGranularity = 'day' | 'hour';
 
@@ -71,6 +76,11 @@ interface DashboardActivityPanels {
   applications: any[];
   announcements: Announcement[];
   schedules: SysScheduleEvent[];
+}
+
+interface WorkplacePanels {
+  todos: TodayItem[];
+  risks: RiskItem[];
 }
 
 interface DashboardTrendDraft {
@@ -254,6 +264,10 @@ export const Dashboard = () => {
     announcements: [],
     schedules: [],
   });
+  const [workplacePanels, setWorkplacePanels] = useState<WorkplacePanels>({
+    todos: [],
+    risks: [],
+  });
   const [startDate, setStartDate] = useState(() => {
     const date = new Date();
     date.setDate(date.getDate() - 6);
@@ -277,12 +291,13 @@ export const Dashboard = () => {
     setLoadingOverview(true);
 
     const today = formatLocalDate(new Date());
-    const [taskStatsResult, copyCountResult, announcementsResult, schedulesResult] =
+    const [taskStatsResult, copyCountResult, announcementsResult, schedulesResult, workplaceSummaryResult] =
       await Promise.allSettled([
         getTaskStatistics(),
         getCopyUnreadCount(),
         getMyAnnouncements(),
         getMyEvents(today, today),
+        getWorkplaceSummary(),
       ]);
 
     const taskStats =
@@ -309,6 +324,13 @@ export const Dashboard = () => {
         .filter((item) => !item.isRead)
         .map((item) => String(item.announcementId)),
     });
+
+    if (workplaceSummaryResult.status === 'fulfilled' && workplaceSummaryResult.value) {
+      setWorkplacePanels({
+        todos: workplaceSummaryResult.value.todayItems || [],
+        risks: workplaceSummaryResult.value.riskItems || [],
+      });
+    }
 
     setLoadingOverview(false);
   };
@@ -593,6 +615,32 @@ export const Dashboard = () => {
       .map(({ sortTime, ...rest }) => rest);
   }, [activityPanels, navigate]);
 
+  const workplaceTodoItems = useMemo<UserDashboardTodoItem[]>(
+    () =>
+      workplacePanels.todos.slice(0, 6).map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        status: item.status,
+        sourceLabel: item.sourceLabel || item.module || item.type,
+        onClick: () => navigate(item.path || '/dashboard'),
+      })),
+    [navigate, workplacePanels.todos],
+  );
+
+  const workplaceRiskItems = useMemo<UserDashboardRiskItem[]>(
+    () =>
+      workplacePanels.risks.slice(0, 6).map((item) => ({
+        id: String(item.id),
+        title: item.title,
+        description: item.description,
+        level: item.level,
+        sourceLabel: item.sourceLabel || item.module || item.businessType,
+        onClick: () => navigate(item.path || '/dashboard'),
+      })),
+    [navigate, workplacePanels.risks],
+  );
+
   if (!user) {
     return null;
   }
@@ -636,6 +684,11 @@ export const Dashboard = () => {
         <div className="lg:col-span-1">
           <UserDashboardQuickActions actions={quickActions} />
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+        <UserDashboardTodoPanel items={workplaceTodoItems} loading={loadingOverview && workplaceTodoItems.length === 0} />
+        <UserDashboardRiskPanel items={workplaceRiskItems} loading={loadingOverview && workplaceRiskItems.length === 0} />
       </div>
     </div>
   );

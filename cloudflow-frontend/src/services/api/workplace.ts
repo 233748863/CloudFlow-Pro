@@ -48,6 +48,8 @@ export interface WorkplaceStats {
 export interface TodayItem {
   id: string;
   type: string;
+  module?: string;
+  sourceLabel?: string;
   title: string;
   description?: string;
   time?: string;
@@ -59,7 +61,10 @@ export interface RiskItem {
   id: number;
   businessType?: string;
   businessId?: number;
+  module?: string;
+  sourceLabel?: string;
   title: string;
+  description?: string;
   level?: string;
   status?: string;
   ownerName?: string;
@@ -69,6 +74,8 @@ export interface RiskItem {
 export interface ActivityItem {
   id: string;
   type?: string;
+  module?: string;
+  sourceLabel?: string;
   title: string;
   content?: string;
   operatorName?: string;

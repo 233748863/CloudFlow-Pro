@@ -2,6 +2,7 @@ package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmContact;
 import com.cloudflow.crm.domain.CrmFollowUp;
@@ -10,12 +11,20 @@ import com.cloudflow.crm.domain.CrmQuote;
 import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.CrmRenewal;
 import com.cloudflow.crm.domain.CrmServiceTicket;
+import com.cloudflow.crm.domain.vo.CrmDashboardWorkplaceVO;
+import com.cloudflow.crm.domain.vo.CrmWorkspaceActivityItemVO;
+import com.cloudflow.crm.domain.vo.CrmLinkSummaryVO;
 import com.cloudflow.crm.domain.vo.CrmCustomerWorkspaceVO;
 import com.cloudflow.crm.domain.vo.CrmDashboardSummaryVO;
 import com.cloudflow.crm.domain.vo.CrmHealthReasonItemVO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardCardVO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardColumnVO;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
+import com.cloudflow.crm.domain.vo.CrmWorkspaceRiskItemVO;
+import com.cloudflow.crm.domain.vo.CrmWorkspaceTodoItemVO;
+import com.cloudflow.crm.domain.vo.RemoteBudgetLinkVO;
+import com.cloudflow.crm.domain.vo.RemoteContractLinkVO;
+import com.cloudflow.crm.domain.vo.RemoteInvoiceLinkVO;
 import com.cloudflow.crm.domain.vo.RemoteProjectLinkVO;
 import com.cloudflow.crm.mapper.CrmContactMapper;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
@@ -224,7 +233,13 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
                 .eq(CrmServiceTicket::getCustomerId, customerId)
                 .eq(CrmServiceTicket::getDelFlag, "0")
                 .orderByDesc(CrmServiceTicket::getUpdateTime)));
+        workspace.setContracts(loadContracts(customerId));
+        workspace.setInvoices(loadInvoices(customerId));
         workspace.setProjects(loadProjects(customerId));
+        workspace.setBudgets(loadBudgets(workspace.getProjects()));
+        workspace.setCrossModuleTodos(buildCrossModuleTodos(customer, workspace));
+        workspace.setCrossModuleRisks(buildCrossModuleRisks(customer, workspace));
+        workspace.setLinkSummary(buildLinkSummary(workspace));
         return workspace;
     }
 
@@ -274,7 +289,197 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
                 .filter(item -> resolveStageStayDays(item) >= 14)
                 .limit(10)
                 .toList());
+        summary.setCrossModuleTodos(buildDashboardTodos());
+        summary.setCrossModuleRisks(buildDashboardRisks());
+        summary.setBudgetAlerts(loadBudgetAlerts());
+        summary.setInvoiceExceptions(loadInvoiceExceptions());
         return summary;
+    }
+
+    @Override
+    public CrmDashboardWorkplaceVO getDashboardWorkplace() {
+        CrmDashboardWorkplaceVO summary = new CrmDashboardWorkplaceVO();
+        summary.setTodos(buildDashboardTodos());
+        summary.setRisks(buildDashboardRisks());
+        summary.setActivities(buildDashboardActivities());
+        return summary;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createWorkspaceContractDraft(Long customerId, RemoteOaService.ContractDraftRequest request) {
+        CrmCustomer customer = requireById(customerId, "客户不存在");
+        RemoteOaService.ContractDraftRequest payload = request == null ? new RemoteOaService.ContractDraftRequest() : request;
+        payload.setCustomerId(customerId);
+        payload.setCustomerName(customer.getCustomerName());
+        if (!StringUtils.hasText(payload.getCounterpartyName())) {
+            payload.setCounterpartyName(customer.getCustomerName());
+        }
+        if (!StringUtils.hasText(payload.getContractName())) {
+            payload.setContractName(customer.getCustomerName() + "合同草稿");
+        }
+        if (!StringUtils.hasText(payload.getContractType())) {
+            payload.setContractType("SALES");
+        }
+        if (payload.getAmount() == null) {
+            payload.setAmount(BigDecimal.ZERO);
+        }
+        R<Long> response = remoteOaService.createContract("true", "cloudflow-service-crm", payload);
+        if (response == null || !response.isSuccess() || response.getData() == null) {
+            throw new IllegalArgumentException(response != null ? response.getMsg() : "生成合同草稿失败");
+        }
+        return response.getData();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long createWorkspaceProjectDraft(Long customerId, RemoteOaService.ProjectDraftRequest request) {
+        CrmCustomer customer = requireById(customerId, "客户不存在");
+        RemoteOaService.ProjectDraftRequest payload = request == null ? new RemoteOaService.ProjectDraftRequest() : request;
+        payload.setCustomerId(customerId);
+        payload.setCustomerName(customer.getCustomerName());
+        if (!StringUtils.hasText(payload.getProjectName())) {
+            payload.setProjectName(customer.getCustomerName() + "交付项目");
+        }
+        if (!StringUtils.hasText(payload.getProjectType())) {
+            payload.setProjectType("DELIVERY");
+        }
+        if (!StringUtils.hasText(payload.getStatus())) {
+            payload.setStatus("DRAFT");
+        }
+        if (!StringUtils.hasText(payload.getPriority())) {
+            payload.setPriority("MEDIUM");
+        }
+        if (!StringUtils.hasText(payload.getRiskLevel())) {
+            payload.setRiskLevel("LOW");
+        }
+        if (!StringUtils.hasText(payload.getSourceType())) {
+            payload.setSourceType("CRM_CUSTOMER");
+        }
+        if (payload.getSourceId() == null) {
+            payload.setSourceId(customerId);
+        }
+        if (!StringUtils.hasText(payload.getSourceName())) {
+            payload.setSourceName(customer.getCustomerName());
+        }
+        if (payload.getBudgetAmount() == null) {
+            payload.setBudgetAmount(BigDecimal.ZERO);
+        }
+        R<Long> response = remoteOaService.createProject("true", "cloudflow-service-crm", payload);
+        if (response == null || !response.isSuccess() || response.getData() == null) {
+            throw new IllegalArgumentException(response != null ? response.getMsg() : "生成项目草稿失败");
+        }
+        return response.getData();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean createWorkspaceBudgetDraft(Long customerId, RemoteOaService.BudgetDraftRequest request) {
+        CrmCustomer customer = requireById(customerId, "客户不存在");
+        RemoteOaService.BudgetDraftRequest payload = request == null ? new RemoteOaService.BudgetDraftRequest() : request;
+        if (!StringUtils.hasText(payload.getBudgetName())) {
+            payload.setBudgetName(customer.getCustomerName() + "预算草稿");
+        }
+        if (payload.getFiscalYear() == null) {
+            payload.setFiscalYear(LocalDate.now().getYear());
+        }
+        if (!StringUtils.hasText(payload.getPeriodType())) {
+            payload.setPeriodType("ANNUAL");
+        }
+        if (!StringUtils.hasText(payload.getTargetType())) {
+            payload.setTargetType(payload.getProjectId() != null ? "PROJECT" : "DEPT");
+        }
+        if (!StringUtils.hasText(payload.getTargetName())) {
+            payload.setTargetName(StringUtils.hasText(payload.getProjectName()) ? payload.getProjectName() : customer.getDeptName());
+        }
+        if (payload.getTargetId() == null) {
+            payload.setTargetId("PROJECT".equals(payload.getTargetType()) ? payload.getProjectId() : customer.getDeptId());
+        }
+        if (payload.getTotalAmount() == null) {
+            payload.setTotalAmount(BigDecimal.ZERO);
+        }
+        if (payload.getLines() == null || payload.getLines().isEmpty()) {
+            throw new IllegalArgumentException("预算明细不能为空");
+        }
+        R<Void> response = remoteOaService.createBudget("true", "cloudflow-service-crm", payload);
+        if (response == null || !response.isSuccess()) {
+            throw new IllegalArgumentException(response != null ? response.getMsg() : "生成预算草稿失败");
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean createWorkspaceInvoiceDraft(Long customerId, RemoteOaService.InvoiceDraftRequest request) {
+        CrmCustomer customer = requireById(customerId, "客户不存在");
+        RemoteOaService.InvoiceDraftRequest payload = request == null ? new RemoteOaService.InvoiceDraftRequest() : request;
+        payload.setCustomerId(customerId);
+        payload.setCustomerName(customer.getCustomerName());
+        if (!StringUtils.hasText(payload.getInvoiceDirection())) {
+            payload.setInvoiceDirection("OUTPUT");
+        }
+        if (!StringUtils.hasText(payload.getBuyerName())) {
+            payload.setBuyerName(customer.getCustomerName());
+        }
+        if (payload.getGrossAmount() == null) {
+            payload.setGrossAmount(BigDecimal.ZERO);
+        }
+        if (payload.getTaxAmount() == null) {
+            payload.setTaxAmount(BigDecimal.ZERO);
+        }
+        R<Void> response = remoteOaService.createInvoice("true", "cloudflow-service-crm", payload);
+        if (response == null || !response.isSuccess()) {
+            throw new IllegalArgumentException(response != null ? response.getMsg() : "生成发票草稿失败");
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean bindWorkspaceInvoice(Long customerId, Long invoiceId, RemoteOaService.InvoiceBindRequest request) {
+        CrmCustomer customer = requireById(customerId, "客户不存在");
+        RemoteOaService.InvoiceBindRequest payload = request == null ? new RemoteOaService.InvoiceBindRequest() : request;
+        payload.setCustomerId(customerId);
+        payload.setCustomerName(customer.getCustomerName());
+        R<Void> response = remoteOaService.bindInvoice(invoiceId, payload);
+        if (response == null || !response.isSuccess()) {
+            throw new IllegalArgumentException(response != null ? response.getMsg() : "绑定发票失败");
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean voidWorkspaceInvoice(Long customerId, Long invoiceId, String remark) {
+        requireById(customerId, "客户不存在");
+        RemoteOaService.InvoiceVoidRequest request = new RemoteOaService.InvoiceVoidRequest();
+        request.setRemark(remark);
+        R<Void> response = remoteOaService.voidInvoice(invoiceId, request);
+        if (response == null || !response.isSuccess()) {
+            throw new IllegalArgumentException(response != null ? response.getMsg() : "作废发票失败");
+        }
+        return true;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean confirmWorkspaceReceivable(Long customerId, Long receivableId) {
+        CrmCustomer customer = requireById(customerId, "客户不存在");
+        CrmReceivable receivable = requireReceivable(receivableId);
+        if (!Objects.equals(receivable.getCustomerId(), customerId)) {
+            throw new IllegalArgumentException("回款计划不属于当前客户");
+        }
+        receivable.setReceivedAmount(receivable.getPlannedAmount());
+        receivable.setOutstandingAmount(BigDecimal.ZERO);
+        receivable.setReceivedDate(receivable.getReceivedDate() == null ? LocalDate.now() : receivable.getReceivedDate());
+        receivable.setStatus("RECEIVED");
+        receivable.setUpdateBy(currentUserName());
+        receivable.setUpdateTime(now());
+        boolean updated = receivableMapper.updateById(receivable) > 0;
+        if (updated) {
+            refreshHealth(customer.getCustomerId());
+        }
+        return updated;
     }
 
     private void validate(CrmCustomer customer) {
@@ -545,6 +750,282 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
         } catch (Exception ignored) {
             return new ArrayList<>();
         }
+    }
+
+    private List<RemoteContractLinkVO> loadContracts(Long customerId) {
+        try {
+            var response = remoteOaService.listContracts(1, 50, customerId, null);
+            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRows() == null) {
+                return new ArrayList<>();
+            }
+            return response.getData().getRows().stream().map(item -> {
+                RemoteContractLinkVO contract = new RemoteContractLinkVO();
+                contract.setContractId(item.getContractId());
+                contract.setContractNo(item.getContractNo());
+                contract.setContractName(item.getContractName());
+                contract.setStatus(item.getStatus());
+                contract.setRiskLevel(item.getRiskLevel());
+                contract.setAmount(item.getAmount());
+                contract.setInvoiceStatus(item.getInvoiceStatus());
+                contract.setProjectId(item.getProjectId());
+                contract.setProjectName(item.getProjectName());
+                return contract;
+            }).toList();
+        } catch (Exception ignored) {
+            return new ArrayList<>();
+        }
+    }
+
+    private List<RemoteInvoiceLinkVO> loadInvoices(Long customerId) {
+        try {
+            var response = remoteOaService.listInvoices(1, 100, null, null, null, customerId);
+            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRows() == null) {
+                return new ArrayList<>();
+            }
+            return response.getData().getRows().stream().map(item -> {
+                RemoteInvoiceLinkVO invoice = new RemoteInvoiceLinkVO();
+                invoice.setInvoiceId(item.getInvoiceId());
+                invoice.setInvoiceDirection(item.getInvoiceDirection());
+                invoice.setInvoiceCode(item.getInvoiceCode());
+                invoice.setInvoiceNo(item.getInvoiceNo());
+                invoice.setInvoiceType(item.getInvoiceType());
+                invoice.setGrossAmount(item.getGrossAmount());
+                invoice.setStatus(item.getStatus());
+                invoice.setReceivableId(item.getReceivableId());
+                invoice.setContractId(item.getContractId());
+                invoice.setContractNo(item.getContractNo());
+                invoice.setExternalLinkUrl(item.getExternalLinkUrl());
+                return invoice;
+            }).limit(20).toList();
+        } catch (Exception ignored) {
+            return new ArrayList<>();
+        }
+    }
+
+    private List<RemoteBudgetLinkVO> loadBudgets(List<RemoteProjectLinkVO> projects) {
+        List<RemoteBudgetLinkVO> result = new ArrayList<>();
+        for (RemoteProjectLinkVO project : projects) {
+            if (project.getProjectId() == null) {
+                continue;
+            }
+            try {
+                var response = remoteOaService.listBudgets(1, 20, project.getProjectId(), null);
+                if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRows() == null) {
+                    continue;
+                }
+                result.addAll(response.getData().getRows().stream().map(item -> {
+                    RemoteBudgetLinkVO budget = new RemoteBudgetLinkVO();
+                    budget.setBudgetId(item.getBudgetId());
+                    budget.setBudgetNo(item.getBudgetNo());
+                    budget.setBudgetName(item.getBudgetName());
+                    budget.setProjectId(item.getProjectId());
+                    budget.setProjectName(item.getProjectName());
+                    budget.setTotalAmount(item.getTotalAmount());
+                    budget.setReservedAmount(item.getReservedAmount());
+                    budget.setActualAmount(item.getActualAmount());
+                    budget.setAvailableAmount(item.getAvailableAmount());
+                    budget.setStatus(item.getStatus());
+                    budget.setThresholdStatus(item.getThresholdStatus());
+                    return budget;
+                }).toList());
+            } catch (Exception ignored) {
+            }
+        }
+        return result;
+    }
+
+    private List<CrmWorkspaceTodoItemVO> buildCrossModuleTodos(CrmCustomer customer, CrmCustomerWorkspaceVO workspace) {
+        List<CrmWorkspaceTodoItemVO> todos = new ArrayList<>();
+        workspace.getQuotes().stream()
+                .filter(item -> List.of("PENDING", "APPROVED", "SENT").contains(item.getStatus()))
+                .limit(3)
+                .forEach(item -> todos.add(todo("quote-" + item.getQuoteId(), "CRM", "CRM 报价", item.getQuoteName(), "报价待继续推进", item.getStatus(), "/office/crm?tab=quote", item.getQuoteId(), "CRM_QUOTE")));
+        workspace.getContracts().stream()
+                .filter(item -> List.of("DRAFT", "PENDING", "APPROVED", "ACTIVE", "SEALING").contains(item.getStatus()))
+                .limit(3)
+                .forEach(item -> todos.add(todo("contract-" + item.getContractId(), "OA", "OA 合同", item.getContractName(), "合同链路待继续推进", item.getStatus(), "/office/contracts", item.getContractId(), "CONTRACT")));
+        workspace.getProjects().stream()
+                .filter(item -> List.of("DRAFT", "PENDING", "APPROVED").contains(item.getStatus()))
+                .limit(3)
+                .forEach(item -> todos.add(todo("project-" + item.getProjectId(), "OA", "OA 项目", item.getProjectName(), "项目草稿或立项待处理", item.getStatus(), "/office/project", item.getProjectId(), "PROJECT")));
+        workspace.getBudgets().stream()
+                .filter(item -> List.of("DRAFT", "PENDING", "APPROVED").contains(item.getStatus()))
+                .limit(3)
+                .forEach(item -> todos.add(todo("budget-" + item.getBudgetId(), "OA", "OA 预算", item.getBudgetName(), "预算草稿或审批待处理", item.getStatus(), "/office/budget", item.getBudgetId(), "BUDGET")));
+        workspace.getReceivables().stream()
+                .filter(item -> (item.getOutstandingAmount() != null && item.getOutstandingAmount().signum() > 0) || !"RECEIVED".equals(item.getStatus()))
+                .limit(3)
+                .forEach(item -> todos.add(todo("receivable-" + item.getReceivableId(), "CRM", "CRM 回款", item.getReceivableName(), "回款未完成或待确认", item.getStatus(), "/office/crm?tab=receivable", item.getReceivableId(), "CRM_RECEIVABLE")));
+        return todos.stream().limit(8).toList();
+    }
+
+    private List<CrmWorkspaceRiskItemVO> buildCrossModuleRisks(CrmCustomer customer, CrmCustomerWorkspaceVO workspace) {
+        List<CrmWorkspaceRiskItemVO> risks = new ArrayList<>();
+        workspace.getHealthReasons().stream()
+                .filter(item -> !"GREEN".equalsIgnoreCase(item.getLevel()))
+                .forEach(item -> risks.add(risk(item.getCode(), "CRM", "客户健康", item.getName(), customer.getHealthReason(), item.getLevel(), "OPEN", "/office/crm/customer/" + customer.getCustomerId(), customer.getCustomerId(), "CRM_CUSTOMER")));
+        workspace.getBudgets().stream()
+                .filter(item -> List.of("WARN", "ALERT", "BLOCK").contains(item.getThresholdStatus()))
+                .forEach(item -> risks.add(risk("budget-" + item.getBudgetId(), "OA", "预算阈值", item.getBudgetName(), "预算执行已进入阈值区间", item.getThresholdStatus(), item.getStatus(), "/office/budget", item.getBudgetId(), "BUDGET")));
+        workspace.getInvoices().stream()
+                .filter(item -> List.of("WRITEOFF_PARTIAL", "VOID").contains(item.getStatus()))
+                .forEach(item -> risks.add(risk("invoice-" + item.getInvoiceId(), "OA", "发票异常", item.getInvoiceNo(), "发票部分核销或已作废", item.getStatus(), item.getStatus(), "/office/invoice", item.getInvoiceId(), "INVOICE")));
+        workspace.getProjects().stream()
+                .filter(item -> List.of("HIGH", "RED", "MEDIUM").contains(item.getRiskLevel()))
+                .forEach(item -> risks.add(risk("project-" + item.getProjectId(), "OA", "项目风险", item.getProjectName(), "项目风险等级已抬高", item.getRiskLevel(), item.getStatus(), "/office/project", item.getProjectId(), "PROJECT")));
+        return risks.stream().limit(8).toList();
+    }
+
+    private CrmLinkSummaryVO buildLinkSummary(CrmCustomerWorkspaceVO workspace) {
+        CrmLinkSummaryVO summary = new CrmLinkSummaryVO();
+        summary.setContractCount(workspace.getContracts().size());
+        summary.setInvoiceCount(workspace.getInvoices().size());
+        summary.setBudgetCount(workspace.getBudgets().size());
+        summary.setProjectCount(workspace.getProjects().size());
+        summary.setOpenTodoCount(workspace.getCrossModuleTodos().size());
+        summary.setOpenRiskCount(workspace.getCrossModuleRisks().size());
+        return summary;
+    }
+
+    private List<CrmWorkspaceTodoItemVO> buildDashboardTodos() {
+        List<CrmWorkspaceTodoItemVO> todos = new ArrayList<>();
+        list(new LambdaQueryWrapper<CrmCustomer>().eq(CrmCustomer::getDelFlag, "0").orderByDesc(CrmCustomer::getUpdateTime))
+                .stream()
+                .limit(8)
+                .forEach(customer -> {
+                    CrmCustomerWorkspaceVO workspace = getWorkspace(customer.getCustomerId());
+                    todos.addAll(workspace.getCrossModuleTodos());
+                });
+        return todos.stream().limit(8).toList();
+    }
+
+    private List<CrmWorkspaceRiskItemVO> buildDashboardRisks() {
+        List<CrmWorkspaceRiskItemVO> risks = new ArrayList<>();
+        list(new LambdaQueryWrapper<CrmCustomer>().eq(CrmCustomer::getDelFlag, "0").orderByDesc(CrmCustomer::getUpdateTime))
+                .stream()
+                .limit(8)
+                .forEach(customer -> {
+                    CrmCustomerWorkspaceVO workspace = getWorkspace(customer.getCustomerId());
+                    risks.addAll(workspace.getCrossModuleRisks());
+                });
+        return risks.stream().limit(8).toList();
+    }
+
+    private List<RemoteBudgetLinkVO> loadBudgetAlerts() {
+        List<RemoteBudgetLinkVO> alerts = new ArrayList<>();
+        list(new LambdaQueryWrapper<CrmCustomer>().eq(CrmCustomer::getDelFlag, "0").orderByDesc(CrmCustomer::getUpdateTime))
+                .stream()
+                .limit(8)
+                .forEach(customer -> getWorkspace(customer.getCustomerId()).getBudgets().stream()
+                        .filter(item -> List.of("WARN", "ALERT", "BLOCK").contains(item.getThresholdStatus()))
+                        .forEach(alerts::add));
+        return alerts.stream().limit(8).toList();
+    }
+
+    private List<RemoteInvoiceLinkVO> loadInvoiceExceptions() {
+        List<RemoteInvoiceLinkVO> invoices = new ArrayList<>();
+        list(new LambdaQueryWrapper<CrmCustomer>().eq(CrmCustomer::getDelFlag, "0").orderByDesc(CrmCustomer::getUpdateTime))
+                .stream()
+                .limit(8)
+                .forEach(customer -> getWorkspace(customer.getCustomerId()).getInvoices().stream()
+                        .filter(item -> List.of("BOUND", "WRITEOFF_PARTIAL", "VOID").contains(item.getStatus()))
+                        .forEach(invoices::add));
+        return invoices.stream().limit(8).toList();
+    }
+
+    private List<CrmWorkspaceActivityItemVO> buildDashboardActivities() {
+        List<CrmWorkspaceActivityItemVO> activities = new ArrayList<>();
+        quoteMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
+                        .eq(CrmQuote::getDelFlag, "0")
+                        .orderByDesc(CrmQuote::getUpdateTime))
+                .stream()
+                .limit(4)
+                .forEach(item -> activities.add(activity(
+                        "activity-quote-" + item.getQuoteId(),
+                        "CRM",
+                        "CRM 报价",
+                        item.getQuoteName(),
+                        "报价状态变更为 " + item.getStatus(),
+                        item.getOwnerName(),
+                        item.getUpdateTime() != null ? item.getUpdateTime() : item.getCreateTime(),
+                        "/office/crm?tab=quote",
+                        item.getQuoteId(),
+                        "CRM_QUOTE"
+                )));
+        receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
+                        .eq(CrmReceivable::getDelFlag, "0")
+                        .orderByDesc(CrmReceivable::getUpdateTime))
+                .stream()
+                .limit(4)
+                .forEach(item -> activities.add(activity(
+                        "activity-receivable-" + item.getReceivableId(),
+                        "CRM",
+                        "CRM 回款",
+                        item.getReceivableName(),
+                        "回款状态 " + item.getStatus() + "，发票状态 " + item.getInvoiceStatus(),
+                        item.getOwnerName(),
+                        item.getUpdateTime() != null ? item.getUpdateTime() : item.getCreateTime(),
+                        "/office/crm?tab=receivable",
+                        item.getReceivableId(),
+                        "CRM_RECEIVABLE"
+                )));
+        return activities.stream()
+                .sorted(Comparator.comparing(CrmWorkspaceActivityItemVO::getEventTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(8)
+                .toList();
+    }
+
+    private CrmWorkspaceTodoItemVO todo(String id, String module, String sourceLabel, String title, String description, String status, String path, Long businessId, String businessType) {
+        CrmWorkspaceTodoItemVO item = new CrmWorkspaceTodoItemVO();
+        item.setId(id);
+        item.setModule(module);
+        item.setSourceLabel(sourceLabel);
+        item.setTitle(title);
+        item.setDescription(description);
+        item.setStatus(status);
+        item.setPath(path);
+        item.setBusinessId(businessId);
+        item.setBusinessType(businessType);
+        return item;
+    }
+
+    private CrmWorkspaceRiskItemVO risk(String id, String module, String sourceLabel, String title, String description, String level, String status, String path, Long businessId, String businessType) {
+        CrmWorkspaceRiskItemVO item = new CrmWorkspaceRiskItemVO();
+        item.setId(id);
+        item.setModule(module);
+        item.setSourceLabel(sourceLabel);
+        item.setTitle(title);
+        item.setDescription(description);
+        item.setLevel(level);
+        item.setStatus(status);
+        item.setPath(path);
+        item.setBusinessId(businessId);
+        item.setBusinessType(businessType);
+        return item;
+    }
+
+    private CrmWorkspaceActivityItemVO activity(String id, String module, String sourceLabel, String title, String content,
+                                                String operatorName, LocalDateTime eventTime, String path, Long businessId, String businessType) {
+        CrmWorkspaceActivityItemVO item = new CrmWorkspaceActivityItemVO();
+        item.setId(id);
+        item.setModule(module);
+        item.setSourceLabel(sourceLabel);
+        item.setTitle(title);
+        item.setContent(content);
+        item.setOperatorName(operatorName);
+        item.setEventTime(eventTime);
+        item.setPath(path);
+        item.setBusinessId(businessId);
+        item.setBusinessType(businessType);
+        return item;
+    }
+
+    private CrmReceivable requireReceivable(Long receivableId) {
+        CrmReceivable receivable = receivableMapper.selectById(receivableId);
+        if (receivable == null || !"0".equals(receivable.getDelFlag())) {
+            throw new IllegalArgumentException("回款计划不存在");
+        }
+        return receivable;
     }
 
     private int resolveStageStayDays(CrmOpportunity opportunity) {

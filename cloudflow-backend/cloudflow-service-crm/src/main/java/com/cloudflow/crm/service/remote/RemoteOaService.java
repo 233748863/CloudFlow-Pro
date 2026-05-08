@@ -31,8 +31,24 @@ public interface RemoteOaService {
                           @RequestHeader("X-From-Service") String fromService,
                           @RequestBody ProjectDraftRequest request);
 
+    @PostMapping("/budget/plan")
+    R<Void> createBudget(@RequestHeader("X-Inner-Call") String innerCall,
+                         @RequestHeader("X-From-Service") String fromService,
+                         @RequestBody BudgetDraftRequest request);
+
+    @PostMapping("/invoice")
+    R<Void> createInvoice(@RequestHeader("X-Inner-Call") String innerCall,
+                          @RequestHeader("X-From-Service") String fromService,
+                          @RequestBody InvoiceDraftRequest request);
+
     @GetMapping("/contract/{id}")
     R<ContractInfo> getContract(@PathVariable("id") Long id);
+
+    @GetMapping("/contract/list")
+    R<PageResult<ContractInfo>> listContracts(@RequestParam("pageNum") int pageNum,
+                                              @RequestParam("pageSize") int pageSize,
+                                              @RequestParam(value = "customerId", required = false) Long customerId,
+                                              @RequestParam(value = "status", required = false) String status);
 
     @GetMapping("/invoice/list")
     R<PageResult<InvoiceInfo>> listInvoices(@RequestParam("pageNum") int pageNum,
@@ -58,6 +74,10 @@ public interface RemoteOaService {
     R<Void> bindInvoice(@PathVariable("id") Long invoiceId,
                         @RequestBody InvoiceBindRequest request);
 
+    @PostMapping("/invoice/{id}/void")
+    R<Void> voidInvoice(@PathVariable("id") Long invoiceId,
+                        @RequestBody InvoiceVoidRequest request);
+
     @Data
     class ContractDraftRequest {
         private String contractName;
@@ -71,6 +91,55 @@ public interface RemoteOaService {
         private String deptName;
         private Long customerId;
         private String customerName;
+        private String remark;
+    }
+
+    @Data
+    class BudgetDraftRequest {
+        private String budgetName;
+        private Integer fiscalYear;
+        private String periodType;
+        private String targetType;
+        private Long targetId;
+        private String targetName;
+        private Long deptId;
+        private String deptName;
+        private Long projectId;
+        private String projectName;
+        private Long ownerId;
+        private String ownerName;
+        private BigDecimal totalAmount;
+        private String remark;
+        private java.util.List<BudgetDraftLine> lines;
+    }
+
+    @Data
+    class BudgetDraftLine {
+        private String subjectCode;
+        private String subjectName;
+        private BigDecimal amount;
+    }
+
+    @Data
+    class InvoiceDraftRequest {
+        private String invoiceDirection;
+        private String thirdPartySystem;
+        private String externalBillNo;
+        private String externalLinkUrl;
+        private String invoiceCode;
+        private String invoiceNo;
+        private String invoiceType;
+        private LocalDate invoiceDate;
+        private BigDecimal grossAmount;
+        private BigDecimal taxAmount;
+        private String sellerName;
+        private String buyerName;
+        private String imageUrl;
+        private Long customerId;
+        private String customerName;
+        private Long contractId;
+        private String contractNo;
+        private Long receivableId;
         private String remark;
     }
 
@@ -106,6 +175,12 @@ public interface RemoteOaService {
         private Long customerId;
         private String customerName;
         private String counterpartyName;
+        private String status;
+        private String riskLevel;
+        private BigDecimal amount;
+        private String invoiceStatus;
+        private Long projectId;
+        private String projectName;
     }
 
     @Data
@@ -117,10 +192,14 @@ public interface RemoteOaService {
         private BigDecimal grossAmount;
         private String buyerName;
         private String sellerName;
+        private String invoiceType;
         private Long customerId;
         private String customerName;
+        private Long contractId;
+        private String contractNo;
         private Long receivableId;
         private String status;
+        private String externalLinkUrl;
     }
 
     @Data
@@ -130,6 +209,11 @@ public interface RemoteOaService {
         private String customerName;
         private Long contractId;
         private String contractNo;
+    }
+
+    @Data
+    class InvoiceVoidRequest {
+        private String remark;
     }
 
     @Data
@@ -158,6 +242,7 @@ public interface RemoteOaService {
         private BigDecimal actualAmount;
         private BigDecimal availableAmount;
         private String status;
+        private String thresholdStatus;
     }
 
 }

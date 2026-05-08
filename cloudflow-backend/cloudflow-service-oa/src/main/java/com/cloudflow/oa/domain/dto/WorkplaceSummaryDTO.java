@@ -133,6 +133,8 @@ public class WorkplaceSummaryDTO implements Serializable {
     public static class TodayItem {
         private String id;
         private String type;
+        private String module;
+        private String sourceLabel;
         private String title;
         private String description;
         private String time;
@@ -148,7 +150,10 @@ public class WorkplaceSummaryDTO implements Serializable {
         private Long id;
         private String businessType;
         private Long businessId;
+        private String module;
+        private String sourceLabel;
         private String title;
+        private String description;
         private String level;
         private String status;
         private String ownerName;
@@ -162,6 +167,8 @@ public class WorkplaceSummaryDTO implements Serializable {
     public static class ActivityItem {
         private String id;
         private String type;
+        private String module;
+        private String sourceLabel;
         private String title;
         private String content;
         private String operatorName;

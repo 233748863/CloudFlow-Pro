@@ -24,5 +24,11 @@ public class CrmCustomerWorkspaceVO {
     private List<CrmReceivable> receivables = new ArrayList<>();
     private List<CrmRenewal> renewals = new ArrayList<>();
     private List<CrmServiceTicket> tickets = new ArrayList<>();
+    private List<RemoteContractLinkVO> contracts = new ArrayList<>();
+    private List<RemoteInvoiceLinkVO> invoices = new ArrayList<>();
+    private List<RemoteBudgetLinkVO> budgets = new ArrayList<>();
     private List<RemoteProjectLinkVO> projects = new ArrayList<>();
+    private List<CrmWorkspaceTodoItemVO> crossModuleTodos = new ArrayList<>();
+    private List<CrmWorkspaceRiskItemVO> crossModuleRisks = new ArrayList<>();
+    private CrmLinkSummaryVO linkSummary;
 }

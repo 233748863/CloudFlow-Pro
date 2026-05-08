@@ -216,6 +216,80 @@ export interface CrmRemoteProjectLink {
   sourceName?: string;
 }
 
+export interface CrmRemoteContractLink {
+  contractId?: number;
+  contractNo?: string;
+  contractName?: string;
+  status?: string;
+  riskLevel?: string;
+  amount?: number;
+  invoiceStatus?: string;
+  projectId?: number;
+  projectName?: string;
+}
+
+export interface CrmRemoteInvoiceLink {
+  invoiceId?: number;
+  invoiceDirection?: string;
+  invoiceCode?: string;
+  invoiceNo?: string;
+  invoiceType?: string;
+  grossAmount?: number;
+  status?: string;
+  receivableId?: number;
+  contractId?: number;
+  contractNo?: string;
+  externalLinkUrl?: string;
+}
+
+export interface CrmRemoteBudgetLink {
+  budgetId?: number;
+  budgetNo?: string;
+  budgetName?: string;
+  projectId?: number;
+  projectName?: string;
+  totalAmount?: number;
+  reservedAmount?: number;
+  actualAmount?: number;
+  availableAmount?: number;
+  status?: string;
+  thresholdStatus?: string;
+}
+
+export interface CrmWorkspaceTodoItem {
+  id?: string;
+  module?: string;
+  sourceLabel?: string;
+  title?: string;
+  description?: string;
+  status?: string;
+  path?: string;
+  businessId?: number;
+  businessType?: string;
+}
+
+export interface CrmWorkspaceRiskItem {
+  id?: string;
+  module?: string;
+  sourceLabel?: string;
+  title?: string;
+  description?: string;
+  level?: string;
+  status?: string;
+  path?: string;
+  businessId?: number;
+  businessType?: string;
+}
+
+export interface CrmLinkSummary {
+  contractCount?: number;
+  invoiceCount?: number;
+  budgetCount?: number;
+  projectCount?: number;
+  openTodoCount?: number;
+  openRiskCount?: number;
+}
+
 export interface CrmCustomerWorkspace {
   customer: CrmCustomer;
   healthReasons: CrmHealthReasonItem[];
@@ -226,7 +300,13 @@ export interface CrmCustomerWorkspace {
   receivables: CrmReceivable[];
   renewals: CrmRenewal[];
   tickets: CrmTicket[];
+  contracts: CrmRemoteContractLink[];
+  invoices: CrmRemoteInvoiceLink[];
+  budgets: CrmRemoteBudgetLink[];
   projects: CrmRemoteProjectLink[];
+  crossModuleTodos: CrmWorkspaceTodoItem[];
+  crossModuleRisks: CrmWorkspaceRiskItem[];
+  linkSummary?: CrmLinkSummary;
 }
 
 export interface CrmDashboardSummary {
@@ -237,6 +317,10 @@ export interface CrmDashboardSummary {
   highSeverityTickets: CrmTicket[];
   staleFollowCustomers: CrmCustomer[];
   stalledOpportunities: CrmOpportunity[];
+  crossModuleTodos: CrmWorkspaceTodoItem[];
+  crossModuleRisks: CrmWorkspaceRiskItem[];
+  budgetAlerts: CrmRemoteBudgetLink[];
+  invoiceExceptions: CrmRemoteInvoiceLink[];
 }
 
 export const crmApi = {
@@ -257,6 +341,94 @@ export const crmApi = {
   getCustomerWorkspace: (id: number) => request.get(`/crm/customer/${id}/workspace`) as Promise<CrmCustomerWorkspace>,
 
   getDashboardSummary: () => request.get('/crm/dashboard/summary') as Promise<CrmDashboardSummary>,
+
+  getDashboardWorkplace: () => request.get('/crm/dashboard/workplace') as Promise<CrmDashboardSummary>,
+
+  createWorkspaceContractDraft: (customerId: number, data: {
+    contractName?: string;
+    counterpartyName?: string;
+    contractType?: string;
+    amount?: number;
+    currency?: string;
+    ownerId?: number;
+    ownerName?: string;
+    deptId?: number;
+    deptName?: string;
+    remark?: string;
+  }) => request.post(`/crm/customer/${customerId}/workspace/contract-draft`, data) as Promise<number>,
+
+  createWorkspaceProjectDraft: (customerId: number, data: {
+    projectName?: string;
+    projectType?: string;
+    contractId?: number;
+    contractNo?: string;
+    ownerId?: number;
+    ownerName?: string;
+    deptId?: number;
+    deptName?: string;
+    startDate?: string;
+    endDate?: string;
+    budgetAmount?: number;
+    priority?: string;
+    status?: string;
+    riskLevel?: string;
+    sourceType?: string;
+    sourceId?: number;
+    sourceName?: string;
+    remark?: string;
+  }) => request.post(`/crm/customer/${customerId}/workspace/project-draft`, data) as Promise<number>,
+
+  createWorkspaceBudgetDraft: (customerId: number, data: {
+    budgetName?: string;
+    fiscalYear?: number;
+    periodType?: string;
+    targetType?: string;
+    targetId?: number;
+    targetName?: string;
+    deptId?: number;
+    deptName?: string;
+    projectId?: number;
+    projectName?: string;
+    ownerId?: number;
+    ownerName?: string;
+    totalAmount?: number;
+    remark?: string;
+    lines: Array<{ subjectCode: string; subjectName: string; amount?: number }>;
+  }) => request.post(`/crm/customer/${customerId}/workspace/budget-draft`, data),
+
+  createWorkspaceInvoiceDraft: (customerId: number, data: {
+    invoiceDirection?: string;
+    thirdPartySystem?: string;
+    externalBillNo?: string;
+    externalLinkUrl?: string;
+    invoiceCode: string;
+    invoiceNo: string;
+    invoiceType?: string;
+    invoiceDate?: string;
+    grossAmount?: number;
+    taxAmount?: number;
+    sellerName?: string;
+    buyerName?: string;
+    imageUrl?: string;
+    contractId?: number;
+    contractNo?: string;
+    receivableId?: number;
+    remark?: string;
+  }) => request.post(`/crm/customer/${customerId}/workspace/invoice-draft`, data),
+
+  bindWorkspaceInvoice: (customerId: number, invoiceId: number, data: {
+    receivableId?: number;
+    customerId?: number;
+    customerName?: string;
+    contractId?: number;
+    contractNo?: string;
+  }) => request.put(`/crm/customer/${customerId}/workspace/invoice/${invoiceId}/bind`, data),
+
+  voidWorkspaceInvoice: (customerId: number, invoiceId: number, remark?: string) =>
+    request.post(`/crm/customer/${customerId}/workspace/invoice/${invoiceId}/void`, { remark }),
+
+  confirmWorkspaceReceivable: (customerId: number, receivableId: number) =>
+    request.post(`/crm/customer/${customerId}/workspace/receivable/${receivableId}/confirm`),
 
   removeCustomer: (ids: number[]) => request.delete(`/crm/customer/${ids.join(',')}`),
 

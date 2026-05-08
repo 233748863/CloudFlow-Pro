@@ -66,6 +66,9 @@ const WORKFLOW_SUMMARY_KEYS = [
   'budgetSubjectName',
   'quoteName',
   'receivableName',
+  'sourceName',
+  'receivableStatus',
+  'budgetThresholdStatus',
 ] as const;
 
 const DATE_TIME_FIELD_KEYS = new Set([
@@ -155,6 +158,9 @@ const WORKFLOW_FIELD_LABELS: Record<string, string> = {
   budgetSubjectCode: '预算科目编码',
   budgetSubjectName: '预算科目名称',
   invoiceStatus: '发票状态',
+  receivableStatus: '回款状态',
+  sourceType: '来源类型',
+  sourceName: '来源对象',
   quoteNo: '报价单号',
   quoteName: '报价名称',
   validUntil: '报价有效期',
@@ -177,6 +183,8 @@ const WORKFLOW_FIELD_LABELS: Record<string, string> = {
   quoteStatus: '报价状态',
   urgency: '紧急程度',
   projectName: '项目名称',
+  projectNo: '项目编号',
+  budgetThresholdStatus: '预算阈值状态',
   days: '天数',
   department: '部门',
   opportunityName: '商机名称',
@@ -261,6 +269,26 @@ const WORKFLOW_ENUMS: Record<string, Record<string, string>> = {
     WRITEOFF_FULL: '全部核销',
     VOID: '已作废',
   },
+  receivableStatus: {
+    NONE: '未回款',
+    PLANNED: '计划中',
+    PARTIAL_RECEIVED: '部分回款',
+    RECEIVED: '已回款',
+    OVERDUE: '已逾期',
+  },
+  budgetThresholdStatus: {
+    NORMAL: '正常',
+    WARN: '预警',
+    ALERT: '告警',
+    BLOCK: '拦截',
+  },
+  sourceType: {
+    CRM_OPPORTUNITY: 'CRM 商机',
+    CRM_QUOTE: 'CRM 报价',
+    CRM_CUSTOMER: 'CRM 客户',
+    CONTRACT: 'OA 合同',
+    MANUAL: '手工创建',
+  },
   stage: {
     LEAD: '线索',
     QUALIFIED: '已确认',
@@ -286,6 +314,7 @@ const WORKFLOW_ENUMS: Record<string, Record<string, string>> = {
     PLANNED: '计划中',
     PARTIAL_RECEIVED: '部分回款',
     RECEIVED: '已回款',
+    OVERDUE: '已逾期',
     NEGOTIATING: '洽谈中',
     WON: '成功',
     LOST: '失败',

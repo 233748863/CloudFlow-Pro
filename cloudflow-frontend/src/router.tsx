@@ -879,6 +879,14 @@ const desktopRoutes = [
             ),
           },
           {
+            path: "/admin/project-wbs",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <ProjectManagementPage />
+              </Suspense>
+            ),
+          },
+          {
             path: "/office/budget",
             element: (
               <Suspense fallback={<Loading />}>

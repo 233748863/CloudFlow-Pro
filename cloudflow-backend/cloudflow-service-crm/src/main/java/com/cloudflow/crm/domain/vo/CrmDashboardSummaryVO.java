@@ -19,4 +19,8 @@ public class CrmDashboardSummaryVO {
     private List<CrmServiceTicket> highSeverityTickets = new ArrayList<>();
     private List<CrmCustomer> staleFollowCustomers = new ArrayList<>();
     private List<CrmOpportunity> stalledOpportunities = new ArrayList<>();
+    private List<CrmWorkspaceTodoItemVO> crossModuleTodos = new ArrayList<>();
+    private List<CrmWorkspaceRiskItemVO> crossModuleRisks = new ArrayList<>();
+    private List<RemoteBudgetLinkVO> budgetAlerts = new ArrayList<>();
+    private List<RemoteInvoiceLinkVO> invoiceExceptions = new ArrayList<>();
 }

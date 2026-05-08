@@ -109,6 +109,10 @@ const tabs: Array<{ value: DetailTab; label: string; icon: React.ReactNode }> = 
 
 const toDateInput = (value?: string) => value ? String(value).slice(0, 10) : '';
 const DAY_WIDTH = 40;
+const GANTT_FULL_LABEL_MIN_WIDTH = 160;
+const GANTT_COMPACT_LABEL_MIN_WIDTH = 96;
+const GANTT_SHORT_LABEL_MIN_WIDTH = 48;
+const GANTT_MARKER_SIZE = 16;
 const formatMoney = (value?: number) => `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const addDays = (dateString: string, days: number) => {
   const date = new Date(`${dateString}T00:00:00`);
@@ -121,6 +125,21 @@ const diffDays = (start: string, end: string) => {
   return Math.round((right - left) / (24 * 60 * 60 * 1000));
 };
 
+const compactGanttText = (value: string, maxLength: number) => {
+  const normalized = value.trim();
+  if (normalized.length <= maxLength) {
+    return normalized;
+  }
+  return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`;
+};
+
+const resolveExternalLabelStyle = (anchorLeft: number, timelineWidth: number) => {
+  if (anchorLeft > timelineWidth - 140) {
+    return { right: `${Math.max(0, timelineWidth - anchorLeft + 8)}px` };
+  }
+  return { left: `${anchorLeft + 8}px` };
+};
+
 const DraggableGanttBar: React.FC<{
   id: string;
   width: number;
@@ -128,35 +147,85 @@ const DraggableGanttBar: React.FC<{
   baselineLeft?: number;
   baselineWidth?: number;
   colorClassName: string;
-  label: string;
-}> = ({ id, width, left, baselineLeft, baselineWidth, colorClassName, label }) => {
+  fullLabel: string;
+  compactLabel: string;
+  shortLabel: string;
+  kind: 'milestone' | 'wbs';
+  timelineWidth: number;
+}> = ({ id, width, left, baselineLeft, baselineWidth, colorClassName, fullLabel, compactLabel, shortLabel, kind, timelineWidth }) => {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
-  const style = {
-    width: `${width}px`,
-    left: `${left}px`,
+  const markerLeft = left + Math.max(0, width / 2 - GANTT_MARKER_SIZE / 2);
+  const baseStyle = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.8 : 1,
   } as React.CSSProperties;
+  const displayLabel = width >= GANTT_FULL_LABEL_MIN_WIDTH
+    ? fullLabel
+    : width >= GANTT_COMPACT_LABEL_MIN_WIDTH
+      ? compactLabel
+      : width >= GANTT_SHORT_LABEL_MIN_WIDTH
+        ? shortLabel
+        : '';
+  const showExternalLabel = kind === 'milestone' || width < GANTT_SHORT_LABEL_MIN_WIDTH;
+  const externalLabel = kind === 'milestone' ? compactLabel : compactLabel || fullLabel;
+  const externalLabelStyle = resolveExternalLabelStyle(kind === 'milestone' ? markerLeft + GANTT_MARKER_SIZE : left + width, timelineWidth);
 
   return (
     <>
-      {baselineLeft !== undefined && baselineWidth ? (
+      {kind === 'milestone' ? (
+        <>
+          {baselineLeft !== undefined ? (
+            <div
+              className="absolute top-1/2 h-3 w-3 -translate-y-1/2 rotate-45 rounded-[3px] border border-slate-300 bg-white/90 dark:border-slate-600 dark:bg-slate-900/90"
+              style={{ left: `${baselineLeft + Math.max(0, (baselineWidth || DAY_WIDTH) / 2 - 6)}px` }}
+            />
+          ) : null}
+          <button
+            ref={setNodeRef}
+            type="button"
+            className={`absolute top-1/2 z-10 h-4 w-4 -translate-y-1/2 rounded-[4px] rotate-45 shadow-sm transition ${colorClassName}`}
+            style={{ ...baseStyle, left: `${markerLeft}px` }}
+            title={`${fullLabel}，拖动可按日改期`}
+            {...listeners}
+            {...attributes}
+          >
+            <span className="sr-only">{fullLabel}</span>
+          </button>
+        </>
+      ) : (
+        <>
+          {baselineLeft !== undefined && baselineWidth ? (
+            <div
+              className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-slate-300/70 dark:bg-slate-700/70"
+              style={{ left: `${baselineLeft}px`, width: `${baselineWidth}px` }}
+            />
+          ) : null}
+          <button
+            ref={setNodeRef}
+            type="button"
+            className={`absolute top-1/2 z-10 h-8 -translate-y-1/2 rounded-lg px-3 text-left text-xs font-medium text-white shadow-sm transition ${colorClassName}`}
+            style={{ ...baseStyle, width: `${width}px`, left: `${left}px` }}
+            title={`${fullLabel}，拖动可按日改期`}
+            {...listeners}
+            {...attributes}
+          >
+            {displayLabel ? <span className="block truncate">{displayLabel}</span> : <span className="sr-only">{fullLabel}</span>}
+          </button>
+        </>
+      )}
+      {showExternalLabel ? (
         <div
-          className="absolute top-1/2 h-2 -translate-y-1/2 rounded-full bg-slate-300/70 dark:bg-slate-700/70"
-          style={{ left: `${baselineLeft}px`, width: `${baselineWidth}px` }}
-        />
+          className={`pointer-events-none absolute top-1/2 z-20 max-w-[180px] -translate-y-1/2 truncate rounded-md border px-2 py-1 text-[11px] font-medium shadow-sm ${
+            kind === 'milestone'
+              ? 'border-cyan-200 bg-cyan-50/95 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/95 dark:text-cyan-200'
+              : 'border-slate-200 bg-white/95 text-slate-600 dark:border-slate-700 dark:bg-slate-900/95 dark:text-slate-200'
+          }`}
+          style={externalLabelStyle}
+          title={fullLabel}
+        >
+          {externalLabel}
+        </div>
       ) : null}
-      <button
-        ref={setNodeRef}
-        type="button"
-        className={`absolute top-1/2 h-8 -translate-y-1/2 rounded-lg px-3 text-left text-xs font-medium text-white shadow-sm transition ${colorClassName}`}
-        style={style}
-        title={`${label}，拖动可按日改期`}
-        {...listeners}
-        {...attributes}
-      >
-        <span className="truncate">{label}</span>
-      </button>
     </>
   );
 };
@@ -334,21 +403,25 @@ export default function ProjectManagementPage() {
     const milestoneRows = detail.milestones.map((item) => ({
       key: `m-${item.milestoneId}`,
       label: `里程碑 / ${item.milestoneName}`,
+      compactLabel: compactGanttText(item.milestoneName || '里程碑', 10),
+      shortLabel: '里程碑',
       start: item.plannedDate || '',
       end: item.actualDate || item.plannedDate || '',
       baselineStart: item.baselineDate || item.plannedDate || '',
       baselineEnd: item.baselineDate || item.plannedDate || '',
-      kind: 'milestone',
+      kind: 'milestone' as const,
       overdue: item.plannedDate ? diffDays(item.plannedDate, new Date().toISOString().slice(0, 10)) > 0 && !item.actualDate : false,
     }));
     const wbsRows = detail.wbsTasks.map((item) => ({
       key: `w-${item.taskId}`,
       label: `WBS / ${item.wbsCode || '-'} ${item.title || ''}`,
+      compactLabel: `${item.wbsCode || 'WBS'} ${compactGanttText(item.title || '任务', 12)}`,
+      shortLabel: item.wbsCode || compactGanttText(item.title || '任务', 4),
       start: item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '',
       end: item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '',
       baselineStart: item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '',
       baselineEnd: item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '',
-      kind: 'wbs',
+      kind: 'wbs' as const,
       overdue: item.plannedEndTime ? diffDays(String(item.plannedEndTime).slice(0, 10), new Date().toISOString().slice(0, 10)) > 0 && !item.actualEndTime : false,
     }));
     return [...milestoneRows, ...wbsRows].filter((item) => item.start && item.end);
@@ -676,7 +749,11 @@ export default function ProjectManagementPage() {
                                         colorClassName={item.kind === 'milestone'
                                           ? item.overdue ? 'bg-rose-500 hover:bg-rose-600' : 'bg-cyan-500 hover:bg-cyan-600'
                                           : item.overdue ? 'bg-amber-500 hover:bg-amber-600' : 'bg-emerald-500 hover:bg-emerald-600'}
-                                        label={item.label}
+                                        fullLabel={item.label}
+                                        compactLabel={item.compactLabel}
+                                        shortLabel={item.shortLabel}
+                                        kind={item.kind}
+                                        timelineWidth={ganttDateColumns.length * DAY_WIDTH}
                                       />
                                     </div>
                                   </div>

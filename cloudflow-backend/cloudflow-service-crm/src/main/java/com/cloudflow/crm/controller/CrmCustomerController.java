@@ -8,10 +8,12 @@ import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.vo.CrmCustomerWorkspaceVO;
 import com.cloudflow.crm.domain.vo.CrmDashboardSummaryVO;
 import com.cloudflow.crm.service.ICrmCustomerService;
+import com.cloudflow.crm.service.remote.RemoteOaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/customer")
@@ -43,6 +45,78 @@ public class CrmCustomerController {
     @GetMapping("/dashboard/summary")
     public R<CrmDashboardSummaryVO> dashboardSummary() {
         return R.ok(customerService.getDashboardSummary());
+    }
+
+    @PostMapping("/{id}/workspace/contract-draft")
+    public R<Long> createWorkspaceContractDraft(@PathVariable("id") Long id,
+                                                @RequestBody RemoteOaService.ContractDraftRequest request) {
+        try {
+            return R.ok(customerService.createWorkspaceContractDraft(id, request));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/workspace/project-draft")
+    public R<Long> createWorkspaceProjectDraft(@PathVariable("id") Long id,
+                                               @RequestBody RemoteOaService.ProjectDraftRequest request) {
+        try {
+            return R.ok(customerService.createWorkspaceProjectDraft(id, request));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/workspace/budget-draft")
+    public R<Void> createWorkspaceBudgetDraft(@PathVariable("id") Long id,
+                                              @RequestBody RemoteOaService.BudgetDraftRequest request) {
+        try {
+            return R.result(customerService.createWorkspaceBudgetDraft(id, request));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/workspace/invoice-draft")
+    public R<Void> createWorkspaceInvoiceDraft(@PathVariable("id") Long id,
+                                               @RequestBody RemoteOaService.InvoiceDraftRequest request) {
+        try {
+            return R.result(customerService.createWorkspaceInvoiceDraft(id, request));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PutMapping("/{id}/workspace/invoice/{invoiceId}/bind")
+    public R<Void> bindWorkspaceInvoice(@PathVariable("id") Long id,
+                                        @PathVariable("invoiceId") Long invoiceId,
+                                        @RequestBody RemoteOaService.InvoiceBindRequest request) {
+        try {
+            return R.result(customerService.bindWorkspaceInvoice(id, invoiceId, request));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/workspace/invoice/{invoiceId}/void")
+    public R<Void> voidWorkspaceInvoice(@PathVariable("id") Long id,
+                                        @PathVariable("invoiceId") Long invoiceId,
+                                        @RequestBody(required = false) Map<String, String> body) {
+        try {
+            return R.result(customerService.voidWorkspaceInvoice(id, invoiceId, body == null ? null : body.get("remark")));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/workspace/receivable/{receivableId}/confirm")
+    public R<Void> confirmWorkspaceReceivable(@PathVariable("id") Long id,
+                                              @PathVariable("receivableId") Long receivableId) {
+        try {
+            return R.result(customerService.confirmWorkspaceReceivable(id, receivableId));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @SysLog("新增CRM客户")

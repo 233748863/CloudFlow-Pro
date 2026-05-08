@@ -14,6 +14,7 @@ import com.cloudflow.oa.service.IWorkplaceService;
 import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.service.ISysScheduleService;
 import com.cloudflow.oa.service.ISysAnnouncementService;
+import com.cloudflow.oa.service.remote.RemoteCrmWorkplaceService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaContractConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,9 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
 
     @Autowired
     private IOaTraceEventService traceEventService;
+
+    @Autowired
+    private RemoteCrmWorkplaceService remoteCrmWorkplaceService;
     
     @Override
     public WorkplaceSummaryDTO getWorkplaceSummary(Long userId) {
@@ -207,6 +211,8 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             }
 
             summary.setTodayItems(buildTodayItems(todayEvents, announcements));
+            List<WorkplaceSummaryDTO.TodayItem> crmTodos = loadCrmTodos(serviceHealth);
+            summary.setTodayItems(mergeTodayItems(summary.getTodayItems(), crmTodos));
             summary.setRiskItems(loadRiskItems(serviceHealth, stats));
             List<WorkplaceSummaryDTO.ActivityItem> activities = getTimeline(userId, 8);
             stats.setRecentActivities(activities.size());
@@ -289,9 +295,11 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     public List<WorkplaceSummaryDTO.ActivityItem> getTimeline(Long userId, Integer limit) {
         int safeLimit = normalizeLimit(limit, 20);
         try {
-            return traceEventService.listRecent(safeLimit).stream()
+            List<WorkplaceSummaryDTO.ActivityItem> oaActivities = traceEventService.listRecent(safeLimit).stream()
                     .map(this::toActivityItem)
                     .collect(Collectors.toList());
+            List<WorkplaceSummaryDTO.ActivityItem> crmActivities = loadCrmActivities();
+            return mergeActivities(oaActivities, crmActivities, safeLimit);
         } catch (Exception e) {
             log.warn("获取工作台最近动态失败", e);
             return new ArrayList<>();
@@ -306,6 +314,8 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                 WorkplaceSummaryDTO.TodayItem item = new WorkplaceSummaryDTO.TodayItem();
                 item.setId("schedule-" + event.getEventId());
                 item.setType("SCHEDULE");
+                item.setModule("OA");
+                item.setSourceLabel("OA 日程");
                 item.setTitle(event.getTitle());
                 item.setDescription(event.getDescription());
                 item.setTime(event.getStartTime() != null ? event.getStartTime().toString() : null);
@@ -322,6 +332,8 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                 WorkplaceSummaryDTO.TodayItem item = new WorkplaceSummaryDTO.TodayItem();
                 item.setId("announcement-" + announcement.getId());
                 item.setType("ANNOUNCEMENT");
+                item.setModule("OA");
+                item.setSourceLabel("OA 公告");
                 item.setTitle(announcement.getTitle());
                 item.setDescription(Boolean.TRUE.equals(announcement.getIsRead()) ? "已读公告" : "未读公告");
                 item.setTime(announcement.getPublishTime());
@@ -345,9 +357,12 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                     .orderByDesc(OaRiskAlert::getDetectedTime)
                     .orderByDesc(OaRiskAlert::getId)
                     .last("LIMIT 8"));
-            stats.setOpenRisks(risks.size());
+            List<WorkplaceSummaryDTO.RiskItem> oaRiskItems = risks.stream().map(this::toRiskItem).collect(Collectors.toList());
+            List<WorkplaceSummaryDTO.RiskItem> crmRiskItems = loadCrmRisks();
+            List<WorkplaceSummaryDTO.RiskItem> merged = mergeRisks(oaRiskItems, crmRiskItems, 8);
+            stats.setOpenRisks(merged.size());
             markService(serviceHealth, "oa.risk", true, "OK");
-            return risks.stream().map(this::toRiskItem).collect(Collectors.toList());
+            return merged;
         } catch (Exception e) {
             log.warn("获取风险提醒失败", e);
             stats.setOpenRisks(0);
@@ -361,7 +376,10 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
         item.setId(risk.getId());
         item.setBusinessType(risk.getBusinessType());
         item.setBusinessId(risk.getBusinessId());
+        item.setModule("OA");
+        item.setSourceLabel("OA 风险");
         item.setTitle(risk.getRiskName());
+        item.setDescription(risk.getHandleRemark());
         item.setLevel(risk.getRiskLevel());
         item.setStatus(risk.getRiskStatus());
         item.setOwnerName(risk.getOwnerName());
@@ -373,6 +391,8 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
         WorkplaceSummaryDTO.ActivityItem item = new WorkplaceSummaryDTO.ActivityItem();
         item.setId(String.valueOf(event.getId()));
         item.setType(event.getEventType());
+        item.setModule("OA");
+        item.setSourceLabel("OA 动态");
         item.setTitle(event.getEventTitle());
         item.setContent(event.getEventContent());
         item.setOperatorName(event.getOperatorName());
@@ -387,7 +407,28 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
         }
         String normalized = businessType.trim().toUpperCase();
         if (OaContractConstants.BUSINESS_TYPE_CONTRACT.equals(normalized)) {
-            return "/contract/" + businessId;
+            return "/office/contracts";
+        }
+        if ("PROJECT".equals(normalized)) {
+            return "/office/project";
+        }
+        if ("BUDGET".equals(normalized) || "BUDGET_PLAN".equals(normalized) || "BUDGET_ADJUSTMENT".equals(normalized)) {
+            return "/office/budget";
+        }
+        if ("INVOICE".equals(normalized)) {
+            return "/office/invoice";
+        }
+        if ("CRM_CUSTOMER".equals(normalized)) {
+            return "/office/crm/customer/" + businessId;
+        }
+        if ("CRM_RECEIVABLE".equals(normalized)) {
+            return "/office/crm?tab=receivable";
+        }
+        if ("CRM_QUOTE".equals(normalized)) {
+            return "/office/crm?tab=quote";
+        }
+        if ("CRM_RENEWAL".equals(normalized)) {
+            return "/office/crm?tab=renewal";
         }
         if ("ASSET".equals(normalized)) {
             return "/asset/" + businessId;
@@ -402,6 +443,134 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             return "/expense/claim/" + businessId;
         }
         return "/dashboard";
+    }
+
+    private List<WorkplaceSummaryDTO.TodayItem> loadCrmTodos(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth) {
+        try {
+            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
+            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getTodos() == null) {
+                markService(serviceHealth, "crm.todo", false, "CRM 待办返回异常");
+                return new ArrayList<>();
+            }
+            markService(serviceHealth, "crm.todo", true, "OK");
+            return response.getData().getTodos().stream().map(item -> {
+                WorkplaceSummaryDTO.TodayItem mapped = new WorkplaceSummaryDTO.TodayItem();
+                mapped.setId(item.getId());
+                mapped.setType(item.getBusinessType());
+                mapped.setModule(item.getModule());
+                mapped.setSourceLabel(item.getSourceLabel());
+                mapped.setTitle(item.getTitle());
+                mapped.setDescription(item.getDescription());
+                mapped.setStatus(item.getStatus());
+                mapped.setPath(item.getPath());
+                mapped.setTime(null);
+                return mapped;
+            }).limit(4).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取 CRM 待办失败", e);
+            markService(serviceHealth, "crm.todo", false, "CRM 待办不可用");
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.RiskItem> loadCrmRisks() {
+        try {
+            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
+            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getRisks() == null) {
+                return new ArrayList<>();
+            }
+            return response.getData().getRisks().stream().map(item -> {
+                WorkplaceSummaryDTO.RiskItem mapped = new WorkplaceSummaryDTO.RiskItem();
+                mapped.setId(parseLongId(item.getId()));
+                mapped.setBusinessType(item.getBusinessType());
+                mapped.setBusinessId(item.getBusinessId());
+                mapped.setModule(item.getModule());
+                mapped.setSourceLabel(item.getSourceLabel());
+                mapped.setTitle(item.getTitle());
+                mapped.setDescription(item.getDescription());
+                mapped.setLevel(item.getLevel());
+                mapped.setStatus(item.getStatus());
+                mapped.setPath(item.getPath());
+                return mapped;
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取 CRM 风险失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.ActivityItem> loadCrmActivities() {
+        try {
+            var response = remoteCrmWorkplaceService.getDashboardWorkplace();
+            if (response == null || !response.isSuccess() || response.getData() == null || response.getData().getActivities() == null) {
+                return new ArrayList<>();
+            }
+            return response.getData().getActivities().stream().map(item -> {
+                WorkplaceSummaryDTO.ActivityItem mapped = new WorkplaceSummaryDTO.ActivityItem();
+                mapped.setId(item.getId());
+                mapped.setType(item.getBusinessType());
+                mapped.setModule(item.getModule());
+                mapped.setSourceLabel(item.getSourceLabel());
+                mapped.setTitle(item.getTitle());
+                mapped.setContent(item.getContent());
+                mapped.setOperatorName(item.getOperatorName());
+                mapped.setEventTime(item.getEventTime());
+                mapped.setPath(item.getPath());
+                return mapped;
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取 CRM 动态失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.TodayItem> mergeTodayItems(List<WorkplaceSummaryDTO.TodayItem> oaItems,
+                                                                List<WorkplaceSummaryDTO.TodayItem> crmItems) {
+        List<WorkplaceSummaryDTO.TodayItem> merged = new ArrayList<>();
+        if (oaItems != null) {
+            merged.addAll(oaItems);
+        }
+        if (crmItems != null) {
+            merged.addAll(crmItems);
+        }
+        return merged.stream().limit(8).collect(Collectors.toList());
+    }
+
+    private List<WorkplaceSummaryDTO.RiskItem> mergeRisks(List<WorkplaceSummaryDTO.RiskItem> oaItems,
+                                                          List<WorkplaceSummaryDTO.RiskItem> crmItems,
+                                                          int limit) {
+        List<WorkplaceSummaryDTO.RiskItem> merged = new ArrayList<>();
+        if (crmItems != null) {
+            merged.addAll(crmItems);
+        }
+        if (oaItems != null) {
+            merged.addAll(oaItems);
+        }
+        return merged.stream().limit(limit).collect(Collectors.toList());
+    }
+
+    private List<WorkplaceSummaryDTO.ActivityItem> mergeActivities(List<WorkplaceSummaryDTO.ActivityItem> oaItems,
+                                                                   List<WorkplaceSummaryDTO.ActivityItem> crmItems,
+                                                                   int limit) {
+        List<WorkplaceSummaryDTO.ActivityItem> merged = new ArrayList<>();
+        if (crmItems != null) {
+            merged.addAll(crmItems);
+        }
+        if (oaItems != null) {
+            merged.addAll(oaItems);
+        }
+        return merged.stream()
+                .sorted(Comparator.comparing(WorkplaceSummaryDTO.ActivityItem::getEventTime, Comparator.nullsLast(Comparator.reverseOrder())))
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    private Long parseLongId(String value) {
+        try {
+            return value == null ? null : Long.valueOf(value.replaceAll("[^0-9]", ""));
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private void markService(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,

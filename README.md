@@ -136,9 +136,9 @@ CloudFlow Pro/
 | `02.cloudflow-workflow.sql` | 流程定义、实例、任务、会签、模板、版本、归档、监控、告警 | 41 |
 | `03.cloudflow-hr.sql` | HR 组织、人事、考勤、薪酬、绩效、招聘、审计 | 43 |
 | `04.cloudflow-oa.sql` | OA、行政、资产、车辆、费用、合同、印章、证照、访客、知识库 | 36 |
-| `05.cloudflow-clear-all.sql` | 清理业务数据 | 0 |
-| `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板和演示业务数据 | 4 |
-| `07.cloudflow-performance-demo.sql` | 监控与性能演示数据 | 0 |
+| `05.cloudflow-crm.sql` | CRM 微服务结构表：客户、联系人、商机、报价、回款、续约、工单 | 8 |
+| `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板和演示业务数据（含原 07 绩效复杂场景演示） | 4 |
+| `99.cloudflow-clear-all.sql` | 清理业务数据 | 0 |
 
 执行 `06.cloudflow-business-seed.sql` 后可使用以下账号登录，密码均为 `123456`：`admin`、`li`、`wang`、`zhao`、`zhang`。
 

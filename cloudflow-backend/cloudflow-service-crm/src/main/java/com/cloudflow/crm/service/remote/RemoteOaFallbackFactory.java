@@ -27,8 +27,26 @@ public class RemoteOaFallbackFactory implements FallbackFactory<RemoteOaService>
             }
 
             @Override
+            public R<Void> createBudget(String innerCall, String fromService, BudgetDraftRequest request) {
+                log.error("CRM 生成预算草稿失败: {}", request != null ? request.getBudgetName() : null);
+                return R.fail("OA 服务暂时不可用，无法生成预算草稿");
+            }
+
+            @Override
+            public R<Void> createInvoice(String innerCall, String fromService, InvoiceDraftRequest request) {
+                log.error("CRM 生成发票草稿失败: {}", request != null ? request.getInvoiceNo() : null);
+                return R.fail("OA 服务暂时不可用，无法生成发票草稿");
+            }
+
+            @Override
             public R<RemoteOaService.ContractInfo> getContract(Long id) {
                 log.error("CRM 查询OA合同失败: {}", id);
+                return R.fail("OA 服务暂时不可用，无法查询合同");
+            }
+
+            @Override
+            public R<PageResult<RemoteOaService.ContractInfo>> listContracts(int pageNum, int pageSize, Long customerId, String status) {
+                log.error("CRM 查询OA合同列表失败");
                 return R.fail("OA 服务暂时不可用，无法查询合同");
             }
 
@@ -54,6 +72,12 @@ public class RemoteOaFallbackFactory implements FallbackFactory<RemoteOaService>
             public R<Void> bindInvoice(Long invoiceId, RemoteOaService.InvoiceBindRequest request) {
                 log.error("CRM 绑定OA发票失败: {}", invoiceId);
                 return R.fail("OA 服务暂时不可用，无法绑定发票");
+            }
+
+            @Override
+            public R<Void> voidInvoice(Long invoiceId, RemoteOaService.InvoiceVoidRequest request) {
+                log.error("CRM 作废OA发票失败: {}", invoiceId);
+                return R.fail("OA 服务暂时不可用，无法作废发票");
             }
         };
     }

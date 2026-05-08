@@ -112,6 +112,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
         invoice.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(invoice);
         if (updated) {
+            syncReceivableInvoiceStatus(invoice, BigDecimal.ZERO, null);
             syncRelatedBusinessStatus(invoice);
         }
         return updated;
