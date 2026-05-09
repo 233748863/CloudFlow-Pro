@@ -22,6 +22,7 @@ export interface OaSeal {
   keeperName?: string;
   location?: string;
   status?: ResourceStatus;
+  borrowDueTime?: string;
   remark?: string;
   createTime?: string;
 }

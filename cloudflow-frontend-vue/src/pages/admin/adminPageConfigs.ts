@@ -54,6 +54,7 @@ export interface AdminFieldConfig {
   required?: boolean
   placeholder?: string
   options?: SelectOption[]
+  formOptions?: SelectOption[]
   defaultValue?: string | number | null
   table?: boolean
   filter?: boolean
@@ -88,6 +89,8 @@ export interface AdminPageConfig {
   updatePath?: string
   deletePath?: string
   readOnly?: boolean
+  lockWhen?: (row: AdminRecord) => boolean
+  lockMessage?: string
 }
 
 export type AdminRecord = Record<string, string | number | null | undefined>
@@ -222,6 +225,18 @@ const licenseTypeOptions: SelectOption[] = [
   { value: 'OTHER', label: '其他' }
 ]
 
+const resourceStatusOptions: SelectOption[] = [
+  { value: '', label: '全部状态' },
+  { value: 'AVAILABLE', label: '可用' },
+  { value: 'BORROWED', label: '借出' },
+  { value: 'DISABLED', label: '停用' }
+]
+
+const editableResourceStatusOptions: SelectOption[] = [
+  { value: 'AVAILABLE', label: '可用' },
+  { value: 'DISABLED', label: '停用' }
+]
+
 const riskStatusOptions: SelectOption[] = [
   { value: '', label: '全部状态' },
   { value: 'OPEN', label: '待处理' },
@@ -245,7 +260,7 @@ export const statusLabel = (value: unknown, options?: SelectOption[]) => optionL
 
 export const statusTone = (value: unknown): AdminTone => {
   const status = String(value ?? '').toUpperCase()
-  if (['1', 'ACTIVE', 'CONFIRMED', 'ARRIVED', 'CHECKED_IN', 'APPROVED', 'BORROWED', 'RETURNED', 'COMPLETED', 'CLOSED'].includes(status)) return 'green'
+  if (['1', 'ACTIVE', 'AVAILABLE', 'CONFIRMED', 'ARRIVED', 'CHECKED_IN', 'APPROVED', 'BORROWED', 'RETURNED', 'COMPLETED', 'CLOSED'].includes(status)) return 'green'
   if (['0', 'PENDING', 'SCHEDULED', 'DRAFT', 'OPEN', 'HANDLING', 'MEDIUM'].includes(status)) return 'yellow'
   if (['2', '5', 'DISABLED', 'CANCELLED', 'REJECTED', 'CRITICAL', 'HIGH', 'SCRAPPED'].includes(status)) return 'red'
   if (['3', '4', 'SWAPPED'].includes(status)) return 'cyan'
@@ -482,8 +497,11 @@ export const adminPageConfigs: AdminPageConfig[] = [
       number('keeperId', '保管人ID'),
       text('keeperName', '保管人', { filter: true }),
       text('location', '存放位置'),
-      select('status', '状态', activeOptions, { defaultValue: 'ACTIVE', filter: true })
-    ]
+      select('status', '状态', resourceStatusOptions, { defaultValue: 'AVAILABLE', filter: true, formOptions: editableResourceStatusOptions }),
+      dateTime('borrowDueTime', '预计归还', { hiddenInForm: true })
+    ],
+    lockWhen: (row) => String(row.status) === 'BORROWED',
+    lockMessage: '借出中的印章只能在借还管理归还'
   },
   {
     path: '/admin/license',
@@ -505,8 +523,10 @@ export const adminPageConfigs: AdminPageConfig[] = [
       date('expireDate', '到期日期'),
       text('keeperName', '保管人'),
       text('location', '存放位置'),
-      select('status', '状态', activeOptions, { defaultValue: 'ACTIVE', filter: true })
-    ]
+      select('status', '状态', resourceStatusOptions, { defaultValue: 'AVAILABLE', filter: true, formOptions: editableResourceStatusOptions })
+    ],
+    lockWhen: (row) => String(row.status) === 'BORROWED',
+    lockMessage: '借出中的证照只能在借还管理归还'
   },
   {
     path: '/office/license-borrow',

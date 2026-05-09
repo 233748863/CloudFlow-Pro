@@ -61,7 +61,7 @@ const columns = computed<Column<AdminRecord>[]>(() => [
 const summary = computed(() => {
   const statusField = config.value.fields.find((field) => field.status)
   const activeCount = statusField
-    ? rows.value.filter((row) => ['1', 'ACTIVE', 'CONFIRMED', 'ARRIVED', 'CHECKED_IN', 'APPROVED', 'BORROWED', 'RETURNED', 'COMPLETED', 'CLOSED'].includes(String(row[statusField.key] ?? '').toUpperCase())).length
+    ? rows.value.filter((row) => ['1', 'ACTIVE', 'AVAILABLE', 'CONFIRMED', 'ARRIVED', 'CHECKED_IN', 'APPROVED', 'BORROWED', 'RETURNED', 'COMPLETED', 'CLOSED'].includes(String(row[statusField.key] ?? '').toUpperCase())).length
     : rows.value.length
   const pendingCount = statusField
     ? rows.value.filter((row) => ['0', 'PENDING', 'SCHEDULED', 'DRAFT', 'OPEN', 'HANDLING'].includes(String(row[statusField.key] ?? '').toUpperCase())).length
@@ -123,7 +123,15 @@ function updateFormValue(key: string, value: string) {
   form.value[key] = value
 }
 
+function isRowLocked(row: AdminRecord) {
+  return Boolean(config.value.lockWhen?.(row))
+}
+
 function openDialog(row?: AdminRecord) {
+  if (row && isRowLocked(row)) {
+    toast.warning(config.value.lockMessage || '当前记录已锁定')
+    return
+  }
   editingRow.value = row || null
   const next = getDefaultForm()
   if (row) {
@@ -343,10 +351,13 @@ onMounted(() => {
               <Button v-for="action in (config.actions || []).filter((item) => !item.visible || item.visible(row))" :key="action.label" size="sm" :variant="action.tone || 'ghost'" @click="runAction(action, row)">
                 {{ action.label }}
               </Button>
-              <Button v-if="canWrite" size="icon" variant="ghost" @click="openDialog(row)">
+              <span v-if="isRowLocked(row)" class="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-300">
+                已锁定
+              </span>
+              <Button v-if="canWrite && !isRowLocked(row)" size="icon" variant="ghost" @click="openDialog(row)">
                 <Edit3 class="h-4 w-4" />
               </Button>
-              <Button v-if="canWrite && config.deletePath !== ''" size="icon" variant="ghost" @click="pendingDelete = row">
+              <Button v-if="canWrite && !isRowLocked(row) && config.deletePath !== ''" size="icon" variant="ghost" @click="pendingDelete = row">
                 <Trash2 class="h-4 w-4 text-red-500" />
               </Button>
             </div>
@@ -372,7 +383,7 @@ onMounted(() => {
               {{ field.label }}
               <span v-if="field.required" class="text-red-500">*</span>
             </span>
-            <Select v-model="form[field.key]" :options="(field.options || []).filter((item) => item.value !== '')" />
+            <Select v-model="form[field.key]" :options="(field.formOptions || field.options || []).filter((item) => item.value !== '')" />
           </label>
           <TextArea v-else-if="field.type === 'textarea'" :model-value="String(form[field.key] ?? '')" :label="field.label" :required="field.required" class="md:col-span-2" @update:model-value="updateFormValue(field.key, $event)" />
           <Input v-else v-model="form[field.key]" :type="field.type || 'text'" :label="field.label" :required="field.required" :placeholder="field.placeholder" :class="field.widthClass" />

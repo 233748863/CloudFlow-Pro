@@ -275,6 +275,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         updateById(application);
 
         seal.setStatus(OaBorrowConstants.RESOURCE_BORROWED);
+        seal.setBorrowDueTime(application.getExpectedReturnTime());
         seal.setUpdateBy(UserContext.getUserName());
         seal.setUpdateTime(now);
         sealMapper.updateById(seal);
@@ -310,10 +311,12 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         updateById(application);
 
         if (seal != null && !"1".equals(seal.getDelFlag())) {
-            seal.setStatus(OaBorrowConstants.RESOURCE_AVAILABLE);
-            seal.setUpdateBy(UserContext.getUserName());
-            seal.setUpdateTime(now);
-            sealMapper.updateById(seal);
+            sealMapper.update(null, new LambdaUpdateWrapper<OaSeal>()
+                    .eq(OaSeal::getSealId, seal.getSealId())
+                    .set(OaSeal::getStatus, OaBorrowConstants.RESOURCE_AVAILABLE)
+                    .set(OaSeal::getBorrowDueTime, null)
+                    .set(OaSeal::getUpdateBy, UserContext.getUserName())
+                    .set(OaSeal::getUpdateTime, now));
         }
 
         insertHandoverLog(application, OaBorrowConstants.HANDOVER_RETURN, remark, attachmentUrl, now);
@@ -355,6 +358,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             application.setUpdateBy("overdue-scan");
             application.setUpdateTime(now);
             updateById(application);
+            syncSealBorrowDueTime(application, now);
             if (existing == null || existing == 0) {
                 insertReminder(application, OaBorrowConstants.REMINDER_AUTO,
                         "用印申请已超过预计归还时间，请尽快归还：" + application.getSealName());
@@ -363,6 +367,18 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             handled++;
         }
         return handled;
+    }
+
+    private void syncSealBorrowDueTime(OaSealApplication application, LocalDateTime now) {
+        OaSeal seal = sealMapper.selectById(application.getSealId());
+        if (seal == null || "1".equals(seal.getDelFlag())) {
+            return;
+        }
+        seal.setStatus(OaBorrowConstants.RESOURCE_BORROWED);
+        seal.setBorrowDueTime(application.getExpectedReturnTime());
+        seal.setUpdateBy("overdue-scan");
+        seal.setUpdateTime(now);
+        sealMapper.updateById(seal);
     }
 
     private void normalizeAndValidate(OaSealApplication application) {

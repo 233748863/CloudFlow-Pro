@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
@@ -66,6 +67,11 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         LocalDateTime now = LocalDateTime.now();
         seal.setTenantId(resolveTenantId());
         seal.setStatus(StringUtils.hasText(seal.getStatus()) ? seal.getStatus() : OaBorrowConstants.RESOURCE_AVAILABLE);
+        if (OaBorrowConstants.RESOURCE_BORROWED.equals(seal.getStatus())) {
+            throw new IllegalArgumentException("不能通过台账手工设置印章为借出");
+        }
+        validateLedgerStatus(seal.getStatus());
+        seal.setBorrowDueTime(null);
         seal.setDelFlag("0");
         seal.setCreateBy(UserContext.getUserName());
         seal.setCreateTime(now);
@@ -84,14 +90,25 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         if (persisted == null || !"0".equals(persisted.getDelFlag())) {
             throw new IllegalArgumentException("印章不存在");
         }
-        if (OaBorrowConstants.RESOURCE_BORROWED.equals(persisted.getStatus())
-                && OaBorrowConstants.RESOURCE_DISABLED.equals(seal.getStatus())) {
-            throw new IllegalArgumentException("借出中的印章不能停用");
+        if (isSealBorrowLocked(seal.getSealId(), persisted)) {
+            throw new IllegalArgumentException("借出中的印章不能编辑");
         }
+        seal.setStatus(StringUtils.hasText(seal.getStatus()) ? seal.getStatus() : persisted.getStatus());
+        if (OaBorrowConstants.RESOURCE_BORROWED.equals(seal.getStatus())) {
+            throw new IllegalArgumentException("不能通过台账手工设置印章为借出");
+        }
+        validateLedgerStatus(seal.getStatus());
         validateSeal(seal);
+        seal.setBorrowDueTime(null);
         seal.setUpdateBy(UserContext.getUserName());
         seal.setUpdateTime(LocalDateTime.now());
-        return updateById(seal);
+        boolean updated = updateById(seal);
+        if (updated) {
+            update(new LambdaUpdateWrapper<OaSeal>()
+                    .eq(OaSeal::getSealId, seal.getSealId())
+                    .set(OaSeal::getBorrowDueTime, null));
+        }
+        return updated;
     }
 
     @Override
@@ -106,8 +123,8 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
             if (seal == null || !"0".equals(seal.getDelFlag())) {
                 continue;
             }
-            if (OaBorrowConstants.RESOURCE_BORROWED.equals(seal.getStatus())) {
-                throw new IllegalArgumentException("借出中的印章不能删除：" + seal.getSealName());
+            if (isSealBorrowLocked(id, seal)) {
+                throw new IllegalArgumentException("借出中的印章不能删除");
             }
             Long usageCount = sealApplicationMapper.selectCount(new LambdaQueryWrapper<OaSealApplication>()
                     .eq(OaSealApplication::getSealId, id)
@@ -124,6 +141,26 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
             }
         }
         return true;
+    }
+
+    private boolean isSealBorrowLocked(Long sealId, OaSeal seal) {
+        if (seal != null && OaBorrowConstants.RESOURCE_BORROWED.equals(seal.getStatus())) {
+            return true;
+        }
+        Long activeCount = sealApplicationMapper.selectCount(new LambdaQueryWrapper<OaSealApplication>()
+                .eq(OaSealApplication::getSealId, sealId)
+                .eq(OaSealApplication::getDelFlag, "0")
+                .in(OaSealApplication::getStatus,
+                        OaBorrowConstants.STATUS_BORROWED,
+                        OaBorrowConstants.STATUS_OVERDUE));
+        return activeCount != null && activeCount > 0;
+    }
+
+    private void validateLedgerStatus(String status) {
+        if (!OaBorrowConstants.RESOURCE_AVAILABLE.equals(status)
+                && !OaBorrowConstants.RESOURCE_DISABLED.equals(status)) {
+            throw new IllegalArgumentException("印章状态只能为可用或停用");
+        }
     }
 
     private void validateSeal(OaSeal seal) {

@@ -136,6 +136,10 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         LocalDateTime now = LocalDateTime.now();
         license.setTenantId(resolveTenantId());
         license.setStatus(StringUtils.hasText(license.getStatus()) ? license.getStatus() : OaBorrowConstants.RESOURCE_AVAILABLE);
+        if (OaBorrowConstants.RESOURCE_BORROWED.equals(license.getStatus())) {
+            throw new IllegalArgumentException("不能通过台账手工设置证照为借出");
+        }
+        validateLedgerStatus(license.getStatus());
         license.setDelFlag("0");
         license.setCreateBy(UserContext.getUserName());
         license.setCreateTime(now);
@@ -154,10 +158,14 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         if (persisted == null || !"0".equals(persisted.getDelFlag())) {
             throw new IllegalArgumentException("证照不存在");
         }
-        if (OaBorrowConstants.RESOURCE_BORROWED.equals(persisted.getStatus())
-                && OaBorrowConstants.RESOURCE_DISABLED.equals(license.getStatus())) {
-            throw new IllegalArgumentException("借出中的证照不能停用");
+        if (isLicenseBorrowLocked(license.getLicenseId(), persisted)) {
+            throw new IllegalArgumentException("借出中的证照不能编辑");
         }
+        license.setStatus(StringUtils.hasText(license.getStatus()) ? license.getStatus() : persisted.getStatus());
+        if (OaBorrowConstants.RESOURCE_BORROWED.equals(license.getStatus())) {
+            throw new IllegalArgumentException("不能通过台账手工设置证照为借出");
+        }
+        validateLedgerStatus(license.getStatus());
         validateLicense(license);
         license.setAttachmentUrl(OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(license.getAttachmentUrl(), "证照附件"));
         license.setUpdateBy(UserContext.getUserName());
@@ -177,8 +185,8 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
             if (license == null || !"0".equals(license.getDelFlag())) {
                 continue;
             }
-            if (OaBorrowConstants.RESOURCE_BORROWED.equals(license.getStatus())) {
-                throw new IllegalArgumentException("借出中的证照不能删除：" + license.getLicenseName());
+            if (isLicenseBorrowLocked(id, license)) {
+                throw new IllegalArgumentException("借出中的证照不能删除");
             }
             Long usageCount = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
                     .eq(OaLicenseBorrow::getLicenseId, id)
@@ -195,6 +203,26 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
             }
         }
         return true;
+    }
+
+    private boolean isLicenseBorrowLocked(Long licenseId, OaLicense license) {
+        if (license != null && OaBorrowConstants.RESOURCE_BORROWED.equals(license.getStatus())) {
+            return true;
+        }
+        Long activeCount = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
+                .eq(OaLicenseBorrow::getLicenseId, licenseId)
+                .eq(OaLicenseBorrow::getDelFlag, "0")
+                .in(OaLicenseBorrow::getStatus,
+                        OaBorrowConstants.STATUS_BORROWED,
+                        OaBorrowConstants.STATUS_OVERDUE));
+        return activeCount != null && activeCount > 0;
+    }
+
+    private void validateLedgerStatus(String status) {
+        if (!OaBorrowConstants.RESOURCE_AVAILABLE.equals(status)
+                && !OaBorrowConstants.RESOURCE_DISABLED.equals(status)) {
+            throw new IllegalArgumentException("证照状态只能为可用或停用");
+        }
     }
 
     private void validateLicense(OaLicense license) {

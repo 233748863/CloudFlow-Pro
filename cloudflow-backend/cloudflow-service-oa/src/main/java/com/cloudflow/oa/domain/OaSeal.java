@@ -28,6 +28,10 @@ public class OaSeal implements Serializable {
     private String keeperName;
     private String location;
     private String status;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime borrowDueTime;
+
     private String remark;
     private String delFlag;
     private String createBy;

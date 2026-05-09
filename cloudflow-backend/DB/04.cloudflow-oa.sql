@@ -1030,6 +1030,7 @@ CREATE TABLE oa_seal (
   keeper_name       VARCHAR(64)     DEFAULT NULL COMMENT '保管人姓名',
   location          VARCHAR(200)    DEFAULT NULL COMMENT '存放位置',
   status            VARCHAR(20)     DEFAULT 'AVAILABLE' COMMENT '状态(AVAILABLE可用/BORROWED借出/DISABLED停用)',
+  borrow_due_time   DATETIME        DEFAULT NULL COMMENT '当前借出预计归还时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
