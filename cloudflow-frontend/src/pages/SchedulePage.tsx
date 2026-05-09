@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
@@ -49,7 +49,7 @@ import { BaseDialog } from '@/components/common';
 import { Pagination } from '@/components/common/Pagination';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { createEvent, deleteEvent, getMeetingRooms, getMyEvents } from '../services/api/schedule';
 import type { MeetingRoom, SysScheduleEvent } from '../types';
 import {

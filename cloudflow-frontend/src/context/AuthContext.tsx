@@ -143,6 +143,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       {children}
       <ForcePasswordChangeDialog
         open={Boolean(user?.forcePasswordChange)}
+        clearForcePasswordChange={clearForcePasswordChange}
         onChanged={async () => {
           return refreshUser();
         }}

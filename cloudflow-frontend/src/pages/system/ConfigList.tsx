@@ -459,7 +459,6 @@ export const ConfigList = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
                             actions={[
                               {
                                 label: '编辑参数',
@@ -654,3 +653,4 @@ export const ConfigList = () => {
 };
 
 export default ConfigList;
+

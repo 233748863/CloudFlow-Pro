@@ -470,7 +470,6 @@ const ConsumablePage: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
-                          iconOnly
                           actions={[
                             {
                               label: "采购",
@@ -922,3 +921,4 @@ const ConsumablePage: React.FC = () => {
 };
 
 export default ConsumablePage;
+

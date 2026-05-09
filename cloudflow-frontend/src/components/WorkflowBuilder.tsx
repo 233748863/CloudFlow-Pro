@@ -94,7 +94,7 @@ import { DatePicker } from "./common/date-picker";
 import { Button } from "./common/button";
 import { WorkflowSettingsModal } from "./WorkflowSettingsModal";
 import { WORKFLOW_CATEGORY_OPTIONS, normalizeWorkflowCategory } from "../utils/workflowCategory";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   appendWorkflowGraphBranch,
   assertWorkflowGraphIntegrity,

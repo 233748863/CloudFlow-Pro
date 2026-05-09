@@ -228,7 +228,6 @@ const SupplierPage: React.FC = () => {
                     <td className="px-4 py-3 text-right">
                       <TableRowActions
                         align="end"
-                        iconOnly
                         actions={[
                           { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary' },
                           { label: '删除', icon: <Trash2 size={14} />, onClick: () => setDeleteId(item.supplierId!), tone: 'danger' },
@@ -316,3 +315,4 @@ const SupplierPage: React.FC = () => {
 };
 
 export default SupplierPage;
+

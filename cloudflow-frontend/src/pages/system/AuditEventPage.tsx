@@ -188,7 +188,6 @@ export const AuditEventPage = () => {
                     <TableCell className="max-w-[320px] truncate text-sm text-slate-500" title={event.content}>{event.content || '-'}</TableCell>
                     <TableCell>
                       <TableRowActions
-                        iconOnly
                         align="end"
                         actions={[{ label: '查看详情', icon: <Eye size={15} />, onClick: () => setDetail(event), tone: 'neutral' }]}
                       />
@@ -238,3 +237,4 @@ export const AuditEventPage = () => {
 };
 
 export default AuditEventPage;
+

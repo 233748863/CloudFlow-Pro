@@ -383,14 +383,12 @@ export const ContactPage: React.FC = () => {
                           <TableCell className="px-4 py-3 text-right">
                             <TableRowActions
                               align="end"
-                              iconOnly
                               actions={[
                                 {
                                   label: '查看',
                                   icon: <Eye className="h-4 w-4" />,
                                   onClick: () => void handleViewUser(contact.user_id),
                                   tone: 'neutral',
-                                  className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
                                 },
                               ]}
                             />
@@ -464,3 +462,4 @@ export const ContactPage: React.FC = () => {
 };
 
 export default ContactPage;
+

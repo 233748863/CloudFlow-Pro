@@ -550,12 +550,13 @@ export default function CrmManagementPage() {
               <td className="px-4 py-3 text-sm">{renderStatus(item.status)}</td>
               <td className="px-4 py-3 text-right">
                 <TableRowActions
-                  iconOnly
+                  align="end"
+                  overflowLabel="更多"
                   actions={[
-                    { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId) },
-                    { label: '编辑客户', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'customer', item }) },
-                    { label: '新增联系人', icon: <UserRound size={14} />, onClick: () => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } }) },
-                    { label: '新增跟进', icon: <RefreshCcw size={14} />, onClick: () => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } }) },
+                    { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
+                    { label: '编辑客户', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'customer', item }), semantic: 'edit', isPrimary: true },
+                    { label: '新增联系人', icon: <UserRound size={14} />, onClick: () => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } }), semantic: 'custom' },
+                    { label: '新增跟进', icon: <RefreshCcw size={14} />, onClick: () => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } }), semantic: 'custom' },
                   ]}
                 />
               </td>
@@ -614,12 +615,13 @@ export default function CrmManagementPage() {
               <td className="px-4 py-3 text-sm">{item.ownerName || '-'}</td>
               <td className="px-4 py-3 text-right">
                 <TableRowActions
-                  iconOnly
+                  align="end"
+                  overflowLabel="更多"
                   actions={[
-                    { label: '编辑商机', icon: <Target size={14} />, onClick: () => openDialog({ type: 'opportunity', item }) },
-                    { label: '客户360', icon: <Handshake size={14} />, onClick: () => openCustomerWorkspace(item.customerId) },
-                    { label: '赢单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'winOpportunity', item }) },
-                    { label: '输单', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }) },
+                    { label: '客户360', icon: <Handshake size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
+                    { label: '编辑商机', icon: <Target size={14} />, onClick: () => openDialog({ type: 'opportunity', item }), semantic: 'edit', isPrimary: true },
+                    { label: '赢单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'winOpportunity', item }), semantic: 'process' },
+                    { label: '输单', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }), semantic: 'disable' },
                     {
                       label: '转项目',
                       icon: <FolderKanban size={14} />,
@@ -633,6 +635,7 @@ export default function CrmManagementPage() {
                           toast.error(getErrorMessage(error, '生成项目草稿失败'));
                         }
                       },
+                      semantic: 'custom',
                     },
                   ]}
                 />
@@ -669,14 +672,15 @@ export default function CrmManagementPage() {
             <td className="px-4 py-3 text-sm">{item.contractNo || '-'}</td>
             <td className="px-4 py-3 text-right">
               <TableRowActions
-                iconOnly
+                align="end"
+                overflowLabel="更多"
                 actions={[
-                  { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId) },
-                  { label: '编辑报价', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'quote', item }) },
-                  { label: '提审', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'submitQuote', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' },
-                  { label: '发送', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'sendQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'DRAFT' && item.status !== 'REJECTED' },
-                  { label: '接受', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'acceptQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'SENT' },
-                  { label: '过期', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'expireQuote', item }), hidden: item.status === 'ACCEPTED' || item.status === 'EXPIRED' },
+                  { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
+                  { label: '编辑报价', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'quote', item }), semantic: 'edit', isPrimary: true },
+                  { label: '提交提审', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'submitQuote', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit' },
+                  { label: '发送报价', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'sendQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'send' },
+                  { label: '接受报价', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'acceptQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'SENT', semantic: 'process' },
+                  { label: '标记过期', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'expireQuote', item }), hidden: item.status === 'ACCEPTED' || item.status === 'EXPIRED', semantic: 'disable' },
                   {
                     label: '转合同',
                     icon: <Plus size={14} />,
@@ -686,14 +690,15 @@ export default function CrmManagementPage() {
                         toast.success(`已生成合同草稿 #${contractId}`);
                         await load();
                         goToContract(contractId);
-                      } catch (error) {
-                        toast.error(getErrorMessage(error, '生成合同草稿失败'));
-                      }
+                        } catch (error) {
+                          toast.error(getErrorMessage(error, '生成合同草稿失败'));
+                        }
+                      },
+                      semantic: 'custom',
                     },
-                  },
-                ]}
-              />
-            </td>
+                  ]}
+                />
+              </td>
           </tr>
         ))}
       </tbody>
@@ -726,11 +731,12 @@ export default function CrmManagementPage() {
               <td className="px-4 py-3 text-sm">{item.plannedAmount || 0}</td>
               <td className="px-4 py-3 text-right">
                 <TableRowActions
-                  iconOnly
+                  align="end"
+                  overflowLabel="更多"
                   actions={[
-                    { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId) },
-                    { label: '编辑回款', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'receivable', item }) },
-                    { label: '确认回款', icon: <Wallet size={14} />, onClick: () => setConfirm({ action: 'confirmReceivable', item }), hidden: item.status === 'RECEIVED' },
+                    { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
+                    { label: '编辑回款', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'receivable', item }), semantic: 'edit', isPrimary: true },
+                    { label: '确认回款', icon: <Wallet size={14} />, onClick: () => setConfirm({ action: 'confirmReceivable', item }), hidden: item.status === 'RECEIVED', semantic: 'process' },
                     {
                       label: '绑定发票',
                       icon: <ReceiptText size={14} />,
@@ -738,6 +744,7 @@ export default function CrmManagementPage() {
                         await loadReceivableInvoices(item);
                         openDialog({ type: 'receivable', item });
                       },
+                      semantic: 'bind',
                     },
                   ]}
                 />
@@ -775,12 +782,13 @@ export default function CrmManagementPage() {
               <td className="px-4 py-3 text-sm">{item.renewalAmount || 0}</td>
               <td className="px-4 py-3 text-right">
                 <TableRowActions
-                  iconOnly
+                  align="end"
+                  overflowLabel="更多"
                   actions={[
-                    { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId) },
-                    { label: '编辑续约', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'renewal', item }) },
+                    { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
+                    { label: '编辑续约', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'renewal', item }), semantic: 'edit', isPrimary: true },
                     {
-                      label: '提审',
+                      label: '提交提审',
                       icon: <Send size={14} />,
                       onClick: async () => {
                         try {
@@ -792,6 +800,7 @@ export default function CrmManagementPage() {
                         }
                       },
                       hidden: item.status !== 'PLANNED' && item.status !== 'NEGOTIATING',
+                      semantic: 'submit',
                     },
                   ]}
                 />
@@ -825,12 +834,13 @@ export default function CrmManagementPage() {
               <td className="px-4 py-3 text-sm">{item.ownerName || '-'}</td>
             <td className="px-4 py-3 text-right">
               <TableRowActions
-                iconOnly
+                align="end"
+                overflowLabel="更多"
                 actions={[
-                  { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId) },
-                  { label: '编辑工单', icon: <LifeBuoy size={14} />, onClick: () => openDialog({ type: 'ticket', item }) },
-                  { label: '解决工单', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } }), hidden: item.status === 'RESOLVED' || item.status === 'CLOSED' },
-                  { label: '关闭工单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'closeTicket', item }), hidden: item.status === 'CLOSED' },
+                  { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
+                  { label: '编辑工单', icon: <LifeBuoy size={14} />, onClick: () => openDialog({ type: 'ticket', item }), semantic: 'edit', isPrimary: true },
+                  { label: '解决工单', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } }), hidden: item.status === 'RESOLVED' || item.status === 'CLOSED', semantic: 'process' },
+                  { label: '关闭工单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'closeTicket', item }), hidden: item.status === 'CLOSED', semantic: 'disable' },
                 ]}
               />
             </td>
@@ -1136,3 +1146,4 @@ export default function CrmManagementPage() {
     </div>
   );
 }
+

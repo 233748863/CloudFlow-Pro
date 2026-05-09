@@ -322,7 +322,6 @@ export const SealApplicationPage: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
-                          iconOnly
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
                             { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: item.status !== 'DRAFT' },
@@ -507,3 +506,4 @@ export const SealApplicationPage: React.FC = () => {
 };
 
 export default SealApplicationPage;
+

@@ -448,7 +448,6 @@ export const MenuList = () => {
             <TableCell>
               <TableRowActions
                 align="end"
-                iconOnly
                 actions={[
                   {
                     label: '编辑菜单',
@@ -757,3 +756,4 @@ export const MenuList = () => {
 };
 
 export default MenuList;
+

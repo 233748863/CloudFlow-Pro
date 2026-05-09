@@ -570,14 +570,12 @@ export const OvertimeApplicationPage: React.FC = () => {
                           <TableRowActions
                             align="end"
                             className="gap-1"
-                            iconOnly
                             actions={[
                               {
                                 label: '详情',
                                 icon: <Eye size={14} />,
                                 onClick: () => void handleView(item.id!),
                                 tone: 'neutral',
-                                className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
                               },
                               {
                                 label: '编辑',
@@ -585,7 +583,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                                 onClick: () => void handleEdit(item.id!),
                                 tone: 'primary',
                                 hidden: item.status !== 'DRAFT' || selfServiceLocked,
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '提交',
@@ -593,7 +590,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                                 onClick: () => openSubmitConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'DRAFT' || selfServiceLocked,
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '删除',
@@ -601,7 +597,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                                 onClick: () => openDeleteConfirm(item.id!),
                                 tone: 'danger',
                                 hidden: item.status !== 'DRAFT' || selfServiceLocked,
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '撤销',
@@ -609,7 +604,6 @@ export const OvertimeApplicationPage: React.FC = () => {
                                 onClick: () => openCancelConfirm(item.id!),
                                 tone: 'warning',
                                 hidden: !item.status || !['APPROVING', 'APPROVED'].includes(item.status) || selfServiceLocked,
-                                className: 'rounded-lg',
                               },
                             ]}
                           />
@@ -811,3 +805,4 @@ export const OvertimeApplicationPage: React.FC = () => {
 };
 
 export default OvertimeApplicationPage;
+

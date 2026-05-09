@@ -15,7 +15,7 @@ import {
   getProcessDefinitions,
   markCopyAsRead,
 } from '../services/api/workflow';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import {
   Button,
   Input,

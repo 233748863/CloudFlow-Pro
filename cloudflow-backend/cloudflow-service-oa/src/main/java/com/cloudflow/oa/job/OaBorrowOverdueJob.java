@@ -4,6 +4,7 @@ import com.cloudflow.oa.service.IOaLicenseBorrowService;
 import com.cloudflow.oa.service.IOaLicenseService;
 import com.cloudflow.oa.service.IOaRiskScanService;
 import com.cloudflow.oa.service.IOaSealApplicationService;
+import com.cloudflow.oa.service.IOaSealService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Component;
 public class OaBorrowOverdueJob {
 
     private final IOaSealApplicationService sealApplicationService;
+    private final IOaSealService sealService;
     private final IOaLicenseBorrowService licenseBorrowService;
     private final IOaLicenseService licenseService;
     private final IOaRiskScanService riskScanService;
@@ -33,9 +35,10 @@ public class OaBorrowOverdueJob {
 
     @Scheduled(cron = "${cloudflow.oa.license.expiry-cron:0 30 9 * * ?}")
     public void scanExpiringLicenses() {
-        int count = licenseService.scanAndRemindExpiring();
-        if (count > 0) {
-            log.info("证照到期提醒扫描完成: count={}", count);
+        int sealCount = sealService.scanAndRemindExpiring();
+        int licenseCount = licenseService.scanAndRemindExpiring();
+        if (sealCount > 0 || licenseCount > 0) {
+            log.info("印章/证照到期提醒扫描完成: sealCount={}, licenseCount={}", sealCount, licenseCount);
         }
     }
 

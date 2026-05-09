@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   Calendar,
   LogIn,
@@ -31,8 +31,10 @@ import {
   TableHeader,
   TableRow,
   Textarea,
+  UserSelector,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import type { UserBrief } from '@/types/workflow';
 
 type SearchParams = {
   status: string;
@@ -141,6 +143,8 @@ export const DutySchedulePage: React.FC = () => {
   const [swapId, setSwapId] = useState<number | null>(null);
   const [swapData, setSwapData] = useState(emptySwapData);
   const [formData, setFormData] = useState<DutySchedule>(emptyFormData);
+  const [selectedDutyUserIds, setSelectedDutyUserIds] = useState<string[]>([]);
+  const [selectedSwapUserIds, setSelectedSwapUserIds] = useState<string[]>([]);
 
   useEffect(() => {
     void fetchList();
@@ -182,11 +186,12 @@ export const DutySchedulePage: React.FC = () => {
 
   const handleAdd = () => {
     setFormData(emptyFormData);
+    setSelectedDutyUserIds([]);
     setShowDialog(true);
   };
 
   const handleSave = async () => {
-    if (!formData.title || !formData.dutyDate || !formData.userName) {
+    if (!formData.title || !formData.dutyDate || !formData.userId) {
       toast.error('请填写完整排班信息');
       return;
     }
@@ -196,6 +201,7 @@ export const DutySchedulePage: React.FC = () => {
       toast.success('排班创建成功');
       setShowDialog(false);
       setFormData(emptyFormData);
+      setSelectedDutyUserIds([]);
       await fetchList();
     } catch (error) {
       toast.error(getErrorMessage(error, '保存排班失败'));
@@ -225,11 +231,12 @@ export const DutySchedulePage: React.FC = () => {
   const openSwapDialog = (id: number) => {
     setSwapId(id);
     setSwapData(emptySwapData);
+    setSelectedSwapUserIds([]);
     setShowSwapDialog(true);
   };
 
   const handleSwap = async () => {
-    if (!swapId || !swapData.backupUserName || !swapData.reason) {
+    if (!swapId || !swapData.backupUserId || !swapData.reason) {
       toast.error('请填写完整换班信息');
       return;
     }
@@ -240,11 +247,32 @@ export const DutySchedulePage: React.FC = () => {
       setShowSwapDialog(false);
       setSwapId(null);
       setSwapData(emptySwapData);
+      setSelectedSwapUserIds([]);
       await fetchList();
     } catch (error) {
       toast.error(getErrorMessage(error, '换班失败'));
     }
   };
+
+  const updateDutyUser = useCallback((users: UserBrief[]) => {
+    const user = users[0];
+    setFormData((current) => ({
+      ...current,
+      userId: user ? Number(user.id) || 0 : 0,
+      userName: user?.name || '',
+      deptId: user?.deptId ? Number(user.deptId) || undefined : undefined,
+      deptName: user?.deptName,
+    }));
+  }, []);
+
+  const updateSwapUser = useCallback((users: UserBrief[]) => {
+    const user = users[0];
+    setSwapData((current) => ({
+      ...current,
+      backupUserId: user ? Number(user.id) || 0 : 0,
+      backupUserName: user?.name || '',
+    }));
+  }, []);
 
   const hasActiveFilters = Boolean(searchParams.status || searchParams.scheduleType);
 
@@ -395,7 +423,6 @@ export const DutySchedulePage: React.FC = () => {
                           <TableRowActions
                             align="end"
                             className="gap-1"
-                            iconOnly
                             actions={[
                               {
                                 label: '签到',
@@ -403,7 +430,6 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => handleCheckIn(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '换班',
@@ -411,7 +437,6 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => openSwapDialog(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '签退',
@@ -419,7 +444,6 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => handleCheckOut(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'CHECKED_IN',
-                                className: 'rounded-lg',
                               },
                             ]}
                           />
@@ -453,10 +477,11 @@ export const DutySchedulePage: React.FC = () => {
         onClose={() => {
           setShowDialog(false);
           setFormData(emptyFormData);
+          setSelectedDutyUserIds([]);
         }}
-        maxWidthClassName="max-w-2xl"
+        maxWidthClassName="w-full sm:max-w-4xl"
         panelClassName="max-h-[92vh]"
-        bodyClassName="max-h-[72vh] overflow-y-auto"
+        bodyClassName="max-h-[74vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
         footer={(
           <>
             <Button
@@ -464,6 +489,7 @@ export const DutySchedulePage: React.FC = () => {
               onClick={() => {
                 setShowDialog(false);
                 setFormData(emptyFormData);
+                setSelectedDutyUserIds([]);
               }}
             >
               取消
@@ -472,93 +498,141 @@ export const DutySchedulePage: React.FC = () => {
           </>
         )}
       >
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2 md:col-span-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">排班标题</Label>
-            <Input
-              type="text"
-              value={formData.title}
-              onChange={(event) => setFormData({ ...formData, title: event.target.value })}
-              placeholder="例如：周末值班"
-              className="h-11"
-            />
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-5">
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
+              <h4 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">基础信息</h4>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2 sm:col-span-2">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">排班标题</Label>
+                  <Input
+                    type="text"
+                    value={formData.title}
+                    onChange={(event) => setFormData({ ...formData, title: event.target.value })}
+                    placeholder="例如：周末值班"
+                    className="h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班类型</Label>
+                  <Select
+                    value={formData.scheduleType}
+                    onValueChange={(value) => setFormData({ ...formData, scheduleType: value })}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="请选择值班类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DAILY">日常值班</SelectItem>
+                      <SelectItem value="HOLIDAY">节假日值班</SelectItem>
+                      <SelectItem value="EMERGENCY">应急值班</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">班次</Label>
+                  <Select
+                    value={formData.shiftType || 'DAY'}
+                    onValueChange={(value) => setFormData({ ...formData, shiftType: value })}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="请选择班次" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="DAY">白班</SelectItem>
+                      <SelectItem value="NIGHT">夜班</SelectItem>
+                      <SelectItem value="FULL">全天</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班日期</Label>
+                  <DatePicker
+                    className="h-11"
+                    type="date"
+                    value={formData.dutyDate}
+                    onChange={(event) => setFormData({ ...formData, dutyDate: event.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班地点</Label>
+                  <Input
+                    type="text"
+                    value={formData.location || ''}
+                    onChange={(event) => setFormData({ ...formData, location: event.target.value })}
+                    placeholder="选填"
+                    className="h-11"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班内容</Label>
+                <Textarea
+                  className="min-h-[160px]"
+                  value={formData.dutyContent || ''}
+                  onChange={(event) => setFormData({ ...formData, dutyContent: event.target.value })}
+                  placeholder="选填"
+                />
+              </div>
+            </section>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班类型</Label>
-            <Select
-              value={formData.scheduleType}
-              onValueChange={(value) => setFormData({ ...formData, scheduleType: value })}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="请选择值班类型" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DAILY">日常值班</SelectItem>
-                <SelectItem value="HOLIDAY">节假日值班</SelectItem>
-                <SelectItem value="EMERGENCY">应急值班</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          <aside className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+            <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班人</Label>
+                <UserSelector
+                  value={selectedDutyUserIds}
+                  onChange={setSelectedDutyUserIds}
+                  onUsersChange={updateDutyUser}
+                  multiple={false}
+                  placeholder="搜索姓名、邮箱或部门"
+                  dropdownPlacement="bottom"
+                />
+              </div>
+              {formData.userName ? (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-950">
+                  <div className="font-medium text-slate-900 dark:text-slate-100">{formData.userName}</div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{formData.deptName || '未设置部门'}</div>
+                </div>
+              ) : null}
+            </section>
 
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">班次</Label>
-            <Select
-              value={formData.shiftType || 'DAY'}
-              onValueChange={(value) => setFormData({ ...formData, shiftType: value })}
-            >
-              <SelectTrigger className="h-11">
-                <SelectValue placeholder="请选择班次" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="DAY">白班</SelectItem>
-                <SelectItem value="NIGHT">夜班</SelectItem>
-                <SelectItem value="FULL">全天</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班日期</Label>
-            <DatePicker
-              className="h-11"
-              type="date"
-              value={formData.dutyDate}
-              onChange={(event) => setFormData({ ...formData, dutyDate: event.target.value })}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班地点</Label>
-            <Input
-              type="text"
-              value={formData.location || ''}
-              onChange={(event) => setFormData({ ...formData, location: event.target.value })}
-              placeholder="选填"
-              className="h-11"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班人姓名</Label>
-            <Input
-              type="text"
-              value={formData.userName || ''}
-              onChange={(event) => setFormData({ ...formData, userName: event.target.value })}
-              placeholder="请输入值班人"
-              className="h-11"
-            />
-          </div>
-
-          <div className="space-y-2 md:col-span-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">值班内容</Label>
-            <Textarea
-              className="min-h-[120px]"
-              value={formData.dutyContent || ''}
-              onChange={(event) => setFormData({ ...formData, dutyContent: event.target.value })}
-              placeholder="选填"
-            />
-          </div>
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
+              <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">排班摘要</h4>
+              <dl className="space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">类型</dt>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">
+                    {typeMap[formData.scheduleType] || '-'}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">班次</dt>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">
+                    {shiftMap[formData.shiftType || 'DAY'] || '-'}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">日期</dt>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">{formData.dutyDate || '-'}</dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">地点</dt>
+                  <dd className="max-w-[12rem] truncate font-medium text-slate-900 dark:text-slate-100">
+                    {formData.location || '-'}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </aside>
         </div>
       </BaseDialog>
 
@@ -569,8 +643,9 @@ export const DutySchedulePage: React.FC = () => {
           setShowSwapDialog(false);
           setSwapId(null);
           setSwapData(emptySwapData);
+          setSelectedSwapUserIds([]);
         }}
-        maxWidthClassName="max-w-md"
+        maxWidthClassName="w-full sm:max-w-2xl"
         footer={(
           <>
             <Button
@@ -579,6 +654,7 @@ export const DutySchedulePage: React.FC = () => {
                 setShowSwapDialog(false);
                 setSwapId(null);
                 setSwapData(emptySwapData);
+                setSelectedSwapUserIds([]);
               }}
             >
               取消
@@ -587,16 +663,22 @@ export const DutySchedulePage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-[260px_minmax(0,1fr)]">
           <div className="space-y-2">
-            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">替班人姓名</Label>
-            <Input
-              type="text"
-              value={swapData.backupUserName}
-              onChange={(event) => setSwapData({ ...swapData, backupUserName: event.target.value })}
-              placeholder="请输入替班人姓名"
-              className="h-11"
+            <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">替班人</Label>
+            <UserSelector
+              value={selectedSwapUserIds}
+              onChange={setSelectedSwapUserIds}
+              onUsersChange={updateSwapUser}
+              multiple={false}
+              placeholder="搜索姓名、邮箱或部门"
+              dropdownPlacement="bottom"
             />
+            {swapData.backupUserName ? (
+              <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm dark:border-slate-800 dark:bg-slate-900/60">
+                <div className="font-medium text-slate-900 dark:text-slate-100">{swapData.backupUserName}</div>
+              </div>
+            ) : null}
           </div>
 
           <div className="space-y-2">
@@ -615,3 +697,4 @@ export const DutySchedulePage: React.FC = () => {
 };
 
 export default DutySchedulePage;
+

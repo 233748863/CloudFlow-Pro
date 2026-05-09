@@ -101,7 +101,7 @@ const TableActionHead = React.forwardRef<
 >(({ className = '', ...props }, ref) => (
   <TableHead
     ref={ref}
-    className={cn('text-center whitespace-nowrap', className)}
+    className={cn('w-[12rem] text-center whitespace-nowrap', className)}
     {...props}
   />
 ));

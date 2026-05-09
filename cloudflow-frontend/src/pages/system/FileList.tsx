@@ -499,7 +499,6 @@ export const FileList = () => {
                       <TableCell>
                         <TableRowActions
                           align="end"
-                          iconOnly
                           actions={[
                             {
                               label: '下载文件',
@@ -561,3 +560,4 @@ export const FileList = () => {
 };
 
 export default FileList;
+

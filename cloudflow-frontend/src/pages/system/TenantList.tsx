@@ -677,7 +677,6 @@ export const TenantList: React.FC = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
                             actions={[
                               {
                                 label: '编辑租户',
@@ -920,3 +919,4 @@ export const TenantList: React.FC = () => {
 };
 
 export default TenantList;
+

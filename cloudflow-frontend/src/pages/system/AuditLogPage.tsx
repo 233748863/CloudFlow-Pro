@@ -393,7 +393,6 @@ export const AuditLogPage: React.FC = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
                             actions={[
                               {
                                 label: '查看详情',
@@ -458,3 +457,4 @@ export const AuditLogPage: React.FC = () => {
 };
 
 export default AuditLogPage;
+

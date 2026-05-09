@@ -436,7 +436,16 @@ export async function saveFormDefinition(
  */
 export async function getUsers(): Promise<UserBrief[]> {
   logApiCall("GET", "/auth/system/user/list");
-  return request.get("/auth/system/user/list").then(extractList);
+  return request.get("/auth/system/user/list").then((response) =>
+    extractList<Record<string, any>>(response).map((user) => ({
+      id: String(user.id ?? user.userId ?? ""),
+      name: String(user.name ?? user.nickName ?? user.userName ?? ""),
+      email: user.email,
+      avatar: user.avatar,
+      deptId: user.deptId ? String(user.deptId) : undefined,
+      deptName: user.deptName ?? user.dept?.deptName,
+    })).filter((user) => user.id && user.name),
+  );
 }
 
 /**

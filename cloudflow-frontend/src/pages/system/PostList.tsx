@@ -406,7 +406,6 @@ export const PostList = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
                             actions={[
                               {
                                 label: '编辑岗位',
@@ -575,3 +574,4 @@ export const PostList = () => {
 };
 
 export default PostList;
+

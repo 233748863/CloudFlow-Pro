@@ -11,39 +11,42 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 印章台账。
+ * 印章续期申请。
  */
 @Data
-@TableName("oa_seal")
-public class OaSeal implements Serializable {
+@TableName("oa_seal_renewal")
+public class OaSealRenewal implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @TableId(type = IdType.AUTO)
-    private Long sealId;
+    private Long id;
 
     private Long tenantId;
-    private String sealCode;
+    private String instanceId;
+    private String renewalNo;
+    private Long sealId;
     private String sealName;
-    private String sealType;
     private String sealNo;
-    private String issuer;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate issueDate;
+    private LocalDate oldIssueDate;
 
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private LocalDate expireDate;
+    private LocalDate oldExpireDate;
 
-    private Long keeperId;
-    private String keeperName;
-    private String location;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate newIssueDate;
+
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate newExpireDate;
+
+    private Long applicantId;
+    private String applicantName;
+    private Long deptId;
+    private String deptName;
+    private String renewalReason;
     private String attachmentUrl;
     private String status;
-
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
-    private LocalDateTime borrowDueTime;
-
-    private String remark;
     private String delFlag;
     private String createBy;
 

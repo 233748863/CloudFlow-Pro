@@ -120,6 +120,7 @@ WHERE form_id IN (
   'form_business_trip',
   'form_vehicle_approval',
   'form_seal_application',
+  'form_seal_renewal',
   'form_license_borrow',
   'form_license_renewal',
   'form_knowledge_publish'
@@ -151,6 +152,7 @@ WHERE definition_id IN (
   'wf_vehicle_approval',
   'wf_knowledge_publish',
   'wf_seal_application',
+  'wf_seal_renewal',
   'wf_license_borrow',
   'wf_license_renewal'
 );
@@ -158,10 +160,12 @@ WHERE definition_id IN (
 DELETE FROM cloud_flow_db.oa_knowledge_read;
 DELETE FROM cloud_flow_db.oa_knowledge_document;
 DELETE FROM cloud_flow_db.oa_borrow_reminder_log WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_seal_expiry_reminder_log WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_license_expiry_reminder_log WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_seal_handover_log WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_license_handover_log WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_seal_application WHERE id BETWEEN 9000 AND 9999;
+DELETE FROM cloud_flow_db.oa_seal_renewal WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_license_borrow WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_license_renewal WHERE id BETWEEN 9000 AND 9999;
 DELETE FROM cloud_flow_db.oa_seal WHERE seal_id BETWEEN 9000 AND 9999;
@@ -1871,6 +1875,7 @@ INSERT INTO cloud_flow_db.wf_form_definition (form_id, form_name, fields_json, c
 ('form_business_trip', '出差审批表单', '[{"id":"destination","type":"TEXT","label":"出差地点","required":true},{"id":"startDate","type":"DATE","label":"开始日期","required":true},{"id":"endDate","type":"DATE","label":"结束日期","required":true},{"id":"budget","type":"NUMBER","label":"预算金额","required":true},{"id":"purpose","type":"TEXTAREA","label":"出差事由","required":true}]', NOW()),
 ('form_vehicle_approval', '用车审批表单', '[{"id":"vehiclePurpose","type":"TEXT","label":"用车事由","required":true},{"id":"destination","type":"TEXT","label":"目的地","required":true},{"id":"startTime","type":"DATE","label":"用车日期","required":true},{"id":"passengerCount","type":"NUMBER","label":"乘车人数","required":true},{"id":"remark","type":"TEXTAREA","label":"备注","required":false}]', NOW()),
 ('form_seal_application', '用印审批表单', '[{"id":"sealName","type":"TEXT","label":"印章名称","required":true},{"id":"documentName","type":"TEXT","label":"用印文件","required":true},{"id":"useCount","type":"NUMBER","label":"用印份数","required":true},{"id":"expectedReturnDate","type":"DATE","label":"预计归还日期","required":false},{"id":"purpose","type":"TEXTAREA","label":"用印事由","required":true}]', NOW()),
+('form_seal_renewal', '印章续期审批表单', '[{"id":"sealName","type":"TEXT","label":"印章名称","required":true},{"id":"oldExpireDate","type":"DATE","label":"原到期日期","required":false},{"id":"newExpireDate","type":"DATE","label":"新到期日期","required":true},{"id":"reason","type":"TEXTAREA","label":"续期原因","required":true}]', NOW()),
 ('form_license_borrow', '证照借用审批表单', '[{"id":"licenseName","type":"TEXT","label":"证照名称","required":true},{"id":"borrowDate","type":"DATE","label":"借用日期","required":true},{"id":"expectedReturnDate","type":"DATE","label":"预计归还日期","required":true},{"id":"purpose","type":"TEXTAREA","label":"借用事由","required":true}]', NOW()),
 ('form_license_renewal', '证照续期审批表单', '[{"id":"licenseName","type":"TEXT","label":"证照名称","required":true},{"id":"oldExpireDate","type":"DATE","label":"原到期日期","required":true},{"id":"newExpireDate","type":"DATE","label":"新到期日期","required":true},{"id":"reason","type":"TEXTAREA","label":"续期原因","required":true}]', NOW()),
 ('form_knowledge_publish', '知识库发布审批表单', '[{"id":"documentTitle","type":"TEXT","label":"文档标题","required":true},{"id":"categoryName","type":"TEXT","label":"知识分类","required":true},{"id":"publishScope","type":"SELECT","label":"发布范围","required":true,"options":["全员","部门","指定角色"]},{"id":"summary","type":"TEXTAREA","label":"发布说明","required":true}]', NOW());
@@ -1946,6 +1951,9 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 ('wf_seal_application', '用印审批流程', 'seal_application', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交用印申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政审批","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
+('wf_seal_renewal', '印章续期审批流程', 'seal_renewal', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交印章续期"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政审批","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
+
+INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_license_borrow', '证照借用审批流程', 'license_borrow', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交证照借用"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"行政审批","approverType":"ROLE","approverValue":"admin"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
@@ -1973,6 +1981,7 @@ SET form_id = CASE definition_id
   WHEN 'wf_business_trip' THEN 'form_business_trip'
   WHEN 'wf_vehicle_approval' THEN 'form_vehicle_approval'
   WHEN 'wf_seal_application' THEN 'form_seal_application'
+  WHEN 'wf_seal_renewal' THEN 'form_seal_renewal'
   WHEN 'wf_license_borrow' THEN 'form_license_borrow'
   WHEN 'wf_license_renewal' THEN 'form_license_renewal'
   WHEN 'wf_knowledge_publish' THEN 'form_knowledge_publish'
@@ -1996,6 +2005,7 @@ WHERE definition_id IN (
   'wf_business_trip',
   'wf_vehicle_approval',
   'wf_seal_application',
+  'wf_seal_renewal',
   'wf_license_borrow',
   'wf_license_renewal',
   'wf_knowledge_publish'
@@ -5843,12 +5853,13 @@ INSERT INTO cloud_flow_db.sys_vehicle_expense (
 -- 2.6.1 用印、证照与借还演示
 -- -----------------------------
 INSERT INTO cloud_flow_db.oa_seal (
-  seal_id, tenant_id, seal_code, seal_name, seal_type, keeper_id, keeper_name, location, status, remark,
+  seal_id, tenant_id, seal_code, seal_name, seal_type, seal_no, issuer, issue_date, expire_date,
+  keeper_id, keeper_name, location, attachment_url, status, remark,
   del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9001, 100000, 'SEAL-COMPANY-001', '公司公章', 'COMPANY', 1, 'Admin', '总部行政保险柜 A01', 'BORROWED', '公司主体公章，需审批后借出', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-(9002, 100000, 'SEAL-CONTRACT-001', '合同专用章', 'CONTRACT', 2, '李经理', '总部行政保险柜 A02', 'AVAILABLE', '合同签署专用', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-(9003, 100000, 'SEAL-FINANCE-001', '财务专用章', 'FINANCE', 3, '王财务', '财务部保险柜', 'AVAILABLE', '票据与财务资料用章', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR));
+(9001, 100000, 'SEAL-COMPANY-001', '公司公章', 'COMPANY', 'YZ-2022-0001', '公安备案机关', '2022-01-01', '2032-01-01', 1, 'Admin', '总部行政保险柜 A01', 'https://demo.cloudflow.local/files/seal/company-seal-current.pdf', 'BORROWED', '公司主体公章，需审批后借出', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(9002, 100000, 'SEAL-CONTRACT-001', '合同专用章', 'CONTRACT', 'YZ-2022-0002', '公安备案机关', '2022-01-01', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 2, '李经理', '总部行政保险柜 A02', 'https://demo.cloudflow.local/files/seal/contract-seal-current.pdf', 'AVAILABLE', '合同签署专用', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(9003, 100000, 'SEAL-FINANCE-001', '财务专用章', 'FINANCE', 'YZ-2022-0003', '公安备案机关', '2022-01-01', DATE_ADD(CURDATE(), INTERVAL 45 DAY), 3, '王财务', '财务部保险柜', 'https://demo.cloudflow.local/files/seal/finance-seal-current.pdf', 'AVAILABLE', '票据与财务资料用章', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR));
 
 INSERT INTO cloud_flow_db.oa_license (
   license_id, tenant_id, license_code, license_name, license_type, license_no, issuer, issue_date, expire_date,

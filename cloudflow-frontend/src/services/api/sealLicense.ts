@@ -18,9 +18,14 @@ export interface OaSeal {
   sealCode: string;
   sealName: string;
   sealType: string;
+  sealNo?: string;
+  issuer?: string;
+  issueDate?: string;
+  expireDate?: string;
   keeperId?: number;
   keeperName?: string;
   location?: string;
+  attachmentUrl?: string;
   status?: ResourceStatus;
   borrowDueTime?: string;
   remark?: string;
@@ -133,6 +138,42 @@ export interface OaLicenseRenewal {
   updateTime?: string;
 }
 
+export interface OaSealRenewal {
+  id?: number;
+  instanceId?: string;
+  renewalNo?: string;
+  sealId: number;
+  sealName?: string;
+  sealNo?: string;
+  oldIssueDate?: string;
+  oldExpireDate?: string;
+  newIssueDate?: string;
+  newExpireDate: string;
+  applicantId?: number;
+  applicantName?: string;
+  deptId?: number;
+  deptName?: string;
+  renewalReason: string;
+  attachmentUrl?: string;
+  status?: BorrowStatus;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface OaSealExpiryReminderLog {
+  id: number;
+  sealId: number;
+  sealName?: string;
+  expireDate?: string;
+  daysBefore?: number;
+  recipientId?: number;
+  recipientName?: string;
+  reminderType: 'AUTO' | 'MANUAL';
+  operatorName?: string;
+  reminderContent?: string;
+  reminderTime?: string;
+}
+
 export interface OaLicenseExpiryReminderLog {
   id: number;
   licenseId: number;
@@ -184,10 +225,14 @@ export interface BorrowManagementStats {
 }
 
 export const sealApi = {
-  list: (params: { pageNum?: number; pageSize?: number; sealName?: string; sealCode?: string; sealType?: string; status?: string }) =>
+  list: (params: { pageNum?: number; pageSize?: number; sealName?: string; sealCode?: string; sealNo?: string; sealType?: string; status?: string }) =>
     request.get('/oa/seal/list', { params }) as Promise<PageResult<OaSeal>>,
   available: () => request.get('/oa/seal/available') as Promise<OaSeal[]>,
+  expiring: (params: { days?: number; pageNum?: number; pageSize?: number }) =>
+    request.get('/oa/seal/expiring', { params }) as Promise<PageResult<OaSeal>>,
   getInfo: (id: number) => request.get(`/oa/seal/${id}`) as Promise<OaSeal>,
+  expiryReminderLogs: (id: number) => request.get(`/oa/seal/${id}/expiry-reminder-logs`) as Promise<OaSealExpiryReminderLog[]>,
+  remindExpiry: (id: number, remark?: string) => request.post(`/oa/seal/${id}/expiry-remind`, { remark }),
   add: (data: OaSeal) => request.post('/oa/seal', data),
   edit: (data: OaSeal) => request.put('/oa/seal', data),
   remove: (ids: number[]) => request.delete(`/oa/seal/${ids.join(',')}`),
@@ -252,6 +297,17 @@ export const licenseRenewalApi = {
   remove: (ids: number[]) => request.delete(`/oa/license/renewal/${ids.join(',')}`),
   submit: (id: number) => request.post(`/oa/license/renewal/submit/${id}`),
   cancel: (id: number) => request.put(`/oa/license/renewal/cancel/${id}`),
+};
+
+export const sealRenewalApi = {
+  list: (params: { pageNum?: number; pageSize?: number; renewalNo?: string; sealId?: number; sealName?: string; status?: string }) =>
+    request.get('/oa/seal/renewal/list', { params }) as Promise<PageResult<OaSealRenewal>>,
+  getInfo: (id: number) => request.get(`/oa/seal/renewal/${id}`) as Promise<OaSealRenewal>,
+  add: (data: OaSealRenewal) => request.post('/oa/seal/renewal', data),
+  edit: (data: OaSealRenewal) => request.put('/oa/seal/renewal', data),
+  remove: (ids: number[]) => request.delete(`/oa/seal/renewal/${ids.join(',')}`),
+  submit: (id: number) => request.post(`/oa/seal/renewal/submit/${id}`),
+  cancel: (id: number) => request.put(`/oa/seal/renewal/cancel/${id}`),
 };
 
 export const borrowManagementApi = {

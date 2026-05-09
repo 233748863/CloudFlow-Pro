@@ -146,7 +146,6 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                 <td className="whitespace-nowrap px-4 py-3">
                   <TableRowActions
                     align="start"
-                    iconOnly
                     className="gap-1"
                     actions={[
                       {
@@ -201,3 +200,4 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
     </div>
   );
 };
+

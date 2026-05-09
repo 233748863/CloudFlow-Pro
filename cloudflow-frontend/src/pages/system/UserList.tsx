@@ -694,25 +694,27 @@ export const UserList = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
+                            overflowLabel="更多"
                             actions={[
                               {
                                 label: '编辑用户',
                                 icon: <Edit size={15} />,
                                 onClick: () => handleOpenModal(user),
-                                tone: 'neutral',
+                                semantic: 'edit',
+                                isPrimary: true,
                               },
                               {
                                 label: '重置密码',
                                 icon: <KeyRound size={15} />,
                                 onClick: () => handleOpenResetPassword(user),
-                                tone: 'warning',
+                                semantic: 'reset',
                               },
                               {
                                 label: '删除用户',
                                 icon: <Trash2 size={15} />,
                                 onClick: () => setPendingDeleteUser(user),
-                                tone: 'danger',
+                                semantic: 'delete',
+                                danger: true,
                               },
                             ]}
                           />

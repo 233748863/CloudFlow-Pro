@@ -114,6 +114,40 @@ const GANTT_COMPACT_LABEL_MIN_WIDTH = 96;
 const GANTT_SHORT_LABEL_MIN_WIDTH = 48;
 const GANTT_MARKER_SIZE = 16;
 const formatMoney = (value?: number) => `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const normalizeRows = <T,>(result: T[] | { rows?: T[]; records?: T[] } | null | undefined): T[] =>
+  Array.isArray(result) ? result : result?.rows || result?.records || [];
+const getUserDisplayText = (user?: Partial<SysUser> | null, fallbackName?: string) => {
+  const primary = String(user?.nickName || fallbackName || user?.userName || '').trim();
+  const secondary = [
+    user?.userName && user.userName !== primary ? user.userName : '',
+    user?.deptName || '',
+  ].filter(Boolean).join(' / ');
+  if (primary) {
+    return secondary ? `${primary} / ${secondary}` : primary;
+  }
+  return secondary;
+};
+const renderSelectText = (valueText: string, placeholder: string) => (
+  <span className={`min-w-0 flex-1 truncate ${valueText ? 'text-slate-900 dark:text-slate-100' : 'text-slate-400 dark:text-slate-500'}`}>
+    {valueText || placeholder}
+  </span>
+);
+const renderUserOption = (user: SysUser) => {
+  const primary = String(user.nickName || user.userName || '').trim();
+  const secondary = [
+    user.userName && user.userName !== primary ? user.userName : '',
+    user.deptName || '',
+  ].filter(Boolean).join(' / ');
+
+  return (
+    <div className="flex min-w-0 flex-col">
+      <span className="truncate font-medium text-slate-900 dark:text-slate-100">{primary || '未命名成员'}</span>
+      {secondary ? (
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">{secondary}</span>
+      ) : null}
+    </div>
+  );
+};
 const addDays = (dateString: string, days: number) => {
   const date = new Date(`${dateString}T00:00:00`);
   date.setDate(date.getDate() + days);
@@ -255,6 +289,8 @@ export default function ProjectManagementPage() {
   const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
   const [contractOptions, setContractOptions] = useState<OaContract[]>([]);
   const [userOptions, setUserOptions] = useState<SysUser[]>([]);
+  const selectedOwner = form.ownerId ? userOptions.find((item) => item.userId === form.ownerId) : undefined;
+  const selectedMember = memberForm.userId ? userOptions.find((item) => item.userId === memberForm.userId) : undefined;
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / 10)), [total]);
 
@@ -276,11 +312,11 @@ export default function ProjectManagementPage() {
       const [customerResult, contractResult, userResult] = await Promise.all([
         crmApi.listCustomers({ pageNum: 1, pageSize: 200 }),
         contractApi.list({ pageNum: 1, pageSize: 200 }),
-        getUserList({ pageNum: 1, pageSize: 200 }) as Promise<{ rows?: SysUser[] }>,
+        getUserList({ pageNum: 1, pageSize: 200 }) as Promise<SysUser[] | { rows?: SysUser[]; records?: SysUser[] }>,
       ]);
       setCustomerOptions(customerResult.rows || []);
       setContractOptions(contractResult.rows || []);
-      setUserOptions(userResult.rows || []);
+      setUserOptions(normalizeRows(userResult));
     } catch (error) {
       toast.error(getErrorMessage(error, '加载项目候选数据失败'));
     }
@@ -539,14 +575,15 @@ export default function ProjectManagementPage() {
                     <td className="px-4 py-3 text-sm"><div>{row.sourceName || sourceTypeLabelMap[row.sourceType || 'MANUAL'] || row.sourceType || '-'}</div><div className="text-xs text-slate-500">基线 {row.baselineVersion || 0}</div></td>
                     <td className="px-4 py-3 text-right">
                       <TableRowActions
-                        iconOnly
+                        align="end"
+                        overflowLabel="更多"
                         actions={[
-                          { label: '详情', icon: <Eye size={14} />, onClick: async () => { try { setDetail(await projectApi.getDetail(row.projectId!)); } catch (error) { toast.error(getErrorMessage(error, '加载项目详情失败')); } } },
-                          { label: '编辑', icon: <Edit size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); } },
-                          { label: '提交', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'submit', row }), hidden: row.status !== 'DRAFT' && row.status !== 'REJECTED' },
-                          { label: '基线快照', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ type: 'baseline', row }), hidden: row.status === 'ARCHIVED' },
-                          { label: '归档', icon: <Archive size={14} />, onClick: () => setConfirm({ type: 'archive', row }), hidden: !['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || '') },
-                          { label: '删除', icon: <Trash2 size={14} />, tone: 'danger', onClick: () => setConfirm({ type: 'delete', row }) },
+                          { label: '查看详情', icon: <Eye size={14} />, onClick: async () => { try { setDetail(await projectApi.getDetail(row.projectId!)); } catch (error) { toast.error(getErrorMessage(error, '加载项目详情失败')); } }, semantic: 'view', isPrimary: true },
+                          { label: '编辑项目', icon: <Edit size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true },
+                          { label: '提交立项', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'submit', row }), hidden: row.status !== 'DRAFT' && row.status !== 'REJECTED', semantic: 'submit' },
+                          { label: '基线快照', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ type: 'baseline', row }), hidden: row.status === 'ARCHIVED', semantic: 'reset' },
+                          { label: '归档项目', icon: <Archive size={14} />, onClick: () => setConfirm({ type: 'archive', row }), hidden: !['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || ''), semantic: 'archive', danger: true },
+                          { label: '删除项目', icon: <Trash2 size={14} />, onClick: () => setConfirm({ type: 'delete', row }), semantic: 'delete', danger: true },
                         ]}
                       />
                     </td>
@@ -616,10 +653,18 @@ export default function ProjectManagementPage() {
                 const user = userOptions.find((item) => String(item.userId) === value);
                 setForm((prev) => ({ ...prev, ownerId: value === 'NONE' ? undefined : Number(value), ownerName: user?.nickName || user?.userName || '' }));
               }}>
-                <SelectTrigger><SelectValue placeholder="选择负责人" /></SelectTrigger>
+                <SelectTrigger>{renderSelectText(getUserDisplayText(selectedOwner, form.ownerName), '选择负责人')}</SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NONE">暂不指定负责人</SelectItem>
-                  {userOptions.map((item) => <SelectItem key={item.userId} value={String(item.userId)}>{item.nickName || item.userName} / {item.userName}</SelectItem>)}
+                  {form.ownerId && !selectedOwner ? (
+                    <SelectItem value={String(form.ownerId)}>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">{form.ownerName || '当前负责人'}</span>
+                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">历史数据</span>
+                      </div>
+                    </SelectItem>
+                  ) : null}
+                  {userOptions.map((item) => <SelectItem key={item.userId} value={String(item.userId)}>{renderUserOption(item)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -696,9 +741,9 @@ export default function ProjectManagementPage() {
                             <div>{item.userName || '-'}</div>
                             <div className="text-xs text-slate-500">{item.roleName || item.roleCode || '-'}</div>
                           </div>
-                          <TableRowActions iconOnly actions={[
-                            { label: '编辑成员', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'member', item }) },
-                            { label: '删除成员', icon: <Trash2 size={14} />, tone: 'danger', onClick: () => void removeChild('member', item.id!) },
+                          <TableRowActions actions={[
+                            { label: '编辑成员', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'member', item }), semantic: 'edit', isPrimary: true },
+                            { label: '删除成员', icon: <Trash2 size={14} />, onClick: () => void removeChild('member', item.id!), semantic: 'delete', danger: true },
                           ]} />
                         </div>
                       )) : <div className="text-sm text-slate-500">暂无项目成员</div>}
@@ -778,9 +823,9 @@ export default function ProjectManagementPage() {
                           <div>{item.milestoneName}</div>
                           <div className="text-xs text-slate-500">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / {item.status || '-'}</div>
                         </div>
-                        <TableRowActions iconOnly actions={[
-                          { label: '编辑里程碑', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'milestone', item }) },
-                          { label: '删除里程碑', icon: <Trash2 size={14} />, tone: 'danger', onClick: () => void removeChild('milestone', item.milestoneId!) },
+                        <TableRowActions actions={[
+                          { label: '编辑里程碑', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'milestone', item }), semantic: 'edit', isPrimary: true },
+                          { label: '删除里程碑', icon: <Trash2 size={14} />, onClick: () => void removeChild('milestone', item.milestoneId!), semantic: 'delete', danger: true },
                         ]} />
                       </div>
                     )) : <div className="text-sm text-slate-500">暂无里程碑</div>}
@@ -799,9 +844,9 @@ export default function ProjectManagementPage() {
                           <div>{item.wbsCode || '-'} {item.title || '-'}</div>
                           <div className="text-xs text-slate-500">计划 {item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '-'} ~ {item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '-'} / 基线 {item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '-'} ~ {item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '-'}</div>
                         </div>
-                        <TableRowActions iconOnly actions={[
-                          { label: '编辑 WBS', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'wbs', item }) },
-                          { label: '删除 WBS', icon: <Trash2 size={14} />, tone: 'danger', onClick: () => void removeChild('wbs', item.taskId!) },
+                        <TableRowActions actions={[
+                          { label: '编辑 WBS', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'wbs', item }), semantic: 'edit', isPrimary: true },
+                          { label: '删除 WBS', icon: <Trash2 size={14} />, onClick: () => void removeChild('wbs', item.taskId!), semantic: 'delete', danger: true },
                         ]} />
                       </div>
                     )) : <div className="text-sm text-slate-500">暂无 WBS 任务</div>}
@@ -840,9 +885,9 @@ export default function ProjectManagementPage() {
                             <div className="text-xs text-slate-500">{item.riskLevel || '-'} / {item.triggerSource || '-'} / {item.status || '-'}</div>
                           </div>
                           {item.riskId ? (
-                            <TableRowActions iconOnly actions={[
-                              { label: '编辑风险', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'risk', item }) },
-                              { label: '删除风险', icon: <Trash2 size={14} />, tone: 'danger', onClick: () => void removeChild('risk', item.riskId!) },
+                            <TableRowActions actions={[
+                              { label: '编辑风险', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'risk', item }), semantic: 'edit', isPrimary: true },
+                              { label: '删除风险', icon: <Trash2 size={14} />, onClick: () => void removeChild('risk', item.riskId!), semantic: 'delete', danger: true },
                             ]} />
                           ) : null}
                         </div>
@@ -860,9 +905,9 @@ export default function ProjectManagementPage() {
                             <div>{item.predecessorType} {item.predecessorId} → {item.successorType} {item.successorId}</div>
                             <div className="text-xs text-slate-500">{item.dependencyType || 'FS'} / 延迟 {item.lagDays || 0} 天</div>
                           </div>
-                          <TableRowActions iconOnly actions={[
-                            { label: '编辑依赖', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'dependency', item }) },
-                            { label: '删除依赖', icon: <Trash2 size={14} />, tone: 'danger', onClick: () => void removeChild('dependency', item.dependencyId!) },
+                          <TableRowActions actions={[
+                            { label: '编辑依赖', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'dependency', item }), semantic: 'edit', isPrimary: true },
+                            { label: '删除依赖', icon: <Trash2 size={14} />, onClick: () => void removeChild('dependency', item.dependencyId!), semantic: 'delete', danger: true },
                           ]} />
                         </div>
                       )) : <div className="text-sm text-slate-500">暂无项目依赖</div>}
@@ -917,10 +962,18 @@ export default function ProjectManagementPage() {
                 const user = userOptions.find((item) => String(item.userId) === value);
                 setMemberForm((prev) => ({ ...prev, userId: value === 'NONE' ? 0 : Number(value), userName: user?.nickName || user?.userName || '' }));
               }}>
-                <SelectTrigger><SelectValue placeholder="选择成员" /></SelectTrigger>
+                <SelectTrigger>{renderSelectText(getUserDisplayText(selectedMember, memberForm.userName), '选择成员')}</SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="NONE">选择成员</SelectItem>
-                  {userOptions.map((item) => <SelectItem key={item.userId} value={String(item.userId)}>{item.nickName || item.userName} / {item.userName}</SelectItem>)}
+                  <SelectItem value="NONE">请选择项目成员</SelectItem>
+                  {memberForm.userId && !selectedMember ? (
+                    <SelectItem value={String(memberForm.userId)}>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">{memberForm.userName || '当前成员'}</span>
+                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">历史数据</span>
+                      </div>
+                    </SelectItem>
+                  ) : null}
+                  {userOptions.map((item) => <SelectItem key={item.userId} value={String(item.userId)}>{renderUserOption(item)}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -1085,3 +1138,4 @@ export default function ProjectManagementPage() {
     </div>
   );
 }
+

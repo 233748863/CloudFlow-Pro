@@ -605,7 +605,6 @@ export const DictPage: React.FC = () => {
 
                             <TableRowActions
                               align="end"
-                              iconOnly
                               className="shrink-0 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100"
                               actions={[
                                 {
@@ -734,7 +733,6 @@ export const DictPage: React.FC = () => {
                               <TableCell>
                                 <TableRowActions
                                   align="end"
-                                  iconOnly
                                   actions={[
                                     {
                                       label: '编辑数据',
@@ -991,3 +989,4 @@ export const DictPage: React.FC = () => {
 };
 
 export default DictPage;
+

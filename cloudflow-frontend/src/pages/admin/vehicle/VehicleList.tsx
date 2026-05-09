@@ -568,28 +568,24 @@ const VehicleList: React.FC = () => {
                           <TableRowActions
                             align="end"
                             className="gap-1"
-                            iconOnly
                             actions={[
                               {
                                 label: '详情',
                                 icon: <Eye size={14} />,
                                 onClick: () => handleViewDetail(vehicle),
                                 tone: 'neutral',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '编辑',
                                 icon: <Edit2 size={14} />,
                                 onClick: () => handleEdit(vehicle),
                                 tone: 'neutral',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '删除',
                                 icon: <Trash2 size={14} />,
                                 onClick: () => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。'),
                                 tone: 'neutral',
-                                className: 'rounded-lg',
                               },
                             ]}
                           />
@@ -889,3 +885,4 @@ const VehicleList: React.FC = () => {
 };
 
 export default VehicleList;
+

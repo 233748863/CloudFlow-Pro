@@ -425,7 +425,6 @@ export const LoginLogPage: React.FC = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
                             actions={[
                               {
                                 label: '查看详情',
@@ -490,3 +489,4 @@ export const LoginLogPage: React.FC = () => {
 };
 
 export default LoginLogPage;
+

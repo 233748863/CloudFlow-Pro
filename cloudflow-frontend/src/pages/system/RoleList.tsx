@@ -698,7 +698,6 @@ export const RoleList = () => {
                       <TableCell>
                         <TableRowActions
                           align="end"
-                          iconOnly
                           actions={[
                             {
                               label: '编辑角色',
@@ -949,3 +948,4 @@ export const RoleList = () => {
 };
 
 export default RoleList;
+

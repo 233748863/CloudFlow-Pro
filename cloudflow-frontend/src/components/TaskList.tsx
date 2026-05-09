@@ -242,8 +242,6 @@ export const TaskList: React.FC<TaskListProps> = ({
                           onTaskClick?.(task);
                         },
                         tone: 'neutral',
-                        className:
-                          'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900',
                       },
                       {
                         label: '撤回',
@@ -254,7 +252,6 @@ export const TaskList: React.FC<TaskListProps> = ({
                         },
                         tone: 'warning',
                         hidden: !canRecall,
-                        className: 'rounded-lg',
                       },
                     ]}
                   />

@@ -729,14 +729,12 @@ export const LeaveApplicationPage: React.FC = () => {
                           <TableRowActions
                             align="end"
                             className="gap-1"
-                            iconOnly
                             actions={[
                               {
                                 label: '详情',
                                 icon: <Eye size={14} />,
                                 onClick: () => void handleView(item.id!),
                                 tone: 'neutral',
-                                className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
                               },
                               {
                                 label: '提交',
@@ -744,7 +742,6 @@ export const LeaveApplicationPage: React.FC = () => {
                                 onClick: () => openSubmitConfirm(item.id!),
                                 hidden: item.status !== 'DRAFT' || selfServiceLocked,
                                 tone: 'primary',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '撤销',
@@ -752,7 +749,6 @@ export const LeaveApplicationPage: React.FC = () => {
                                 onClick: () => openCancelConfirm(item.id!),
                                 hidden: (item.status !== 'APPROVING' && item.status !== 'APPROVED') || selfServiceLocked,
                                 tone: 'warning',
-                                className: 'rounded-lg',
                               },
                             ]}
                           />
@@ -942,3 +938,4 @@ export const LeaveApplicationPage: React.FC = () => {
 };
 
 export default LeaveApplicationPage;
+

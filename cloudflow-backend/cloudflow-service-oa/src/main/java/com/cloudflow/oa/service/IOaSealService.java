@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.oa.domain.OaSeal;
+import com.cloudflow.oa.domain.OaSealExpiryReminderLog;
 
 import java.util.List;
 
@@ -17,6 +18,14 @@ public interface IOaSealService extends IService<OaSeal> {
     List<OaSeal> listAvailable();
 
     OaSeal getSealInfo(Long id);
+
+    PageResult<OaSeal> queryExpiringPage(Integer days, PageQuery pageQuery);
+
+    List<OaSealExpiryReminderLog> listExpiryReminderLogs(Long sealId);
+
+    boolean remindExpiry(Long sealId, String remark);
+
+    int scanAndRemindExpiring();
 
     boolean createSeal(OaSeal seal);
 

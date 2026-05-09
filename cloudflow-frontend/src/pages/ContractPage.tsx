@@ -374,13 +374,13 @@ export const ContractPage: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
-                          iconOnly
+                          overflowLabel="更多"
                           actions={[
-                            { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
-                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: !['DRAFT', 'REJECTED', 'APPROVED', 'ACTIVE'].includes(item.status || 'DRAFT') },
-                            { label: '提交', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.contractId!, title: '提交合同审批', message: '提交后将进入合同审批流程。', confirmText: '提交' }), tone: 'success', hidden: !['DRAFT', 'REJECTED'].includes(item.status || 'DRAFT') },
-                            { label: '取消', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.contractId!, title: '取消合同', message: '取消后该合同不再继续审批。', confirmText: '取消' }), tone: 'warning', hidden: !['DRAFT', 'PENDING'].includes(item.status || 'DRAFT') },
-                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.contractId!, title: '删除合同', message: '删除后当前合同不可恢复。', confirmText: '删除', danger: true }), tone: 'danger', hidden: !['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status || 'DRAFT') },
+                            { label: '查看详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), semantic: 'view', isPrimary: true },
+                            { label: '编辑合同', icon: <Edit size={14} />, onClick: () => openEdit(item), hidden: !['DRAFT', 'REJECTED', 'APPROVED', 'ACTIVE'].includes(item.status || 'DRAFT'), semantic: 'edit', isPrimary: true },
+                            { label: '提交审批', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.contractId!, title: '提交合同审批', message: '提交后将进入合同审批流程。', confirmText: '提交' }), hidden: !['DRAFT', 'REJECTED'].includes(item.status || 'DRAFT'), semantic: 'submit' },
+                            { label: '取消合同', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.contractId!, title: '取消合同', message: '取消后该合同不再继续审批。', confirmText: '取消' }), hidden: !['DRAFT', 'PENDING'].includes(item.status || 'DRAFT'), semantic: 'disable' },
+                            { label: '删除合同', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.contractId!, title: '删除合同', message: '删除后当前合同不可恢复。', confirmText: '删除', danger: true }), hidden: !['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status || 'DRAFT'), semantic: 'delete', danger: true },
                           ]}
                         />
                       </td>

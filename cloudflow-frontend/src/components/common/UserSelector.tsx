@@ -1,22 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { getUsers } from '../../services/api/workflow';
 import { Search, X, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { cn } from '@/utils/cn';
-
-// 用户简要信息类型（从 API 返回）
-interface UserBrief {
-  id: string;
-  name: string;
-  username?: string;
-}
+import type { UserBrief } from '@/types/workflow';
 
 interface UserSelectorProps {
   /** 已选中的用户 ID 列表 */
   value: string[];
   /** 选择变化回调 */
   onChange: (userIds: string[]) => void;
+  /** 已选用户对象变化回调 */
+  onUsersChange?: (users: UserBrief[]) => void;
   /** 是否多选，默认 true */
   multiple?: boolean;
   /** 占位符 */
@@ -25,6 +21,8 @@ interface UserSelectorProps {
   disabled?: boolean;
   /** 自定义类名 */
   className?: string;
+  /** 下拉位置 */
+  dropdownPlacement?: 'bottom' | 'top';
 }
 
 /**
@@ -34,10 +32,12 @@ interface UserSelectorProps {
 export const UserSelector: React.FC<UserSelectorProps> = ({
   value = [],
   onChange,
+  onUsersChange,
   multiple = true,
   placeholder = '选择用户',
   disabled = false,
   className = '',
+  dropdownPlacement = 'bottom',
 }) => {
   const [users, setUsers] = useState<UserBrief[]>([]);
   const [loading, setLoading] = useState(false);
@@ -60,12 +60,21 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
     }
   };
 
-  const filteredUsers = users.filter((user) =>
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.username && user.username.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredUsers = useMemo(() => {
+    const keyword = searchTerm.trim().toLowerCase();
+    return users.filter((user) =>
+      !keyword ||
+      user.name.toLowerCase().includes(keyword) ||
+      (user.email && user.email.toLowerCase().includes(keyword)) ||
+      (user.deptName && user.deptName.toLowerCase().includes(keyword))
+    );
+  }, [searchTerm, users]);
 
-  const selectedUsers = users.filter((u) => value.includes(u.id));
+  const selectedUsers = useMemo(() => users.filter((u) => value.includes(u.id)), [users, value]);
+
+  useEffect(() => {
+    onUsersChange?.(selectedUsers);
+  }, [onUsersChange, selectedUsers]);
 
   const handleToggle = (userId: string) => {
     if (multiple) {
@@ -121,7 +130,12 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
 
       {/* 下拉列表 */}
       {isOpen && !disabled && (
-        <div className="absolute z-50 mt-1.5 max-h-64 w-full overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]">
+        <div
+          className={cn(
+            'absolute z-[80] max-h-56 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
+            dropdownPlacement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
+          )}
+        >
           {/* 搜索框 */}
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
@@ -138,7 +152,7 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
           </div>
 
           {/* 用户列表 */}
-          <div className="overflow-y-auto max-h-48">
+          <div className="max-h-40 overflow-y-auto">
             {loading ? (
               <div className="p-4 text-center text-sm text-slate-500">加载中...</div>
             ) : filteredUsers.length === 0 ? (
@@ -161,9 +175,9 @@ export const UserSelector: React.FC<UserSelectorProps> = ({
                       </div>
                       <div>
                         <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.name}</div>
-                        {user.username && (
-                          <div className="text-xs text-slate-500 dark:text-slate-400">@{user.username}</div>
-                        )}
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          {user.deptName || user.email || '未设置部门'}
+                        </div>
                       </div>
                     </div>
                     {isSelected && <Check className="text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" size={16} />}

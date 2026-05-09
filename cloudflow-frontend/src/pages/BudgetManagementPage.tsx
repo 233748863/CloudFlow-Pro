@@ -347,11 +347,12 @@ export default function BudgetManagementPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
-                          iconOnly
+                          align="end"
+                          overflowLabel="更多"
                           actions={[
-                            { label: '查看预算详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'plan-detail', item }) },
-                            { label: '编辑预算', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'plan', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' },
-                            { label: '提交预算', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'plan-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' },
+                            { label: '查看预算详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'plan-detail', item }), semantic: 'view', isPrimary: true },
+                            { label: '编辑预算', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'plan', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'edit', isPrimary: true },
+                            { label: '提交预算', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'plan-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit' },
                           ]}
                         />
                       </td>
@@ -381,9 +382,9 @@ export default function BudgetManagementPage() {
                       </td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
-                          iconOnly
+                          align="end"
                           actions={[
-                            { label: '编辑科目', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'subject', item }) },
+                            { label: '编辑科目', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'subject', item }), semantic: 'edit', isPrimary: true },
                           ]}
                         />
                       </td>
@@ -411,10 +412,11 @@ export default function BudgetManagementPage() {
                       <td className="px-4 py-3 text-sm">{formatMoney(item.changeAmount)}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
-                          iconOnly
+                          align="end"
+                          overflowLabel="更多"
                           actions={[
-                            { label: '查看调整详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'adjustment-detail', item }) },
-                            { label: '提交调整', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'adjustment-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' },
+                            { label: '查看调整详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'adjustment-detail', item }), semantic: 'view', isPrimary: true },
+                            { label: '提交调整', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'adjustment-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit' },
                           ]}
                         />
                       </td>

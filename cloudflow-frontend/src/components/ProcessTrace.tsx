@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { getProcessTrace, getProcessInstance, getProcessDefinition, urgeTask } from '../services/api/workflow';
 import { NodeType, WorkflowGraphDefinition } from '../types';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { BellRing } from 'lucide-react';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';

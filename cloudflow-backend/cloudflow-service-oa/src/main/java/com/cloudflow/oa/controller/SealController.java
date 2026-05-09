@@ -9,9 +9,12 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealApplication;
+import com.cloudflow.oa.domain.OaSealExpiryReminderLog;
 import com.cloudflow.oa.domain.OaSealHandoverLog;
+import com.cloudflow.oa.domain.OaSealRenewal;
 import com.cloudflow.oa.domain.dto.OaBorrowActionDTO;
 import com.cloudflow.oa.service.IOaSealApplicationService;
+import com.cloudflow.oa.service.IOaSealRenewalService;
 import com.cloudflow.oa.service.IOaSealService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
@@ -28,6 +31,7 @@ public class SealController {
 
     private final IOaSealService sealService;
     private final IOaSealApplicationService applicationService;
+    private final IOaSealRenewalService renewalService;
 
     @GetMapping("/list")
     public R<PageResult<OaSeal>> list(OaSeal query, PageQuery pageQuery) {
@@ -37,6 +41,12 @@ public class SealController {
     @GetMapping("/available")
     public R<List<OaSeal>> listAvailable() {
         return R.ok(sealService.listAvailable());
+    }
+
+    @GetMapping("/expiring")
+    public R<PageResult<OaSeal>> listExpiring(@RequestParam(value = "days", required = false) Integer days,
+                                              PageQuery pageQuery) {
+        return R.ok(sealService.queryExpiringPage(days, pageQuery));
     }
 
     @GetMapping("/{id}")
@@ -76,6 +86,22 @@ public class SealController {
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         try {
             return R.result(sealService.removeSeals(ids));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{id}/expiry-reminder-logs")
+    public R<List<OaSealExpiryReminderLog>> listExpiryReminderLogs(@PathVariable("id") Long id) {
+        return R.ok(sealService.listExpiryReminderLogs(id));
+    }
+
+    @SysLog("印章到期提醒")
+    @PostMapping("/{id}/expiry-remind")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    public R<Void> remindExpiry(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
+        try {
+            return R.result(sealService.remindExpiry(id, dto == null ? null : dto.getRemark()));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -192,6 +218,70 @@ public class SealController {
     public R<Void> remind(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
             return R.result(applicationService.remind(id, dto == null ? null : dto.getRemark()));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @GetMapping("/renewal/list")
+    public R<PageResult<OaSealRenewal>> listRenewals(OaSealRenewal query, PageQuery pageQuery) {
+        return R.ok(renewalService.queryPage(query, pageQuery));
+    }
+
+    @GetMapping("/renewal/{id}")
+    public R<OaSealRenewal> getRenewal(@PathVariable("id") Long id) {
+        try {
+            return R.ok(renewalService.getRenewalInfo(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("新增印章续期申请")
+    @PostMapping("/renewal")
+    public R<Void> addRenewal(@RequestBody OaSealRenewal renewal) {
+        try {
+            return R.result(renewalService.createRenewal(renewal));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("修改印章续期申请")
+    @PutMapping("/renewal")
+    public R<Void> editRenewal(@RequestBody OaSealRenewal renewal) {
+        try {
+            return R.result(renewalService.updateRenewal(renewal));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("删除印章续期申请")
+    @DeleteMapping("/renewal/{ids}")
+    public R<Void> removeRenewals(@PathVariable("ids") List<Long> ids) {
+        try {
+            return R.result(renewalService.removeRenewals(ids));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("提交印章续期申请")
+    @PostMapping("/renewal/submit/{id}")
+    public R<Void> submitRenewal(@PathVariable("id") Long id) {
+        try {
+            return R.result(renewalService.submitRenewal(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("取消印章续期申请")
+    @PutMapping("/renewal/cancel/{id}")
+    public R<Void> cancelRenewal(@PathVariable("id") Long id) {
+        try {
+            return R.result(renewalService.cancelRenewal(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

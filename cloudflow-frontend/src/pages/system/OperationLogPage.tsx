@@ -612,7 +612,6 @@ export const OperationLogPage: React.FC = () => {
                           <TableCell>
                             <TableRowActions
                               align="end"
-                              iconOnly
                               actions={[
                                 {
                                   label: '查看详情',
@@ -678,3 +677,4 @@ export const OperationLogPage: React.FC = () => {
 };
 
 export default OperationLogPage;
+

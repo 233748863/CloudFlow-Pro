@@ -494,7 +494,6 @@ export const PurchaseRequestPage: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
-                          iconOnly
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => void handleView(item), tone: 'neutral' },
                             { label: '编辑', icon: <Edit size={14} />, onClick: () => void handleEdit(item.id!), tone: 'primary', hidden: item.status !== 'DRAFT' },
@@ -906,3 +905,4 @@ export const PurchaseRequestPage: React.FC = () => {
 };
 
 export default PurchaseRequestPage;
+

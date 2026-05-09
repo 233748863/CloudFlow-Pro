@@ -20,6 +20,7 @@ export interface SysDept {
 export interface SysUser {
   userId?: number;
   deptId?: number;
+  deptName?: string;
   userName: string;
   nickName: string;
   email?: string;

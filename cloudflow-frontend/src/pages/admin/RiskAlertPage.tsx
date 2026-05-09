@@ -273,7 +273,6 @@ export const RiskAlertPage: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
-                          iconOnly
                           actions={[
                             { label: '处理中', icon: <Clock3 size={14} />, onClick: () => openStatus(item, 'HANDLING'), tone: 'primary', hidden: item.riskStatus === 'HANDLING' || item.riskStatus === 'CLOSED' || item.riskStatus === 'IGNORED' },
                             { label: '关闭', icon: <CheckCircle2 size={14} />, onClick: () => openStatus(item, 'CLOSED'), tone: 'success', hidden: item.riskStatus === 'CLOSED' },
@@ -396,3 +395,4 @@ export const RiskAlertPage: React.FC = () => {
 };
 
 export default RiskAlertPage;
+

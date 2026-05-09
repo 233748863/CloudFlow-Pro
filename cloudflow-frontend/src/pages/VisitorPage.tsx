@@ -393,7 +393,6 @@ export const VisitorPage: React.FC = () => {
                             <TableRowActions
                               align="end"
                               className="gap-1"
-                              iconOnly
                               actions={[
                                 {
                                   label: '确认',
@@ -401,7 +400,6 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => handleConfirm(item.visitorId!),
                                   tone: 'neutral',
                                   hidden: item.status !== 'PENDING',
-                                  className: 'rounded-lg',
                                 },
                                 {
                                   label: '签到',
@@ -409,7 +407,6 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => handleCheckIn(item.visitorId!),
                                   tone: 'neutral',
                                   hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
-                                  className: 'rounded-lg',
                                 },
                                 {
                                   label: '签退',
@@ -417,7 +414,6 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => handleCheckOut(item.visitorId!),
                                   tone: 'neutral',
                                   hidden: item.status !== 'ARRIVED',
-                                  className: 'rounded-lg',
                                 },
                                 {
                                   label: '取消',
@@ -425,7 +421,6 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => setCancelTarget(item),
                                   tone: 'neutral',
                                   hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
-                                  className: 'rounded-lg',
                                 },
                               ]}
                             />
@@ -585,3 +580,4 @@ export const VisitorPage: React.FC = () => {
 };
 
 export default VisitorPage;
+

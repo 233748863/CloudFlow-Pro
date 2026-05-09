@@ -640,14 +640,12 @@ const KnowledgePage: React.FC = () => {
               <TableRowActions
                 align="end"
                 className="gap-1"
-                iconOnly
                 actions={[
                   {
                     label: '详情',
                     icon: <Eye size={14} />,
                     onClick: () => void openDetail(item),
                     tone: 'neutral',
-                    className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
                   },
                   {
                     label: '编辑',
@@ -655,7 +653,6 @@ const KnowledgePage: React.FC = () => {
                     onClick: () => openEdit(item),
                     tone: 'primary',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || (item.status !== 'DRAFT' && item.status !== 'REJECTED'),
-                    className: 'rounded-lg',
                   },
                   {
                     label: '提交',
@@ -663,7 +660,6 @@ const KnowledgePage: React.FC = () => {
                     onClick: () => openSubmitConfirm(item),
                     tone: 'success',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || (item.status !== 'DRAFT' && item.status !== 'REJECTED'),
-                    className: 'rounded-lg',
                   },
                   {
                     label: '撤回',
@@ -671,7 +667,6 @@ const KnowledgePage: React.FC = () => {
                     onClick: () => openRecallConfirm(item),
                     tone: 'warning',
                     hidden: viewMode !== 'mine' || item.status !== 'PENDING',
-                    className: 'rounded-lg',
                   },
                   {
                     label: '阅读统计',
@@ -679,7 +674,6 @@ const KnowledgePage: React.FC = () => {
                     onClick: () => void openReadStats(item),
                     tone: 'info',
                     hidden: viewMode !== 'manage',
-                    className: 'rounded-lg',
                   },
                   {
                     label: '删除',
@@ -687,7 +681,6 @@ const KnowledgePage: React.FC = () => {
                     onClick: () => openDeleteConfirm(item),
                     tone: 'danger',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || item.status === 'PENDING',
-                    className: 'rounded-lg',
                   },
                 ]}
               />
@@ -906,3 +899,4 @@ const KnowledgePage: React.FC = () => {
 };
 
 export default KnowledgePage;
+

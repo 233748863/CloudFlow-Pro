@@ -631,14 +631,12 @@ export const ExpenseClaimPage: React.FC = () => {
                           <TableRowActions
                             align="end"
                             className="gap-1"
-                            iconOnly
                             actions={[
                               {
                                 label: '详情',
                                 icon: <Eye size={14} />,
                                 onClick: () => void handleView(item),
                                 tone: 'neutral',
-                                className: 'rounded-lg border border-slate-200 bg-white hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950',
                               },
                               {
                                 label: '编辑',
@@ -646,7 +644,6 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => void handleEdit(item.id!),
                                 tone: 'primary',
                                 hidden: item.status !== 'DRAFT',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '提交',
@@ -654,7 +651,6 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => openSubmitConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'DRAFT',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '打款',
@@ -662,7 +658,6 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => openPayConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'APPROVED',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '删除',
@@ -670,7 +665,6 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => openDeleteConfirm(item.id!),
                                 tone: 'danger',
                                 hidden: item.status !== 'DRAFT',
-                                className: 'rounded-lg',
                               },
                             ]}
                           />
@@ -1042,3 +1036,4 @@ export const ExpenseClaimPage: React.FC = () => {
 };
 
 export default ExpenseClaimPage;
+

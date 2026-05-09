@@ -3,7 +3,7 @@
  * 提供细粒度的权限检查功能
  */
 
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { Role } from '../types';
 import {
   WorkflowPermissions,

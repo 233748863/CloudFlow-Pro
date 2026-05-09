@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
@@ -6,7 +6,8 @@ import { toBackendDateString } from '@/utils/dateFormat';
 import { ChevronLeft, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useKeyboardAwareScroll } from '@/hooks/useKeyboardHeight';
-import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, UserSelector } from '@/components/common';
+import type { UserBrief } from '@/types/workflow';
 
 
 export const MobileVehicleBooking: React.FC = () => {
@@ -27,6 +28,7 @@ export const MobileVehicleBooking: React.FC = () => {
     reason: '',
     passengerCount: 1,
     passengers: '',
+    passengerIds: [] as string[],
   });
 
   useEffect(() => {
@@ -94,6 +96,13 @@ export const MobileVehicleBooking: React.FC = () => {
       setSubmitting(false);
     }
   };
+
+  const updatePassengers = useCallback((selectedUsers: UserBrief[]) => {
+    setFormData((current) => ({
+      ...current,
+      passengers: selectedUsers.map((item) => item.name).join('、'),
+    }));
+  }, []);
 
   const handleNextStep = () => {
     if (step === 1) {
@@ -269,13 +278,13 @@ export const MobileVehicleBooking: React.FC = () => {
               </div>
               <div>
                 <Label htmlFor="passengers">名单 (选填)</Label>
-                <Input 
-                  id="passengers"
-                  className="mt-2 h-12 text-base" 
-                  placeholder="张三, 李四"
-                  value={formData.passengers} 
-                  onChange={e => setFormData({...formData, passengers: e.target.value})}
-                  aria-label="输入随行人员名单"
+                <UserSelector
+                  value={formData.passengerIds}
+                  onChange={(passengerIds) => setFormData({...formData, passengerIds})}
+                  onUsersChange={updatePassengers}
+                  placeholder="搜索姓名、邮箱或部门选择人员"
+                  className="mt-2"
+                  dropdownPlacement="top"
                 />
               </div>
             </div>

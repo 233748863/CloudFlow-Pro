@@ -655,21 +655,18 @@ const AssetList: React.FC = () => {
                           <TableRowActions
                             align="end"
                             className="gap-1"
-                            iconOnly
                             actions={[
                               {
                                 label: '详情',
                                 icon: <Eye size={14} />,
                                 onClick: () => handleShowDetail(asset),
                                 tone: 'neutral',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '编辑',
                                 icon: <Edit size={14} />,
                                 onClick: () => handleEdit(asset),
                                 tone: 'neutral',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '领用',
@@ -677,7 +674,6 @@ const AssetList: React.FC = () => {
                                 onClick: () => openBorrowDialog(asset),
                                 tone: 'neutral',
                                 hidden: asset.status !== '1',
-                                className: 'rounded-lg',
                               },
                               {
                                 label: '归还',
@@ -685,7 +681,6 @@ const AssetList: React.FC = () => {
                                 onClick: () => openReturnConfirm(asset),
                                 tone: 'neutral',
                                 hidden: asset.status !== '2',
-                                className: 'rounded-lg',
                               },
                             ]}
                           />
@@ -1067,3 +1062,4 @@ const AssetList: React.FC = () => {
 };
 
 export default AssetList;
+

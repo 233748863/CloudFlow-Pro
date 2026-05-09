@@ -2,20 +2,20 @@ import React, { useState } from 'react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, Input, Label } from '@/components/common';
 import { changeProfilePassword } from '@/services/api/auth';
-import { useAuth } from '@/context/AuthContext';
 
 interface ForcePasswordChangeDialogProps {
   open: boolean;
   onChanged: () => Promise<unknown>;
   onLogout: () => Promise<void>;
+  clearForcePasswordChange: () => void;
 }
 
 export const ForcePasswordChangeDialog: React.FC<ForcePasswordChangeDialogProps> = ({
   open,
   onChanged,
   onLogout,
+  clearForcePasswordChange,
 }) => {
-  const { clearForcePasswordChange } = useAuth();
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

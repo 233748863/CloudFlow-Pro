@@ -2,8 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Clock3, Edit2, Plus, Power, PowerOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog } from '@/components/common';
-import { DeployActionButton } from '@/components/deploy/DeployActionButton';
+import { BaseDialog, ConfirmDialog, TableRowActions } from '@/components/common';
 import { Button, Input, Textarea } from '@/components/common';
 import { DatePicker } from '@/components/common/date-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
@@ -300,7 +299,7 @@ export const DeployWindowManagement: React.FC = () => {
         <InlineState title="暂无发布窗口" />
       ) : (
         <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <div className="hidden bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 dark:bg-slate-900/70 dark:text-slate-400 md:grid md:grid-cols-[minmax(0,1.5fr)_92px_132px_150px_92px_186px] md:items-center">
+          <div className="hidden bg-slate-50 px-4 py-3 text-xs font-medium text-slate-500 dark:bg-slate-900/70 dark:text-slate-400 md:grid md:grid-cols-[minmax(0,1.5fr)_92px_132px_150px_92px_12rem] md:items-center">
             <span>窗口</span>
             <span>类型</span>
             <span>时段</span>
@@ -313,7 +312,7 @@ export const DeployWindowManagement: React.FC = () => {
             <div
               key={window.id}
               className={cn(
-                'grid gap-3 border-t border-slate-200 px-4 py-3.5 first:border-t-0 dark:border-slate-800 md:grid-cols-[minmax(0,1.5fr)_92px_132px_150px_92px_186px] md:items-center',
+                'grid gap-3 border-t border-slate-200 px-4 py-3.5 first:border-t-0 dark:border-slate-800 md:grid-cols-[minmax(0,1.5fr)_92px_132px_150px_92px_12rem] md:items-center',
                 !window.isEnabled && 'bg-slate-50/60 dark:bg-slate-900/40',
               )}
             >
@@ -341,18 +340,33 @@ export const DeployWindowManagement: React.FC = () => {
 
               <div className="text-sm text-slate-600 dark:text-slate-300">{window.isEnabled ? '启用' : '禁用'}</div>
 
-              <div className="flex flex-wrap items-center gap-1">
-                <DeployActionButton label="编辑" icon={<Edit2 className="h-3.5 w-3.5" />} onClick={() => handleEdit(window)} />
-                <DeployActionButton
-                  label={window.isEnabled ? '禁用' : '启用'}
-                  icon={window.isEnabled ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
-                  onClick={() => handleToggle(window.id, window.isEnabled)}
-                />
-                <DeployActionButton
-                  label="删除"
-                  icon={<Trash2 className="h-3.5 w-3.5" />}
-                  onClick={() => setDeleteTarget(window)}
-                  danger
+              <div className="md:justify-self-end">
+                <TableRowActions
+                  align="end"
+                  overflowLabel="更多"
+                  actions={[
+                    {
+                      label: '编辑窗口',
+                      icon: <Edit2 className="h-3.5 w-3.5" />,
+                      onClick: () => handleEdit(window),
+                      semantic: 'edit',
+                      isPrimary: true,
+                    },
+                    {
+                      label: window.isEnabled ? '禁用窗口' : '启用窗口',
+                      icon: window.isEnabled ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />,
+                      onClick: () => handleToggle(window.id, window.isEnabled),
+                      semantic: window.isEnabled ? 'disable' : 'enable',
+                      danger: window.isEnabled,
+                    },
+                    {
+                      label: '删除窗口',
+                      icon: <Trash2 className="h-3.5 w-3.5" />,
+                      onClick: () => setDeleteTarget(window),
+                      semantic: 'delete',
+                      danger: true,
+                    },
+                  ]}
                 />
               </div>
             </div>
@@ -374,7 +388,7 @@ export const DeployWindowManagement: React.FC = () => {
           </div>
         }
       >
-        <div className="max-h-[72vh] space-y-4 overflow-y-auto pr-1">
+        <div className="space-y-4 pr-1">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
               <label className={fieldLabelClassName}>

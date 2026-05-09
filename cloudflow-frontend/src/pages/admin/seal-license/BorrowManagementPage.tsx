@@ -350,7 +350,6 @@ export const BorrowManagementPage: React.FC = () => {
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
-                          iconOnly
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
                             { label: '借出', icon: <CheckCircle2 size={14} />, onClick: () => openAction(item, 'borrow'), tone: 'success', hidden: item.status !== 'APPROVED' },
@@ -473,3 +472,4 @@ export const BorrowManagementPage: React.FC = () => {
 };
 
 export default BorrowManagementPage;
+

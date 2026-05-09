@@ -8,13 +8,14 @@ import {
   Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea } from '@/components/common';
+import { Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, UserSelector } from '@/components/common';
 import { getAvailableVehicles, submitUsage, SysVehicle } from '@/services/api/vehicle';
 import { toBackendDateString } from '@/utils/dateFormat';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { FileUpload } from '@/components/FileUpload';
 import { getErrorMessage } from '@/utils/errorMessage';
+import type { UserBrief } from '@/types/workflow';
 
 interface InlineStateProps {
   title: string;
@@ -151,6 +152,7 @@ export const VehicleBooking: React.FC = () => {
     reason: '',
     passengerCount: 1,
     passengers: '',
+    passengerIds: [] as string[],
     attachmentUrl: '',
   });
   const [submitting, setSubmitting] = useState(false);
@@ -198,6 +200,12 @@ export const VehicleBooking: React.FC = () => {
   const attachmentCount = formData.attachmentUrl
     ? formData.attachmentUrl.split(',').filter(Boolean).length
     : 0;
+  const updatePassengers = useCallback((selectedUsers: UserBrief[]) => {
+    setFormData((current) => ({
+      ...current,
+      passengers: selectedUsers.map((item) => item.name).join('、'),
+    }));
+  }, []);
 
   const timeError = useMemo(() => {
     if (formData.startTime && formData.endTime) {
@@ -359,148 +367,197 @@ export const VehicleBooking: React.FC = () => {
               ) : null}
 
               {step === 1 ? (
-                <div className="space-y-5">
-                  <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
-                    <div className="min-w-0">
-                      <div className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
-                        {selectedVehicle?.licensePlate}
+                <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+                      <div className="min-w-0 flex-1">
+                        <div className="font-mono text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {selectedVehicle?.licensePlate}
+                        </div>
+                        <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                          {selectedVehicleSummary}
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                        {selectedVehicleSummary}
+                      <Button variant="ghost" size="sm" onClick={() => setStep(0)}>
+                        更换
+                      </Button>
+                    </div>
+
+                    <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/72">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">时间和地点</div>
+                          <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">用车时段、目的地和还车位置</div>
+                        </div>
                       </div>
-                    </div>
-                    <Button variant="ghost" size="sm" className="ml-auto" onClick={() => setStep(0)}>
-                      更换
-                    </Button>
+
+                      <div className="grid gap-4 lg:grid-cols-2">
+                        <div className="space-y-2">
+                          <Label>开始时间</Label>
+                          <DatePicker
+                            className="h-11"
+                            type="datetime-local"
+                            value={formData.startTime}
+                            onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>结束时间</Label>
+                          <DatePicker
+                            className="h-11"
+                            type="datetime-local"
+                            value={formData.endTime}
+                            onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>目的地</Label>
+                          <Input
+                            value={formData.destination}
+                            onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+                            className="h-11"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>还车地点</Label>
+                          <Input
+                            value={formData.returnLocation}
+                            onChange={(e) => setFormData({ ...formData, returnLocation: e.target.value })}
+                            className="h-11"
+                          />
+                        </div>
+                      </div>
+                    </section>
+
+                    {timeError ? (
+                      <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
+                        <AlertCircle size={16} />
+                        {timeError}
+                      </div>
+                    ) : null}
+
+                    <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/72">
+                      <div className="mb-4">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">行程和材料</div>
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">选择行程类型、填写事由并上传附件</div>
+                      </div>
+
+                      <div className="grid gap-4 lg:grid-cols-[180px_minmax(0,1fr)]">
+                        <div className="space-y-2">
+                          <Label>行程类型</Label>
+                          <div className="grid grid-cols-2 gap-2 lg:grid-cols-1">
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, isRoundTrip: 0 })}
+                              className={[
+                                'h-10 rounded-lg border px-4 text-sm transition-colors',
+                                formData.isRoundTrip === 0
+                                  ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
+                                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
+                              ].join(' ')}
+                            >
+                              单程
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, isRoundTrip: 1 })}
+                              className={[
+                                'h-10 rounded-lg border px-4 text-sm transition-colors',
+                                formData.isRoundTrip === 1
+                                  ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
+                                  : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
+                              ].join(' ')}
+                            >
+                              往返
+                            </button>
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>附件</Label>
+                          <FileUpload
+                            value={formData.attachmentUrl}
+                            onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })}
+                            maxCount={3}
+                            hint=""
+                          />
+                        </div>
+                      </div>
+
+                      <div className="mt-4 space-y-2">
+                        <Label>用车事由</Label>
+                        <Textarea
+                          className="min-h-[88px] resize-none"
+                          value={formData.reason}
+                          onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                        />
+                      </div>
+                    </section>
                   </div>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>开始时间</Label>
-                      <DatePicker
-                        className="h-11"
-                        type="datetime-local"
-                        value={formData.startTime}
-                        onChange={(e) => setFormData({ ...formData, startTime: e.target.value })}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>结束时间</Label>
-                      <DatePicker
-                        className="h-11"
-                        type="datetime-local"
-                        value={formData.endTime}
-                        onChange={(e) => setFormData({ ...formData, endTime: e.target.value })}
-                      />
-                    </div>
-                  </div>
+                  <aside className="space-y-4 xl:sticky xl:top-4 xl:self-start">
+                    <section className="rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/45">
+                      <div className="mb-4">
+                        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">乘员信息</div>
+                        <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">人数和名单单独维护</div>
+                      </div>
 
-                  {timeError ? (
-                    <div className="flex items-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200">
-                      <AlertCircle size={16} />
-                      {timeError}
-                    </div>
-                  ) : null}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>随行人数</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={selectedVehicle?.capacity || 50}
+                            value={formData.passengerCount}
+                            onChange={(e) => setFormData({ ...formData, passengerCount: parseInt(e.target.value, 10) || 1 })}
+                            className="h-11"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>随行人员</Label>
+                          <UserSelector
+                            value={formData.passengerIds}
+                            onChange={(passengerIds) => setFormData({ ...formData, passengerIds })}
+                            onUsersChange={updatePassengers}
+                            placeholder="搜索姓名、邮箱或部门选择人员"
+                            dropdownPlacement="top"
+                          />
+                        </div>
+                      </div>
+                    </section>
 
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>目的地</Label>
-                      <Input
-                        value={formData.destination}
-                        onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
-                        className="h-11"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>还车地点</Label>
-                      <Input
-                        value={formData.returnLocation}
-                        onChange={(e) => setFormData({ ...formData, returnLocation: e.target.value })}
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
+                    <section className="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/72">
+                      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">申请摘要</div>
+                      <div className="mt-3 space-y-2 text-sm">
+                        <div className="flex justify-between gap-3">
+                          <span className="text-slate-500 dark:text-slate-400">车辆</span>
+                          <span className="font-mono font-medium text-slate-900 dark:text-slate-100">{selectedVehicle?.licensePlate || '--'}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-slate-500 dark:text-slate-400">行程</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{formData.isRoundTrip ? '往返' : '单程'}</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-slate-500 dark:text-slate-400">人数</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{formData.passengerCount || 1} 人</span>
+                        </div>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-slate-500 dark:text-slate-400">附件</span>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{attachmentCount} 个</span>
+                        </div>
+                      </div>
+                    </section>
 
-                  <div className="space-y-2">
-                    <Label>行程类型</Label>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, isRoundTrip: 0 })}
-                        className={[
-                          'rounded-lg border px-4 py-2 text-sm transition-colors',
-                          formData.isRoundTrip === 0
-                            ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
-                            : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
-                        ].join(' ')}
-                      >
-                        单程
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, isRoundTrip: 1 })}
-                        className={[
-                          'rounded-lg border px-4 py-2 text-sm transition-colors',
-                          formData.isRoundTrip === 1
-                            ? 'border-slate-300 bg-slate-100 text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100'
-                            : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300 dark:border-slate-800 dark:bg-slate-950/88 dark:text-slate-400',
-                        ].join(' ')}
-                      >
-                        往返
-                      </button>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button variant="outline" onClick={() => setStep(0)}>
+                        上一步
+                      </Button>
+                      <Button onClick={() => setStep(2)} disabled={!canProceedToStep3 || Boolean(timeError)}>
+                        下一步
+                        <ChevronRight size={16} className="ml-1.5" />
+                      </Button>
                     </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>用车事由</Label>
-                    <Textarea
-                      className="min-h-[100px] resize-none"
-                      value={formData.reason}
-                      onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>附件</Label>
-                    <FileUpload
-                      value={formData.attachmentUrl}
-                      onChange={(urls) => setFormData({ ...formData, attachmentUrl: urls })}
-                      maxCount={3}
-                      hint=""
-                    />
-                  </div>
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>随行人数</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={selectedVehicle?.capacity || 50}
-                        value={formData.passengerCount}
-                        onChange={(e) => setFormData({ ...formData, passengerCount: parseInt(e.target.value, 10) || 1 })}
-                        className="h-11"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>随行人员</Label>
-                      <Input
-                        value={formData.passengers}
-                        onChange={(e) => setFormData({ ...formData, passengers: e.target.value })}
-                        className="h-11"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between">
-                    <Button variant="outline" onClick={() => setStep(0)}>
-                      上一步
-                    </Button>
-                    <Button onClick={() => setStep(2)} disabled={!canProceedToStep3 || Boolean(timeError)}>
-                      下一步
-                      <ChevronRight size={16} className="ml-1.5" />
-                    </Button>
-                  </div>
+                  </aside>
                 </div>
               ) : null}
 

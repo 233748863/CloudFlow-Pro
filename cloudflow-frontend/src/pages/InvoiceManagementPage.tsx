@@ -340,13 +340,14 @@ export default function InvoiceManagementPage() {
                     <td className="px-4 py-3">{statusBadge(item.status)}</td>
                     <td className="px-4 py-3 text-right">
                       <TableRowActions
-                        iconOnly
+                        align="end"
+                        overflowLabel="更多"
                         actions={[
-                          { label: '查看详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'detail', item }) },
-                          { label: '编辑发票', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'invoice', item }) },
-                          { label: '绑定业务', icon: <Send size={14} />, onClick: () => void openDialog({ type: 'bind', item }), hidden: item.status === 'VOID' },
-                          { label: '核销发票', icon: <Receipt size={14} />, onClick: () => void openDialog({ type: 'writeoff', item }), hidden: item.status === 'VOID' },
-                          { label: '作废发票', icon: <RotateCcw size={14} />, tone: 'danger', onClick: () => setVoidTarget(item), hidden: item.status === 'VOID' },
+                          { label: '查看详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'detail', item }), semantic: 'view', isPrimary: true },
+                          { label: '编辑发票', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'invoice', item }), semantic: 'edit', isPrimary: true },
+                          { label: '绑定业务', icon: <Send size={14} />, onClick: () => void openDialog({ type: 'bind', item }), hidden: item.status === 'VOID', semantic: 'bind' },
+                          { label: '核销发票', icon: <Receipt size={14} />, onClick: () => void openDialog({ type: 'writeoff', item }), hidden: item.status === 'VOID', semantic: 'writeoff' },
+                          { label: '作废发票', icon: <RotateCcw size={14} />, onClick: () => setVoidTarget(item), hidden: item.status === 'VOID', semantic: 'void', danger: true },
                           {
                             label: '打开外链',
                             icon: <ExternalLink size={14} />,
@@ -358,6 +359,7 @@ export default function InvoiceManagementPage() {
                               window.open(item.externalLinkUrl, '_blank', 'noopener,noreferrer');
                             },
                             hidden: !item.externalLinkUrl,
+                            semantic: 'open',
                           },
                         ]}
                       />

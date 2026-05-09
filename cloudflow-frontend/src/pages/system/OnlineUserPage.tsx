@@ -408,7 +408,6 @@ export const OnlineUserPage: React.FC = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
                             actions={[
                               {
                                 label: '强制下线',
@@ -466,3 +465,4 @@ export const OnlineUserPage: React.FC = () => {
 };
 
 export default OnlineUserPage;
+

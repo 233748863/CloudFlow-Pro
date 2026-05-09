@@ -5,12 +5,12 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
+  Edit3,
   Eye,
   Loader2,
   Plus,
   Search,
   Trash2,
-  UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -112,6 +112,8 @@ const getStatusBadgeClassName = (status: string) =>
 const countDepartments = (depts: DeptItem[]): number =>
   depts.reduce((count, dept) => count + 1 + countDepartments(dept.children || []), 0);
 
+const countDeptChildren = (dept: DeptItem): number => countDepartments(dept.children || []);
+
 const flattenDepts = (
   depts: DeptItem[],
   level = 0,
@@ -143,6 +145,9 @@ const findDeptById = (depts: DeptItem[], targetId: number | null): DeptItem | nu
 
   return null;
 };
+
+const collectDeptIds = (depts: DeptItem[]): number[] =>
+  depts.flatMap((dept) => [dept.deptId, ...collectDeptIds(dept.children || [])]);
 
 // 保留祖先链路，确保树搜索后仍然能看出部门层级来源。
 const filterDeptTree = (depts: DeptItem[], keyword: string): DeptItem[] => {
@@ -648,45 +653,129 @@ const DeptNode: React.FC<{
   dept: DeptItem;
   level?: number;
   selectedDeptId: number | null;
+  expandedDeptIds: Set<number>;
+  forceExpanded?: boolean;
   onSelect: (dept: DeptItem) => void;
-}> = ({ dept, level = 0, selectedDeptId, onSelect }) => {
-  const [expanded, setExpanded] = useState(true);
+  onToggle: (deptId: number) => void;
+  onAddChild: (dept: DeptItem) => void;
+  onEdit: (dept: DeptItem) => void;
+}> = ({
+  dept,
+  level = 0,
+  selectedDeptId,
+  expandedDeptIds,
+  forceExpanded = false,
+  onSelect,
+  onToggle,
+  onAddChild,
+  onEdit,
+}) => {
   const hasChildren = Boolean(dept.children?.length);
+  const expanded = forceExpanded || expandedDeptIds.has(dept.deptId);
   const isSelected = selectedDeptId === dept.deptId;
+  const directChildren = dept.children?.length || 0;
+  const childDepartments = countDeptChildren(dept);
 
   return (
     <div className="select-none">
-      <div
-        className={cn(
-          'cf-side-link cf-side-link-sm',
-          isSelected && 'cf-side-link-active',
-        )}
-        style={{ paddingLeft: `${level * 18 + 8}px` }}
-      >
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            if (hasChildren) {
-              setExpanded((prev) => !prev);
-            }
-          }}
-          className="flex h-4 w-4 items-center justify-center text-slate-400 dark:text-slate-500"
-        >
-          {hasChildren ? expanded ? <ChevronDown size={14} /> : <ChevronRight size={14} /> : <span className="w-3" />}
-        </button>
+      <div className="group relative">
+        {level > 0 ? (
+          <span
+            className="pointer-events-none absolute bottom-0 top-0 w-px bg-slate-200/70 dark:bg-slate-800"
+            style={{ left: `${level * 18 + 15}px` }}
+          />
+        ) : null}
 
-        <button
-          type="button"
-          onClick={() => onSelect(dept)}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        <div
+          className={cn(
+            'flex min-h-11 w-full items-center gap-2 rounded-lg border px-2 py-2 text-left transition',
+            isSelected
+              ? 'border-teal-200 bg-teal-50 text-teal-900 shadow-sm dark:border-teal-900/70 dark:bg-teal-950/30 dark:text-teal-100'
+              : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:border-slate-800 dark:hover:bg-slate-950/80 dark:hover:text-slate-100',
+          )}
+          style={{ paddingLeft: `${level * 18 + 8}px` }}
         >
-          <Building2 size={15} className="text-slate-400 dark:text-slate-500" />
-          <span className="truncate text-sm font-medium">{dept.deptName}</span>
-          <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
-            {(dept.status || '0') === '0' ? '正常' : '停用'}
-          </span>
-        </button>
+          <button
+            type="button"
+            disabled={!hasChildren}
+            title={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
+            aria-label={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggle(dept.deptId);
+            }}
+            className={cn(
+              'flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition',
+              hasChildren
+                ? 'hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200'
+                : 'cursor-default disabled:opacity-100',
+            )}
+          >
+            {hasChildren ? expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelect(dept)}
+            title={dept.deptName}
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          >
+            <span className={cn(
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
+              isSelected
+                ? 'border-teal-200 bg-white text-teal-700 dark:border-teal-900/70 dark:bg-teal-950/50 dark:text-teal-200'
+                : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
+            )}>
+              <Building2 size={15} />
+            </span>
+
+            <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-semibold">{dept.deptName}</span>
+                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
+                  {(dept.status || '0') === '0' ? '正常' : '停用'}
+                </span>
+              </span>
+              <span className="mt-0.5 block truncate text-xs text-slate-400 dark:text-slate-500">
+                {childDepartments > 0 ? `${directChildren} 个下级 / 共 ${childDepartments} 个` : dept.leader ? `负责人 ${dept.leader}` : `部门 ID ${dept.deptId}`}
+              </span>
+            </span>
+          </button>
+
+          <div
+            className={cn(
+              'ml-auto flex shrink-0 items-center gap-1 transition',
+              isSelected
+                ? 'opacity-100'
+                : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+            )}
+          >
+            <button
+              type="button"
+              title="新增子部门"
+              aria-label="新增子部门"
+              onClick={(event) => {
+                event.stopPropagation();
+                onAddChild(dept);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-teal-50 hover:text-teal-700 dark:text-slate-400 dark:hover:bg-teal-950/30 dark:hover:text-teal-200"
+            >
+              <Plus size={14} />
+            </button>
+            <button
+              type="button"
+              title="编辑部门"
+              aria-label="编辑部门"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(dept);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            >
+              <Edit3 size={14} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {expanded && hasChildren ? (
@@ -697,7 +786,12 @@ const DeptNode: React.FC<{
               dept={child}
               level={level + 1}
               selectedDeptId={selectedDeptId}
+              expandedDeptIds={expandedDeptIds}
+              forceExpanded={forceExpanded}
               onSelect={onSelect}
+              onToggle={onToggle}
+              onAddChild={onAddChild}
+              onEdit={onEdit}
             />
           ))}
         </div>
@@ -714,6 +808,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
   const [deptLoading, setDeptLoading] = useState(true);
   const [deptError, setDeptError] = useState<string | null>(null);
   const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
+  const [expandedDeptIds, setExpandedDeptIds] = useState<Set<number>>(new Set());
   const [deptSearch, setDeptSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [users, setUsers] = useState<UserItem[]>([]);
@@ -729,6 +824,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
 
   const selectedDept = useMemo(() => findDeptById(deptTree, selectedDeptId), [deptTree, selectedDeptId]);
   const filteredDeptTree = useMemo(() => filterDeptTree(deptTree, deptSearch), [deptTree, deptSearch]);
+  const forceExpandDeptTree = Boolean(deptSearch.trim());
   const filteredUsers = useMemo(
     () =>
       users.filter((user) => {
@@ -761,6 +857,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       const response: any = await getDeptTree();
       const nextTree = Array.isArray(response) ? response : [];
       setDeptTree(nextTree);
+      setExpandedDeptIds(new Set(collectDeptIds(nextTree)));
     } catch (error) {
       console.error('获取部门树失败:', error);
       const message = '获取部门树失败，请稍后重试';
@@ -848,6 +945,37 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
     }
   };
 
+  const toggleDeptExpand = (deptId: number) => {
+    setExpandedDeptIds((current) => {
+      const next = new Set(current);
+      if (next.has(deptId)) {
+        next.delete(deptId);
+      } else {
+        next.add(deptId);
+      }
+      return next;
+    });
+  };
+
+  const expandAllDepartments = () => {
+    setExpandedDeptIds(new Set(collectDeptIds(deptTree)));
+  };
+
+  const collapseAllDepartments = () => {
+    setExpandedDeptIds(new Set());
+  };
+
+  const openCreateDeptDialog = (parentId = 0) => {
+    setEditingDept(null);
+    setDefaultParentId(parentId);
+    setDeptFormOpen(true);
+  };
+
+  const openEditDeptDialog = (dept: DeptItem) => {
+    setEditingDept(dept);
+    setDeptFormOpen(true);
+  };
+
   const handleDeptDelete = async () => {
     if (!pendingDeleteDept) return;
 
@@ -893,20 +1021,14 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
       <SectionCard
         title="部门"
         headerAside={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditingDept(null);
-                setDefaultParentId(0);
-                setDeptFormOpen(true);
-              }}
-            >
-              <Plus size={14} />
-              新增
-            </Button>
-          </>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openCreateDeptDialog(0)}
+          >
+            <Plus size={14} />
+            新增
+          </Button>
         }
       >
         <div className="space-y-3">
@@ -920,40 +1042,65 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             />
           </div>
 
+          <button
+            type="button"
+            onClick={() => setSelectedDeptId(null)}
+            className={cn(
+              'flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition',
+              selectedDeptId === null
+                ? 'border-teal-200 bg-teal-50 text-teal-900 shadow-sm dark:border-teal-900/70 dark:bg-teal-950/30 dark:text-teal-100'
+                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900/70',
+            )}
+          >
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+              <Building2 size={17} />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-semibold">全部部门</span>
+              <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
+                {totalDepartments} 个部门 / {activeDepartments} 个正常
+              </span>
+            </span>
+          </button>
+
           {selectedDept ? (
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-slate-50/70 px-3 py-2 dark:border-slate-800 dark:bg-slate-900/40">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+            <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/50">
+              <div className="flex min-w-0 items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
                   {selectedDept.deptName}
+                  </div>
+                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                    {countDeptChildren(selectedDept)} 个下级部门
+                  </div>
                 </div>
+                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(selectedDept.status || '0'))}>
+                  {(selectedDept.status || '0') === '0' ? '正常' : '停用'}
+                </span>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="mt-3 grid grid-cols-3 gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setEditingDept(null);
-                    setDefaultParentId(selectedDept.deptId);
-                    setDeptFormOpen(true);
-                  }}
+                  className="px-2"
+                  onClick={() => openCreateDeptDialog(selectedDept.deptId)}
                 >
                   <Plus size={14} />
-                  新增子部门
+                  子部门
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setEditingDept(selectedDept);
-                    setDeptFormOpen(true);
-                  }}
+                  className="px-2"
+                  onClick={() => openEditDeptDialog(selectedDept)}
                 >
-                  <UserRound size={14} />
+                  <Edit3 size={14} />
                   编辑
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
+                  className="px-2 text-rose-600 hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200"
                   onClick={() => setPendingDeleteDept(selectedDept)}
                 >
                   <Trash2 size={14} />
@@ -963,37 +1110,66 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
             </div>
           ) : null}
 
-          <div className="max-h-[72vh] overflow-y-auto rounded-lg border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/30">
-            {deptLoading ? (
-              <InlineState title="正在加载部门树..." loading className="py-12" />
-            ) : deptError ? (
-              <InlineState
-                icon={<Building2 className="h-5 w-5" />}
-                title="部门树加载失败"
-                description={deptError}
-                className="py-12"
-              />
-            ) : filteredDeptTree.length === 0 ? (
-              <InlineState
-                icon={<Building2 className="h-5 w-5" />}
-                title="暂无匹配部门"
-                description={deptSearch ? '请调整部门搜索条件后重试。' : '当前还没有部门数据。'}
-                className="py-12"
-              />
-            ) : (
-              <div className="space-y-1">
-                {filteredDeptTree.map((dept) => (
-                  <DeptNode
-                    key={dept.deptId}
-                    dept={dept}
-                    selectedDeptId={selectedDeptId}
-                    onSelect={(item) =>
-                      setSelectedDeptId((prev) => (prev === item.deptId ? null : item.deptId))
-                    }
-                  />
-                ))}
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
+            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
+              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
+                {deptSearch ? `匹配 ${filteredDepartments} 个部门` : `组织树 ${totalDepartments} 个部门`}
               </div>
-            )}
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={expandAllDepartments}
+                  className="rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-100"
+                >
+                  展开
+                </button>
+                <button
+                  type="button"
+                  onClick={collapseAllDepartments}
+                  className="rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-100"
+                >
+                  收起
+                </button>
+              </div>
+            </div>
+
+            <div className="max-h-[62vh] overflow-y-auto p-2">
+              {deptLoading ? (
+                <InlineState title="正在加载部门树..." loading className="py-12" />
+              ) : deptError ? (
+                <InlineState
+                  icon={<Building2 className="h-5 w-5" />}
+                  title="部门树加载失败"
+                  description={deptError}
+                  className="py-12"
+                />
+              ) : filteredDeptTree.length === 0 ? (
+                <InlineState
+                  icon={<Building2 className="h-5 w-5" />}
+                  title="暂无匹配部门"
+                  description={deptSearch ? '请调整部门搜索条件后重试。' : '当前还没有部门数据。'}
+                  className="py-12"
+                />
+              ) : (
+                <div className="space-y-1">
+                  {filteredDeptTree.map((dept) => (
+                    <DeptNode
+                      key={dept.deptId}
+                      dept={dept}
+                      selectedDeptId={selectedDeptId}
+                      expandedDeptIds={expandedDeptIds}
+                      forceExpanded={forceExpandDeptTree}
+                      onSelect={(item) =>
+                        setSelectedDeptId((prev) => (prev === item.deptId ? null : item.deptId))
+                      }
+                      onToggle={toggleDeptExpand}
+                      onAddChild={(item) => openCreateDeptDialog(item.deptId)}
+                      onEdit={openEditDeptDialog}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </SectionCard>
@@ -1081,7 +1257,6 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
                     </TableCell>
                     <TableCell className="py-4 text-right">
                       <TableRowActions
-                        iconOnly
                         align="end"
                         actions={[
                           {
@@ -1172,3 +1347,4 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
     </div>
   );
 };
+

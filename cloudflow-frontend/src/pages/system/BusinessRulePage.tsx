@@ -336,7 +336,6 @@ export const BusinessRulePage = () => {
               <TableCell>
                 <TableRowActions
                   align="end"
-                  iconOnly
                   actions={[{ label: '编辑规则', icon: <Edit size={15} />, onClick: () => { setEditingRule(rule); setForm({ ...rule }); }, tone: 'neutral' }]}
                 />
               </TableCell>
@@ -426,7 +425,6 @@ export const BusinessRulePage = () => {
                         <TableCell>
                           <TableRowActions
                             align="end"
-                            iconOnly
                             actions={[
                               { label: '发布版本', icon: <Play size={15} />, hidden: version.status !== 'DRAFT', onClick: () => setConfirmState({ type: 'publish', version }), tone: 'success' },
                               { label: '回滚版本', icon: <Undo2 size={15} />, hidden: version.status === 'DRAFT', onClick: () => setConfirmState({ type: 'rollback', version }), tone: 'warning' },
@@ -580,3 +578,4 @@ export const BusinessRulePage = () => {
 };
 
 export default BusinessRulePage;
+
