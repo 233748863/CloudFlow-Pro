@@ -46,7 +46,15 @@ public class OnlineUserServiceImpl implements OnlineUserService {
         boolean isAdmin = SecurityUtils.isAdmin();
         Long currentTenantId = SecurityUtils.getTenantId();
 
-        List<String> tokenValues = tokenService.searchTokenValue("", 0, -1, false);
+        LinkedHashSet<String> tokenValues = new LinkedHashSet<>();
+        List<String> searchedTokens = tokenService.searchTokenValue("", 0, -1, false);
+        if (!CollectionUtils.isEmpty(searchedTokens)) {
+            tokenValues.addAll(searchedTokens);
+        }
+        if (StringUtils.hasText(currentToken)) {
+            tokenValues.add(currentToken);
+        }
+
         if (CollectionUtils.isEmpty(tokenValues)) {
             return new PageResult<>(List.of(), 0, normalizePageNum(actualPageQuery.getPageNum()), normalizePageSize(actualPageQuery.getPageSize()));
         }

@@ -36,7 +36,7 @@ public class BusinessRuleServiceImpl extends ServiceImpl<BusinessRuleMapper, Bus
         implements IBusinessRuleService {
 
     private static final Long DEFAULT_TENANT_ID = 100000L;
-    private static final Set<String> ALLOWED_EFFECTS = Set.of("BLOCK", "WARN", "PASS");
+    private static final Set<String> ALLOWED_EFFECTS = Set.of("BLOCK", "ALERT", "WARN", "PASS");
     private static final Set<String> ALLOWED_VERSION_STATUS = Set.of("DRAFT", "PUBLISHED", "ARCHIVED");
 
     private final BusinessRuleVersionMapper versionMapper;
@@ -361,7 +361,7 @@ public class BusinessRuleServiceImpl extends ServiceImpl<BusinessRuleMapper, Bus
         rule.setModule(rule.getModule().trim().toUpperCase());
         rule.setEffect(StringUtils.hasText(rule.getEffect()) ? rule.getEffect().trim().toUpperCase() : "WARN");
         if (!ALLOWED_EFFECTS.contains(rule.getEffect())) {
-            throw new IllegalArgumentException("规则效果仅支持BLOCK/WARN/PASS");
+            throw new IllegalArgumentException("规则效果仅支持BLOCK/ALERT/WARN/PASS");
         }
         if (rule.getEnabled() == null) {
             rule.setEnabled(1);

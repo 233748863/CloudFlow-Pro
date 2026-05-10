@@ -932,6 +932,8 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(616, '登录日志',   6, 13, '/system
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(617, '在线用户',   6, 14, '/system/online',      'pages/system/OnlineUserPage',   NULL, 0, 0, 'C', '0', '0', 'system:online:list',       'Monitor',         'admin', NOW(), '', null, '在线用户管理');
 
+INSERT INTO cloud_flow_db.sys_menu VALUES(622, '强制下线',   617, 1, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:online:forceLogout', '#',              'admin', NOW(), '', null, '在线用户强制下线权限');
+
 INSERT INTO cloud_flow_db.sys_menu VALUES(630, '规则中心',   6, 15, '/system/rules',       'pages/system/BusinessRulePage', NULL, 0, 0, 'C', '0', '0', 'system:rule:list',         'ListChecks',      'admin', NOW(), '', null, '业务规则阈值配置');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(631, '规则编辑',   630, 1, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:rule:edit',         '#',               'admin', NOW(), '', null, '业务规则编辑权限');

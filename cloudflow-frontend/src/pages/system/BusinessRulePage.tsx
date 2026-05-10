@@ -49,14 +49,37 @@ const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dar
 
 const effectClassName: Record<string, string> = {
   BLOCK: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+  ALERT: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
   WARN: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
   PASS: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+};
+
+const effectLabelMap: Record<string, string> = {
+  BLOCK: '拦截',
+  ALERT: '告警',
+  WARN: '预警',
+  PASS: '放行',
 };
 
 const statusClassName: Record<string, string> = {
   DRAFT: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
   PUBLISHED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
   ARCHIVED: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+};
+
+const statusLabelMap: Record<string, string> = {
+  DRAFT: '草稿',
+  PUBLISHED: '已发布',
+  ARCHIVED: '已归档',
+};
+
+const hitResultLabelMap: Record<string, string> = {
+  PASSED: '通过',
+  REJECTED: '拒绝',
+  BLOCK: '拦截',
+  ALERT: '告警',
+  WARN: '预警',
+  PASS: '放行',
 };
 
 const normalizeListResponse = <T,>(response: any) => {
@@ -75,9 +98,9 @@ const normalizeListResponse = <T,>(response: any) => {
 
 const formatDateTime = (value?: string) => value ? value.replace('T', ' ').slice(0, 19) : '-';
 
-const Badge: React.FC<{ value?: string; classNameMap?: Record<string, string> }> = ({ value, classNameMap = effectClassName }) => (
+const Badge: React.FC<{ value?: string; classNameMap?: Record<string, string>; labelMap?: Record<string, string> }> = ({ value, classNameMap = effectClassName, labelMap = effectLabelMap }) => (
   <span className={cn('rounded-full border px-2.5 py-1 text-xs font-medium', classNameMap[value || ''] || statusClassName.ARCHIVED)}>
-    {value || '-'}
+    {value ? labelMap[value] || value : '-'}
   </span>
 );
 
@@ -418,7 +441,7 @@ export const BusinessRulePage = () => {
                         <TableCell className="font-mono text-xs">{version.ruleCode}</TableCell>
                         <TableCell>{version.thresholdValue ?? '-'}</TableCell>
                         <TableCell><Badge value={version.effect} /></TableCell>
-                        <TableCell><Badge value={version.status} classNameMap={statusClassName} /></TableCell>
+                        <TableCell><Badge value={version.status} classNameMap={statusClassName} labelMap={statusLabelMap} /></TableCell>
                         <TableCell>{version.publisherName || '-'}</TableCell>
                         <TableCell>{formatDateTime(version.publishedTime)}</TableCell>
                         <TableCell className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</TableCell>
@@ -454,9 +477,10 @@ export const BusinessRulePage = () => {
                     <SelectTrigger className="h-10 w-full sm:w-36"><SelectValue placeholder="结果" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={ALL_VALUE}>全部结果</SelectItem>
-                      <SelectItem value="BLOCK">BLOCK</SelectItem>
-                      <SelectItem value="WARN">WARN</SelectItem>
-                      <SelectItem value="PASS">PASS</SelectItem>
+                      <SelectItem value="BLOCK">拦截</SelectItem>
+                      <SelectItem value="ALERT">告警</SelectItem>
+                      <SelectItem value="WARN">预警</SelectItem>
+                      <SelectItem value="PASS">放行</SelectItem>
                     </SelectContent>
                   </Select>
                   <Button type="submit" size="sm">查询</Button>
@@ -492,7 +516,7 @@ export const BusinessRulePage = () => {
                         <TableCell>{hit.thresholdValue ?? '-'}</TableCell>
                         <TableCell>{hit.actualValue ?? '-'}</TableCell>
                         <TableCell><Badge value={hit.effect} /></TableCell>
-                        <TableCell><Badge value={hit.hitResult} /></TableCell>
+                        <TableCell><Badge value={hit.hitResult} labelMap={hitResultLabelMap} /></TableCell>
                         <TableCell>{formatDateTime(hit.createdTime)}</TableCell>
                       </TableRow>
                     ))}
@@ -538,9 +562,10 @@ export const BusinessRulePage = () => {
                 <Select value={form.effect} onValueChange={(value) => setForm((current) => current ? { ...current, effect: value as BusinessRule['effect'] } : current)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="WARN">WARN</SelectItem>
-                    <SelectItem value="BLOCK">BLOCK</SelectItem>
-                    <SelectItem value="PASS">PASS</SelectItem>
+                    <SelectItem value="WARN">预警</SelectItem>
+                    <SelectItem value="ALERT">告警</SelectItem>
+                    <SelectItem value="BLOCK">拦截</SelectItem>
+                    <SelectItem value="PASS">放行</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

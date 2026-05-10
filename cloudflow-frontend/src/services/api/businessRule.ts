@@ -1,6 +1,6 @@
 import request from './request';
 
-export type RuleEffect = 'BLOCK' | 'WARN' | 'PASS';
+export type RuleEffect = 'BLOCK' | 'ALERT' | 'WARN' | 'PASS';
 
 export interface BusinessRule {
   id?: number;
