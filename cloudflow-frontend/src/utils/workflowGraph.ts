@@ -67,6 +67,9 @@ const hasNodeCondition = (node?: WorkflowGraphNode): boolean => {
   return typeof candidate === 'string' && !!candidate.trim();
 };
 
+const isEndNode = (node?: WorkflowGraphNode): boolean =>
+  String(node?.type || '').toUpperCase() === NodeType.END;
+
 const isBranchEdge = (
   edge: WorkflowGraphEdge,
   nodeMap: Map<string, WorkflowGraphNode>,
@@ -76,11 +79,7 @@ const isBranchEdge = (
   }
 
   const targetNode = nodeMap.get(edge.target);
-  return (
-    String(targetNode?.type || '').toUpperCase() === NodeType.CONDITION ||
-    !!extractEdgeCondition(edge) ||
-    hasNodeCondition(targetNode)
-  );
+  return !!extractEdgeCondition(edge) || hasNodeCondition(targetNode);
 };
 
 // 默认边优先代表主干，只有单条且非条件边时才回退为主干
@@ -124,6 +123,61 @@ const collectGraphSubtreeIds = (
   }
 
   return idsToRemove;
+};
+
+const collectRemovableSubtreeIds = (
+  graph: WorkflowGraphDefinition,
+  startIds: string[],
+): Set<string> => {
+  const idsToRemove = collectGraphSubtreeIds(graph, startIds);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    idsToRemove.forEach((nodeId) => {
+      const hasExternalIncoming = graph.edges.some(
+        (edge) => edge.target === nodeId && !idsToRemove.has(edge.source),
+      );
+      if (hasExternalIncoming) {
+        idsToRemove.delete(nodeId);
+        changed = true;
+      }
+    });
+  }
+
+  return idsToRemove;
+};
+
+const resolveLinearEndNodeId = (
+  graph: WorkflowGraphDefinition,
+  startId: string,
+): string | null => {
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const visited = new Set<string>();
+  let currentId: string | null = startId;
+
+  while (currentId) {
+    if (visited.has(currentId)) {
+      return null;
+    }
+    visited.add(currentId);
+
+    const currentNode = nodeMap.get(currentId);
+    if (!currentNode) {
+      return null;
+    }
+    if (isEndNode(currentNode)) {
+      return currentId;
+    }
+
+    const outgoingEdges = graph.edges.filter((edge) => edge.source === currentId);
+    if (outgoingEdges.length !== 1) {
+      return null;
+    }
+    currentId = outgoingEdges[0].target;
+  }
+
+  return null;
 };
 
 /**
@@ -176,7 +230,11 @@ export const assertWorkflowGraphIntegrity = (
   const startNode = startNodes[0];
 
   incomingCount.forEach((count, nodeId) => {
-    if (nodeId !== startNode.id && count > 1) {
+    if (nodeId === startNode.id || count <= 1) {
+      return;
+    }
+    const node = nodeMap.get(nodeId);
+    if (!isEndNode(node)) {
       throw new Error(`暂不支持多入边汇聚节点，请先拆分节点: ${nodeId}`);
     }
   });
@@ -185,6 +243,9 @@ export const assertWorkflowGraphIntegrity = (
     const defaultEdges = edges.filter((edge) => isDefaultEdge(edge));
     if (defaultEdges.length > 1) {
       throw new Error(`节点存在多条默认连线: ${nodeId}`);
+    }
+    if (isEndNode(nodeMap.get(nodeId)) && edges.length > 0) {
+      throw new Error(`结束节点不能配置后继连线: ${nodeId}`);
     }
   });
   const reachable = new Set<string>();
@@ -315,6 +376,21 @@ export const findWorkflowGraphParentNodeId = (
   return graph.edges.find((edge) => edge.target === nodeId)?.source || null;
 };
 
+export const getWorkflowGraphIncomingEdges = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): WorkflowGraphEdge[] => {
+  return graph.edges.filter((edge) => edge.target === nodeId);
+};
+
+export const isWorkflowGraphSharedEndNode = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): boolean => {
+  const node = findWorkflowGraphNode(graph, nodeId);
+  return isEndNode(node) && getWorkflowGraphIncomingEdges(graph, nodeId).length > 1;
+};
+
 /**
  * 返回指定节点的条件分支根节点 ID 列表。
  */
@@ -402,6 +478,24 @@ export const countWorkflowGraphBranches = (
   nodeId: string,
 ): number => {
   return getWorkflowGraphBranchChildIds(graph, nodeId).length;
+};
+
+export const findWorkflowGraphBranchSharedEndId = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): string | null => {
+  const branchChildIds = getWorkflowGraphBranchChildIds(graph, nodeId);
+  if (branchChildIds.length < 2) {
+    return null;
+  }
+
+  const endIds = branchChildIds.map((branchId) => resolveLinearEndNodeId(graph, branchId));
+  const [firstEndId] = endIds;
+  if (!firstEndId || endIds.some((endId) => endId !== firstEndId)) {
+    return null;
+  }
+
+  return isWorkflowGraphSharedEndNode(graph, firstEndId) ? firstEndId : null;
 };
 /**
  * 在指定节点后插入一段新的子图，并保留原有主干后继。
@@ -583,6 +677,7 @@ export const insertWorkflowGraphNodeAfter = (
     newNode.id,
   );
 };
+
 /**
  * 用新的主干节点替换当前后继，并删除被截断的旧后续子图。
  */
@@ -601,11 +696,14 @@ export const replaceWorkflowGraphNextNode = (
   const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
   const mainEdge = resolveGraphMainEdge(graph, parentId, nodeMap);
   const idsToRemove = mainEdge
-    ? collectGraphSubtreeIds(graph, [mainEdge.target])
+    ? collectRemovableSubtreeIds(graph, [mainEdge.target])
     : new Set<string>();
 
   const edges = graph.edges.filter(
-    (edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target),
+    (edge) =>
+      edge !== mainEdge &&
+      !idsToRemove.has(edge.source) &&
+      !idsToRemove.has(edge.target),
   );
   const hasRemainingBranches = edges.some((edge) => edge.source === parentId);
   edges.push({
@@ -744,14 +842,9 @@ export const removeWorkflowGraphNode = (
       return undefined;
     }
 
-    const singleTargetType = String(singleTarget.type || '').toUpperCase();
     const targetCondition =
       typeof singleTarget.condition === 'string' ? singleTarget.condition.trim() : '';
-    if (
-      singleTargetType === NodeType.CONDITION ||
-      !!extractEdgeCondition(singleEdge) ||
-      !!targetCondition
-    ) {
+    if (!!extractEdgeCondition(singleEdge) || !!targetCondition) {
       return undefined;
     }
 
@@ -780,17 +873,20 @@ export const removeWorkflowGraphNode = (
       });
   }
 
+  const removableIds = collectRemovableSubtreeIds(graph, [...idsToRemove]);
+  removableIds.add(nodeId);
+  const nodes = graph.nodes.filter((node) => !removableIds.has(node.id));
   let edges = graph.edges.filter(
-    (edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target),
+    (edge) => !removableIds.has(edge.source) && !removableIds.has(edge.target),
   );
 
-  if (keepTargetId) {
+  if (keepTargetId && !removableIds.has(keepTargetId)) {
     const buildEdgeKey = (edge: WorkflowGraphEdge) =>
       `${edge.source}->${edge.target}|${extractEdgeCondition(edge) || ''}|${isDefaultEdge(edge) ? '1' : '0'}`;
     const existingEdgeKeys = new Set(edges.map((edge) => buildEdgeKey(edge)));
 
     incomingEdges
-      .filter((edge) => !idsToRemove.has(edge.source))
+      .filter((edge) => !removableIds.has(edge.source))
       .forEach((edge) => {
         const rewiredEdge: WorkflowGraphEdge = {
           ...edge,
@@ -806,7 +902,6 @@ export const removeWorkflowGraphNode = (
       });
   }
 
-  const nodes = graph.nodes.filter((node) => !idsToRemove.has(node.id));
   return { nodes, edges };
 };
 
@@ -823,18 +918,7 @@ export const removeWorkflowGraphBranch = (
     return graph;
   }
 
-  const idsToRemove = new Set<string>();
-  const stack = [branchId];
-  while (stack.length > 0) {
-    const currentId = stack.pop();
-    if (!currentId || idsToRemove.has(currentId)) {
-      continue;
-    }
-    idsToRemove.add(currentId);
-    graph.edges
-      .filter((edge) => edge.source === currentId)
-      .forEach((edge) => stack.push(edge.target));
-  }
+  const idsToRemove = collectRemovableSubtreeIds(graph, [branchId]);
 
   let edges = graph.edges.filter(
     (edge) => !idsToRemove.has(edge.source) && !idsToRemove.has(edge.target),

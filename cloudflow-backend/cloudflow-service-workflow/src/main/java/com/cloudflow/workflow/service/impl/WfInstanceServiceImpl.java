@@ -508,6 +508,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
                 detail.put("createTime", history.getCreateTime());
                 detail.put("completeTime", history.getCreateTime());
                 detail.put("durationSeconds", history.getDurationSeconds());
+                applyHistoryMetadata(detail, history.getVariablesChanged());
                 historyDetails.add(detail);
             }
         }
@@ -533,6 +534,24 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
             this::extractTraceSortTime,
             Comparator.nullsLast(Comparator.naturalOrder())));
         return historyDetails;
+    }
+
+    private void applyHistoryMetadata(Map<String, Object> detail, String variablesChanged) {
+        if (!StringUtils.hasText(variablesChanged)) {
+            return;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> metadata = objectMapper.readValue(variablesChanged, Map.class);
+            Object adminOverride = metadata.get("adminOverride");
+            if (Boolean.TRUE.equals(adminOverride) || "true".equalsIgnoreCase(String.valueOf(adminOverride))) {
+                detail.put("adminOverride", true);
+                detail.put("originalAssigneeId", metadata.get("originalAssigneeId"));
+                detail.put("originalAssigneeName", metadata.get("originalAssigneeName"));
+            }
+        } catch (Exception e) {
+            log.debug("[applyHistoryMetadata] 忽略无法解析的历史元数据: {}", e.getMessage());
+        }
     }
 
     private List<Map<String, Object>> buildTraceActiveDetails(List<WfTask> activeTasks,

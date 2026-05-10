@@ -377,10 +377,20 @@ export const TaskHandleModal = ({
   const [signatureMode, setSignatureMode] = useState<'add' | 'reduce'>('add');
 
   useEffect(() => {
-    if (isOpen && task && task.assigneeId === currentUser.id) {
+    const isTaskActionable =
+      task?.assigneeId === currentUser.id ||
+      Boolean(task?.assigneeRole && currentUser.role === task.assigneeRole) ||
+      currentUser.role === Role.ADMIN;
+    const canReadTask =
+      isOpen &&
+      !viewOnly &&
+      task &&
+      isTaskActionable &&
+      (task.status === TaskStatus.PENDING || task.status === TaskStatus.DELEGATED);
+    if (canReadTask) {
       readTask(task.id).catch(console.error);
     }
-  }, [currentUser.id, isOpen, task]);
+  }, [currentUser.id, currentUser.role, isOpen, task, viewOnly]);
 
   useEffect(() => {
     if (delegationMode && !hasTriedLoadUsers) {

@@ -13,7 +13,6 @@ import {
   GitBranch,
   FileText,
   CheckCircle2,
-  ArrowDown,
   Copy,
   PlayCircle,
   Undo2,
@@ -103,10 +102,13 @@ import {
   findWorkflowGraphMainTargetId,
   findWorkflowGraphNode,
   findWorkflowGraphParentNodeId,
+  findWorkflowGraphBranchSharedEndId,
+  getWorkflowGraphIncomingEdges,
   getWorkflowGraphBranchChildIds,
   isWorkflowGraphNodeInsideBranchScope,
   isWorkflowGraphNodeInBranchSubtree,
   isWorkflowGraphBranchRoot,
+  isWorkflowGraphSharedEndNode,
   insertWorkflowGraphNodeAfter,
   insertWorkflowGraphSubgraphAfter,
   moveWorkflowGraphNode,
@@ -342,6 +344,7 @@ interface QuickAddOption {
 }
 
 const quickAddOptionIconClassName = "text-slate-500 dark:text-slate-300";
+const workflowConnectorLineClassName = "bg-slate-300 dark:bg-slate-700";
 
 const buildQuickAddOptions = (
   canAddBranch: boolean,
@@ -1931,11 +1934,7 @@ const ConnectorDropZone = ({
   if (!isDraggingGlobal) {
     return (
       <div className="flex flex-col items-center">
-        <div className="h-8 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
-        <ArrowDown
-          size={14}
-          className="-mb-1 -mt-1 text-slate-300 dark:text-slate-700"
-        />
+        <div className={`h-10 w-0.5 ${workflowConnectorLineClassName}`}></div>
       </div>
     );
   }
@@ -1947,11 +1946,7 @@ const ConnectorDropZone = ({
   if (isInvalidSelfDrop) {
     return (
       <div className="flex flex-col items-center">
-        <div className="h-8 w-0.5 bg-slate-300 opacity-50 dark:bg-slate-700"></div>
-        <ArrowDown
-          size={14}
-          className="text-slate-300 -mt-1 mb-1 opacity-50 dark:text-slate-700"
-        />
+        <div className={`h-10 w-0.5 opacity-50 ${workflowConnectorLineClassName}`}></div>
       </div>
     );
   }
@@ -1991,10 +1986,6 @@ const ConnectorDropZone = ({
           {isOver ? "松开放置" : "拖入空位"}
         </span>
       </div>
-      <ArrowDown
-        size={14}
-        className={`-mb-1 -mt-1 ${isOver ? "text-cyan-500 dark:text-cyan-300" : "text-slate-300 dark:text-slate-700"}`}
-      />
     </div>
   );
 };
@@ -2008,7 +1999,9 @@ interface FlowNodeActionsContextValue {
   getNode: (nodeId: string) => EditableWorkflowNode | null;
   getBranchCount: (nodeId: string) => number;
   getBranchChildIds: (nodeId: string) => string[];
+  getBranchSharedEndId: (nodeId: string) => string | null;
   getMainTargetId: (nodeId: string) => string | null;
+  isSharedEndNode: (nodeId: string) => boolean;
   setDraggingGlobal: (value: boolean) => void;
   setDraggingNodeId: (id: string | null) => void;
   setActiveQuickAddId: (id: string | null) => void;
@@ -2025,7 +2018,9 @@ const flowNodeActionsFallback: FlowNodeActionsContextValue = {
   getNode: () => null,
   getBranchCount: () => 0,
   getBranchChildIds: () => [],
+  getBranchSharedEndId: () => null,
   getMainTargetId: () => null,
+  isSharedEndNode: () => false,
   setDraggingGlobal: noop as (value: boolean) => void,
   setDraggingNodeId: noop as (id: string | null) => void,
   setActiveQuickAddId: noop as (id: string | null) => void,
@@ -2063,6 +2058,9 @@ const FlowNode = ({
   const branchCount = branchChildIds.length || actions.getBranchCount(nodeId);
   const nextNodeId = actions.getMainTargetId(nodeId);
   const nextDisplayNode = nextNodeId ? actions.getNode(nextNodeId) : null;
+  const sharedEndNodeId = actions.getBranchSharedEndId(nodeId);
+  const sharedEndDisplayNode = sharedEndNodeId ? actions.getNode(sharedEndNodeId) : null;
+  const shouldRenderBranchMerge = Boolean(nextNodeId || sharedEndNodeId);
   const [isDragging, setIsDragging] = useState(false);
   const showQuickAdd = activeQuickAddId === nodeId;
   const isSelected = selectedNodeId === nodeId;
@@ -2090,6 +2088,7 @@ const FlowNode = ({
       ));
   const nodeMetaText = getNodeMetaText(displayNode, branchCount);
   const nodeAssigneeSummary = getNodeAssigneeSummary(displayNode);
+  const isSharedEndNode = displayNode.type === NodeType.END && actions.isSharedEndNode(nodeId);
 
   return (
     <div className="flex flex-col items-center relative group/node">
@@ -2173,7 +2172,7 @@ const FlowNode = ({
         </div>
 
         {/* END节点的添加按钮 - 在节点上方，稍微拉开距离防止挡住上面的线和卡片 */}
-        {displayNode.type === NodeType.END && (
+        {displayNode.type === NodeType.END && !isSharedEndNode && (
           <div
             className="absolute -top-6 left-1/2 -translate-x-1/2 z-30"
             style={{ pointerEvents: "auto" }}
@@ -2351,35 +2350,34 @@ const FlowNode = ({
 
       {/* 分支 */}
       {branchChildIds.length > 0 && (
-        <div className="flex flex-col items-center w-full mt-6 flex-none">
+        <div className="flex flex-col items-center w-full flex-none">
           {/* 从父节点到分支点的垂直连接线 */}
-          <div className="h-6 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
+          <div className={`h-6 w-0.5 ${workflowConnectorLineClassName}`}></div>
 
           {/* 分支点 - 菱形指示器 */}
           <div className="z-10 -mb-[1px] h-2.5 w-2.5 rotate-45 border border-slate-300 bg-slate-100 dark:border-slate-700 dark:bg-slate-900"></div>
 
           {/* 分支容器 */}
-          <div className="flex gap-12 relative pt-6 text-center w-full justify-center">
-            {/* 顶部的水平连接线 - 连接所有分支的开始端 */}
-            <div
-              className="absolute top-0 left-0 right-0 h-0.5 bg-slate-300 dark:bg-slate-700"
-              style={{
-                left: `${100 / branchChildIds.length / 2}%`,
-                right: `${100 / branchChildIds.length / 2}%`,
-              }}
-            ></div>
-
+          <div className="relative flex w-full justify-center text-center">
             {branchChildIds.map((branchId, index) => (
               <div
                 key={branchId}
-                className="flex flex-col items-center relative w-full"
+                className="relative flex min-w-[13rem] flex-1 flex-col items-center"
               >
-                {/* 从顶部水平线往下的垂线 */}
-                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-0.5 h-6 bg-slate-300 dark:bg-slate-700 -mt-6"></div>
+                <div className="relative h-10 w-full">
+                  {/* 顶部水平线由每列半段拼成，避免 gap/百分比造成错位 */}
+                  {index > 0 && (
+                    <div className={`absolute left-0 top-0 h-0.5 w-1/2 ${workflowConnectorLineClassName}`}></div>
+                  )}
+                  {index < branchChildIds.length - 1 && (
+                    <div className={`absolute right-0 top-0 h-0.5 w-1/2 ${workflowConnectorLineClassName}`}></div>
+                  )}
+                  <div className={`absolute left-1/2 top-0 h-10 w-0.5 -translate-x-1/2 ${workflowConnectorLineClassName}`}></div>
+                </div>
 
                 {/* 分支入口小标签 */}
-                <div className="absolute -top-10 left-1/2 -translate-x-1/2 z-10">
-                  <div className="whitespace-nowrap text-[10px] font-medium text-slate-500 dark:text-slate-400">
+                <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10">
+                  <div className="whitespace-nowrap rounded-sm bg-slate-50/95 px-1 text-[10px] font-medium text-slate-500 dark:bg-slate-950/95 dark:text-slate-400">
                     分支 {index + 1}
                   </div>
                 </div>
@@ -2398,23 +2396,46 @@ const FlowNode = ({
                   />
                 </div>
 
-                {/* 关键修复：底部自动填充延长线，利用 flex-1。如果本分支内容较短，这就自动把剩下的高度拉满，延展下垂线以合并入底部主干横线！ */}
-                <div className="w-0.5 min-h-[40px] bg-slate-300 flex-1 dark:bg-slate-700"></div>
+                {shouldRenderBranchMerge && (
+                  <div className={`w-0.5 min-h-[40px] flex-1 ${workflowConnectorLineClassName}`}></div>
+                )}
               </div>
             ))}
-
-            {/* 底部的闭合水平连接线 - 同步汇合所有的下边沿延长线 */}
-            <div
-              className="absolute bottom-0 left-0 right-0 h-0.5 bg-slate-300 dark:bg-slate-700"
-              style={{
-                left: `${100 / branchChildIds.length / 2}%`,
-                right: `${100 / branchChildIds.length / 2}%`,
-              }}
-            ></div>
           </div>
 
-          {/* 汇合点：表示所有并行支路收束为一，完美接上后方的流程 */}
-          <div className="w-3 h-3 bg-white border-2 border-slate-300 rounded-full z-10 -mt-1.5 dark:border-slate-700 dark:bg-slate-950"></div>
+          {shouldRenderBranchMerge && (
+            <div className="relative flex h-0 w-full justify-center">
+              {branchChildIds.map((branchId, index) => (
+                <div
+                  key={`${branchId}-merge`}
+                  className="relative min-w-[13rem] flex-1"
+                >
+                  {index > 0 && (
+                    <div className={`absolute left-0 top-0 h-0.5 w-1/2 ${workflowConnectorLineClassName}`}></div>
+                  )}
+                  {index < branchChildIds.length - 1 && (
+                    <div className={`absolute right-0 top-0 h-0.5 w-1/2 ${workflowConnectorLineClassName}`}></div>
+                  )}
+                </div>
+              ))}
+              <div className="absolute left-1/2 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-950"></div>
+            </div>
+          )}
+          {sharedEndNodeId && sharedEndDisplayNode && (
+            <div className="flex flex-col items-center w-full relative">
+              <div className={`h-8 w-0.5 ${workflowConnectorLineClassName}`}></div>
+              <FlowNode
+                nodeId={sharedEndNodeId}
+                invalidNodes={invalidNodes}
+                selectedNodeId={selectedNodeId}
+                isDraggingGlobal={isDraggingGlobal}
+                draggingNodeId={draggingNodeId}
+                activeQuickAddId={activeQuickAddId}
+                hoveredNodeId={hoveredNodeId}
+                isInsideBranch={isInsideBranch}
+              />
+            </div>
+          )}
         </div>
       )}
 
@@ -2442,7 +2463,7 @@ const FlowNode = ({
       )}
 
       {/* 结束节点: 因为添加节点永远是在被点加号的节点"后面"插入，如果是END节点，则是特例插入到END之前，所以连线也得对应过去 */}
-      {nextNodeId && nextDisplayNode?.type === NodeType.END && (
+      {nextNodeId && nextDisplayNode?.type === NodeType.END && !actions.isSharedEndNode(nextNodeId) && (
         <div className="flex flex-col items-center w-full relative">
           <ConnectorDropZone
             parentId={nodeId}
@@ -3554,7 +3575,11 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         return targetId;
       }
 
-      const incomingEdge = graph.edges.find((edge) => edge.target === targetId);
+      const incomingEdges = getWorkflowGraphIncomingEdges(graph, targetId);
+      if (incomingEdges.length > 1) {
+        return targetId;
+      }
+      const incomingEdge = incomingEdges[0];
       return incomingEdge?.source || null;
     };
 
@@ -3610,10 +3635,17 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         return;
       }
 
+      const anchorNode = findWorkflowGraphNode(graph, anchorId);
       const nextGraph =
-        nodeType === NodeType.END
-          ? replaceWorkflowGraphNextNode(graph, anchorId, buildNewNode())
-          : insertWorkflowGraphNodeAfter(graph, anchorId, buildNewNode());
+        anchorNode?.type === NodeType.END && isWorkflowGraphSharedEndNode(graph, anchorId)
+          ? graph
+          : nodeType === NodeType.END
+            ? replaceWorkflowGraphNextNode(graph, anchorId, buildNewNode())
+            : insertWorkflowGraphNodeAfter(graph, anchorId, buildNewNode());
+      if (nextGraph === graph) {
+        toast.error("共享结束节点前不能直接添加公共节点");
+        return;
+      }
       applyGraphChange(
         nextGraph,
         successMessage ? { successMessage } : undefined,
@@ -3645,6 +3677,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     // 修复：如果是在 END 节点上方的 + 点击添加分支，实际应当挂到 END 的前置父节点上
     if (parentNode?.type === NodeType.END) {
+      if (isWorkflowGraphSharedEndNode(currentGraph, targetId)) {
+        toast.error("共享结束节点不能直接添加分支");
+        return;
+      }
       const endParentId = findWorkflowGraphParentNodeId(currentGraph, targetId);
       if (endParentId) {
         parentId = endParentId;
@@ -3771,6 +3807,10 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
 
     if (dragNode.type === NodeType.START || dragNode.type === NodeType.END) {
       toast.error("开始和结束节点不能移动");
+      return;
+    }
+    if (isWorkflowGraphSharedEndNode(currentGraph, dropId)) {
+      toast.error("共享结束节点前的公共位置暂不支持拖拽调整");
       return;
     }
 
@@ -4063,8 +4103,12 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         countWorkflowGraphBranches(graphModelRef.current, nodeId),
       getBranchChildIds: (nodeId) =>
         getWorkflowGraphBranchChildIds(graphModelRef.current, nodeId),
+      getBranchSharedEndId: (nodeId) =>
+        findWorkflowGraphBranchSharedEndId(graphModelRef.current, nodeId),
       getMainTargetId: (nodeId) =>
         findWorkflowGraphMainTargetId(graphModelRef.current, nodeId),
+      isSharedEndNode: (nodeId) =>
+        isWorkflowGraphSharedEndNode(graphModelRef.current, nodeId),
       setDraggingGlobal,
       setDraggingNodeId,
       setActiveQuickAddId,

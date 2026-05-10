@@ -193,12 +193,23 @@ public class WorkflowGraphModelResolver {
 
         String startId = resolveSingleStartNodeId(nodeMap);
 
-        // 目前执行器尚未支持任意多入边汇聚，先在模型层阻断以保证行为确定性。
+        // 仅 END 允许多入边，用于表达多个排他分支汇入同一个结束节点。
         for (Map.Entry<String, Integer> entry : incomingCount.entrySet()) {
             String nodeId = entry.getKey();
             int inDegree = entry.getValue();
-            if (false && !nodeId.equals(startId) && inDegree > 1) {
+            if (nodeId.equals(startId) || inDegree <= 1) {
+                continue;
+            }
+            JsonNode targetNode = nodeMap.get(nodeId);
+            if (!"END".equalsIgnoreCase(text(targetNode, "type"))) {
                 throw WorkflowException.validationError("暂不支持多入边汇聚节点，请先拆分节点: " + nodeId);
+            }
+        }
+
+        for (Map.Entry<String, JsonNode> entry : nodeMap.entrySet()) {
+            if ("END".equalsIgnoreCase(text(entry.getValue(), "type"))
+                    && !outgoing.getOrDefault(entry.getKey(), List.of()).isEmpty()) {
+                throw WorkflowException.validationError("结束节点不能配置后继连线: " + entry.getKey());
             }
         }
 

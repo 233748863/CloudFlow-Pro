@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
+import { BaseDialog, ConfirmDialog, Pagination, TableRowActions } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
@@ -742,7 +742,7 @@ export const TemplateManagement: React.FC = () => {
                       <TableHead className="w-[19%]">标签</TableHead>
                       <TableHead className="w-[12%]">使用次数</TableHead>
                       <TableHead className="w-[10%]">状态</TableHead>
-                      <TableActionHead className="w-24">操作</TableActionHead>
+                      <TableActionHead className="w-40">操作</TableActionHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -777,26 +777,32 @@ export const TemplateManagement: React.FC = () => {
                               {template.status === 'active' ? '启用' : '禁用'}
                             </span>
                           </TableCell>
-                          <TableCell className="py-3">
-                            <div className="flex items-center justify-end gap-1">
-                              <RowActionButton
-                                label="编辑模板"
-                                icon={<Edit className="h-4 w-4" />}
-                                onClick={() => openTemplateModal(template)}
-                              />
-                              <RowActionButton
-                                label="删除模板"
-                                icon={<Trash2 className="h-4 w-4" />}
-                                tone="danger"
-                                onClick={() =>
-                                  setDeleteTarget({
-                                    type: 'template',
-                                    id: template.id,
-                                    name: template.name,
-                                  })
-                                }
-                              />
-                            </div>
+                          <TableCell className="whitespace-nowrap py-3 text-right">
+                            <TableRowActions
+                              align="end"
+                              className="gap-1"
+                              actions={[
+                                {
+                                  label: '编辑',
+                                  icon: <Edit size={16} />,
+                                  onClick: () => openTemplateModal(template),
+                                  tone: 'neutral',
+                                  semantic: 'edit',
+                                },
+                                {
+                                  label: '删除',
+                                  icon: <Trash2 size={16} />,
+                                  onClick: () =>
+                                    setDeleteTarget({
+                                      type: 'template',
+                                      id: template.id,
+                                      name: template.name,
+                                    }),
+                                  tone: 'danger',
+                                  semantic: 'delete',
+                                },
+                              ]}
+                            />
                           </TableCell>
                         </TableRow>
                       ))

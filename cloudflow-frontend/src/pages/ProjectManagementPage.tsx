@@ -7,7 +7,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { projectApi, Project, ProjectDependency, ProjectDetail, ProjectMember, ProjectMilestone, ProjectRisk, ProjectWbsTask } from '@/services/api/project';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
 import { contractApi, OaContract } from '@/services/api/contractRisk';
-import { getUserList, SysUser } from '@/services/api/auth';
+import { getDeptTree, getUserList, SysDept, SysUser } from '@/services/api/auth';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -116,6 +116,12 @@ const GANTT_MARKER_SIZE = 16;
 const formatMoney = (value?: number) => `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const normalizeRows = <T,>(result: T[] | { rows?: T[]; records?: T[] } | null | undefined): T[] =>
   Array.isArray(result) ? result : result?.rows || result?.records || [];
+const flattenDeptOptions = (items: SysDept[] = [], prefix = ''): Array<{ label: string; value: number }> =>
+  items.flatMap((item) => {
+    const label = prefix ? `${prefix} / ${item.deptName}` : item.deptName;
+    const current = item.deptId ? [{ label, value: item.deptId }] : [];
+    return [...current, ...flattenDeptOptions(item.children || [], label)];
+  });
 const getUserDisplayText = (user?: Partial<SysUser> | null, fallbackName?: string) => {
   const primary = String(user?.nickName || fallbackName || user?.userName || '').trim();
   const secondary = [
@@ -289,8 +295,10 @@ export default function ProjectManagementPage() {
   const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
   const [contractOptions, setContractOptions] = useState<OaContract[]>([]);
   const [userOptions, setUserOptions] = useState<SysUser[]>([]);
+  const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const selectedOwner = form.ownerId ? userOptions.find((item) => item.userId === form.ownerId) : undefined;
   const selectedMember = memberForm.userId ? userOptions.find((item) => item.userId === memberForm.userId) : undefined;
+  const selectedDept = form.deptId ? deptOptions.find((item) => item.value === form.deptId) : undefined;
 
   const totalPages = useMemo(() => Math.max(1, Math.ceil(total / 10)), [total]);
 
@@ -309,14 +317,16 @@ export default function ProjectManagementPage() {
 
   const loadReferences = async () => {
     try {
-      const [customerResult, contractResult, userResult] = await Promise.all([
+      const [customerResult, contractResult, userResult, deptTreeResult] = await Promise.all([
         crmApi.listCustomers({ pageNum: 1, pageSize: 200 }),
         contractApi.list({ pageNum: 1, pageSize: 200 }),
         getUserList({ pageNum: 1, pageSize: 200 }) as Promise<SysUser[] | { rows?: SysUser[]; records?: SysUser[] }>,
+        getDeptTree() as Promise<SysDept[]>,
       ]);
       setCustomerOptions(customerResult.rows || []);
       setContractOptions(contractResult.rows || []);
       setUserOptions(normalizeRows(userResult));
+      setDeptOptions(flattenDeptOptions(deptTreeResult || []));
     } catch (error) {
       toast.error(getErrorMessage(error, '加载项目候选数据失败'));
     }
@@ -651,7 +661,19 @@ export default function ProjectManagementPage() {
               <Label className={fieldLabelClassName}>负责人</Label>
               <Select value={form.ownerId ? String(form.ownerId) : 'NONE'} onValueChange={(value) => {
                 const user = userOptions.find((item) => String(item.userId) === value);
-                setForm((prev) => ({ ...prev, ownerId: value === 'NONE' ? undefined : Number(value), ownerName: user?.nickName || user?.userName || '' }));
+                setForm((prev) => {
+                  if (value === 'NONE') {
+                    return { ...prev, ownerId: undefined, ownerName: '' };
+                  }
+
+                  return {
+                    ...prev,
+                    ownerId: Number(value),
+                    ownerName: user?.nickName || user?.userName || '',
+                    deptId: user?.deptId || prev.deptId,
+                    deptName: user?.deptName || prev.deptName,
+                  };
+                });
               }}>
                 <SelectTrigger>{renderSelectText(getUserDisplayText(selectedOwner, form.ownerName), '选择负责人')}</SelectTrigger>
                 <SelectContent>
@@ -670,7 +692,28 @@ export default function ProjectManagementPage() {
             </div>
             <div>
               <Label className={fieldLabelClassName}>部门</Label>
-              <Input value={String(form.deptName || '')} onChange={(e) => setForm((prev) => ({ ...prev, deptName: e.target.value }))} placeholder="例如：客户成功部" />
+              <Select value={form.deptId ? String(form.deptId) : 'NONE'} onValueChange={(value) => {
+                const dept = deptOptions.find((item) => String(item.value) === value);
+                setForm((prev) => ({
+                  ...prev,
+                  deptId: value === 'NONE' ? undefined : Number(value),
+                  deptName: value === 'NONE' ? '' : dept?.label || prev.deptName,
+                }));
+              }}>
+                <SelectTrigger>{renderSelectText(selectedDept?.label || form.deptName || '', '选择归属部门')}</SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">暂不指定部门</SelectItem>
+                  {form.deptId && !selectedDept ? (
+                    <SelectItem value={String(form.deptId)}>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">{form.deptName || '当前部门'}</span>
+                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">历史数据</span>
+                      </div>
+                    </SelectItem>
+                  ) : null}
+                  {deptOptions.map((item) => <SelectItem key={item.value} value={String(item.value)}>{item.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className={fieldLabelClassName}>预算金额（元）</Label>

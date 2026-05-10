@@ -504,7 +504,13 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
   const handleTaskUpdate = () => {
     void fetchTasks();
+    setSelectedTask(null);
     setIsModalOpen(false);
+  };
+
+  const handleCloseTaskModal = () => {
+    setIsModalOpen(false);
+    setSelectedTask(null);
   };
 
   const handleRefresh = () => {
@@ -1054,7 +1060,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
         task={selectedTask}
         availableForms={savedForms}
         currentUser={user}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseTaskModal}
         onComplete={handleTaskUpdate}
         viewOnly={centerMode !== 'pending'}
       />

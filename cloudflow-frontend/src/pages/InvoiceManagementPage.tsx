@@ -19,6 +19,8 @@ type InvoiceDialog =
   | { type: 'writeoff'; item: Invoice }
   | null;
 
+type BindTargetType = 'NONE' | 'EXPENSE' | 'PAYMENT';
+
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300';
 
 const statusLabelMap: Record<string, string> = {
@@ -69,6 +71,8 @@ const emptyWriteoff: InvoiceWriteoff = {
 const formatMoney = (value?: number) =>
   `¥${Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const resolvePageRows = <T,>(page?: { rows?: T[]; records?: T[] } | null) => page?.rows || page?.records || [];
+
 export default function InvoiceManagementPage() {
   const [rows, setRows] = useState<Invoice[]>([]);
   const [keyword, setKeyword] = useState('');
@@ -78,6 +82,7 @@ export default function InvoiceManagementPage() {
   const [invoiceForm, setInvoiceForm] = useState<Invoice>(emptyInvoice);
   const [writeoffForm, setWriteoffForm] = useState<InvoiceWriteoff>(emptyWriteoff);
   const [writeoffHistory, setWriteoffHistory] = useState<InvoiceWriteoff[]>([]);
+  const [bindTargetType, setBindTargetType] = useState<BindTargetType>('NONE');
   const [saving, setSaving] = useState(false);
   const [voidTarget, setVoidTarget] = useState<Invoice | null>(null);
 
@@ -116,7 +121,7 @@ export default function InvoiceManagementPage() {
         invoiceDirection: direction || undefined,
         status: status || undefined,
       });
-      setRows(result.rows || []);
+      setRows(resolvePageRows(result));
     } catch (error) {
       toast.error(getErrorMessage(error, '加载发票失败'));
     }
@@ -130,10 +135,10 @@ export default function InvoiceManagementPage() {
         crmApi.listReceivables({ pageNum: 1, pageSize: 100 }),
         contractApi.list({ pageNum: 1, pageSize: 100 }),
       ]);
-      setExpenseClaims(expenseResult.rows || []);
-      setPaymentRequests(paymentResult.rows || []);
-      setReceivables(receivableResult.rows || []);
-      setContracts(contractResult.rows || []);
+      setExpenseClaims(resolvePageRows(expenseResult));
+      setPaymentRequests(resolvePageRows(paymentResult));
+      setReceivables(resolvePageRows(receivableResult));
+      setContracts(resolvePageRows(contractResult));
     } catch (error) {
       toast.error(getErrorMessage(error, '加载业务候选数据失败'));
     }
@@ -153,6 +158,7 @@ export default function InvoiceManagementPage() {
       setInvoiceForm(emptyInvoice);
       setWriteoffForm(emptyWriteoff);
       setWriteoffHistory([]);
+      setBindTargetType('NONE');
       return;
     }
     if (next.type === 'invoice') {
@@ -162,6 +168,7 @@ export default function InvoiceManagementPage() {
     }
     if (next.type === 'bind') {
       setInvoiceForm(next.item);
+      setBindTargetType(next.item.paymentRequestId ? 'PAYMENT' : next.item.expenseClaimId ? 'EXPENSE' : 'NONE');
       setWriteoffHistory([]);
       return;
     }
@@ -563,16 +570,14 @@ export default function InvoiceManagementPage() {
             <div className="space-y-4">
               <div>
                 <Label className={fieldLabelClassName}>绑定对象类型</Label>
-                <Select value={invoiceForm.expenseClaimId ? 'EXPENSE' : invoiceForm.paymentRequestId ? 'PAYMENT' : 'NONE'} onValueChange={(value) => {
-                  if (value === 'EXPENSE') {
-                    setInvoiceForm((prev) => ({ ...prev, paymentRequestId: undefined }));
-                    return;
-                  }
-                  if (value === 'PAYMENT') {
-                    setInvoiceForm((prev) => ({ ...prev, expenseClaimId: undefined }));
-                    return;
-                  }
-                  setInvoiceForm((prev) => ({ ...prev, expenseClaimId: undefined, paymentRequestId: undefined }));
+                <Select value={bindTargetType} onValueChange={(value) => {
+                  const nextType = value as BindTargetType;
+                  setBindTargetType(nextType);
+                  setInvoiceForm((prev) => ({
+                    ...prev,
+                    expenseClaimId: nextType === 'EXPENSE' ? prev.expenseClaimId : undefined,
+                    paymentRequestId: nextType === 'PAYMENT' ? prev.paymentRequestId : undefined,
+                  }));
                 }}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -582,12 +587,13 @@ export default function InvoiceManagementPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {invoiceForm.paymentRequestId ? (
+              {bindTargetType === 'PAYMENT' ? (
                 <div>
                   <Label className={fieldLabelClassName}>付款单</Label>
                   <Select value={invoiceForm.paymentRequestId ? String(invoiceForm.paymentRequestId) : 'NONE'} onValueChange={(value) => {
                     const paymentRequestId = value === 'NONE' ? undefined : Number(value);
                     const matched = paymentRequests.find((item) => item.id === paymentRequestId);
+                    setBindTargetType('PAYMENT');
                     setInvoiceForm((prev) => ({
                       ...prev,
                       paymentRequestId,
@@ -604,12 +610,13 @@ export default function InvoiceManagementPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              ) : (
+              ) : bindTargetType === 'EXPENSE' ? (
                 <div>
                   <Label className={fieldLabelClassName}>报销单</Label>
                   <Select value={invoiceForm.expenseClaimId ? String(invoiceForm.expenseClaimId) : 'NONE'} onValueChange={(value) => {
                     const expenseClaimId = value === 'NONE' ? undefined : Number(value);
                     const matched = expenseClaims.find((item) => item.id === expenseClaimId);
+                    setBindTargetType('EXPENSE');
                     setInvoiceForm((prev) => ({
                       ...prev,
                       expenseClaimId,
@@ -624,6 +631,10 @@ export default function InvoiceManagementPage() {
                       {expenseOptions.map((item) => <SelectItem key={item.value} value={String(item.value)}>{item.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
+                </div>
+              ) : (
+                <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-500 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-400">
+                  先选择绑定类型，再选择对应单据。
                 </div>
               )}
             </div>

@@ -28,6 +28,9 @@ interface HistoryDetail {
   createTime?: string;
   completeTime?: string;
   duration?: string;
+  adminOverride?: boolean;
+  originalAssigneeId?: string | number;
+  originalAssigneeName?: string;
 }
 
 interface ActiveDetail {
@@ -129,6 +132,9 @@ const isDefaultEdge = (edge: { isDefault?: unknown }) => {
   return false;
 };
 
+const isEndGraphNode = (node?: WorkflowGraphDefinition['nodes'][number]) =>
+  String((node as any)?.type || '').toUpperCase() === NodeType.END;
+
 export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: ProcessTraceProps) => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -224,11 +230,55 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
     return map;
   }, [graphModel]);
 
+  const incomingMap = useMemo(() => {
+    const map = new Map<string, WorkflowGraphDefinition['edges']>();
+    (graphModel?.edges || []).forEach((edge) => {
+      const source = String((edge as any)?.source || '').trim();
+      const target = String((edge as any)?.target || '').trim();
+      if (!source || !target) {
+        return;
+      }
+      const current = map.get(target) || [];
+      current.push(edge);
+      map.set(target, current);
+    });
+    return map;
+  }, [graphModel]);
+
+  const resolveLinearEndNodeId = useCallback((startId: string): string | null => {
+    const visited = new Set<string>();
+    let currentId: string | null = startId;
+
+    while (currentId) {
+      if (visited.has(currentId)) {
+        return null;
+      }
+      visited.add(currentId);
+      const currentNode = nodeMap.get(currentId);
+      if (!currentNode) {
+        return null;
+      }
+      if (isEndGraphNode(currentNode)) {
+        return currentId;
+      }
+      const outgoingEdges = outgoingMap.get(currentId) || [];
+      if (outgoingEdges.length !== 1) {
+        return null;
+      }
+      currentId = String((outgoingEdges[0] as any)?.target || '').trim() || null;
+    }
+
+    return null;
+  }, [nodeMap, outgoingMap]);
+
   // 流程图递归渲染（直接基于 nodes+edges）
-  const renderNode = (nodeId: string, visited = new Set<string>()) => {
+  const renderNode = (nodeId: string, visited = new Set<string>(), forceRenderSharedEnd = false) => {
     if (!nodeId || visited.has(nodeId)) return null;
     const node = nodeMap.get(nodeId);
     if (!node) return null;
+    if (!forceRenderSharedEnd && isEndGraphNode(node) && (incomingMap.get(nodeId) || []).length > 1 && visited.size > 0) {
+      return null;
+    }
 
     const nextVisited = new Set(visited);
     nextVisited.add(nodeId);
@@ -265,6 +315,15 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
           .filter(Boolean);
       }
     }
+
+    const branchEndIds = branchNodeIds.map(resolveLinearEndNodeId);
+    const sharedEndNodeId =
+      branchNodeIds.length > 1 &&
+      branchEndIds[0] &&
+      branchEndIds.every((endId) => endId === branchEndIds[0]) &&
+      (incomingMap.get(branchEndIds[0]) || []).length > 1
+        ? branchEndIds[0]
+        : null;
 
     return (
       <div className="flex flex-col items-center">
@@ -311,14 +370,20 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
               <div className="mb-2 h-4 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
               <div className="flex justify-center items-start gap-8 relative">
                  <div className="absolute top-0 left-0 right-0 mx-auto h-0.5 bg-slate-300 dark:bg-slate-700" style={{ width: `calc(100% - 4rem)` }}></div>
-                 {branchNodeIds.map((branchId, idx) => (
-                    <div key={`${branchId}-${idx}`} className="flex flex-col items-center pt-4 relative">
-                       <div className="absolute top-0 h-4 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
-                       {renderNode(branchId, nextVisited)}
-                    </div>
-                 ))}
-              </div>
-           </div>
+                  {branchNodeIds.map((branchId, idx) => (
+                     <div key={`${branchId}-${idx}`} className="flex flex-col items-center pt-4 relative">
+                        <div className="absolute top-0 h-4 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
+                        {renderNode(branchId, nextVisited)}
+                     </div>
+                  ))}
+               </div>
+               {sharedEndNodeId && (
+                 <div className="flex flex-col items-center">
+                   <div className="h-6 w-0.5 bg-slate-300 dark:bg-slate-700"></div>
+                   {renderNode(sharedEndNodeId, nextVisited, true)}
+                 </div>
+               )}
+            </div>
         )}
 
         {nextNodeId && (
@@ -369,6 +434,11 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${actionStyle.bgColor} ${actionStyle.color}`}>
                       {actionStyle.label}
                     </span>
+                    {item.adminOverride && (
+                      <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-200">
+                        管理员代处理
+                      </span>
+                    )}
                   </div>
                   <div className="space-y-0.5 text-xs text-slate-500 dark:text-slate-400">
                     <div className="flex items-center gap-2">
@@ -377,6 +447,11 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
                       <span className="text-slate-300 dark:text-slate-700">·</span>
                       <span>{formatTime(item.completeTime || item.createTime)}</span>
                     </div>
+                    {item.adminOverride && item.originalAssigneeName && (
+                      <div className="text-[11px] text-amber-600 dark:text-amber-300">
+                        原处理人：{item.originalAssigneeName}
+                      </div>
+                    )}
                     {item.comment && (
                       <div className="mt-1 flex items-start gap-2">
                         <MessageSquare size={11} className="mt-0.5 flex-shrink-0 text-slate-400 dark:text-slate-500" />

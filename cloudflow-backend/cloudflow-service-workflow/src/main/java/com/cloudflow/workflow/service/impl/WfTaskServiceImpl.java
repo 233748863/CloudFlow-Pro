@@ -156,6 +156,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 history.setComment(comment);
                 history.setAction(normalizedAction);
                 history.setCreateTime(LocalDateTime.now());
+                applyAdminOverrideMetadata(history, task, currentUserId);
 
                 if (task.getCreateTime() != null) {
                     long durationSeconds = java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds();
@@ -193,7 +194,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 // 记录变量变更
                 if (editableVariables != null && !editableVariables.isEmpty()) {
                     try {
-                        history.setVariablesChanged(objectMapper.writeValueAsString(editableVariables));
+                        history.setVariablesChanged(mergeHistoryMetadata(history.getVariablesChanged(), editableVariables));
                         taskHistoryMapper.updateById(history);
                     } catch (Exception e) {
                         log.warn("[completeTask] 记录变量变更失败: {}", e.getMessage());
@@ -291,6 +292,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
             history.setComment(comment);
             history.setAction("REJECT");
             history.setCreateTime(LocalDateTime.now());
+            applyAdminOverrideMetadata(history, task, UserContext.getUserId());
 
             try {
                 Map<String, Object> rejectDetail = new HashMap<>();
@@ -298,7 +300,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
                 rejectDetail.put("sourceNodeKey", task.getNodeKey());
                 rejectDetail.put("targetNodeKey", targetNodeKey);
                 rejectDetail.put("reason", comment);
-                history.setVariablesChanged(objectMapper.writeValueAsString(rejectDetail));
+                history.setVariablesChanged(mergeHistoryMetadata(history.getVariablesChanged(), rejectDetail));
             } catch (Exception e) {
                 log.warn("[rejectTask] 序列化驳回详情失败: {}", e.getMessage());
             }
@@ -495,7 +497,8 @@ public class WfTaskServiceImpl implements IWfTaskService {
     public void readTask(String taskId, Long userId) {
         WfTask task = taskMapper.selectById(taskId);
         if (task == null) {
-            throw WorkflowException.taskNotFound(taskId);
+            markCompletedTaskReadAsNoop(taskId, userId);
+            return;
         }
         Long currentTenantId = UserContext.getTenantId();
         if (currentTenantId != null && !Objects.equals(currentTenantId, task.getTenantId())) {
@@ -517,6 +520,22 @@ public class WfTaskServiceImpl implements IWfTaskService {
             read.setReadTime(LocalDateTime.now());
             taskReadMapper.insert(read);
         }
+    }
+
+    private void markCompletedTaskReadAsNoop(String taskId, Long userId) {
+        WfTaskHistory history = taskHistoryMapper.selectOne(new LambdaQueryWrapper<WfTaskHistory>()
+                .eq(WfTaskHistory::getTaskId, taskId)
+                .orderByDesc(WfTaskHistory::getCreateTime)
+                .last("LIMIT 1"));
+        if (history == null) {
+            throw WorkflowException.taskNotFound(taskId);
+        }
+        WfProcessInstance instance = processInstanceMapper.selectById(history.getInstanceId());
+        if (instance == null) {
+            throw WorkflowException.instanceNotFound(history.getInstanceId());
+        }
+        permissionService.checkViewInstancePermission(instance);
+        log.debug("[readTask] 任务已完成，跳过已读标记, taskId={}, userId={}", taskId, userId);
     }
 
     @Override
@@ -637,6 +656,7 @@ public class WfTaskServiceImpl implements IWfTaskService {
         history.setComment(comment);
         history.setAction("COUNTERSIGN_" + voteResult);
         history.setCreateTime(LocalDateTime.now());
+        applyAdminOverrideMetadata(history, task, currentUserId);
         if (task.getCreateTime() != null) {
             history.setDurationSeconds((int) java.time.Duration.between(task.getCreateTime(), LocalDateTime.now()).getSeconds());
         }
@@ -807,6 +827,44 @@ public class WfTaskServiceImpl implements IWfTaskService {
         } catch (Exception e) {
             log.warn("[cleanupTaskReadData] 清理失败: {}", e.getMessage());
         }
+    }
+
+    private void applyAdminOverrideMetadata(WfTaskHistory history, WfTask task, Long operatorId) {
+        if (history == null || task == null || operatorId == null || task.getAssignee() == null) {
+            return;
+        }
+        if (Objects.equals(task.getAssignee(), operatorId) || !permissionService.isAdmin(operatorId)) {
+            return;
+        }
+        try {
+            history.setVariablesChanged(mergeHistoryMetadata(history.getVariablesChanged(), adminOverrideMetadata(task)));
+        } catch (Exception e) {
+            log.warn("[applyAdminOverrideMetadata] 记录管理员代处理元数据失败, taskId={}, error={}",
+                    task.getTaskId(), e.getMessage());
+        }
+    }
+
+    private Map<String, Object> adminOverrideMetadata(WfTask task) {
+        Map<String, Object> metadata = new LinkedHashMap<>();
+        metadata.put("adminOverride", true);
+        metadata.put("originalAssigneeId", task.getAssignee());
+        metadata.put("originalAssigneeName", task.getAssigneeName());
+        return metadata;
+    }
+
+    private String mergeHistoryMetadata(String existingJson, Map<String, Object> metadata) throws Exception {
+        Map<String, Object> merged = new LinkedHashMap<>();
+        if (StringUtils.hasText(existingJson)) {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> existing = objectMapper.readValue(existingJson, Map.class);
+            if (existing != null) {
+                merged.putAll(existing);
+            }
+        }
+        if (metadata != null && !metadata.isEmpty()) {
+            merged.putAll(metadata);
+        }
+        return objectMapper.writeValueAsString(merged);
     }
 
     /**

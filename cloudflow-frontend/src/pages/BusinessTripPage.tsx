@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Clock3,
   Download,
@@ -36,8 +36,10 @@ import {
   TableHead,
   TableHeader,
   Textarea,
+  UserSelector,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import type { UserBrief } from '@/types/workflow';
 
 const STATUS_OPTIONS = [
   { value: '', label: '全部状态' },
@@ -115,6 +117,20 @@ const formatAmount = (value?: number | null) => {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+};
+
+const calculateTripDays = (startDate?: string, endDate?: string) => {
+  if (!startDate || !endDate) {
+    return null;
+  }
+
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  if (Number.isNaN(start) || Number.isNaN(end) || end < start) {
+    return null;
+  }
+
+  return Math.round((end - start) / 86400000) + 1;
 };
 
 const InlineState: React.FC<{
@@ -198,6 +214,7 @@ export const BusinessTripPage: React.FC = () => {
   const [current, setCurrent] = useState<BusinessTrip | null>(null);
   const [detailTrip, setDetailTrip] = useState<BusinessTrip | null>(null);
   const [formData, setFormData] = useState<BusinessTrip>(createDefaultForm());
+  const [selectedCompanionIds, setSelectedCompanionIds] = useState<string[]>([]);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
   useEffect(() => {
@@ -210,6 +227,7 @@ export const BusinessTripPage: React.FC = () => {
   const hasActiveFilters = Boolean(searchParams.status || searchParams.destination);
   const currentStatusLabel = searchParams.status ? STATUS_LABELS[searchParams.status] || searchParams.status : '全部状态';
   const currentDestinationLabel = searchParams.destination || '全部目的地';
+  const formTripDays = calculateTripDays(formData.startDate, formData.endDate);
 
   const fetchList = async () => {
     setLoading(true);
@@ -245,6 +263,7 @@ export const BusinessTripPage: React.FC = () => {
   const handleAdd = () => {
     setCurrent(null);
     setFormData(createDefaultForm());
+    setSelectedCompanionIds([]);
     setShowDialog(true);
   };
 
@@ -252,6 +271,7 @@ export const BusinessTripPage: React.FC = () => {
     setShowDialog(false);
     setCurrent(null);
     setFormData(createDefaultForm());
+    setSelectedCompanionIds([]);
   };
 
   const closeDetailDialog = () => {
@@ -265,11 +285,29 @@ export const BusinessTripPage: React.FC = () => {
       const response = await businessTripApi.getInfo(id);
       setCurrent(response);
       setFormData({ ...createDefaultForm(), ...response });
+      setSelectedCompanionIds([]);
       setShowDialog(true);
     } catch (error) {
       toast.error(getErrorMessage(error, '获取出差申请详情失败'));
     }
   };
+
+  const handleCompanionChange = useCallback((userIds: string[]) => {
+    setSelectedCompanionIds(userIds);
+    if (userIds.length === 0) {
+      setFormData((prev) => ({ ...prev, companions: '' }));
+    }
+  }, []);
+
+  const handleCompanionUsersChange = useCallback((users: UserBrief[]) => {
+    if (!users.length) {
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      companions: users.map((user) => user.name).join('、'),
+    }));
+  }, []);
 
   const handleView = async (id: number) => {
     setShowDetail(true);
@@ -624,7 +662,9 @@ export const BusinessTripPage: React.FC = () => {
         open={showDialog}
         title={current ? '编辑出差申请' : '新建出差申请'}
         onClose={closeDialog}
-        width="wide"
+        maxWidthClassName="w-full sm:max-w-5xl"
+        panelClassName="max-h-[92vh]"
+        bodyClassName="max-h-[74vh] overflow-y-auto px-4 py-4 sm:px-6 sm:py-5"
         footer={(
           <>
             <Button variant="outline" onClick={closeDialog}>
@@ -636,192 +676,242 @@ export const BusinessTripPage: React.FC = () => {
           </>
         )}
       >
-        <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="space-y-5">
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
+              <h4 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">行程信息</h4>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    出发地
+                  </label>
+                  <Input
+                    className="h-11"
+                    type="text"
+                    value={formData.departure || ''}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, departure: event.target.value }))}
+                    placeholder="例如：北京"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    目的地
+                  </label>
+                  <Input
+                    className="h-11"
+                    type="text"
+                    value={formData.destination}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, destination: event.target.value }))}
+                    placeholder="例如：上海"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    开始日期
+                  </label>
+                  <DatePicker
+                    className="h-11"
+                    type="date"
+                    value={formData.startDate}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, startDate: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    结束日期
+                  </label>
+                  <DatePicker
+                    className="h-11"
+                    type="date"
+                    value={formData.endDate}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, endDate: event.target.value }))}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    交通方式
+                  </label>
+                  <Select
+                    value={formData.transportType || 'TRAIN'}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, transportType: value }))}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="请选择交通方式" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {TRANSPORT_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    住宿安排
+                  </label>
+                  <Select
+                    value={formData.accommodation || 'SELF'}
+                    onValueChange={(value) => setFormData((prev) => ({ ...prev, accommodation: value }))}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="请选择住宿安排" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ACCOMMODATION_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    预计费用
+                  </label>
+                  <Input
+                    className="h-11"
+                    type="number"
+                    value={formData.estimatedCost || ''}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, estimatedCost: parseFloat(event.target.value) || 0 }))}
+                    placeholder="0.00"
+                    step="0.01"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    关联项目
+                  </label>
+                  <Input
+                    className="h-11"
+                    type="text"
+                    value={formData.projectName || ''}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, projectName: event.target.value }))}
+                    placeholder="例如：华东客户拜访"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
+              <h4 className="mb-4 text-sm font-semibold text-slate-900 dark:text-slate-100">联系信息</h4>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    联系电话
+                  </label>
+                  <Input
+                    className="h-11"
+                    type="tel"
+                    value={formData.contactPhone || ''}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, contactPhone: event.target.value }))}
+                    placeholder="出差期间联系电话"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    紧急联系人
+                  </label>
+                  <Input
+                    className="h-11"
+                    type="text"
+                    value={formData.emergencyContact || ''}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, emergencyContact: event.target.value }))}
+                    placeholder="姓名"
+                  />
+                </div>
+                <div className="sm:col-span-2">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+                    紧急联系人电话
+                  </label>
+                  <Input
+                    className="h-11"
+                    type="tel"
+                    value={formData.emergencyPhone || ''}
+                    onChange={(event) => setFormData((prev) => ({ ...prev, emergencyPhone: event.target.value }))}
+                    placeholder="电话"
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                出发地
+                出差事由
               </label>
-              <Input
-                className="h-11"
-                type="text"
-                value={formData.departure || ''}
-                onChange={(event) => setFormData((prev) => ({ ...prev, departure: event.target.value }))}
-                placeholder="例如：北京"
+              <Textarea
+                className="min-h-[160px] resize-none"
+                value={formData.reason}
+                onChange={(event) => setFormData((prev) => ({ ...prev, reason: event.target.value }))}
+                placeholder="填写出差背景和目的"
               />
-            </div>
-            <div>
+            </section>
+
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                目的地
+                附件材料
               </label>
-              <Input
-                className="h-11"
-                type="text"
-                value={formData.destination}
-                onChange={(event) => setFormData((prev) => ({ ...prev, destination: event.target.value }))}
-                placeholder="例如：上海"
+              <FileUpload
+                value={formData.attachmentUrl || ''}
+                onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
+                maxCount={5}
               />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                开始日期
-              </label>
-              <DatePicker
-                className="h-11"
-                type="date"
-                value={formData.startDate}
-                onChange={(event) => setFormData((prev) => ({ ...prev, startDate: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                结束日期
-              </label>
-              <DatePicker
-                className="h-11"
-                type="date"
-                value={formData.endDate}
-                onChange={(event) => setFormData((prev) => ({ ...prev, endDate: event.target.value }))}
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                交通方式
-              </label>
-              <Select
-                value={formData.transportType || 'TRAIN'}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, transportType: value }))}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="请选择交通方式" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TRANSPORT_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                住宿安排
-              </label>
-              <Select
-                value={formData.accommodation || 'SELF'}
-                onValueChange={(value) => setFormData((prev) => ({ ...prev, accommodation: value }))}
-              >
-                <SelectTrigger className="h-11">
-                  <SelectValue placeholder="请选择住宿安排" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ACCOMMODATION_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                预计费用
-              </label>
-              <Input
-                className="h-11"
-                type="number"
-                value={formData.estimatedCost || ''}
-                onChange={(event) => setFormData((prev) => ({ ...prev, estimatedCost: parseFloat(event.target.value) || 0 }))}
-                placeholder="0.00"
-                step="0.01"
-                min="0"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                关联项目
-              </label>
-              <Input
-                className="h-11"
-                type="text"
-                value={formData.projectName || ''}
-                onChange={(event) => setFormData((prev) => ({ ...prev, projectName: event.target.value }))}
-                placeholder="例如：华东客户拜访"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                联系电话
-              </label>
-              <Input
-                className="h-11"
-                type="tel"
-                value={formData.contactPhone || ''}
-                onChange={(event) => setFormData((prev) => ({ ...prev, contactPhone: event.target.value }))}
-                placeholder="出差期间联系电话"
-              />
-            </div>
-            <div>
+            </section>
+          </div>
+
+          <aside className="space-y-4 lg:sticky lg:top-0 lg:self-start">
+            <section className="rounded-lg border border-slate-200 bg-slate-50/80 p-4 dark:border-slate-800 dark:bg-slate-900/50">
               <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
                 同行人员
               </label>
-              <Input
-                className="h-11"
-                type="text"
-                value={formData.companions || ''}
-                onChange={(event) => setFormData((prev) => ({ ...prev, companions: event.target.value }))}
-                placeholder="例如：张三、李四"
+              <UserSelector
+                value={selectedCompanionIds}
+                onChange={handleCompanionChange}
+                onUsersChange={handleCompanionUsersChange}
+                multiple
+                placeholder="搜索姓名、邮箱或部门"
+                dropdownPlacement="bottom"
               />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                紧急联系人
-              </label>
-              <Input
-                className="h-11"
-                type="text"
-                value={formData.emergencyContact || ''}
-                onChange={(event) => setFormData((prev) => ({ ...prev, emergencyContact: event.target.value }))}
-                placeholder="姓名"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-                紧急联系人电话
-              </label>
-              <Input
-                className="h-11"
-                type="tel"
-                value={formData.emergencyPhone || ''}
-                onChange={(event) => setFormData((prev) => ({ ...prev, emergencyPhone: event.target.value }))}
-                placeholder="电话"
-              />
-            </div>
-          </div>
+              {formData.companions ? (
+                <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-6 text-slate-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200">
+                  {formData.companions}
+                </div>
+              ) : null}
+            </section>
 
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              出差事由
-            </label>
-            <Textarea
-              className="min-h-[140px] resize-none"
-              value={formData.reason}
-              onChange={(event) => setFormData((prev) => ({ ...prev, reason: event.target.value }))}
-              placeholder="填写出差背景和目的"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              附件材料
-            </label>
-            <FileUpload
-              value={formData.attachmentUrl || ''}
-              onChange={(urls) => setFormData((prev) => ({ ...prev, attachmentUrl: urls }))}
-              maxCount={5}
-            />
-          </div>
+            <section className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/70">
+              <h4 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">行程摘要</h4>
+              <dl className="space-y-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">路线</dt>
+                  <dd className="max-w-[12rem] truncate font-medium text-slate-900 dark:text-slate-100">
+                    {(formData.departure || '-') + ' -> ' + (formData.destination || '-')}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">天数</dt>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">
+                    {formTripDays ? `${formTripDays} 天` : '-'}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">交通</dt>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">
+                    {TRANSPORT_LABELS[formData.transportType || ''] || '-'}
+                  </dd>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <dt className="text-slate-500 dark:text-slate-400">预算</dt>
+                  <dd className="font-medium text-slate-900 dark:text-slate-100">
+                    {formatAmount(formData.estimatedCost)}
+                  </dd>
+                </div>
+              </dl>
+            </section>
+          </aside>
         </div>
       </BaseDialog>
 
