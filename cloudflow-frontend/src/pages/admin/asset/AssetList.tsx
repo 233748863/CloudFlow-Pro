@@ -27,7 +27,7 @@ import {
   getAssetCategories,
   getAssetList,
   getAssetLogs,
-  getAssetQrCodeUrl,
+  getAssetQrCodeBlob,
   getAssetStatistics,
   repairAsset,
   returnAsset,
@@ -186,6 +186,14 @@ const formatAmount = (value?: number | null) => {
   })}`;
 };
 
+const escapeHtml = (value?: string | number | null) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;',
+}[char] || char));
+
 const AssetList: React.FC = () => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(false);
@@ -209,6 +217,9 @@ const AssetList: React.FC = () => {
   const [assetFormSubmitting, setAssetFormSubmitting] = useState(false);
   const [detailAsset, setDetailAsset] = useState<Asset | null>(null);
   const [qrAsset, setQrAsset] = useState<Asset | null>(null);
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
+  const [qrCodeLoading, setQrCodeLoading] = useState(false);
+  const [qrCodeError, setQrCodeError] = useState('');
   const [logAsset, setLogAsset] = useState<Asset | null>(null);
   const [assetLogs, setAssetLogs] = useState<AssetLog[]>([]);
   const [logLoading, setLogLoading] = useState(false);
@@ -229,6 +240,60 @@ const AssetList: React.FC = () => {
     void loadStats();
     void loadCategories();
   }, []);
+
+  useEffect(() => {
+    if (!qrAsset?.assetId) {
+      setQrCodeUrl('');
+      setQrCodeError('');
+      setQrCodeLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl = '';
+
+    const loadQrCode = async () => {
+      setQrCodeUrl('');
+      setQrCodeError('');
+      setQrCodeLoading(true);
+
+      try {
+        const blob = await getAssetQrCodeBlob(qrAsset.assetId);
+        const contentType = blob.type.toLowerCase();
+
+        if (blob.size === 0) {
+          throw new Error('二维码图片为空');
+        }
+        if (contentType && !contentType.startsWith('image/')) {
+          throw new Error('二维码接口未返回图片');
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(blob);
+        setQrCodeUrl(objectUrl);
+      } catch (error) {
+        if (!cancelled) {
+          setQrCodeError(getErrorMessage(error, '二维码加载失败'));
+        }
+      } finally {
+        if (!cancelled) {
+          setQrCodeLoading(false);
+        }
+      }
+    };
+
+    void loadQrCode();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [qrAsset?.assetId]);
 
   const loadData = async () => {
     setLoading(true);
@@ -462,18 +527,25 @@ const AssetList: React.FC = () => {
     if (!qrAsset?.assetId) {
       return;
     }
+    if (!qrCodeUrl) {
+      toast.error(qrCodeError || '二维码尚未加载完成');
+      return;
+    }
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       return;
     }
+    const escapedName = escapeHtml(qrAsset.name);
+    const escapedCode = escapeHtml(qrAsset.assetCode || '');
+    const escapedQrCodeUrl = escapeHtml(qrCodeUrl);
 
     printWindow.document.write(`
       <html>
         <head><title>打印资产标签</title></head>
         <body style="text-align:center;font-family:system-ui;padding:24px;">
-          <h2>${qrAsset.name}</h2>
-          <img src="${getAssetQrCodeUrl(qrAsset.assetId)}" width="200" />
-          <p>${qrAsset.assetCode || ''}</p>
+          <h2>${escapedName}</h2>
+          <img src="${escapedQrCodeUrl}" width="200" />
+          <p>${escapedCode}</p>
           <script>window.onload=function(){window.print();}<\/script>
         </body>
       </html>
@@ -889,7 +961,7 @@ const AssetList: React.FC = () => {
             <Button variant="outline" onClick={() => setQrAsset(null)}>
               关闭
             </Button>
-            <Button onClick={handlePrint}>
+            <Button onClick={handlePrint} disabled={qrCodeLoading || !qrCodeUrl}>
               <Printer size={14} className="mr-1.5" />
               打印标签
             </Button>
@@ -903,14 +975,27 @@ const AssetList: React.FC = () => {
               <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{qrAsset.assetCode || '-'}</div>
             </div>
             <div className="flex flex-col items-center justify-center gap-4">
-            <img
-              src={getAssetQrCodeUrl(qrAsset.assetId)}
-              alt="资产二维码"
-              className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-3"
-            />
-            <div className="text-sm text-slate-500 dark:text-slate-400">
-              {qrAsset.assetCode || '-'}
-            </div>
+              {qrCodeLoading ? (
+                <div className="flex h-52 w-52 items-center justify-center rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800">
+                  <RotateCcw className="h-5 w-5 animate-spin text-slate-400" />
+                </div>
+              ) : qrCodeError ? (
+                <InlineState
+                  title="二维码加载失败"
+                  description={qrCodeError}
+                  icon={<QrCode className="h-4 w-4" />}
+                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
+                />
+              ) : qrCodeUrl ? (
+                <img
+                  src={qrCodeUrl}
+                  alt="资产二维码"
+                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-3"
+                />
+              ) : null}
+              <div className="text-sm text-slate-500 dark:text-slate-400">
+                {qrAsset.assetCode || '-'}
+              </div>
             </div>
           </div>
         ) : null}

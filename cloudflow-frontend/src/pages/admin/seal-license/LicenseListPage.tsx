@@ -53,6 +53,8 @@ const emptyRenewalForm: OaLicenseRenewal = {
   attachmentUrl: '',
 };
 
+const EXPIRY_REMINDER_WINDOW_DAYS = 30;
+
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
 
 const getStatusBadge = (status?: string) => {
@@ -92,6 +94,11 @@ const getDaysUntil = (date?: string) => {
   const target = new Date(`${date}T00:00:00`);
   if (Number.isNaN(target.getTime())) return null;
   return Math.round((target.getTime() - today.getTime()) / 86400000);
+};
+
+const canRemindExpiry = (item: Pick<OaLicense, 'expireDate' | 'status'>) => {
+  const days = getDaysUntil(item.expireDate);
+  return item.status !== 'DISABLED' && days !== null && days <= EXPIRY_REMINDER_WINDOW_DAYS;
 };
 
 const getExpiryBadge = (expireDate?: string) => {
@@ -428,7 +435,7 @@ export const LicenseListPage: React.FC = () => {
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => setDetailLicense(item), tone: 'neutral' },
                             { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: isBorrowLocked(item) },
-                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !item.expireDate },
+                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !canRemindExpiry(item) },
                             { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' || isBorrowLocked(item) },
                             { label: '删除', icon: <Trash2 size={14} />, onClick: () => item.licenseId && setDeleteId(item.licenseId), tone: 'danger', hidden: isBorrowLocked(item) },
                           ]}

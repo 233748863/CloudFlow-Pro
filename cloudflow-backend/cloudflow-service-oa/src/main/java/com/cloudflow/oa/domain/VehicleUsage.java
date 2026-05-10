@@ -26,6 +26,9 @@ public class VehicleUsage {
 
     private Long driverId;
 
+    /** 司机模式(0自驾 1派司机) */
+    private Integer driverMode;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startTime;
 
@@ -59,6 +62,13 @@ public class VehicleUsage {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime actualEndTime;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime dispatchTime;
+
+    private String dispatchRemark;
+
+    private String returnRemark;
+
     /** 状态（0待审批 1已批准 2已驳回 3进行中 4已完成 5已取消） */
     private String status;
 
@@ -89,4 +99,10 @@ public class VehicleUsage {
     
     @TableField(exist = false)
     private String driverName;
+
+    @TableField(exist = false)
+    private BigDecimal totalExpenseAmount;
+
+    @TableField(exist = false)
+    private BigDecimal tripDistance;
 }

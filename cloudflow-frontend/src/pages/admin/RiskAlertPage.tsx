@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Clock3, Edit3, Plus, RotateCcw, ShieldAlert, UserPlus, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock3, Plus, RotateCcw, Search, ShieldAlert, UserPlus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { BaseDialog, Button, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
+import { BaseDialog, Button, Input, Label, Pagination, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableActionHead, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
-import { OaRiskAlert, RiskStats, riskApi, RiskStatus } from '@/services/api/contractRisk';
+import { contractApi, OaContract, OaRiskAlert, RiskStats, riskApi, RiskStatus } from '@/services/api/contractRisk';
+import { OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
+import { getVehicleList, SysVehicle } from '@/services/api/vehicle';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -28,7 +30,82 @@ const SOURCE_LABELS: Record<string, string> = {
   MANUAL: '人工',
 };
 
+const BUSINESS_TYPE_LABELS: Record<string, string> = {
+  CONTRACT: '合同',
+  SEAL: '用印',
+  VEHICLE: '车辆',
+};
+
+type ManualBusinessType = 'CONTRACT' | 'SEAL' | 'VEHICLE';
+
+type BusinessOption = {
+  businessType: ManualBusinessType;
+  businessId: number;
+  label: string;
+  meta: string;
+  ownerId?: number;
+  ownerName?: string;
+};
+
+interface SummaryMetricProps {
+  label: string;
+  value: React.ReactNode;
+  tone?: 'default' | 'warning' | 'danger' | 'success';
+}
+
+const MANUAL_BUSINESS_TYPES: Array<{ value: ManualBusinessType; label: string }> = [
+  { value: 'CONTRACT', label: '合同' },
+  { value: 'SEAL', label: '用印申请' },
+  { value: 'VEHICLE', label: '车辆' },
+];
+
+const ALL_FILTER_VALUE = '__all__';
+
+const emptyManualForm = (): OaRiskAlert => ({
+  businessType: 'CONTRACT',
+  businessId: 0,
+  riskName: '',
+  riskLevel: 'MEDIUM',
+  ownerName: '',
+  handleRemark: '',
+});
+
 const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
+
+const formatContractOption = (item: OaContract): BusinessOption | null => {
+  if (!item.contractId) return null;
+  return {
+    businessType: 'CONTRACT',
+    businessId: item.contractId,
+    label: `${item.contractNo || '未编号合同'} - ${item.contractName || '未命名合同'}`,
+    meta: [item.counterpartyName, item.ownerName, item.status].filter(Boolean).join(' / '),
+    ownerId: item.ownerId,
+    ownerName: item.ownerName,
+  };
+};
+
+const formatSealOption = (item: OaSealApplication): BusinessOption | null => {
+  if (!item.id) return null;
+  return {
+    businessType: 'SEAL',
+    businessId: item.id,
+    label: `${item.applicationNo || '未编号用印'} - ${item.documentName || item.sealName || '未命名用印申请'}`,
+    meta: [item.sealName, item.userName, item.status].filter(Boolean).join(' / '),
+    ownerId: item.userId,
+    ownerName: item.userName,
+  };
+};
+
+const formatVehicleOption = (item: SysVehicle): BusinessOption | null => {
+  if (!item.vehicleId) return null;
+  return {
+    businessType: 'VEHICLE',
+    businessId: item.vehicleId,
+    label: `${item.licensePlate || '未录车牌'} - ${[item.brand, item.model].filter(Boolean).join(' ') || '未命名车辆'}`,
+    meta: [item.location, item.status].filter(Boolean).join(' / '),
+    ownerId: item.managerUserId,
+  };
+};
 
 const getLevelBadge = (level?: string) => {
   const toneMap: Record<string, string> = {
@@ -50,17 +127,33 @@ const getStatusBadge = (status?: string) => {
   return <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'OPEN'] || toneMap.OPEN}`}>{STATUS_LABELS[status || 'OPEN'] || status || '-'}</span>;
 };
 
+const SummaryMetric: React.FC<SummaryMetricProps> = ({ label, value, tone = 'default' }) => {
+  const toneClassName = {
+    default: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-200',
+    warning: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    danger: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+    success: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+  }[tone];
+
+  return (
+    <div className={`min-w-[7rem] rounded-lg border px-3 py-2 ${toneClassName}`}>
+      <div className="text-[11px] leading-none text-current opacity-70">{label}</div>
+      <div className="mt-1 text-sm font-semibold leading-none">{value}</div>
+    </div>
+  );
+};
+
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
-  <tr className="hover:bg-transparent">
-    <td colSpan={colSpan} className="px-4 py-16">
+  <TableRow className="hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
       <div className="flex flex-col items-center justify-center text-center">
         <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
           {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
         </div>
         <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
       </div>
-    </td>
-  </tr>
+    </TableCell>
+  </TableRow>
 );
 
 export const RiskAlertPage: React.FC = () => {
@@ -69,13 +162,18 @@ export const RiskAlertPage: React.FC = () => {
   const [stats, setStats] = useState<RiskStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, riskStatus: '', riskLevel: '', riskSource: '', riskName: '' });
+  const [filterInput, setFilterInput] = useState({ riskStatus: '', riskLevel: '', riskSource: '', riskName: '' });
   const [manualOpen, setManualOpen] = useState(false);
-  const [manualForm, setManualForm] = useState<OaRiskAlert>({ businessType: 'CONTRACT', businessId: 0, riskName: '', riskLevel: 'MEDIUM', ownerName: '', handleRemark: '' });
+  const [manualForm, setManualForm] = useState<OaRiskAlert>(emptyManualForm);
+  const [manualBusinessOptions, setManualBusinessOptions] = useState<BusinessOption[]>([]);
+  const [manualBusinessLoading, setManualBusinessLoading] = useState(false);
+  const [manualBusinessSearch, setManualBusinessSearch] = useState('');
   const [statusTarget, setStatusTarget] = useState<OaRiskAlert | null>(null);
   const [nextStatus, setNextStatus] = useState<RiskStatus>('HANDLING');
   const [handleRemark, setHandleRemark] = useState('');
   const [assignTarget, setAssignTarget] = useState<OaRiskAlert | null>(null);
   const [assignForm, setAssignForm] = useState({ ownerId: '', ownerName: '' });
+  const manualBusinessType = (manualForm.businessType || 'CONTRACT') as ManualBusinessType;
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -113,8 +211,59 @@ export const RiskAlertPage: React.FC = () => {
     void fetchStats();
   }, [fetchStats]);
 
-  const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
   const unresolvedCount = useMemo(() => (stats?.openCount || 0) + (stats?.handlingCount || 0), [stats]);
+  const filteredManualBusinessOptions = useMemo(() => {
+    const keyword = manualBusinessSearch.trim().toLowerCase();
+    if (!keyword) return manualBusinessOptions;
+    return manualBusinessOptions.filter((item) => (
+      item.label.toLowerCase().includes(keyword)
+      || item.meta.toLowerCase().includes(keyword)
+      || String(item.businessId).includes(keyword)
+    ));
+  }, [manualBusinessOptions, manualBusinessSearch]);
+  const selectedManualBusiness = useMemo(
+    () => manualBusinessOptions.find((item) => item.businessId === manualForm.businessId),
+    [manualBusinessOptions, manualForm.businessId],
+  );
+
+  useEffect(() => {
+    if (!manualOpen) return;
+    let cancelled = false;
+
+    const fetchManualBusinessOptions = async () => {
+      setManualBusinessLoading(true);
+      try {
+        let options: BusinessOption[] = [];
+        if (manualBusinessType === 'CONTRACT') {
+          const result = await contractApi.list({ pageNum: 1, pageSize: 100 });
+          options = normalizeRows(result).map(formatContractOption).filter(Boolean) as BusinessOption[];
+        } else if (manualBusinessType === 'SEAL') {
+          const result = await sealApplicationApi.list({ pageNum: 1, pageSize: 100 });
+          options = normalizeRows(result).map(formatSealOption).filter(Boolean) as BusinessOption[];
+        } else if (manualBusinessType === 'VEHICLE') {
+          const result = await getVehicleList({ pageNum: 1, pageSize: 100 });
+          options = normalizeRows(result).map(formatVehicleOption).filter(Boolean) as BusinessOption[];
+        }
+        if (!cancelled) {
+          setManualBusinessOptions(options);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          setManualBusinessOptions([]);
+          toast.error(getErrorMessage(error, '获取关联业务失败'));
+        }
+      } finally {
+        if (!cancelled) {
+          setManualBusinessLoading(false);
+        }
+      }
+    };
+
+    void fetchManualBusinessOptions();
+    return () => {
+      cancelled = true;
+    };
+  }, [manualBusinessType, manualOpen]);
 
   const openStatus = (risk: OaRiskAlert, status: RiskStatus) => {
     setStatusTarget(risk);
@@ -137,19 +286,56 @@ export const RiskAlertPage: React.FC = () => {
 
   const submitManual = async () => {
     if (!manualForm.businessId || !manualForm.riskName.trim()) {
-      toast.warning('请补全业务ID和风险名称');
+      toast.warning('请选择关联业务并填写风险名称');
       return;
     }
     try {
       await riskApi.manual(manualForm);
       toast.success('人工风险已标记');
       setManualOpen(false);
-      setManualForm({ businessType: 'CONTRACT', businessId: 0, riskName: '', riskLevel: 'MEDIUM', ownerName: '', handleRemark: '' });
+      setManualForm(emptyManualForm());
+      setManualBusinessSearch('');
       await fetchRows();
       await fetchStats();
     } catch (error) {
       toast.error(getErrorMessage(error, '人工标记风险失败'));
     }
+  };
+
+  const openManualDialog = () => {
+    setManualForm(emptyManualForm());
+    setManualBusinessSearch('');
+    setManualOpen(true);
+  };
+
+  const closeManualDialog = () => {
+    setManualOpen(false);
+    setManualForm(emptyManualForm());
+    setManualBusinessSearch('');
+  };
+
+  const changeManualBusinessType = (value: string) => {
+    setManualBusinessSearch('');
+    setManualBusinessOptions([]);
+    setManualForm((prev) => ({
+      ...prev,
+      businessType: value as ManualBusinessType,
+      businessId: 0,
+      ownerId: undefined,
+      ownerName: '',
+    }));
+  };
+
+  const changeManualBusiness = (value: string) => {
+    const option = manualBusinessOptions.find((item) => String(item.businessId) === value);
+    if (!option) return;
+    setManualForm((prev) => ({
+      ...prev,
+      businessType: option.businessType,
+      businessId: option.businessId,
+      ownerId: option.ownerId,
+      ownerName: option.ownerName || prev.ownerName,
+    }));
   };
 
   const openAssign = (risk: OaRiskAlert) => {
@@ -172,61 +358,103 @@ export const RiskAlertPage: React.FC = () => {
     }
   };
 
+  const handleSearch = () => {
+    setQuery((prev) => ({ ...prev, pageNum: 1, ...filterInput }));
+  };
+
+  const handleReset = () => {
+    const emptyFilters = { riskStatus: '', riskLevel: '', riskSource: '', riskName: '' };
+    setFilterInput(emptyFilters);
+    setQuery((prev) => ({ ...prev, pageNum: 1, ...emptyFilters }));
+  };
+
+  const refreshPage = async () => {
+    await Promise.all([fetchRows(), fetchStats()]);
+  };
+
+  const hasActiveFilters = Boolean(query.riskStatus || query.riskLevel || query.riskSource || query.riskName);
+  const currentStatusLabel = query.riskStatus ? STATUS_LABELS[query.riskStatus] || query.riskStatus : '全部状态';
+  const currentLevelLabel = query.riskLevel ? LEVEL_LABELS[query.riskLevel] || query.riskLevel : '全部等级';
+  const currentSourceLabel = query.riskSource ? SOURCE_LABELS[query.riskSource] || query.riskSource : '全部来源';
+  const currentNameLabel = query.riskName || '全部风险';
+
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard title="待处理风险" value={unresolvedCount} icon={<ShieldAlert size={18} />} iconVariant="danger" meta="未处理与处理中" />
-        <StatCard title="高风险" value={stats?.highRiskCount ?? 0} icon={<AlertTriangle size={18} />} iconVariant="warning" meta="高与严重等级" />
-        <StatCard title="规则生成" value={stats?.ruleCount ?? 0} icon={<Clock3 size={18} />} iconVariant="primary" meta="系统扫描生成" />
-        <StatCard title="人工标记" value={stats?.manualCount ?? 0} icon={<Edit3 size={18} />} iconVariant="success" meta="人工补充风险" />
-      </div>
-
       <TablePageLayout
-        className="gap-4"
+        className="gap-3"
+        actions={(
+          <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex flex-wrap items-center gap-2">
+              <SummaryMetric label="待处理风险" value={unresolvedCount} tone={unresolvedCount > 0 ? 'danger' : 'default'} />
+              <SummaryMetric label="高风险" value={stats?.highRiskCount ?? 0} tone={(stats?.highRiskCount ?? 0) > 0 ? 'warning' : 'default'} />
+              <SummaryMetric label="规则生成" value={stats?.ruleCount ?? 0} />
+              <SummaryMetric label="人工标记" value={stats?.manualCount ?? 0} tone="success" />
+            </div>
+            <div className="ml-auto flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => void refreshPage()} disabled={loading}>
+                <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
+                刷新
+              </Button>
+              <Button size="sm" onClick={openManualDialog}>
+                <Plus size={14} className="mr-1.5" />
+                人工标记
+              </Button>
+            </div>
+          </div>
+        )}
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <div className="w-full sm:w-[150px]">
-                <Select value={query.riskStatus || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, riskStatus: value === 'ALL' ? '' : value }))}>
+                <Select value={filterInput.riskStatus || ALL_FILTER_VALUE} onValueChange={(value) => setFilterInput((prev) => ({ ...prev, riskStatus: value === ALL_FILTER_VALUE ? '' : value }))}>
                   <SelectTrigger className="h-10"><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">全部状态</SelectItem>
+                    <SelectItem value={ALL_FILTER_VALUE}>全部状态</SelectItem>
                     {Object.entries(STATUS_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="w-full sm:w-[150px]">
-                <Select value={query.riskLevel || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, riskLevel: value === 'ALL' ? '' : value }))}>
+                <Select value={filterInput.riskLevel || ALL_FILTER_VALUE} onValueChange={(value) => setFilterInput((prev) => ({ ...prev, riskLevel: value === ALL_FILTER_VALUE ? '' : value }))}>
                   <SelectTrigger className="h-10"><SelectValue placeholder="等级" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">全部等级</SelectItem>
+                    <SelectItem value={ALL_FILTER_VALUE}>全部等级</SelectItem>
                     {Object.entries(LEVEL_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
               <div className="w-full sm:w-[150px]">
-                <Select value={query.riskSource || 'ALL'} onValueChange={(value) => setQuery((prev) => ({ ...prev, pageNum: 1, riskSource: value === 'ALL' ? '' : value }))}>
+                <Select value={filterInput.riskSource || ALL_FILTER_VALUE} onValueChange={(value) => setFilterInput((prev) => ({ ...prev, riskSource: value === ALL_FILTER_VALUE ? '' : value }))}>
                   <SelectTrigger className="h-10"><SelectValue placeholder="来源" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="ALL">全部来源</SelectItem>
+                    <SelectItem value={ALL_FILTER_VALUE}>全部来源</SelectItem>
                     {Object.entries(SOURCE_LABELS).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
-              <Input className="h-10 w-full sm:w-[220px]" value={query.riskName} onChange={(event) => setQuery((prev) => ({ ...prev, pageNum: 1, riskName: event.target.value }))} placeholder="风险名称" />
+              <div className="relative min-w-[220px] flex-1 lg:max-w-xs">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <Input
+                  className="h-10 pl-10"
+                  value={filterInput.riskName}
+                  onChange={(event) => setFilterInput((prev) => ({ ...prev, riskName: event.target.value }))}
+                  onKeyDown={(event) => event.key === 'Enter' && handleSearch()}
+                  placeholder="搜索风险名称"
+                />
+              </div>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
-                <span>第 {query.pageNum} / {totalPages} 页</span>
+                <span>{hasActiveFilters ? `${currentStatusLabel} / ${currentLevelLabel} / ${currentSourceLabel} / ${currentNameLabel}` : '全部风险'}</span>
                 <span>共 {total} 条</span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, riskStatus: '', riskLevel: '', riskSource: '', riskName: '' })}>
-                <RotateCcw size={14} className="mr-1.5" />
-                清空条件
+            <div className="flex w-full flex-wrap items-center justify-end gap-2 lg:w-auto">
+              <Button variant="outline" size="sm" onClick={handleSearch}>
+                <Search size={14} className="mr-1.5" />
+                应用
               </Button>
-              <Button size="sm" onClick={() => setManualOpen(true)}>
-                <Plus size={14} className="mr-1.5" />
-                人工标记
+              <Button variant="outline" size="sm" onClick={handleReset}>
+                <RotateCcw size={14} className="mr-1.5" />
+                清空筛选
               </Button>
             </div>
           </div>
@@ -234,43 +462,43 @@ export const RiskAlertPage: React.FC = () => {
         table={(
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1120px]">
+              <Table className="min-w-[1120px]">
                 <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
-                  <tr>
-                    <TableHead className="px-4 py-3 text-left">风险</TableHead>
-                    <TableHead className="px-4 py-3 text-left">业务</TableHead>
-                    <TableHead className="px-4 py-3 text-left">等级</TableHead>
-                    <TableHead className="px-4 py-3 text-left">状态</TableHead>
-                    <TableHead className="px-4 py-3 text-left">来源</TableHead>
-                    <TableHead className="px-4 py-3 text-left">负责人</TableHead>
-                    <TableHead className="px-4 py-3 text-left">发现 / 处理</TableHead>
-                    <TableActionHead className="w-44 px-4 py-3 text-right">操作</TableActionHead>
-                  </tr>
+                  <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">风险</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">业务</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">等级</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">状态</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">来源</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">负责人</TableHead>
+                    <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">发现 / 处理</TableHead>
+                    <TableActionHead className="w-44 px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">操作</TableActionHead>
+                  </TableRow>
                 </TableHeader>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
                   {loading ? (
                     <TableStateRow colSpan={8} title="正在加载风险..." loading />
                   ) : rows.length === 0 ? (
                     <TableStateRow colSpan={8} title="暂无风险记录" />
                   ) : rows.map((item) => (
-                    <tr key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                    <TableRow key={item.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                      <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{item.riskName}</div>
                         <div className="mt-1 text-xs text-slate-400">{item.riskCode || '-'}</div>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
-                        <div>{item.businessType || '-'}</div>
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                        <div>{BUSINESS_TYPE_LABELS[item.businessType || ''] || item.businessType || '-'}</div>
                         <div className="mt-1 text-xs text-slate-400">ID {item.businessId}</div>
-                      </td>
-                      <td className="px-4 py-3">{getLevelBadge(item.riskLevel)}</td>
-                      <td className="px-4 py-3">{getStatusBadge(item.riskStatus)}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{SOURCE_LABELS[item.riskSource || ''] || item.riskSource || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.ownerName || item.ownerId || '-'}</td>
-                      <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
+                      </TableCell>
+                      <TableCell className="px-4 py-3">{getLevelBadge(item.riskLevel)}</TableCell>
+                      <TableCell className="px-4 py-3">{getStatusBadge(item.riskStatus)}</TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{SOURCE_LABELS[item.riskSource || ''] || item.riskSource || '-'}</TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{item.ownerName || item.ownerId || '-'}</TableCell>
+                      <TableCell className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">
                         <div>{formatDateTimeDisplay(item.detectedTime)}</div>
                         <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(item.handledTime)}</div>
-                      </td>
-                      <td className="px-4 py-3 text-right">
+                      </TableCell>
+                      <TableCell className="px-4 py-3 text-right">
                         <TableRowActions
                           align="end"
                           actions={[
@@ -280,11 +508,11 @@ export const RiskAlertPage: React.FC = () => {
                             { label: '指派', icon: <UserPlus size={14} />, onClick: () => openAssign(item), tone: 'neutral' },
                           ]}
                         />
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           </div>
         )}
@@ -296,11 +524,11 @@ export const RiskAlertPage: React.FC = () => {
       <BaseDialog
         open={manualOpen}
         title="人工标记风险"
-        onClose={() => setManualOpen(false)}
+        onClose={closeManualDialog}
         width="normal"
         footer={(
           <>
-            <Button variant="outline" onClick={() => setManualOpen(false)}>取消</Button>
+            <Button variant="outline" onClick={closeManualDialog}>取消</Button>
             <Button onClick={() => void submitManual()}>保存</Button>
           </>
         )}
@@ -309,18 +537,50 @@ export const RiskAlertPage: React.FC = () => {
           <div className="grid gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label>业务类型</Label>
-              <Select value={manualForm.businessType || 'CONTRACT'} onValueChange={(value) => setManualForm((prev) => ({ ...prev, businessType: value }))}>
+              <Select value={manualBusinessType} onValueChange={changeManualBusinessType}>
                 <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CONTRACT">合同</SelectItem>
-                  <SelectItem value="SEAL">用印</SelectItem>
-                  <SelectItem value="APPROVAL">审批</SelectItem>
+                  {MANUAL_BUSINESS_TYPES.map((item) => (
+                    <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>业务ID</Label>
-              <Input className="h-11" type="number" value={manualForm.businessId || ''} onChange={(event) => setManualForm((prev) => ({ ...prev, businessId: Number(event.target.value) || 0 }))} />
+              <Label>关联业务</Label>
+              <Select
+                value={manualForm.businessId ? String(manualForm.businessId) : undefined}
+                onValueChange={changeManualBusiness}
+                disabled={manualBusinessLoading}
+              >
+                <SelectTrigger className="h-11">
+                  <SelectValue placeholder={manualBusinessLoading ? '正在加载...' : `选择${BUSINESS_TYPE_LABELS[manualBusinessType] || '业务'}`} />
+                </SelectTrigger>
+                <SelectContent className="max-h-[320px]">
+                  {manualBusinessOptions.length > 8 ? (
+                    <div className="p-1">
+                      <SearchInput
+                        value={manualBusinessSearch}
+                        onChange={setManualBusinessSearch}
+                        placeholder="搜索编号、名称或负责人"
+                        inputClassName="h-9"
+                      />
+                    </div>
+                  ) : null}
+                  {filteredManualBusinessOptions.length ? filteredManualBusinessOptions.map((item) => (
+                    <SelectItem key={`${item.businessType}-${item.businessId}`} value={String(item.businessId)}>
+                      {item.meta ? `${item.label} / ${item.meta}` : item.label}
+                    </SelectItem>
+                  )) : (
+                    <div className="px-3 py-3 text-sm text-slate-500 dark:text-slate-400">
+                      {manualBusinessLoading ? '正在加载关联业务...' : '暂无可选业务'}
+                    </div>
+                  )}
+                </SelectContent>
+              </Select>
+              {selectedManualBusiness?.meta ? (
+                <div className="truncate text-xs text-slate-500 dark:text-slate-400">{selectedManualBusiness.meta}</div>
+              ) : null}
             </div>
             <div className="space-y-2">
               <Label>风险名称</Label>

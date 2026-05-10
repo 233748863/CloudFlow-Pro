@@ -38,7 +38,7 @@ const collectSelectLabels = (
   next: Record<string, React.ReactNode> = {},
 ): Record<string, React.ReactNode> => {
   React.Children.forEach(node, (child) => {
-    if (!React.isValidElement<{ children?: React.ReactNode; value?: string }>(child)) {
+    if (!React.isValidElement<{ children?: React.ReactNode; label?: React.ReactNode; value?: string }>(child)) {
       return;
     }
 
@@ -47,7 +47,7 @@ const collectSelectLabels = (
       typeof child.props.value === 'string' &&
       !Object.prototype.hasOwnProperty.call(next, child.props.value)
     ) {
-      next[child.props.value] = child.props.children;
+      next[child.props.value] = child.props.label ?? child.props.children;
     }
 
     if (child.props.children) {
@@ -254,7 +254,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
     const spaceBelow = window.innerHeight - rect.bottom - viewportPadding;
     const spaceAbove = rect.top - viewportPadding;
     const dropUp = spaceBelow < Math.min(dropdownHeight, 256) && spaceAbove > spaceBelow;
-    const maxHeight = Math.max(120, (dropUp ? spaceAbove : spaceBelow) - 6);
+    const maxHeight = Math.min(320, Math.max(120, (dropUp ? spaceAbove : spaceBelow) - 6));
     const renderedHeight = Math.min(dropdownHeight, maxHeight);
 
     let left = rect.left;
@@ -332,6 +332,7 @@ export const SelectContent = ({ children, className = '' }: { children: React.Re
 type SelectItemProps = {
   children: React.ReactNode;
   value: string;
+  label?: React.ReactNode;
   className?: string;
 };
 
@@ -339,13 +340,13 @@ type SelectItemComponent = React.FC<SelectItemProps> & {
   __CF_SELECT_ITEM__?: boolean;
 };
 
-export const SelectItem: SelectItemComponent = ({ children, value, className = '' }) => {
+export const SelectItem: SelectItemComponent = ({ children, value, label, className = '' }) => {
   const { value: selectedValue, onValueChange, setOpen, registerLabel } = React.useContext(SelectContext);
   const isSelected = selectedValue === value;
 
   useEffect(() => {
-    registerLabel(value, children);
-  }, [value, children, registerLabel]);
+    registerLabel(value, label ?? children);
+  }, [value, children, label, registerLabel]);
 
   return (
     <div

@@ -12,7 +12,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/common';
+import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
@@ -1035,7 +1035,7 @@ export default function ProjectManagementPage() {
             </div>
             <div>
               <Label className={fieldLabelClassName}>计划日期</Label>
-              <Input type="date" value={toDateInput(milestoneForm.plannedDate)} onChange={(e) => setMilestoneForm((prev) => ({ ...prev, plannedDate: e.target.value }))} />
+              <DatePicker value={toDateInput(milestoneForm.plannedDate)} onChange={(e) => setMilestoneForm((prev) => ({ ...prev, plannedDate: e.target.value }))} />
             </div>
           </div>
         ) : null}
@@ -1052,11 +1052,11 @@ export default function ProjectManagementPage() {
             </div>
             <div>
               <Label className={fieldLabelClassName}>计划开始</Label>
-              <Input type="date" value={toDateInput(wbsForm.plannedStartTime)} onChange={(e) => setWbsForm((prev) => ({ ...prev, plannedStartTime: `${e.target.value} 00:00:00` }))} />
+              <DatePicker value={toDateInput(wbsForm.plannedStartTime)} onChange={(e) => setWbsForm((prev) => ({ ...prev, plannedStartTime: e.target.value ? `${e.target.value} 00:00:00` : '' }))} />
             </div>
             <div>
               <Label className={fieldLabelClassName}>计划结束</Label>
-              <Input type="date" value={toDateInput(wbsForm.plannedEndTime)} onChange={(e) => setWbsForm((prev) => ({ ...prev, plannedEndTime: `${e.target.value} 00:00:00` }))} />
+              <DatePicker value={toDateInput(wbsForm.plannedEndTime)} onChange={(e) => setWbsForm((prev) => ({ ...prev, plannedEndTime: e.target.value ? `${e.target.value} 00:00:00` : '' }))} />
             </div>
           </div>
         ) : null}

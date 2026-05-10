@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.VehicleUsageMapper">
+
+    <sql id="usageBaseColumns">
+        u.*,
+        v.license_plate AS vehicle_plate,
+        COALESCE(app.nick_name, app.user_name) AS applicant_name,
+        COALESCE(drv.nick_name, drv.user_name) AS driver_name,
+        COALESCE(expense_summary.total_expense_amount, 0) AS total_expense_amount,
+        CASE
+            WHEN u.start_mileage IS NOT NULL AND u.end_mileage IS NOT NULL THEN u.end_mileage - u.start_mileage
+            ELSE NULL
+        END AS trip_distance
+    </sql>
+
+    <sql id="usageFromClause">
+        FROM sys_vehicle_usage u
+        LEFT JOIN sys_vehicle v ON v.vehicle_id = u.vehicle_id
+        LEFT JOIN sys_user app ON app.user_id = u.applicant_id AND app.del_flag = '0'
+        LEFT JOIN sys_user drv ON drv.user_id = u.driver_id AND drv.del_flag = '0'
+        LEFT JOIN (
+            SELECT usage_id, SUM(amount) AS total_expense_amount
+            FROM sys_vehicle_expense
+            GROUP BY usage_id
+        ) expense_summary ON expense_summary.usage_id = u.usage_id
+    </sql>
+
+    <select id="selectUsagePage" resultType="com.cloudflow.oa.domain.VehicleUsage">
+        SELECT
+            <include refid="usageBaseColumns"/>
+        <include refid="usageFromClause"/>
+        <where>
+            <if test="query != null">
+                <if test="query.vehicleId != null">
+                    AND u.vehicle_id = #{query.vehicleId}
+                </if>
+                <if test="query.applicantId != null">
+                    AND u.applicant_id = #{query.applicantId}
+                </if>
+                <if test="query.status != null and query.status != ''">
+                    AND u.status = #{query.status}
+                </if>
+            </if>
+            AND u.del_flag = '0'
+        </where>
+        ORDER BY u.create_time DESC, u.usage_id DESC
+    </select>
+
+    <select id="selectUsageDetail" resultType="com.cloudflow.oa.domain.VehicleUsage">
+        SELECT
+            <include refid="usageBaseColumns"/>
+        <include refid="usageFromClause"/>
+        WHERE u.usage_id = #{usageId}
+          AND u.del_flag = '0'
+        LIMIT 1
+    </select>
+
+    <select id="selectCurrentUsageByVehicleId" resultType="com.cloudflow.oa.domain.VehicleUsage">
+        SELECT
+            <include refid="usageBaseColumns"/>
+        <include refid="usageFromClause"/>
+        WHERE u.vehicle_id = #{vehicleId}
+          AND u.del_flag = '0'
+          AND u.status = '3'
+        ORDER BY COALESCE(u.dispatch_time, u.actual_start_time, u.start_time) DESC, u.usage_id DESC
+        LIMIT 1
+    </select>
+
+    <select id="selectNextUsageByVehicleId" resultType="com.cloudflow.oa.domain.VehicleUsage">
+        SELECT
+            <include refid="usageBaseColumns"/>
+        <include refid="usageFromClause"/>
+        WHERE u.vehicle_id = #{vehicleId}
+          AND u.del_flag = '0'
+          AND u.status IN ('0','1')
+          AND u.start_time >= NOW()
+        ORDER BY u.start_time ASC, u.usage_id ASC
+        LIMIT 1
+    </select>
+
+    <select id="selectRecentUsagesByVehicleId" resultType="com.cloudflow.oa.domain.VehicleUsage">
+        SELECT
+            <include refid="usageBaseColumns"/>
+        <include refid="usageFromClause"/>
+        WHERE u.vehicle_id = #{vehicleId}
+          AND u.del_flag = '0'
+        ORDER BY u.create_time DESC, u.usage_id DESC
+        LIMIT ${limit}
+    </select>
+
+    <select id="selectSchedule" resultType="com.cloudflow.oa.domain.vo.VehicleScheduleItemVO">
+        SELECT
+            u.usage_id,
+            u.vehicle_id,
+            v.license_plate AS vehicle_plate,
+            u.status,
+            CASE
+                WHEN u.status = '3' THEN '3'
+                WHEN u.status IN ('0','1') THEN '2'
+                ELSE u.status
+            END AS runtime_status,
+            COALESCE(app.nick_name, app.user_name) AS applicant_name,
+            COALESCE(drv.nick_name, drv.user_name) AS driver_name,
+            u.destination,
+            u.start_time,
+            u.end_time,
+            u.actual_start_time,
+            u.actual_end_time
+        FROM sys_vehicle_usage u
+        LEFT JOIN sys_vehicle v ON v.vehicle_id = u.vehicle_id
+        LEFT JOIN sys_user app ON app.user_id = u.applicant_id AND app.del_flag = '0'
+        LEFT JOIN sys_user drv ON drv.user_id = u.driver_id AND drv.del_flag = '0'
+        WHERE u.del_flag = '0'
+          <if test="vehicleId != null">
+            AND u.vehicle_id = #{vehicleId}
+          </if>
+          <if test="startDate != null">
+            AND u.end_time &gt;= #{startDate}
+          </if>
+          <if test="endDate != null">
+            AND u.start_time &lt;= #{endDate}
+          </if>
+        ORDER BY u.start_time ASC, u.usage_id ASC
+    </select>
+</mapper>

@@ -412,6 +412,9 @@ export const getAssetCategories = () => {
   return request.get<string[]>('/oa/asset/categories');
 };
 
-export const getAssetQrCodeUrl = (id: number) => {
-  return `/dev-api/oa/asset/${id}/qrcode`;
+export const getAssetQrCodeBlob = (id: number) => {
+  return request.get<Blob>(`/oa/asset/${id}/qrcode`, {
+    responseType: 'blob',
+    silent: true,
+  });
 };

@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.oa.mapper.VehicleExpenseMapper">
+
+    <select id="selectExpensePage" resultType="com.cloudflow.oa.domain.VehicleExpense">
+        SELECT
+            e.*,
+            v.license_plate AS vehicle_plate
+        FROM sys_vehicle_expense e
+        LEFT JOIN sys_vehicle v ON v.vehicle_id = e.vehicle_id
+        <where>
+            <if test="query != null">
+                <if test="query.vehicleId != null">
+                    AND e.vehicle_id = #{query.vehicleId}
+                </if>
+                <if test="query.usageId != null">
+                    AND e.usage_id = #{query.usageId}
+                </if>
+                <if test="query.expenseType != null and query.expenseType != ''">
+                    AND e.expense_type = #{query.expenseType}
+                </if>
+            </if>
+            <if test="startDate != null and startDate != ''">
+                AND e.expense_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                AND e.expense_date &lt;= #{endDate}
+            </if>
+        </where>
+        ORDER BY e.expense_date DESC, e.expense_id DESC
+    </select>
+
+    <select id="selectRecentExpensesByVehicleId" resultType="com.cloudflow.oa.domain.VehicleExpense">
+        SELECT
+            e.*,
+            v.license_plate AS vehicle_plate
+        FROM sys_vehicle_expense e
+        LEFT JOIN sys_vehicle v ON v.vehicle_id = e.vehicle_id
+        WHERE e.vehicle_id = #{vehicleId}
+        ORDER BY e.expense_date DESC, e.expense_id DESC
+        LIMIT ${limit}
+    </select>
+
+    <select id="selectExpenseStats" resultType="map">
+        SELECT
+            COALESCE(SUM(amount), 0) AS totalAmount,
+            COUNT(*) AS count,
+            COALESCE(SUM(CASE WHEN expense_date &gt;= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN amount ELSE 0 END), 0) AS monthlyAmount,
+            COALESCE(SUM(CASE WHEN expense_date &gt;= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
+                               AND expense_date &lt; DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN amount ELSE 0 END), 0) AS lastMonthAmount
+        FROM sys_vehicle_expense
+        <where>
+            <if test="startDate != null and startDate != ''">
+                expense_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                <if test="startDate != null and startDate != ''">AND</if>
+                expense_date &lt;= #{endDate}
+            </if>
+        </where>
+    </select>
+
+    <select id="selectExpenseGroupByType" resultType="map">
+        SELECT expense_type AS expenseType, COALESCE(SUM(amount), 0) AS amount
+        FROM sys_vehicle_expense
+        <where>
+            <if test="startDate != null and startDate != ''">
+                expense_date &gt;= #{startDate}
+            </if>
+            <if test="endDate != null and endDate != ''">
+                <if test="startDate != null and startDate != ''">AND</if>
+                expense_date &lt;= #{endDate}
+            </if>
+        </where>
+        GROUP BY expense_type
+    </select>
+
+    <select id="sumExpenseAmountByVehicle" resultType="java.math.BigDecimal">
+        SELECT COALESCE(SUM(amount), 0)
+        FROM sys_vehicle_expense
+        WHERE vehicle_id = #{vehicleId}
+          AND expense_date &gt;= DATE_SUB(CURDATE(), INTERVAL ${days} DAY)
+    </select>
+</mapper>

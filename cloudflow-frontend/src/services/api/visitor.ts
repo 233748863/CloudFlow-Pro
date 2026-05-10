@@ -41,4 +41,8 @@ export const visitorApi = {
   checkIn: (id: number) => request.put(`/oa/visitor/checkin/${id}`),
   checkOut: (id: number) => request.put(`/oa/visitor/checkout/${id}`),
   cancel: (id: number) => request.put(`/oa/visitor/cancel/${id}`),
+  qrCode: (id: number) => request.get<Blob>(`/oa/visitor/${id}/qrcode`, {
+    responseType: 'blob',
+    silent: true,
+  }),
 };

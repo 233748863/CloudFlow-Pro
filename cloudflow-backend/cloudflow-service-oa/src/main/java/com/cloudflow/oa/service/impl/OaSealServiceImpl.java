@@ -101,8 +101,15 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
     @Transactional(rollbackFor = Exception.class)
     public boolean remindExpiry(Long sealId, String remark) {
         OaSeal seal = getSealInfo(sealId);
+        if (OaBorrowConstants.RESOURCE_DISABLED.equals(seal.getStatus())) {
+            throw new IllegalArgumentException("停用印章不能发送到期提醒");
+        }
         if (seal.getExpireDate() == null) {
             throw new IllegalArgumentException("印章未维护到期日期");
+        }
+        long days = ChronoUnit.DAYS.between(LocalDate.now(), seal.getExpireDate());
+        if (days > getExpiryReminderWindowDays()) {
+            throw new IllegalArgumentException("印章未进入到期提醒窗口");
         }
         sendExpiryReminder(seal, OaBorrowConstants.REMINDER_MANUAL,
                 StringUtils.hasText(remark) ? remark : buildExpiryReminderContent(seal), null, true);
@@ -267,6 +274,10 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
                 .distinct()
                 .sorted()
                 .toList();
+    }
+
+    private int getExpiryReminderWindowDays() {
+        return parseReminderDays().stream().max(Integer::compareTo).orElse(30);
     }
 
     private boolean sendExpiryReminder(OaSeal seal, String reminderType, String content, Integer daysBefore, boolean avoidDuplicate) {

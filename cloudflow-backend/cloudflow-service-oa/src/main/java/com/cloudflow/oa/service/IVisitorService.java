@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.Visitor;
 
+import java.io.OutputStream;
+
 /**
  * 访客管理 Service 接口
  */
@@ -23,6 +25,9 @@ public interface IVisitorService extends IService<Visitor> {
 
     /** 取消访客预约 */
     boolean cancelVisitor(Long visitorId);
+
+    /** 生成访客通行二维码 */
+    void generateQrCode(Long visitorId, OutputStream outputStream);
 
     /** 生成通行证编号 */
     String generatePassCode();

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -47,7 +48,9 @@ public class SysRoleServiceImpl implements ISysRoleService {
             wrapper.eq(SysRole::getStatus, role.getStatus());
         }
         wrapper.orderByAsc(SysRole::getRoleSort);
-        return roleMapper.selectList(wrapper);
+        List<SysRole> roles = roleMapper.selectList(wrapper);
+        fillRoleMenuIds(roles);
+        return roles;
     }
 
     @Override
@@ -76,7 +79,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     public int insertRole(SysRole role) {
         int rows = roleMapper.insert(role);
         insertRoleMenu(role);
@@ -86,7 +89,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
 
     @Override
     @Transactional
-    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     public int updateRole(SysRole role) {
         int rows = roleMapper.updateById(role);
         // 清除旧的角色-菜单关联
@@ -112,9 +115,36 @@ public class SysRoleServiceImpl implements ISysRoleService {
         }
     }
 
+    private void fillRoleMenuIds(List<SysRole> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return;
+        }
+
+        List<Long> roleIds = roles.stream()
+                .map(SysRole::getRoleId)
+                .filter(id -> id != null)
+                .collect(Collectors.toList());
+        if (roleIds.isEmpty()) {
+            return;
+        }
+
+        LambdaQueryWrapper<SysRoleMenu> wrapper = new LambdaQueryWrapper<>();
+        wrapper.in(SysRoleMenu::getRoleId, roleIds);
+        Map<Long, List<Long>> menuIdsByRole = roleMenuMapper.selectList(wrapper).stream()
+                .collect(Collectors.groupingBy(
+                        SysRoleMenu::getRoleId,
+                        Collectors.mapping(SysRoleMenu::getMenuId, Collectors.toList())
+                ));
+
+        roles.forEach(role -> {
+            List<Long> menuIds = menuIdsByRole.getOrDefault(role.getRoleId(), List.of());
+            role.setMenuIds(menuIds.toArray(Long[]::new));
+        });
+    }
+
     @Override
     @Transactional
-    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS}, allEntries = true)
+    @CacheEvict(value = {CacheConstants.MENU_DETAILS, CacheConstants.USER_MENUS, CacheConstants.USER_DETAILS}, allEntries = true)
     public int deleteRoleByIds(Long[] roleIds) {
         for (Long roleId : roleIds) {
             roleMapper.deleteById(roleId);

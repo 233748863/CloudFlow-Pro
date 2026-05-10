@@ -252,16 +252,27 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             log.warn("未找到对应的车辆费用记录，IDs: {}", vehicleExpenseIds);
             return false;
         }
+
+        Long existingConvertedCount = expenseItemMapper.selectCount(new LambdaQueryWrapper<BizExpenseItem>()
+                .in(BizExpenseItem::getVehicleExpenseId, vehicleExpenseIds));
+        if (existingConvertedCount != null && existingConvertedCount > 0) {
+            throw new IllegalArgumentException("所选费用中存在已转报销记录");
+        }
         
         // 2. 创建报销申请单
         BizExpenseClaim claim = new BizExpenseClaim();
         claim.setClaimNo(generateClaimNo());
         claim.setUserId(userId);
+        claim.setUserName(UserContext.getUserName());
+        claim.setDeptId(UserContext.getDeptId());
+        claim.setDeptName(UserContext.getDeptName());
         claim.setCategory("TRANSPORT"); // 车辆费用归类为交通类
         claim.setStatus("DRAFT");
         claim.setDescription("车辆费用转报销（共" + vehicleExpenses.size() + "笔）");
         LocalDateTime now = LocalDateTime.now();
+        claim.setCreateBy(UserContext.getUserName());
         claim.setCreateTime(now);
+        claim.setUpdateBy(UserContext.getUserName());
         claim.setUpdateTime(now);
         
         // 3. 计算总金额

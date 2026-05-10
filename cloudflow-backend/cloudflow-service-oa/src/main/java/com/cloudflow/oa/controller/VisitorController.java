@@ -6,9 +6,11 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.Visitor;
 import com.cloudflow.oa.service.IVisitorService;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -91,5 +93,12 @@ public class VisitorController {
     @PutMapping("/cancel/{id}")
     public R cancel(@PathVariable("id") Long id) {
         return R.result(visitorService.cancelVisitor(id));
+    }
+
+    /** 生成访客通行二维码 */
+    @GetMapping("/{id}/qrcode")
+    public void getQrCode(@PathVariable("id") Long id, HttpServletResponse response) throws IOException {
+        response.setContentType("image/png");
+        visitorService.generateQrCode(id, response.getOutputStream());
     }
 }

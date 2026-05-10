@@ -100,8 +100,15 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
     @Transactional(rollbackFor = Exception.class)
     public boolean remindExpiry(Long licenseId, String remark) {
         OaLicense license = getLicenseInfo(licenseId);
+        if (OaBorrowConstants.RESOURCE_DISABLED.equals(license.getStatus())) {
+            throw new IllegalArgumentException("停用证照不能发送到期提醒");
+        }
         if (license.getExpireDate() == null) {
             throw new IllegalArgumentException("证照未维护到期日期");
+        }
+        long days = ChronoUnit.DAYS.between(LocalDate.now(), license.getExpireDate());
+        if (days > getExpiryReminderWindowDays()) {
+            throw new IllegalArgumentException("证照未进入到期提醒窗口");
         }
         sendExpiryReminder(license, OaBorrowConstants.REMINDER_MANUAL,
                 StringUtils.hasText(remark) ? remark : buildExpiryReminderContent(license), null, true);
@@ -258,6 +265,10 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
                 .distinct()
                 .sorted()
                 .toList();
+    }
+
+    private int getExpiryReminderWindowDays() {
+        return parseReminderDays().stream().max(Integer::compareTo).orElse(30);
     }
 
     private boolean sendExpiryReminder(OaLicense license, String reminderType, String content, Integer daysBefore, boolean avoidDuplicate) {

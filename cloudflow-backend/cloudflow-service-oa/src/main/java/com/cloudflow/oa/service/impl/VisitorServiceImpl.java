@@ -1,20 +1,28 @@
 package com.cloudflow.oa.service.impl;
 
+import cn.hutool.extra.qrcode.QrCodeUtil;
+import cn.hutool.extra.qrcode.QrConfig;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.oa.domain.Visitor;
 import com.cloudflow.oa.mapper.VisitorMapper;
 import com.cloudflow.oa.service.IVisitorService;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.io.OutputStream;
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -24,6 +32,8 @@ import java.util.UUID;
 @Service
 public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
         implements IVisitorService {
+
+    private static final ObjectMapper QR_OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public IPage<Visitor> queryPage(Visitor query, int pageNum, int pageSize) {
@@ -67,8 +77,7 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
         if (visitor == null) {
             return false;
         }
-        // 待确认或已确认状态都可以签到
-        if (!"PENDING".equals(visitor.getStatus()) && !"CONFIRMED".equals(visitor.getStatus())) {
+        if (!"CONFIRMED".equals(visitor.getStatus())) {
             log.warn("访客 {} 当前状态 {} 不允许签到", visitor.getVisitorName(), visitor.getStatus());
             return false;
         }
@@ -114,5 +123,38 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
     public String generatePassCode() {
         // 生成8位通行证编号：VIS + 随机5位
         return "VIS" + UUID.randomUUID().toString().substring(0, 5).toUpperCase();
+    }
+
+    @Override
+    public void generateQrCode(Long visitorId, OutputStream outputStream) {
+        Visitor visitor = getById(visitorId);
+        if (visitor == null) {
+            throw new ServiceException("访客记录不存在");
+        }
+        if (!StringUtils.hasText(visitor.getPassCode())) {
+            throw new ServiceException("通行码不存在，请先确认预约");
+        }
+
+        Map<String, Object> content = new LinkedHashMap<>();
+        content.put("type", "VISITOR_PASS");
+        content.put("visitorId", visitor.getVisitorId());
+        content.put("passCode", visitor.getPassCode());
+        content.put("visitorName", visitor.getVisitorName());
+        content.put("visitorCompany", visitor.getVisitorCompany());
+        content.put("hostName", visitor.getHostName());
+        content.put("visitDate", visitor.getVisitDate() == null ? null : visitor.getVisitDate().toString());
+
+        QrConfig config = new QrConfig(300, 300);
+        config.setMargin(2);
+        config.setErrorCorrection(ErrorCorrectionLevel.M);
+        QrCodeUtil.generate(toQrContent(content), config, "png", outputStream);
+    }
+
+    private String toQrContent(Map<String, Object> content) {
+        try {
+            return QR_OBJECT_MAPPER.writeValueAsString(content);
+        } catch (JsonProcessingException e) {
+            throw new ServiceException("访客通行二维码内容生成失败");
+        }
     }
 }

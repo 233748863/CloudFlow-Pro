@@ -247,6 +247,10 @@ CREATE TABLE sys_vehicle (
   mileage           DECIMAL(10,2)   DEFAULT 0.00 COMMENT '当前里程(km)',
   purchase_date     DATE            DEFAULT NULL COMMENT '购买日期',
   insurance_expiry  DATE            DEFAULT NULL COMMENT '保险到期日',
+  annual_inspection_expiry DATE     DEFAULT NULL COMMENT '年检到期日',
+  maintenance_cycle_km DECIMAL(10,2) DEFAULT NULL COMMENT '保养周期里程(km)',
+  next_maintenance_mileage DECIMAL(10,2) DEFAULT NULL COMMENT '下次保养里程(km)',
+  manager_user_id   BIGINT(20)      DEFAULT NULL COMMENT '车辆管理员用户ID',
   location          VARCHAR(100)    DEFAULT NULL COMMENT '停放位置',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
@@ -266,6 +270,7 @@ CREATE TABLE sys_vehicle_usage (
   vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
   applicant_id      BIGINT(20)      NOT NULL COMMENT '申请人ID',
   driver_id         BIGINT(20)      DEFAULT NULL COMMENT '司机ID',
+  driver_mode       TINYINT(1)      DEFAULT 0 COMMENT '司机模式(0自驾 1派司机)',
   start_time        DATETIME        NOT NULL COMMENT '预计开始时间',
   end_time          DATETIME        NOT NULL COMMENT '预计结束时间',
   destination       VARCHAR(200)    NOT NULL COMMENT '目的地',
@@ -278,6 +283,9 @@ CREATE TABLE sys_vehicle_usage (
   end_mileage       DECIMAL(10,2)   DEFAULT NULL COMMENT '结束里程',
   actual_start_time DATETIME        DEFAULT NULL COMMENT '实际开始时间',
   actual_end_time   DATETIME        DEFAULT NULL COMMENT '实际结束时间',
+  dispatch_time     DATETIME        DEFAULT NULL COMMENT '派车时间',
+  dispatch_remark   VARCHAR(500)    DEFAULT NULL COMMENT '派车备注',
+  return_remark     VARCHAR(500)    DEFAULT NULL COMMENT '归还备注',
   attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
   status            CHAR(1)         DEFAULT '0' COMMENT '状态（0待审批 1已批准 2已驳回 3进行中 4已完成 5已取消）',
   process_instance_id VARCHAR(64)   DEFAULT NULL COMMENT '流程实例ID',
@@ -307,6 +315,59 @@ CREATE TABLE sys_vehicle_expense (
   PRIMARY KEY (expense_id),
   KEY idx_vehicle_expense_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆费用记录表';
+
+DROP TABLE IF EXISTS sys_vehicle_maintenance;
+CREATE TABLE sys_vehicle_maintenance (
+  maintenance_id    BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '维保记录ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
+  maintenance_type  VARCHAR(20)     NOT NULL COMMENT '维保类型(MAINTENANCE/REPAIR/INSPECTION)',
+  status            VARCHAR(20)     DEFAULT 'OPEN' COMMENT '状态(OPEN处理中/DONE已完成)',
+  title             VARCHAR(200)    NOT NULL COMMENT '标题',
+  description       VARCHAR(500)    DEFAULT NULL COMMENT '维保说明',
+  provider_name     VARCHAR(100)    DEFAULT NULL COMMENT '服务商名称',
+  cost_amount       DECIMAL(10,2)   DEFAULT 0.00 COMMENT '费用金额',
+  maintenance_date  DATE            DEFAULT NULL COMMENT '维保日期',
+  next_maintenance_date DATE        DEFAULT NULL COMMENT '下次保养日期',
+  mileage_at_service DECIMAL(10,2)  DEFAULT NULL COMMENT '维保时里程',
+  next_maintenance_mileage DECIMAL(10,2) DEFAULT NULL COMMENT '下次保养里程',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  PRIMARY KEY (maintenance_id),
+  KEY idx_vehicle_maintenance_tenant (tenant_id),
+  KEY idx_vehicle_maintenance_vehicle (vehicle_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆维保记录表';
+
+DROP TABLE IF EXISTS sys_vehicle_violation;
+CREATE TABLE sys_vehicle_violation (
+  violation_id      BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '违章记录ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
+  usage_id          BIGINT(20)      DEFAULT NULL COMMENT '关联用车记录ID',
+  driver_id         BIGINT(20)      DEFAULT NULL COMMENT '司机ID',
+  violation_time    DATETIME        NOT NULL COMMENT '违章时间',
+  violation_address VARCHAR(255)    DEFAULT NULL COMMENT '违章地点',
+  violation_reason  VARCHAR(255)    NOT NULL COMMENT '违章原因',
+  penalty_amount    DECIMAL(10,2)   DEFAULT 0.00 COMMENT '罚款金额',
+  points            INT(11)         DEFAULT 0 COMMENT '扣分',
+  status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态(PENDING待处理/PROCESSING处理中/CLOSED已处理)',
+  handled_time      DATETIME        DEFAULT NULL COMMENT '处理时间',
+  handler_id        BIGINT(20)      DEFAULT NULL COMMENT '处理人ID',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  PRIMARY KEY (violation_id),
+  KEY idx_vehicle_violation_tenant (tenant_id),
+  KEY idx_vehicle_violation_vehicle (vehicle_id)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆违章记录表';
 
 -- =========================================================
 -- 七、业务表（与工作流关联，OA 范围）

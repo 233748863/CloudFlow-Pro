@@ -36,10 +36,13 @@ export interface SysUser {
 /** 系统角色数据 */
 export interface SysRole {
   roleId?: number;
+  tenantId?: number;
   roleName: string;
   roleKey: string;
   roleSort?: number;
   status?: string;
+  dsType?: number;
+  dsScope?: string | number[];
   menuIds?: number[];
   remark?: string;
 }
@@ -265,6 +268,10 @@ export const deleteUser = (userIds: number[]) => {
 
 export const getRoleList = (params?: PageQuery) => {
   return request.get('/auth/system/role/list', { params });
+};
+
+export const getRole = (roleId: number) => {
+  return request.get<SysRole>(`/auth/system/role/${roleId}`);
 };
 
 export const getRoleOptions = (): Promise<RoleOption[]> => {

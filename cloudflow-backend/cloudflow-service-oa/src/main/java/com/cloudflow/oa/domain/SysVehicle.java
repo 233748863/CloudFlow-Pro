@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.baomidou.mybatisplus.annotation.TableLogic;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 import java.math.BigDecimal;
@@ -40,6 +41,15 @@ public class SysVehicle {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDateTime insuranceExpiry;
 
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDateTime annualInspectionExpiry;
+
+    private BigDecimal maintenanceCycleKm;
+
+    private BigDecimal nextMaintenanceMileage;
+
+    private Long managerUserId;
+
     private String location;
 
     private String remark;
@@ -59,4 +69,36 @@ public class SysVehicle {
     
     /** 租户ID */
     private Long tenantId;
+
+    @TableField(exist = false)
+    private String runtimeStatus;
+
+    @TableField(exist = false)
+    private Long currentUsageId;
+
+    @TableField(exist = false)
+    private String currentUsageStatus;
+
+    @TableField(exist = false)
+    private String currentUserName;
+
+    @TableField(exist = false)
+    private String currentDriverName;
+
+    @TableField(exist = false)
+    private String currentDestination;
+
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime plannedReturnTime;
+
+    @TableField(exist = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime nextBookingStartTime;
+
+    @TableField(exist = false)
+    private String warningTags;
+
+    @TableField(exist = false)
+    private BigDecimal expenseAmount30d;
 }

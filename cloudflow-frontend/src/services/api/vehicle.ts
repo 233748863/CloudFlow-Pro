@@ -1,9 +1,6 @@
 import request from './request';
 import { PageQuery, PageResult } from '@/types';
 
-// --- 类型定义 ---
-
-/** 车辆信息 */
 export interface SysVehicle {
   vehicleId?: number;
   licensePlate: string;
@@ -11,59 +8,69 @@ export interface SysVehicle {
   model: string;
   color: string;
   capacity: number;
-  /** 状态：1可用 2已预约 3使用中 4维修中 5报废 */
   status: '1' | '2' | '3' | '4' | '5';
+  runtimeStatus?: '1' | '2' | '3' | '4' | '5';
   mileage: number;
   purchaseDate?: string;
   insuranceExpiry?: string;
-  /** 下次保养日期 */
-  nextMaintenanceDate?: string;
+  annualInspectionExpiry?: string;
+  maintenanceCycleKm?: number;
+  nextMaintenanceMileage?: number;
+  managerUserId?: number;
   location?: string;
   remark?: string;
   createTime?: string;
   updateTime?: string;
+  currentUsageId?: number;
+  currentUsageStatus?: string;
+  currentUserName?: string;
+  currentDriverName?: string;
+  currentDestination?: string;
+  plannedReturnTime?: string;
+  nextBookingStartTime?: string;
+  warningTags?: string;
+  expenseAmount30d?: number;
 }
 
-/** 用车记录 */
 export interface VehicleUsage {
   usageId?: number;
   vehicleId: number;
   applicantId: number;
   driverId?: number;
+  driverMode?: 0 | 1;
   startTime: string;
   endTime: string;
   destination: string;
-  /** 还车地点 */
   returnLocation?: string;
-  /** 是否往返(0单程 1往返) */
   isRoundTrip?: number;
   reason: string;
   passengerCount: number;
   passengers?: string;
-  /** 附件URL（多个用逗号分隔） */
   attachmentUrl?: string;
   startMileage?: number;
   endMileage?: number;
-  /** 状态：0待审批 1已批准 2已驳回 3进行中 4已完成 5已取消 */
+  actualStartTime?: string;
+  actualEndTime?: string;
+  dispatchTime?: string;
+  dispatchRemark?: string;
+  returnRemark?: string;
   status?: '0' | '1' | '2' | '3' | '4' | '5';
-  /** 审批人 */
   approverId?: number;
   approverName?: string;
-  /** 审批意见 */
   approveRemark?: string;
   processInstanceId?: string;
   vehiclePlate?: string;
   applicantName?: string;
   driverName?: string;
+  totalExpenseAmount?: number;
+  tripDistance?: number;
   createTime?: string;
 }
 
-/** 车辆费用 */
 export interface VehicleExpense {
   expenseId?: number;
   vehicleId: number;
   usageId?: number;
-  /** 费用类型：1油费 2过路费 3停车费 4维修保养 5保险 6其他 */
   expenseType: '1' | '2' | '3' | '4' | '5' | '6';
   amount: number;
   expenseDate: string;
@@ -73,7 +80,44 @@ export interface VehicleExpense {
   createTime?: string;
 }
 
-/** 车辆统计信息 */
+export interface VehicleMaintenance {
+  maintenanceId?: number;
+  vehicleId: number;
+  maintenanceType: string;
+  status?: string;
+  title: string;
+  description?: string;
+  providerName?: string;
+  costAmount?: number;
+  maintenanceDate?: string;
+  nextMaintenanceDate?: string;
+  mileageAtService?: number;
+  nextMaintenanceMileage?: number;
+  attachmentUrl?: string;
+  vehiclePlate?: string;
+  createTime?: string;
+}
+
+export interface VehicleViolation {
+  violationId?: number;
+  vehicleId: number;
+  usageId?: number;
+  driverId?: number;
+  violationTime: string;
+  violationAddress?: string;
+  violationReason: string;
+  penaltyAmount?: number;
+  points?: number;
+  status?: string;
+  handledTime?: string;
+  handlerId?: number;
+  remark?: string;
+  attachmentUrl?: string;
+  vehiclePlate?: string;
+  driverName?: string;
+  createTime?: string;
+}
+
 export interface VehicleStats {
   total: number;
   available: number;
@@ -81,30 +125,67 @@ export interface VehicleStats {
   inUse: number;
   maintenance: number;
   scrapped: number;
-  /** 保险即将到期数量（30天内） */
   insuranceExpiringSoon: number;
+  annualInspectionExpiringSoon?: number;
+  maintenanceDueSoon?: number;
+  pendingViolationCount?: number;
+  overdueRiskCount?: number;
+  expenseAmount30d?: number;
+  usageCount30d?: number;
 }
 
-/** 费用统计信息 */
 export interface ExpenseStats {
   totalAmount: number;
   count: number;
-  /** 按类型分组的费用 */
   byType: Record<string, number>;
-  /** 本月费用 */
   monthlyAmount: number;
-  /** 上月费用 */
   lastMonthAmount: number;
 }
 
-/** 车辆查询参数 */
+export interface VehicleProfile {
+  vehicle: SysVehicle;
+  currentUsage?: VehicleUsage | null;
+  nextUsage?: VehicleUsage | null;
+  recentUsages: VehicleUsage[];
+  recentExpenses: VehicleExpense[];
+  maintenances: VehicleMaintenance[];
+  violations: VehicleViolation[];
+  risks: Array<{
+    id: number;
+    riskCode: string;
+    riskName: string;
+    riskLevel: string;
+    riskStatus: string;
+    detectedTime?: string;
+    ownerName?: string;
+  }>;
+  expenseAmount30d?: number;
+  expenseAmount90d?: number;
+  tripDistance30d?: number;
+  costPerKm30d?: number;
+}
+
+export interface VehicleScheduleItem {
+  usageId: number;
+  vehicleId: number;
+  vehiclePlate?: string;
+  status: string;
+  runtimeStatus: string;
+  applicantName?: string;
+  driverName?: string;
+  destination?: string;
+  startTime: string;
+  endTime: string;
+  actualStartTime?: string;
+  actualEndTime?: string;
+}
+
 export interface VehicleQuery extends PageQuery {
   licensePlate?: string;
   brand?: string;
   status?: string;
 }
 
-/** 用车记录查询参数 */
 export interface UsageQuery extends PageQuery {
   vehicleId?: number;
   applicantId?: number;
@@ -113,9 +194,9 @@ export interface UsageQuery extends PageQuery {
   endTime?: string;
 }
 
-/** 费用查询参数 */
 export interface ExpenseQuery extends PageQuery {
   vehicleId?: number;
+  usageId?: number;
   expenseType?: string;
   startDate?: string;
   endDate?: string;
@@ -126,94 +207,87 @@ export interface VehicleUsageApprovalRequest {
   remark?: string;
 }
 
+export interface VehicleDispatchRequest {
+  driverMode?: 0 | 1;
+  driverId?: number;
+  startMileage?: number;
+  dispatchRemark?: string;
+  actualStartTime?: string;
+}
+
 export interface VehicleReturnRequest {
   endMileage: number;
   remark?: string;
+  returnLocation?: string;
 }
 
-// --- 车辆管理 API ---
+export const getVehicleList = (query: VehicleQuery) =>
+  request.get('/oa/vehicle/list', { params: query }) as Promise<PageResult<SysVehicle>>;
 
-/** 获取车辆列表（分页） */
-export const getVehicleList = (query: VehicleQuery) => {
-  return request.get('/oa/vehicle/list', { params: query }) as Promise<PageResult<SysVehicle>>;
-};
+export const getAvailableVehicles = () =>
+  request.get('/oa/vehicle/available') as Promise<SysVehicle[]>;
 
-/** 获取可用车辆列表 */
-export const getAvailableVehicles = () => {
-  return request.get('/oa/vehicle/available') as Promise<SysVehicle[]>;
-};
+export const getVehicleInfo = (id: number) =>
+  request.get(`/oa/vehicle/${id}`) as Promise<SysVehicle>;
 
-/** 获取车辆详情 */
-export const getVehicleInfo = (id: number) => {
-  return request.get(`/oa/vehicle/${id}`) as Promise<SysVehicle>;
-};
+export const getVehicleProfile = (id: number) =>
+  request.get(`/oa/vehicle/${id}/profile`) as Promise<VehicleProfile>;
 
-/** 新增车辆 */
-export const addVehicle = (data: SysVehicle) => {
-  return request.post('/oa/vehicle', data) as Promise<void>;
-};
+export const getVehicleSchedule = (params: { vehicleId?: number; startDate?: string; endDate?: string }) =>
+  request.get('/oa/vehicle/schedule', { params }) as Promise<VehicleScheduleItem[]>;
 
-/** 更新车辆 */
-export const updateVehicle = (data: SysVehicle) => {
-  return request.put('/oa/vehicle', data) as Promise<void>;
-};
+export const addVehicle = (data: SysVehicle) =>
+  request.post('/oa/vehicle', data) as Promise<void>;
 
-/** 删除车辆 */
-export const deleteVehicle = (ids: number[]) => {
-  return request.delete(`/oa/vehicle/${ids.join(',')}`) as Promise<void>;
-};
+export const updateVehicle = (data: SysVehicle) =>
+  request.put('/oa/vehicle', data) as Promise<void>;
 
-/** 获取车辆统计概览 */
-export const getVehicleStats = () => {
-  return request.get('/oa/vehicle/stats') as Promise<VehicleStats>;
-};
+export const deleteVehicle = (ids: number[]) =>
+  request.delete(`/oa/vehicle/${ids.join(',')}`) as Promise<void>;
 
-// --- 用车申请 API ---
+export const getVehicleStats = () =>
+  request.get('/oa/vehicle/stats') as Promise<VehicleStats>;
 
-/** 获取用车记录列表（分页） */
-export const getUsageList = (query: UsageQuery) => {
-  return request.get('/oa/vehicle/usage/list', { params: query }) as Promise<PageResult<VehicleUsage>>;
-};
+export const getUsageList = (query: UsageQuery) =>
+  request.get('/oa/vehicle/usage/list', { params: query }) as Promise<PageResult<VehicleUsage>>;
 
-/** 提交用车申请 */
-export const submitUsage = (data: VehicleUsage) => {
-  return request.post('/oa/vehicle/usage', data) as Promise<void>;
-};
+export const submitUsage = (data: VehicleUsage) =>
+  request.post('/oa/vehicle/usage', data) as Promise<void>;
 
-/** 获取用车记录详情 */
-export const getUsageInfo = (id: number) => {
-  return request.get(`/oa/vehicle/usage/${id}`) as Promise<VehicleUsage>;
-};
+export const getUsageInfo = (id: number) =>
+  request.get(`/oa/vehicle/usage/${id}`) as Promise<VehicleUsage>;
 
-/** 审批用车申请 */
 export const approveUsage = (id: number, approved: boolean, remark?: string) => {
   const data: VehicleUsageApprovalRequest = { approved, remark };
   return request.put(`/oa/vehicle/usage/${id}/approve`, data) as Promise<void>;
 };
 
-/** 归还车辆（完成用车） */
-export const returnVehicle = (id: number, data: VehicleReturnRequest) => {
-  return request.put(`/oa/vehicle/usage/${id}/return`, data) as Promise<void>;
-};
+export const dispatchUsage = (id: number, data: VehicleDispatchRequest) =>
+  request.put(`/oa/vehicle/usage/${id}/dispatch`, data) as Promise<void>;
 
-/** 取消用车申请 */
-export const cancelUsage = (id: number) => {
-  return request.put(`/oa/vehicle/usage/${id}/cancel`) as Promise<void>;
-};
+export const returnVehicle = (id: number, data: VehicleReturnRequest) =>
+  request.put(`/oa/vehicle/usage/${id}/return`, data) as Promise<void>;
 
-// --- 费用管理 API ---
+export const cancelUsage = (id: number) =>
+  request.put(`/oa/vehicle/usage/${id}/cancel`) as Promise<void>;
 
-/** 获取费用列表（分页） */
-export const getExpenseList = (query: ExpenseQuery) => {
-  return request.get('/oa/vehicle/expense/list', { params: query }) as Promise<PageResult<VehicleExpense>>;
-};
+export const getExpenseList = (query: ExpenseQuery) =>
+  request.get('/oa/vehicle/expense/list', { params: query }) as Promise<PageResult<VehicleExpense>>;
 
-/** 新增费用 */
-export const addExpense = (data: VehicleExpense) => {
-  return request.post('/oa/vehicle/expense', data) as Promise<void>;
-};
+export const addExpense = (data: VehicleExpense) =>
+  request.post('/oa/vehicle/expense', data) as Promise<void>;
 
-/** 获取费用统计 */
-export const getExpenseStats = (startDate?: string, endDate?: string) => {
-  return request.get('/oa/vehicle/expense/stats', { params: { startDate, endDate } }) as Promise<ExpenseStats>;
-};
+export const getExpenseStats = (startDate?: string, endDate?: string) =>
+  request.get('/oa/vehicle/expense/stats', { params: { startDate, endDate } }) as Promise<ExpenseStats>;
+
+export const getMaintenanceList = (query: PageQuery & Partial<VehicleMaintenance>) =>
+  request.get('/oa/vehicle/maintenance/list', { params: query }) as Promise<PageResult<VehicleMaintenance>>;
+
+export const addMaintenance = (data: VehicleMaintenance) =>
+  request.post('/oa/vehicle/maintenance', data) as Promise<void>;
+
+export const getViolationList = (query: PageQuery & Partial<VehicleViolation>) =>
+  request.get('/oa/vehicle/violation/list', { params: query }) as Promise<PageResult<VehicleViolation>>;
+
+export const addViolation = (data: VehicleViolation) =>
+  request.post('/oa/vehicle/violation', data) as Promise<void>;

@@ -334,6 +334,12 @@ WHERE task_id BETWEEN 9400 AND 9999;
 DELETE FROM cloud_flow_db.sys_vehicle_expense
 WHERE expense_id BETWEEN 9100 AND 9999;
 
+DELETE FROM cloud_flow_db.sys_vehicle_violation
+WHERE violation_id BETWEEN 9100 AND 9999;
+
+DELETE FROM cloud_flow_db.sys_vehicle_maintenance
+WHERE maintenance_id BETWEEN 9100 AND 9999;
+
 DELETE FROM cloud_flow_db.sys_vehicle_usage
 WHERE usage_id BETWEEN 9000 AND 9999;
 
@@ -1492,16 +1498,16 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(737, '绩效结果填报', 734, 3, '',
 INSERT INTO cloud_flow_db.sys_menu VALUES(738, '绩效提交审批', 734, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:submit', '#', 'admin', NOW(), '', null, '绩效提交审批权限');
 INSERT INTO cloud_flow_db.sys_menu VALUES(739, '绩效调薪联动', 734, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:salary', '#', 'admin', NOW(), '', null, '绩效调薪联动权限');
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 730, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 731, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 732, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 733, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 734, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 735, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 736, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 737, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 738, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 739, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 730, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 731, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 732, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 733, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 734, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 735, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 736, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 737, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 738, 100000);
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 739, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 730, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 731, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 732, 100000);
@@ -5809,33 +5815,34 @@ INSERT INTO cloud_flow_db.sys_asset_log (
 -- 2.6 车辆、用车与费用
 -- -----------------------------
 INSERT INTO cloud_flow_db.sys_vehicle (
-  vehicle_id, tenant_id, license_plate, brand, model, color, capacity, status, mileage, purchase_date, insurance_expiry, location,
+  vehicle_id, tenant_id, license_plate, brand, model, color, capacity, status, mileage, purchase_date, insurance_expiry, annual_inspection_expiry,
+  maintenance_cycle_km, next_maintenance_mileage, manager_user_id, location,
   remark, del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9001, 100000, '沪A-CF001', '别克', 'GL8 ES', '黑色', 7, '3', 28650.50, '2023-06-01', '2026-08-31', '总部地库 A 区', '客户接待与商务出行主力车辆', '0', 'admin', DATE_SUB(NOW(), INTERVAL 600 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
-(9002, 100000, '沪A-CF002', '特斯拉', 'Model Y', '白色', 5, '1', 15280.00, '2024-03-12', '2026-03-28', '总部地库 B 区', '适合市区短途接待', '0', 'admin', DATE_SUB(NOW(), INTERVAL 360 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9003, 100000, '沪A-CF003', '大众', '帕萨特', '银色', 5, '4', 43120.00, '2022-11-20', '2026-05-16', '维修厂', '右前轮毂维修中', '0', 'admin', DATE_SUB(NOW(), INTERVAL 820 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 12 HOUR));
+(9001, 100000, '沪A-CF001', '别克', 'GL8 ES', '黑色', 7, '3', 28650.50, '2023-06-01', '2026-08-31', '2026-07-20', 5000.00, 32000.00, 1, '总部地库 A 区', '客户接待与商务出行主力车辆', '0', 'admin', DATE_SUB(NOW(), INTERVAL 600 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(9002, 100000, '沪A-CF002', '特斯拉', 'Model Y', '白色', 5, '1', 15280.00, '2024-03-12', '2026-03-28', '2026-06-15', 8000.00, 20000.00, 1, '总部地库 B 区', '适合市区短途接待', '0', 'admin', DATE_SUB(NOW(), INTERVAL 360 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9003, 100000, '沪A-CF003', '大众', '帕萨特', '银色', 5, '4', 43120.00, '2022-11-20', '2026-05-16', '2026-05-25', 5000.00, 45000.00, 1, '维修厂', '右前轮毂维修中', '0', 'admin', DATE_SUB(NOW(), INTERVAL 820 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 12 HOUR));
 
 INSERT INTO cloud_flow_db.sys_vehicle_usage (
-  usage_id, tenant_id, vehicle_id, applicant_id, driver_id, start_time, end_time, destination, return_location, is_round_trip, reason,
-  passenger_count, passengers, start_mileage, end_mileage, actual_start_time, actual_end_time, attachment_url, status, process_instance_id,
+  usage_id, tenant_id, vehicle_id, applicant_id, driver_id, driver_mode, start_time, end_time, destination, return_location, is_round_trip, reason,
+  passenger_count, passengers, start_mileage, end_mileage, actual_start_time, actual_end_time, dispatch_time, dispatch_remark, return_remark, attachment_url, status, process_instance_id,
   del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9001, 100000, 9001, 2, 7, DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 1 DAY), INTERVAL 6 HOUR), '浦东新区星河集团总部', '总部地库 A 区', 1,
+(9001, 100000, 9001, 2, 7, 1, DATE_ADD(NOW(), INTERVAL 1 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 1 DAY), INTERVAL 6 HOUR), '浦东新区星河集团总部', '总部地库 A 区', 1,
  '客户高层商务拜访及产品演示', 4, '李经理,张三,前端测试,后端测试', 28650.50, NULL, NULL, NULL,
- 'https://demo.cloudflow.local/files/vehicle/usage-9001-approval.pdf', '0', 'demo_inst_012', '0', 'li', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'li', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
-(9002, 100000, 9002, 4, 7, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 4 HOUR, '虹桥人才中心', '总部地库 B 区', 1,
+ NULL, NULL, NULL, 'https://demo.cloudflow.local/files/vehicle/usage-9001-approval.pdf', '0', 'demo_inst_012', '0', 'li', DATE_SUB(NOW(), INTERVAL 3 HOUR), 'li', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+(9002, 100000, 9002, 4, 7, 1, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 4 HOUR, '虹桥人才中心', '总部地库 B 区', 1,
  '招聘专场宣讲与候选人面谈接送', 3, '赵HR,行政接待,候选人代表', 15140.00, 15210.00, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY) + INTERVAL 4 HOUR,
- 'https://demo.cloudflow.local/files/vehicle/usage-9002-summary.pdf', '4', NULL, '0', 'zhao', DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
-(9003, 100000, 9003, 1, 7, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY) + INTERVAL 1 HOUR, '市区维修中心', '维修厂', 0,
+ DATE_SUB(NOW(), INTERVAL 2 DAY) - INTERVAL 5 MINUTE, '行政安排司机接送候选人与物料', '已完成活动接送并归库', 'https://demo.cloudflow.local/files/vehicle/usage-9002-summary.pdf', '4', NULL, '0', 'zhao', DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(9003, 100000, 9003, 1, 7, 1, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY) + INTERVAL 1 HOUR, '市区维修中心', '维修厂', 0,
  '送修车辆，处理异响与刹车保养', 1, '陈IT', 43080.00, 43120.00, DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY) + INTERVAL 1 HOUR,
- 'https://demo.cloudflow.local/files/vehicle/maintenance/repair-order-9003.jpg', '4', NULL, '0', 'admin', DATE_SUB(NOW(), INTERVAL 8 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 7 DAY)),
-(9004, 100000, 9001, 5, 7, DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 2 DAY), INTERVAL 5 HOUR), '浦东新区创新园区', '总部地库 A 区', 1,
+ DATE_SUB(NOW(), INTERVAL 7 DAY) - INTERVAL 10 MINUTE, '送修前确认异响与保养项', '车辆已交付维修厂', 'https://demo.cloudflow.local/files/vehicle/maintenance/repair-order-9003.jpg', '4', NULL, '0', 'admin', DATE_SUB(NOW(), INTERVAL 8 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 7 DAY)),
+(9004, 100000, 9001, 5, 7, 1, DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_ADD(DATE_ADD(NOW(), INTERVAL 2 DAY), INTERVAL 5 HOUR), '浦东新区创新园区', '总部地库 A 区', 1,
  '客户现场演示与方案沟通', 3, '张三,前端测试,后端测试', 28650.50, NULL, NULL, NULL,
- 'https://demo.cloudflow.local/files/vehicle/usage-9004-approval.pdf', '0', NULL, '0', 'zhang', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'zhang', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
-(9005, 100000, 9002, 3, 7, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 3 HOUR, '静安区客户培训点', '总部地库 B 区', 1,
+ NULL, NULL, NULL, 'https://demo.cloudflow.local/files/vehicle/usage-9004-approval.pdf', '0', NULL, '0', 'zhang', DATE_SUB(NOW(), INTERVAL 5 HOUR), 'zhang', DATE_SUB(NOW(), INTERVAL 5 HOUR)),
+(9005, 100000, 9002, 3, 7, 1, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 3 HOUR, '静安区客户培训点', '总部地库 B 区', 1,
  '财务系统客户培训接送', 2, '王财务,客户代表', 15210.00, 15280.00, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY) + INTERVAL 3 HOUR,
- 'https://demo.cloudflow.local/files/vehicle/usage-9005-summary.pdf', '4', NULL, '0', 'wang', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY));
+ DATE_SUB(NOW(), INTERVAL 1 DAY) - INTERVAL 10 MINUTE, '安排司机按培训日程接送', '客户培训结束，车辆归位', 'https://demo.cloudflow.local/files/vehicle/usage-9005-summary.pdf', '4', NULL, '0', 'wang', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT INTO cloud_flow_db.sys_vehicle_expense (
   expense_id, tenant_id, vehicle_id, usage_id, expense_type, amount, expense_date, description, receipt_url, create_by, create_time
@@ -5848,6 +5855,36 @@ INSERT INTO cloud_flow_db.sys_vehicle_expense (
 (9106, 100000, 9001, 9004, '3', 36.00, DATE_SUB(CURDATE(), INTERVAL 1 DAY), '园区停车费', 'https://demo.cloudflow.local/files/vehicle/receipts/park-9106.jpg', 'zhang', DATE_SUB(NOW(), INTERVAL 1 DAY)),
 (9107, 100000, 9001, NULL, '2', 120.00, DATE_SUB(CURDATE(), INTERVAL 5 DAY), '洗车与基础保养', 'https://demo.cloudflow.local/files/vehicle/receipts/wash-9107.jpg', 'admin', DATE_SUB(NOW(), INTERVAL 5 DAY)),
 (9108, 100000, 9002, 9005, '4', 980.00, DATE_SUB(CURDATE(), INTERVAL 1 DAY), '培训期间临时维修', 'https://demo.cloudflow.local/files/vehicle/receipts/repair-9108.jpg', 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.sys_vehicle_maintenance (
+  maintenance_id, tenant_id, vehicle_id, maintenance_type, status, title, description, provider_name, cost_amount,
+  maintenance_date, next_maintenance_date, mileage_at_service, next_maintenance_mileage, attachment_url,
+  create_by, create_time, update_by, update_time, del_flag
+) VALUES
+(9011, 100000, 9001, 'MAINTENANCE', 'DONE', 'GL8 商务车基础保养', '更换机油、机滤并完成常规车况检查。', '浦东别克服务中心', 1200.00,
+ DATE_SUB(CURDATE(), INTERVAL 25 DAY), DATE_ADD(CURDATE(), INTERVAL 95 DAY), 27480.00, 32000.00, 'https://demo.cloudflow.local/files/vehicle/maintenance/9001-basic-maintenance.pdf',
+ 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 25 DAY), '0'),
+(9012, 100000, 9002, 'REPAIR', 'DONE', 'Model Y 培训期临时维修', '处理轮胎报警并完成四轮定位。', '闵行新能源服务站', 980.00,
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY), DATE_ADD(CURDATE(), INTERVAL 120 DAY), 15210.00, 20000.00, 'https://demo.cloudflow.local/files/vehicle/maintenance/9002-repair.pdf',
+ 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 1 DAY), '0'),
+(9013, 100000, 9003, 'REPAIR', 'OPEN', '帕萨特右前轮毂维修', '右前轮毂磕碰，需更换并复查刹车片。', '浦西维修厂', 1860.00,
+ DATE_SUB(CURDATE(), INTERVAL 6 DAY), DATE_ADD(CURDATE(), INTERVAL 14 DAY), 43120.00, 45000.00, 'https://demo.cloudflow.local/files/vehicle/maintenance/9003-wheel-repair.jpg',
+ 'admin', DATE_SUB(NOW(), INTERVAL 6 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 HOUR), '0');
+
+INSERT INTO cloud_flow_db.sys_vehicle_violation (
+  violation_id, tenant_id, vehicle_id, usage_id, driver_id, violation_time, violation_address, violation_reason,
+  penalty_amount, points, status, handled_time, handler_id, remark, attachment_url,
+  create_by, create_time, update_by, update_time, del_flag
+) VALUES
+(9011, 100000, 9001, 9002, 7, DATE_SUB(NOW(), INTERVAL 18 DAY), '浦东杨高南路', '临停超时被拍', 200.00, 0, 'CLOSED',
+ DATE_SUB(NOW(), INTERVAL 15 DAY), 1, '已由行政完成线上处理。', 'https://demo.cloudflow.local/files/vehicle/violation/9001-closed.pdf',
+ 'admin', DATE_SUB(NOW(), INTERVAL 18 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 15 DAY), '0'),
+(9012, 100000, 9002, 9005, 7, DATE_SUB(NOW(), INTERVAL 2 DAY), '静安区培训点周边道路', '违停占道', 150.00, 0, 'PENDING',
+ NULL, NULL, '待确认违章责任人与缴费。', 'https://demo.cloudflow.local/files/vehicle/violation/9002-pending.jpg',
+ 'wang', DATE_SUB(NOW(), INTERVAL 2 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 2 DAY), '0'),
+(9013, 100000, 9004, 9012, 19, DATE_SUB(NOW(), INTERVAL 3 DAY), '苏州工业园区星湖街', '限时路段超时停车', 100.00, 0, 'PROCESSING',
+ NULL, 1, '行政已登记，等待统一处理。', 'https://demo.cloudflow.local/files/vehicle/violation/9004-processing.jpg',
+ 'wu_delivery', DATE_SUB(NOW(), INTERVAL 3 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY), '0');
 
 -- -----------------------------
 -- 2.6.1 用印、证照与借还演示
@@ -6830,6 +6867,12 @@ WHERE task_id IN (9421, 9422, 9423, 9424);
 DELETE FROM cloud_flow_db.sys_vehicle_expense
 WHERE expense_id IN (9011, 9012);
 
+DELETE FROM cloud_flow_db.sys_vehicle_violation
+WHERE violation_id IN (9011, 9012, 9013);
+
+DELETE FROM cloud_flow_db.sys_vehicle_maintenance
+WHERE maintenance_id IN (9011, 9012, 9013, 9014);
+
 DELETE FROM cloud_flow_db.sys_vehicle_usage
 WHERE usage_id IN (9011);
 
@@ -6990,17 +7033,18 @@ INSERT INTO cloud_flow_db.sys_duty_schedule (
 -- =========================================================
 
 INSERT INTO cloud_flow_db.sys_vehicle_usage (
-  usage_id, tenant_id, vehicle_id, applicant_id, driver_id, start_time, end_time, destination, return_location, is_round_trip, reason,
-  passenger_count, passengers, start_mileage, end_mileage, actual_start_time, actual_end_time, attachment_url, status, process_instance_id,
+  usage_id, tenant_id, vehicle_id, applicant_id, driver_id, driver_mode, start_time, end_time, destination, return_location, is_round_trip, reason,
+  passenger_count, passengers, start_mileage, end_mileage, actual_start_time, actual_end_time, dispatch_time, dispatch_remark, return_remark, attachment_url, status, process_instance_id,
   del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9011, 100000, 9002, 4, 7,
+(9011, 100000, 9002, 4, 7, 1,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 8 HOUR + INTERVAL 30 MINUTE,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 12 HOUR,
  '虹桥高铁站-CloudFlow总部', '总部地库 B 区', 1, '接待苏州智造验收负责人来司参与上线复盘与系统验收。',
  3, '赵HR,李经理,周承安', 15210.00, 15256.00,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 8 HOUR + INTERVAL 35 MINUTE,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 11 HOUR + INTERVAL 50 MINUTE,
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 8 HOUR + INTERVAL 20 MINUTE, '行政根据验收接待计划安排司机接站。', '接待完成后按计划归库。',
  'https://demo.cloudflow.local/files/vehicle/usage-9011-summary.pdf', '4', 'seed_inst_vehicle_ops_001',
  '0', 'zhao', DATE_SUB(NOW(), INTERVAL 30 HOUR), 'chen', DATE_SUB(NOW(), INTERVAL 24 HOUR));
 
@@ -8025,41 +8069,42 @@ INSERT INTO cloud_flow_db.sys_asset_log (
 (9222, 100000, 9007, '2', '出库', -20, 1, NULL, '本周访客接待与培训活动使用胸卡', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT INTO cloud_flow_db.sys_vehicle (
-  vehicle_id, tenant_id, license_plate, brand, model, color, capacity, status, mileage, purchase_date, insurance_expiry, location,
+  vehicle_id, tenant_id, license_plate, brand, model, color, capacity, status, mileage, purchase_date, insurance_expiry, annual_inspection_expiry,
+  maintenance_cycle_km, next_maintenance_mileage, manager_user_id, location,
   remark, del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9004, 100000, '沪A-CF004', '沃尔沃', 'XC60', '灰色', 5, '1', 8320.00, '2025-09-15', '2026-09-14', '总部地库 C 区', '适合重点客户拜访与管理层外勤', '0', 'admin', DATE_SUB(NOW(), INTERVAL 160 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
-(9005, 100000, '沪A-CF005', '江铃', '全顺', '蓝色', 9, '1', 5620.00, '2025-11-08', '2026-11-07', '总部地库 D 区', '适合交付培训与多人外勤接送', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
+(9004, 100000, '沪A-CF004', '沃尔沃', 'XC60', '灰色', 5, '1', 8320.00, '2025-09-15', '2026-09-14', '2026-08-20', 6000.00, 14000.00, 1, '总部地库 C 区', '适合重点客户拜访与管理层外勤', '0', 'admin', DATE_SUB(NOW(), INTERVAL 160 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(9005, 100000, '沪A-CF005', '江铃', '全顺', '蓝色', 9, '1', 5620.00, '2025-11-08', '2026-11-07', '2026-10-15', 6000.00, 11000.00, 1, '总部地库 D 区', '适合交付培训与多人外勤接送', '0', 'admin', DATE_SUB(NOW(), INTERVAL 120 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 INSERT INTO cloud_flow_db.sys_vehicle_usage (
-  usage_id, tenant_id, vehicle_id, applicant_id, driver_id, start_time, end_time, destination, return_location, is_round_trip, reason,
-  passenger_count, passengers, start_mileage, end_mileage, actual_start_time, actual_end_time, attachment_url, status, process_instance_id,
+  usage_id, tenant_id, vehicle_id, applicant_id, driver_id, driver_mode, start_time, end_time, destination, return_location, is_round_trip, reason,
+  passenger_count, passengers, start_mileage, end_mileage, actual_start_time, actual_end_time, dispatch_time, dispatch_remark, return_remark, attachment_url, status, process_instance_id,
   del_flag, create_by, create_time, update_by, update_time
 ) VALUES
-(9012, 100000, 9004, 11, 19,
+(9012, 100000, 9004, 11, 19, 1,
  DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 8 HOUR,
  DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 18 HOUR,
  '苏州工业园区客户现场', '总部地库 C 区', 1, '交付启动会后赴客户现场完成环境核验与培训准备。',
  3, '吴思远,高牧,徐珂', 8320.00, 8568.00,
  DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 8 HOUR + INTERVAL 15 MINUTE,
  DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 17 HOUR + INTERVAL 45 MINUTE,
- 'https://demo.cloudflow.local/files/vehicle/usage-9012-summary.pdf', '4', NULL, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 70 HOUR), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 60 HOUR)),
-(9013, 100000, 9005, 13, 19,
+ DATE_SUB(CURDATE(), INTERVAL 3 DAY) + INTERVAL 7 HOUR + INTERVAL 50 MINUTE, '交付启动日优先派给实施司机。', '已按计划还车并归档现场问题清单。', 'https://demo.cloudflow.local/files/vehicle/usage-9012-summary.pdf', '4', NULL, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 70 HOUR), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 60 HOUR)),
+(9013, 100000, 9005, 13, 19, 1,
  DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR,
  DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 19 HOUR,
  '昆山客户培训中心', '总部地库 D 区', 1, '销售与交付联合前往培训中心进行续约方案演示与培训洽谈。',
  3, '何嘉树,彭骁,客户代表', 5620.00, 5896.00,
  DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 10 MINUTE,
  DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 30 MINUTE,
- 'https://demo.cloudflow.local/files/vehicle/usage-9013-summary.pdf', '4', NULL, '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 52 HOUR), 'he_sales', DATE_SUB(NOW(), INTERVAL 42 HOUR)),
-(9014, 100000, 9004, 12, 7,
+ DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 45 MINUTE, '多人培训接送任务，统一派司机。', '培训结束后已回库。', 'https://demo.cloudflow.local/files/vehicle/usage-9013-summary.pdf', '4', NULL, '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 52 HOUR), 'he_sales', DATE_SUB(NOW(), INTERVAL 42 HOUR)),
+(9014, 100000, 9004, 12, 7, 1,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 13 HOUR,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR,
  '浦东续约客户总部', '总部地库 C 区', 1, '客户成功团队拜访重点续约客户，复核问题清单与阶段里程碑。',
  2, '郑雅宁,徐珂', 8568.00, 8692.00,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 13 HOUR + INTERVAL 20 MINUTE,
  DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 17 HOUR + INTERVAL 40 MINUTE,
- 'https://demo.cloudflow.local/files/vehicle/usage-9014-summary.pdf', '4', NULL, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 28 HOUR), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 18 HOUR));
+ DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 12 HOUR + INTERVAL 50 MINUTE, '续约客户拜访按行政接待计划执行。', '已带回客户问题清单并归位车辆。', 'https://demo.cloudflow.local/files/vehicle/usage-9014-summary.pdf', '4', NULL, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 28 HOUR), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 18 HOUR));
 
 INSERT INTO cloud_flow_db.sys_vehicle_expense (
   expense_id, tenant_id, vehicle_id, usage_id, expense_type, amount, expense_date, description, receipt_url, create_by, create_time
@@ -8069,6 +8114,15 @@ INSERT INTO cloud_flow_db.sys_vehicle_expense (
 (9111, 100000, 9005, 9013, '1', 356.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '昆山培训中心往返油费', 'https://demo.cloudflow.local/files/vehicle/receipts/fuel-9111.jpg', 'he_sales', DATE_SUB(NOW(), INTERVAL 49 HOUR)),
 (9112, 100000, 9005, 9013, '2', 68.00, DATE_SUB(CURDATE(), INTERVAL 2 DAY), '昆山高速通行费', 'https://demo.cloudflow.local/files/vehicle/receipts/toll-9112.jpg', 'he_sales', DATE_SUB(NOW(), INTERVAL 48 HOUR)),
 (9113, 100000, 9004, NULL, '4', 1260.00, DATE_SUB(CURDATE(), INTERVAL 6 DAY), '季度保养与轮胎检测', 'https://demo.cloudflow.local/files/vehicle/receipts/repair-9113.jpg', 'admin', DATE_SUB(NOW(), INTERVAL 6 DAY));
+
+INSERT INTO cloud_flow_db.sys_vehicle_maintenance (
+  maintenance_id, tenant_id, vehicle_id, maintenance_type, status, title, description, provider_name, cost_amount,
+  maintenance_date, next_maintenance_date, mileage_at_service, next_maintenance_mileage, attachment_url,
+  create_by, create_time, update_by, update_time, del_flag
+) VALUES
+(9014, 100000, 9004, 'MAINTENANCE', 'DONE', 'XC60 季度保养', '完成机油、轮胎检测与刹车系统检查。', '徐汇沃尔沃服务站', 1260.00,
+ DATE_SUB(CURDATE(), INTERVAL 6 DAY), DATE_ADD(CURDATE(), INTERVAL 100 DAY), 8200.00, 14000.00, 'https://demo.cloudflow.local/files/vehicle/maintenance/9004-quarterly.pdf',
+ 'admin', DATE_SUB(NOW(), INTERVAL 6 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 6 DAY), '0');
 
 INSERT INTO cloud_flow_db.sys_visitor (
   visitor_id, tenant_id, visitor_name, visitor_phone, visitor_company, visitor_count, id_card, visit_reason,

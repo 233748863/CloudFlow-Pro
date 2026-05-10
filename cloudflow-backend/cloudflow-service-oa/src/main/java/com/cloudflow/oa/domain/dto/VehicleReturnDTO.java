@@ -11,4 +11,6 @@ public class VehicleReturnDTO {
     private Double endMileage;
 
     private String remark;
+
+    private String returnLocation;
 }

@@ -5,6 +5,7 @@ import {
   LogIn,
   LogOut,
   Plus,
+  QrCode,
   RotateCcw,
   Search,
   UserCheck,
@@ -120,10 +121,65 @@ export const VisitorPage: React.FC = () => {
   const [showDialog, setShowDialog] = useState(false);
   const [cancelTarget, setCancelTarget] = useState<Visitor | null>(null);
   const [formData, setFormData] = useState<Visitor>(createDefaultForm());
+  const [passVisitor, setPassVisitor] = useState<Visitor | null>(null);
+  const [passQrCodeUrl, setPassQrCodeUrl] = useState('');
+  const [passQrCodeLoading, setPassQrCodeLoading] = useState(false);
+  const [passQrCodeError, setPassQrCodeError] = useState('');
 
   useEffect(() => {
     void fetchList();
   }, [searchParams]);
+
+  useEffect(() => {
+    if (!passVisitor?.visitorId || !passVisitor.passCode) {
+      setPassQrCodeUrl('');
+      setPassQrCodeError('');
+      setPassQrCodeLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    let objectUrl = '';
+
+    const loadQrCode = async () => {
+      setPassQrCodeUrl('');
+      setPassQrCodeError('');
+      setPassQrCodeLoading(true);
+
+      try {
+        const blob = await visitorApi.qrCode(passVisitor.visitorId!);
+        const contentType = blob.type.toLowerCase();
+        if (blob.size === 0) {
+          throw new Error('二维码图片为空');
+        }
+        if (contentType && !contentType.startsWith('image/')) {
+          throw new Error('二维码接口未返回图片');
+        }
+        if (cancelled) {
+          return;
+        }
+        objectUrl = URL.createObjectURL(blob);
+        setPassQrCodeUrl(objectUrl);
+      } catch (error) {
+        if (!cancelled) {
+          setPassQrCodeError(getErrorMessage(error, '二维码加载失败'));
+        }
+      } finally {
+        if (!cancelled) {
+          setPassQrCodeLoading(false);
+        }
+      }
+    };
+
+    void loadQrCode();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [passVisitor?.visitorId, passVisitor?.passCode]);
 
   const fetchList = async () => {
     setLoading(true);
@@ -379,8 +435,21 @@ export const VisitorPage: React.FC = () => {
                             <span className="line-clamp-1">{item.visitReason}</span>
                           </TableCell>
 
-                          <TableCell className="px-4 py-3 align-top text-sm font-medium text-slate-700 dark:text-slate-200">
-                            {item.passCode || '-'}
+                          <TableCell className="px-4 py-3 align-top">
+                            {item.passCode ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 px-2.5"
+                                onClick={() => setPassVisitor(item)}
+                                title={item.passCode}
+                              >
+                                <QrCode size={14} className="mr-1.5" />
+                                查看
+                              </Button>
+                            ) : (
+                              <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
+                            )}
                           </TableCell>
 
                           <TableCell className="px-4 py-3 align-top">
@@ -406,7 +475,7 @@ export const VisitorPage: React.FC = () => {
                                   icon: <LogIn size={14} />,
                                   onClick: () => handleCheckIn(item.visitorId!),
                                   tone: 'neutral',
-                                  hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                                  hidden: item.status !== 'CONFIRMED',
                                 },
                                 {
                                   label: '签退',
@@ -448,6 +517,53 @@ export const VisitorPage: React.FC = () => {
           ) : null
         )}
       />
+
+      <BaseDialog
+        open={Boolean(passVisitor)}
+        title={passVisitor?.passCode || '访客通行码'}
+        onClose={() => setPassVisitor(null)}
+        maxWidthClassName="max-w-md"
+        footer={(
+          <Button variant="outline" onClick={() => setPassVisitor(null)}>
+            关闭
+          </Button>
+        )}
+      >
+        {passVisitor ? (
+          <div className="space-y-4 py-1">
+            <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+              <div className="font-medium text-slate-900 dark:text-slate-100">{passVisitor.visitorName}</div>
+              <div className="mt-1 grid gap-1 text-xs text-slate-500 dark:text-slate-400">
+                <span>{passVisitor.visitorCompany || '-'}</span>
+                <span>{passVisitor.visitDate || '-'} / {passVisitor.hostName || '-'}</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-center justify-center gap-4">
+              {passQrCodeLoading ? (
+                <div className="flex h-52 w-52 items-center justify-center rounded-xl border border-slate-200 bg-white p-3 dark:border-slate-800">
+                  <RotateCcw className="h-5 w-5 animate-spin text-slate-400" />
+                </div>
+              ) : passQrCodeError ? (
+                <InlineState
+                  title="二维码加载失败"
+                  description={passQrCodeError}
+                  icon={<QrCode className="h-4 w-4" />}
+                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950"
+                />
+              ) : passQrCodeUrl ? (
+                <img
+                  src={passQrCodeUrl}
+                  alt="访客通行二维码"
+                  className="h-52 w-52 rounded-xl border border-slate-200 bg-white p-3"
+                />
+              ) : null}
+              <div className="font-mono text-sm text-slate-500 dark:text-slate-400">
+                {passVisitor.passCode || '-'}
+              </div>
+            </div>
+          </div>
+        ) : null}
+      </BaseDialog>
 
       <BaseDialog
         open={showDialog}

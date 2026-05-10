@@ -112,6 +112,15 @@ const flattenDepts = (
   return result;
 };
 
+const renderDeptOptionLabel = (dept: DeptItem, level: number) => (
+  <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: `${level * 16}px` }}>
+    {level > 0 ? <span className="h-px w-3 shrink-0 bg-slate-300 dark:bg-slate-700" /> : null}
+    <span className={cn('truncate', level === 0 ? 'font-semibold' : 'font-medium')}>
+      {dept.deptName}
+    </span>
+  </div>
+);
+
 const normalizeNumberList = (value: unknown): number[] => {
   if (Array.isArray(value)) {
     return value.map((item) => Number(item)).filter((item) => !Number.isNaN(item));
@@ -909,12 +918,19 @@ export const UserList = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="请选择部门" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-80">
                   <SelectItem value="">不指定部门</SelectItem>
                   {deptOptions.map(({ dept, level }) => (
-                    <SelectItem key={dept.deptId} value={String(dept.deptId)}>
-                      {'-- '.repeat(level)}
-                      {dept.deptName}
+                    <SelectItem
+                      key={dept.deptId}
+                      value={String(dept.deptId)}
+                      label={dept.deptName}
+                      className={cn(
+                        'pl-3',
+                        level === 0 ? 'font-semibold' : 'text-slate-600 dark:text-slate-300',
+                      )}
+                    >
+                      {renderDeptOptionLabel(dept, level)}
                     </SelectItem>
                   ))}
                 </SelectContent>

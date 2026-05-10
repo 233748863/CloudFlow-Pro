@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Building2,
   ChevronDown,
@@ -37,6 +37,7 @@ import {
   deleteRole,
   getDeptTree,
   getMenuList,
+  getRole,
   getRoleList,
   updateRole,
 } from '../../services/api/auth';
@@ -225,6 +226,7 @@ export const RoleList = () => {
   const [deptTree, setDeptTree] = useState<TreeNode[]>([]);
   const [tenants, setTenants] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [roleDetailLoading, setRoleDetailLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<RoleFilters>({
     roleName: '',
@@ -239,6 +241,7 @@ export const RoleList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingRole, setEditingRole] = useState<RoleRecord | null>(null);
   const [pendingDeleteRole, setPendingDeleteRole] = useState<RoleRecord | null>(null);
+  const roleDetailRequestRef = useRef(0);
   const [formData, setFormData] = useState({
     roleName: '',
     roleKey: '',
@@ -395,6 +398,17 @@ export const RoleList = () => {
     }));
   };
 
+  const getRoleFormValue = (role: RoleRecord) => ({
+    roleName: role.roleName || '',
+    roleKey: role.roleKey || '',
+    roleSort: Number(role.roleSort || 0),
+    status: role.status || '0',
+    menuIds: normalizeNumberList(role.menuIds),
+    dsType: Number(role.dsType ?? 1),
+    dsScope: normalizeScopeValue(role.dsScope),
+    tenantId: role.tenantId,
+  });
+
   const handleOpenModal = (role?: RoleRecord) => {
     if (role && !canEditRole) {
       toast.error('没有编辑角色权限');
@@ -407,18 +421,34 @@ export const RoleList = () => {
     }
 
     if (role) {
+      const requestId = roleDetailRequestRef.current + 1;
+      roleDetailRequestRef.current = requestId;
       setEditingRole(role);
-      setFormData({
-        roleName: role.roleName || '',
-        roleKey: role.roleKey || '',
-        roleSort: Number(role.roleSort || 0),
-        status: role.status || '0',
-        menuIds: normalizeNumberList(role.menuIds),
-        dsType: Number(role.dsType ?? 1),
-        dsScope: normalizeScopeValue(role.dsScope),
-        tenantId: role.tenantId,
-      });
+      setFormData(getRoleFormValue(role));
+      setRoleDetailLoading(true);
+
+      void getRole(role.roleId)
+        .then((detail) => {
+          if (roleDetailRequestRef.current !== requestId) {
+            return;
+          }
+          setEditingRole((current) => ({ ...(current || role), ...detail }));
+          setFormData(getRoleFormValue({ ...role, ...detail }));
+        })
+        .catch((detailError) => {
+          if (roleDetailRequestRef.current !== requestId) {
+            return;
+          }
+          console.error(detailError);
+          toast.error(getErrorMessage(detailError, '加载角色权限失败'));
+        })
+        .finally(() => {
+          if (roleDetailRequestRef.current === requestId) {
+            setRoleDetailLoading(false);
+          }
+        });
     } else {
+      roleDetailRequestRef.current += 1;
       setEditingRole(null);
       setFormData({
         roleName: '',
@@ -436,6 +466,8 @@ export const RoleList = () => {
   };
 
   const handleCloseModal = () => {
+    roleDetailRequestRef.current += 1;
+    setRoleDetailLoading(false);
     setIsModalOpen(false);
     setEditingRole(null);
     setFormData({
@@ -498,6 +530,11 @@ export const RoleList = () => {
 
     if (!formData.roleName.trim() || !formData.roleKey.trim()) {
       toast.error('请完整填写角色名称和权限字符');
+      return;
+    }
+
+    if (roleDetailLoading) {
+      toast.error('角色授权仍在加载中');
       return;
     }
 
@@ -754,13 +791,20 @@ export const RoleList = () => {
             <Button variant="outline" onClick={handleCloseModal}>
               取消
             </Button>
-            <Button onClick={() => void 0} type="submit" form="role-form">
+            <Button onClick={() => void 0} type="submit" form="role-form" disabled={roleDetailLoading}>
               {isEdit ? '保存修改' : '创建角色'}
             </Button>
           </div>
         }
       >
         <form id="role-form" onSubmit={handleSubmit} className="space-y-5">
+          {roleDetailLoading ? (
+            <div className="flex items-center gap-2 rounded-xl border border-cyan-100 bg-cyan-50 px-3 py-2 text-sm text-cyan-700 dark:border-cyan-900/60 dark:bg-cyan-950/30 dark:text-cyan-200">
+              <LoadingSpinner size="sm" />
+              正在加载角色授权...
+            </div>
+          ) : null}
+
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div>
               <label className={fieldLabelClassName}>
@@ -917,7 +961,7 @@ export const RoleList = () => {
                     )
                   }
                   isChecked={(id) => formData.menuIds.includes(id)}
-                  onToggleCheck={toggleMenuCheck}
+                  onToggleCheck={roleDetailLoading ? () => undefined : toggleMenuCheck}
                 />
               ) : (
                 <div className="px-2 py-6 text-center text-sm text-slate-400 dark:text-slate-500">
