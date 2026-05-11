@@ -10,6 +10,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import FileUpload from '@/components/FileUpload';
 import {
   Button,
   DatePicker,
@@ -55,6 +56,8 @@ import {
   submitRecruitmentRequest,
   updateCandidateStatus,
 } from '@/services/api/hr';
+import { getMeetingRooms } from '@/services/api/schedule';
+import { MeetingRoom } from '@/types';
 
 type RecruitmentTab = 'request' | 'candidate' | 'interview';
 
@@ -133,7 +136,7 @@ const candidateFormDefault: CandidatePayload = {
   gender: 'MALE',
   phone: '',
   email: '',
-  resumeUrl: '',
+  resumeAttachmentUrls: '',
   source: 'WEBSITE',
 };
 
@@ -142,8 +145,35 @@ const interviewFormDefault: InterviewSchedulePayload = {
   interviewRound: 'FIRST',
   interviewType: 'VIDEO',
   interviewTime: '',
+  interviewEndTime: '',
   location: '',
+  meetingRoomId: undefined,
   interviewerIds: [],
+};
+
+const splitAttachmentUrls = (value?: string[] | string) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  return String(value || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const toBackendDateTime = (value?: string) => {
+  if (!value) return '';
+  const normalized = value.replace('T', ' ');
+  return normalized.length === 16 ? `${normalized}:00` : normalized;
+};
+
+const isMeetingRoomAvailable = (room: MeetingRoom) => String(room.status) === '1';
+
+const getRoomId = (room: MeetingRoom) => Number(room.roomId);
+
+const getRoomSnapshot = (room?: MeetingRoom) => {
+  if (!room) return '';
+  return room.location ? `${room.name} / ${room.location}` : room.name;
 };
 
 const InlineState = ({
@@ -205,6 +235,7 @@ export const HrRecruitmentPage: React.FC = () => {
   const [interviews, setInterviews] = useState<Interview[]>([]);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [positionOptions, setPositionOptions] = useState<PositionOption[]>([]);
+  const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [keyword, setKeyword] = useState('');
@@ -221,18 +252,20 @@ export const HrRecruitmentPage: React.FC = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [requestRes, candidateRes, interviewRes, deptRes, positionRes] = await Promise.all([
+      const [requestRes, candidateRes, interviewRes, deptRes, positionRes, roomRes] = await Promise.all([
         listRecruitmentRequests({ pageNum: 1, pageSize: 50 }),
         listCandidates({ pageNum: 1, pageSize: 50 }),
         listInterviews(),
         getDeptTreeOptions(),
         getPositionOptions(),
+        getMeetingRooms(),
       ]);
       setRequests(normalizeRows<RecruitmentRequest>(requestRes));
       setCandidates(normalizeRows<Candidate>(candidateRes));
       setInterviews(normalizeRows<Interview>(interviewRes));
       setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
       setPositionOptions(Array.isArray(positionRes) ? positionRes : []);
+      setMeetingRooms(Array.isArray(roomRes) ? roomRes : []);
     } catch (error) {
       console.error(error);
       toast.error(getErrorMessage(error, '招聘数据加载失败'));
@@ -289,6 +322,16 @@ export const HrRecruitmentPage: React.FC = () => {
           && ['NEW', 'SCREENING', 'INTERVIEW'].includes(item.status),
       ),
     [candidates, interviewableRequestIds],
+  );
+
+  const availableMeetingRooms = useMemo(
+    () => meetingRooms.filter(isMeetingRoomAvailable),
+    [meetingRooms],
+  );
+
+  const selectedMeetingRoom = useMemo(
+    () => availableMeetingRooms.find((room) => getRoomId(room) === interviewForm.meetingRoomId),
+    [availableMeetingRooms, interviewForm.meetingRoomId],
   );
 
   useEffect(() => {
@@ -396,7 +439,11 @@ export const HrRecruitmentPage: React.FC = () => {
   const handleCreateCandidate = async () => {
     setSubmitting(true);
     try {
-      await createCandidate(candidateForm);
+      const resumeAttachmentUrls = splitAttachmentUrls(candidateForm.resumeAttachmentUrls);
+      await createCandidate({
+        ...candidateForm,
+        resumeAttachmentUrls,
+      });
       toast.success('候选人已录入');
       closeCandidateDialog();
       await loadData();
@@ -409,9 +456,25 @@ export const HrRecruitmentPage: React.FC = () => {
   };
 
   const handleScheduleInterview = async () => {
+    const interviewTime = toBackendDateTime(interviewForm.interviewTime);
+    const interviewEndTime = toBackendDateTime(interviewForm.interviewEndTime);
+    if (!interviewTime || !interviewEndTime) {
+      toast.error('请选择面试开始和结束时间');
+      return;
+    }
+    if (new Date(interviewEndTime.replace(' ', 'T')).getTime() <= new Date(interviewTime.replace(' ', 'T')).getTime()) {
+      toast.error('面试结束时间必须晚于开始时间');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await scheduleInterview(interviewForm);
+      await scheduleInterview({
+        ...interviewForm,
+        interviewTime,
+        interviewEndTime,
+        location: interviewForm.meetingRoomId ? undefined : interviewForm.location,
+      });
       toast.success('面试已安排');
       closeInterviewDialog();
       await loadData();
@@ -467,7 +530,7 @@ export const HrRecruitmentPage: React.FC = () => {
       <div className="min-w-0">
         <div className="inline-flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">
           <BriefcaseBusiness className="h-3.5 w-3.5 text-cyan-600 dark:text-cyan-300" />
-          Recruitment Hub
+          招聘中心
         </div>
         <h1 className="mt-1.5 text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
           招聘与候选人
@@ -794,8 +857,15 @@ export const HrRecruitmentPage: React.FC = () => {
                         </TableCell>
                         <TableCell>{item.interviewRoundName || item.interviewRound}</TableCell>
                         <TableCell>{item.interviewTypeName || item.interviewType}</TableCell>
-                        <TableCell>{item.interviewTime}</TableCell>
-                        <TableCell>{item.location || '-'}</TableCell>
+                        <TableCell>
+                          <div>{item.interviewTime || '-'}</div>
+                          {item.interviewEndTime ? (
+                            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                              至 {item.interviewEndTime}
+                            </div>
+                          ) : null}
+                        </TableCell>
+                        <TableCell>{item.meetingRoomName || item.location || '-'}</TableCell>
                         <TableCell>
                           <span
                             className={[
@@ -1062,13 +1132,17 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="space-y-2 xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">简历链接</Label>
-                <Input
-                  value={candidateForm.resumeUrl || ''}
-                  onChange={(event) =>
-                    setCandidateForm((prev) => ({ ...prev, resumeUrl: event.target.value }))
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">简历附件</Label>
+                <FileUpload
+                  value={Array.isArray(candidateForm.resumeAttachmentUrls)
+                    ? candidateForm.resumeAttachmentUrls.join(',')
+                    : candidateForm.resumeAttachmentUrls || ''}
+                  onChange={(urls) =>
+                    setCandidateForm((prev) => ({ ...prev, resumeAttachmentUrls: urls }))
                   }
-                  className="h-11"
+                  maxCount={5}
+                  accept=".pdf,.doc,.docx"
+                  hint="支持 PDF、DOC、DOCX 简历文件"
                 />
               </div>
             </div>
@@ -1092,6 +1166,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 || !interviewableCandidates.length
                 || !interviewForm.candidateId
                 || !interviewForm.interviewTime
+                || !interviewForm.interviewEndTime
               }
               onClick={() => void handleScheduleInterview()}
             >
@@ -1167,7 +1242,7 @@ export const HrRecruitmentPage: React.FC = () => {
                 </Select>
               </div>
               <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">面试时间</Label>
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">开始时间</Label>
                 <DatePicker
                   type="datetime-local"
                   value={interviewForm.interviewTime}
@@ -1177,17 +1252,60 @@ export const HrRecruitmentPage: React.FC = () => {
                   className="h-11"
                 />
               </div>
-              <div className="space-y-2 xl:col-span-3">
-                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点 / 链接</Label>
-                <Input
-                  value={interviewForm.location || ''}
-                  placeholder="会议室 / Teams 链接"
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">结束时间</Label>
+                <DatePicker
+                  type="datetime-local"
+                  value={interviewForm.interviewEndTime}
                   onChange={(event) =>
-                    setInterviewForm((prev) => ({ ...prev, location: event.target.value }))
+                    setInterviewForm((prev) => ({ ...prev, interviewEndTime: event.target.value }))
                   }
                   className="h-11"
                 />
               </div>
+              <div className="space-y-2 xl:col-span-3">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">会议室</Label>
+                <Select
+                  value={interviewForm.meetingRoomId ? String(interviewForm.meetingRoomId) : 'none'}
+                  onValueChange={(value) =>
+                    setInterviewForm((prev) => ({
+                      ...prev,
+                      meetingRoomId: value === 'none' ? undefined : Number(value),
+                      location: value === 'none' ? prev.location : '',
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">不预订会议室</SelectItem>
+                    {availableMeetingRooms.map((room) => (
+                      <SelectItem key={room.roomId} value={String(room.roomId)}>
+                        {getRoomSnapshot(room)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {selectedMeetingRoom ? (
+                <div className="space-y-2 xl:col-span-3">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点快照</Label>
+                  <Input value={getRoomSnapshot(selectedMeetingRoom)} readOnly className="h-11 bg-slate-50 dark:bg-slate-900" />
+                </div>
+              ) : (
+                <div className="space-y-2 xl:col-span-3">
+                  <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">地点 / 链接</Label>
+                  <Input
+                    value={interviewForm.location || ''}
+                    placeholder="会议室 / Teams 链接"
+                    onChange={(event) =>
+                      setInterviewForm((prev) => ({ ...prev, location: event.target.value }))
+                    }
+                    className="h-11"
+                  />
+                </div>
+              )}
             </div>
           </DialogSection>
         </div>

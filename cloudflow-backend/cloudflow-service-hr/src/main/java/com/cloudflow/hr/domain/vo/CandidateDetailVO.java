@@ -102,7 +102,7 @@ public class CandidateDetailVO implements Serializable {
     private String email;
 
     /**
-     * 简历URL
+     * 简历附件URL列表
      */
     private List<String> resumeAttachmentUrls;
 

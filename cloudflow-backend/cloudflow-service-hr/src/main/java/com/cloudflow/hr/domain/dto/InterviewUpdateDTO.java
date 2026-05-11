@@ -30,6 +30,11 @@ public class InterviewUpdateDTO {
     private LocalDateTime interviewTime;
 
     /**
+     * 面试结束时间
+     */
+    private LocalDateTime interviewEndTime;
+
+    /**
      * 面试地点
      */
     private String location;

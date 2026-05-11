@@ -341,6 +341,10 @@ const HR_SELF_SERVICE_BLOCKED_STATUSES = new Set(['RESIGNED']);
 
 export const getHrEmployeeStatusLabel = (status?: string | null) => {
   switch (String(status || '').toUpperCase()) {
+    case 'PENDING':
+      return '待入职';
+    case 'PROBATION':
+      return '试用期';
     case 'REGULAR':
       return '正式员工';
     case 'RESIGNED':
@@ -539,6 +543,7 @@ export interface Candidate extends HrRecord {
   name: string;
   phone?: string;
   email?: string;
+  resumeAttachmentUrls?: string[];
   requestId?: number;
   positionId?: number;
   positionName?: string;
@@ -553,6 +558,7 @@ export interface CandidatePayload extends HrRecord {
   email?: string;
   requestId?: number;
   source?: string;
+  resumeAttachmentUrls?: string[] | string;
 }
 
 export interface Interview extends HrRecord {
@@ -560,18 +566,33 @@ export interface Interview extends HrRecord {
   candidateId: number;
   candidateName?: string;
   interviewTime?: string;
+  interviewEndTime?: string;
   interviewerId?: number;
   interviewerName?: string;
+  interviewerIds?: number[];
+  interviewerNames?: string[];
   interviewRound?: string;
+  interviewRoundName?: string;
+  interviewType?: string;
+  interviewTypeName?: string;
+  meetingRoomId?: number;
+  meetingRoomName?: string;
+  scheduleEventId?: number;
+  location?: string;
   status?: string;
+  statusName?: string;
 }
 
 export interface InterviewSchedulePayload extends HrRecord {
   candidateId: number;
   interviewTime: string;
+  interviewEndTime: string;
   interviewerId?: number;
+  interviewerIds?: number[];
   interviewRound?: string;
   interviewType?: string;
+  meetingRoomId?: number;
+  location?: string;
 }
 
 export interface Offer extends HrRecord {

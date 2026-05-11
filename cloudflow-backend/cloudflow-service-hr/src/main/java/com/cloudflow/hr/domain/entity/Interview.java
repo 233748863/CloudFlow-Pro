@@ -50,9 +50,29 @@ public class Interview implements Serializable {
     private LocalDateTime interviewTime;
 
     /**
+     * 面试结束时间
+     */
+    private LocalDateTime interviewEndTime;
+
+    /**
      * 面试地点
      */
     private String location;
+
+    /**
+     * 关联会议室ID
+     */
+    private Long meetingRoomId;
+
+    /**
+     * 会议室名称快照
+     */
+    private String meetingRoomName;
+
+    /**
+     * OA日程事件ID
+     */
+    private Long scheduleEventId;
 
     /**
      * 面试官ID列表（JSON格式）

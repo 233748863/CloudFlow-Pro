@@ -5334,29 +5334,30 @@ INSERT INTO cloud_flow_db.hr_candidate (
   id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'https://example.com/resume/chenhaitao.pdf,https://example.com/resume/chenhaitao-portfolio.pdf', 'HEADHUNTER', 'HIRED', NULL,
+(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', '/upload/hr/resume/chenhaitao.pdf,/upload/hr/resume/chenhaitao-portfolio.pdf', 'HEADHUNTER', 'HIRED', NULL,
  '2026-03-21 10:00:00', '2026-03-24 12:31:14', 'admin', 'admin', 0),
-(3002, 100000, 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 'https://example.com/resume/sunxiaoyu.pdf', 'REFERRAL', 'OFFER', NULL,
+(3002, 100000, 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', '/upload/hr/resume/sunxiaoyu.pdf', 'REFERRAL', 'OFFER', NULL,
  '2026-03-21 10:30:00', '2026-03-23 09:10:00', 'zhao', 'zhao', 0),
-(3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', 'https://example.com/resume/linjiaqi.pdf,https://example.com/resume/linjiaqi-works.pdf', 'WEBSITE', 'SCREENING', NULL,
+(3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', '/upload/hr/resume/linjiaqi.pdf,/upload/hr/resume/linjiaqi-works.pdf', 'WEBSITE', 'SCREENING', NULL,
  '2026-03-22 13:00:00', '2026-03-22 13:30:00', 'zhao', 'zhao', 0),
-(3004, 100000, 2003, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 'https://example.com/resume/liruotong.pdf', 'REFERRAL', 'HIRED', NULL,
+(3004, 100000, 2003, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', '/upload/hr/resume/liruotong.pdf', 'REFERRAL', 'HIRED', NULL,
  '2026-03-15 14:00:00', '2026-03-20 18:10:00', 'zhao', 'zhao', 0),
-(3005, 100000, 2001, '吴嘉豪', 'MALE', '13900011006', 'wu.jiahao@example.com', 'https://example.com/resume/wujiahao.pdf,https://example.com/resume/wujiahao-github.pdf', 'WEBSITE', 'INTERVIEW', NULL,
+(3005, 100000, 2001, '吴嘉豪', 'MALE', '13900011006', 'wu.jiahao@example.com', '/upload/hr/resume/wujiahao.pdf,/upload/hr/resume/wujiahao-github.pdf', 'WEBSITE', 'INTERVIEW', NULL,
  '2026-03-24 12:40:00', '2026-03-24 12:40:00', 'admin', 'admin', 0);
 
 -- 5. 面试示例数据
 INSERT INTO cloud_flow_db.hr_interview (
-  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, location, interviewers,
+  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, interview_end_time, location,
+  meeting_room_id, meeting_room_name, schedule_event_id, interviewers,
   evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(4001, 100000, 3001, 'FIRST', 'VIDEO', '2026-03-24 15:00:00', 'Teams 会议链接', '[2,9]',
+(4001, 100000, 3001, 'FIRST', 'VIDEO', '2026-03-24 15:00:00', '2026-03-24 16:00:00', 'Teams 会议链接', NULL, NULL, NULL, '[2,9]',
  NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 15:05:00', '2026-03-22 15:05:00', 'zhao', 'zhao', 0),
-(4002, 100000, 3002, 'FINAL', 'ONSITE', '2026-03-22 10:00:00', '上海总部 5F 面试室A', '[2,4]',
+(4002, 100000, 3002, 'FINAL', 'ONSITE', '2026-03-22 10:00:00', '2026-03-22 11:30:00', '上海总部 5F 面试室A', NULL, NULL, NULL, '[2,4]',
  '综合表现稳定，技术深度与协作意识符合岗位要求。', 88, 'PASS', 'COMPLETED', '2026-03-21 16:00:00', '2026-03-22 12:00:00', 'zhao', 'zhao', 0),
-(4003, 100000, 3003, 'FIRST', 'PHONE', '2026-03-24 11:00:00', '电话面试', '[4]',
+(4003, 100000, 3003, 'FIRST', 'PHONE', '2026-03-24 11:00:00', '2026-03-24 11:30:00', '电话面试', NULL, NULL, NULL, '[4]',
  NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 14:20:00', '2026-03-22 14:20:00', 'zhao', 'zhao', 0),
-(4004, 100000, 3005, 'FIRST', 'VIDEO', '2026-03-25 14:30:00', '腾讯会议 研发一组频道', '[2,5]',
+(4004, 100000, 3005, 'FIRST', 'VIDEO', '2026-03-25 14:30:00', '2026-03-25 15:30:00', '腾讯会议 研发一组频道', NULL, NULL, NULL, '[2,5]',
  NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-24 12:45:00', '2026-03-24 12:45:00', 'admin', 'admin', 0);
 
 -- 6. Offer 示例数据
@@ -7115,17 +7116,18 @@ INSERT INTO cloud_flow_db.hr_candidate (
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
 (3011, 100000, 2011, '林清禾', 'FEMALE', '13900012011', 'lin.qinghe@example.com',
- 'https://demo.cloudflow.local/files/hr/resume-linqinghe.pdf,https://demo.cloudflow.local/files/hr/resume-linqinghe-project.pdf', 'REFERRAL', 'HIRED', NULL,
+ '/upload/hr/resume/linqinghe.pdf,/upload/hr/resume/linqinghe-project.pdf', 'REFERRAL', 'HIRED', NULL,
  DATE_SUB(NOW(), INTERVAL 201 DAY), DATE_SUB(NOW(), INTERVAL 180 DAY), 'zhao', 'zhao', 0);
 
 INSERT INTO cloud_flow_db.hr_interview (
-  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, location, interviewers,
+  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, interview_end_time, location,
+  meeting_room_id, meeting_room_name, schedule_event_id, interviewers,
   evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(4011, 100000, 3011, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 198 DAY), '腾讯会议 ID 602-889',
+(4011, 100000, 3011, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 198 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 198 DAY), INTERVAL 1 HOUR), '腾讯会议 ID 602-889', NULL, NULL, NULL,
  '[2,8]', '基础能力扎实，能清晰说明企业工作台和流程页的组件拆分思路。', 86, 'PASS', 'COMPLETED',
  DATE_SUB(NOW(), INTERVAL 199 DAY), DATE_SUB(NOW(), INTERVAL 198 DAY), 'zhao', 'zhao', 0),
-(4012, 100000, 3011, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 190 DAY), '上海总部 5F 协作厅',
+(4012, 100000, 3011, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 190 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 190 DAY), INTERVAL 90 MINUTE), '上海总部 5F 协作厅', NULL, NULL, NULL,
  '[2,4]', '具备客户沟通和交付意识，能够承担上线支持与培训材料整理。', 91, 'PASS', 'COMPLETED',
  DATE_SUB(NOW(), INTERVAL 191 DAY), DATE_SUB(NOW(), INTERVAL 190 DAY), 'zhao', 'zhao', 0);
 
@@ -7933,19 +7935,20 @@ INSERT INTO cloud_flow_db.hr_candidate (
   id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
   create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(3012, 100000, 2012, '顾文韬', 'MALE', '13900012021', 'gu.wentao@example.com', 'https://demo.cloudflow.local/files/hr/resume-guwentao.pdf,https://demo.cloudflow.local/files/hr/resume-guwentao-project.pdf', 'HEADHUNTER', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 18 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
-(3013, 100000, 2012, '马会', 'FEMALE', '13900012022', 'ma.hui@example.com', 'https://demo.cloudflow.local/files/hr/resume-mahui.pdf', 'REFERRAL', 'SCREENING', NULL, DATE_SUB(NOW(), INTERVAL 16 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0),
-(3014, 100000, 2013, '冯子轩', 'MALE', '13900012023', 'feng.zixuan@example.com', 'https://demo.cloudflow.local/files/hr/resume-fengzixuan.pdf,https://demo.cloudflow.local/files/hr/resume-fengzixuan-award.pdf', 'WEBSITE', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0),
-(3015, 100000, 2013, '周绮雯', 'FEMALE', '13900012024', 'zhou.qiwen@example.com', 'https://demo.cloudflow.local/files/hr/resume-zhouqiwen.pdf', 'REFERRAL', 'OFFER', NULL, DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
+(3012, 100000, 2012, '顾文韬', 'MALE', '13900012021', 'gu.wentao@example.com', '/upload/hr/resume/guwentao.pdf,/upload/hr/resume/guwentao-project.pdf', 'HEADHUNTER', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 18 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
+(3013, 100000, 2012, '马会', 'FEMALE', '13900012022', 'ma.hui@example.com', '/upload/hr/resume/mahui.pdf', 'REFERRAL', 'SCREENING', NULL, DATE_SUB(NOW(), INTERVAL 16 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0),
+(3014, 100000, 2013, '冯子轩', 'MALE', '13900012023', 'feng.zixuan@example.com', '/upload/hr/resume/fengzixuan.pdf,/upload/hr/resume/fengzixuan-award.pdf', 'WEBSITE', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0),
+(3015, 100000, 2013, '周绮雯', 'FEMALE', '13900012024', 'zhou.qiwen@example.com', '/upload/hr/resume/zhouqiwen.pdf', 'REFERRAL', 'OFFER', NULL, DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
 
 INSERT INTO cloud_flow_db.hr_interview (
-  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, location, interviewers,
+  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, interview_end_time, location,
+  meeting_room_id, meeting_room_name, schedule_event_id, interviewers,
   evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
 ) VALUES
-(4013, 100000, 3012, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 7 DAY), '腾讯会议 方案组频道', '[10,11]', '方案结构完整，能清楚拆分集成边界与实施风险。', 88, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), 'zhao', 'zhao', 0),
-(4014, 100000, 3012, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 4 DAY), '上海总部 6F 战略会议室', '[1,10,13]', '行业场景理解较强，适合承担重点项目售前支撑。', 91, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0),
-(4015, 100000, 3014, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 3 DAY), '飞书会议 QA 频道', '[20,9]', '测试方法扎实，移动端兼容性场景经验较好。', 86, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
-(4016, 100000, 3015, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 1 DAY), '上海总部 5F 面试区', '[20,2,4]', '沟通稳定，适合承担流程平台回归与发布验证工作。', 89, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
+(4013, 100000, 3012, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 7 DAY), INTERVAL 1 HOUR), '腾讯会议 方案组频道', NULL, NULL, NULL, '[10,11]', '方案结构完整，能清楚拆分集成边界与实施风险。', 88, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), 'zhao', 'zhao', 0),
+(4014, 100000, 3012, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 4 DAY), INTERVAL 90 MINUTE), '上海总部 6F 战略会议室', NULL, NULL, NULL, '[1,10,13]', '行业场景理解较强，适合承担重点项目售前支撑。', 91, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0),
+(4015, 100000, 3014, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 3 DAY), INTERVAL 1 HOUR), '飞书会议 QA 频道', NULL, NULL, NULL, '[20,9]', '测试方法扎实，移动端兼容性场景经验较好。', 86, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
+(4016, 100000, 3015, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 1 DAY), INTERVAL 90 MINUTE), '上海总部 5F 面试区', NULL, NULL, NULL, '[20,2,4]', '沟通稳定，适合承担流程平台回归与发布验证工作。', 89, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
 
 INSERT INTO cloud_flow_db.hr_offer (
   id, tenant_id, offer_no, candidate_id, dept_id, position_id, salary, expected_date, expiry_date,

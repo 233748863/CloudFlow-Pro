@@ -40,9 +40,20 @@ public class InterviewScheduleDTO {
     private LocalDateTime interviewTime;
 
     /**
+     * 面试结束时间
+     */
+    @NotNull(message = "面试结束时间不能为空")
+    private LocalDateTime interviewEndTime;
+
+    /**
      * 面试地点
      */
     private String location;
+
+    /**
+     * 会议室ID
+     */
+    private Long meetingRoomId;
 
     /**
      * 面试官ID列表

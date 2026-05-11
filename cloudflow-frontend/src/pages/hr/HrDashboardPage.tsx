@@ -30,6 +30,7 @@ import {
   Offer,
   OnboardingApplication,
   RecruitmentRequest,
+  getHrEmployeeStatusLabel,
   listCandidates,
   listEmployees,
   listOffers,
@@ -413,8 +414,8 @@ export const HrDashboardPage: React.FC = () => {
             icon: <BriefcaseBusiness size={16} />,
           },
           {
-            title: 'Offer 管理',
-            hint: '审批、发放、接受与入职转换',
+            title: '录用管理',
+            hint: '录用审批、发放、接受与入职转换',
             path: '/hr/offer',
             meta: loading ? '--' : `${summary.activeOfferCount} 条待推进`,
             keywords: ['offer', '录用', '发放', '审批'],
@@ -539,8 +540,8 @@ export const HrDashboardPage: React.FC = () => {
         path: '/hr/recruitment',
       },
       {
-        title: '待推进 Offer',
-        helper: '进入 Offer 管理',
+        title: '待推进录用',
+        helper: '进入录用管理',
         value: loading ? '--' : String(summary.activeOfferCount),
         path: '/hr/offer',
       },
@@ -609,7 +610,7 @@ export const HrDashboardPage: React.FC = () => {
                 候选人 {loading ? '--' : summary.interviewingCount}
               </span>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                Offer {loading ? '--' : summary.activeOfferCount}
+                录用 {loading ? '--' : summary.activeOfferCount}
               </span>
               <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
                 待入职 {loading ? '--' : summary.pendingOnboardingCount}
@@ -709,7 +710,10 @@ export const HrDashboardPage: React.FC = () => {
                       key={item.id}
                       title={`${item.name} · ${item.employeeNo}`}
                       secondary={`${item.deptName || '未分配部门'} · ${formatDateLabel(item.hireDate || item.updateTime || item.createTime)}`}
-                      aside={statusPill(item.employeeStatus || 'UNKNOWN', employeeStatusTone(item.employeeStatus))}
+                      aside={statusPill(
+                        getHrEmployeeStatusLabel(item.employeeStatus),
+                        employeeStatusTone(item.employeeStatus),
+                      )}
                       onOpen={() => navigate('/hr/employees')}
                     />
                   ))}

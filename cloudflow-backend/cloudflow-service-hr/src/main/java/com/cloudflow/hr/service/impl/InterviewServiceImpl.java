@@ -4,6 +4,9 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.hr.client.AuthServiceClient;
+import com.cloudflow.hr.client.OaScheduleClient;
+import com.cloudflow.hr.client.dto.MeetingRoomBookingCreateDTO;
+import com.cloudflow.hr.client.vo.MeetingRoomBookingVO;
 import com.cloudflow.hr.client.vo.UserVO;
 import com.cloudflow.hr.domain.dto.InterviewEvaluationDTO;
 import com.cloudflow.hr.domain.dto.InterviewQueryDTO;
@@ -11,11 +14,13 @@ import com.cloudflow.hr.domain.dto.InterviewScheduleDTO;
 import com.cloudflow.hr.domain.dto.InterviewUpdateDTO;
 import com.cloudflow.hr.domain.entity.Candidate;
 import com.cloudflow.hr.domain.entity.Interview;
+import com.cloudflow.hr.domain.entity.Position;
 import com.cloudflow.hr.domain.entity.RecruitmentRequest;
 import com.cloudflow.hr.domain.vo.InterviewVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.CandidateMapper;
 import com.cloudflow.hr.mapper.InterviewMapper;
+import com.cloudflow.hr.mapper.PositionMapper;
 import com.cloudflow.hr.mapper.RecruitmentRequestMapper;
 import com.cloudflow.hr.service.InterviewService;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -49,7 +54,9 @@ public class InterviewServiceImpl implements InterviewService {
     private final InterviewMapper interviewMapper;
     private final CandidateMapper candidateMapper;
     private final RecruitmentRequestMapper recruitmentRequestMapper;
+    private final PositionMapper positionMapper;
     private final AuthServiceClient authServiceClient;
+    private final OaScheduleClient oaScheduleClient;
     private final ObjectMapper objectMapper;
 
     // 面试轮次映射
@@ -97,6 +104,7 @@ public class InterviewServiceImpl implements InterviewService {
         if (!INTERVIEWABLE_CANDIDATE_STATUSES.contains(candidate.getStatus())) {
             throw new HrBusinessException("INVALID_CANDIDATE_STATUS", "当前候选人状态不能安排面试");
         }
+        validateInterviewTime(dto.getInterviewTime(), dto.getInterviewEndTime());
 
         // 创建面试记录
         Interview interview = new Interview();
@@ -105,6 +113,7 @@ public class InterviewServiceImpl implements InterviewService {
         interview.setInterviewRound(dto.getInterviewRound());
         interview.setInterviewType(dto.getInterviewType());
         interview.setInterviewTime(dto.getInterviewTime());
+        interview.setInterviewEndTime(dto.getInterviewEndTime());
         interview.setLocation(dto.getLocation());
         interview.setStatus("SCHEDULED");
 
@@ -116,6 +125,14 @@ public class InterviewServiceImpl implements InterviewService {
                 log.error("转换面试官ID列表失败", e);
                 throw new RuntimeException("转换面试官ID列表失败");
             }
+        }
+
+        if (dto.getMeetingRoomId() != null) {
+            MeetingRoomBookingVO booking = createMeetingRoomBooking(dto, candidate, request, interview.getInterviewers());
+            interview.setMeetingRoomId(booking.getRoomId());
+            interview.setMeetingRoomName(booking.getRoomName());
+            interview.setScheduleEventId(booking.getEventId());
+            interview.setLocation(booking.getLocationSnapshot());
         }
 
         interviewMapper.insert(interview);
@@ -154,6 +171,10 @@ public class InterviewServiceImpl implements InterviewService {
         if (dto.getInterviewTime() != null) {
             interview.setInterviewTime(dto.getInterviewTime());
         }
+        if (dto.getInterviewEndTime() != null) {
+            interview.setInterviewEndTime(dto.getInterviewEndTime());
+        }
+        validateInterviewTime(interview.getInterviewTime(), interview.getInterviewEndTime());
         if (dto.getLocation() != null) {
             interview.setLocation(dto.getLocation());
         }
@@ -342,5 +363,70 @@ public class InterviewServiceImpl implements InterviewService {
         return interviewerIds.stream()
                 .map(String::valueOf)
                 .collect(Collectors.toList());
+    }
+
+    private void validateInterviewTime(java.time.LocalDateTime startTime, java.time.LocalDateTime endTime) {
+        if (startTime == null) {
+            throw new HrBusinessException("INVALID_INTERVIEW_TIME", "面试时间不能为空");
+        }
+        if (endTime == null) {
+            throw new HrBusinessException("INVALID_INTERVIEW_TIME", "面试结束时间不能为空");
+        }
+        if (!endTime.isAfter(startTime)) {
+            throw new HrBusinessException("INVALID_INTERVIEW_TIME", "面试结束时间必须晚于开始时间");
+        }
+    }
+
+    private MeetingRoomBookingVO createMeetingRoomBooking(InterviewScheduleDTO dto,
+                                                          Candidate candidate,
+                                                          RecruitmentRequest request,
+                                                          String attendees) {
+        MeetingRoomBookingCreateDTO bookingDTO = new MeetingRoomBookingCreateDTO();
+        bookingDTO.setRoomId(dto.getMeetingRoomId());
+        bookingDTO.setTitle("面试：" + candidate.getName());
+        bookingDTO.setDescription(buildBookingDescription(request, dto));
+        bookingDTO.setStartTime(dto.getInterviewTime());
+        bookingDTO.setEndTime(dto.getInterviewEndTime());
+        bookingDTO.setCreatorId(SecurityUtils.getUserId());
+        bookingDTO.setAttendees(attendees);
+
+        R<MeetingRoomBookingVO> result;
+        try {
+            result = oaScheduleClient.createMeetingRoomBooking(bookingDTO);
+        } catch (Exception e) {
+            log.error("预订面试会议室失败，candidateId={}, meetingRoomId={}", dto.getCandidateId(), dto.getMeetingRoomId(), e);
+            throw new HrBusinessException("MEETING_ROOM_BOOKING_FAILED", "OA会议室预订失败，请稍后重试");
+        }
+
+        if (result == null) {
+            throw new HrBusinessException("MEETING_ROOM_BOOKING_FAILED", "OA服务无响应，无法预订会议室");
+        }
+        if (!result.isSuccess()) {
+            throw new HrBusinessException("MEETING_ROOM_BOOKING_FAILED", result.getMsg());
+        }
+        MeetingRoomBookingVO booking = result.getData();
+        if (booking == null || booking.getEventId() == null || booking.getRoomId() == null) {
+            throw new HrBusinessException("MEETING_ROOM_BOOKING_FAILED", "OA服务未返回会议室预订结果");
+        }
+        return booking;
+    }
+
+    private String buildBookingDescription(RecruitmentRequest request, InterviewScheduleDTO dto) {
+        String positionName = resolvePositionName(request.getPositionId());
+        return "招聘需求编号：" + request.getRequestNo()
+                + "\n岗位：" + positionName
+                + "\n面试轮次：" + INTERVIEW_ROUND_MAP.getOrDefault(dto.getInterviewRound(), dto.getInterviewRound())
+                + "\n面试形式：" + INTERVIEW_TYPE_MAP.getOrDefault(dto.getInterviewType(), dto.getInterviewType());
+    }
+
+    private String resolvePositionName(Long positionId) {
+        if (positionId == null) {
+            return "";
+        }
+        Position position = positionMapper.selectById(positionId);
+        if (position == null || !StringUtils.hasText(position.getPositionName())) {
+            return String.valueOf(positionId);
+        }
+        return position.getPositionName();
     }
 }
