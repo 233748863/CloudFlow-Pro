@@ -1,18 +1,33 @@
 import React from 'react';
 import { cn } from '@/utils/cn';
 
+interface TableProps extends React.HTMLAttributes<HTMLTableElement> {
+  wrapperClassName?: string;
+  disableScrollWrapper?: boolean;
+}
+
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className = '', ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  TableProps
+>(({ className = '', wrapperClassName = '', disableScrollWrapper = false, ...props }, ref) => {
+  const tableElement = (
     <table
       ref={ref}
       className={cn('w-full caption-bottom text-sm', className)}
       {...props}
     />
-  </div>
-));
+  );
+
+  if (disableScrollWrapper) {
+    return tableElement;
+  }
+
+  return (
+    <div className={cn('relative w-full overflow-auto', wrapperClassName)}>
+      {tableElement}
+    </div>
+  );
+});
 
 Table.displayName = 'Table';
 

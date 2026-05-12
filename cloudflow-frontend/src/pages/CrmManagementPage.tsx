@@ -32,6 +32,15 @@ type ConfirmState =
   | { action: 'submitQuote' | 'sendQuote' | 'acceptQuote' | 'expireQuote' | 'winOpportunity' | 'loseOpportunity' | 'confirmReceivable' | 'resolveTicket' | 'closeTicket'; item: any }
   | null;
 
+const tabLabelMap: Record<CrmTab, string> = {
+  customer: '客户管理',
+  opportunity: '商机管理',
+  quote: '报价管理',
+  receivable: '回款管理',
+  renewal: '续约管理',
+  ticket: '服务工单',
+};
+
 const emptyCustomer: CrmCustomer = { customerName: '', customerType: 'ENTERPRISE', status: 'ACTIVE' };
 const emptyOpportunity: CrmOpportunity = { customerId: 0, opportunityName: '', stage: 'LEAD', status: 'OPEN', expectedAmount: 0, winRate: 0 };
 const emptyQuote: CrmQuote = { customerId: 0, quoteName: '', totalAmount: 0, taxAmount: 0, currency: 'CNY', status: 'DRAFT' };
@@ -105,6 +114,44 @@ const severityLabelMap: Record<string, string> = {
 
 const commonFooter = (
   <div className="flex items-center justify-end gap-2" />
+);
+
+const nativeSelectClassName = 'cf-control h-10 w-full rounded-xl px-4 py-2.5 text-sm appearance-auto';
+
+const formatDashboardNumber = (value?: number) => Number(value || 0).toLocaleString('zh-CN');
+
+const DashboardMetricTile = ({
+  label,
+  value,
+  hint,
+  valueClassName = 'text-slate-900 dark:text-white',
+}: {
+  label: string;
+  value: React.ReactNode;
+  hint?: string;
+  valueClassName?: string;
+}) => (
+  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+    <div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${valueClassName}`}>{value}</div>
+    {hint ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+  </div>
+);
+
+const DashboardFocusItem = ({
+  label,
+  title,
+  meta,
+}: {
+  label: string;
+  title: string;
+  meta?: string;
+}) => (
+  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+    <div className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{title}</div>
+    {meta ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{meta}</div> : null}
+  </div>
 );
 
 const renderHealthBadge = (level?: string) => (
@@ -431,91 +478,226 @@ export default function CrmManagementPage() {
 
   const renderDashboard = () => {
     if (!dashboard) return null;
+    const totalOutstandingAmount = dashboard.agingBuckets.reduce((sum, item) => sum + Number(item.outstandingAmount || 0), 0);
+    const totalReceivableCount = dashboard.agingBuckets.reduce((sum, item) => sum + Number(item.receivableCount || 0), 0);
+    const renewalAndTicketCount = dashboard.renewalWindows.length + dashboard.highSeverityTickets.length;
+    const riskAndTodoCount = dashboard.staleFollowCustomers.length
+      + dashboard.stalledOpportunities.length
+      + dashboard.crossModuleTodos.length
+      + dashboard.crossModuleRisks.length
+      + dashboard.budgetAlerts.length
+      + dashboard.invoiceExceptions.length;
+    const priorityQuote = dashboard.pendingQuotes[0];
+    const priorityRisk = dashboard.crossModuleRisks[0];
+    const staleCustomer = dashboard.staleFollowCustomers[0];
+    const currentViewLabel = tabLabelMap[tab];
+    const wonOpportunityCount = opportunities.filter((item) => item.stage === 'WON').length;
+    const negotiationOpportunityCount = opportunities.filter((item) => item.stage === 'NEGOTIATION').length;
+    const sentQuoteCount = quotes.filter((item) => item.status === 'SENT').length;
+    const acceptedQuote = quotes.find((item) => item.status === 'ACCEPTED');
+    const acceptedQuoteCount = quotes.filter((item) => item.status === 'ACCEPTED').length;
+    const unexpiredBucket = dashboard.agingBuckets.find((item) => item.bucketName?.includes('未逾期'));
+    const overdueReceivableCount = dashboard.agingBuckets
+      .filter((item) => !item.bucketName?.includes('未逾期'))
+      .reduce((sum, item) => sum + Number(item.receivableCount || 0), 0);
+    const firstOverdueBucket = dashboard.agingBuckets.find((item) => !item.bucketName?.includes('未逾期') && Number(item.receivableCount || 0) > 0);
+    const receivedReceivableCount = receivables.filter((item) => item.status === 'RECEIVED').length;
+    const negotiationRenewalCount = renewals.filter((item) => item.status === 'NEGOTIATING').length;
+    const highRiskRenewal = renewals.find((item) => item.riskLevel === 'RED');
+    const highRiskRenewalCount = renewals.filter((item) => item.riskLevel === 'RED').length;
+    const processingTicket = tickets.find((item) => item.status === 'OPEN');
+    const resolvedTicketCount = tickets.filter((item) => item.status === 'RESOLVED').length;
+
+    let description = '';
+    let badgeText = '';
+    let metrics: Array<{ label: string; value: React.ReactNode; hint?: string; valueClassName?: string }> = [];
+    let focusItems: Array<{ label: string; title: string; meta?: string }> = [];
+
+    if (tab === 'customer') {
+      description = '客户、报价、回款与跨模块协同的经营摘要';
+      badgeText = `${customers.length} 个客户`;
+      metrics = [
+        { label: '待审批报价', value: dashboard.pendingQuotes.length, hint: '待经理审批', valueClassName: 'text-teal-700 dark:text-teal-300' },
+        { label: '回款余额', value: formatDashboardNumber(totalOutstandingAmount), hint: `${totalReceivableCount} 条回款计划`, valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+        { label: '重点续约', value: dashboard.renewalWindows.length, hint: '90天续约窗口' },
+        { label: '风险与协同', value: riskAndTodoCount, hint: '停滞、预算阈值、跨模块待办', valueClassName: 'text-amber-700 dark:text-amber-300' },
+      ];
+      focusItems = [
+        {
+          label: '优先事项',
+          title: priorityQuote?.quoteName || '当前无待审批报价',
+          meta: priorityQuote ? `${priorityQuote.customerName || '-'} / ${formatDashboardNumber(priorityQuote.totalAmount)}` : '可把精力转向客户经营与回款跟进',
+        },
+        {
+          label: '协同提醒',
+          title: dashboard.crossModuleTodos[0]?.title || priorityRisk?.title || staleCustomer?.customerName || '当前无跨模块待办',
+          meta: dashboard.crossModuleTodos[0]
+            ? `${dashboard.crossModuleTodos[0].sourceLabel || dashboard.crossModuleTodos[0].module || '-'} / ${renderStatus(dashboard.crossModuleTodos[0].status)}`
+            : priorityRisk
+              ? `${priorityRisk.sourceLabel || priorityRisk.module || '-'} / ${renderStatus(priorityRisk.status)}`
+              : staleCustomer
+                ? '7天未跟进客户'
+                : '经营协同状态正常',
+        },
+      ];
+    }
+
+    if (tab === 'opportunity') {
+      description = '聚焦商机推进、赢单阶段与停滞风险';
+      badgeText = `${opportunities.length} 个商机`;
+      metrics = [
+        { label: '当前商机', value: opportunities.length, hint: '列表与看板口径' },
+        { label: '商务谈判', value: negotiationOpportunityCount, hint: 'NEGOTIATION 阶段', valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+        { label: '赢单商机', value: wonOpportunityCount, hint: '已进入赢单', valueClassName: 'text-emerald-700 dark:text-emerald-300' },
+        { label: '阶段超时', value: dashboard.stalledOpportunities.length, hint: '需要重新推进', valueClassName: 'text-amber-700 dark:text-amber-300' },
+      ];
+      focusItems = [
+        {
+          label: '当前关注',
+          title: dashboard.stalledOpportunities[0]?.opportunityName || '当前无阶段超时商机',
+          meta: dashboard.stalledOpportunities[0] ? `${dashboard.stalledOpportunities[0].customerName || '-'} / ${renderStatus(dashboard.stalledOpportunities[0].stage)}` : '看板可直接拖拽推进阶段',
+        },
+        {
+          label: '相关报价',
+          title: priorityQuote?.quoteName || '当前无待审批报价',
+          meta: priorityQuote ? `${priorityQuote.customerName || '-'} / ${formatDashboardNumber(priorityQuote.totalAmount)}` : '商机可继续转报价或转项目',
+        },
+      ];
+    }
+
+    if (tab === 'quote') {
+      description = '报价流转、发送状态与合同转化摘要';
+      badgeText = `${quotes.length} 条报价`;
+      metrics = [
+        { label: '报价总数', value: quotes.length, hint: '当前列表' },
+        { label: '待审批', value: dashboard.pendingQuotes.length, hint: '审批链中', valueClassName: 'text-teal-700 dark:text-teal-300' },
+        { label: '已发送', value: sentQuoteCount, hint: '已对客发送', valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+        { label: '已接受', value: acceptedQuoteCount, hint: '可继续转合同', valueClassName: 'text-emerald-700 dark:text-emerald-300' },
+      ];
+      focusItems = [
+        {
+          label: '优先处理',
+          title: priorityQuote?.quoteName || '当前无待审批报价',
+          meta: priorityQuote ? `${priorityQuote.customerName || '-'} / ${formatDashboardNumber(priorityQuote.totalAmount)}` : '报价审批状态正常',
+        },
+        {
+          label: '合同转化',
+          title: acceptedQuote?.quoteName || '当前无已接受报价',
+          meta: acceptedQuote ? `${acceptedQuote.customerName || '-'} / 可转合同草稿` : '待客户确认后可继续转合同',
+        },
+      ];
+    }
+
+    if (tab === 'receivable') {
+      description = '回款计划、账龄结构与异常联动摘要';
+      badgeText = `${receivables.length} 条回款`;
+      metrics = [
+        { label: '回款计划', value: receivables.length, hint: '当前列表' },
+        { label: '未逾期', value: Number(unexpiredBucket?.receivableCount || 0), hint: '仍在计划窗口', valueClassName: 'text-emerald-700 dark:text-emerald-300' },
+        { label: '逾期账款', value: overdueReceivableCount, hint: '需重点催收', valueClassName: 'text-amber-700 dark:text-amber-300' },
+        { label: '已回款', value: receivedReceivableCount, hint: '状态 RECEIVED', valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+      ];
+      focusItems = [
+        {
+          label: '当前账龄',
+          title: firstOverdueBucket?.bucketName || '当前无逾期账款',
+          meta: firstOverdueBucket ? `${firstOverdueBucket.receivableCount || 0} 条 / ${formatDashboardNumber(firstOverdueBucket.outstandingAmount)}` : '回款账龄结构稳定',
+        },
+        {
+          label: '联动异常',
+          title: dashboard.invoiceExceptions[0]?.invoiceCode || dashboard.budgetAlerts[0]?.budgetName || '当前无联动异常',
+          meta: dashboard.invoiceExceptions[0]
+            ? `发票 ${dashboard.invoiceExceptions[0].invoiceNo || '-'} / ${dashboard.invoiceExceptions[0].status || '-'}`
+            : dashboard.budgetAlerts[0]
+              ? `预算 ${dashboard.budgetAlerts[0].thresholdStatus || '-'}`
+              : '销项发票与预算联动正常',
+        },
+      ];
+    }
+
+    if (tab === 'renewal') {
+      description = '续约窗口、洽谈推进与风险识别摘要';
+      badgeText = `${renewals.length} 条续约`;
+      metrics = [
+        { label: '续约总数', value: renewals.length, hint: '当前列表' },
+        { label: '90天窗口', value: dashboard.renewalWindows.length, hint: '临近到期', valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+        { label: '洽谈中', value: negotiationRenewalCount, hint: 'NEGOTIATING 状态' },
+        { label: '高风险', value: highRiskRenewalCount, hint: '风险等级 RED', valueClassName: 'text-amber-700 dark:text-amber-300' },
+      ];
+      focusItems = [
+        {
+          label: '续约关注',
+          title: dashboard.renewalWindows[0]?.renewalName || '当前无90天续约窗口',
+          meta: dashboard.renewalWindows[0] ? `${dashboard.renewalWindows[0].customerName || '-'} / ${formatDashboardNumber(dashboard.renewalWindows[0].renewalAmount)}` : '续约节奏正常',
+        },
+        {
+          label: '风险提示',
+          title: highRiskRenewal?.renewalName || '当前无高风险续约',
+          meta: highRiskRenewal ? `${highRiskRenewal.customerName || '-'} / ${highRiskRenewal.riskReason || '-'}` : '当前无红色风险续约',
+        },
+      ];
+    }
+
+    if (tab === 'ticket') {
+      description = '服务工单、严重度与处理进度摘要';
+      badgeText = `${tickets.length} 条工单`;
+      metrics = [
+        { label: '工单总数', value: tickets.length, hint: '当前列表' },
+        { label: '高严重度', value: dashboard.highSeverityTickets.length, hint: 'HIGH / CRITICAL', valueClassName: 'text-amber-700 dark:text-amber-300' },
+        { label: '处理中', value: tickets.filter((item) => item.status === 'OPEN').length, hint: 'OPEN 状态', valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+        { label: '已解决', value: resolvedTicketCount, hint: 'RESOLVED 状态', valueClassName: 'text-emerald-700 dark:text-emerald-300' },
+      ];
+      focusItems = [
+        {
+          label: '优先工单',
+          title: dashboard.highSeverityTickets[0]?.ticketTitle || '当前无高严重度工单',
+          meta: dashboard.highSeverityTickets[0] ? `${dashboard.highSeverityTickets[0].customerName || '-'} / ${renderSeverity(dashboard.highSeverityTickets[0].severity)}` : '工单风险可控',
+        },
+        {
+          label: '待处理',
+          title: processingTicket?.ticketTitle || '当前无处理中工单',
+          meta: processingTicket ? `${processingTicket.customerName || '-'} / ${renderStatus(processingTicket.status)}` : '可把精力转向客户经营',
+        },
+      ];
+    }
+
     return (
-      <div className="grid gap-4 xl:grid-cols-4">
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">待审批报价</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {dashboard.pendingQuotes.length ? dashboard.pendingQuotes.slice(0, 4).map((item) => (
-              <div key={item.quoteId} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-                <div>{item.quoteName}</div>
-                <div className="text-xs text-slate-500">{item.customerName || '-'} / {item.totalAmount || 0}</div>
-              </div>
-            )) : <div className="text-slate-500">暂无待审批报价</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">回款账龄</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            {dashboard.agingBuckets.length ? dashboard.agingBuckets.map((item) => (
-              <div key={item.bucketCode} className="flex items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-                <span>{item.bucketName}</span>
-                <span className="text-xs text-slate-500">{item.receivableCount || 0} / {item.outstandingAmount || 0}</span>
-              </div>
-            )) : <div className="text-slate-500">暂无账龄数据</div>}
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">续约与工单</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-              <div>90天续约窗口</div>
-              <div className="text-xs text-slate-500">{dashboard.renewalWindows.length} 条</div>
+      <Card>
+        <CardHeader className="pb-4">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">{currentViewLabel}总览</CardTitle>
+              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</div>
             </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-              <div>高严重度工单</div>
-              <div className="text-xs text-slate-500">{dashboard.highSeverityTickets.length} 条</div>
+            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+              {badgeText}
             </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">经营提醒</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-              <div>7天未跟进客户</div>
-              <div className="text-xs text-slate-500">{dashboard.staleFollowCustomers.length} 条</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-              <div>阶段停留超时商机</div>
-              <div className="text-xs text-slate-500">{dashboard.stalledOpportunities.length} 条</div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">联动闭环</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2 text-sm">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-              <div>待完善 OA 草稿</div>
-              <div className="text-xs text-slate-500">{dashboard.crossModuleTodos.length} 条</div>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-800 dark:bg-slate-900">
-              <div>预算超阈值 / 发票异常</div>
-              <div className="text-xs text-slate-500">{dashboard.budgetAlerts.length + dashboard.invoiceExceptions.length} 条</div>
-            </div>
-            {dashboard.crossModuleTodos.slice(0, 2).map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => navigate(item.path || '/dashboard')}
-                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
-              >
-                <div>{item.title || '-'}</div>
-                <div className="text-xs text-slate-500">{item.sourceLabel || item.module || '-'} / {renderStatus(item.status)}</div>
-              </button>
+          </div>
+        </CardHeader>
+        <CardContent className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-3 sm:grid-cols-2">
+            {metrics.map((item) => (
+              <DashboardMetricTile
+                key={item.label}
+                label={item.label}
+                value={item.value}
+                hint={item.hint}
+                valueClassName={item.valueClassName}
+              />
             ))}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+          <div className="grid gap-3">
+            {focusItems.map((item) => (
+              <DashboardFocusItem
+                key={item.label}
+                label={item.label}
+                title={item.title}
+                meta={item.meta}
+              />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     );
   };
 
@@ -592,58 +774,62 @@ export default function CrmManagementPage() {
         </div>
       </DndContext>
 
-      <table className="w-full min-w-[900px]">
-        <TableHeader>
-          <tr>
-            <TableHead>商机</TableHead>
-            <TableHead>客户</TableHead>
-            <TableHead>阶段</TableHead>
-            <TableHead>金额 / 赢率</TableHead>
-            <TableHead>最近跟进</TableHead>
-            <TableHead>负责人</TableHead>
-            <TableActionHead>操作</TableActionHead>
-          </tr>
-        </TableHeader>
-        <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-          {opportunities.map((item) => (
-            <tr key={item.opportunityId}>
-              <td className="px-4 py-3 text-sm">{item.opportunityName}</td>
-              <td className="px-4 py-3 text-sm">{item.customerName || '-'}</td>
-              <td className="px-4 py-3 text-sm">{renderStatus(item.stage)}</td>
-              <td className="px-4 py-3 text-sm">{item.expectedAmount || 0} / {item.winRate || 0}%</td>
-              <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(item.latestFollowUpTime)}</td>
-              <td className="px-4 py-3 text-sm">{item.ownerName || '-'}</td>
-              <td className="px-4 py-3 text-right">
-                <TableRowActions
-                  align="end"
-                  overflowLabel="更多"
-                  actions={[
-                    { label: '客户360', icon: <Handshake size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                    { label: '编辑商机', icon: <Target size={14} />, onClick: () => openDialog({ type: 'opportunity', item }), semantic: 'edit', isPrimary: true },
-                    { label: '赢单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'winOpportunity', item }), semantic: 'process' },
-                    { label: '输单', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }), semantic: 'disable' },
-                    {
-                      label: '转项目',
-                      icon: <FolderKanban size={14} />,
-                      onClick: async () => {
-                        try {
-                          const projectId = await crmApi.createProjectDraft(item.opportunityId!);
-                          toast.success(`已生成项目草稿 #${projectId}`);
-                          await load();
-                          goToProject(projectId);
-                        } catch (error) {
-                          toast.error(getErrorMessage(error, '生成项目草稿失败'));
-                        }
-                      },
-                      semantic: 'custom',
-                    },
-                  ]}
-                />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <Card className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px]">
+            <TableHeader>
+              <tr>
+                <TableHead>商机</TableHead>
+                <TableHead>客户</TableHead>
+                <TableHead>阶段</TableHead>
+                <TableHead>金额 / 赢率</TableHead>
+                <TableHead>最近跟进</TableHead>
+                <TableHead>负责人</TableHead>
+                <TableActionHead>操作</TableActionHead>
+              </tr>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {opportunities.map((item) => (
+                <tr key={item.opportunityId}>
+                  <td className="px-4 py-3 text-sm">{item.opportunityName}</td>
+                  <td className="px-4 py-3 text-sm">{item.customerName || '-'}</td>
+                  <td className="px-4 py-3 text-sm">{renderStatus(item.stage)}</td>
+                  <td className="px-4 py-3 text-sm">{item.expectedAmount || 0} / {item.winRate || 0}%</td>
+                  <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(item.latestFollowUpTime)}</td>
+                  <td className="px-4 py-3 text-sm">{item.ownerName || '-'}</td>
+                  <td className="px-4 py-3 text-right">
+                    <TableRowActions
+                      align="end"
+                      overflowLabel="更多"
+                      actions={[
+                        { label: '客户360', icon: <Handshake size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
+                        { label: '编辑商机', icon: <Target size={14} />, onClick: () => openDialog({ type: 'opportunity', item }), semantic: 'edit', isPrimary: true },
+                        { label: '赢单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'winOpportunity', item }), semantic: 'process' },
+                        { label: '输单', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }), semantic: 'disable' },
+                        {
+                          label: '转项目',
+                          icon: <FolderKanban size={14} />,
+                          onClick: async () => {
+                            try {
+                              const projectId = await crmApi.createProjectDraft(item.opportunityId!);
+                              toast.success(`已生成项目草稿 #${projectId}`);
+                              await load();
+                              goToProject(projectId);
+                            } catch (error) {
+                              toast.error(getErrorMessage(error, '生成项目草稿失败'));
+                            }
+                          },
+                          semantic: 'custom',
+                        },
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 
@@ -899,23 +1085,35 @@ export default function CrmManagementPage() {
         <BaseDialog open title={followUpForm.followUpId ? '编辑跟进' : '新增跟进'} onClose={() => openDialog(null)} footer={footer} width="wide">
           <div className="grid gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
-              <Select value={followUpForm.customerId ? String(followUpForm.customerId) : ''} onValueChange={(value) => setFollowUpForm((prev) => ({ ...prev, customerId: Number(value) }))}>
-                <SelectTrigger><SelectValue placeholder="选择客户" /></SelectTrigger>
-                <SelectContent>{customerOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}</SelectContent>
-              </Select>
+              <select
+                aria-label="选择客户"
+                className={nativeSelectClassName}
+                value={followUpForm.customerId ? String(followUpForm.customerId) : ''}
+                onChange={(e) => setFollowUpForm((prev) => ({ ...prev, customerId: Number(e.target.value) }))}
+              >
+                <option value="" disabled>选择客户</option>
+                {customerOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
             </div>
             <div className="md:col-span-2">
-              <Select value={followUpForm.opportunityId ? String(followUpForm.opportunityId) : 'NONE'} onValueChange={(value) => setFollowUpForm((prev) => ({ ...prev, opportunityId: value === 'NONE' ? undefined : Number(value) }))}>
-                <SelectTrigger><SelectValue placeholder="关联商机（可选）" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">不关联商机</SelectItem>
-                  {opportunityOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <select
+                aria-label="关联商机"
+                className={nativeSelectClassName}
+                value={followUpForm.opportunityId ? String(followUpForm.opportunityId) : 'NONE'}
+                onChange={(e) => setFollowUpForm((prev) => ({ ...prev, opportunityId: e.target.value === 'NONE' ? undefined : Number(e.target.value) }))}
+              >
+                <option value="NONE">不关联商机</option>
+                {opportunityOptions.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
+              </select>
             </div>
             <Textarea className="md:col-span-2" value={followUpForm.content || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, content: e.target.value }))} placeholder="跟进内容，例如：客户已确认报价范围，待内部审批。" />
             <Input value={followUpForm.ownerName || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="跟进人" />
-            <Input type="datetime-local" value={followUpForm.nextFollowUpTime ? String(followUpForm.nextFollowUpTime).slice(0, 16) : ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, nextFollowUpTime: `${e.target.value}:00` }))} placeholder="下次跟进时间" />
+            <Input
+              type="datetime-local"
+              value={followUpForm.nextFollowUpTime ? String(followUpForm.nextFollowUpTime).slice(0, 16) : ''}
+              onChange={(e) => setFollowUpForm((prev) => ({ ...prev, nextFollowUpTime: e.target.value ? `${e.target.value}:00` : undefined }))}
+              placeholder="下次跟进时间"
+            />
           </div>
         </BaseDialog>
       );
@@ -1100,31 +1298,41 @@ export default function CrmManagementPage() {
     );
   };
 
+  const currentViewLabel = tabLabelMap[tab];
+  const filterBar = (
+    <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-wrap items-center gap-3">
+        <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="客户 / 商机 / 报价关键字" className="w-full sm:w-[280px]" />
+        <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          当前视图 · {currentViewLabel}
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        {tab === 'customer' ? <Button size="sm" onClick={() => openDialog({ type: 'customer' })}><Plus size={14} className="mr-1.5" />新增客户</Button> : null}
+        {tab === 'opportunity' ? <Button size="sm" onClick={() => openDialog({ type: 'opportunity' })}><Plus size={14} className="mr-1.5" />新增商机</Button> : null}
+        {tab === 'quote' ? <Button size="sm" onClick={() => openDialog({ type: 'quote' })}><Plus size={14} className="mr-1.5" />新增报价</Button> : null}
+        {tab === 'receivable' ? <Button size="sm" onClick={() => openDialog({ type: 'receivable' })}><Plus size={14} className="mr-1.5" />新增回款</Button> : null}
+        {tab === 'renewal' ? <Button size="sm" onClick={() => openDialog({ type: 'renewal' })}><Plus size={14} className="mr-1.5" />新增续约</Button> : null}
+        {tab === 'ticket' ? <Button size="sm" onClick={() => openDialog({ type: 'ticket' })}><Plus size={14} className="mr-1.5" />新增工单</Button> : null}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-4">
       {renderDashboard()}
 
+      {tab === 'opportunity' ? (
+        <div className="space-y-6">
+          {filterBar}
+          {renderOpportunityTable()}
+        </div>
+      ) : (
       <TablePageLayout
-        filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-3">
-              <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="客户 / 商机 / 报价关键字" className="w-full sm:w-[280px]" />
-              <div className="text-xs text-slate-500">当前视图：{tab === 'customer' ? '客户管理' : tab === 'opportunity' ? '商机管理' : tab === 'quote' ? '报价管理' : tab === 'receivable' ? '回款管理' : tab === 'renewal' ? '续约管理' : '服务工单'}</div>
-            </div>
-            <div className="flex items-center gap-2">
-              {tab === 'customer' ? <Button size="sm" onClick={() => openDialog({ type: 'customer' })}><Plus size={14} className="mr-1.5" />新增客户</Button> : null}
-              {tab === 'opportunity' ? <Button size="sm" onClick={() => openDialog({ type: 'opportunity' })}><Plus size={14} className="mr-1.5" />新增商机</Button> : null}
-              {tab === 'quote' ? <Button size="sm" onClick={() => openDialog({ type: 'quote' })}><Plus size={14} className="mr-1.5" />新增报价</Button> : null}
-              {tab === 'receivable' ? <Button size="sm" onClick={() => openDialog({ type: 'receivable' })}><Plus size={14} className="mr-1.5" />新增回款</Button> : null}
-              {tab === 'renewal' ? <Button size="sm" onClick={() => openDialog({ type: 'renewal' })}><Plus size={14} className="mr-1.5" />新增续约</Button> : null}
-              {tab === 'ticket' ? <Button size="sm" onClick={() => openDialog({ type: 'ticket' })}><Plus size={14} className="mr-1.5" />新增工单</Button> : null}
-            </div>
-          </div>
-        )}
+        filters={filterBar}
         table={(
           <div className="overflow-x-auto">
             {tab === 'customer' ? renderCustomerTable() : null}
-            {tab === 'opportunity' ? renderOpportunityTable() : null}
             {tab === 'quote' ? renderQuoteTable() : null}
             {tab === 'receivable' ? renderReceivableTable() : null}
             {tab === 'renewal' ? renderRenewalTable() : null}
@@ -1132,6 +1340,7 @@ export default function CrmManagementPage() {
           </div>
         )}
       />
+      )}
 
       {renderDialog()}
 
