@@ -17,6 +17,8 @@ interface AnnouncementManageTableProps {
   onRevoke: (announcementId: number) => void;
   onDelete: (announcementId: number) => void;
   onViewStats: (announcementId: number) => void;
+  deptNameMap?: Map<string, string>;
+  roleNameMap?: Map<string, string>;
   embedded?: boolean;
 }
 
@@ -40,6 +42,38 @@ const formatScopeValue = (announcement: Announcement) => {
   return announcement.scopeValue || '已设置定向范围';
 };
 
+const parseScopeValues = (value?: string) => (
+  value?.split(',').map((item) => item.trim()).filter(Boolean) ?? []
+);
+
+const formatScopeDisplay = (
+  announcement: Announcement,
+  deptNameMap: Map<string, string>,
+  roleNameMap: Map<string, string>,
+) => {
+  if (announcement.scopeType === AnnouncementScope.ALL) {
+    return formatScopeValue(announcement);
+  }
+
+  const values = parseScopeValues(announcement.scopeValue);
+  if (!values.length) {
+    return '已设置定向范围';
+  }
+
+  const nameMap = announcement.scopeType === AnnouncementScope.DEPT ? deptNameMap : roleNameMap;
+  const names = values
+    .map((value) => nameMap.get(value))
+    .filter((value): value is string => Boolean(value));
+
+  if (names.length > 0) {
+    return names.join('、');
+  }
+
+  return announcement.scopeType === AnnouncementScope.DEPT
+    ? `已设置 ${values.length} 个部门`
+    : `已设置 ${values.length} 个角色`;
+};
+
 export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = ({
   announcements,
   onEdit,
@@ -47,12 +81,14 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   onRevoke,
   onDelete,
   onViewStats,
+  deptNameMap = new Map(),
+  roleNameMap = new Map(),
   embedded = false,
 }) => {
   const table = (
     <div className="overflow-x-auto">
       <table className="min-w-[1180px] w-full">
-        <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+        <TableHeader className="sticky top-0 z-10">
           <tr>
             <TableHead className="w-[30%] px-4 py-3 text-left">标题</TableHead>
             <TableHead className="w-[18%] px-4 py-3 text-left">类型 / 优先级</TableHead>
@@ -84,10 +120,8 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                       ) : null}
                     </div>
 
-                    <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <span>#{item.announcementId}</span>
-                      <span className="text-slate-300 dark:text-slate-700">·</span>
-                      <span>{item.createTime ? new Date(item.createTime).toLocaleString() : '-'}</span>
+                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                      {item.createTime ? new Date(item.createTime).toLocaleString() : '-'}
                     </div>
                   </div>
                 </td>
@@ -130,7 +164,7 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
                     {formatScopeLabel(item)}
                   </div>
                   <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {formatScopeValue(item)}
+                    {formatScopeDisplay(item, deptNameMap, roleNameMap)}
                   </div>
                 </td>
 

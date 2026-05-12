@@ -7917,7 +7917,8 @@ JOIN (
 
 INSERT INTO cloud_flow_db.wf_performance_stats (
   tenant_id, stat_date, process_def_key, process_def_name, total_count, completed_count, failed_count,
-  timeout_count, anomaly_count, avg_duration, min_duration, max_duration, create_time, update_time
+  timeout_count, timeout_instance_count, anomaly_count, anomaly_instance_count,
+  avg_duration, min_duration, max_duration, create_time, update_time
 )
 SELECT
   g.tenant_id,
@@ -7928,7 +7929,9 @@ SELECT
   g.completed_count,
   g.failed_count,
   COALESCE(t.timeout_count, 0),
+  COALESCE(t.timeout_instance_count, 0),
   COALESCE(a.anomaly_count, 0),
+  COALESCE(a.anomaly_instance_count, 0),
   g.avg_duration,
   g.min_duration,
   g.max_duration,
@@ -7943,54 +7946,55 @@ FROM (
     COUNT(*) AS total_count,
     SUM(CASE WHEN pm.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_count,
     SUM(CASE WHEN pm.status IN ('FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED') THEN 1 ELSE 0 END) AS failed_count,
-    COALESCE(ROUND(AVG(pm.duration)), 0) AS avg_duration,
-    COALESCE(MIN(pm.duration), 0) AS min_duration,
-    COALESCE(MAX(pm.duration), 0) AS max_duration
+    COALESCE(ROUND(AVG(CASE WHEN pm.status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED') THEN pm.duration END)), 0) AS avg_duration,
+    COALESCE(MIN(CASE WHEN pm.status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED') THEN pm.duration END), 0) AS min_duration,
+    COALESCE(MAX(CASE WHEN pm.status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED') THEN pm.duration END), 0) AS max_duration
   FROM cloud_flow_db.wf_process_monitor pm
   WHERE pm.tenant_id = 100000
-    AND pm.status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED')
   GROUP BY pm.tenant_id, DATE(pm.start_time), pm.process_def_key
 ) g
 LEFT JOIN (
   SELECT
     x.tenant_id,
-    DATE(x.alert_time) AS stat_date,
+    x.stat_date,
     x.process_def_key,
-    COUNT(*) AS timeout_count
+    COUNT(*) AS timeout_count,
+    COUNT(DISTINCT x.instance_id) AS timeout_instance_count
   FROM (
-    SELECT ta.tenant_id, ta.alert_time, pm.process_def_key
+    SELECT ta.tenant_id, DATE(pm.start_time) AS stat_date, pm.process_def_key, pm.instance_id
     FROM cloud_flow_db.wf_timeout_alert ta
     JOIN cloud_flow_db.wf_process_monitor pm
       ON ta.alert_type = 'PROCESS'
      AND pm.tenant_id = ta.tenant_id
-     AND pm.instance_id = ta.target_id
-    WHERE ta.resolved = 'N'
+      AND pm.instance_id = ta.target_id
     UNION ALL
-    SELECT ta.tenant_id, ta.alert_time, pm.process_def_key
+    SELECT ta.tenant_id, DATE(pm.start_time) AS stat_date, pm.process_def_key, pm.instance_id
     FROM cloud_flow_db.wf_timeout_alert ta
     JOIN cloud_flow_db.wf_task_monitor tm
       ON ta.alert_type = 'TASK'
      AND tm.tenant_id = ta.tenant_id
-     AND tm.task_id = ta.target_id
+      AND tm.task_id = ta.target_id
     JOIN cloud_flow_db.wf_process_monitor pm
       ON pm.tenant_id = tm.tenant_id
-     AND pm.instance_id = tm.instance_id
-    WHERE ta.resolved = 'N'
+      AND pm.instance_id = tm.instance_id
   ) x
-  GROUP BY x.tenant_id, DATE(x.alert_time), x.process_def_key
+  GROUP BY x.tenant_id, x.stat_date, x.process_def_key
 ) t
   ON t.tenant_id = g.tenant_id
  AND t.stat_date = g.stat_date
  AND t.process_def_key = g.process_def_key
 LEFT JOIN (
   SELECT
-    aa.tenant_id,
-    DATE(aa.create_time) AS stat_date,
-    aa.process_def_key,
-    COUNT(*) AS anomaly_count
+    pm.tenant_id,
+    DATE(pm.start_time) AS stat_date,
+    pm.process_def_key,
+    COUNT(*) AS anomaly_count,
+    COUNT(DISTINCT pm.instance_id) AS anomaly_instance_count
   FROM cloud_flow_db.wf_anomaly_alert aa
-  WHERE aa.resolved = 'N'
-  GROUP BY aa.tenant_id, DATE(aa.create_time), aa.process_def_key
+  JOIN cloud_flow_db.wf_process_monitor pm
+    ON pm.tenant_id = aa.tenant_id
+   AND pm.instance_id = aa.instance_id
+  GROUP BY pm.tenant_id, DATE(pm.start_time), pm.process_def_key
 ) a
   ON a.tenant_id = g.tenant_id
  AND a.stat_date = g.stat_date
@@ -8001,7 +8005,9 @@ ON DUPLICATE KEY UPDATE
   completed_count = VALUES(completed_count),
   failed_count = VALUES(failed_count),
   timeout_count = VALUES(timeout_count),
+  timeout_instance_count = VALUES(timeout_instance_count),
   anomaly_count = VALUES(anomaly_count),
+  anomaly_instance_count = VALUES(anomaly_instance_count),
   avg_duration = VALUES(avg_duration),
   min_duration = VALUES(min_duration),
   max_duration = VALUES(max_duration),

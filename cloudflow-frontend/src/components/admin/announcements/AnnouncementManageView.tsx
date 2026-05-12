@@ -13,7 +13,7 @@ import {
   toggleTop,
   updateAnnouncement,
 } from '@/services/api/announcement';
-import { getDeptTree } from '@/services/api/auth';
+import { getDeptTree, getRoleOptions, type RoleOption } from '@/services/api/auth';
 import { toBackendDateString } from '@/utils/dateFormat';
 import { AnnouncementReadStatusDialog } from './AnnouncementReadStatusDialog';
 import { AnnouncementTargetingEditor, type DeptItem } from './AnnouncementTargetingEditor';
@@ -68,6 +68,10 @@ const InlineState: React.FC<{
   </div>
 );
 
+const flattenDepts = (depts: DeptItem[]): DeptItem[] => (
+  depts.flatMap((dept) => [dept, ...(dept.children?.length ? flattenDepts(dept.children) : [])])
+);
+
 export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
   onExitManage,
 }) => {
@@ -84,6 +88,7 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
+  const [roleOptions, setRoleOptions] = useState<RoleOption[]>([]);
 
   const [isEditorOpen, setIsEditorOpen] = useState(false);
   const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create');
@@ -132,6 +137,17 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
       .catch((error) => {
         console.error('获取部门树失败', error);
         setDeptTree([]);
+      });
+  }, []);
+
+  useEffect(() => {
+    getRoleOptions()
+      .then((response: unknown) => {
+        setRoleOptions(Array.isArray(response) ? (response as RoleOption[]) : []);
+      })
+      .catch((error) => {
+        console.error('获取角色选项失败', error);
+        setRoleOptions([]);
       });
   }, []);
 
@@ -286,6 +302,25 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
     () => manageList.filter((item) => item.priority === 'H').length,
     [manageList],
   );
+  const deptNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    flattenDepts(deptTree).forEach((dept) => {
+      map.set(String(dept.deptId), dept.deptName);
+    });
+    return map;
+  }, [deptTree]);
+  const roleNameMap = useMemo(() => {
+    const map = new Map<string, string>();
+    roleOptions.forEach((role) => {
+      if (role.roleId !== undefined) {
+        map.set(String(role.roleId), role.roleName);
+      }
+      if (role.roleKey) {
+        map.set(String(role.roleKey), role.roleName);
+      }
+    });
+    return map;
+  }, [roleOptions]);
 
   const currentAnnouncementTitle = manageList.find(
     (item) => item.announcementId === statsAnnouncementId,
@@ -428,6 +463,8 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
                 onRevoke={handleRevokeRequest}
                 onDelete={handleDeleteRequest}
                 onViewStats={handleViewReadStatus}
+                deptNameMap={deptNameMap}
+                roleNameMap={roleNameMap}
               />
             )}
           </div>
@@ -558,12 +595,12 @@ export const AnnouncementManageView: React.FC<AnnouncementManageViewProps> = ({
               scopeType={(formData.scopeType as AnnouncementScope) || AnnouncementScope.ALL}
               scopeValue={formData.scopeValue || ''}
               deptTree={deptTree}
-              onScopeTypeChange={(scopeType) => setFormData({
-                ...formData,
+              onScopeTypeChange={(scopeType) => setFormData((previous) => ({
+                ...previous,
                 scopeType,
-                scopeValue: scopeType === AnnouncementScope.ALL ? '' : formData.scopeValue || '',
-              })}
-              onScopeValueChange={(scopeValue) => setFormData({ ...formData, scopeValue })}
+                scopeValue: scopeType === AnnouncementScope.ALL ? '' : previous.scopeValue || '',
+              }))}
+              onScopeValueChange={(scopeValue) => setFormData((previous) => ({ ...previous, scopeValue }))}
             />
           </div>
         </div>

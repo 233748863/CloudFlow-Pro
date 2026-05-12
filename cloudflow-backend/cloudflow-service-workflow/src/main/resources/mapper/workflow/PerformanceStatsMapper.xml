@@ -13,7 +13,11 @@
         <result property="completedCount" column="completed_count"/>
         <result property="failedCount" column="failed_count"/>
         <result property="timeoutCount" column="timeout_count"/>
+        <result property="timeoutEventCount" column="timeout_event_count"/>
+        <result property="timeoutInstanceCount" column="timeout_instance_count"/>
         <result property="anomalyCount" column="anomaly_count"/>
+        <result property="anomalyEventCount" column="anomaly_event_count"/>
+        <result property="anomalyInstanceCount" column="anomaly_instance_count"/>
         <result property="avgDuration" column="avg_duration_ms"/>
         <result property="minDuration" column="min_duration_ms"/>
         <result property="maxDuration" column="max_duration_ms"/>
@@ -21,15 +25,22 @@
         <result property="minDurationMs" column="min_duration_ms"/>
         <result property="maxDurationMs" column="max_duration_ms"/>
         <result property="successRate" column="success_rate"/>
+        <result property="failedRate" column="failed_rate"/>
         <result property="timeoutRate" column="timeout_rate"/>
+        <result property="timeoutInstanceRate" column="timeout_instance_rate"/>
         <result property="anomalyRate" column="anomaly_rate"/>
+        <result property="anomalyInstanceRate" column="anomaly_instance_rate"/>
+        <result property="riskScore" column="risk_score"/>
         <result property="createTime" column="create_time"/>
         <result property="updateTime" column="update_time"/>
     </resultMap>
 
-    <!-- 查询性能统计数据 -->
+    <sql id="FinishedStatusCase">
+        pm.status IN ('COMPLETED', 'FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED')
+    </sql>
+
     <select id="selectPerformanceStats" resultMap="PerformanceStatsResult">
-        SELECT 
+        SELECT
             id,
             tenant_id,
             stat_date,
@@ -39,20 +50,31 @@
             completed_count,
             failed_count,
             timeout_count,
+            timeout_count AS timeout_event_count,
+            timeout_instance_count,
             anomaly_count,
-            avg_duration as avg_duration_ms,
-            min_duration as min_duration_ms,
-            max_duration as max_duration_ms,
+            anomaly_count AS anomaly_event_count,
+            anomaly_instance_count,
+            avg_duration AS avg_duration_ms,
+            min_duration AS min_duration_ms,
+            max_duration AS max_duration_ms,
             create_time,
             update_time,
-            CASE WHEN total_count > 0 THEN ROUND((completed_count * 100.0 / total_count), 2) ELSE 0 END as success_rate,
-            CASE WHEN total_count > 0 THEN ROUND((timeout_count * 100.0 / total_count), 2) ELSE 0 END as timeout_rate,
-            CASE WHEN total_count > 0 THEN ROUND((anomaly_count * 100.0 / total_count), 2) ELSE 0 END as anomaly_rate
+            CASE WHEN total_count > 0 THEN ROUND((completed_count * 100.0 / total_count), 2) ELSE 0 END AS success_rate,
+            CASE WHEN total_count > 0 THEN ROUND((failed_count * 100.0 / total_count), 2) ELSE 0 END AS failed_rate,
+            CASE WHEN total_count > 0 THEN ROUND((timeout_instance_count * 100.0 / total_count), 2) ELSE 0 END AS timeout_rate,
+            CASE WHEN total_count > 0 THEN ROUND((timeout_instance_count * 100.0 / total_count), 2) ELSE 0 END AS timeout_instance_rate,
+            CASE WHEN total_count > 0 THEN ROUND((anomaly_instance_count * 100.0 / total_count), 2) ELSE 0 END AS anomaly_rate,
+            CASE WHEN total_count > 0 THEN ROUND((anomaly_instance_count * 100.0 / total_count), 2) ELSE 0 END AS anomaly_instance_rate,
+            CASE
+                WHEN total_count > 0 THEN ROUND(((failed_count + timeout_instance_count + anomaly_instance_count) * 100.0 / total_count), 2)
+                ELSE 0
+            END AS risk_score
         FROM wf_performance_stats
         <where>
             tenant_id = #{tenantId}
             <if test="startDate != null">
-                AND stat_date >= #{startDate}
+                AND stat_date &gt;= #{startDate}
             </if>
             <if test="endDate != null">
                 AND stat_date &lt;= #{endDate}
@@ -61,7 +83,120 @@
                 AND process_def_key = #{processDefKey}
             </if>
         </where>
-        ORDER BY stat_date DESC
+        ORDER BY stat_date ASC, process_def_name ASC, process_def_key ASC
+    </select>
+
+    <select id="selectPerformanceSnapshot" resultMap="PerformanceStatsResult">
+        SELECT
+            NULL AS id,
+            base.tenant_id,
+            base.stat_date,
+            base.process_def_key,
+            base.process_def_name,
+            base.total_count,
+            base.completed_count,
+            base.failed_count,
+            COALESCE(timeout_stats.timeout_event_count, 0) AS timeout_count,
+            COALESCE(timeout_stats.timeout_event_count, 0) AS timeout_event_count,
+            COALESCE(timeout_stats.timeout_instance_count, 0) AS timeout_instance_count,
+            COALESCE(anomaly_stats.anomaly_event_count, 0) AS anomaly_count,
+            COALESCE(anomaly_stats.anomaly_event_count, 0) AS anomaly_event_count,
+            COALESCE(anomaly_stats.anomaly_instance_count, 0) AS anomaly_instance_count,
+            base.avg_duration_ms,
+            base.min_duration_ms,
+            base.max_duration_ms,
+            CASE WHEN base.total_count > 0 THEN ROUND((base.completed_count * 100.0 / base.total_count), 2) ELSE 0 END AS success_rate,
+            CASE WHEN base.total_count > 0 THEN ROUND((base.failed_count * 100.0 / base.total_count), 2) ELSE 0 END AS failed_rate,
+            CASE WHEN base.total_count > 0 THEN ROUND((COALESCE(timeout_stats.timeout_instance_count, 0) * 100.0 / base.total_count), 2) ELSE 0 END AS timeout_rate,
+            CASE WHEN base.total_count > 0 THEN ROUND((COALESCE(timeout_stats.timeout_instance_count, 0) * 100.0 / base.total_count), 2) ELSE 0 END AS timeout_instance_rate,
+            CASE WHEN base.total_count > 0 THEN ROUND((COALESCE(anomaly_stats.anomaly_instance_count, 0) * 100.0 / base.total_count), 2) ELSE 0 END AS anomaly_rate,
+            CASE WHEN base.total_count > 0 THEN ROUND((COALESCE(anomaly_stats.anomaly_instance_count, 0) * 100.0 / base.total_count), 2) ELSE 0 END AS anomaly_instance_rate,
+            CASE
+                WHEN base.total_count > 0 THEN ROUND(((base.failed_count + COALESCE(timeout_stats.timeout_instance_count, 0) + COALESCE(anomaly_stats.anomaly_instance_count, 0)) * 100.0 / base.total_count), 2)
+                ELSE 0
+            END AS risk_score,
+            NOW() AS create_time,
+            NOW() AS update_time
+        FROM (
+            SELECT
+                pm.tenant_id,
+                DATE(pm.start_time) AS stat_date,
+                pm.process_def_key,
+                MAX(pm.process_def_name) AS process_def_name,
+                COUNT(*) AS total_count,
+                SUM(CASE WHEN pm.status = 'COMPLETED' THEN 1 ELSE 0 END) AS completed_count,
+                SUM(CASE WHEN pm.status IN ('FAILED', 'TERMINATED', 'REJECTED', 'INVALIDATED') THEN 1 ELSE 0 END) AS failed_count,
+                COALESCE(ROUND(AVG(CASE WHEN <include refid="FinishedStatusCase"/> AND pm.duration IS NOT NULL THEN pm.duration END)), 0) AS avg_duration_ms,
+                COALESCE(MIN(CASE WHEN <include refid="FinishedStatusCase"/> AND pm.duration IS NOT NULL THEN pm.duration END), 0) AS min_duration_ms,
+                COALESCE(MAX(CASE WHEN <include refid="FinishedStatusCase"/> AND pm.duration IS NOT NULL THEN pm.duration END), 0) AS max_duration_ms
+            FROM wf_process_monitor pm
+            WHERE pm.tenant_id = #{tenantId}
+              AND DATE(pm.start_time) = #{statDate}
+              AND pm.process_def_key = #{processDefKey}
+            GROUP BY pm.tenant_id, DATE(pm.start_time), pm.process_def_key
+        ) base
+        LEFT JOIN (
+            SELECT
+                x.tenant_id,
+                x.stat_date,
+                x.process_def_key,
+                COUNT(*) AS timeout_event_count,
+                COUNT(DISTINCT x.instance_id) AS timeout_instance_count
+            FROM (
+                SELECT
+                    pm.tenant_id,
+                    DATE(pm.start_time) AS stat_date,
+                    pm.process_def_key,
+                    pm.instance_id,
+                    ta.id
+                FROM wf_timeout_alert ta
+                JOIN wf_process_monitor pm
+                  ON ta.alert_type = 'PROCESS'
+                 AND pm.tenant_id = ta.tenant_id
+                 AND pm.instance_id = ta.target_id
+                UNION ALL
+                SELECT
+                    pm.tenant_id,
+                    DATE(pm.start_time) AS stat_date,
+                    pm.process_def_key,
+                    pm.instance_id,
+                    ta.id
+                FROM wf_timeout_alert ta
+                JOIN wf_task_monitor tm
+                  ON ta.alert_type = 'TASK'
+                 AND tm.tenant_id = ta.tenant_id
+                 AND tm.task_id = ta.target_id
+                JOIN wf_process_monitor pm
+                  ON pm.tenant_id = tm.tenant_id
+                 AND pm.instance_id = tm.instance_id
+            ) x
+            WHERE x.tenant_id = #{tenantId}
+              AND x.stat_date = #{statDate}
+              AND x.process_def_key = #{processDefKey}
+            GROUP BY x.tenant_id, x.stat_date, x.process_def_key
+        ) timeout_stats
+          ON timeout_stats.tenant_id = base.tenant_id
+         AND timeout_stats.stat_date = base.stat_date
+         AND timeout_stats.process_def_key = base.process_def_key
+        LEFT JOIN (
+            SELECT
+                pm.tenant_id,
+                DATE(pm.start_time) AS stat_date,
+                pm.process_def_key,
+                COUNT(*) AS anomaly_event_count,
+                COUNT(DISTINCT pm.instance_id) AS anomaly_instance_count
+            FROM wf_anomaly_alert aa
+            JOIN wf_process_monitor pm
+              ON pm.tenant_id = aa.tenant_id
+             AND pm.instance_id = aa.instance_id
+            WHERE pm.tenant_id = #{tenantId}
+              AND DATE(pm.start_time) = #{statDate}
+              AND pm.process_def_key = #{processDefKey}
+            GROUP BY pm.tenant_id, DATE(pm.start_time), pm.process_def_key
+        ) anomaly_stats
+          ON anomaly_stats.tenant_id = base.tenant_id
+         AND anomaly_stats.stat_date = base.stat_date
+         AND anomaly_stats.process_def_key = base.process_def_key
     </select>
 
 </mapper>

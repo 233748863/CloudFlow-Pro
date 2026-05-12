@@ -24,6 +24,7 @@ import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.INotificationService;
+import com.cloudflow.workflow.service.monitor.impl.PerformanceStatsRefreshService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -72,6 +73,8 @@ class WorkflowMonitorServiceImplTest {
     private SysUserRoleMapper sysUserRoleMapper;
     @Mock
     private INotificationService notificationService;
+    @Mock
+    private PerformanceStatsRefreshService performanceStatsRefreshService;
 
     private WorkflowMonitorServiceImpl service;
 
@@ -95,7 +98,8 @@ class WorkflowMonitorServiceImplTest {
                 sysDeptMapper,
                 sysRoleMapper,
                 sysUserRoleMapper,
-                notificationService
+                notificationService,
+                performanceStatsRefreshService
         );
     }
 

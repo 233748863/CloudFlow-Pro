@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog, ModalOverlay } from '@/components/common';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/common';
-import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 
 // ==================== 类型定义 ====================
@@ -1175,8 +1175,7 @@ export const MeetingRoomPage = () => {
     }
 
     return (
-      <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-        <div className="grid gap-px bg-slate-200 dark:bg-slate-800 xl:grid-cols-2 2xl:grid-cols-3">
+      <div className="grid gap-4 xl:grid-cols-2 2xl:grid-cols-3">
         {filteredRooms.map((room) => {
           const realtimeStatus = getRoomRealtimeStatus(room, roomBookingsMap[room.roomId] || []);
           const statusCfg = roomStatusConfig[realtimeStatus];
@@ -1186,7 +1185,7 @@ export const MeetingRoomPage = () => {
           return (
             <article
               key={room.roomId}
-              className="bg-white px-4 py-4 dark:bg-slate-950/88 sm:px-5"
+              className="card px-4 py-4 sm:px-5"
             >
               <div className="flex flex-col gap-3">
                 <div className="min-w-0 flex-1">
@@ -1276,7 +1275,6 @@ export const MeetingRoomPage = () => {
             </article>
           );
         })}
-        </div>
       </div>
     );
   };
@@ -1510,13 +1508,13 @@ export const MeetingRoomPage = () => {
             </div>
           </div>
         )}
-        table={(<TableSurfaceCard>
-          <div className="flex min-h-[40rem] flex-col p-4 sm:p-5">
+        table={(
+          <div className="flex min-h-[40rem] flex-col gap-4">
             {activeTab === 'rooms' ? renderRoomsView() : null}
             {activeTab === 'my-bookings' ? renderMyBookingsView() : null}
             {activeTab === 'stats' ? renderStatsView() : null}
           </div>
-        </TableSurfaceCard>)}
+        )}
       />
 
       {/* 预订弹窗 */}

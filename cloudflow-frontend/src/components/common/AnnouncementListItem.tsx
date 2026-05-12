@@ -88,8 +88,6 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
               </p>
 
               <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                <span>#{announcement.announcementId}</span>
-                <span className="text-slate-300 dark:text-slate-700">·</span>
                 <span>{announcement.isRead ? '已读' : '待处理'}</span>
               </div>
             </div>

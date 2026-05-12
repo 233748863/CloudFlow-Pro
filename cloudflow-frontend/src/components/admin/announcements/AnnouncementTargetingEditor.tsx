@@ -381,12 +381,7 @@ export const AnnouncementTargetingEditor: React.FC<AnnouncementTargetingEditorPr
             <button
               key={card.value}
               type="button"
-              onClick={() => {
-                onScopeTypeChange(card.value);
-                if (card.value === AnnouncementScope.ALL) {
-                  onScopeValueChange('');
-                }
-              }}
+              onClick={() => onScopeTypeChange(card.value)}
               className={cn(
                 'rounded-xl border px-4 py-4 text-left transition-all',
                 active

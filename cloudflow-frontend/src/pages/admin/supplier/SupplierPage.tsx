@@ -196,7 +196,7 @@ const SupplierPage: React.FC = () => {
         table={(<TableSurfaceCard>
           <div className="min-h-[38rem] overflow-x-auto">
             <table className="w-full min-w-[980px]">
-              <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+              <TableHeader className="sticky top-0 z-10">
                 <tr>
                   <TableHead className="px-4 py-3 text-left">供应商</TableHead>
                   <TableHead className="px-4 py-3 text-left">联系人</TableHead>

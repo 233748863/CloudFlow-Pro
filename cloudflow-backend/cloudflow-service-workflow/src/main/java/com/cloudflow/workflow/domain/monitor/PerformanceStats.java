@@ -57,10 +57,26 @@ public class PerformanceStats {
     /** 超时数 */
     @TableField("timeout_count")
     private Integer timeoutCount;
+
+    /** 超时事件数 - 接口别名 */
+    @TableField(exist = false)
+    private Integer timeoutEventCount;
+
+    /** 超时实例数 */
+    @TableField("timeout_instance_count")
+    private Integer timeoutInstanceCount;
     
     /** 异常数 */
     @TableField("anomaly_count")
     private Integer anomalyCount;
+
+    /** 异常事件数 - 接口别名 */
+    @TableField(exist = false)
+    private Integer anomalyEventCount;
+
+    /** 异常实例数 */
+    @TableField("anomaly_instance_count")
+    private Integer anomalyInstanceCount;
     
     /** 平均持续时间(毫秒) */
     @TableField("avg_duration")
@@ -89,14 +105,30 @@ public class PerformanceStats {
     /** 成功率 */
     @TableField(exist = false)
     private Double successRate;
+
+    /** 失败率 */
+    @TableField(exist = false)
+    private Double failedRate;
     
     /** 超时率 */
     @TableField(exist = false)
     private Double timeoutRate;
+
+    /** 超时实例率 */
+    @TableField(exist = false)
+    private Double timeoutInstanceRate;
     
     /** 异常率 */
     @TableField(exist = false)
     private Double anomalyRate;
+
+    /** 异常实例率 */
+    @TableField(exist = false)
+    private Double anomalyInstanceRate;
+
+    /** 风险评分 */
+    @TableField(exist = false)
+    private Double riskScore;
     
     /** 创建时间 */
     @TableField("create_time")

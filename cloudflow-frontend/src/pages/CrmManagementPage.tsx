@@ -4,7 +4,7 @@ import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, us
 import { CSS } from '@dnd-kit/utilities';
 import { Eye, FolderKanban, Handshake, LifeBuoy, Plus, ReceiptText, RefreshCcw, Send, ShieldAlert, Target, TriangleAlert, UserRound, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
@@ -1282,7 +1282,15 @@ export default function CrmManagementPage() {
     }
 
     return (
-      <BaseDialog open title={ticketForm.ticketId ? '编辑工单' : '新增工单'} onClose={() => openDialog(null)} footer={footer} width="wide">
+      <BaseDialog
+        open
+        title={ticketForm.ticketId ? '编辑工单' : '新增工单'}
+        onClose={() => openDialog(null)}
+        footer={footer}
+        width="wide"
+        bodyClassName="overflow-visible"
+        panelClassName="overflow-visible"
+      >
         <div className="grid gap-4 md:grid-cols-2">
           <div className="md:col-span-2">
             <Select value={ticketForm.customerId ? String(ticketForm.customerId) : ''} onValueChange={(value) => setTicketForm((prev) => ({ ...prev, customerId: Number(value) }))}>
@@ -1291,7 +1299,29 @@ export default function CrmManagementPage() {
             </Select>
           </div>
           <Input value={ticketForm.ticketTitle || ''} onChange={(e) => setTicketForm((prev) => ({ ...prev, ticketTitle: e.target.value }))} placeholder="工单标题" />
-          <Input value={ticketForm.ownerName || ''} onChange={(e) => setTicketForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="负责人" />
+          <div className="space-y-2">
+            <UserSelector
+              value={ticketForm.ownerId ? [String(ticketForm.ownerId)] : []}
+              onChange={(userIds) => setTicketForm((prev) => ({
+                ...prev,
+                ownerId: userIds[0] ? Number(userIds[0]) : undefined,
+                ownerName: userIds[0] ? prev.ownerName : '',
+              }))}
+              onUsersChange={(users) => {
+                const user = users[0];
+                if (!user) {
+                  return;
+                }
+                setTicketForm((prev) => ({
+                  ...prev,
+                  ownerId: Number(user.id),
+                  ownerName: user.name,
+                }));
+              }}
+              multiple={false}
+              placeholder="搜索姓名、邮箱或部门选择负责人"
+            />
+          </div>
           <Textarea className="md:col-span-2" value={ticketForm.description || ''} onChange={(e) => setTicketForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="问题描述、影响范围、当前处理方案" />
         </div>
       </BaseDialog>

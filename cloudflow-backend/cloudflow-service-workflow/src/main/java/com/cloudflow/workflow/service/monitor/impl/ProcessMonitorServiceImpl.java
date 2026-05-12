@@ -2,9 +2,7 @@ package com.cloudflow.workflow.service.monitor.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.utils.SecurityUtils;
-import com.cloudflow.workflow.domain.monitor.PerformanceStats;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
-import com.cloudflow.workflow.mapper.PerformanceStatsMapper;
 import com.cloudflow.workflow.mapper.ProcessMonitorMapper;
 import com.cloudflow.workflow.service.monitor.IProcessMonitorService;
 import lombok.RequiredArgsConstructor;
@@ -12,7 +10,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -29,7 +26,7 @@ import java.util.List;
 public class ProcessMonitorServiceImpl implements IProcessMonitorService {
 
     private final ProcessMonitorMapper processMonitorMapper;
-    private final PerformanceStatsMapper performanceStatsMapper;
+    private final PerformanceStatsRefreshService performanceStatsRefreshService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -54,6 +51,7 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
             monitor.setUpdateTime(LocalDateTime.now());
 
             processMonitorMapper.insert(monitor);
+            performanceStatsRefreshService.refreshForProcess(monitor);
             log.info("记录流程启动监控: instanceId={}, processDefKey={}", instanceId, processDefKey);
         } catch (Exception e) {
             log.error("记录流程启动监控失败: instanceId={}", instanceId, e);
@@ -82,8 +80,7 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
             log.info("记录流程结束监控: instanceId={}, status={}, duration={}ms",
                     instanceId, status, monitor.getDuration());
 
-            // 更新性能统计
-            updatePerformanceStats(monitor);
+            performanceStatsRefreshService.refreshForProcess(monitor);
         } catch (Exception e) {
             log.error("记录流程结束监控失败: instanceId={}", instanceId, e);
             throw e;
@@ -187,96 +184,6 @@ public class ProcessMonitorServiceImpl implements IProcessMonitorService {
             log.error("清理过期流程监控数据失败", e);
             throw e;
         }
-    }
-
-    /**
-     * 更新性能统计
-     */
-    private void updatePerformanceStats(ProcessMonitor monitor) {
-        try {
-            LocalDate statDate = monitor.getStartTime().toLocalDate();
-            
-            // 查询或创建统计记录
-            LambdaQueryWrapper<PerformanceStats> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(PerformanceStats::getTenantId, monitor.getTenantId())
-                    .eq(PerformanceStats::getStatDate, statDate)
-                    .eq(PerformanceStats::getProcessDefKey, monitor.getProcessDefKey());
-            
-            PerformanceStats stats = performanceStatsMapper.selectOne(wrapper);
-
-            if (stats == null) {
-                // 创建新的统计记录
-                stats = new PerformanceStats();
-                stats.setTenantId(monitor.getTenantId());
-                stats.setStatDate(statDate);
-                stats.setProcessDefKey(monitor.getProcessDefKey());
-                stats.setProcessDefName(monitor.getProcessDefName());
-                stats.setTotalCount(0);
-                stats.setCompletedCount(0);
-                stats.setFailedCount(0);
-                stats.setAvgDuration(0L);
-                stats.setMaxDuration(0L);
-                stats.setMinDuration(Long.MAX_VALUE);
-                stats.setTimeoutCount(0);
-                stats.setAnomalyCount(0);
-                stats.setCreateTime(LocalDateTime.now());
-                stats.setUpdateTime(LocalDateTime.now());
-            }
-
-            // P2修复: 保存更新前的totalCount用于计算平均时长
-            int oldTotalCount = stats.getTotalCount();
-
-            // 更新统计数据
-            stats.setTotalCount(stats.getTotalCount() + 1);
-
-            if ("COMPLETED".equals(monitor.getStatus())) {
-                stats.setCompletedCount(stats.getCompletedCount() + 1);
-            } else if ("FAILED".equals(monitor.getStatus())) {
-                stats.setFailedCount(stats.getFailedCount() + 1);
-            }
-
-            // 更新执行时长统计
-            if (monitor.getDuration() != null) {
-                updateDurationStats(stats, monitor.getDuration(), oldTotalCount);
-            }
-
-            stats.setUpdateTime(LocalDateTime.now());
-
-            // 保存或更新统计数据
-            if (stats.getId() == null) {
-                performanceStatsMapper.insert(stats);
-            } else {
-                performanceStatsMapper.updateById(stats);
-            }
-
-            log.debug("更新性能统计: processDefKey={}, date={}", monitor.getProcessDefKey(), statDate);
-        } catch (Exception e) {
-            log.error("更新性能统计失败: instanceId={}", monitor.getInstanceId(), e);
-            // 不抛出异常，避免影响主流程
-        }
-    }
-
-    /**
-     * 更新执行时长统计
-     * 
-     * @param stats 统计对象
-     * @param duration 本次执行时长
-     * @param oldTotalCount 更新前的总数
-     */
-    private void updateDurationStats(PerformanceStats stats, Long duration, int oldTotalCount) {
-        // 更新最大时长
-        if (duration > stats.getMaxDuration()) {
-            stats.setMaxDuration(duration);
-        }
-
-        // 更新最小时长
-        if (duration < stats.getMinDuration()) {
-            stats.setMinDuration(duration);
-        }
-
-        // P2修复: 使用更新前的totalCount计算平均时长
-        Long totalDuration = stats.getAvgDuration() * oldTotalCount + duration;
-        stats.setAvgDuration(totalDuration / stats.getTotalCount());
     }
 
 }

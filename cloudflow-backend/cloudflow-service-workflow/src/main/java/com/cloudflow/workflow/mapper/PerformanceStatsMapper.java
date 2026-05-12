@@ -24,4 +24,11 @@ public interface PerformanceStatsMapper extends BaseMapper<PerformanceStats> {
                                                   @Param("endDate") LocalDate endDate,
                                                   @Param("processDefKey") String processDefKey,
                                                   @Param("tenantId") Long tenantId);
+
+    /**
+     * 重算单日单流程性能快照。
+     */
+    PerformanceStats selectPerformanceSnapshot(@Param("tenantId") Long tenantId,
+                                               @Param("statDate") LocalDate statDate,
+                                               @Param("processDefKey") String processDefKey);
 }

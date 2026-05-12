@@ -7,10 +7,10 @@ import {
 } from 'lucide-react';
 import { getProcessTrace, getProcessInstance, getProcessDefinition, urgeTask } from '../services/api/workflow';
 import { NodeType, WorkflowGraphDefinition } from '../types';
-import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 import { BellRing } from 'lucide-react';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
+import { getStoredAuthUser } from '@/utils/authStorage';
 
 interface ProcessTraceProps {
   instanceId: string;
@@ -135,8 +135,29 @@ const isDefaultEdge = (edge: { isDefault?: unknown }) => {
 const isEndGraphNode = (node?: WorkflowGraphDefinition['nodes'][number]) =>
   String((node as any)?.type || '').toUpperCase() === NodeType.END;
 
+const getCurrentUserId = () => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const rawUser = getStoredAuthUser();
+    if (!rawUser) {
+      return null;
+    }
+
+    const parsedUser = JSON.parse(rawUser) as { id?: string | number };
+    if (parsedUser.id === undefined || parsedUser.id === null) {
+      return null;
+    }
+
+    return String(parsedUser.id);
+  } catch {
+    return null;
+  }
+};
+
 export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: ProcessTraceProps) => {
-  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [trace, setTrace] = useState<TraceData>({ finished: [], active: [] });
   const [graphModel, setGraphModel] = useState<WorkflowGraphDefinition | null>(null);
@@ -148,6 +169,7 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
   // 流程图展开/折叠
   const [diagramExpanded, setDiagramExpanded] = useState(false);
   const isGlass = variant === 'glass';
+  const currentUserId = useMemo(() => getCurrentUserId(), []);
 
   const fetchData = useCallback(async () => {
     try {
@@ -290,7 +312,7 @@ export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: Proce
     const status: 'finished' | 'active' | 'pending' = isActive
       ? 'active'
       : (isFinished ? 'finished' : 'pending');
-    const isInitiator = user && instance && String(instance.startUserId) === String(user.id);
+    const isInitiator = Boolean(currentUserId && instance && String(instance.startUserId) === currentUserId);
 
     const nodeHistory = trace.historyDetails?.find((h) => h.nodeKey === nodeId);
     const nodeActive = trace.activeDetails?.find((a) => a.nodeKey === nodeId);

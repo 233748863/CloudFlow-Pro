@@ -21,6 +21,7 @@ import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.INotificationService;
 import com.cloudflow.workflow.service.WorkflowMonitorService;
+import com.cloudflow.workflow.service.monitor.impl.PerformanceStatsRefreshService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,9 +30,15 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 /**
  * 工作流监控服务实现
@@ -57,11 +64,16 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
     private final SysRoleMapper sysRoleMapper;
     private final SysUserRoleMapper sysUserRoleMapper;
     private final INotificationService notificationService;
+    private final PerformanceStatsRefreshService performanceStatsRefreshService;
 
     private static final String ACTION_NOTIFY = "notify";
     private static final String ACTION_ESCALATE = "escalate";
     private static final String EVENT_TIMEOUT_ALERT_ESCALATED = "TIMEOUT_ALERT_ESCALATED";
     private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final String HEALTH_STABLE = "稳定";
+    private static final String HEALTH_CONTROLLABLE = "可控";
+    private static final String HEALTH_WARNING = "预警";
+    private static final String HEALTH_OBSERVING = "观察中";
 
     @Override
     public MonitorOverview getMonitorOverview() {
@@ -246,6 +258,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         alert.setResolveTime(LocalDateTime.now());
         alert.setUpdateTime(LocalDateTime.now());
         timeoutAlertMapper.updateById(alert);
+        performanceStatsRefreshService.refreshForTimeoutAlert(alert);
         return alert;
     }
 
@@ -292,8 +305,45 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         alert.setResolveTime(LocalDateTime.now());
         alert.setUpdateTime(LocalDateTime.now());
         anomalyAlertMapper.updateById(alert);
+        performanceStatsRefreshService.refreshForAnomalyAlert(alert);
         
         log.info("异常告警已解决: alertId={}", alertId);
+    }
+
+    @Override
+    public PerformanceDashboardResponse getPerformanceDashboard(LocalDate startDate, LocalDate endDate,
+                                                                String processDefKey) {
+        Long tenantId = resolveTenantId();
+        LocalDate[] normalizedRange = normalizeDateRange(startDate, endDate);
+        LocalDate normalizedStartDate = normalizedRange[0];
+        LocalDate normalizedEndDate = normalizedRange[1];
+        int daySpan = (int) ChronoUnit.DAYS.between(normalizedStartDate, normalizedEndDate) + 1;
+        LocalDate compareEndDate = normalizedStartDate.minusDays(1);
+        LocalDate compareStartDate = compareEndDate.minusDays(daySpan - 1L);
+
+        List<PerformanceStats> currentRows = performanceStatsMapper.selectPerformanceStats(
+                normalizedStartDate, normalizedEndDate, processDefKey, tenantId
+        );
+        List<PerformanceStats> compareRows = performanceStatsMapper.selectPerformanceStats(
+                compareStartDate, compareEndDate, processDefKey, tenantId
+        );
+
+        PerformanceDashboardContext context = new PerformanceDashboardContext();
+        context.setStartDate(normalizedStartDate);
+        context.setEndDate(normalizedEndDate);
+        context.setCompareStartDate(compareStartDate);
+        context.setCompareEndDate(compareEndDate);
+        context.setProcessDefKey(processDefKey);
+        context.setProcessLabel(resolveProcessLabel(processDefKey, currentRows, compareRows));
+        context.setDaySpan(daySpan);
+
+        PerformanceDashboardResponse response = new PerformanceDashboardResponse();
+        response.setContext(context);
+        response.setSummary(buildSummary(currentRows));
+        response.setCompareSummary(buildSummary(compareRows));
+        response.setTrend(buildTrend(currentRows));
+        response.setProcesses(buildProcessRows(currentRows));
+        return response;
     }
 
     @Override
@@ -301,8 +351,84 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
                                                       String processDefKey) {
         log.info("获取性能统计数据: startDate={}, endDate={}, processDefKey={}", 
                 startDate, endDate, processDefKey);
-        
-        return performanceStatsMapper.selectPerformanceStats(startDate, endDate, processDefKey, resolveTenantId());
+
+        LocalDate[] normalizedRange = normalizeDateRange(startDate, endDate);
+        return performanceStatsMapper.selectPerformanceStats(
+                normalizedRange[0],
+                normalizedRange[1],
+                processDefKey,
+                resolveTenantId()
+        );
+    }
+
+    private PerformanceDashboardSummary buildSummary(List<PerformanceStats> rows) {
+        PerformanceAccumulator accumulator = new PerformanceAccumulator();
+        rows.forEach(accumulator::add);
+        return accumulator.toSummary();
+    }
+
+    private List<PerformanceDashboardTrendPoint> buildTrend(List<PerformanceStats> rows) {
+        Map<LocalDate, PerformanceAccumulator> grouped = new TreeMap<>();
+        for (PerformanceStats row : rows) {
+            if (row.getStatDate() == null) {
+                continue;
+            }
+            grouped.computeIfAbsent(row.getStatDate(), ignored -> new PerformanceAccumulator()).add(row);
+        }
+
+        List<PerformanceDashboardTrendPoint> trendPoints = new ArrayList<>();
+        for (Map.Entry<LocalDate, PerformanceAccumulator> entry : grouped.entrySet()) {
+            trendPoints.add(entry.getValue().toTrendPoint(entry.getKey()));
+        }
+        return trendPoints;
+    }
+
+    private List<PerformanceDashboardProcessRow> buildProcessRows(List<PerformanceStats> rows) {
+        Map<String, PerformanceAccumulator> grouped = new LinkedHashMap<>();
+        for (PerformanceStats row : rows) {
+            String processKey = StringUtils.hasText(row.getProcessDefKey()) ? row.getProcessDefKey() : "__unknown__";
+            PerformanceAccumulator accumulator = grouped.computeIfAbsent(processKey, ignored -> new PerformanceAccumulator());
+            accumulator.setProcess(processKey, row.getProcessName());
+            accumulator.add(row);
+        }
+
+        return grouped.values().stream()
+                .map(PerformanceAccumulator::toProcessRow)
+                .sorted(Comparator
+                        .comparing(PerformanceDashboardProcessRow::getRiskScore, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(PerformanceDashboardProcessRow::getTotalCount, Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparing(PerformanceDashboardProcessRow::getProcessName, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .toList();
+    }
+
+    private String resolveProcessLabel(String processDefKey, List<PerformanceStats> currentRows,
+                                       List<PerformanceStats> compareRows) {
+        if (!StringUtils.hasText(processDefKey)) {
+            return "全部流程";
+        }
+
+        for (PerformanceStats row : currentRows) {
+            if (processDefKey.equals(row.getProcessDefKey()) && StringUtils.hasText(row.getProcessName())) {
+                return row.getProcessName();
+            }
+        }
+        for (PerformanceStats row : compareRows) {
+            if (processDefKey.equals(row.getProcessDefKey()) && StringUtils.hasText(row.getProcessName())) {
+                return row.getProcessName();
+            }
+        }
+        return processDefKey;
+    }
+
+    private LocalDate[] normalizeDateRange(LocalDate startDate, LocalDate endDate) {
+        LocalDate normalizedEndDate = endDate != null ? endDate : LocalDate.now();
+        LocalDate normalizedStartDate = startDate != null ? startDate : normalizedEndDate.minusDays(29);
+        if (normalizedStartDate.isAfter(normalizedEndDate)) {
+            LocalDate swap = normalizedStartDate;
+            normalizedStartDate = normalizedEndDate;
+            normalizedEndDate = swap;
+        }
+        return new LocalDate[] { normalizedStartDate, normalizedEndDate };
     }
 
     private Long resolveTenantId() {
@@ -334,6 +460,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         alert.setEscalatedTime(now);
         alert.setUpdateTime(now);
         timeoutAlertMapper.updateById(alert);
+        performanceStatsRefreshService.refreshForTimeoutAlert(alert);
 
         notificationService.sendNotification(
                 recipient.getUserId(),
@@ -551,6 +678,39 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         return StringUtils.hasText(user.getNickName()) ? user.getNickName() : user.getUserName();
     }
 
+    private String resolveHealthLabel(double successRate, double timeoutInstanceRate, double anomalyInstanceRate,
+                                      int totalCount) {
+        if (totalCount <= 0) {
+            return HEALTH_OBSERVING;
+        }
+        if (successRate >= 95.0 && timeoutInstanceRate <= 5.0 && anomalyInstanceRate <= 3.0) {
+            return HEALTH_STABLE;
+        }
+        if (successRate >= 85.0 && timeoutInstanceRate <= 12.0 && anomalyInstanceRate <= 8.0) {
+            return HEALTH_CONTROLLABLE;
+        }
+        return HEALTH_WARNING;
+    }
+
+    private double roundRate(double numerator, double denominator) {
+        if (denominator <= 0) {
+            return 0.0;
+        }
+        return Math.round((numerator * 10000.0) / denominator) / 100.0;
+    }
+
+    private double roundScore(double value) {
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private long safeLong(Long value) {
+        return value == null ? 0L : value;
+    }
+
     /**
      * 兼容异常告警历史数据。
      * 旧数据里 resolved 可能是 0/1，新数据会统一写为 Y/N。
@@ -562,5 +722,132 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         }
 
         wrapper.eq(AnomalyAlert::getResolved, "N");
+    }
+
+    private final class PerformanceAccumulator {
+
+        private String processDefKey;
+        private String processName;
+        private int totalCount;
+        private int completedCount;
+        private int failedCount;
+        private int timeoutInstanceCount;
+        private int timeoutEventCount;
+        private int anomalyInstanceCount;
+        private int anomalyEventCount;
+        private long durationWeightedTotal;
+        private int durationSampleCount;
+        private long minDurationMs = Long.MAX_VALUE;
+        private long maxDurationMs;
+
+        void setProcess(String key, String name) {
+            if (!StringUtils.hasText(this.processDefKey) && StringUtils.hasText(key)) {
+                this.processDefKey = key;
+            }
+            if (!StringUtils.hasText(this.processName) && StringUtils.hasText(name)) {
+                this.processName = name;
+            }
+        }
+
+        void add(PerformanceStats row) {
+            setProcess(row.getProcessDefKey(), row.getProcessName());
+            totalCount += safeInt(row.getTotalCount());
+            completedCount += safeInt(row.getCompletedCount());
+            failedCount += safeInt(row.getFailedCount());
+            timeoutInstanceCount += safeInt(row.getTimeoutInstanceCount());
+            timeoutEventCount += safeInt(row.getTimeoutEventCount() != null ? row.getTimeoutEventCount() : row.getTimeoutCount());
+            anomalyInstanceCount += safeInt(row.getAnomalyInstanceCount());
+            anomalyEventCount += safeInt(row.getAnomalyEventCount() != null ? row.getAnomalyEventCount() : row.getAnomalyCount());
+
+            int rowDurationSamples = safeInt(row.getCompletedCount()) + safeInt(row.getFailedCount());
+            long rowAvgDurationMs = safeLong(row.getAvgDurationMs() != null ? row.getAvgDurationMs() : row.getAvgDuration());
+            if (rowDurationSamples > 0) {
+                durationWeightedTotal += rowAvgDurationMs * rowDurationSamples;
+                durationSampleCount += rowDurationSamples;
+            }
+
+            long rowMinDurationMs = safeLong(row.getMinDurationMs() != null ? row.getMinDurationMs() : row.getMinDuration());
+            if (rowMinDurationMs > 0) {
+                minDurationMs = Math.min(minDurationMs, rowMinDurationMs);
+            }
+
+            long rowMaxDurationMs = safeLong(row.getMaxDurationMs() != null ? row.getMaxDurationMs() : row.getMaxDuration());
+            if (rowMaxDurationMs > 0) {
+                maxDurationMs = Math.max(maxDurationMs, rowMaxDurationMs);
+            }
+        }
+
+        PerformanceDashboardSummary toSummary() {
+            double successRate = roundRate(completedCount, totalCount);
+            double failedRate = roundRate(failedCount, totalCount);
+            double timeoutRate = roundRate(timeoutInstanceCount, totalCount);
+            double anomalyRate = roundRate(anomalyInstanceCount, totalCount);
+
+            PerformanceDashboardSummary summary = new PerformanceDashboardSummary();
+            summary.setTotalCount(totalCount);
+            summary.setCompletedCount(completedCount);
+            summary.setFailedCount(failedCount);
+            summary.setAvgDurationMs(durationSampleCount > 0 ? durationWeightedTotal / durationSampleCount : 0L);
+            summary.setMinDurationMs(minDurationMs == Long.MAX_VALUE ? 0L : minDurationMs);
+            summary.setMaxDurationMs(maxDurationMs);
+            summary.setSuccessRate(successRate);
+            summary.setFailedRate(failedRate);
+            summary.setTimeoutInstanceCount(timeoutInstanceCount);
+            summary.setTimeoutEventCount(timeoutEventCount);
+            summary.setTimeoutInstanceRate(timeoutRate);
+            summary.setAnomalyInstanceCount(anomalyInstanceCount);
+            summary.setAnomalyEventCount(anomalyEventCount);
+            summary.setAnomalyInstanceRate(anomalyRate);
+            summary.setHealthLabel(resolveHealthLabel(successRate, timeoutRate, anomalyRate, totalCount));
+            return summary;
+        }
+
+        PerformanceDashboardTrendPoint toTrendPoint(LocalDate statDate) {
+            PerformanceDashboardSummary summary = toSummary();
+            PerformanceDashboardTrendPoint trendPoint = new PerformanceDashboardTrendPoint();
+            trendPoint.setStatDate(statDate);
+            trendPoint.setTotalCount(summary.getTotalCount());
+            trendPoint.setCompletedCount(summary.getCompletedCount());
+            trendPoint.setFailedCount(summary.getFailedCount());
+            trendPoint.setAvgDurationMs(summary.getAvgDurationMs());
+            trendPoint.setMinDurationMs(summary.getMinDurationMs());
+            trendPoint.setMaxDurationMs(summary.getMaxDurationMs());
+            trendPoint.setSuccessRate(summary.getSuccessRate());
+            trendPoint.setFailedRate(summary.getFailedRate());
+            trendPoint.setTimeoutInstanceCount(summary.getTimeoutInstanceCount());
+            trendPoint.setTimeoutEventCount(summary.getTimeoutEventCount());
+            trendPoint.setTimeoutInstanceRate(summary.getTimeoutInstanceRate());
+            trendPoint.setAnomalyInstanceCount(summary.getAnomalyInstanceCount());
+            trendPoint.setAnomalyEventCount(summary.getAnomalyEventCount());
+            trendPoint.setAnomalyInstanceRate(summary.getAnomalyInstanceRate());
+            trendPoint.setHealthLabel(summary.getHealthLabel());
+            return trendPoint;
+        }
+
+        PerformanceDashboardProcessRow toProcessRow() {
+            PerformanceDashboardSummary summary = toSummary();
+            PerformanceDashboardProcessRow processRow = new PerformanceDashboardProcessRow();
+            processRow.setProcessDefKey(processDefKey);
+            processRow.setProcessName(StringUtils.hasText(processName) ? processName : processDefKey);
+            processRow.setTotalCount(summary.getTotalCount());
+            processRow.setCompletedCount(summary.getCompletedCount());
+            processRow.setFailedCount(summary.getFailedCount());
+            processRow.setAvgDurationMs(summary.getAvgDurationMs());
+            processRow.setMinDurationMs(summary.getMinDurationMs());
+            processRow.setMaxDurationMs(summary.getMaxDurationMs());
+            processRow.setSuccessRate(summary.getSuccessRate());
+            processRow.setFailedRate(summary.getFailedRate());
+            processRow.setTimeoutInstanceCount(summary.getTimeoutInstanceCount());
+            processRow.setTimeoutEventCount(summary.getTimeoutEventCount());
+            processRow.setTimeoutInstanceRate(summary.getTimeoutInstanceRate());
+            processRow.setAnomalyInstanceCount(summary.getAnomalyInstanceCount());
+            processRow.setAnomalyEventCount(summary.getAnomalyEventCount());
+            processRow.setAnomalyInstanceRate(summary.getAnomalyInstanceRate());
+            processRow.setHealthLabel(summary.getHealthLabel());
+            processRow.setRiskScore(roundScore(
+                    summary.getFailedRate() + summary.getTimeoutInstanceRate() + summary.getAnomalyInstanceRate()
+            ));
+            return processRow;
+        }
     }
 }

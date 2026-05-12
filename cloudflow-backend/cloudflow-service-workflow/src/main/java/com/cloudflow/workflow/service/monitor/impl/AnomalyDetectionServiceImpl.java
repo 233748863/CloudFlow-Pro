@@ -32,6 +32,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     private final AnomalyAlertMapper anomalyAlertMapper;
     private final ProcessMonitorMapper processMonitorMapper;
     private final WfTaskMapper taskMapper;
+    private final PerformanceStatsRefreshService performanceStatsRefreshService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -71,6 +72,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setUpdateTime(LocalDateTime.now());
 
             anomalyAlertMapper.insert(alert);
+            performanceStatsRefreshService.refreshForAnomalyAlert(alert);
             log.warn("检测到执行失败: instanceId={}, error={}", instanceId, errorMessage);
 
             // 发送告警
@@ -160,6 +162,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setUpdateTime(LocalDateTime.now());
 
             anomalyAlertMapper.insert(alert);
+            performanceStatsRefreshService.refreshForAnomalyAlert(alert);
             log.warn("检测到无候选人: taskId={}, nodeKey={}", taskId, nodeKey);
 
             // 发送告警
@@ -245,6 +248,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setUpdateTime(LocalDateTime.now());
 
             anomalyAlertMapper.updateById(alert);
+            performanceStatsRefreshService.refreshForAnomalyAlert(alert);
             log.info("异常告警已解决: alertId={}, resolver={}", alertId, resolver);
         } catch (Exception e) {
             log.error("解决异常告警失败: alertId={}", alertId, e);
@@ -283,6 +287,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setUpdateTime(LocalDateTime.now());
 
             anomalyAlertMapper.insert(alert);
+            performanceStatsRefreshService.refreshForAnomalyAlert(alert);
             sendAnomalyAlert(alert);
         } catch (Exception e) {
             log.error("创建死锁告警失败: instanceId={}", process.getInstanceId(), e);
@@ -320,6 +325,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             alert.setUpdateTime(LocalDateTime.now());
 
             anomalyAlertMapper.insert(alert);
+            performanceStatsRefreshService.refreshForAnomalyAlert(alert);
             sendAnomalyAlert(alert);
         } catch (Exception e) {
             log.error("创建数据不一致告警失败: instanceId={}", process.getInstanceId(), e);

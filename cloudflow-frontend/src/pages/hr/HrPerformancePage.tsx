@@ -555,7 +555,7 @@ const PerformanceSummaryCard = ({
   valueClassName?: string;
   hint?: string;
 }) => (
-  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+  <div className="card p-4">
     <div className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{label}</div>
     <div className={cn('mt-1 min-w-0 truncate text-sm font-semibold tabular-nums text-slate-900 dark:text-white', valueClassName)}>{value}</div>
     {hint ? <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
@@ -580,7 +580,7 @@ const PerformanceCompletionSummaryCard = ({
       : 'bg-red-500';
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+    <div className="card p-4">
       <div className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{label}</div>
       <div className="mt-2 flex items-end justify-between gap-3">
         <div className={cn('text-3xl font-bold tabular-nums text-slate-900 dark:text-white', completionTone(value))}>
@@ -1424,120 +1424,119 @@ export const HrPerformancePage: React.FC = () => {
           </div>
         }
         filters={
-          <div className="space-y-4">
-            <div className="flex flex-wrap-reverse items-start justify-between gap-3">
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-                <div className="relative w-full min-w-[240px] sm:w-80">
-                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <Input
-                    className="pl-10"
-                    value={keyword}
-                    onChange={(event) => setKeyword(event.target.value)}
-                    placeholder="搜索目标编号、周期或名称"
-                  />
+          <div className="card p-4">
+            <div className="space-y-4">
+              <div className="flex flex-wrap-reverse items-start justify-between gap-3">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                  <div className="relative w-full min-w-[240px] sm:w-80">
+                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <Input
+                      className="pl-10"
+                      value={keyword}
+                      onChange={(event) => setKeyword(event.target.value)}
+                      placeholder="搜索目标编号、周期或名称"
+                    />
+                  </div>
+                  <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-[180px]">
+                      <SelectValue placeholder="状态" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={ALL_STATUS}>全部状态</SelectItem>
+                      <SelectItem value="DRAFT">草稿</SelectItem>
+                      <SelectItem value="PLAN_APPROVING">计划审批中</SelectItem>
+                      <SelectItem value="PLAN_APPROVED">执行中</SelectItem>
+                      <SelectItem value="RESULT_APPROVING">结果审批中</SelectItem>
+                      <SelectItem value="COMPLETED">已归档</SelectItem>
+                      <SelectItem value="REJECTED">已驳回</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button variant="outline" onClick={() => void loadList()}>
+                    <Search className="h-4 w-4" />
+                    查询
+                  </Button>
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="状态" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={ALL_STATUS}>全部状态</SelectItem>
-                    <SelectItem value="DRAFT">草稿</SelectItem>
-                    <SelectItem value="PLAN_APPROVING">计划审批中</SelectItem>
-                    <SelectItem value="PLAN_APPROVED">执行中</SelectItem>
-                    <SelectItem value="RESULT_APPROVING">结果审批中</SelectItem>
-                    <SelectItem value="COMPLETED">已归档</SelectItem>
-                    <SelectItem value="REJECTED">已驳回</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" onClick={() => void loadList()}>
-                  <Search className="h-4 w-4" />
-                  查询
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="outline" onClick={() => void loadList()} disabled={loading}>
+                    <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
+                    刷新
+                  </Button>
+                  <Button onClick={() => setCreateOpen(true)}>
+                    <FilePlus2 className="h-4 w-4" />
+                    新建绩效目标
+                  </Button>
+                </div>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="outline" onClick={() => void loadList()} disabled={loading}>
-                  <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
-                  刷新
-                </Button>
-                <Button onClick={() => setCreateOpen(true)}>
-                  <FilePlus2 className="h-4 w-4" />
-                  新建绩效目标
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="cf-tabs overflow-x-auto">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab.value}
-                    type="button"
-                    className={cn('cf-tab cf-tab-sm', activeTab === tab.value && 'cf-tab-active')}
-                    onClick={() => setActiveTab(tab.value)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                {currentObjective ? (
-                  <>
-                    <span className={statusBadgeClass(currentObjective.status)}>{statusLabel(currentObjective.status)}</span>
-                    {['DRAFT', 'REJECTED'].includes(currentObjective.status) ? (
-                      <Button size="sm" variant="soft" onClick={() => void handleSubmitPlan()} disabled={pendingAction === 'submit-plan'}>
-                        提交计划审批
-                      </Button>
-                    ) : null}
-                    {currentObjective.status === 'PLAN_APPROVED' ? (
-                      <Button size="sm" variant="soft" onClick={() => void handleSubmitResult()} disabled={pendingAction === 'submit-result'}>
-                        提交结果审批
-                      </Button>
-                    ) : null}
-                  </>
-                ) : null}
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="cf-tabs overflow-x-auto">
+                  {tabs.map((tab) => (
+                    <button
+                      key={tab.value}
+                      type="button"
+                      className={cn('cf-tab cf-tab-sm', activeTab === tab.value && 'cf-tab-active')}
+                      onClick={() => setActiveTab(tab.value)}
+                    >
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {currentObjective ? (
+                    <>
+                      <span className={statusBadgeClass(currentObjective.status)}>{statusLabel(currentObjective.status)}</span>
+                      {['DRAFT', 'REJECTED'].includes(currentObjective.status) ? (
+                        <Button size="sm" variant="soft" onClick={() => void handleSubmitPlan()} disabled={pendingAction === 'submit-plan'}>
+                          提交计划审批
+                        </Button>
+                      ) : null}
+                      {currentObjective.status === 'PLAN_APPROVED' ? (
+                        <Button size="sm" variant="soft" onClick={() => void handleSubmitResult()} disabled={pendingAction === 'submit-result'}>
+                          提交结果审批
+                        </Button>
+                      ) : null}
+                    </>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
         }
         table={
           <div className="flex min-h-0 flex-col gap-4">
-            <div className="card p-4">
-              <div className="grid gap-4 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
-                <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
-                    Performance Objective
-                  </div>
-                  <div className="mt-2 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    {currentObjective?.objectiveName || '暂无绩效目标'}
-                  </div>
-                  <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
-                    {currentObjective ? `${currentObjective.cycleName} / ${currentObjective.objectiveNo}` : '创建目标后开始分解部门、考核类型与指标'}
-                  </div>
+            <div className="grid gap-4 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+              <div className="card p-4">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
+                  Performance Objective
                 </div>
-                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                  <PerformanceSummaryCard
-                    label="总目标值"
-                    value={currentObjective && objectiveMetrics.length > 1 ? (metricTotalSummary || `${objectiveMetrics.length}项指标`) : formatValue(currentObjective?.totalTargetAmount, objectiveMetrics[0]?.metricUnit, metricPrecisionOf(objectiveMetrics[0]))}
-                    hint={currentObjective && objectiveMetrics.length > 1 ? `${objectiveMetrics.length}项指标` : objectiveMetrics[0]?.metricUnit || undefined}
-                  />
-                  <PerformanceSummaryCard
-                    label="指标配置"
-                    value={objectiveMetrics.length}
-                    hint={objectiveMetrics.map((metric) => `${metric.metricName} · ${metric.metricUnit || '-'} · ${metricTypeLabel(metric.valueType)}`).join(' / ')}
-                  />
-                  <PerformanceSummaryCard
-                    label="完成率"
-                    value={`${Number(currentObjective?.completionRate || 0).toFixed(1)}%`}
-                    valueClassName={completionTone(currentObjective?.completionRate)}
-                    hint="权重折算后"
-                  />
-                  <PerformanceSummaryCard
-                    label="评分等级"
-                    value={`${currentObjective?.score?.toFixed?.(1) || '0.0'} / ${currentObjective?.grade || 'D'}`}
-                    hint={statusLabel(currentObjective?.status)}
-                  />
+                <div className="mt-2 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {currentObjective?.objectiveName || '暂无绩效目标'}
                 </div>
+                <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
+                  {currentObjective ? `${currentObjective.cycleName} / ${currentObjective.objectiveNo}` : '创建目标后开始分解部门、考核类型与指标'}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                <PerformanceSummaryCard
+                  label="总目标值"
+                  value={currentObjective && objectiveMetrics.length > 1 ? (metricTotalSummary || `${objectiveMetrics.length}项指标`) : formatValue(currentObjective?.totalTargetAmount, objectiveMetrics[0]?.metricUnit, metricPrecisionOf(objectiveMetrics[0]))}
+                  hint={currentObjective && objectiveMetrics.length > 1 ? `${objectiveMetrics.length}项指标` : objectiveMetrics[0]?.metricUnit || undefined}
+                />
+                <PerformanceSummaryCard
+                  label="指标配置"
+                  value={objectiveMetrics.length}
+                  hint={objectiveMetrics.map((metric) => `${metric.metricName} · ${metric.metricUnit || '-'} · ${metricTypeLabel(metric.valueType)}`).join(' / ')}
+                />
+                <PerformanceSummaryCard
+                  label="完成率"
+                  value={`${Number(currentObjective?.completionRate || 0).toFixed(1)}%`}
+                  valueClassName={completionTone(currentObjective?.completionRate)}
+                  hint="权重折算后"
+                />
+                <PerformanceSummaryCard
+                  label="评分等级"
+                  value={`${currentObjective?.score?.toFixed?.(1) || '0.0'} / ${currentObjective?.grade || 'D'}`}
+                  hint={statusLabel(currentObjective?.status)}
+                />
               </div>
             </div>
 
@@ -1571,15 +1570,13 @@ export const HrPerformancePage: React.FC = () => {
                   setResultActualAmount(String(node.actualAmount || ''));
                 }}
               />
-            ) : activeTab === 'matrix' ? (
-              <MatrixView departmentRows={departmentMatrixRows} categoryNodes={categoryNodes} isMultiMetric={isMultiMetricObjective} primaryMetric={objectiveMetrics[0]} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} />
-            ) : activeTab === 'employees' ? (
-              <div className="card p-4">
+              ) : activeTab === 'matrix' ? (
+                <MatrixView departmentRows={departmentMatrixRows} categoryNodes={categoryNodes} isMultiMetric={isMultiMetricObjective} primaryMetric={objectiveMetrics[0]} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} />
+              ) : activeTab === 'employees' ? (
                 <EmployeeView rows={employeeSummaryRows} renderProgress={renderProgress} />
-              </div>
-            ) : activeTab === 'progress' ? (
-              <ProgressView categoryNodes={categoryNodes} leafTasks={leafTasks} status={currentObjective.status} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} onResult={(node) => {
-                setResultNodeId(node.id);
+              ) : activeTab === 'progress' ? (
+                <ProgressView categoryNodes={categoryNodes} leafTasks={leafTasks} status={currentObjective.status} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} onResult={(node) => {
+                  setResultNodeId(node.id);
                 setResultActualAmount(String(node.actualAmount || ''));
               }} />
             ) : activeTab === 'archive' ? (
@@ -2050,7 +2047,7 @@ const MatrixView = ({
   renderProgress: (rate?: number) => React.ReactNode;
   resolveAssigneeLabel: AssigneeLabelResolver;
 }) => (
-  <div className="space-y-4 p-4">
+  <div className="space-y-4">
     <div className="card">
       <div className="card-header">
         <div className="text-sm font-semibold text-slate-900 dark:text-white">部门目标值校验</div>
@@ -2168,7 +2165,7 @@ const ProgressView = ({
   const canFillResult = status === 'PLAN_APPROVED';
 
   return (
-    <div className="space-y-4 p-4">
+  <div className="space-y-4">
       <div className="card">
         <div className="card-header">
           <div className="text-sm font-semibold text-slate-900 dark:text-white">部门类型指标完成率</div>
@@ -2248,7 +2245,7 @@ const ProgressView = ({
 };
 
 const ArchiveView = ({ objective, categoryNodes, employeeRows, renderProgress }: { objective: PerformanceObjective; categoryNodes: PerformanceAssignment[]; employeeRows: EmployeeSummaryRow[]; renderProgress: (rate?: number) => React.ReactNode }) => (
-  <div className="space-y-6 p-4">
+  <div className="space-y-6">
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <div className="card p-4">
         <div className="text-sm text-slate-500 dark:text-slate-400">周期总分</div>
@@ -2318,7 +2315,7 @@ const SalaryLinkView = ({
   onCreate: () => void;
   pending: boolean;
 }) => (
-  <div className="p-4">
+  <div>
     <div className="card max-w-4xl p-5">
       <div className="mb-4 flex items-center gap-3">
         <div className="stat-icon stat-icon-primary"><BarChart3 className="h-6 w-6" /></div>

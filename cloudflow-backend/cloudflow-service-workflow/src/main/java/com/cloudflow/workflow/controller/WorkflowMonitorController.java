@@ -183,6 +183,20 @@ public class WorkflowMonitorController {
     // ==================== 性能统计 ====================
 
     /**
+     * 获取性能分析看板
+     */
+    @Operation(summary = "获取性能分析看板", description = "获取指定时间范围内的流程历史分析看板")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @GetMapping("/performance/dashboard")
+    public R<PerformanceDashboardResponse> getPerformanceDashboard(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            @RequestParam(required = false) String processDefKey) {
+
+        return R.ok(monitorService.getPerformanceDashboard(startDate, endDate, processDefKey));
+    }
+
+    /**
      * 获取性能统计数据
      */
     @Operation(summary = "获取性能统计", description = "获取指定时间范围内的流程性能统计数据")

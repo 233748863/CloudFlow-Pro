@@ -97,12 +97,67 @@ export interface PerformanceStats {
   processName: string;
   totalCount: number;
   completedCount: number;
+  failedCount: number;
   avgDurationMs: number;
   maxDurationMs: number;
   minDurationMs: number;
   successRate: number;
+  failedRate: number;
+  timeoutEventCount: number;
+  timeoutInstanceCount: number;
   timeoutRate: number;
+  timeoutInstanceRate: number;
+  anomalyEventCount: number;
+  anomalyInstanceCount: number;
   anomalyRate: number;
+  anomalyInstanceRate: number;
+  riskScore?: number;
+}
+
+export interface PerformanceDashboardContext {
+  startDate: string;
+  endDate: string;
+  compareStartDate: string;
+  compareEndDate: string;
+  processDefKey?: string;
+  processLabel: string;
+  daySpan: number;
+}
+
+export interface PerformanceDashboardSummary {
+  totalCount: number;
+  completedCount: number;
+  failedCount: number;
+  avgDurationMs: number;
+  minDurationMs: number;
+  maxDurationMs: number;
+  successRate: number;
+  failedRate: number;
+  timeoutInstanceCount: number;
+  timeoutEventCount: number;
+  timeoutInstanceRate: number;
+  anomalyInstanceCount: number;
+  anomalyEventCount: number;
+  anomalyInstanceRate: number;
+  healthLabel: string;
+}
+
+export interface PerformanceDashboardTrendPoint extends PerformanceDashboardSummary {
+  statDate: string;
+}
+
+export interface PerformanceDashboardProcessRow extends PerformanceDashboardSummary {
+  processDefKey: string;
+  processName: string;
+  riskScore: number;
+}
+
+export interface PerformanceDashboardResponse {
+  context: PerformanceDashboardContext;
+  summary: PerformanceDashboardSummary;
+  compareSummary: PerformanceDashboardSummary;
+  trend: PerformanceDashboardTrendPoint[];
+  processes: PerformanceDashboardProcessRow[];
 }
 
 /**
@@ -234,6 +289,17 @@ export async function resolveAnomalyAlert(
 // ==================== 性能统计 API ====================
 
 /**
+ * 获取性能分析看板
+ */
+export async function getPerformanceDashboard(params?: {
+  startDate?: string;
+  endDate?: string;
+  processDefKey?: string;
+}): Promise<PerformanceDashboardResponse> {
+  return request.get('/workflow/monitor/performance/dashboard', { params });
+}
+
+/**
  * 获取性能统计数据
  */
 export async function getPerformanceStats(params?: {
@@ -279,6 +345,7 @@ export default {
   resolveAnomalyAlert,
   
   // 性能统计
+  getPerformanceDashboard,
   getPerformanceStats,
   getMonitorOverview,
   getProcessTrend,

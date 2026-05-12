@@ -523,7 +523,7 @@ const VehicleList: React.FC = () => {
                   <col className="w-36" />
                   <col className="w-36" />
                 </colgroup>
-                <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                <TableHeader className="sticky top-0 z-10">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                     <TableHead className="px-3 py-3">
                       <input type="checkbox" checked={allSelected} onChange={toggleSelectAll} className="rounded border-gray-300" />

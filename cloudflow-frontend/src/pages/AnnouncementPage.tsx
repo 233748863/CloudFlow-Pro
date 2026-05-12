@@ -6,12 +6,12 @@ import { AnnouncementDetailModal, AnnouncementListItem } from '@/components/comm
 import '@/components/common/announcement-overlays.css';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
-import { useAuth } from '@/context/AuthContext';
 import {
   useAnnouncementStore,
   useAnnouncementUnreadCount,
 } from '@/stores/announcementStore';
 import { AnnouncementScope, Role, type Announcement } from '@/types';
+import { getStoredAuthUser } from '@/utils/authStorage';
 import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
 import { getAnnouncementPriorityMeta } from '@/utils/announcementMeta';
 
@@ -40,10 +40,28 @@ const InlineState: React.FC<{
   </div>
 );
 
+const getStoredUserRole = () => {
+  if (typeof window === 'undefined') {
+    return '';
+  }
+
+  try {
+    const rawUser = getStoredAuthUser();
+    if (!rawUser) {
+      return '';
+    }
+
+    const parsedUser = JSON.parse(rawUser) as { role?: string };
+    return String(parsedUser.role || '').toUpperCase();
+  } catch {
+    return '';
+  }
+};
+
 export const AnnouncementPage = () => {
   const location = useLocation();
-  const { user } = useAuth();
-  const canManage = user?.role === Role.ADMIN || user?.role === Role.HR;
+  const userRole = useMemo(() => getStoredUserRole(), []);
+  const canManage = userRole === Role.ADMIN || userRole === Role.HR;
 
   const announcements = useAnnouncementStore((state) => state.announcements);
   const loading = useAnnouncementStore((state) => state.loading);
@@ -100,10 +118,6 @@ export const AnnouncementPage = () => {
   async function handleMarkAsReadAndClose(announcementId: number) {
     await markAsRead(announcementId);
     setSelectedAnnouncement(null);
-  }
-
-  if (!user) {
-    return null;
   }
 
   if (viewMode === 'manage' && canManage) {

@@ -36,6 +36,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private final TaskMonitorMapper taskMonitorMapper;
     private final ProcessMonitorMapper processMonitorMapper;
     private final TimeoutAlertMapper timeoutAlertMapper;
+    private final PerformanceStatsRefreshService performanceStatsRefreshService;
 
     @Value("${workflow.timeout.remind.threshold:3600000}")
     private Long remindThreshold;
@@ -69,6 +70,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                 TimeoutAlert existingAlert = findLatestActiveAlert(tenantId, "TASK", task.getTaskId());
                 if (existingAlert != null) {
                     upgradeExistingAlert(existingAlert, level);
+                    performanceStatsRefreshService.refreshForTask(tenantId, task.getTaskId());
                     continue;
                 }
 
@@ -91,6 +93,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
 
                 timeoutAlertMapper.insert(alert);
                 alertCount++;
+                performanceStatsRefreshService.refreshForTask(tenantId, task.getTaskId());
                 sendTimeoutAlert(alert);
             }
 
@@ -126,6 +129,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                 TimeoutAlert existingAlert = findLatestActiveAlert(tenantId, "PROCESS", process.getInstanceId());
                 if (existingAlert != null) {
                     upgradeExistingAlert(existingAlert, level);
+                    performanceStatsRefreshService.refreshForProcess(process);
                     continue;
                 }
 
@@ -146,6 +150,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
 
                 timeoutAlertMapper.insert(alert);
                 alertCount++;
+                performanceStatsRefreshService.refreshForProcess(process);
                 sendTimeoutAlert(alert);
             }
 
@@ -190,6 +195,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                 alert.setEscalated("Y");
                 alert.setUpdateTime(LocalDateTime.now());
                 timeoutAlertMapper.updateById(alert);
+                performanceStatsRefreshService.refreshForTimeoutAlert(alert);
 
                 log.warn("超时告警已升级: alertId={}, {} -> {}", alertId, currentLevel, newLevel);
                 sendTimeoutAlert(alert);
@@ -212,6 +218,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
             alert.setResolveTime(LocalDateTime.now());
             alert.setUpdateTime(LocalDateTime.now());
             timeoutAlertMapper.updateById(alert);
+            performanceStatsRefreshService.refreshForTimeoutAlert(alert);
 
             log.info("超时告警已解决: alertId={}, resolver={}", alertId, resolver);
         } catch (Exception e) {
@@ -340,6 +347,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
             existingAlert.setThreshold(getThresholdByLevel(newLevel));
             existingAlert.setUpdateTime(LocalDateTime.now());
             timeoutAlertMapper.updateById(existingAlert);
+            performanceStatsRefreshService.refreshForTimeoutAlert(existingAlert);
 
             log.warn("超时告警已升级: alertId={}, {} -> {}", existingAlert.getId(), currentLevel, newLevel);
             sendTimeoutAlert(existingAlert);

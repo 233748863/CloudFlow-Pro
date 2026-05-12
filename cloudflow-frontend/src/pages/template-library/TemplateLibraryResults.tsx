@@ -197,12 +197,12 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
   onUseTemplate,
   onPageChange,
 }) => (
-  <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+  <div className="space-y-4">
     <div className="min-h-[280px]">
       {loading ? (
-        <div className="px-4 py-4">{renderLoadingState(viewMode)}</div>
+        renderLoadingState(viewMode)
       ) : loadError ? (
-        <div className="px-4 py-4">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
           <EmptyState
             icon={<Workflow className="h-12 w-12 text-slate-300" />}
             title={TEXT.loadTemplatesFailed}
@@ -215,7 +215,7 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
           />
         </div>
       ) : templates.length === 0 ? (
-        <div className="px-4 py-4">
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
           <EmptyState
             icon={<Search className="h-12 w-12 text-slate-300" />}
             title={TEXT.emptyTitle}
@@ -232,7 +232,7 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
           />
         </div>
       ) : viewMode === "grid" ? (
-        <div className="grid grid-cols-1 gap-4 px-4 py-4 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 2xl:grid-cols-3">
           {templates.map((template) => (
             <TemplateCard
               key={template.id}
@@ -245,16 +245,20 @@ export const TemplateLibraryResults: React.FC<TemplateLibraryResultsProps> = ({
           ))}
         </div>
       ) : (
-        <div className="divide-y divide-slate-100">
+        <div className="space-y-3">
           {templates.map((template) => (
-            <TemplateRow
+            <div
               key={template.id}
-              template={template}
-              graph={templateInsights.get(template.id) || EMPTY_GRAPH}
-              userLoggedIn={userLoggedIn}
-              onPreview={onPreview}
-              onUseTemplate={onUseTemplate}
-            />
+              className="overflow-hidden rounded-2xl border border-slate-200 bg-white"
+            >
+              <TemplateRow
+                template={template}
+                graph={templateInsights.get(template.id) || EMPTY_GRAPH}
+                userLoggedIn={userLoggedIn}
+                onPreview={onPreview}
+                onUseTemplate={onUseTemplate}
+              />
+            </div>
           ))}
         </div>
       )}

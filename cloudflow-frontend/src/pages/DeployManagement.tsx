@@ -80,7 +80,7 @@ export const DeployManagement: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-4 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
             <div className="text-lg font-semibold tracking-tight text-slate-950 dark:text-slate-100">
               {activeTabMeta.label}
@@ -107,9 +107,9 @@ export const DeployManagement: React.FC = () => {
             </SegmentedControl>
           </div>
         </div>
-
-        <div className="px-4 py-4 sm:px-5">{renderActivePanel()}</div>
       </div>
+
+      {renderActivePanel()}
     </div>
   );
 };

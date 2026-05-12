@@ -334,7 +334,7 @@ export const ContactPage: React.FC = () => {
             <div className="flex min-h-0 flex-col">
               <div className="overflow-x-auto">
                 <Table className="min-w-[860px]">
-                  <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                  <TableHeader className="sticky top-0 z-10">
                     <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">联系人</TableHead>
                       <TableHead className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400">组织</TableHead>

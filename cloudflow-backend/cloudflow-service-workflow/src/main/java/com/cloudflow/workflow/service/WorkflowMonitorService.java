@@ -70,6 +70,12 @@ public interface WorkflowMonitorService {
     void resolveAnomalyAlert(Long alertId, String resolveNote);
 
     /**
+     * 获取性能分析看板
+     */
+    PerformanceDashboardResponse getPerformanceDashboard(LocalDate startDate, LocalDate endDate,
+                                                         String processDefKey);
+
+    /**
      * 获取性能统计数据
      */
     List<PerformanceStats> getPerformanceStats(LocalDate startDate, LocalDate endDate, 

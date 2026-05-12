@@ -394,7 +394,7 @@ export const LicenseListPage: React.FC = () => {
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1180px]">
-                <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                <TableHeader className="sticky top-0 z-10">
                   <tr>
                     <TableHead className="px-4 py-3 text-left">编码</TableHead>
                     <TableHead className="px-4 py-3 text-left">名称 / 类型</TableHead>

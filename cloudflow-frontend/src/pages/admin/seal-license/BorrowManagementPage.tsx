@@ -316,7 +316,7 @@ export const BorrowManagementPage: React.FC = () => {
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1080px]">
-                <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
+                <TableHeader className="sticky top-0 z-10">
                   <tr>
                     <TableHead className="px-4 py-3 text-left">类型 / 编号</TableHead>
                     <TableHead className="px-4 py-3 text-left">资源</TableHead>
