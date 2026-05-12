@@ -15,6 +15,22 @@ USE cloud_flow_db;
 -- cloud_flow_db -> hr_
 
 -- Seed reset for rerun in dev
+DELETE FROM cloud_flow_db.hr_performance_salary_adjustment
+WHERE tenant_id = 100000
+   OR id BETWEEN 9101 AND 9199;
+
+DELETE FROM cloud_flow_db.hr_performance_result
+WHERE tenant_id = 100000
+   OR id BETWEEN 9101 AND 9199;
+
+DELETE FROM cloud_flow_db.hr_performance_assignment
+WHERE tenant_id = 100000
+   OR id BETWEEN 9101 AND 9199;
+
+DELETE FROM cloud_flow_db.hr_performance_objective
+WHERE tenant_id = 100000
+   OR id BETWEEN 9001 AND 9099;
+
 DELETE FROM cloud_flow_db.sys_user_post
 WHERE tenant_id = 100000
   AND user_id BETWEEN 1 AND 20;
@@ -493,254 +509,6 @@ WHERE invoice_id BETWEEN 8801 AND 8899
 DELETE FROM cloud_flow_db.sys_notice
 WHERE notice_id BETWEEN 9060 AND 9069;
 
-CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_employee_contract_attachment (
-  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id BIGINT NOT NULL COMMENT '租户ID',
-  contract_id BIGINT NOT NULL COMMENT '合同ID',
-  file_name VARCHAR(255) DEFAULT NULL COMMENT '附件名称',
-  file_url VARCHAR(500) NOT NULL COMMENT '附件URL',
-  sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
-  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
-  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
-  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
-  PRIMARY KEY (id),
-  KEY idx_tenant_id (tenant_id),
-  KEY idx_contract_id (contract_id),
-  KEY idx_tenant_contract_id (tenant_id, contract_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工合同附件表';
-
-CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_employee_document_attachment (
-  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id BIGINT NOT NULL COMMENT '租户ID',
-  document_id BIGINT NOT NULL COMMENT '证件ID',
-  file_name VARCHAR(255) DEFAULT NULL COMMENT '附件名称',
-  file_url VARCHAR(500) NOT NULL COMMENT '附件URL',
-  sort_order INT NOT NULL DEFAULT 0 COMMENT '排序',
-  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
-  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
-  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
-  PRIMARY KEY (id),
-  KEY idx_tenant_id (tenant_id),
-  KEY idx_document_id (document_id),
-  KEY idx_tenant_document_id (tenant_id, document_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='员工证件附件表';
-
-CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_performance_objective (
-  id                         BIGINT(20)     NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id                  BIGINT(20)     NOT NULL COMMENT '租户ID',
-  objective_no               VARCHAR(50)    NOT NULL COMMENT '目标编号',
-  cycle_name                 VARCHAR(100)   NOT NULL COMMENT '绩效周期',
-  cycle_start_date           DATE           NOT NULL COMMENT '周期开始日期',
-  cycle_end_date             DATE           NOT NULL COMMENT '周期结束日期',
-  objective_name             VARCHAR(200)   NOT NULL COMMENT '目标名称',
-  total_target_amount        DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '总目标值，单指标兼容字段',
-  category_codes             VARCHAR(255)   NOT NULL COMMENT '允许考核类型编码，逗号分隔',
-  category_config            TEXT           DEFAULT NULL COMMENT '考核类型配置JSON',
-  metric_config              TEXT           DEFAULT NULL COMMENT '绩效指标配置JSON，含名称、单位、默认权重',
-  score_cap                  DECIMAL(5,2)   NOT NULL DEFAULT 120.00 COMMENT '单项计分封顶百分比',
-  archived_actual_amount     DECIMAL(18,4)  DEFAULT NULL COMMENT '归档实际完成值快照',
-  archived_completion_rate   DECIMAL(8,2)   DEFAULT NULL COMMENT '归档原始达成率快照',
-  archived_capped_rate       DECIMAL(8,2)   DEFAULT NULL COMMENT '归档封顶达成率快照',
-  archived_score             DECIMAL(8,2)   DEFAULT NULL COMMENT '归档得分快照',
-  archived_grade             VARCHAR(10)    DEFAULT NULL COMMENT '归档等级快照',
-  archived_time              DATETIME       DEFAULT NULL COMMENT '归档时间',
-  archive_snapshot           MEDIUMTEXT     DEFAULT NULL COMMENT '归档完整绩效快照JSON',
-  plan_process_instance_id   VARCHAR(100)   DEFAULT NULL COMMENT '计划审批流程实例ID',
-  result_process_instance_id VARCHAR(100)   DEFAULT NULL COMMENT '结果审批流程实例ID',
-  status                     VARCHAR(30)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态',
-  create_time                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_time                DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  create_by                  VARCHAR(64)    DEFAULT '' COMMENT '创建者',
-  update_by                  VARCHAR(64)    DEFAULT '' COMMENT '更新者',
-  deleted                    TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
-  PRIMARY KEY (id),
-  UNIQUE KEY uk_tenant_objective_no (tenant_id, objective_no),
-  KEY idx_tenant_id (tenant_id),
-  KEY idx_cycle (cycle_start_date, cycle_end_date),
-  KEY idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='绩效目标表';
-
-CREATE TABLE IF NOT EXISTS cloud_flow_db.hr_performance_assignment (
-  id                BIGINT(20)     NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  tenant_id         BIGINT(20)     NOT NULL COMMENT '租户ID',
-  objective_id      BIGINT(20)     NOT NULL COMMENT '绩效目标ID',
-  parent_id         BIGINT(20)     DEFAULT NULL COMMENT '父分配节点ID',
-  node_key          VARCHAR(255)   NOT NULL COMMENT '节点唯一键',
-  assignee_type     VARCHAR(20)    NOT NULL COMMENT '分配对象类型',
-  assignee_id       BIGINT(20)     NOT NULL COMMENT '分配对象ID',
-  assignee_name     VARCHAR(100)   DEFAULT NULL COMMENT '分配对象名称快照',
-  category_code     VARCHAR(50)    DEFAULT NULL COMMENT '考核类型编码',
-  category_name     VARCHAR(100)   DEFAULT NULL COMMENT '考核类型名称',
-  metric_code       VARCHAR(50)    DEFAULT NULL COMMENT '指标编码',
-  metric_name       VARCHAR(100)   DEFAULT NULL COMMENT '指标名称',
-  metric_unit       VARCHAR(20)    DEFAULT NULL COMMENT '指标单位',
-  metric_value_type VARCHAR(20)    DEFAULT NULL COMMENT '指标数值类型：DECIMAL/INTEGER/PERCENT',
-  metric_precision  INT            DEFAULT 2 COMMENT '指标小数位',
-  metric_weight     DECIMAL(8,2)   DEFAULT 100.00 COMMENT '类型指标权重',
-  target_amount     DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '目标值',
-  actual_amount     DECIMAL(18,4)  NOT NULL DEFAULT 0.0000 COMMENT '实际完成值',
-  quota_source      VARCHAR(20)    NOT NULL DEFAULT 'MANAGER' COMMENT '额度来源',
-  locked            TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '是否经理锁定额度',
-  owner_employee_id BIGINT(20)     DEFAULT NULL COMMENT '负责拆解的部门负责人员工ID',
-  sort_order        INT            NOT NULL DEFAULT 0 COMMENT '排序',
-  status            VARCHAR(30)    NOT NULL DEFAULT 'DRAFT' COMMENT '状态',
-  create_time       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  update_time       DATETIME       NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  create_by         VARCHAR(64)    DEFAULT '' COMMENT '创建者',
-  update_by         VARCHAR(64)    DEFAULT '' COMMENT '更新者',
-  deleted           TINYINT(1)     NOT NULL DEFAULT 0 COMMENT '删除标志（0-未删除 1-已删除）',
-  PRIMARY KEY (id),
-  KEY idx_tenant_id (tenant_id),
-  UNIQUE KEY uk_objective_node_key (tenant_id, objective_id, node_key, deleted),
-  KEY idx_objective_id (objective_id),
-  KEY idx_parent_id (parent_id),
-  KEY idx_assignee (assignee_type, assignee_id),
-  KEY idx_category_metric (category_code, metric_code),
-  KEY idx_owner_employee_id (owner_employee_id),
-  CONSTRAINT fk_performance_assignment_objective FOREIGN KEY (objective_id) REFERENCES cloud_flow_db.hr_performance_objective(id) ON DELETE CASCADE,
-  CONSTRAINT fk_performance_assignment_parent FOREIGN KEY (parent_id) REFERENCES cloud_flow_db.hr_performance_assignment(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='绩效分配树表';
-
-DELETE FROM cloud_flow_db.hr_employee_contract_attachment
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_employee_document_attachment
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_employee_contract
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_employee_document
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_emergency_contact
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_performance_assignment
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_performance_objective
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_salary_adjustment
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_employee_salary
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_employee_insurance
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_employee_tax_deduction
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_probation_confirmation
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_transfer_application
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_resignation_handover
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_resignation_application
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_onboarding_task
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_onboarding_application
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_offer
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_interview
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_candidate
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_recruitment_request
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_attendance_monthly
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_leave_application
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_leave_quota
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_overtime_application
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_attendance_record
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_schedule_plan
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_work_calendar
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_schedule_rule_assignment
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_reporting_line
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_headcount
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_employee
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_position
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_tax_config
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_insurance_scheme
-WHERE tenant_id = 100000
-   OR id IN (101, 102);
-
-DELETE FROM cloud_flow_db.hr_salary_structure_item
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_salary_grade
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_salary_structure
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_salary_item
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_leave_type
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_schedule_rule
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_shift
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_job_level
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_position_family
-WHERE tenant_id = 100000;
-
-DELETE FROM cloud_flow_db.hr_audit_log
-WHERE tenant_id = 100000;
-
 -- =========================================================
 -- 一、公共基础种子数据（迁移自 01.cloudflow-common.sql）
 -- =========================================================
@@ -852,7 +620,6 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(200, '会议室',     2, 1, '/meeting-
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(201, '公告中心',   2, 2, '/announcement',        'pages/AnnouncementPage',       NULL, 0, 0, 'C', '0', '0', 'office:announcement',       'Megaphone',       'admin', NOW(), '', null, '公告中心');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(202, '考勤打卡',   7, 11, '/hr/attendance/checkin', 'pages/admin/attendance/AttendanceCheckIn', NULL, 0, 0, 'C', '0', '0', 'hr:attendance:checkin', 'ClipboardCheck', 'admin', NOW(), '', null, 'HR考勤打卡');
 
 -- 流程中心 (parent_id=3)
 INSERT INTO cloud_flow_db.sys_menu VALUES(300, '发起流程',   3, 1, '/workplace',           'pages/Workplace',              NULL, 0, 0, 'C', '0', '0', 'process:start',             'PlayCircle',      'admin', NOW(), '', null, '发起流程');
@@ -885,7 +652,6 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(503, '用车申请',   5, 4, '/admin/v
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(504, '用车记录',   5, 5, '/admin/vehicle/usage', 'pages/admin/vehicle/VehicleUsageList', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:usage',   'Car',             'admin', NOW(), '', null, '用车记录');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(505, '考勤规则',   7, 12, '/hr/attendance/rule', 'pages/admin/attendance/AttendanceRule', NULL, 0, 0, 'C', '0', '0', 'hr:attendance:rule', 'ClipboardCheck', 'admin', NOW(), '', null, 'HR考勤规则设置');
 
 -- 系统管理 (parent_id=6)
 INSERT INTO cloud_flow_db.sys_menu VALUES(600, '用户管理',   6, 1, '/system/users',       'pages/system/UserList',        NULL, 0, 0, 'C', '0', '0', 'system:user:list',           'Users',           'admin', NOW(), '', null, '用户管理');
@@ -946,38 +712,24 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(634, '规则回滚',   630, 4, '',    
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(635, '审计台账',   6, 16, '/system/audit-events','pages/system/AuditEventPage',     NULL, 0, 0, 'C', '0', '0', 'system:audit:events',      'FileClock',       'admin', NOW(), '', null, 'OA业务审计台账');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(7,   '人力资源',   0, 7, 'hr',                   NULL,                             NULL, 0, 0, 'M', '0', '0', '',                     'Users',           'admin', NOW(), '', null, '人力资源目录');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(720, 'HR工作台',   7, 1, '/hr/dashboard',       'pages/hr/HrDashboardPage',      NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view',    'LayoutDashboard', 'admin', NOW(), '', null, 'HR桌面端工作台');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(721, '员工档案',   7, 2, '/hr/employees',       'pages/hr/HrEmployeePage',       NULL, 0, 0, 'C', '0', '0', 'hr:employee:list',     'Users',           'admin', NOW(), '', null, '员工档案管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(722, '招聘中心',   7, 3, '/hr/recruitment',     'pages/hr/HrRecruitmentPage',    NULL, 0, 0, 'C', '0', '0', 'hr:recruitment:list',  'Briefcase',       'admin', NOW(), '', null, '招聘与候选人管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(728, '编制管理',   7, 4, '/hr/headcount',       'pages/hr/HrHeadcountPage',      NULL, 0, 0, 'C', '0', '0', 'hr:headcount:list',    'Layers3',         'admin', NOW(), '', null, '部门与岗位编制管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(729, '薪酬管理',   7, 5, '/hr/salary',          'pages/hr/HrSalaryPage',         NULL, 0, 0, 'C', '0', '0', 'hr:salary:list',       'Landmark',        'admin', NOW(), '', null, '薪资项目、结构、现薪与调薪管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(727, 'Offer管理',  7, 6, '/hr/offer',           'pages/hr/HrOfferPage',          NULL, 0, 0, 'C', '0', '0', 'hr:offer:list',        'Send',            'admin', NOW(), '', null, 'Offer审批、发送与转入职');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(723, '入职办理',   7, 7, '/hr/onboarding',      'pages/hr/HrOnboardingPage',     NULL, 0, 0, 'C', '0', '0', 'hr:onboarding:list',   'ClipboardCheck',  'admin', NOW(), '', null, '入职申请与任务办理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(724, '转正申请',   7, 8, '/hr/probation',       'pages/hr/HrProbationPage',      NULL, 0, 0, 'C', '0', '0', 'hr:probation:list',    'ShieldCheck',     'admin', NOW(), '', null, '转正申请管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(725, '调岗管理',   7, 9, '/hr/transfer',        'pages/hr/HrTransferPage',       NULL, 0, 0, 'C', '0', '0', 'hr:transfer:list',     'GitMerge',        'admin', NOW(), '', null, '调岗申请管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(726, '离职办理',   7, 10, '/hr/resignation',    'pages/hr/HrResignationPage',    NULL, 0, 0, 'C', '0', '0', 'hr:resignation:list',  'LogOut',          'admin', NOW(), '', null, '离职申请与交接办理');
 
 -- 办公协同(parent_id=2)扩展菜单：出差申请、通讯录
-INSERT INTO cloud_flow_db.sys_menu VALUES(203, '考勤补录',   7, 13, '/hr/attendance/supplement', 'pages/AttendanceSupplementPage', NULL, 0, 0, 'C', '0', '0', 'hr:attendance:supplement:list', 'ClipboardEdit', 'admin', NOW(), '', null, 'HR考勤补录申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(204, '加班申请',   7, 14, '/hr/overtime/applications',  'pages/OvertimeApplicationPage',  NULL, 0, 0, 'C', '0', '0', 'hr:overtime:application:list',  'Clock',         'admin', NOW(), '', null, 'HR加班申请');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(205, '出差申请',   2, 6, '/office/business-trip',     'pages/BusinessTripPage',       NULL, 0, 0, 'C', '0', '0', 'office:trip:list',          'Plane',           'admin', NOW(), '', null, '出差申请');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(206, '通讯录',     2, 7, '/office/contact',           'pages/ContactPage',            NULL, 0, 0, 'C', '0', '0', 'office:contact:list',       'BookUser',        'admin', NOW(), '', null, '企业通讯录');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(207, '请假申请',   7, 15, '/hr/leave/application',    'pages/LeaveApplicationPage',   NULL, 0, 0, 'C', '0', '0', 'hr:leave:application:list', 'CalendarRange',   'admin', NOW(), '', null, 'HR请假申请');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(208, '报销申请',   2, 8, '/expense/claim',            'pages/ExpenseClaimPage',       NULL, 0, 0, 'C', '0', '0', 'office:expense:list',       'Receipt',         'admin', NOW(), '', null, '报销申请');
 
@@ -1085,7 +837,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 4, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 5, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 7, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 8, 100000);
 
@@ -1099,7 +850,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 200, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 201, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 202, 100000);
 
 -- 流程中心子菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 300, 100000);
@@ -1145,18 +895,14 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 503, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 504, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 505, 100000);
 
 -- 办公协同扩展菜单
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 203, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 204, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 205, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 206, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 207, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 208, 100000);
 
@@ -1207,7 +953,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 2, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 3, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 7, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 8, 100000);
 
@@ -1219,17 +964,13 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 200, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 201, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 202, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 203, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 204, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 205, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 206, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 207, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(3, 208, 100000);
 
@@ -1290,7 +1031,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 200, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 201, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 202, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 300, 100000);
 
@@ -1325,17 +1065,13 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 615, 100000);
 -- 归档管理
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 500, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 505, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 203, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 204, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 205, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 206, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 207, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 208, 100000);
 
@@ -1385,26 +1121,33 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 700, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 701, 100000);
 
 -- HR 菜单
+INSERT INTO cloud_flow_db.sys_menu VALUES(7,   '人力资源',   0, 7, 'hr',                     NULL,                         NULL, 0, 0, 'M', '0', '0', '',                         'Users',           'admin', NOW(), '', NULL, '人力资源目录');
+INSERT INTO cloud_flow_db.sys_menu VALUES(720, 'HR工作台',   7, 1, '/hr/dashboard',          'pages/hr/HrDashboardPage',   NULL, 0, 0, 'C', '0', '0', 'hr:dashboard:view',        'LayoutDashboard', 'admin', NOW(), '', NULL, 'HR工作台');
+INSERT INTO cloud_flow_db.sys_menu VALUES(721, '员工档案',   7, 2, '/hr/employees',          'pages/hr/HrEmployeePage',    NULL, 0, 0, 'C', '0', '0', 'hr:employees:list',       'Users',           'admin', NOW(), '', NULL, '员工主数据');
+INSERT INTO cloud_flow_db.sys_menu VALUES(722, '组织编制',   7, 3, '/hr/organization',       'pages/hr/HrOrganizationPage',NULL, 0, 0, 'C', '0', '0', 'hr:organization:list',    'Layers3',         'admin', NOW(), '', NULL, '职位族、职级、职位与编制');
+INSERT INTO cloud_flow_db.sys_menu VALUES(723, '招聘录用',   7, 4, '/hr/recruitment',        'pages/hr/HrRecruitmentPage', NULL, 0, 0, 'C', '0', '0', 'hr:recruitment:list',     'Briefcase',       'admin', NOW(), '', NULL, '需求、候选人、面试与Offer');
+INSERT INTO cloud_flow_db.sys_menu VALUES(724, '员工异动',   7, 5, '/hr/lifecycle',          'pages/hr/HrLifecyclePage',   NULL, 0, 0, 'C', '0', '0', 'hr:lifecycle:list',       'ArrowRightLeft',  'admin', NOW(), '', NULL, '入职、转正、调岗、离职');
+INSERT INTO cloud_flow_db.sys_menu VALUES(725, '考勤休假',   7, 6, '/hr/attendance',         'pages/hr/HrAttendancePage',  NULL, 0, 0, 'C', '0', '0', 'hr:attendance:list',      'CalendarClock',   'admin', NOW(), '', NULL, '班次、规则、排班、打卡、休假');
+INSERT INTO cloud_flow_db.sys_menu VALUES(726, '薪酬福利',   7, 7, '/hr/compensation',       'pages/hr/HrCompensationPage',NULL, 0, 0, 'C', '0', '0', 'hr:compensation:list',    'Landmark',        'admin', NOW(), '', NULL, '薪资、社保、公积金与个税');
+INSERT INTO cloud_flow_db.sys_menu VALUES(727, '绩效管理',   7, 8, '/hr/performance',        'pages/hr/HrPerformancePage', NULL, 0, 0, 'C', '0', '0', 'hr:performance:list',     'Target',          'admin', NOW(), '', NULL, '绩效目标、结果与调薪');
+
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 7, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 720, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 721, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 722, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 723, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 724, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 725, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 726, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 727, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 7, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 720, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 721, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 722, 100000);
-
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 728, 100000);
-
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 729, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 723, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 724, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 725, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 726, 100000);
-
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 727, 100000);
 
 -- EMPLOYEE (role_id=5): 工作台 + 办公协同 + 流程中心（仅基础功能）
@@ -1414,7 +1157,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 2, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 3, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 7, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 8, 100000);
 
@@ -1426,7 +1168,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 200, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 201, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 202, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 300, 100000);
 
@@ -1439,15 +1180,12 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 303, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 613, 100000);
 
 -- 模板库（普通用户可查看）
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 203, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 204, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 205, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 206, 100000);
 
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 207, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 208, 100000);
 
@@ -1475,46 +1213,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 802, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 4, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 401, 100000);
-
--- HR salary sidebar split: keep /hr/salary, add 4 foundation entries and reorder siblings
-UPDATE cloud_flow_db.sys_menu SET order_num = 10 WHERE menu_id = 727;
-UPDATE cloud_flow_db.sys_menu SET order_num = 11 WHERE menu_id = 723;
-UPDATE cloud_flow_db.sys_menu SET order_num = 12 WHERE menu_id = 724;
-UPDATE cloud_flow_db.sys_menu SET order_num = 13 WHERE menu_id = 725;
-UPDATE cloud_flow_db.sys_menu SET order_num = 14 WHERE menu_id = 726;
-UPDATE cloud_flow_db.sys_menu SET order_num = 15 WHERE menu_id = 202;
-UPDATE cloud_flow_db.sys_menu SET order_num = 16 WHERE menu_id = 505;
-UPDATE cloud_flow_db.sys_menu SET order_num = 17 WHERE menu_id = 203;
-UPDATE cloud_flow_db.sys_menu SET order_num = 18 WHERE menu_id = 204;
-UPDATE cloud_flow_db.sys_menu SET order_num = 19 WHERE menu_id = 207;
-UPDATE cloud_flow_db.sys_menu SET remark = '员工现薪与调薪管理' WHERE menu_id = 729;
-
-INSERT INTO cloud_flow_db.sys_menu VALUES(730, '薪资项目',   7, 6, '/hr/salary/items',      'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:item:list',      'FileText',    'admin', NOW(), '', null, '薪资项目配置');
-INSERT INTO cloud_flow_db.sys_menu VALUES(731, '薪资结构',   7, 7, '/hr/salary/structures', 'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:structure:list', 'Layers3',     'admin', NOW(), '', null, '薪资结构配置');
-INSERT INTO cloud_flow_db.sys_menu VALUES(732, '薪资等级',   7, 8, '/hr/salary/grades',     'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:grade:list',     'Landmark',    'admin', NOW(), '', null, '薪资等级配置');
-INSERT INTO cloud_flow_db.sys_menu VALUES(733, '社保方案',   7, 9, '/hr/salary/insurance',  'pages/hr/HrSalaryPage', NULL, 0, 0, 'C', '0', '0', 'hr:salary:insurance:list', 'ShieldCheck', 'admin', NOW(), '', null, '社保方案配置');
-INSERT INTO cloud_flow_db.sys_menu VALUES(734, '绩效管理',   7, 11, '/hr/performance',      'pages/hr/HrPerformancePage', NULL, 0, 0, 'C', '0', '0', 'hr:performance:list', 'Target',      'admin', NOW(), '', null, '绩效目标、分解、填报与归档');
-INSERT INTO cloud_flow_db.sys_menu VALUES(735, '新建绩效目标', 734, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:create', '#', 'admin', NOW(), '', null, '新建绩效目标权限');
-INSERT INTO cloud_flow_db.sys_menu VALUES(736, '绩效目标分解', 734, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:split', '#', 'admin', NOW(), '', null, '绩效目标分解权限');
-INSERT INTO cloud_flow_db.sys_menu VALUES(737, '绩效结果填报', 734, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:result', '#', 'admin', NOW(), '', null, '绩效结果填报权限');
-INSERT INTO cloud_flow_db.sys_menu VALUES(738, '绩效提交审批', 734, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:submit', '#', 'admin', NOW(), '', null, '绩效提交审批权限');
-INSERT INTO cloud_flow_db.sys_menu VALUES(739, '绩效调薪联动', 734, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'hr:performance:salary', '#', 'admin', NOW(), '', null, '绩效调薪联动权限');
-
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 730, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 731, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 732, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 733, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 734, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 735, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 736, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 737, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 738, 100000);
-INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 739, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 730, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 731, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 732, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 733, 100000);
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 734, 100000);
 
 -- 10. 初始化字典类型数据
 INSERT INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
@@ -4954,522 +4652,6 @@ INSERT INTO cloud_flow_db.workflow_template (id, name, description, category_id,
 1, 'active', 'system', NULL);
 
 -- =========================================================
--- 三、HR 业务种子数据（迁移自 03.cloudflow-hr.sql）
--- =========================================================
-
--- =========================================================
--- 初始化数据 - 职位族
--- =========================================================
-
-INSERT INTO cloud_flow_db.hr_position_family (tenant_id, family_code, family_name, description, sort_order, status) VALUES
-(100000, 'TECH', '技术族', '技术研发相关职位', 1, 1),
-(100000, 'PRODUCT', '产品族', '产品设计与管理相关职位', 2, 1),
-(100000, 'OPERATION', '运营族', '运营推广相关职位', 3, 1),
-(100000, 'SALES', '销售族', '销售与客户服务相关职位', 4, 1),
-(100000, 'SUPPORT', '支持族', '行政、人力、财务等支持职位', 5, 1);
-
--- =========================================================
--- 初始化数据 - 职级（专业序列）
--- =========================================================
-
-INSERT INTO cloud_flow_db.hr_job_level (tenant_id, level_code, level_name, level_series, level_rank, description, status) VALUES
-(100000, 'P1', '初级工程师', 'P', 1, '专业序列一级', 1),
-(100000, 'P2', '工程师', 'P', 2, '专业序列二级', 1),
-(100000, 'P3', '高级工程师', 'P', 3, '专业序列三级', 1),
-(100000, 'P4', '资深工程师', 'P', 4, '专业序列四级', 1),
-(100000, 'P5', '专家工程师', 'P', 5, '专业序列五级', 1),
-(100000, 'P6', '高级专家', 'P', 6, '专业序列六级', 1),
-(100000, 'P7', '资深专家', 'P', 7, '专业序列七级', 1),
-(100000, 'P8', '首席专家', 'P', 8, '专业序列八级', 1);
-
--- =========================================================
--- 初始化数据 - 职级（管理序列）
--- =========================================================
-
-INSERT INTO cloud_flow_db.hr_job_level (tenant_id, level_code, level_name, level_series, level_rank, description, status) VALUES
-(100000, 'M1', '主管', 'M', 1, '管理序列一级', 1),
-(100000, 'M2', '经理', 'M', 2, '管理序列二级', 1),
-(100000, 'M3', '高级经理', 'M', 3, '管理序列三级', 1),
-(100000, 'M4', '总监', 'M', 4, '管理序列四级', 1),
-(100000, 'M5', '副总裁', 'M', 5, '管理序列五级', 1),
-(100000, 'M6', '高级副总裁', 'M', 6, '管理序列六级', 1);
-
--- 插入示例班次数据
-INSERT INTO cloud_flow_db.hr_shift (id, tenant_id, shift_code, shift_name, start_time, end_time, break_minutes, late_threshold, early_threshold, work_minutes, color, status) VALUES
-(100, 100000, 'MORNING', '早班', '08:00:00', '17:00:00', 60, 15, 15, 480, '#1890ff', 1),
-(101, 100000, 'AFTERNOON', '中班', '13:00:00', '22:00:00', 60, 15, 15, 480, '#52c41a', 1),
-(102, 100000, 'NIGHT', '晚班', '22:00:00', '07:00:00', 60, 15, 15, 480, '#722ed1', 1),
-(103, 100000, 'STANDARD', '标准班', '09:00:00', '18:00:00', 60, 15, 15, 480, '#1890ff', 1);
-
--- 插入示例排班规则数据
-INSERT INTO cloud_flow_db.hr_schedule_rule (id, tenant_id, rule_name, rule_type, rule_config, description, status) VALUES
-(100, 100000, '标准考勤制', 'FIXED', '{"shiftId": 103, "workDays": [1,2,3,4,5], "checkMethods": ["GPS","WIFI","FACE"], "locationPoints": [{"name":"总部园区A座","latitude":39.9042,"longitude":116.4074,"radius":500}], "wifiConfigs": [{"ssid":"CloudFlow-Office"},{"ssid":"CloudFlow-Delivery"},{"ssid":"CloudFlow-QA"}], "overtimeEnabled": true, "overtimeMinMinutes": 30, "lateToleranceCount": 0, "severeLateMinutes": 60, "absentMinutes": 240, "photoRequired": false, "radius": 500}', '默认工作日考勤规则，适用于大多数办公室员工', 1),
-(101, 100000, '生产轮班制', 'ROTATION', '{"shiftId": 100, "workDays": [1,2,3,4,5,6], "checkMethods": ["GPS","WIFI"], "locationPoints": [{"name":"制造园区","latitude":31.2304,"longitude":121.4737,"radius":800}], "wifiConfigs": [{"ssid":"CloudFlow-Factory"}], "overtimeEnabled": true, "overtimeMinMinutes": 60, "lateToleranceCount": 0, "severeLateMinutes": 30, "absentMinutes": 180, "photoRequired": true, "radius": 800}', '生产和交付岗位六天排班规则', 1),
-(102, 100000, '弹性工作制', 'FLEXIBLE', '{"shiftId": 103, "workDays": [1,2,3,4,5], "checkMethods": ["GPS","WIFI","FACE"], "coreTime": {"start": "10:00", "end": "16:00"}, "dailyHours": 8, "locationPoints": [{"name":"总部园区A座","latitude":39.9042,"longitude":116.4074,"radius":1000}], "wifiConfigs": [{"ssid":"CloudFlow-Office"}], "overtimeEnabled": true, "overtimeMinMinutes": 30, "lateToleranceCount": 3, "severeLateMinutes": 90, "absentMinutes": 300, "photoRequired": false, "radius": 1000}', '研发和销售岗位弹性规则', 1);
-
-INSERT INTO cloud_flow_db.hr_schedule_rule_assignment (
-  tenant_id, rule_id, target_type, target_id, effective_start, effective_end, status, create_by, update_by
-) VALUES
-(100000, 100, 'DEPT', 103, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin'),
-(100000, 101, 'POST', 6, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin'),
-(100000, 102, 'POST', 8, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin'),
-(100000, 102, 'EMPLOYEE', 1002, DATE_SUB(CURDATE(), INTERVAL 365 DAY), NULL, 1, 'admin', 'admin');
-
-INSERT INTO cloud_flow_db.hr_work_calendar (
-  tenant_id, calendar_date, day_type, day_name, source, status, create_by, update_by
-) VALUES
-(100000, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'WORKDAY', '演示工作日', 'MANUAL', 1, 'admin', 'admin'),
-(100000, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'WORKDAY', '演示工作日', 'MANUAL', 1, 'admin', 'admin'),
-(100000, CURDATE(), 'WORKDAY', '今日工作日', 'MANUAL', 1, 'admin', 'admin'),
-(100000, DATE_ADD(CURDATE(), INTERVAL 1 DAY), 'REST', '企业休息日', 'MANUAL', 1, 'admin', 'admin'),
-(100000, DATE_ADD(CURDATE(), INTERVAL 2 DAY), 'WORKDAY', '调休上班日', 'MANUAL', 1, 'admin', 'admin'),
-(100000, DATE_ADD(CURDATE(), INTERVAL 3 DAY), 'HOLIDAY', '公司福利假', 'MANUAL', 1, 'admin', 'admin');
-
--- 插入示例假期类型数据
-INSERT INTO cloud_flow_db.hr_leave_type (tenant_id, leave_code, leave_name, need_quota, is_paid, unit, quota_rule, expiry_rule, status) VALUES
-(100000, 'ANNUAL', '年假', 1, 1, 'DAY', '{"baseQuota": 5, "incrementPerYear": 1, "maxQuota": 15}', '{"expiryType": "YEAR_END", "carryOver": false}', 1),
-(100000, 'SICK', '病假', 0, 1, 'DAY', NULL, NULL, 1),
-(100000, 'PERSONAL', '事假', 0, 0, 'DAY', NULL, NULL, 1),
-(100000, 'MARRIAGE', '婚假', 0, 1, 'DAY', '{"quota": 3}', NULL, 1),
-(100000, 'MATERNITY', '产假', 0, 1, 'DAY', '{"quota": 98}', NULL, 1),
-(100000, 'PATERNITY', '陪产假', 0, 1, 'DAY', '{"quota": 15}', NULL, 1),
-(100000, 'BEREAVEMENT', '丧假', 0, 1, 'DAY', '{"quota": 3}', NULL, 1),
-(100000, 'COMPENSATORY', '调休', 1, 1, 'HOUR', NULL, '{"expiryType": "FIXED_DAYS", "days": 90}', 1);
-
--- =========================================================
--- 四、薪酬管理模块
--- =========================================================
-
--- 1. 薪资项目表
--- =========================================================
--- HR 假勤演示数据（从 OA 迁移）
--- =========================================================
-
-INSERT INTO cloud_flow_db.hr_schedule_plan (
-  id, tenant_id, plan_name, target_type, target_id, shift_id, schedule_date, status,
-  create_time, update_time, create_by, update_by
-) VALUES
-(11001, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11002, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11003, 100000, '张三标准班次', 'EMPLOYEE', 1005, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11004, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11005, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11006, 100000, '前端测试标准班次', 'EMPLOYEE', 1002, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11007, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11008, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11009, 100000, '后端测试标准班次', 'EMPLOYEE', 1003, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1);
-
-INSERT INTO cloud_flow_db.hr_attendance_record (
-  id, tenant_id, employee_id, attendance_date, rule_id, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method,
-  location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9301, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, 3, 'GPS',
- '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常上班打卡', NOW(), NOW(), 1, 1, 0),
-(9302, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 12 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 12, 'GPS',
- '上海市黄浦区总部园区A座', 'NORMAL', NULL, '正常下班打卡', NOW(), NOW(), 1, 1, 0),
-(9303, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 35 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 35, 'GPS',
- '上海市黄浦区总部园区A座', 'NORMAL', NULL, '项目联调后下班', NOW(), NOW(), 1, 1, 0),
-(9304, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 102, 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 56 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, -4, 'WIFI',
- 'CloudFlow-Office', 'NORMAL', NULL, '会议前提前到岗', NOW(), NOW(), 1, 1, 0),
-(9305, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 102, 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 6 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 6, 'WIFI',
- 'CloudFlow-Office', 'NORMAL', NULL, '正常签退', NOW(), NOW(), 1, 1, 0),
-(9306, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_OUT',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR,
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 60, 'GPS',
- '浦东新区客户现场机房', 'NORMAL', NULL, '客户现场支持后签退', NOW(), NOW(), 1, 1, 0),
-(9001, 100000, 1005, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 3 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 3, 'SUPPLEMENT',
- '上海市黄浦区总部园区A座', 'APPROVING', 'demo_inst_007', '因地铁故障导致漏打卡，实际已于 09:03 到达公司。', DATE_SUB(NOW(), INTERVAL 9 HOUR), DATE_SUB(NOW(), INTERVAL 9 HOUR), 5, 5, 0),
-(9002, 100000, 1003, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 42 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 42, 'SUPPLEMENT',
- '浦东新区客户现场机房', 'SUPPLEMENT', 'demo_inst_008', '客户现场部署支持，未在公司网络范围内打卡。', DATE_SUB(NOW(), INTERVAL 30 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), 9, 9, 0);
-
-INSERT INTO cloud_flow_db.hr_leave_quota (
-  id, tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota,
-  expiry_date, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1101, 100000, 1005, 100, YEAR(CURDATE()), 10.00, 0.00, 5.00, 5.00,
- STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1102, 100000, 1002, 100, YEAR(CURDATE()), 5.00, 0.00, 0.00, 5.00,
- STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1103, 100000, 1002, 107, YEAR(CURDATE()), 16.00, 4.00, 3.50, 8.50,
- DATE_ADD(CURDATE(), INTERVAL 90 DAY), NOW(), NOW(), 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_leave_application (
-  id, tenant_id, application_no, employee_id, leave_type_id, start_time, end_time, duration, unit, reason,
-  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9001, 100000, 'QJ202603110001', 1005, 100,
- DATE_ADD(CURDATE(), INTERVAL 7 DAY) + INTERVAL 9 HOUR,
- DATE_ADD(CURDATE(), INTERVAL 11 DAY) + INTERVAL 18 HOUR,
- 5.00, 'DAY', '清明假期前后返乡探亲，已完成当前迭代开发任务交接。',
- 'demo_inst_001', 'APPROVING', DATE_SUB(NOW(), INTERVAL 18 HOUR), DATE_SUB(NOW(), INTERVAL 18 HOUR), 'zhang', 'zhang', 0),
-(9002, 100000, 'QJ202603110002', 1001, 101,
- DATE_SUB(CURDATE(), INTERVAL 6 DAY) + INTERVAL 9 HOUR,
- DATE_SUB(CURDATE(), INTERVAL 4 DAY) + INTERVAL 18 HOUR,
- 2.00, 'DAY', '因流感发烧请假休息，并已提供就诊证明。',
- 'demo_inst_002', 'APPROVED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_overtime_application (
-  id, tenant_id, application_no, employee_id, start_time, end_time, duration, overtime_type, reason,
-  compensation_type, compensation_hours, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9001, 100000, 'JB202603110001', 1002,
- CURDATE() + INTERVAL 19 HOUR,
- CURDATE() + INTERVAL 22 HOUR + INTERVAL 30 MINUTE,
- 3.50, 'WORKDAY', '为客户演示修复流程详情页附件预览兼容性问题。',
- 'TIME_OFF', 3.50, 'demo_inst_009', 'APPROVING', DATE_SUB(NOW(), INTERVAL 7 HOUR), DATE_SUB(NOW(), INTERVAL 7 HOUR), 'test_fe', 'test_fe', 0),
-(9002, 100000, 'JB202603110002', 1003,
- DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 10 HOUR,
- DATE_SUB(CURDATE(), INTERVAL 5 DAY) + INTERVAL 18 HOUR,
- 8.00, 'WEEKEND', '周末配合客户进行灰度发布与数据迁移。',
- 'PAYMENT', 8.00, 'demo_inst_010', 'APPROVED', DATE_SUB(NOW(), INTERVAL 6 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY), 'test_be', 'test_be', 0);
-
-INSERT INTO cloud_flow_db.hr_attendance_monthly (
-  id, tenant_id, employee_id, year, month, work_days, actual_days, late_times, early_times, absent_days,
-  missing_times, leave_days, overtime_hours, attendance_rate, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(12001, 100000, 1005, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 1, 5.00, 0.00, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12002, 100000, 1002, YEAR(CURDATE()), MONTH(CURDATE()), 23, 21, 0, 0, 0, 0, 0.00, 3.50, 91.30, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12003, 100000, 1003, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 0, 0.00, 8.00, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0);
-
--- 插入示例薪资项目数据
-INSERT INTO cloud_flow_db.hr_salary_item (tenant_id, item_code, item_name, item_type, category, is_taxable, sort_order, status) VALUES
-(100000, 'BASIC_SALARY', '基本工资', 'FIXED', 'BASIC', 1, 1, 1),
-(100000, 'POSITION_ALLOWANCE', '岗位津贴', 'FIXED', 'ALLOWANCE', 1, 2, 1),
-(100000, 'MEAL_ALLOWANCE', '餐补', 'FIXED', 'ALLOWANCE', 0, 3, 1),
-(100000, 'TRANSPORT_ALLOWANCE', '交通补贴', 'FIXED', 'ALLOWANCE', 0, 4, 1),
-(100000, 'PERFORMANCE_BONUS', '绩效奖金', 'VARIABLE', 'BONUS', 1, 5, 1),
-(100000, 'YEAR_END_BONUS', '年终奖', 'VARIABLE', 'BONUS', 1, 6, 1),
-(100000, 'LATE_DEDUCTION', '迟到扣款', 'VARIABLE', 'DEDUCTION', 0, 7, 1),
-(100000, 'ABSENT_DEDUCTION', '旷工扣款', 'VARIABLE', 'DEDUCTION', 0, 8, 1);
-
--- 插入示例薪资结构数据
-INSERT INTO cloud_flow_db.hr_salary_structure (tenant_id, structure_code, structure_name, description, status) VALUES
-(100000, 'STANDARD', '标准薪资结构', '适用于大部分员工的标准薪资结构', 1),
-(100000, 'EXECUTIVE', '高管薪资结构', '适用于高级管理人员的薪资结构', 1),
-(100000, 'SALES', '销售薪资结构', '适用于销售人员的薪资结构', 1);
-
--- 插入薪资结构项目关联数据（标准薪资结构）
-INSERT INTO cloud_flow_db.hr_salary_structure_item (tenant_id, structure_id, item_id, sort_order) VALUES
-(100000, 100, 100, 1),  -- 基本工资
-(100000, 100, 101, 2),  -- 岗位津贴
-(100000, 100, 102, 3),  -- 餐补
-(100000, 100, 103, 4),  -- 交通补贴
-(100000, 100, 104, 5);
-
--- 绩效奖金
-
--- 插入示例薪资等级数据
-INSERT INTO cloud_flow_db.hr_salary_grade (
-  id, tenant_id, level_id, min_salary, max_salary, mid_salary, currency,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 101, 9000.00, 15000.00, 12000.00, 'CNY',
- '2026-03-20 09:30:00', '2026-03-20 09:30:00', 'admin', 'admin', 0);
-
--- 插入示例员工薪资数据
-INSERT INTO cloud_flow_db.hr_employee_salary (
-  id, tenant_id, employee_id, structure_id, salary_data, total_salary, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 1002, 100, '{"100":8000,"101":1200,"102":300,"103":300,"104":800}', 10600.00, '2026-03-24', 'EXPIRED',
- '2026-03-24 09:00:00', '2026-03-24 12:20:00', 'admin', 'admin', 0),
-(101, 100000, 1002, 100, '{"100":8000,"101":1200,"102":300,"103":300,"104":1200}', 11000.00, '2026-03-24', 'ACTIVE',
- '2026-03-24 12:21:00', '2026-03-24 12:21:00', 'admin', 'admin', 0);
-
--- 插入示例调薪申请数据
-INSERT INTO cloud_flow_db.hr_salary_adjustment (
-  id, tenant_id, application_no, employee_id, adjustment_type, adjustment_reason,
-  before_salary_data, after_salary_data, before_total, after_total, adjustment_amount, adjustment_rate,
-  effective_date, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 'SA202603240001', 1002, 'PERFORMANCE', '桌面端薪酬页真实联调样本：提高绩效奖金',
- '{"100":8000,"101":1200,"102":300,"103":300,"104":800}', '{"100":8000,"101":1200,"102":300,"103":300,"104":1200}',
- 10600.00, 11000.00, 400.00, 3.77, '2026-03-24', '788a3482-22d2-4c2b-87f1-4d57b3175046', 'EFFECTIVE',
- '2026-03-24 11:30:00', '2026-03-24 12:22:00', 'admin', 'admin', 0);
-
--- 插入示例五险一金方案数据（北京地区）
-INSERT INTO cloud_flow_db.hr_insurance_scheme (
-  id, tenant_id, scheme_name, city,
-  pension_company_rate, pension_personal_rate,
-  medical_company_rate, medical_personal_rate,
-  unemployment_company_rate, unemployment_personal_rate,
-  injury_company_rate, maternity_company_rate,
-  housing_fund_company_rate, housing_fund_personal_rate,
-  base_min, base_max, base_rule, effective_date, status
-) VALUES (
-  101, 100000, '北京标准方案', '北京',
-  16.00, 8.00,  -- 养老保险
-  9.80, 2.00,   -- 医疗保险
-  0.50, 0.50,   -- 失业保险
-  0.40, 0.80,   -- 工伤保险、生育保险
-  12.00, 12.00, -- 公积金
-  5869.00, 33891.00, '按上年度月平均工资计算', '2026-01-01', 1
-);
-
--- 插入示例五险一金方案数据（上海地区）
-INSERT INTO cloud_flow_db.hr_insurance_scheme (
-  id, tenant_id, scheme_name, city,
-  pension_company_rate, pension_personal_rate,
-  medical_company_rate, medical_personal_rate,
-  unemployment_company_rate, unemployment_personal_rate,
-  injury_company_rate, maternity_company_rate,
-  housing_fund_company_rate, housing_fund_personal_rate,
-  base_min, base_max, base_rule, effective_date, status
-) VALUES (
-  102, 100000, '上海标准方案', '上海',
-  16.00, 8.00,  -- 养老保险
-  10.00, 2.00,  -- 医疗保险
-  0.50, 0.50,   -- 失业保险
-  0.26, 1.00,   -- 工伤保险、生育保险
-  7.00, 7.00,   -- 公积金
-  6520.00, 36549.00, '按上年度月平均工资计算', '2026-01-01', 1
-);
-
--- 插入示例个税配置数据（2026年标准）
-INSERT INTO cloud_flow_db.hr_tax_config (
-  tenant_id, threshold, tax_brackets, deduction_items, effective_date, status, create_by, update_by
-) VALUES (
-  100000, 5000.00,
-  '[{"min":0,"max":36000,"rate":0.03,"deduction":0},{"min":36000,"max":144000,"rate":0.10,"deduction":2520},{"min":144000,"max":300000,"rate":0.20,"deduction":16920},{"min":300000,"max":420000,"rate":0.25,"deduction":31920},{"min":420000,"max":660000,"rate":0.30,"deduction":52920},{"min":660000,"max":960000,"rate":0.35,"deduction":85920},{"min":960000,"rate":0.45,"deduction":181920}]',
-  '{"CHILD_EDU":1000,"CONTINUING_EDU":400,"MEDICAL":0,"HOUSING_LOAN":1000,"HOUSING_RENT":0,"ELDERLY_CARE":2000}',
-  '2026-01-01', 1, NULL, NULL
-);
-
--- 员工专项扣除依赖员工档案，初始化脚本不预置员工级数据，避免产生孤儿记录
-
--- =========================================================
--- 七、HR桌面端联调示例数据
--- 目的：为员工、招聘、入职、转正、调岗、离职页面提供一套可直接联调的基础样本
--- =========================================================
-
--- 1. 职位示例数据
-INSERT INTO cloud_flow_db.hr_position (
-  id, tenant_id, position_code, position_name, family_id, level_id, post_id,
-  job_description, requirements, work_content, status, create_time, update_time
-) VALUES
-(101, 100000, 'FE_P3', '前端开发工程师', 100, 102, 4,
- '负责桌面端与流程页面交付', '熟悉 React、TypeScript、接口联调', '负责 HR 与 OA 前端功能开发', 1, '2026-03-20 09:00:00', '2026-03-20 09:00:00'),
-(102, 100000, 'BE_P3', 'Java开发工程师', 100, 102, 4,
- '负责微服务与业务接口开发', '熟悉 Spring Boot、MyBatis Plus、消息队列', '负责 HR、Workflow 后端开发', 1, '2026-03-20 09:05:00', '2026-03-20 09:05:00'),
-(103, 100000, 'FIN_P2', '财务专员', 104, 101, 4,
- '负责报销、核算与财务归档', '熟悉财务制度与基础报表能力', '负责日常财务支持工作', 1, '2026-03-20 09:10:00', '2026-03-20 09:10:00'),
-(104, 100000, 'HRBP_M2', 'HRBP', 104, 109, 2,
- '负责招聘、组织与员工关系', '熟悉招聘、员工生命周期与制度执行', '负责 HR 全流程业务推进', 1, '2026-03-20 09:15:00', '2026-03-20 09:15:00'),
-(105, 100000, 'HR_RECRUITER_P2', '招聘专员', 104, 101, 4,
- '负责人才寻访与候选人推进', '熟悉招聘渠道与面试安排', '负责招聘需求执行与候选人跟进', 1, '2026-03-20 09:20:00', '2026-03-20 09:20:00'),
-(106, 100000, 'TECH_MANAGER_M2', '技术经理', 100, 109, 2,
- '负责研发团队管理与项目交付', '具备研发管理与跨团队协同能力', '负责团队管理、资源调配与项目交付', 1, '2026-03-20 09:25:00', '2026-03-20 09:25:00');
-
--- 2. 员工档案示例数据
-INSERT INTO cloud_flow_db.hr_employee (
-  id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id,
-  employee_type, employee_status, hire_date, regular_date, resign_date, user_id,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1, 100000, 'CF20230000', 'Admin', 'MALE', '1988-01-01', '15888888888', 'admin@cloudflow.com', 100, 1, NULL,
- 'FULL_TIME', 'REGULAR', '2023-01-01', '2023-07-01', NULL, 1, '2026-03-20 09:55:00', '2026-03-20 09:55:00', 'admin', 'admin', 0),
-(1001, 100000, 'CF20230001', '赵HR', 'FEMALE', '1990-06-12', '13800010001', 'zhao.hr@cloudflow.com', 103, 2, 104,
- 'FULL_TIME', 'REGULAR', '2023-04-10', '2023-10-10', NULL, 4, '2026-03-20 10:00:00', '2026-03-20 10:00:00', 'admin', 'admin', 0),
-(1002, 100000, 'CF20260001', '前端测试', 'FEMALE', '1998-03-08', '13800010002', 'test.fe@cloudflow.com', 106, 4, 101,
- 'FULL_TIME', 'PROBATION', '2026-02-10', NULL, NULL, 8, '2026-03-20 10:05:00', '2026-03-20 10:05:00', 'admin', 'admin', 0),
-(1003, 100000, 'CF20240008', '后端测试', 'MALE', '1996-11-21', '13800010003', 'test.be@cloudflow.com', 107, 4, 102,
- 'FULL_TIME', 'REGULAR', '2024-08-15', '2025-02-15', NULL, 9, '2026-03-20 10:10:00', '2026-03-20 10:10:00', 'admin', 'admin', 0),
-(1004, 100000, 'CF20230015', '王财务', 'FEMALE', '1992-05-16', '13800010004', 'wang.finance@cloudflow.com', 102, 4, 103,
- 'FULL_TIME', 'RESIGNED', '2023-03-01', '2023-09-01', '2026-03-21', 3, '2026-03-20 10:15:00', '2026-03-20 10:15:00', 'admin', 'admin', 0),
-(1005, 100000, 'CF20240002', '张三', 'MALE', '1995-01-19', '13800010005', 'zhang@cloudflow.com', 105, 4, 102,
- 'FULL_TIME', 'REGULAR', '2024-04-18', '2024-10-18', NULL, 5, '2026-03-20 10:20:00', '2026-03-20 10:20:00', 'admin', 'admin', 0),
-(1006, 100000, 'CF20260002', '李若彤', 'FEMALE', '1999-09-09', '13800010006', 'li.ruotong@cloudflow.com', 101, 4, 101,
- 'FULL_TIME', 'REGULAR', '2026-03-01', '2026-09-01', NULL, NULL, '2026-03-20 10:25:00', '2026-03-20 10:25:00', 'admin', 'admin', 0),
-(1007, 100000, 'CF20250009', '周宁', 'MALE', '1997-07-14', '13800010007', 'zhou.ning@cloudflow.com', 103, 4, 105,
- 'FULL_TIME', 'PROBATION', '2025-11-01', NULL, NULL, NULL, '2026-03-20 10:30:00', '2026-03-20 10:30:00', 'admin', 'admin', 0),
-(1008, 100000, 'CF20240012', '陈凯', 'MALE', '1994-12-03', '13800010008', 'chen.kai@cloudflow.com', 101, 4, 101,
- 'FULL_TIME', 'REGULAR', '2024-06-01', '2024-12-01', NULL, NULL, '2026-03-20 10:35:00', '2026-03-20 10:35:00', 'admin', 'admin', 0);
-
--- 3. 员工社保与个税联调示例数据
-INSERT INTO cloud_flow_db.hr_employee_insurance (
-  id, tenant_id, employee_id, scheme_id, base, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 1002, 100, 10600.00, '2026-03-24', 'ACTIVE',
- '2026-03-24 10:40:00', '2026-03-24 10:40:00', 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_tax_deduction (
-  id, tenant_id, employee_id, deduction_type, amount, start_date, end_date, status, remark,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 1002, 'HOUSING_RENT', 1500.00, '2026-03-01', NULL, 'ACTIVE', '桌面端薪酬联调用住房租金扣除样本',
- '2026-03-24 10:45:00', '2026-03-24 10:45:00', NULL, NULL, 0),
-(101, 100000, 1002, 'CONTINUING_EDU', 400.00, '2026-03-01', NULL, 'ACTIVE', '桌面端薪酬联调用继续教育扣除样本',
- '2026-03-24 10:46:00', '2026-03-24 10:46:00', NULL, NULL, 0);
-
--- 4. 招聘需求示例数据
-INSERT INTO cloud_flow_db.hr_recruitment_request (
-  id, tenant_id, request_no, dept_id, position_id, headcount, job_requirements,
-  salary_min, salary_max, expected_date, process_instance_id, status, hired_count,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(2001, 100000, 'HRRQ202603230001', 101, 102, 2, '熟悉 Spring Boot、MySQL、消息驱动架构，能独立完成接口联调。',
- 18000.00, 28000.00, '2026-04-15', 'wf_hr_recruit_2001', 'RECRUITING', 1, '2026-03-21 09:00:00', '2026-03-22 18:30:00', 'zhao', 'zhao', 0),
-(2002, 100000, 'HRRQ202603230002', 103, 105, 1, '有招聘渠道运营经验，熟悉校园招聘与社会招聘协同推进。',
- 12000.00, 18000.00, '2026-04-08', 'wf_hr_recruit_2002', 'APPROVING', 0, '2026-03-22 09:30:00', '2026-03-22 11:30:00', 'zhao', 'zhao', 0),
-(2003, 100000, 'HRRQ202603150001', 106, 101, 1, '熟悉 React、组件化设计和企业应用前端开发。',
- 15000.00, 22000.00, '2026-03-28', 'wf_hr_recruit_2003', 'COMPLETED', 1, '2026-03-15 10:00:00', '2026-03-20 17:00:00', 'zhao', 'zhao', 0);
-
--- 4. 候选人示例数据
-INSERT INTO cloud_flow_db.hr_candidate (
-  id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(3001, 100000, 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', '/upload/hr/resume/chenhaitao.pdf,/upload/hr/resume/chenhaitao-portfolio.pdf', 'HEADHUNTER', 'HIRED', NULL,
- '2026-03-21 10:00:00', '2026-03-24 12:31:14', 'admin', 'admin', 0),
-(3002, 100000, 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', '/upload/hr/resume/sunxiaoyu.pdf', 'REFERRAL', 'OFFER', NULL,
- '2026-03-21 10:30:00', '2026-03-23 09:10:00', 'zhao', 'zhao', 0),
-(3003, 100000, 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', '/upload/hr/resume/linjiaqi.pdf,/upload/hr/resume/linjiaqi-works.pdf', 'WEBSITE', 'SCREENING', NULL,
- '2026-03-22 13:00:00', '2026-03-22 13:30:00', 'zhao', 'zhao', 0),
-(3004, 100000, 2003, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', '/upload/hr/resume/liruotong.pdf', 'REFERRAL', 'HIRED', NULL,
- '2026-03-15 14:00:00', '2026-03-20 18:10:00', 'zhao', 'zhao', 0),
-(3005, 100000, 2001, '吴嘉豪', 'MALE', '13900011006', 'wu.jiahao@example.com', '/upload/hr/resume/wujiahao.pdf,/upload/hr/resume/wujiahao-github.pdf', 'WEBSITE', 'INTERVIEW', NULL,
- '2026-03-24 12:40:00', '2026-03-24 12:40:00', 'admin', 'admin', 0);
-
--- 5. 面试示例数据
-INSERT INTO cloud_flow_db.hr_interview (
-  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, interview_end_time, location,
-  meeting_room_id, meeting_room_name, schedule_event_id, interviewers,
-  evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(4001, 100000, 3001, 'FIRST', 'VIDEO', '2026-03-24 15:00:00', '2026-03-24 16:00:00', 'Teams 会议链接', NULL, NULL, NULL, '[2,9]',
- NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 15:05:00', '2026-03-22 15:05:00', 'zhao', 'zhao', 0),
-(4002, 100000, 3002, 'FINAL', 'ONSITE', '2026-03-22 10:00:00', '2026-03-22 11:30:00', '上海总部 5F 面试室A', NULL, NULL, NULL, '[2,4]',
- '综合表现稳定，技术深度与协作意识符合岗位要求。', 88, 'PASS', 'COMPLETED', '2026-03-21 16:00:00', '2026-03-22 12:00:00', 'zhao', 'zhao', 0),
-(4003, 100000, 3003, 'FIRST', 'PHONE', '2026-03-24 11:00:00', '2026-03-24 11:30:00', '电话面试', NULL, NULL, NULL, '[4]',
- NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-22 14:20:00', '2026-03-22 14:20:00', 'zhao', 'zhao', 0),
-(4004, 100000, 3005, 'FIRST', 'VIDEO', '2026-03-25 14:30:00', '2026-03-25 15:30:00', '腾讯会议 研发一组频道', NULL, NULL, NULL, '[2,5]',
- NULL, NULL, 'PENDING', 'SCHEDULED', '2026-03-24 12:45:00', '2026-03-24 12:45:00', 'admin', 'admin', 0);
-
--- 6. Offer 示例数据
-INSERT INTO cloud_flow_db.hr_offer (
-  id, tenant_id, offer_no, candidate_id, dept_id, position_id, salary, expected_date, expiry_date,
-  offer_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100, 100000, 'OFFER20260324000001', 3001, 101, 102, 22000.00, '2026-04-15', '2026-04-22',
- '候选人：陈海涛\n拟录用部门：研发部\n拟录用岗位：后端开发工程师\n建议薪资：¥22,000\n预计入职日期：2026-04-15\nOffer 有效期至：2026-04-22\n\n该 Offer 已完成真实联调，后续可继续转入入职办理。',
- 'a5cf659a-ab61-44a2-9a8d-5da799a304db', 'ACCEPTED', '2026-03-24 12:31:14', '2026-03-24 12:31:14', 'admin', 'admin', 0);
-
--- 7. 入职申请与任务示例数据
--- 5001：审批中，可直接测试“审批通过”
--- 5002：已审批，已生成任务，可测试“完成任务 / 确认入职”
--- 5003：已入职完成态，用于查看最终结果
--- 5004：由已接受 Offer 转入的入职草稿，可继续提交入职流程
-INSERT INTO cloud_flow_db.hr_onboarding_application (
-  id, tenant_id, application_no, candidate_id, name, gender, phone, email, dept_id, post_id, position_id,
-  expected_date, process_instance_id, status, employee_id, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(5001, 100000, 'HRON202603230001', 3002, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 101, 4, 101,
- '2026-03-25', 'wf_hr_onboarding_5001', 'APPROVING', NULL, '2026-03-23 09:20:00', '2026-03-23 09:20:00', 'zhao', 'zhao', 0),
-(5002, 100000, 'HRON202603220002', NULL, '王晨', 'MALE', '13900011005', 'wang.chen@example.com', 107, 4, 102,
- '2026-03-24', 'wf_hr_onboarding_5002', 'APPROVED', NULL, '2026-03-22 14:00:00', '2026-03-23 16:20:00', 'zhao', 'zhao', 0),
-(5003, 100000, 'HRON202603010001', 3004, '李若彤', 'FEMALE', '13900011004', 'li.ruotong@example.com', 101, 4, 101,
- '2026-03-01', 'wf_hr_onboarding_5003', 'ONBOARDED', 1006, '2026-03-01 09:00:00', '2026-03-01 18:00:00', 'zhao', 'zhao', 0),
-(5004, 100000, 'OB202603246303', 3001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 101, 4, 102,
- '2026-04-15', NULL, 'DRAFT', NULL, '2026-03-24 12:31:14', '2026-03-24 12:31:14', 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_onboarding_task (
-  id, tenant_id, application_id, task_name, task_type, task_description, assignee_id, status,
-  completed_time, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(5101, 100000, 5002, '收集身份证与学历资料', 'DOCUMENT', '核验身份证、学历证书和银行卡信息。', 1001, 'COMPLETED',
- '2026-03-23 10:30:00', '身份证及学历材料已归档。', '2026-03-22 14:05:00', '2026-03-23 10:30:00', 'zhao', 'zhao', 0),
-(5102, 100000, 5002, '开通账号与权限', 'ACCOUNT', '为新员工开通系统账号和基础权限。', 1001, 'PENDING',
- NULL, NULL, '2026-03-22 14:06:00', '2026-03-22 14:06:00', 'zhao', 'zhao', 0),
-(5103, 100000, 5002, '准备办公设备', 'EQUIPMENT', '准备笔记本电脑、门禁与办公用品。', 1008, 'IN_PROGRESS',
- NULL, '电脑已分配，等待门禁卡。', '2026-03-22 14:07:00', '2026-03-23 11:00:00', 'zhao', 'zhao', 0),
-(5104, 100000, 5002, '新人培训', 'TRAINING', '完成入职培训、制度宣导与导师对接。', 1001, 'PENDING',
- NULL, NULL, '2026-03-22 14:08:00', '2026-03-22 14:08:00', 'zhao', 'zhao', 0),
-(5105, 100000, 5003, '收集身份证与学历资料', 'DOCUMENT', '核验身份证、学历证书和银行卡信息。', 1001, 'COMPLETED',
- '2026-03-01 10:00:00', '资料已归档。', '2026-03-01 09:10:00', '2026-03-01 10:00:00', 'zhao', 'zhao', 0),
-(5106, 100000, 5003, '开通账号与权限', 'ACCOUNT', '为新员工开通系统账号和基础权限。', 1001, 'COMPLETED',
- '2026-03-01 11:00:00', '账号已开通并完成初始授权。', '2026-03-01 09:11:00', '2026-03-01 11:00:00', 'zhao', 'zhao', 0),
-(5107, 100000, 5003, '准备办公设备', 'EQUIPMENT', '准备笔记本电脑、门禁与办公用品。', 1008, 'COMPLETED',
- '2026-03-01 13:30:00', '设备与门禁卡已发放。', '2026-03-01 09:12:00', '2026-03-01 13:30:00', 'zhao', 'zhao', 0),
-(5108, 100000, 5003, '新人培训', 'TRAINING', '完成入职培训、制度宣导与导师对接。', 1001, 'COMPLETED',
- '2026-03-01 15:00:00', '培训已完成并签收资料。', '2026-03-01 09:13:00', '2026-03-01 15:00:00', 'zhao', 'zhao', 0);
-
--- 7. 转正申请示例数据
--- 说明：编号顺延，前一节已扩展到 Offer 与入职草稿联调样本。
-INSERT INTO cloud_flow_db.hr_probation_confirmation (
-  id, tenant_id, application_no, employee_id, probation_start_date, probation_end_date, expected_regular_date,
-  self_evaluation, manager_evaluation, process_instance_id, status, reject_reason, extension_days,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(6001, 100000, 'HRPB202603230001', 1002, '2026-02-10', '2026-08-09', '2026-08-10',
- '已完成 HR 桌面端核心页面开发与日常需求支持，能独立完成接口联调。', '业务推进稳定，建议按计划进入审批流。', 'wf_hr_probation_6001',
- 'APPROVING', NULL, NULL, '2026-03-23 10:00:00', '2026-03-23 10:00:00', 'zhao', 'zhao', 0),
-(6002, 100000, 'HRPB202603010001', 1006, '2026-03-01', '2026-08-31', '2026-09-01',
- '快速适应团队节奏，交付质量稳定。', '转正建议通过，已具备独立承担任务能力。', 'wf_hr_probation_6002',
- 'APPROVED', NULL, NULL, '2026-03-18 09:00:00', '2026-03-22 18:00:00', 'zhao', 'zhao', 0),
-(6003, 100000, 'HRPB202602010001', 1007, '2025-11-01', '2026-05-30', '2026-05-30',
- '招聘协同推进正常，但数据复盘能力还需加强。', '建议延长试用期一个月，重点提升渠道复盘能力。', 'wf_hr_probation_6003',
- 'EXTENDED', '阶段性目标完成度不足，需延长试用观察。', 30, '2026-02-15 14:00:00', '2026-03-20 16:00:00', 'zhao', 'zhao', 0);
-
--- 8. 调岗申请示例数据
-INSERT INTO cloud_flow_db.hr_transfer_application (
-  id, tenant_id, application_no, employee_id, from_dept_id, from_post_id, from_position_id,
-  to_dept_id, to_post_id, to_position_id, transfer_type, reason, effective_date, salary_change,
-  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(7001, 100000, 'HRTR202603200001', 1008, 101, 4, 101,
- 101, 2, 106, 'PROMOTION', '项目推进稳定，拟提升为技术经理负责小组交付。', '2026-04-01', 1,
- 'wf_hr_transfer_7001', 'APPROVING', '2026-03-20 11:00:00', '2026-03-22 09:00:00', 'zhao', 'zhao', 0),
-(7002, 100000, 'HRTR202603010001', 1005, 101, 4, 102,
- 105, 4, 102, 'DEPT', '支援 IT 平台建设，承担内部工具服务端开发。', '2026-03-15', 0,
- 'wf_hr_transfer_7002', 'EFFECTIVE', '2026-03-01 10:00:00', '2026-03-15 18:00:00', 'zhao', 'zhao', 0);
-
--- 9. 离职申请与交接示例数据
--- 8001：已完成，用于查看离职闭环结果
--- 8002：已审批，带交接清单，可测试“完成交接 / 确认离职”
--- 8003：审批中，可直接测试“审批通过”
-INSERT INTO cloud_flow_db.hr_resignation_application (
-  id, tenant_id, application_no, employee_id, resignation_type, resignation_reason, expected_date, actual_date,
-  interview_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(8001, 100000, 'HRRE202603220001', 1004, 'VOLUNTARY', '家庭原因需要返回老家发展。', '2026-03-20', '2026-03-21',
- '已完成离职面谈，确认薪资与社保结算计划。', 'wf_hr_resignation_8001', 'COMPLETED',
- '2026-03-18 09:00:00', '2026-03-21 18:00:00', 'zhao', 'zhao', 0),
-(8002, 100000, 'HRRE202603230001', 1003, 'VOLUNTARY', '计划返回家乡发展，申请按流程办理交接。', '2026-04-10', NULL,
- '已完成首次离职面谈，待资产与账号交接结束后确认离职。', 'wf_hr_resignation_8002', 'APPROVED',
- '2026-03-23 11:30:00', '2026-03-23 11:30:00', 'zhao', 'zhao', 0),
-(8003, 100000, 'HRRE202603210001', 1008, 'VOLUNTARY', '计划接受外部新机会，先提交流程等待审批。', '2026-04-15', NULL,
- NULL, 'wf_hr_resignation_8003', 'APPROVING',
- '2026-03-21 16:00:00', '2026-03-22 09:30:00', 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_resignation_handover (
-  id, tenant_id, application_id, handover_item, handover_type, handover_to_id, status,
-  completed_time, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9001, 100000, 8002, '代码仓库与发布权限移交', 'ACCOUNT', 1001, 'PENDING',
- NULL, NULL, '2026-03-23 11:40:00', '2026-03-23 11:40:00', 'zhao', 'zhao', 0),
-(9002, 100000, 8002, '在建项目文档交接', 'DOCUMENT', 1005, 'COMPLETED',
- '2026-03-23 17:30:00', '接口文档与排期已转交张三。', '2026-03-23 11:41:00', '2026-03-23 17:30:00', 'zhao', 'zhao', 0),
-(9003, 100000, 8002, '办公电脑归还', 'ASSET', 1001, 'PENDING',
- NULL, NULL, '2026-03-23 11:42:00', '2026-03-23 11:42:00', 'zhao', 'zhao', 0),
-(9004, 100000, 8001, '财务资料归档', 'WORK', 1001, 'COMPLETED',
- '2026-03-21 15:00:00', '已完成票据、账号与预算资料归档。', '2026-03-18 10:00:00', '2026-03-21 15:00:00', 'zhao', 'zhao', 0);
-
--- =========================================================
 -- 四、OA 与协同种子数据（迁移自 04.cloudflow-oa.sql）
 -- =========================================================
 
@@ -6897,63 +6079,6 @@ WHERE id IN (9011);
 DELETE FROM cloud_flow_db.biz_business_trip
 WHERE id IN (9011);
 
-DELETE FROM cloud_flow_db.hr_employee_contract
-WHERE id IN (101);
-
-DELETE FROM cloud_flow_db.hr_employee_document
-WHERE id IN (101, 102);
-
-DELETE FROM cloud_flow_db.hr_emergency_contact
-WHERE id IN (101);
-
-DELETE FROM cloud_flow_db.hr_salary_adjustment
-WHERE id IN (101);
-
-DELETE FROM cloud_flow_db.hr_employee_salary
-WHERE id IN (102, 103);
-
-DELETE FROM cloud_flow_db.hr_employee_insurance
-WHERE id IN (101, 102);
-
-DELETE FROM cloud_flow_db.hr_employee_tax_deduction
-WHERE id IN (102, 103);
-
-DELETE FROM cloud_flow_db.hr_probation_confirmation
-WHERE id IN (6011);
-
-DELETE FROM cloud_flow_db.hr_onboarding_task
-WHERE id IN (5111, 5112, 5113, 5114);
-
-DELETE FROM cloud_flow_db.hr_onboarding_application
-WHERE id IN (5011);
-
-DELETE FROM cloud_flow_db.hr_offer
-WHERE id IN (101);
-
-DELETE FROM cloud_flow_db.hr_interview
-WHERE id IN (4011, 4012);
-
-DELETE FROM cloud_flow_db.hr_candidate
-WHERE id IN (3011);
-
-DELETE FROM cloud_flow_db.hr_recruitment_request
-WHERE id IN (2011);
-
-DELETE FROM cloud_flow_db.hr_attendance_monthly
-WHERE id IN (12011);
-
-DELETE FROM cloud_flow_db.hr_leave_application
-WHERE id IN (9003);
-
-DELETE FROM cloud_flow_db.hr_overtime_application
-WHERE id IN (9003);
-
-DELETE FROM cloud_flow_db.hr_attendance_record
-WHERE id IN (9311);
-
-DELETE FROM cloud_flow_db.hr_employee
-WHERE id IN (1009);
-
 -- =========================================================
 -- 二、客户上线保障周：公告、日程、任务、访客、值班
 -- =========================================================
@@ -7096,234 +6221,6 @@ INSERT INTO cloud_flow_db.biz_payment_request (
  DATE_ADD(CURDATE(), INTERVAL 2 DAY),
  'https://demo.cloudflow.local/files/payment/fk202604070011-contract.pdf',
  'PENDING', 102, '财务部', '0', 'wang', DATE_SUB(NOW(), INTERVAL 7 HOUR), 'wang', DATE_SUB(NOW(), INTERVAL 7 HOUR));
-
--- =========================================================
--- 四、招聘到入职闭环：招聘、Offer、入职、员工档案、转正
--- =========================================================
-
-INSERT INTO cloud_flow_db.hr_recruitment_request (
-  id, tenant_id, request_no, dept_id, position_id, headcount, job_requirements,
-  salary_min, salary_max, expected_date, process_instance_id, status, hired_count,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(2011, 100000, 'HRRQ202509140011', 106, 101, 1,
- '负责客户交付场景下的前端功能落地，熟悉 React、TypeScript、流程表单渲染与移动端适配，能够独立跟进客户培训与上线支持。',
- 16000.00, 22000.00, DATE_SUB(CURDATE(), INTERVAL 174 DAY), 'seed_hr_inst_recruit_001', 'COMPLETED', 1,
- DATE_SUB(NOW(), INTERVAL 205 DAY), DATE_SUB(NOW(), INTERVAL 192 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_candidate (
-  id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(3011, 100000, 2011, '林清禾', 'FEMALE', '13900012011', 'lin.qinghe@example.com',
- '/upload/hr/resume/linqinghe.pdf,/upload/hr/resume/linqinghe-project.pdf', 'REFERRAL', 'HIRED', NULL,
- DATE_SUB(NOW(), INTERVAL 201 DAY), DATE_SUB(NOW(), INTERVAL 180 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_interview (
-  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, interview_end_time, location,
-  meeting_room_id, meeting_room_name, schedule_event_id, interviewers,
-  evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(4011, 100000, 3011, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 198 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 198 DAY), INTERVAL 1 HOUR), '腾讯会议 ID 602-889', NULL, NULL, NULL,
- '[2,8]', '基础能力扎实，能清晰说明企业工作台和流程页的组件拆分思路。', 86, 'PASS', 'COMPLETED',
- DATE_SUB(NOW(), INTERVAL 199 DAY), DATE_SUB(NOW(), INTERVAL 198 DAY), 'zhao', 'zhao', 0),
-(4012, 100000, 3011, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 190 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 190 DAY), INTERVAL 90 MINUTE), '上海总部 5F 协作厅', NULL, NULL, NULL,
- '[2,4]', '具备客户沟通和交付意识，能够承担上线支持与培训材料整理。', 91, 'PASS', 'COMPLETED',
- DATE_SUB(NOW(), INTERVAL 191 DAY), DATE_SUB(NOW(), INTERVAL 190 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_offer (
-  id, tenant_id, offer_no, candidate_id, dept_id, position_id, salary, expected_date, expiry_date,
-  offer_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 'OFFER20250926000002', 3011, 106, 101, 18500.00, DATE_SUB(CURDATE(), INTERVAL 174 DAY), DATE_SUB(CURDATE(), INTERVAL 167 DAY),
- CONCAT(
-  '候选人：林清禾\n',
-  '拟入职部门：前端组\n',
-  '岗位：前端开发工程师（交付方向）\n',
-  '月度总包：18,500 元\n',
-  '预期到岗：', DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 174 DAY), '%Y-%m-%d'), '\n',
-  '备注：承担客户上线、培训课件整理与移动端体验优化工作。'
- ),
- 'seed_hr_inst_offer_001', 'ACCEPTED', DATE_SUB(NOW(), INTERVAL 193 DAY), DATE_SUB(NOW(), INTERVAL 188 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_onboarding_application (
-  id, tenant_id, application_no, candidate_id, name, gender, phone, email, dept_id, post_id, position_id,
-  expected_date, process_instance_id, status, employee_id, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(5011, 100000, 'HRON202510100011', 3011, '林清禾', 'FEMALE', '13900012011', 'lin.qinghe@example.com', 106, 4, 101,
-DATE_SUB(CURDATE(), INTERVAL 174 DAY), 'seed_hr_inst_onboard_001', 'ONBOARDED', 1009,
-DATE_SUB(NOW(), INTERVAL 182 DAY), DATE_SUB(NOW(), INTERVAL 174 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_onboarding_task (
-  id, tenant_id, application_id, task_name, task_type, task_description, assignee_id, status,
-  completed_time, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(5111, 100000, 5011, '收集入职证件与银行卡信息', 'DOCUMENT',
- '核验身份证、学历证明、银行卡与个税专项扣除材料，确保入职与薪酬资料一次齐备。', 1001, 'COMPLETED',
- DATE_SUB(NOW(), INTERVAL 173 DAY), '资料已完成归档，后续可直接用于社保、个税与薪资建档。', DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 173 DAY), 'zhao', 'zhao', 0),
-(5112, 100000, 5011, '开通研发环境与流程系统账号', 'ACCOUNT',
- '为新员工开通 CloudFlow 流程平台、代码仓库、项目文档与演示环境访问权限。', 1005, 'COMPLETED',
- DATE_SUB(NOW(), INTERVAL 173 DAY), '账号已开通并完成首日登录校验。', DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 173 DAY), 'zhao', 'zhao', 0),
-(5113, 100000, 5011, '准备办公设备与门禁', 'EQUIPMENT',
- '准备笔记本电脑、VPN、门禁卡与客户现场支持所需的测试机。', 1008, 'COMPLETED',
- DATE_SUB(NOW(), INTERVAL 173 DAY), '办公电脑与门禁已发放，VPN 白名单已同步。', DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 173 DAY), 'zhao', 'zhao', 0),
-(5114, 100000, 5011, '完成交付方向新人培训', 'TRAINING',
- '完成项目交付流程、客户沟通规范、上线保障值班与常用表单配置培训。', 1001, 'COMPLETED',
- DATE_SUB(NOW(), INTERVAL 172 DAY), '已安排李经理作为试用期导师，培训签到与材料已回传。', DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 172 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee (
-  id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id,
-  employee_type, employee_status, hire_date, regular_date, resign_date, user_id,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1009, 100000, 'CF20250021', '林清禾', 'FEMALE', '1997-04-16', '13900012011', 'lin.qinghe@cloudflow.com', 106, 4, 101,
- 'FULL_TIME', 'PROBATION', DATE_SUB(CURDATE(), INTERVAL 174 DAY), DATE_ADD(DATE_SUB(CURDATE(), INTERVAL 174 DAY), INTERVAL 180 DAY), NULL, NULL,
- DATE_SUB(NOW(), INTERVAL 174 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_contract (
-  id, tenant_id, employee_id, contract_type, contract_no, sign_date, start_date, end_date, duration, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 1009, 'LABOR', 'LABOR-CF20250021-001', DATE_SUB(CURDATE(), INTERVAL 176 DAY), DATE_SUB(CURDATE(), INTERVAL 174 DAY),
- DATE_ADD(DATE_SUB(CURDATE(), INTERVAL 174 DAY), INTERVAL 36 MONTH), 36,
- 'ACTIVE',
- DATE_SUB(NOW(), INTERVAL 176 DAY), DATE_SUB(NOW(), INTERVAL 174 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_contract_attachment (
-  id, tenant_id, contract_id, file_name, file_url, sort_order,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 101, 'contract-linqinghe.pdf', 'https://demo.cloudflow.local/files/hr/contract-linqinghe.pdf', 0,
- DATE_SUB(NOW(), INTERVAL 176 DAY), DATE_SUB(NOW(), INTERVAL 174 DAY), 'zhao', 'zhao', 0),
-(102, 100000, 101, 'contract-linqinghe-annex.pdf', 'https://demo.cloudflow.local/files/hr/contract-linqinghe-annex.pdf', 1,
- DATE_SUB(NOW(), INTERVAL 176 DAY), DATE_SUB(NOW(), INTERVAL 174 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_document (
-  id, tenant_id, employee_id, document_type, document_no, issue_date, expiry_date,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 1009, 'ID_CARD', '320582199704160628', '2016-05-10', '2036-05-10',
- DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 181 DAY), 'zhao', 'zhao', 0),
-(102, 100000, 1009, 'DIPLOMA', 'DIP-2020-0216', '2020-07-01', NULL,
- DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 181 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_document_attachment (
-  id, tenant_id, document_id, file_name, file_url, sort_order,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 101, 'linqinghe-idcard-front.pdf', 'https://demo.cloudflow.local/files/hr/linqinghe-idcard-front.pdf', 0,
- DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 181 DAY), 'zhao', 'zhao', 0),
-(102, 100000, 101, 'linqinghe-idcard-back.pdf', 'https://demo.cloudflow.local/files/hr/linqinghe-idcard-back.pdf', 1,
- DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 181 DAY), 'zhao', 'zhao', 0),
-(103, 100000, 102, 'linqinghe-diploma.pdf', 'https://demo.cloudflow.local/files/hr/linqinghe-diploma.pdf', 0,
- DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 181 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_emergency_contact (
-  id, tenant_id, employee_id, contact_name, relationship, phone, address, priority,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 1009, '林建国', 'PARENT', '13800019009', '江苏省苏州市昆山市玉山镇前进西路 268 号', 1,
- DATE_SUB(NOW(), INTERVAL 181 DAY), DATE_SUB(NOW(), INTERVAL 181 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_insurance (
-  id, tenant_id, employee_id, scheme_id, base, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 1009, 101, 18500.00, DATE_SUB(CURDATE(), INTERVAL 174 DAY), 'ACTIVE',
- DATE_SUB(NOW(), INTERVAL 174 DAY), DATE_SUB(NOW(), INTERVAL 174 DAY), 'zhao', 'zhao', 0),
-(102, 100000, 1003, 101, 16800.00, DATE_SUB(CURDATE(), INTERVAL 30 DAY), 'ACTIVE',
- DATE_SUB(NOW(), INTERVAL 30 DAY), DATE_SUB(NOW(), INTERVAL 30 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_tax_deduction (
-  id, tenant_id, employee_id, deduction_type, amount, start_date, end_date, status, remark,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(102, 100000, 1009, 'HOUSING_RENT', 1500.00, DATE_SUB(CURDATE(), INTERVAL 174 DAY), NULL, 'ACTIVE',
- '苏州租房专项扣除，已用于新员工首月个税申报。',
- DATE_SUB(NOW(), INTERVAL 174 DAY), DATE_SUB(NOW(), INTERVAL 174 DAY), 'zhao', 'zhao', 0),
-(103, 100000, 1003, 'HOUSING_LOAN', 1000.00, DATE_SUB(CURDATE(), INTERVAL 90 DAY), NULL, 'ACTIVE',
- '后端测试员工住房贷款专项扣除，用于调薪前后个税测算。',
- DATE_SUB(NOW(), INTERVAL 90 DAY), DATE_SUB(NOW(), INTERVAL 90 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_salary (
-  id, tenant_id, employee_id, structure_id, salary_data, total_salary, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(102, 100000, 1009, 100, '{"100":13500,"101":2500,"102":300,"103":300,"104":1900}', 18500.00,
- DATE_SUB(CURDATE(), INTERVAL 174 DAY), 'ACTIVE',
- DATE_SUB(NOW(), INTERVAL 174 DAY), DATE_SUB(NOW(), INTERVAL 174 DAY), 'zhao', 'zhao', 0),
-(103, 100000, 1003, 100, '{"100":12000,"101":2000,"102":300,"103":300,"104":2200}', 16800.00,
- DATE_SUB(CURDATE(), INTERVAL 30 DAY), 'ACTIVE',
- DATE_SUB(NOW(), INTERVAL 30 DAY), DATE_SUB(NOW(), INTERVAL 30 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_probation_confirmation (
-  id, tenant_id, application_no, employee_id, probation_start_date, probation_end_date, expected_regular_date,
-  self_evaluation, manager_evaluation, process_instance_id, status, reject_reason, extension_days,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(6011, 100000, 'HRPB202604070011', 1009, DATE_SUB(CURDATE(), INTERVAL 174 DAY),
- DATE_ADD(DATE_SUB(CURDATE(), INTERVAL 174 DAY), INTERVAL 180 DAY),
- DATE_ADD(DATE_SUB(CURDATE(), INTERVAL 174 DAY), INTERVAL 180 DAY),
- '已独立负责苏州智造项目移动端表单配置、上线值班手册整理和客户培训课件优化，能够在客户现场快速定位并复盘问题。',
- '试用期内交付稳定，客户反馈沟通清晰，建议按期转正并继续承担交付方向的流程前端工作。',
- 'seed_hr_inst_prob_001', 'APPROVING', NULL, NULL,
- DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0);
-
--- =========================================================
--- 五、员工自助与薪酬联动：补卡、加班、调休、月报、调薪
--- =========================================================
-
-INSERT INTO cloud_flow_db.hr_attendance_record (
-  id, tenant_id, employee_id, attendance_date, rule_id, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method,
-  location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9311, 100000, 1002, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 102, 103, 'CHECK_IN',
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 18 MINUTE,
- DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 18, 'SUPPLEMENT',
- '苏州智造客户园区 A2 楼', 'APPROVING', 'seed_hr_inst_att_001',
- '前一日参与客户现场晨会与上线巡检，因外勤网络限制未完成公司内网打卡，现补充签到。', DATE_SUB(NOW(), INTERVAL 20 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), 8, 8, 0);
-
-INSERT INTO cloud_flow_db.hr_overtime_application (
-  id, tenant_id, application_no, employee_id, start_time, end_time, duration, overtime_type, reason,
-  compensation_type, compensation_hours, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9003, 100000, 'JB202604070003', 1002,
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 19 HOUR,
- DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 22 HOUR + INTERVAL 30 MINUTE,
- 3.50, 'WORKDAY', '配合苏州智造项目上线后首轮问题修复，完成移动端审批页兼容性修正与客户验收说明整理。',
- 'TIME_OFF', 3.50, 'seed_hr_inst_ot_001', 'APPROVED',
- DATE_SUB(NOW(), INTERVAL 40 HOUR), DATE_SUB(NOW(), INTERVAL 34 HOUR), 'test_fe', 'test_fe', 0);
-
-INSERT INTO cloud_flow_db.hr_leave_application (
-  id, tenant_id, application_no, employee_id, leave_type_id, start_time, end_time, duration, unit, reason,
-  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9003, 100000, 'QJ202604070003', 1002, 107,
- DATE_ADD(CURDATE(), INTERVAL 2 DAY) + INTERVAL 13 HOUR,
- DATE_ADD(CURDATE(), INTERVAL 2 DAY) + INTERVAL 17 HOUR,
- 4.00, 'HOUR', '申请使用上线保障周积累的调休时长，回家处理个人事务，确保手头客户问题已完成交接。',
- 'seed_hr_inst_leave_001', 'APPROVING',
- DATE_SUB(NOW(), INTERVAL 12 HOUR), DATE_SUB(NOW(), INTERVAL 10 HOUR), 'test_fe', 'test_fe', 0);
-
-INSERT INTO cloud_flow_db.hr_attendance_monthly (
-  id, tenant_id, employee_id, year, month, work_days, actual_days, late_times, early_times, absent_days,
-  missing_times, leave_days, overtime_hours, attendance_rate, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(12011, 100000, 1009, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 0, 0.00, 2.00, 95.65, 'CONFIRMED',
- DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_salary_adjustment (
-  id, tenant_id, application_no, employee_id, adjustment_type, adjustment_reason,
-  before_salary_data, after_salary_data, before_total, after_total, adjustment_amount, adjustment_rate,
-  effective_date, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(101, 100000, 'SA202604070011', 1003, 'PERFORMANCE',
- '后端测试员工在苏州智造项目上线、接口联调与客户现场问题定位中承担核心支持工作，建议追加绩效奖金。',
- '{"100":12000,"101":2000,"102":300,"103":300,"104":2200}',
- '{"100":12000,"101":2000,"102":300,"103":300,"104":3200}',
-16800.00, 17800.00, 1000.00, 5.95,
-DATE_ADD(CURDATE(), INTERVAL 24 DAY), 'seed_hr_inst_salary_001', 'APPROVING',
-DATE_SUB(NOW(), INTERVAL 6 HOUR), DATE_SUB(NOW(), INTERVAL 5 HOUR), 'li', 'li', 0);
 
 -- =========================================================
 -- 六、工作流实例、待办、历史、快照、通知
@@ -7744,220 +6641,6 @@ INSERT INTO cloud_flow_db.sys_user_post VALUES(18, 8, 100000);
 INSERT INTO cloud_flow_db.sys_user_post VALUES(19, 9, 100000);
 INSERT INTO cloud_flow_db.sys_user_post VALUES(20, 10, 100000);
 
-INSERT INTO cloud_flow_db.hr_position (
-  id, tenant_id, position_code, position_name, family_id, level_id, post_id,
-  job_description, requirements, work_content, status, create_time, update_time
-) VALUES
-(107, 100000, 'PRODUCT_DIRECTOR_M3', '产品总监', 101, 110, 2,
- '负责产品方向、跨部门需求优先级与版本路线图管理', '具备企业软件产品规划、B端需求分析与跨部门推进能力', '统筹产品规划、交付协同与重点客户需求决策', 1, '2026-03-21 09:00:00', '2026-03-21 09:00:00'),
-(108, 100000, 'DELIVERY_MANAGER_M2', '交付经理', 102, 109, 2,
- '负责实施团队管理与重点项目上线交付', '熟悉 SaaS 项目实施、培训、验收与风险管理', '统筹交付资源、项目计划与客户上线保障', 1, '2026-03-21 09:05:00', '2026-03-21 09:05:00'),
-(109, 100000, 'CS_MANAGER_M2', '客户成功经理', 103, 109, 2,
- '负责重点客户续约、活跃度与客户经营体系建设', '具备续约经营、数据复盘与客户关系管理能力', '统筹客户经营计划、续约节奏与高风险客户治理', 1, '2026-03-21 09:10:00', '2026-03-21 09:10:00'),
-(110, 100000, 'SALES_MANAGER_M2', '销售经理', 103, 109, 2,
- '负责商机管理、方案推进与销售目标达成', '具备企业软件销售与方案型沟通能力', '统筹商机漏斗、重点客户拜访与签约推进', 1, '2026-03-21 09:15:00', '2026-03-21 09:15:00'),
-(111, 100000, 'OPS_MANAGER_M2', '运维经理', 100, 109, 2,
- '负责运维团队管理、发布保障与应急机制建设', '熟悉 DevOps、监控告警与稳定性治理', '统筹发布窗口、巡检计划和重大故障应急响应', 1, '2026-03-21 09:20:00', '2026-03-21 09:20:00'),
-(112, 100000, 'PRODUCT_MANAGER_P4', '产品经理', 101, 103, 5,
- '负责流程、OA 与 HR 产品需求设计与版本管理', '熟悉原型设计、需求拆解和数据驱动优化', '输出需求文档、原型与版本验收标准', 1, '2026-03-21 09:25:00', '2026-03-21 09:25:00'),
-(113, 100000, 'DELIVERY_CONSULTANT_P3', '实施顾问', 102, 102, 6,
- '负责客户现场实施、培训和上线支持', '熟悉流程配置、权限模型与项目交付方法论', '执行实施计划、培训客户管理员并收敛问题清单', 1, '2026-03-21 09:30:00', '2026-03-21 09:30:00'),
-(114, 100000, 'CUSTOMER_SUCCESS_P3', '客户成功专员', 103, 102, 7,
- '负责客户活跃度、续约推进与经营分析', '具备客户沟通、经营计划和续约跟进能力', '跟进续约、使用情况和重点客户问题闭环', 1, '2026-03-21 09:35:00', '2026-03-21 09:35:00'),
-(115, 100000, 'SALES_CONSULTANT_P3', '销售顾问', 103, 102, 8,
- '负责重点商机跟进、方案讲解和合同推进', '具备企业软件销售与行业方案沟通能力', '推进客户拜访、方案演示和签约流程', 1, '2026-03-21 09:40:00', '2026-03-21 09:40:00'),
-(116, 100000, 'DEVOPS_P3', '运维工程师', 100, 102, 9,
- '负责环境巡检、发布保障和性能告警处理', '熟悉 CI/CD、监控平台和故障应急处理', '执行发布、巡检、备份和告警响应', 1, '2026-03-21 09:45:00', '2026-03-21 09:45:00'),
-(117, 100000, 'QA_P3', '测试工程师', 100, 102, 10,
- '负责测试计划、回归验证与上线质量把控', '熟悉 Web 测试、接口测试和自动化用例设计', '执行测试用例、输出缺陷报告与上线验收', 1, '2026-03-21 09:50:00', '2026-03-21 09:50:00'),
-(118, 100000, 'SA_P5', '解决方案架构师', 100, 104, 11,
- '负责重点客户售前方案、技术澄清与行业场景设计', '具备企业架构、集成方案和技术售前经验', '输出方案蓝图、澄清接口边界并支持签约推进', 1, '2026-03-21 09:55:00', '2026-03-21 09:55:00');
-
-INSERT INTO cloud_flow_db.hr_employee (
-  id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id,
-  employee_type, employee_status, hire_date, regular_date, resign_date, user_id,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1010, 100000, 'CF20240021', '孙雨澄', 'MALE', '1989-08-16', '13800010110', 'sun.pm@cloudflow.com', 109, 2, 107,
- 'FULL_TIME', 'REGULAR', '2024-01-15', '2024-07-15', NULL, 10, '2026-03-21 10:00:00', '2026-03-21 10:00:00', 'admin', 'admin', 0),
-(1011, 100000, 'CF20230112', '吴思远', 'MALE', '1990-03-09', '13800010111', 'wu.delivery@cloudflow.com', 110, 2, 108,
- 'FULL_TIME', 'REGULAR', '2023-11-06', '2024-05-06', NULL, 11, '2026-03-21 10:05:00', '2026-03-21 10:05:00', 'admin', 'admin', 0),
-(1012, 100000, 'CF20240018', '郑雅宁', 'FEMALE', '1992-07-23', '13800010112', 'zheng.cs@cloudflow.com', 111, 2, 109,
- 'FULL_TIME', 'REGULAR', '2024-03-11', '2024-09-11', NULL, 12, '2026-03-21 10:10:00', '2026-03-21 10:10:00', 'admin', 'admin', 0),
-(1013, 100000, 'CF20230019', '何嘉树', 'MALE', '1988-11-02', '13800010113', 'he.sales@cloudflow.com', 112, 2, 110,
- 'FULL_TIME', 'REGULAR', '2023-08-21', '2024-02-21', NULL, 13, '2026-03-21 10:15:00', '2026-03-21 10:15:00', 'admin', 'admin', 0),
-(1014, 100000, 'CF20240025', '唐志远', 'MALE', '1991-01-17', '13800010114', 'tang.ops@cloudflow.com', 113, 2, 111,
- 'FULL_TIME', 'REGULAR', '2024-02-19', '2024-08-19', NULL, 14, '2026-03-21 10:20:00', '2026-03-21 10:20:00', 'admin', 'admin', 0),
-(1015, 100000, 'CF20240101', '宋清妍', 'FEMALE', '1995-05-12', '13800010115', 'song.product@cloudflow.com', 114, 5, 112,
- 'FULL_TIME', 'REGULAR', '2024-10-08', '2025-04-08', NULL, 15, '2026-03-21 10:25:00', '2026-03-21 10:25:00', 'admin', 'admin', 0),
-(1016, 100000, 'CF20260011', '高牧', 'MALE', '1997-02-14', '13800010116', 'gao.delivery@cloudflow.com', 115, 6, 113,
- 'FULL_TIME', 'PROBATION', '2026-01-15', '2026-07-15', NULL, 16, '2026-03-21 10:30:00', '2026-03-21 10:30:00', 'admin', 'admin', 0),
-(1017, 100000, 'CF20250014', '徐珂', 'FEMALE', '1996-10-30', '13800010117', 'xu.cs@cloudflow.com', 116, 7, 114,
- 'FULL_TIME', 'REGULAR', '2025-05-12', '2025-11-12', NULL, 17, '2026-03-21 10:35:00', '2026-03-21 10:35:00', 'admin', 'admin', 0),
-(1018, 100000, 'CF20240028', '彭骁', 'MALE', '1994-09-07', '13800010118', 'peng.sales@cloudflow.com', 117, 8, 115,
- 'FULL_TIME', 'REGULAR', '2024-09-09', '2025-03-09', NULL, 18, '2026-03-21 10:40:00', '2026-03-21 10:40:00', 'admin', 'admin', 0),
-(1019, 100000, 'CF20240116', '许磊', 'MALE', '1995-12-19', '13800010119', 'xu.ops@cloudflow.com', 118, 9, 116,
- 'FULL_TIME', 'REGULAR', '2024-12-02', '2025-06-02', NULL, 19, '2026-03-21 10:45:00', '2026-03-21 10:45:00', 'admin', 'admin', 0),
-(1020, 100000, 'CF20260015', '韩悦', 'FEMALE', '1998-04-21', '13800010120', 'han.qa@cloudflow.com', 119, 10, 117,
- 'FULL_TIME', 'PROBATION', '2026-02-03', '2026-08-03', NULL, 20, '2026-03-21 10:50:00', '2026-03-21 10:50:00', 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_insurance (
-  id, tenant_id, employee_id, scheme_id, base, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(103, 100000, 1010, 101, 28000.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:50:00', '2026-03-24 10:50:00', 'admin', 'admin', 0),
-(104, 100000, 1011, 101, 26000.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:51:00', '2026-03-24 10:51:00', 'admin', 'admin', 0),
-(105, 100000, 1012, 101, 24000.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:52:00', '2026-03-24 10:52:00', 'admin', 'admin', 0),
-(106, 100000, 1015, 101, 21000.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:53:00', '2026-03-24 10:53:00', 'admin', 'admin', 0),
-(107, 100000, 1016, 101, 17500.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:54:00', '2026-03-24 10:54:00', 'admin', 'admin', 0),
-(108, 100000, 1017, 101, 16500.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:55:00', '2026-03-24 10:55:00', 'admin', 'admin', 0),
-(109, 100000, 1018, 101, 21500.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:56:00', '2026-03-24 10:56:00', 'admin', 'admin', 0),
-(110, 100000, 1019, 101, 19000.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:57:00', '2026-03-24 10:57:00', 'admin', 'admin', 0),
-(111, 100000, 1020, 101, 16000.00, '2026-03-24', 'ACTIVE', '2026-03-24 10:58:00', '2026-03-24 10:58:00', 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_tax_deduction (
-  id, tenant_id, employee_id, deduction_type, amount, start_date, end_date, status, remark,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(104, 100000, 1010, 'CHILD_EDU', 1000.00, '2026-03-01', NULL, 'ACTIVE', '产品总监子女教育专项扣除样本', '2026-03-24 11:00:00', '2026-03-24 11:00:00', 'admin', 'admin', 0),
-(105, 100000, 1015, 'HOUSING_RENT', 1500.00, '2026-03-01', NULL, 'ACTIVE', '产品经理租房专项扣除样本', '2026-03-24 11:01:00', '2026-03-24 11:01:00', 'admin', 'admin', 0),
-(106, 100000, 1016, 'CONTINUING_EDU', 400.00, '2026-03-01', NULL, 'ACTIVE', '实施顾问继续教育专项扣除样本', '2026-03-24 11:02:00', '2026-03-24 11:02:00', 'admin', 'admin', 0),
-(107, 100000, 1017, 'ELDERLY_CARE', 2000.00, '2026-03-01', NULL, 'ACTIVE', '客户成功专员赡养老人专项扣除样本', '2026-03-24 11:03:00', '2026-03-24 11:03:00', 'admin', 'admin', 0),
-(108, 100000, 1018, 'HOUSING_RENT', 1500.00, '2026-03-01', NULL, 'ACTIVE', '销售顾问租房专项扣除样本', '2026-03-24 11:04:00', '2026-03-24 11:04:00', 'admin', 'admin', 0),
-(109, 100000, 1019, 'HOUSING_LOAN', 1000.00, '2026-03-01', NULL, 'ACTIVE', '运维工程师住房贷款专项扣除样本', '2026-03-24 11:05:00', '2026-03-24 11:05:00', 'admin', 'admin', 0),
-(110, 100000, 1020, 'CONTINUING_EDU', 400.00, '2026-03-01', NULL, 'ACTIVE', '测试工程师继续教育专项扣除样本', '2026-03-24 11:06:00', '2026-03-24 11:06:00', 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_salary (
-  id, tenant_id, employee_id, structure_id, salary_data, total_salary, effective_date, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(104, 100000, 1010, 100, '{"100":22000,"101":2500,"102":300,"103":300,"104":2900}', 28000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:10:00', '2026-03-24 11:10:00', 'admin', 'admin', 0),
-(105, 100000, 1011, 100, '{"100":20000,"101":2500,"102":300,"103":300,"104":2900}', 26000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:11:00', '2026-03-24 11:11:00', 'admin', 'admin', 0),
-(106, 100000, 1012, 100, '{"100":18000,"101":2500,"102":300,"103":300,"104":2900}', 24000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:12:00', '2026-03-24 11:12:00', 'admin', 'admin', 0),
-(107, 100000, 1013, 100, '{"100":20000,"101":3500,"102":300,"103":300,"104":5900}', 30000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:13:00', '2026-03-24 11:13:00', 'admin', 'admin', 0),
-(108, 100000, 1014, 100, '{"100":18500,"101":2500,"102":300,"103":300,"104":3400}', 25000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:14:00', '2026-03-24 11:14:00', 'admin', 'admin', 0),
-(109, 100000, 1015, 100, '{"100":15500,"101":2500,"102":300,"103":300,"104":2400}', 21000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:15:00', '2026-03-24 11:15:00', 'admin', 'admin', 0),
-(110, 100000, 1016, 100, '{"100":13000,"101":2200,"102":300,"103":300,"104":1700}', 17500.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:16:00', '2026-03-24 11:16:00', 'admin', 'admin', 0),
-(111, 100000, 1017, 100, '{"100":12000,"101":1800,"102":300,"103":300,"104":2100}', 16500.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:17:00', '2026-03-24 11:17:00', 'admin', 'admin', 0),
-(112, 100000, 1018, 100, '{"100":13000,"101":3000,"102":300,"103":300,"104":4900}', 21500.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:18:00', '2026-03-24 11:18:00', 'admin', 'admin', 0),
-(113, 100000, 1019, 100, '{"100":14500,"101":2000,"102":300,"103":300,"104":1900}', 19000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:19:00', '2026-03-24 11:19:00', 'admin', 'admin', 0),
-(114, 100000, 1020, 100, '{"100":11800,"101":1700,"102":300,"103":300,"104":1900}', 16000.00, '2026-03-24', 'ACTIVE', '2026-03-24 11:20:00', '2026-03-24 11:20:00', 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_schedule_plan (
-  id, tenant_id, plan_name, target_type, target_id, shift_id, schedule_date, status,
-  create_time, update_time, create_by, update_by
-) VALUES
-(11010, 100000, '高牧标准班次', 'EMPLOYEE', 1016, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11011, 100000, '高牧标准班次', 'EMPLOYEE', 1016, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11012, 100000, '高牧标准班次', 'EMPLOYEE', 1016, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11013, 100000, '彭骁标准班次', 'EMPLOYEE', 1018, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11014, 100000, '彭骁标准班次', 'EMPLOYEE', 1018, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11015, 100000, '彭骁标准班次', 'EMPLOYEE', 1018, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11016, 100000, '许磊标准班次', 'EMPLOYEE', 1019, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11017, 100000, '许磊标准班次', 'EMPLOYEE', 1019, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11018, 100000, '许磊标准班次', 'EMPLOYEE', 1019, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11019, 100000, '韩悦标准班次', 'EMPLOYEE', 1020, 103, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11020, 100000, '韩悦标准班次', 'EMPLOYEE', 1020, 103, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 'PUBLISHED', NOW(), NOW(), 1, 1),
-(11021, 100000, '韩悦标准班次', 'EMPLOYEE', 1020, 103, CURDATE(), 'PUBLISHED', NOW(), NOW(), 1, 1);
-
-INSERT INTO cloud_flow_db.hr_attendance_record (
-  id, tenant_id, employee_id, attendance_date, rule_id, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method,
-  location, status, process_instance_id, remark, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9312, 100000, 1016, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 101, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 8 HOUR + INTERVAL 58 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, -2, 'WIFI', 'CloudFlow-Delivery', 'NORMAL', NULL, '客户培训前到岗准备资料', NOW(), NOW(), 16, 16, 0),
-(9313, 100000, 1016, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 101, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 22 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 22, 'WIFI', 'CloudFlow-Delivery', 'NORMAL', NULL, '完成交付培训后下班', NOW(), NOW(), 16, 16, 0),
-(9314, 100000, 1018, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 102, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 5 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, 5, 'GPS', '浦东新区客户园区', 'NORMAL', NULL, '上午外出拜访重点客户', NOW(), NOW(), 18, 18, 0),
-(9315, 100000, 1018, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 102, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 36 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 36, 'GPS', '浦东新区客户园区', 'NORMAL', NULL, '完成续约方案讲解后签退', NOW(), NOW(), 18, 18, 0),
-(9316, 100000, 1019, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 8 HOUR + INTERVAL 41 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR, -19, 'GPS', '总部机房', 'NORMAL', NULL, '早间执行例行巡检', NOW(), NOW(), 19, 19, 0),
-(9317, 100000, 1019, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 100, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 21 HOUR + INTERVAL 16 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR, 196, 'GPS', '总部机房', 'NORMAL', NULL, '配合发布窗口值守后下班', NOW(), NOW(), 19, 19, 0),
-(9318, 100000, 1020, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR + INTERVAL 2 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 9 HOUR, 2, 'WIFI', 'CloudFlow-QA', 'NORMAL', NULL, '执行移动端回归测试前签到', NOW(), NOW(), 20, 20, 0),
-(9319, 100000, 1020, DATE_SUB(CURDATE(), INTERVAL 2 DAY), 100, 103, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 8 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR, 8, 'WIFI', 'CloudFlow-QA', 'NORMAL', NULL, '完成回归测试与报告输出', NOW(), NOW(), 20, 20, 0);
-
-INSERT INTO cloud_flow_db.hr_leave_quota (
-  id, tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota,
-  expiry_date, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1104, 100000, 1016, 100, YEAR(CURDATE()), 5.00, 0.00, 0.00, 5.00, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1105, 100000, 1017, 100, YEAR(CURDATE()), 7.00, 1.00, 0.00, 6.00, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1106, 100000, 1018, 100, YEAR(CURDATE()), 7.00, 0.00, 0.00, 7.00, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1107, 100000, 1019, 100, YEAR(CURDATE()), 6.00, 0.00, 0.00, 6.00, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1108, 100000, 1020, 100, YEAR(CURDATE()), 5.00, 0.00, 0.00, 5.00, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), NOW(), NOW(), 'admin', 'admin', 0),
-(1109, 100000, 1019, 107, YEAR(CURDATE()), 20.00, 4.00, 2.00, 14.00, DATE_ADD(CURDATE(), INTERVAL 90 DAY), NOW(), NOW(), 'admin', 'admin', 0),
-(1110, 100000, 1020, 107, YEAR(CURDATE()), 12.00, 0.00, 2.50, 9.50, DATE_ADD(CURDATE(), INTERVAL 90 DAY), NOW(), NOW(), 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_leave_application (
-  id, tenant_id, application_no, employee_id, leave_type_id, start_time, end_time, duration, unit, reason,
-  process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9004, 100000, 'QJ202604070004', 1017, 100, DATE_ADD(CURDATE(), INTERVAL 4 DAY) + INTERVAL 9 HOUR, DATE_ADD(CURDATE(), INTERVAL 4 DAY) + INTERVAL 18 HOUR, 1.00, 'DAY', '陪同重点客户续约后安排补休，相关周报与续约材料已完成交接。', NULL, 'APPROVED', DATE_SUB(NOW(), INTERVAL 16 HOUR), DATE_SUB(NOW(), INTERVAL 12 HOUR), 'xu_cs', 'xu_cs', 0),
-(9005, 100000, 'QJ202604070005', 1019, 107, DATE_ADD(CURDATE(), INTERVAL 1 DAY) + INTERVAL 14 HOUR, DATE_ADD(CURDATE(), INTERVAL 1 DAY) + INTERVAL 20 HOUR, 6.00, 'HOUR', '申请使用发布值守形成的调休额度，次日白天处理个人事务。', NULL, 'APPROVED', DATE_SUB(NOW(), INTERVAL 8 HOUR), DATE_SUB(NOW(), INTERVAL 6 HOUR), 'xu_ops', 'xu_ops', 0);
-
-INSERT INTO cloud_flow_db.hr_overtime_application (
-  id, tenant_id, application_no, employee_id, start_time, end_time, duration, overtime_type, reason,
-  compensation_type, compensation_hours, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(9004, 100000, 'JB202604070004', 1019, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 18 HOUR + INTERVAL 30 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 24 HOUR + INTERVAL 30 MINUTE, 6.00, 'WORKDAY', '配合季度版本发布窗口值守与数据库切换验证。', 'TIME_OFF', 6.00, NULL, 'APPROVED', DATE_SUB(NOW(), INTERVAL 26 HOUR), DATE_SUB(NOW(), INTERVAL 20 HOUR), 'xu_ops', 'xu_ops', 0),
-(9005, 100000, 'JB202604070005', 1020, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 18 HOUR + INTERVAL 30 MINUTE, DATE_SUB(CURDATE(), INTERVAL 2 DAY) + INTERVAL 21 HOUR, 2.50, 'WORKDAY', '补充执行移动端提交流程回归和访客二维码兼容性测试。', 'TIME_OFF', 2.50, NULL, 'APPROVED', DATE_SUB(NOW(), INTERVAL 50 HOUR), DATE_SUB(NOW(), INTERVAL 46 HOUR), 'han_qa', 'han_qa', 0);
-
-INSERT INTO cloud_flow_db.hr_attendance_monthly (
-  id, tenant_id, employee_id, year, month, work_days, actual_days, late_times, early_times, absent_days,
-  missing_times, leave_days, overtime_hours, attendance_rate, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(12012, 100000, 1016, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 0, 0.00, 1.50, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12013, 100000, 1017, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 0, 1.00, 0.00, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12014, 100000, 1018, YEAR(CURDATE()), MONTH(CURDATE()), 23, 23, 0, 0, 0, 0, 0.00, 0.00, 100.00, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12015, 100000, 1019, YEAR(CURDATE()), MONTH(CURDATE()), 23, 23, 0, 0, 0, 0, 0.00, 6.00, 100.00, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0),
-(12016, 100000, 1020, YEAR(CURDATE()), MONTH(CURDATE()), 23, 22, 0, 0, 0, 0, 0.00, 2.50, 95.65, 'CONFIRMED', NOW(), NOW(), 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_salary_adjustment (
-  id, tenant_id, application_no, employee_id, adjustment_type, adjustment_reason,
-  before_salary_data, after_salary_data, before_total, after_total, adjustment_amount, adjustment_rate,
-  effective_date, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(102, 100000, 'SA202604070012', 1015, 'PERFORMANCE', '产品经理完成新版工作台需求梳理与交付协同闭环，追加季度绩效奖金。',
- '{"100":14800,"101":2300,"102":300,"103":300,"104":2100}', '{"100":15500,"101":2500,"102":300,"103":300,"104":2400}',
- 19800.00, 21000.00, 1200.00, 6.06, DATE_SUB(CURDATE(), INTERVAL 15 DAY), NULL, 'APPROVED', DATE_SUB(NOW(), INTERVAL 14 DAY), DATE_SUB(NOW(), INTERVAL 13 DAY), 'sun_pm', 'sun_pm', 0),
-(103, 100000, 'SA202604070013', 1018, 'PERFORMANCE', '销售顾问完成重点客户续约与华东区域商机转化，追加绩效奖金。',
- '{"100":12300,"101":2800,"102":300,"103":300,"104":4300}', '{"100":13000,"101":3000,"102":300,"103":300,"104":4900}',
- 20000.00, 21500.00, 1500.00, 7.50, DATE_SUB(CURDATE(), INTERVAL 10 DAY), NULL, 'APPROVED', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 9 DAY), 'he_sales', 'he_sales', 0);
-
-INSERT INTO cloud_flow_db.hr_recruitment_request (
-  id, tenant_id, request_no, dept_id, position_id, headcount, job_requirements,
-  salary_min, salary_max, expected_date, process_instance_id, status, hired_count,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(2012, 100000, 'HRRQ202604070012', 110, 118, 1, '负责大客户售前方案设计、接口澄清与招投标答疑，能够独立输出行业解决方案与集成边界说明。',
- 25000.00, 35000.00, DATE_ADD(CURDATE(), INTERVAL 30 DAY), NULL, 'RECRUITING', 0, DATE_SUB(NOW(), INTERVAL 20 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0),
-(2013, 100000, 'HRRQ202604070013', 119, 117, 1, '负责 Web、移动端与流程配置场景测试，熟悉接口联调、回归测试与缺陷跟踪。',
- 14000.00, 20000.00, DATE_ADD(CURDATE(), INTERVAL 15 DAY), NULL, 'RECRUITING', 0, DATE_SUB(NOW(), INTERVAL 12 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_candidate (
-  id, tenant_id, request_id, name, gender, phone, email, resume_attachment_urls, source, status, reject_reason,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(3012, 100000, 2012, '顾文韬', 'MALE', '13900012021', 'gu.wentao@example.com', '/upload/hr/resume/guwentao.pdf,/upload/hr/resume/guwentao-project.pdf', 'HEADHUNTER', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 18 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
-(3013, 100000, 2012, '马会', 'FEMALE', '13900012022', 'ma.hui@example.com', '/upload/hr/resume/mahui.pdf', 'REFERRAL', 'SCREENING', NULL, DATE_SUB(NOW(), INTERVAL 16 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0),
-(3014, 100000, 2013, '冯子轩', 'MALE', '13900012023', 'feng.zixuan@example.com', '/upload/hr/resume/fengzixuan.pdf,/upload/hr/resume/fengzixuan-award.pdf', 'WEBSITE', 'INTERVIEW', NULL, DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), 'zhao', 'zhao', 0),
-(3015, 100000, 2013, '周绮雯', 'FEMALE', '13900012024', 'zhou.qiwen@example.com', '/upload/hr/resume/zhouqiwen.pdf', 'REFERRAL', 'OFFER', NULL, DATE_SUB(NOW(), INTERVAL 9 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_interview (
-  id, tenant_id, candidate_id, interview_round, interview_type, interview_time, interview_end_time, location,
-  meeting_room_id, meeting_room_name, schedule_event_id, interviewers,
-  evaluation, score, result, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(4013, 100000, 3012, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 7 DAY), INTERVAL 1 HOUR), '腾讯会议 方案组频道', NULL, NULL, NULL, '[10,11]', '方案结构完整，能清楚拆分集成边界与实施风险。', 88, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY), 'zhao', 'zhao', 0),
-(4014, 100000, 3012, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 4 DAY), INTERVAL 90 MINUTE), '上海总部 6F 战略会议室', NULL, NULL, NULL, '[1,10,13]', '行业场景理解较强，适合承担重点项目售前支撑。', 91, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY), 'zhao', 'zhao', 0),
-(4015, 100000, 3014, 'FIRST', 'VIDEO', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 3 DAY), INTERVAL 1 HOUR), '飞书会议 QA 频道', NULL, NULL, NULL, '[20,9]', '测试方法扎实，移动端兼容性场景经验较好。', 86, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY), 'zhao', 'zhao', 0),
-(4016, 100000, 3015, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL 1 DAY), INTERVAL 90 MINUTE), '上海总部 5F 面试区', NULL, NULL, NULL, '[20,2,4]', '沟通稳定，适合承担流程平台回归与发布验证工作。', 89, 'PASS', 'COMPLETED', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_offer (
-  id, tenant_id, offer_no, candidate_id, dept_id, position_id, salary, expected_date, expiry_date,
-  offer_content, process_instance_id, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
-(102, 100000, 'OFFER20260407000003', 3015, 119, 117, 18000.00, DATE_ADD(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 17 DAY),
- CONCAT('候选人：周绮雯\n', '拟入职部门：测试组\n', '岗位：测试工程师\n', '月度总包：18,000 元\n', '备注：负责流程平台与移动端回归测试。'),
- NULL, 'SENT', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 12 HOUR), 'zhao', 'zhao', 0);
-
 -- =========================================================
 -- 七、组织扩充后的业务联动数据拓展
 -- =========================================================
@@ -8261,152 +6944,6 @@ WHERE file_id IN (93001,93002,93003,93004,93005,93006,93007,93008,93009,93010);
 
 DELETE FROM cloud_flow_db.sys_audit_log
 WHERE audit_id IN (93001,93002,93003,93004);
-
-DELETE FROM cloud_flow_db.hr_reporting_line
-WHERE id IN (101,102,103,104,105,106,107,108,109,110,111,112);
-
-DELETE FROM cloud_flow_db.hr_headcount
-WHERE id IN (101,102,103,104,105,106,107,108,109,110,111,112,113);
-
-DELETE FROM cloud_flow_db.hr_employee_contract
-WHERE id IN (102,103,104,105,106,107,108,109,110,111,112);
-
-DELETE FROM cloud_flow_db.hr_employee_document
-WHERE id IN (103,104,105,106,107,108,109,110,111,112,113,114,115,116,117,118,119);
-
-DELETE FROM cloud_flow_db.hr_emergency_contact
-WHERE id IN (102,103,104,105,106,107,108,109,110,111,112);
-
--- 8.1 编制与汇报关系
-INSERT INTO cloud_flow_db.hr_headcount (
-  id, tenant_id, target_type, target_id, approved_count, actual_count, vacancy_count, effective_date, expiry_date, create_time, update_time
-) VALUES
-(101, 100000, 'DEPT', 109, 1, 1, 0, '2026-01-01', NULL, NOW(), NOW()),
-(102, 100000, 'DEPT', 114, 2, 1, 1, '2026-01-01', NULL, NOW(), NOW()),
-(103, 100000, 'DEPT', 110, 1, 1, 0, '2026-01-01', NULL, NOW(), NOW()),
-(104, 100000, 'DEPT', 115, 2, 1, 1, '2026-01-01', NULL, NOW(), NOW()),
-(105, 100000, 'DEPT', 111, 1, 1, 0, '2026-01-01', NULL, NOW(), NOW()),
-(106, 100000, 'DEPT', 116, 2, 1, 1, '2026-01-01', NULL, NOW(), NOW()),
-(107, 100000, 'DEPT', 112, 1, 1, 0, '2026-01-01', NULL, NOW(), NOW()),
-(108, 100000, 'DEPT', 117, 2, 1, 1, '2026-01-01', NULL, NOW(), NOW()),
-(109, 100000, 'DEPT', 113, 1, 1, 0, '2026-01-01', NULL, NOW(), NOW()),
-(110, 100000, 'DEPT', 118, 2, 1, 1, '2026-01-01', NULL, NOW(), NOW()),
-(111, 100000, 'DEPT', 119, 2, 1, 1, '2026-01-01', NULL, NOW(), NOW()),
-(112, 100000, 'POST', 11, 1, 0, 1, '2026-01-01', NULL, NOW(), NOW()),
-(113, 100000, 'POST', 10, 2, 1, 1, '2026-01-01', NULL, NOW(), NOW());
-
-INSERT INTO cloud_flow_db.hr_reporting_line (
-  id, tenant_id, employee_id, report_to_id, report_type, effective_date, expiry_date, create_time, update_time
-) VALUES
-(101, 100000, 1010, 1, 'DIRECT', '2024-01-15', NULL, NOW(), NOW()),
-(102, 100000, 1011, 1, 'DIRECT', '2023-11-06', NULL, NOW(), NOW()),
-(103, 100000, 1012, 1, 'DIRECT', '2024-03-11', NULL, NOW(), NOW()),
-(104, 100000, 1013, 1, 'DIRECT', '2023-08-21', NULL, NOW(), NOW()),
-(105, 100000, 1014, 1, 'DIRECT', '2024-02-19', NULL, NOW(), NOW()),
-(106, 100000, 1015, 1010, 'DIRECT', '2024-10-08', NULL, NOW(), NOW()),
-(107, 100000, 1016, 1011, 'DIRECT', '2026-01-15', NULL, NOW(), NOW()),
-(108, 100000, 1017, 1012, 'DIRECT', '2025-05-12', NULL, NOW(), NOW()),
-(109, 100000, 1018, 1013, 'DIRECT', '2024-09-09', NULL, NOW(), NOW()),
-(110, 100000, 1019, 1014, 'DIRECT', '2024-12-02', NULL, NOW(), NOW()),
-(111, 100000, 1020, 1014, 'DIRECT', '2026-02-03', NULL, NOW(), NOW()),
-(112, 100000, 1017, 1013, 'DOTTED', '2025-09-01', NULL, NOW(), NOW());
-
--- 8.2 新增员工合同、证件与紧急联系人
-INSERT INTO cloud_flow_db.hr_employee_contract (
-  id, tenant_id, employee_id, contract_type, contract_no, sign_date, start_date, end_date, duration, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(102, 100000, 1010, 'LABOR', 'LABOR-CF20240021-001', '2024-01-12', '2024-01-15', '2027-01-14', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(103, 100000, 1011, 'LABOR', 'LABOR-CF20230112-001', '2023-11-03', '2023-11-06', '2026-11-05', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(104, 100000, 1012, 'LABOR', 'LABOR-CF20240018-001', '2024-03-08', '2024-03-11', '2027-03-10', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(105, 100000, 1013, 'LABOR', 'LABOR-CF20230019-001', '2023-08-18', '2023-08-21', '2026-08-20', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(106, 100000, 1014, 'LABOR', 'LABOR-CF20240025-001', '2024-02-16', '2024-02-19', '2027-02-18', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(107, 100000, 1015, 'LABOR', 'LABOR-CF20240101-001', '2024-10-01', '2024-10-08', '2027-10-07', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(108, 100000, 1016, 'LABOR', 'LABOR-CF20260011-001', '2026-01-12', '2026-01-15', '2029-01-14', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(109, 100000, 1017, 'LABOR', 'LABOR-CF20250014-001', '2025-05-09', '2025-05-12', '2028-05-11', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(110, 100000, 1018, 'LABOR', 'LABOR-CF20240028-001', '2024-09-06', '2024-09-09', '2027-09-08', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(111, 100000, 1019, 'LABOR', 'LABOR-CF20240116-001', '2024-11-29', '2024-12-02', '2027-12-01', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0),
-(112, 100000, 1020, 'LABOR', 'LABOR-CF20260015-001', '2026-01-29', '2026-02-03', '2029-02-02', 36, 'ACTIVE', NOW(), NOW(), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_contract_attachment (
-  tenant_id, contract_id, file_name, file_url, sort_order,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100000, 102, 'contract-sunyucheng.pdf', 'https://demo.cloudflow.local/files/hr/contract-sunyucheng.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 102, 'contract-sunyucheng-annex.pdf', 'https://demo.cloudflow.local/files/hr/contract-sunyucheng-annex.pdf', 1,
- NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 103, 'contract-wusiyuan.pdf', 'https://demo.cloudflow.local/files/hr/contract-wusiyuan.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 104, 'contract-zhengyaning.pdf', 'https://demo.cloudflow.local/files/hr/contract-zhengyaning.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 105, 'contract-hejiashu.pdf', 'https://demo.cloudflow.local/files/hr/contract-hejiashu.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 106, 'contract-tangzhiyuan.pdf', 'https://demo.cloudflow.local/files/hr/contract-tangzhiyuan.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 107, 'contract-songqingyan.pdf', 'https://demo.cloudflow.local/files/hr/contract-songqingyan.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 108, 'contract-gaomu.pdf', 'https://demo.cloudflow.local/files/hr/contract-gaomu.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 109, 'contract-xuke.pdf', 'https://demo.cloudflow.local/files/hr/contract-xuke.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 110, 'contract-pengxiao.pdf', 'https://demo.cloudflow.local/files/hr/contract-pengxiao.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 111, 'contract-xulei.pdf', 'https://demo.cloudflow.local/files/hr/contract-xulei.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 112, 'contract-hanyue.pdf', 'https://demo.cloudflow.local/files/hr/contract-hanyue.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_document (
-  id, tenant_id, employee_id, document_type, document_no, issue_date, expiry_date,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(103, 100000, 1010, 'ID_CARD', '310101198908162115', '2018-08-16', '2038-08-16', NOW(), NOW(), 'zhao', 'zhao', 0),
-(104, 100000, 1011, 'ID_CARD', '320582199003092431', '2019-03-09', '2039-03-09', NOW(), NOW(), 'zhao', 'zhao', 0),
-(105, 100000, 1012, 'ID_CARD', '310104199207231828', '2017-07-23', '2037-07-23', NOW(), NOW(), 'zhao', 'zhao', 0),
-(106, 100000, 1013, 'ID_CARD', '330106198811021017', '2018-11-02', '2038-11-02', NOW(), NOW(), 'zhao', 'zhao', 0),
-(107, 100000, 1014, 'ID_CARD', '320311199101170934', '2016-01-17', '2036-01-17', NOW(), NOW(), 'zhao', 'zhao', 0),
-(108, 100000, 1015, 'ID_CARD', '310107199505122126', '2015-05-12', '2035-05-12', NOW(), NOW(), 'zhao', 'zhao', 0),
-(109, 100000, 1016, 'ID_CARD', '320583199702143415', '2017-02-14', '2037-02-14', NOW(), NOW(), 'zhao', 'zhao', 0),
-(110, 100000, 1017, 'ID_CARD', '330105199610304268', '2016-10-30', '2036-10-30', NOW(), NOW(), 'zhao', 'zhao', 0),
-(111, 100000, 1018, 'ID_CARD', '320585199409073439', '2014-09-07', '2034-09-07', NOW(), NOW(), 'zhao', 'zhao', 0),
-(112, 100000, 1019, 'ID_CARD', '340111199512194512', '2015-12-19', '2035-12-19', NOW(), NOW(), 'zhao', 'zhao', 0),
-(113, 100000, 1020, 'ID_CARD', '320104199804212826', '2018-04-21', '2038-04-21', NOW(), NOW(), 'zhao', 'zhao', 0),
-(114, 100000, 1015, 'DIPLOMA', 'DIP-2017-1015', '2017-07-01', NULL, NOW(), NOW(), 'zhao', 'zhao', 0),
-(115, 100000, 1016, 'DIPLOMA', 'DIP-2019-1016', '2019-07-01', NULL, NOW(), NOW(), 'zhao', 'zhao', 0),
-(116, 100000, 1017, 'DIPLOMA', 'DIP-2018-1017', '2018-07-01', NULL, NOW(), NOW(), 'zhao', 'zhao', 0),
-(117, 100000, 1018, 'DIPLOMA', 'DIP-2016-1018', '2016-07-01', NULL, NOW(), NOW(), 'zhao', 'zhao', 0),
-(118, 100000, 1019, 'DIPLOMA', 'DIP-2018-1019', '2018-07-01', NULL, NOW(), NOW(), 'zhao', 'zhao', 0),
-(119, 100000, 1020, 'DIPLOMA', 'DIP-2020-1020', '2020-07-01', NULL, NOW(), NOW(), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_employee_document_attachment (
-  tenant_id, document_id, file_name, file_url, sort_order,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(100000, 103, 'doc-sunyucheng-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-sunyucheng-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 103, 'doc-sunyucheng-idcard-back.pdf', 'https://demo.cloudflow.local/files/hr/doc-sunyucheng-idcard-back.pdf', 1,
- NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 104, 'doc-wusiyuan-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-wusiyuan-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 105, 'doc-zhengyaning-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-zhengyaning-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 106, 'doc-hejiashu-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-hejiashu-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 107, 'doc-tangzhiyuan-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-tangzhiyuan-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 108, 'doc-songqingyan-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-songqingyan-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 109, 'doc-gaomu-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-gaomu-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 110, 'doc-xuke-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-xuke-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 111, 'doc-pengxiao-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-pengxiao-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 112, 'doc-xulei-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-xulei-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 113, 'doc-hanyue-idcard.pdf', 'https://demo.cloudflow.local/files/hr/doc-hanyue-idcard.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 114, 'doc-songqingyan-diploma.pdf', 'https://demo.cloudflow.local/files/hr/doc-songqingyan-diploma.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 115, 'doc-gaomu-diploma.pdf', 'https://demo.cloudflow.local/files/hr/doc-gaomu-diploma.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 116, 'doc-xuke-diploma.pdf', 'https://demo.cloudflow.local/files/hr/doc-xuke-diploma.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 117, 'doc-pengxiao-diploma.pdf', 'https://demo.cloudflow.local/files/hr/doc-pengxiao-diploma.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 118, 'doc-xulei-diploma.pdf', 'https://demo.cloudflow.local/files/hr/doc-xulei-diploma.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0),
-(100000, 119, 'doc-hanyue-diploma.pdf', 'https://demo.cloudflow.local/files/hr/doc-hanyue-diploma.pdf', 0, NOW(), NOW(), 'zhao', 'zhao', 0);
-
-INSERT INTO cloud_flow_db.hr_emergency_contact (
-  id, tenant_id, employee_id, contact_name, relationship, phone, address, priority,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(102, 100000, 1010, '陈晓雯', 'SPOUSE', '13800021010', '上海市浦东新区锦绣路 1888 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(103, 100000, 1011, '吴建平', 'PARENT', '13800021011', '江苏省苏州市工业园区星海街 118 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(104, 100000, 1012, '郑文静', 'SIBLING', '13800021012', '上海市杨浦区国顺东路 288 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(105, 100000, 1013, '何玉兰', 'SPOUSE', '13800021013', '杭州市西湖区文三路 388 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(106, 100000, 1014, '唐国强', 'PARENT', '13800021014', '南京市建邺区江东中路 399 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(107, 100000, 1015, '宋雅琴', 'PARENT', '13800021015', '上海市徐汇区漕溪北路 520 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(108, 100000, 1016, '高文博', 'PARENT', '13800021016', '苏州市姑苏区干将西路 168 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(109, 100000, 1017, '徐可欣', 'SIBLING', '13800021017', '宁波市鄞州区天童南路 517 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(110, 100000, 1018, '彭立新', 'PARENT', '13800021018', '无锡市滨湖区太湖大道 777 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(111, 100000, 1019, '许晨曦', 'SPOUSE', '13800021019', '合肥市蜀山区望江西路 618 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0),
-(112, 100000, 1020, '韩淑媛', 'PARENT', '13800021020', '南京市雨花台区软件大道 99 号', 1, NOW(), NOW(), 'zhao', 'zhao', 0);
 
 -- 8.3 文件归档与审计记录
 INSERT INTO cloud_flow_db.sys_file (
@@ -8804,9 +7341,6 @@ WHERE log_id IN (93011,93012,93013,93014,93015,93016,93017,93018);
 DELETE FROM cloud_flow_db.sys_frontend_error_log
 WHERE id IN (99511,99512,99513,99514,99515,99516);
 
-DELETE FROM cloud_flow_db.hr_audit_log
-WHERE id IN (101,102,103,104,105,106,107,108);
-
 DELETE FROM cloud_flow_db.wf_urge_effect
 WHERE task_id IN ('seed_task_hr_att_001', 'seed_task_hr_leave_001', 'seed_task_hr_salary_001');
 
@@ -8831,9 +7365,9 @@ INSERT INTO cloud_flow_db.sys_log (
 (93016, 100000, '0', '移动端回归用例池更新', 'cloudflow-oa', '10.10.3.16',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
  '/api/oa/task/update/9430', 'PUT', '{"taskId":9430,"status":"DOING"}', 104, NULL, 'han_qa', DATE_SUB(NOW(), INTERVAL 70 MINUTE)),
-(93017, 100000, '0', '员工合同档案补录', 'cloudflow-hr', '10.10.3.17',
+(93017, 100000, '0', '员工主数据合同补录', 'cloudflow-hr', '10.10.3.17',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/employee/contract/save', 'POST', '{"employeeId":1016,"contractNo":"LABOR-CF20260011-001"}', 132, NULL, 'zhao', DATE_SUB(NOW(), INTERVAL 55 MINUTE)),
+ '/api/hr/employees/contracts', 'POST', '{"employeeId":1016,"contractNo":"LABOR-CF20260011-001"}', 132, NULL, 'zhao', DATE_SUB(NOW(), INTERVAL 55 MINUTE)),
 (93018, 100000, '0', '出差报销归档确认', 'cloudflow-oa', '10.10.3.18',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
  '/api/oa/expense/claim/archive/9012', 'POST', '{"claimId":9012}', 88, NULL, 'gao_delivery', DATE_SUB(NOW(), INTERVAL 40 MINUTE));
@@ -8892,76 +7426,16 @@ INSERT INTO cloud_flow_db.sys_frontend_error_log (
  JSON_OBJECT('module','visitor','page','VisitorPage','env','seed'),
  JSON_OBJECT('visitorId',9714,'noticeId',9924),
  '10.10.3.35', 13, '何嘉树', DATE_SUB(NOW(), INTERVAL 75 MINUTE), DATE_SUB(NOW(), INTERVAL 75 MINUTE)),
-(99516, 100000, '员工合同上传后预览空白',
+(99516, 100000, '员工主数据合同上传后预览空白',
  'TypeError: Cannot read properties of undefined (reading ''url'')',
- 'at ContractPreviewDrawer (src/pages/hr/EmployeeContractPage.tsx:164)\nat EmployeeContractPage',
+ 'at ContractPreviewDrawer (src/pages/hr/HrEmployeePage.tsx:164)\nat HrEmployeePage',
  'HR 查看新增员工合同预览',
- '/hr/employee/contracts',
+ '/hr/employees',
  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
  'error',
- JSON_OBJECT('module','hr','page','EmployeeContractPage','env','seed'),
+ JSON_OBJECT('module','hr','page','HrEmployeePage','env','seed'),
  JSON_OBJECT('employeeId',1016,'contractId',108),
  '10.10.3.36', 4, '赵HR', DATE_SUB(NOW(), INTERVAL 50 MINUTE), DATE_SUB(NOW(), INTERVAL 50 MINUTE));
-
-INSERT INTO cloud_flow_db.hr_audit_log (
-  id, tenant_id, log_type, operation_type, business_module, business_type, business_id, business_no,
-  operator_id, operator_name, operation_desc, before_data, after_data, change_content, approval_comment, approval_result,
-  ip_address, user_agent, request_uri, request_method, request_params, execution_time, status, error_message, create_time, archived, archive_time
-) VALUES
-(101, 100000, 'OPERATION', 'CREATE', 'EMPLOYEE', 'EMPLOYEE_CONTRACT', 108, 'LABOR-CF20260011-001',
- 4, '赵HR', '为高牧补录劳动合同档案', NULL,
- '{"employeeId":1016,"contractNo":"LABOR-CF20260011-001","status":"ACTIVE"}',
- '新增交付顾问劳动合同档案并挂接电子合同文件。', NULL, NULL,
- '10.10.3.41', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/employee/contract/save', 'POST', '{"employeeId":1016,"contractType":"LABOR"}', 132, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 55 MINUTE), 0, NULL),
-(102, 100000, 'OPERATION', 'CREATE', 'EMPLOYEE', 'EMPLOYEE_DOCUMENT', 115, 'DIP-2019-1016',
- 4, '赵HR', '为高牧补录学历证书', NULL,
- '{"employeeId":1016,"documentType":"DIPLOMA","documentNo":"DIP-2019-1016"}',
- '新增实施顾问学历证书扫描件，供入职资料归档。', NULL, NULL,
- '10.10.3.42', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/employee/document/save', 'POST', '{"employeeId":1016,"documentType":"DIPLOMA"}', 98, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 52 MINUTE), 0, NULL),
-(103, 100000, 'APPROVAL', 'APPROVE', 'ATTENDANCE', 'ATTENDANCE_APPEAL', 9311, 'KQ202604070011',
- 2, '李经理', '审批前端测试外勤补卡申请',
- '{"status":"PENDING","missingTime":"08:58:00"}',
- '{"status":"APPROVED","missingTime":"08:58:00"}',
- '直属上级确认员工确在苏州客户园区现场办公。', '情况属实，同意补卡。', 'APPROVED',
- '10.10.3.43', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/attendance/appeal/approve', 'POST', '{"id":9311,"decision":"APPROVE"}', 176, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 6 HOUR), 0, NULL),
-(104, 100000, 'APPROVAL', 'APPROVE', 'ATTENDANCE', 'LEAVE_APPLICATION', 9004, 'QJ202604070004',
- 12, '郑雅宁', '审批徐珂调休申请',
- '{"status":"PENDING","duration":1.00}',
- '{"status":"APPROVED","duration":1.00}',
- '客户成功专员完成重点客户复盘后安排补休。', '申请内容合理，已做好客户交接。', 'APPROVED',
- '10.10.3.44', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/leave/approve', 'POST', '{"id":9004,"decision":"APPROVE"}', 143, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 16 HOUR), 0, NULL),
-(105, 100000, 'APPROVAL', 'APPROVE', 'SALARY', 'SALARY_ADJUSTMENT', 102, 'SA202604070012',
- 1, 'Admin', '审批宋清妍绩效调薪申请',
- '{"status":"PENDING","afterTotal":21000.00}',
- '{"status":"APPROVED","afterTotal":21000.00}',
- '产品经理完成跨部门需求闭环后追加绩效奖金。', '绩效成果清晰，同意生效。', 'APPROVED',
- '10.10.3.45', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/salary/adjustment/approve', 'POST', '{"id":102,"decision":"APPROVE"}', 208, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 14 HOUR), 0, NULL),
-(106, 100000, 'OPERATION', 'UPDATE', 'RECRUITMENT', 'RECRUITMENT_REQUEST', 2012, 'HRRQ202604070012',
- 4, '赵HR', '更新解决方案架构师招聘需求附件',
- '{"status":"RECRUITING","fileAttached":false}',
- '{"status":"RECRUITING","fileAttached":true}',
- '补充岗位说明书和候选人筛选标准文件。', NULL, NULL,
- '10.10.3.46', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/recruitment/request/update', 'PUT', '{"id":2012,"attachment":"93007"}', 121, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 9 HOUR), 0, NULL),
-(107, 100000, 'OPERATION', 'UPDATE', 'EMPLOYEE', 'REPORTING_LINE', 112, 'REPORT-1017-DOTTED',
- 4, '赵HR', '维护徐珂虚线汇报关系',
- '{"employeeId":1017,"reportToId":null,"reportType":"DOTTED"}',
- '{"employeeId":1017,"reportToId":1013,"reportType":"DOTTED"}',
- '为客户成功与销售联动场景补充虚线汇报关系。', NULL, NULL,
- '10.10.3.47', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/reporting-line/save', 'POST', '{"employeeId":1017,"reportToId":1013,"reportType":"DOTTED"}', 87, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 2 HOUR), 0, NULL),
-(108, 100000, 'OPERATION', 'UPDATE', 'EMPLOYEE', 'HEADCOUNT', 104, 'HC-DEPT-115',
- 1, 'Admin', '更新交付一组编制信息',
- '{"approvedCount":1,"actualCount":1,"vacancyCount":0}',
- '{"approvedCount":2,"actualCount":1,"vacancyCount":1}',
- '考虑后续扩充方案架构师协同岗位，补充交付一组编制空缺。', NULL, NULL,
- '10.10.3.48', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/135.0.0.0 Safari/537.36',
- '/api/hr/headcount/update', 'PUT', '{"id":104,"approvedCount":2}', 73, 'SUCCESS', NULL, DATE_SUB(NOW(), INTERVAL 3 DAY), 0, NULL);
 
 INSERT INTO cloud_flow_db.wf_urge_effect (
   tenant_id, task_id, urge_count, first_urge_time, last_urge_time, task_complete_time, response_seconds
@@ -9533,375 +8007,520 @@ ON DUPLICATE KEY UPDATE
   max_duration = VALUES(max_duration),
   update_time = VALUES(update_time);
 
-
--- =========================================================
--- 十、绩效复杂场景演示数据（原 07.cloudflow-performance-demo.sql 并入）
--- =========================================================
-
--- 绩效复杂场景演示数据
--- 导入顺序：03.cloudflow-hr.sql -> 06.cloudflow-business-seed.sql -> 本文件
--- 覆盖：自定义类型/单位、多指标权重、多部门级联、多层部门拆解、全状态、归档快照、超额封顶、低完成率、百分比指标、调薪联动
--- 可重复执行：先清理 PF_DEMO_* 与 SA_PERF_DEMO_* 演示数据，并补齐绩效分解依赖的演示员工档案
-
-DELETE FROM cloud_flow_db.hr_salary_adjustment
-WHERE tenant_id = 100000
-  AND (
-    application_no LIKE 'SA_PERF_DEMO_%'
-    OR (source_type = 'PERFORMANCE_OBJECTIVE' AND source_id IN (910001, 910002, 910003, 910004, 910005, 910006, 910007, 910008))
-  );
-
-DELETE FROM cloud_flow_db.hr_performance_assignment
-WHERE tenant_id = 100000
-  AND objective_id IN (
-    SELECT id FROM cloud_flow_db.hr_performance_objective
-    WHERE tenant_id = 100000
-      AND objective_no IN (
-        'PF_DEMO_SALES_MULTI_2026Q2',
-        'PF_DEMO_DELIVERY_COUNT_2026Q2',
-        'PF_DEMO_CASCADE_MULTI_DEPT_2026Q2',
-        'PF_DEMO_DRAFT_PERCENT_2026Q3',
-        'PF_DEMO_PLAN_APPROVING_2026Q3',
-        'PF_DEMO_RESULT_APPROVING_LOW_2026Q2',
-        'PF_DEMO_COMPLETED_ARCHIVE_CAP_2026Q1',
-        'PF_DEMO_REJECTED_2026Q3'
-      )
-  );
-
-DELETE FROM cloud_flow_db.hr_performance_objective
-WHERE tenant_id = 100000
-  AND objective_no IN (
-    'PF_DEMO_SALES_MULTI_2026Q2',
-    'PF_DEMO_DELIVERY_COUNT_2026Q2',
-    'PF_DEMO_CASCADE_MULTI_DEPT_2026Q2',
-    'PF_DEMO_DRAFT_PERCENT_2026Q3',
-    'PF_DEMO_PLAN_APPROVING_2026Q3',
-    'PF_DEMO_RESULT_APPROVING_LOW_2026Q2',
-    'PF_DEMO_COMPLETED_ARCHIVE_CAP_2026Q1',
-        'PF_DEMO_REJECTED_2026Q3'
-  );
-
-INSERT INTO cloud_flow_db.hr_position (
-  id, tenant_id, position_code, position_name, family_id, level_id, post_id,
-  job_description, requirements, work_content, status, create_time, update_time
-) VALUES
-(107, 100000, 'PRODUCT_DIRECTOR_M3', '产品总监', 101, 110, 2,
- '负责产品方向、跨部门需求优先级与版本路线图管理', '具备企业软件产品规划、B端需求分析与跨部门推进能力', '统筹产品规划、交付协同与重点客户需求决策', 1, '2026-03-21 09:00:00', '2026-03-21 09:00:00'),
-(108, 100000, 'DELIVERY_MANAGER_M2', '交付经理', 102, 109, 2,
- '负责实施团队管理与重点项目上线交付', '熟悉 SaaS 项目实施、培训、验收与风险管理', '统筹交付资源、项目计划与客户上线保障', 1, '2026-03-21 09:05:00', '2026-03-21 09:05:00'),
-(109, 100000, 'CS_MANAGER_M2', '客户成功经理', 103, 109, 2,
- '负责重点客户续约、活跃度与客户经营体系建设', '具备续约经营、数据复盘与客户关系管理能力', '统筹客户经营计划、续约节奏与高风险客户治理', 1, '2026-03-21 09:10:00', '2026-03-21 09:10:00'),
-(110, 100000, 'SALES_MANAGER_M2', '销售经理', 103, 109, 2,
- '负责商机管理、方案推进与销售目标达成', '具备企业软件销售与方案型沟通能力', '统筹商机漏斗、重点客户拜访与签约推进', 1, '2026-03-21 09:15:00', '2026-03-21 09:15:00'),
-(111, 100000, 'OPS_MANAGER_M2', '运维经理', 100, 109, 2,
- '负责运维团队管理、发布保障与应急机制建设', '熟悉 DevOps、监控告警与稳定性治理', '统筹发布窗口、巡检计划和重大故障应急响应', 1, '2026-03-21 09:20:00', '2026-03-21 09:20:00'),
-(112, 100000, 'PRODUCT_MANAGER_P4', '产品经理', 101, 103, 5,
- '负责流程、OA 与 HR 产品需求设计与版本管理', '熟悉原型设计、需求拆解和数据驱动优化', '输出需求文档、原型与版本验收标准', 1, '2026-03-21 09:25:00', '2026-03-21 09:25:00'),
-(113, 100000, 'DELIVERY_CONSULTANT_P3', '实施顾问', 102, 102, 6,
- '负责客户现场实施、培训和上线支持', '熟悉流程配置、权限模型与项目交付方法论', '执行实施计划、培训客户管理员并收敛问题清单', 1, '2026-03-21 09:30:00', '2026-03-21 09:30:00'),
-(114, 100000, 'CUSTOMER_SUCCESS_P3', '客户成功专员', 103, 102, 7,
- '负责客户活跃度、续约推进与经营分析', '具备客户沟通、经营计划和续约跟进能力', '跟进续约、使用情况和重点客户问题闭环', 1, '2026-03-21 09:35:00', '2026-03-21 09:35:00'),
-(115, 100000, 'SALES_CONSULTANT_P3', '销售顾问', 103, 102, 8,
- '负责重点商机跟进、方案讲解和合同推进', '具备企业软件销售与行业方案沟通能力', '推进客户拜访、方案演示和签约流程', 1, '2026-03-21 09:40:00', '2026-03-21 09:40:00'),
-(116, 100000, 'DEVOPS_P3', '运维工程师', 100, 102, 9,
- '负责环境巡检、发布保障和性能告警处理', '熟悉 CI/CD、监控平台和故障应急处理', '执行发布、巡检、备份和告警响应', 1, '2026-03-21 09:45:00', '2026-03-21 09:45:00'),
-(117, 100000, 'QA_P3', '测试工程师', 100, 102, 10,
- '负责测试计划、回归验证与上线质量把控', '熟悉 Web 测试、接口测试和自动化用例设计', '执行测试用例、输出缺陷报告与上线验收', 1, '2026-03-21 09:50:00', '2026-03-21 09:50:00')
-ON DUPLICATE KEY UPDATE
-  position_name = VALUES(position_name),
-  family_id = VALUES(family_id),
-  level_id = VALUES(level_id),
-  post_id = VALUES(post_id),
-  job_description = VALUES(job_description),
-  requirements = VALUES(requirements),
-  work_content = VALUES(work_content),
-  status = VALUES(status),
-  update_time = VALUES(update_time);
-
-INSERT INTO cloud_flow_db.hr_employee (
-  id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id,
-  employee_type, employee_status, hire_date, regular_date, resign_date, user_id,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(1010, 100000, 'CF20240021', '孙雨澄', 'MALE', '1989-08-16', '13800010110', 'sun.pm@cloudflow.com', 109, 2, 107,
- 'FULL_TIME', 'REGULAR', '2024-01-15', '2024-07-15', NULL, 10, '2026-03-21 10:00:00', '2026-03-21 10:00:00', 'admin', 'admin', 0),
-(1011, 100000, 'CF20230112', '吴思远', 'MALE', '1990-03-09', '13800010111', 'wu.delivery@cloudflow.com', 110, 2, 108,
- 'FULL_TIME', 'REGULAR', '2023-11-06', '2024-05-06', NULL, 11, '2026-03-21 10:05:00', '2026-03-21 10:05:00', 'admin', 'admin', 0),
-(1012, 100000, 'CF20240018', '郑雅宁', 'FEMALE', '1992-07-23', '13800010112', 'zheng.cs@cloudflow.com', 111, 2, 109,
- 'FULL_TIME', 'REGULAR', '2024-03-11', '2024-09-11', NULL, 12, '2026-03-21 10:10:00', '2026-03-21 10:10:00', 'admin', 'admin', 0),
-(1013, 100000, 'CF20230019', '何嘉树', 'MALE', '1988-11-02', '13800010113', 'he.sales@cloudflow.com', 112, 2, 110,
- 'FULL_TIME', 'REGULAR', '2023-08-21', '2024-02-21', NULL, 13, '2026-03-21 10:15:00', '2026-03-21 10:15:00', 'admin', 'admin', 0),
-(1014, 100000, 'CF20240025', '唐志远', 'MALE', '1991-01-17', '13800010114', 'tang.ops@cloudflow.com', 113, 2, 111,
- 'FULL_TIME', 'REGULAR', '2024-02-19', '2024-08-19', NULL, 14, '2026-03-21 10:20:00', '2026-03-21 10:20:00', 'admin', 'admin', 0),
-(1015, 100000, 'CF20240101', '宋清妍', 'FEMALE', '1995-05-12', '13800010115', 'song.product@cloudflow.com', 114, 5, 112,
- 'FULL_TIME', 'REGULAR', '2024-10-08', '2025-04-08', NULL, 15, '2026-03-21 10:25:00', '2026-03-21 10:25:00', 'admin', 'admin', 0),
-(1016, 100000, 'CF20260011', '高牧', 'MALE', '1997-02-14', '13800010116', 'gao.delivery@cloudflow.com', 115, 6, 113,
- 'FULL_TIME', 'PROBATION', '2026-01-15', '2026-07-15', NULL, 16, '2026-03-21 10:30:00', '2026-03-21 10:30:00', 'admin', 'admin', 0),
-(1017, 100000, 'CF20250014', '徐珂', 'FEMALE', '1996-10-30', '13800010117', 'xu.cs@cloudflow.com', 116, 7, 114,
- 'FULL_TIME', 'REGULAR', '2025-05-12', '2025-11-12', NULL, 17, '2026-03-21 10:35:00', '2026-03-21 10:35:00', 'admin', 'admin', 0),
-(1018, 100000, 'CF20240028', '彭骁', 'MALE', '1994-09-07', '13800010118', 'peng.sales@cloudflow.com', 117, 8, 115,
- 'FULL_TIME', 'REGULAR', '2024-09-09', '2025-03-09', NULL, 18, '2026-03-21 10:40:00', '2026-03-21 10:40:00', 'admin', 'admin', 0),
-(1019, 100000, 'CF20240116', '许磊', 'MALE', '1995-12-19', '13800010119', 'xu.ops@cloudflow.com', 118, 9, 116,
- 'FULL_TIME', 'REGULAR', '2024-12-02', '2025-06-02', NULL, 19, '2026-03-21 10:45:00', '2026-03-21 10:45:00', 'admin', 'admin', 0),
-(1020, 100000, 'CF20260015', '韩悦', 'FEMALE', '1998-04-21', '13800010120', 'han.qa@cloudflow.com', 119, 10, 117,
- 'FULL_TIME', 'PROBATION', '2026-02-03', '2026-08-03', NULL, 20, '2026-03-21 10:50:00', '2026-03-21 10:50:00', 'admin', 'admin', 0)
-ON DUPLICATE KEY UPDATE
-  employee_no = VALUES(employee_no),
-  name = VALUES(name),
-  gender = VALUES(gender),
-  birth_date = VALUES(birth_date),
-  phone = VALUES(phone),
-  email = VALUES(email),
-  dept_id = VALUES(dept_id),
-  post_id = VALUES(post_id),
-  position_id = VALUES(position_id),
-  employee_type = VALUES(employee_type),
-  employee_status = VALUES(employee_status),
-  hire_date = VALUES(hire_date),
-  regular_date = VALUES(regular_date),
-  resign_date = VALUES(resign_date),
-  user_id = VALUES(user_id),
-  update_time = VALUES(update_time),
-  update_by = VALUES(update_by),
-  deleted = VALUES(deleted);
-
-INSERT INTO cloud_flow_db.hr_performance_objective (
-  id, tenant_id, objective_no, cycle_name, cycle_start_date, cycle_end_date,
-  objective_name, total_target_amount, category_codes, category_config, metric_config,
-  score_cap, archived_actual_amount, archived_completion_rate, archived_capped_rate,
-  archived_score, archived_grade, archived_time, archive_snapshot,
-  plan_process_instance_id, result_process_instance_id, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(910001, 100000, 'PF_DEMO_SALES_MULTI_2026Q2', '2026 Q2', '2026-04-01', '2026-06-30',
- '销售部多类型多指标绩效演示', 0.0000, 'CORE_GOODS,NEW_CUSTOMER',
- '[{"categoryCode":"CORE_GOODS","categoryName":"核心产品线"},{"categoryCode":"NEW_CUSTOMER","categoryName":"新签客户包"}]',
- '[{"metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","valueType":"DECIMAL","precision":2,"metricWeight":60},{"metricCode":"SALES_QTY","metricName":"销售量","metricUnit":"件","valueType":"INTEGER","precision":0,"metricWeight":40}]',
- 120.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'seed_perf_plan_910001', NULL, 'PLAN_APPROVED',
- NOW(), NOW(), 'admin', 'admin', 0),
-(910002, 100000, 'PF_DEMO_DELIVERY_COUNT_2026Q2', '2026 Q2', '2026-04-01', '2026-06-30',
- '交付部数量指标绩效演示', 48.0000, 'PROJECT_DELIVERY',
- '[{"categoryCode":"PROJECT_DELIVERY","categoryName":"项目交付"}]',
- '[{"metricCode":"DELIVERY_COUNT","metricName":"交付件数","metricUnit":"件","valueType":"INTEGER","precision":0,"metricWeight":100}]',
- 120.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'seed_perf_plan_910002', NULL, 'PLAN_APPROVED',
- NOW(), NOW(), 'admin', 'admin', 0),
-(910003, 100000, 'PF_DEMO_CASCADE_MULTI_DEPT_2026Q2', '2026 Q2', '2026-04-01', '2026-06-30',
- '多部门级联与多层拆解演示', 120.0000, 'SALES_PIPELINE,DELIVERY_TASK',
- '[{"categoryCode":"SALES_PIPELINE","categoryName":"销售商机推进"},{"categoryCode":"DELIVERY_TASK","categoryName":"交付任务闭环"}]',
- '[{"metricCode":"TASK_COUNT","metricName":"任务数量","metricUnit":"件","valueType":"INTEGER","precision":0,"metricWeight":100}]',
- 120.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'seed_perf_plan_910003', NULL, 'PLAN_APPROVED',
- NOW(), NOW(), 'admin', 'admin', 0),
-(910004, 100000, 'PF_DEMO_DRAFT_PERCENT_2026Q3', '2026 Q3', '2026-07-01', '2026-09-30',
- '草稿百分比指标演示', 95.0000, 'QUALITY',
- '[{"categoryCode":"QUALITY","categoryName":"质量目标"}]',
- '[{"metricCode":"PASS_RATE","metricName":"验收通过率","metricUnit":"%","valueType":"PERCENT","precision":2,"metricWeight":100}]',
- 120.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'DRAFT',
- NOW(), NOW(), 'admin', 'admin', 0),
-(910005, 100000, 'PF_DEMO_PLAN_APPROVING_2026Q3', '2026 Q3', '2026-07-01', '2026-09-30',
- '计划审批中状态演示', 20.0000, 'ROADMAP',
- '[{"categoryCode":"ROADMAP","categoryName":"路线图事项"}]',
- '[{"metricCode":"ITEM_COUNT","metricName":"事项数量","metricUnit":"个","valueType":"INTEGER","precision":0,"metricWeight":100}]',
- 120.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'seed_perf_plan_910005', NULL, 'PLAN_APPROVING',
- NOW(), NOW(), 'admin', 'admin', 0),
-(910006, 100000, 'PF_DEMO_RESULT_APPROVING_LOW_2026Q2', '2026 Q2', '2026-04-01', '2026-06-30',
- '结果审批中低完成率演示', 200000.0000, 'CUSTOMER_RENEWAL',
- '[{"categoryCode":"CUSTOMER_RENEWAL","categoryName":"客户续约"}]',
- '[{"metricCode":"RENEWAL_AMOUNT","metricName":"续约额","metricUnit":"元","valueType":"DECIMAL","precision":2,"metricWeight":100}]',
- 120.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'seed_perf_plan_910006', 'seed_perf_result_910006', 'RESULT_APPROVING',
- NOW(), NOW(), 'admin', 'admin', 0),
-(910007, 100000, 'PF_DEMO_COMPLETED_ARCHIVE_CAP_2026Q1', '2026 Q1', '2026-01-01', '2026-03-31',
- '归档超额封顶与调薪联动演示', 100000.0000, 'KEY_ACCOUNT',
- '[{"categoryCode":"KEY_ACCOUNT","categoryName":"重点客户"}]',
- '[{"metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","valueType":"DECIMAL","precision":2,"metricWeight":100}]',
- 120.00, 150000.0000, 150.00, 120.00, 120.00, 'S', '2026-04-02 10:00:00',
- '{"id":910007,"objectiveNo":"PF_DEMO_COMPLETED_ARCHIVE_CAP_2026Q1","cycleName":"2026 Q1","cycleStartDate":"2026-01-01","cycleEndDate":"2026-03-31","objectiveName":"归档超额封顶与调薪联动演示","totalTargetAmount":100000.00,"actualAmount":150000.00,"completionRate":150.00,"cappedRate":120.00,"score":120.00,"grade":"S","categoryCodes":["KEY_ACCOUNT"],"categoryDefinitions":[{"categoryCode":"KEY_ACCOUNT","categoryName":"重点客户"}],"metrics":[{"metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","valueType":"DECIMAL","precision":2,"metricWeight":100}],"scoreCap":120.00,"archivedActualAmount":150000.00,"archivedCompletionRate":150.00,"archivedCappedRate":120.00,"archivedScore":120.00,"archivedGrade":"S","archivedTime":"2026-04-02T10:00:00","planProcessInstanceId":"seed_perf_plan_910007","resultProcessInstanceId":"seed_perf_result_910007","status":"COMPLETED","departmentCount":1,"leafTaskCount":2,"createTime":"2026-01-02T09:00:00","updateTime":"2026-04-02T10:00:00","assignments":[{"id":920701,"objectiveId":910007,"parentId":null,"nodeKey":"ROOT:DEPT:112","assigneeType":"DEPT","assigneeId":112,"assigneeName":"销售部","categoryCode":null,"categoryName":null,"metricCode":null,"metricName":null,"metricUnit":null,"metricValueType":null,"metricPrecision":2,"metricWeight":100.00,"targetAmount":100000.00,"actualAmount":150000.00,"completionRate":150.00,"cappedRate":120.00,"score":120.00,"grade":"S","quotaSource":"MANAGER","locked":true,"ownerEmployeeId":1013,"sortOrder":1,"status":"COMPLETED","createTime":"2026-01-02T09:00:00","updateTime":"2026-04-02T10:00:00","children":[{"id":920710,"objectiveId":910007,"parentId":920701,"nodeKey":"CATEGORY:920701:KEY_ACCOUNT:SALES_AMOUNT","assigneeType":"DEPT","assigneeId":112,"assigneeName":"销售部","categoryCode":"KEY_ACCOUNT","categoryName":"重点客户","metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","metricValueType":"DECIMAL","metricPrecision":2,"metricWeight":100.00,"targetAmount":100000.00,"actualAmount":150000.00,"completionRate":150.00,"cappedRate":120.00,"score":120.00,"grade":"S","quotaSource":"MANAGER","locked":true,"ownerEmployeeId":1013,"sortOrder":1,"status":"COMPLETED","createTime":"2026-01-02T09:00:00","updateTime":"2026-04-02T10:00:00","children":[{"id":920711,"objectiveId":910007,"parentId":920710,"nodeKey":"EMPLOYEE:920710:1013","assigneeType":"EMPLOYEE","assigneeId":1013,"assigneeName":"何嘉树","categoryCode":"KEY_ACCOUNT","categoryName":"重点客户","metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","metricValueType":"DECIMAL","metricPrecision":2,"metricWeight":100.00,"targetAmount":40000.00,"actualAmount":70000.00,"completionRate":175.00,"cappedRate":120.00,"score":120.00,"grade":"S","quotaSource":"DEPT_OWNER","locked":false,"ownerEmployeeId":1013,"sortOrder":1,"status":"COMPLETED","createTime":"2026-01-02T09:00:00","updateTime":"2026-04-02T10:00:00","children":[]},{"id":920712,"objectiveId":910007,"parentId":920710,"nodeKey":"EMPLOYEE:920710:1018","assigneeType":"EMPLOYEE","assigneeId":1018,"assigneeName":"彭骁","categoryCode":"KEY_ACCOUNT","categoryName":"重点客户","metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","metricValueType":"DECIMAL","metricPrecision":2,"metricWeight":100.00,"targetAmount":60000.00,"actualAmount":80000.00,"completionRate":133.33,"cappedRate":120.00,"score":120.00,"grade":"S","quotaSource":"DEPT_OWNER","locked":false,"ownerEmployeeId":1013,"sortOrder":2,"status":"COMPLETED","createTime":"2026-01-02T09:00:00","updateTime":"2026-04-02T10:00:00","children":[]}]}]}]}',
- 'seed_perf_plan_910007', 'seed_perf_result_910007', 'COMPLETED',
- '2026-01-02 09:00:00', '2026-04-02 10:00:00', 'admin', 'admin', 0),
-(910008, 100000, 'PF_DEMO_REJECTED_2026Q3', '2026 Q3', '2026-07-01', '2026-09-30',
- '已驳回绩效计划演示', 30.0000, 'OPS_CHECK',
- '[{"categoryCode":"OPS_CHECK","categoryName":"运维巡检"}]',
- '[{"metricCode":"CHECK_COUNT","metricName":"巡检次数","metricUnit":"次","valueType":"INTEGER","precision":0,"metricWeight":100}]',
- 120.00, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'seed_perf_plan_910008', NULL, 'REJECTED',
- NOW(), NOW(), 'admin', 'admin', 0);
-
-INSERT INTO cloud_flow_db.hr_performance_assignment (
-  id, tenant_id, objective_id, parent_id, node_key, assignee_type, assignee_id, assignee_name,
-  category_code, category_name, metric_code, metric_name, metric_unit, metric_value_type,
-  metric_precision, metric_weight, target_amount, actual_amount, quota_source, locked,
-  owner_employee_id, sort_order, status, create_time, update_time, create_by, update_by, deleted
-) VALUES
--- 910001：销售额 + 销售量，多类型多权重。
-(920001, 100000, 910001, NULL, 'ROOT:DEPT:112', 'DEPT', 112, '销售部', NULL, NULL, NULL, NULL, NULL, NULL, 2, 100.00, 0.0000, 0.0000, 'MANAGER', 1, 1013, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920010, 100000, 910001, 920001, 'CATEGORY:920001:CORE_GOODS:SALES_AMOUNT', 'DEPT', 112, '销售部', 'CORE_GOODS', '核心产品线', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 35.00, 120000.0000, 98000.0000, 'MANAGER', 1, 1013, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920011, 100000, 910001, 920010, 'EMPLOYEE:920010:1013', 'EMPLOYEE', 1013, '何嘉树', 'CORE_GOODS', '核心产品线', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 35.00, 60000.0000, 50000.0000, 'DEPT_OWNER', 0, 1013, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920012, 100000, 910001, 920010, 'EMPLOYEE:920010:1018', 'EMPLOYEE', 1018, '彭骁', 'CORE_GOODS', '核心产品线', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 35.00, 60000.0000, 48000.0000, 'DEPT_OWNER', 0, 1013, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920020, 100000, 910001, 920001, 'CATEGORY:920001:CORE_GOODS:SALES_QTY', 'DEPT', 112, '销售部', 'CORE_GOODS', '核心产品线', 'SALES_QTY', '销售量', '件', 'INTEGER', 0, 25.00, 240.0000, 232.0000, 'MANAGER', 1, 1013, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920021, 100000, 910001, 920020, 'EMPLOYEE:920020:1013', 'EMPLOYEE', 1013, '何嘉树', 'CORE_GOODS', '核心产品线', 'SALES_QTY', '销售量', '件', 'INTEGER', 0, 25.00, 100.0000, 96.0000, 'DEPT_OWNER', 0, 1013, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920022, 100000, 910001, 920020, 'EMPLOYEE:920020:1018', 'EMPLOYEE', 1018, '彭骁', 'CORE_GOODS', '核心产品线', 'SALES_QTY', '销售量', '件', 'INTEGER', 0, 25.00, 140.0000, 136.0000, 'DEPT_OWNER', 0, 1013, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920030, 100000, 910001, 920001, 'CATEGORY:920001:NEW_CUSTOMER:SALES_AMOUNT', 'DEPT', 112, '销售部', 'NEW_CUSTOMER', '新签客户包', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 25.00, 80000.0000, 76000.0000, 'MANAGER', 1, 1013, 3, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920031, 100000, 910001, 920030, 'EMPLOYEE:920030:1013', 'EMPLOYEE', 1013, '何嘉树', 'NEW_CUSTOMER', '新签客户包', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 25.00, 30000.0000, 32000.0000, 'DEPT_OWNER', 0, 1013, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920032, 100000, 910001, 920030, 'EMPLOYEE:920030:1018', 'EMPLOYEE', 1018, '彭骁', 'NEW_CUSTOMER', '新签客户包', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 25.00, 50000.0000, 44000.0000, 'DEPT_OWNER', 0, 1013, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920040, 100000, 910001, 920001, 'CATEGORY:920001:NEW_CUSTOMER:SALES_QTY', 'DEPT', 112, '销售部', 'NEW_CUSTOMER', '新签客户包', 'SALES_QTY', '销售量', '件', 'INTEGER', 0, 15.00, 160.0000, 150.0000, 'MANAGER', 1, 1013, 4, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920041, 100000, 910001, 920040, 'EMPLOYEE:920040:1013', 'EMPLOYEE', 1013, '何嘉树', 'NEW_CUSTOMER', '新签客户包', 'SALES_QTY', '销售量', '件', 'INTEGER', 0, 15.00, 60.0000, 62.0000, 'DEPT_OWNER', 0, 1013, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920042, 100000, 910001, 920040, 'EMPLOYEE:920040:1018', 'EMPLOYEE', 1018, '彭骁', 'NEW_CUSTOMER', '新签客户包', 'SALES_QTY', '销售量', '件', 'INTEGER', 0, 15.00, 100.0000, 88.0000, 'DEPT_OWNER', 0, 1013, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-
--- 910002：非销售额，数量单位为件。
-(920101, 100000, 910002, NULL, 'ROOT:DEPT:110', 'DEPT', 110, '实施交付部', NULL, NULL, NULL, NULL, NULL, NULL, 0, 100.00, 48.0000, 42.0000, 'MANAGER', 1, 1011, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920110, 100000, 910002, 920101, 'CATEGORY:920101:PROJECT_DELIVERY:DELIVERY_COUNT', 'DEPT', 110, '实施交付部', 'PROJECT_DELIVERY', '项目交付', 'DELIVERY_COUNT', '交付件数', '件', 'INTEGER', 0, 100.00, 48.0000, 42.0000, 'MANAGER', 1, 1011, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920111, 100000, 910002, 920110, 'EMPLOYEE:920110:1011', 'EMPLOYEE', 1011, '吴思远', 'PROJECT_DELIVERY', '项目交付', 'DELIVERY_COUNT', '交付件数', '件', 'INTEGER', 0, 100.00, 22.0000, 20.0000, 'DEPT_OWNER', 0, 1011, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920112, 100000, 910002, 920110, 'EMPLOYEE:920110:1016', 'EMPLOYEE', 1016, '高牧', 'PROJECT_DELIVERY', '项目交付', 'DELIVERY_COUNT', '交付件数', '件', 'INTEGER', 0, 100.00, 26.0000, 22.0000, 'DEPT_OWNER', 0, 1011, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-
--- 910003：根部门 -> 子部门 -> 类型指标 -> 员工，多部门级联。
-(920201, 100000, 910003, NULL, 'ROOT:DEPT:112', 'DEPT', 112, '销售部', NULL, NULL, NULL, NULL, NULL, NULL, 0, 100.00, 70.0000, 62.0000, 'MANAGER', 1, 1013, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920202, 100000, 910003, 920201, 'DEPT:920201:117', 'DEPT', 117, '华东销售组', NULL, NULL, NULL, NULL, NULL, NULL, 0, 100.00, 70.0000, 62.0000, 'DEPT_OWNER', 1, 1018, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920210, 100000, 910003, 920202, 'CATEGORY:920202:SALES_PIPELINE:TASK_COUNT', 'DEPT', 117, '华东销售组', 'SALES_PIPELINE', '销售商机推进', 'TASK_COUNT', '任务数量', '件', 'INTEGER', 0, 60.00, 70.0000, 62.0000, 'DEPT_OWNER', 1, 1018, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920211, 100000, 910003, 920210, 'EMPLOYEE:920210:1013', 'EMPLOYEE', 1013, '何嘉树', 'SALES_PIPELINE', '销售商机推进', 'TASK_COUNT', '任务数量', '件', 'INTEGER', 0, 60.00, 30.0000, 28.0000, 'DEPT_OWNER', 0, 1018, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920212, 100000, 910003, 920210, 'EMPLOYEE:920210:1018', 'EMPLOYEE', 1018, '彭骁', 'SALES_PIPELINE', '销售商机推进', 'TASK_COUNT', '任务数量', '件', 'INTEGER', 0, 60.00, 40.0000, 34.0000, 'DEPT_OWNER', 0, 1018, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920231, 100000, 910003, NULL, 'ROOT:DEPT:110', 'DEPT', 110, '实施交付部', NULL, NULL, NULL, NULL, NULL, NULL, 0, 100.00, 50.0000, 44.0000, 'MANAGER', 1, 1011, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920232, 100000, 910003, 920231, 'DEPT:920231:115', 'DEPT', 115, '交付一组', NULL, NULL, NULL, NULL, NULL, NULL, 0, 100.00, 50.0000, 44.0000, 'DEPT_OWNER', 1, 1016, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920240, 100000, 910003, 920232, 'CATEGORY:920232:DELIVERY_TASK:TASK_COUNT', 'DEPT', 115, '交付一组', 'DELIVERY_TASK', '交付任务闭环', 'TASK_COUNT', '任务数量', '件', 'INTEGER', 0, 40.00, 50.0000, 44.0000, 'DEPT_OWNER', 1, 1016, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920241, 100000, 910003, 920240, 'EMPLOYEE:920240:1011', 'EMPLOYEE', 1011, '吴思远', 'DELIVERY_TASK', '交付任务闭环', 'TASK_COUNT', '任务数量', '件', 'INTEGER', 0, 40.00, 20.0000, 18.0000, 'DEPT_OWNER', 0, 1016, 1, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-(920242, 100000, 910003, 920240, 'EMPLOYEE:920240:1016', 'EMPLOYEE', 1016, '高牧', 'DELIVERY_TASK', '交付任务闭环', 'TASK_COUNT', '任务数量', '件', 'INTEGER', 0, 40.00, 30.0000, 26.0000, 'DEPT_OWNER', 0, 1016, 2, 'PLAN_APPROVED', NOW(), NOW(), 'admin', 'admin', 0),
-
--- 910004：草稿 + 百分比指标。
-(920301, 100000, 910004, NULL, 'ROOT:DEPT:119', 'DEPT', 119, '测试组', NULL, NULL, NULL, NULL, NULL, NULL, 2, 100.00, 95.0000, 0.0000, 'MANAGER', 1, 1020, 1, 'DRAFT', NOW(), NOW(), 'admin', 'admin', 0),
-(920310, 100000, 910004, 920301, 'CATEGORY:920301:QUALITY:PASS_RATE', 'DEPT', 119, '测试组', 'QUALITY', '质量目标', 'PASS_RATE', '验收通过率', '%', 'PERCENT', 2, 100.00, 95.0000, 0.0000, 'MANAGER', 1, 1020, 1, 'DRAFT', NOW(), NOW(), 'admin', 'admin', 0),
-(920311, 100000, 910004, 920310, 'EMPLOYEE:920310:1020', 'EMPLOYEE', 1020, '韩悦', 'QUALITY', '质量目标', 'PASS_RATE', '验收通过率', '%', 'PERCENT', 2, 100.00, 95.0000, 0.0000, 'DEPT_OWNER', 0, 1020, 1, 'DRAFT', NOW(), NOW(), 'admin', 'admin', 0),
-
--- 910005：计划审批中。
-(920401, 100000, 910005, NULL, 'ROOT:DEPT:109', 'DEPT', 109, '产品部', NULL, NULL, NULL, NULL, NULL, NULL, 0, 100.00, 20.0000, 0.0000, 'MANAGER', 1, 1010, 1, 'PLAN_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-(920410, 100000, 910005, 920401, 'CATEGORY:920401:ROADMAP:ITEM_COUNT', 'DEPT', 109, '产品部', 'ROADMAP', '路线图事项', 'ITEM_COUNT', '事项数量', '个', 'INTEGER', 0, 100.00, 20.0000, 0.0000, 'MANAGER', 1, 1010, 1, 'PLAN_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-(920411, 100000, 910005, 920410, 'EMPLOYEE:920410:1010', 'EMPLOYEE', 1010, '孙雨澄', 'ROADMAP', '路线图事项', 'ITEM_COUNT', '事项数量', '个', 'INTEGER', 0, 100.00, 12.0000, 0.0000, 'DEPT_OWNER', 0, 1010, 1, 'PLAN_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-(920412, 100000, 910005, 920410, 'EMPLOYEE:920410:1015', 'EMPLOYEE', 1015, '宋清妍', 'ROADMAP', '路线图事项', 'ITEM_COUNT', '事项数量', '个', 'INTEGER', 0, 100.00, 8.0000, 0.0000, 'DEPT_OWNER', 0, 1010, 2, 'PLAN_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-
--- 910006：结果审批中 + 低完成率。
-(920501, 100000, 910006, NULL, 'ROOT:DEPT:111', 'DEPT', 111, '客户成功部', NULL, NULL, NULL, NULL, NULL, NULL, 2, 100.00, 200000.0000, 80000.0000, 'MANAGER', 1, 1012, 1, 'RESULT_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-(920510, 100000, 910006, 920501, 'CATEGORY:920501:CUSTOMER_RENEWAL:RENEWAL_AMOUNT', 'DEPT', 111, '客户成功部', 'CUSTOMER_RENEWAL', '客户续约', 'RENEWAL_AMOUNT', '续约额', '元', 'DECIMAL', 2, 100.00, 200000.0000, 80000.0000, 'MANAGER', 1, 1012, 1, 'RESULT_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-(920511, 100000, 910006, 920510, 'EMPLOYEE:920510:1012', 'EMPLOYEE', 1012, '郑雅宁', 'CUSTOMER_RENEWAL', '客户续约', 'RENEWAL_AMOUNT', '续约额', '元', 'DECIMAL', 2, 100.00, 100000.0000, 50000.0000, 'DEPT_OWNER', 0, 1012, 1, 'RESULT_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-(920512, 100000, 910006, 920510, 'EMPLOYEE:920510:1017', 'EMPLOYEE', 1017, '徐珂', 'CUSTOMER_RENEWAL', '客户续约', 'RENEWAL_AMOUNT', '续约额', '元', 'DECIMAL', 2, 100.00, 100000.0000, 30000.0000, 'DEPT_OWNER', 0, 1012, 2, 'RESULT_APPROVING', NOW(), NOW(), 'admin', 'admin', 0),
-
--- 910007：已归档 + 超额封顶，另有来源调薪单。
-(920701, 100000, 910007, NULL, 'ROOT:DEPT:112', 'DEPT', 112, '销售部', NULL, NULL, NULL, NULL, NULL, NULL, 2, 100.00, 100000.0000, 150000.0000, 'MANAGER', 1, 1013, 1, 'COMPLETED', '2026-01-02 09:00:00', '2026-04-02 10:00:00', 'admin', 'admin', 0),
-(920710, 100000, 910007, 920701, 'CATEGORY:920701:KEY_ACCOUNT:SALES_AMOUNT', 'DEPT', 112, '销售部', 'KEY_ACCOUNT', '重点客户', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 100.00, 100000.0000, 150000.0000, 'MANAGER', 1, 1013, 1, 'COMPLETED', '2026-01-02 09:00:00', '2026-04-02 10:00:00', 'admin', 'admin', 0),
-(920711, 100000, 910007, 920710, 'EMPLOYEE:920710:1013', 'EMPLOYEE', 1013, '何嘉树', 'KEY_ACCOUNT', '重点客户', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 100.00, 40000.0000, 70000.0000, 'DEPT_OWNER', 0, 1013, 1, 'COMPLETED', '2026-01-02 09:00:00', '2026-04-02 10:00:00', 'admin', 'admin', 0),
-(920712, 100000, 910007, 920710, 'EMPLOYEE:920710:1018', 'EMPLOYEE', 1018, '彭骁', 'KEY_ACCOUNT', '重点客户', 'SALES_AMOUNT', '销售额', '元', 'DECIMAL', 2, 100.00, 60000.0000, 80000.0000, 'DEPT_OWNER', 0, 1013, 2, 'COMPLETED', '2026-01-02 09:00:00', '2026-04-02 10:00:00', 'admin', 'admin', 0),
-
--- 910008：已驳回。
-(920801, 100000, 910008, NULL, 'ROOT:DEPT:113', 'DEPT', 113, '运维部', NULL, NULL, NULL, NULL, NULL, NULL, 0, 100.00, 30.0000, 0.0000, 'MANAGER', 1, 1014, 1, 'REJECTED', NOW(), NOW(), 'admin', 'admin', 0),
-(920810, 100000, 910008, 920801, 'CATEGORY:920801:OPS_CHECK:CHECK_COUNT', 'DEPT', 113, '运维部', 'OPS_CHECK', '运维巡检', 'CHECK_COUNT', '巡检次数', '次', 'INTEGER', 0, 100.00, 30.0000, 0.0000, 'MANAGER', 1, 1014, 1, 'REJECTED', NOW(), NOW(), 'admin', 'admin', 0),
-(920811, 100000, 910008, 920810, 'EMPLOYEE:920810:1014', 'EMPLOYEE', 1014, '唐志远', 'OPS_CHECK', '运维巡检', 'CHECK_COUNT', '巡检次数', '次', 'INTEGER', 0, 100.00, 12.0000, 0.0000, 'DEPT_OWNER', 0, 1014, 1, 'REJECTED', NOW(), NOW(), 'admin', 'admin', 0),
-(920812, 100000, 910008, 920810, 'EMPLOYEE:920810:1019', 'EMPLOYEE', 1019, '许磊', 'OPS_CHECK', '运维巡检', 'CHECK_COUNT', '巡检次数', '次', 'INTEGER', 0, 100.00, 18.0000, 0.0000, 'DEPT_OWNER', 0, 1014, 2, 'REJECTED', NOW(), NOW(), 'admin', 'admin', 0);
-
--- 兼容分段导入或旧数据残留：显式回填所有演示目标的指标配置和指标节点。
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'CORE_GOODS,NEW_CUSTOMER',
-    category_config = '[{"categoryCode":"CORE_GOODS","categoryName":"核心产品线"},{"categoryCode":"NEW_CUSTOMER","categoryName":"新签客户包"}]',
-    metric_config = '[{"metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","valueType":"DECIMAL","precision":2,"metricWeight":60},{"metricCode":"SALES_QTY","metricName":"销售量","metricUnit":"件","valueType":"INTEGER","precision":0,"metricWeight":40}]'
-WHERE tenant_id = 100000 AND id = 910001;
-
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'PROJECT_DELIVERY',
-    category_config = '[{"categoryCode":"PROJECT_DELIVERY","categoryName":"项目交付"}]',
-    metric_config = '[{"metricCode":"DELIVERY_COUNT","metricName":"交付件数","metricUnit":"件","valueType":"INTEGER","precision":0,"metricWeight":100}]'
-WHERE tenant_id = 100000 AND id = 910002;
-
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'SALES_PIPELINE,DELIVERY_TASK',
-    category_config = '[{"categoryCode":"SALES_PIPELINE","categoryName":"销售商机推进"},{"categoryCode":"DELIVERY_TASK","categoryName":"交付任务闭环"}]',
-    metric_config = '[{"metricCode":"TASK_COUNT","metricName":"任务数量","metricUnit":"件","valueType":"INTEGER","precision":0,"metricWeight":100}]',
-    total_target_amount = 120.0000
-WHERE tenant_id = 100000 AND id = 910003;
-
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'QUALITY',
-    category_config = '[{"categoryCode":"QUALITY","categoryName":"质量目标"}]',
-    metric_config = '[{"metricCode":"PASS_RATE","metricName":"验收通过率","metricUnit":"%","valueType":"PERCENT","precision":2,"metricWeight":100}]'
-WHERE tenant_id = 100000 AND id = 910004;
-
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'ROADMAP',
-    category_config = '[{"categoryCode":"ROADMAP","categoryName":"路线图事项"}]',
-    metric_config = '[{"metricCode":"ITEM_COUNT","metricName":"事项数量","metricUnit":"个","valueType":"INTEGER","precision":0,"metricWeight":100}]'
-WHERE tenant_id = 100000 AND id = 910005;
-
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'CUSTOMER_RENEWAL',
-    category_config = '[{"categoryCode":"CUSTOMER_RENEWAL","categoryName":"客户续约"}]',
-    metric_config = '[{"metricCode":"RENEWAL_AMOUNT","metricName":"续约额","metricUnit":"元","valueType":"DECIMAL","precision":2,"metricWeight":100}]'
-WHERE tenant_id = 100000 AND id = 910006;
-
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'KEY_ACCOUNT',
-    category_config = '[{"categoryCode":"KEY_ACCOUNT","categoryName":"重点客户"}]',
-    metric_config = '[{"metricCode":"SALES_AMOUNT","metricName":"销售额","metricUnit":"元","valueType":"DECIMAL","precision":2,"metricWeight":100}]'
-WHERE tenant_id = 100000 AND id = 910007;
-
-UPDATE cloud_flow_db.hr_performance_objective
-SET category_codes = 'OPS_CHECK',
-    category_config = '[{"categoryCode":"OPS_CHECK","categoryName":"运维巡检"}]',
-    metric_config = '[{"metricCode":"CHECK_COUNT","metricName":"巡检次数","metricUnit":"次","valueType":"INTEGER","precision":0,"metricWeight":100}]'
-WHERE tenant_id = 100000 AND id = 910008;
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'SALES_AMOUNT', metric_name = '销售额', metric_unit = '元', metric_value_type = 'DECIMAL', metric_precision = 2, metric_weight = 35.00
-WHERE tenant_id = 100000 AND id IN (920010, 920011, 920012);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'SALES_QTY', metric_name = '销售量', metric_unit = '件', metric_value_type = 'INTEGER', metric_precision = 0, metric_weight = 25.00
-WHERE tenant_id = 100000 AND id IN (920020, 920021, 920022);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'SALES_AMOUNT', metric_name = '销售额', metric_unit = '元', metric_value_type = 'DECIMAL', metric_precision = 2, metric_weight = 25.00
-WHERE tenant_id = 100000 AND id IN (920030, 920031, 920032);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'SALES_QTY', metric_name = '销售量', metric_unit = '件', metric_value_type = 'INTEGER', metric_precision = 0, metric_weight = 15.00
-WHERE tenant_id = 100000 AND id IN (920040, 920041, 920042);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'DELIVERY_COUNT', metric_name = '交付件数', metric_unit = '件', metric_value_type = 'INTEGER', metric_precision = 0, metric_weight = 100.00
-WHERE tenant_id = 100000 AND id IN (920110, 920111, 920112);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'TASK_COUNT', metric_name = '任务数量', metric_unit = '件', metric_value_type = 'INTEGER', metric_precision = 0, metric_weight = 60.00
-WHERE tenant_id = 100000 AND id IN (920210, 920211, 920212);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'TASK_COUNT', metric_name = '任务数量', metric_unit = '件', metric_value_type = 'INTEGER', metric_precision = 0, metric_weight = 40.00
-WHERE tenant_id = 100000 AND id IN (920240, 920241, 920242);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'PASS_RATE', metric_name = '验收通过率', metric_unit = '%', metric_value_type = 'PERCENT', metric_precision = 2, metric_weight = 100.00
-WHERE tenant_id = 100000 AND id IN (920310, 920311);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'ITEM_COUNT', metric_name = '事项数量', metric_unit = '个', metric_value_type = 'INTEGER', metric_precision = 0, metric_weight = 100.00
-WHERE tenant_id = 100000 AND id IN (920410, 920411, 920412);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'RENEWAL_AMOUNT', metric_name = '续约额', metric_unit = '元', metric_value_type = 'DECIMAL', metric_precision = 2, metric_weight = 100.00
-WHERE tenant_id = 100000 AND id IN (920510, 920511, 920512);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'SALES_AMOUNT', metric_name = '销售额', metric_unit = '元', metric_value_type = 'DECIMAL', metric_precision = 2, metric_weight = 100.00
-WHERE tenant_id = 100000 AND id IN (920710, 920711, 920712);
-
-UPDATE cloud_flow_db.hr_performance_assignment
-SET metric_code = 'CHECK_COUNT', metric_name = '巡检次数', metric_unit = '次', metric_value_type = 'INTEGER', metric_precision = 0, metric_weight = 100.00
-WHERE tenant_id = 100000 AND id IN (920810, 920811, 920812);
-
-INSERT INTO cloud_flow_db.hr_salary_adjustment (
-  id, tenant_id, application_no, employee_id, adjustment_type, adjustment_reason,
-  before_salary_data, after_salary_data, before_total, after_total, adjustment_amount, adjustment_rate,
-  effective_date, process_instance_id, source_type, source_id, status,
-  create_time, update_time, create_by, update_by, deleted
-) VALUES
-(910101, 100000, 'SA_PERF_DEMO_910007_1018', 1018, 'PERFORMANCE',
- '来源于归档绩效目标 PF_DEMO_COMPLETED_ARCHIVE_CAP_2026Q1，彭骁重点客户销售额超额完成，演示绩效调薪联动。',
- '{"100":13000,"101":3000,"102":300,"103":300,"104":4900}',
- '{"100":14500,"101":3500,"102":300,"103":300,"104":5400}',
- 21500.00, 24000.00, 2500.00, 11.63,
- '2026-04-15', NULL, 'PERFORMANCE_OBJECTIVE', 910007, 'APPROVED',
- '2026-04-03 09:00:00', '2026-04-03 09:00:00', 'admin', 'admin', 0);
-
 SET FOREIGN_KEY_CHECKS = 1;
 
+
+
+-- =========================================================
+-- HR 业务域重建种子数据
+-- =========================================================
+
+DELETE FROM cloud_flow_db.hr_performance_salary_adjustment
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_performance_result
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_performance_assignment
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_performance_objective
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_tax_deduction
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_tax_profile
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_employee_benefit
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_benefit_scheme
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_comp_change
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_employee_comp
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_comp_grade
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_comp_structure
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_comp_component
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_time_request
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_leave_quota
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_leave_type
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_attendance_monthly
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_attendance_record
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_schedule_assignment
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_attendance_rule
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_shift
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_lifecycle_task
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_lifecycle_detail
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_lifecycle_application
+WHERE tenant_id = 100000
+   OR id BETWEEN 6001 AND 6999;
+
+DELETE FROM cloud_flow_db.hr_offer
+WHERE tenant_id = 100000
+   OR id BETWEEN 5001 AND 5999;
+
+DELETE FROM cloud_flow_db.hr_interview
+WHERE tenant_id = 100000
+   OR id BETWEEN 4001 AND 4999;
+
+DELETE FROM cloud_flow_db.hr_candidate
+WHERE tenant_id = 100000
+   OR id BETWEEN 3001 AND 3999;
+
+DELETE FROM cloud_flow_db.hr_recruitment_requisition
+WHERE tenant_id = 100000
+   OR id BETWEEN 2001 AND 2999;
+
+DELETE FROM cloud_flow_db.hr_headcount
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_emergency_contact
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_employee_document
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_employee_contract
+WHERE tenant_id = 100000;
+
+DELETE FROM cloud_flow_db.hr_employee
+WHERE tenant_id = 100000
+  AND (id IN (1,1001,1002,1003,1004) OR id BETWEEN 1001 AND 1999);
+
+DELETE FROM cloud_flow_db.hr_position
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_job_level
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+DELETE FROM cloud_flow_db.hr_position_family
+WHERE tenant_id = 100000
+   OR id BETWEEN 100 AND 199;
+
+INSERT INTO cloud_flow_db.hr_position_family (id, tenant_id, family_code, family_name, description, sort_order, status) VALUES
+(100, 100000, 'TECH', '技术族', '研发、测试、架构与技术交付岗位', 1, 1),
+(101, 100000, 'PRODUCT', '产品族', '产品规划、需求与体验岗位', 2, 1),
+(102, 100000, 'SALES', '销售族', '销售、客户成功与商务岗位', 3, 1),
+(103, 100000, 'SUPPORT', '职能支持族', 'HR、财务、法务与行政岗位', 4, 1);
+
+INSERT INTO cloud_flow_db.hr_job_level (id, tenant_id, level_code, level_name, level_series, level_rank, description, status) VALUES
+(100, 100000, 'P1', '初级专员', 'P', 1, '专业序列一级', 1),
+(101, 100000, 'P2', '专员', 'P', 2, '专业序列二级', 1),
+(102, 100000, 'P3', '高级专员', 'P', 3, '专业序列三级', 1),
+(103, 100000, 'M1', '主管', 'M', 1, '管理序列一级', 1),
+(104, 100000, 'M2', '经理', 'M', 2, '管理序列二级', 1);
+
+INSERT INTO cloud_flow_db.hr_position (id, tenant_id, position_code, position_name, family_id, level_id, post_id, job_description, requirements, status) VALUES
+(100, 100000, 'FE_P3', '前端开发工程师', 100, 102, 4, '负责 React 桌面端产品交付', '熟悉 TypeScript、组件化和接口联调', 1),
+(101, 100000, 'BE_P3', 'Java 开发工程师', 100, 102, 4, '负责 Spring Boot 微服务交付', '熟悉 Java、MySQL 和业务建模', 1),
+(102, 100000, 'HRBP_M2', 'HRBP', 103, 104, 2, '负责招聘、员工关系和组织发展', '熟悉 HR 全流程运营', 1),
+(103, 100000, 'FIN_P2', '财务专员', 103, 101, 4, '负责报销、付款与财务归档', '熟悉企业财务流程', 1);
+
+INSERT INTO cloud_flow_db.hr_employee (id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id, employee_type, employee_status, hire_date, regular_date, resign_date, user_id, create_by, update_by) VALUES
+(1, 100000, 'CF20230000', 'Admin', 'MALE', '1988-01-01', '15888888888', 'admin@cloudflow.com', 100, 1, NULL, 'FULL_TIME', 'REGULAR', '2023-01-01', '2023-07-01', NULL, 1, 'admin', 'admin'),
+(1001, 100000, 'CF20230001', '赵HR', 'FEMALE', '1990-06-12', '13800010001', 'zhao.hr@cloudflow.com', 103, 2, 102, 'FULL_TIME', 'REGULAR', '2023-04-10', '2023-10-10', NULL, 4, 'admin', 'admin'),
+(1002, 100000, 'CF20260001', '前端测试', 'FEMALE', '1998-03-08', '13800010002', 'test.fe@cloudflow.com', 106, 4, 100, 'FULL_TIME', 'PROBATION', '2026-02-10', NULL, NULL, 8, 'admin', 'admin'),
+(1003, 100000, 'CF20240008', '后端测试', 'MALE', '1996-11-21', '13800010003', 'test.be@cloudflow.com', 107, 4, 101, 'FULL_TIME', 'REGULAR', '2024-08-15', '2025-02-15', NULL, 9, 'admin', 'admin'),
+(1004, 100000, 'CF20230015', '王财务', 'FEMALE', '1992-05-16', '13800010004', 'wang.finance@cloudflow.com', 102, 4, 103, 'FULL_TIME', 'REGULAR', '2023-03-01', '2023-09-01', NULL, 3, 'admin', 'admin'),
+(1005, 100000, 'CF20240021', '测试开发', 'MALE', '1995-07-19', '13800010005', 'qa.dev@cloudflow.com', 107, 4, 101, 'FULL_TIME', 'REGULAR', '2024-06-01', '2024-12-01', NULL, NULL, 'admin', 'admin'),
+(1006, 100000, 'CF20240032', '数据分析', 'FEMALE', '1994-09-09', '13800010006', 'data.analyst@cloudflow.com', 102, 4, 103, 'FULL_TIME', 'REGULAR', '2024-03-15', '2024-09-15', NULL, NULL, 'admin', 'admin'),
+(1007, 100000, 'CF20250011', '招聘专员', 'FEMALE', '1997-01-17', '13800010007', 'recruiter@cloudflow.com', 103, 4, 102, 'FULL_TIME', 'REGULAR', '2025-04-08', '2025-10-08', NULL, NULL, 'admin', 'admin'),
+(1008, 100000, 'CF20230028', '交付经理', 'MALE', '1991-12-02', '13800010008', 'delivery.manager@cloudflow.com', 101, 2, 101, 'FULL_TIME', 'REGULAR', '2023-02-15', '2023-08-15', NULL, NULL, 'admin', 'admin'),
+(1009, 100000, 'CF20240036', '质量专员', 'FEMALE', '1995-10-28', '13800010009', 'qa.specialist@cloudflow.com', 106, 4, 100, 'FULL_TIME', 'REGULAR', '2024-11-11', '2025-05-11', NULL, NULL, 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_employee_contract (tenant_id, employee_id, contract_type, contract_no, sign_date, start_date, end_date, attachment_urls, status, create_by, update_by) VALUES
+(100000, 1002, 'LABOR', 'HT202602100001', '2026-02-10', '2026-02-10', '2029-02-09', JSON_ARRAY('/upload/hr/contracts/HT202602100001.pdf'), 'ACTIVE', 'admin', 'admin'),
+(100000, 1003, 'LABOR', 'HT202408150001', '2024-08-15', '2024-08-15', '2027-08-14', JSON_ARRAY('/upload/hr/contracts/HT202408150001.pdf'), 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_employee_document (tenant_id, employee_id, document_type, document_no, issue_date, expiry_date, attachment_urls, create_by, update_by) VALUES
+(100000, 1002, 'ID_CARD', '320100199803080021', '2018-03-08', '2038-03-08', JSON_ARRAY('/upload/hr/documents/id-1002.pdf'), 'admin', 'admin'),
+(100000, 1003, 'ID_CARD', '320100199611210031', '2016-11-21', '2036-11-21', JSON_ARRAY('/upload/hr/documents/id-1003.pdf'), 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_emergency_contact (tenant_id, employee_id, contact_name, relationship, phone, address, priority, create_by, update_by) VALUES
+(100000, 1002, '李女士', 'PARENT', '13900020001', '上海市浦东新区', 1, 'admin', 'admin'),
+(100000, 1003, '王先生', 'SPOUSE', '13900020002', '上海市黄浦区', 1, 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_headcount (id, tenant_id, target_type, target_id, target_name, approved_count, actual_count, vacancy_count, effective_date) VALUES
+(100, 100000, 'DEPT', 101, '研发部', 18, 12, 6, '2026-01-01'),
+(101, 100000, 'DEPT', 103, '人力资源部', 6, 4, 2, '2026-01-01'),
+(102, 100000, 'POST', 4, '普通员工', 30, 24, 6, '2026-01-01');
+
+INSERT INTO cloud_flow_db.hr_recruitment_requisition (id, tenant_id, requisition_no, title, dept_id, position_id, headcount, hired_count, salary_min, salary_max, expected_arrival_date, reason, requirements, status, create_by, update_by) VALUES
+(2001, 100000, 'HRRQ202605010001', 'Java 开发工程师招聘', 107, 101, 2, 0, 18000, 28000, '2026-06-15', '后端组补充项目交付人力', '熟悉 Spring Boot、MySQL、消息队列', 'RECRUITING', 'zhao', 'zhao'),
+(2002, 100000, 'HRRQ202605010002', 'HRBP 招聘', 103, 102, 1, 0, 15000, 22000, '2026-06-01', 'HR 组织发展能力补充', '熟悉招聘和员工生命周期管理', 'APPROVING', 'zhao', 'zhao');
+
+INSERT INTO cloud_flow_db.hr_candidate (id, tenant_id, candidate_no, requisition_id, name, gender, phone, email, source, resume_attachment_urls, status, create_by, update_by) VALUES
+(3001, 100000, 'HRC202605010001', 2001, '陈海涛', 'MALE', '13900011001', 'chen.haitao@example.com', 'REFERRAL', JSON_ARRAY('/upload/hr/resume/chenhaitao.pdf'), 'INTERVIEW', 'zhao', 'zhao'),
+(3002, 100000, 'HRC202605010002', 2001, '孙晓雨', 'FEMALE', '13900011002', 'sun.xiaoyu@example.com', 'WEBSITE', JSON_ARRAY('/upload/hr/resume/sunxiaoyu.pdf'), 'OFFER', 'zhao', 'zhao'),
+(3003, 100000, 'HRC202605010003', 2002, '林嘉琪', 'FEMALE', '13900011003', 'lin.jiaqi@example.com', 'HEADHUNTER', JSON_ARRAY('/upload/hr/resume/linjiaqi.pdf'), 'SCREENING', 'zhao', 'zhao');
+
+INSERT INTO cloud_flow_db.hr_interview (id, tenant_id, candidate_id, interview_round, interview_type, interview_time, interview_end_time, interviewer_ids, interviewer_names, location, evaluation, score, result, status, create_by, update_by) VALUES
+(4001, 100000, 3001, 'FIRST', 'VIDEO', DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_ADD(NOW(), INTERVAL 2 DAY) + INTERVAL 1 HOUR, JSON_ARRAY(2,9), JSON_ARRAY('李经理','后端测试'), '腾讯会议', NULL, NULL, NULL, 'SCHEDULED', 'zhao', 'zhao'),
+(4002, 100000, 3002, 'FINAL', 'ONSITE', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY) + INTERVAL 90 MINUTE, JSON_ARRAY(2,4), JSON_ARRAY('李经理','赵HR'), '总部 5F 面试室A', '技术深度和协作意识符合岗位要求', 88, 'PASS', 'COMPLETED', 'zhao', 'zhao');
+
+INSERT INTO cloud_flow_db.hr_offer (id, tenant_id, offer_no, candidate_id, position_id, salary, expected_arrival_date, expire_date, offer_content, status, create_by, update_by) VALUES
+(5001, 100000, 'HROF202605010001', 3002, 101, 22000, '2026-06-10', '2026-05-20', 'Java 开发工程师 Offer，月薪 22000 元。', 'SENT', 'zhao', 'zhao');
+
+INSERT INTO cloud_flow_db.hr_lifecycle_application (id, tenant_id, application_no, type, employee_id, candidate_id, name, dept_id, post_id, position_id, effective_date, status, remark, create_by, update_by) VALUES
+(6001, 100000, 'HRLC202605010001', 'ONBOARDING', NULL, 3002, '孙晓雨', 107, 4, 101, '2026-06-10', 'APPROVED', 'Offer 接受后转入入职办理', 'zhao', 'zhao'),
+(6002, 100000, 'HRLC202605010002', 'PROBATION', 1002, NULL, '前端测试', 106, 4, 100, '2026-06-10', 'APPROVING', '试用期转正评估', 'zhao', 'zhao'),
+(6003, 100000, 'HRLC202605010003', 'TRANSFER', 1003, NULL, '后端测试', 101, 4, 101, '2026-06-01', 'DRAFT', '调入研发部平台组', 'zhao', 'zhao'),
+(6004, 100000, 'HRLC202605010004', 'RESIGNATION', 1004, NULL, '王财务', 102, 4, 103, '2026-06-30', 'APPROVING', '个人发展原因离职', 'zhao', 'zhao');
+
+INSERT INTO cloud_flow_db.hr_lifecycle_detail (tenant_id, application_id, detail_type, detail_json) VALUES
+(100000, 6001, 'ONBOARDING', JSON_OBJECT('offerId', 5001, 'equipment', 'laptop', 'mentorId', 1003)),
+(100000, 6002, 'PROBATION', JSON_OBJECT('selfSummary', '试用期交付稳定', 'managerComment', '建议按期转正')),
+(100000, 6003, 'TRANSFER', JSON_OBJECT('fromDeptId', 107, 'toDeptId', 101, 'reason', '项目组织调整')),
+(100000, 6004, 'RESIGNATION', JSON_OBJECT('resignationType', 'PERSONAL', 'handoverOwnerId', 1001));
+
+INSERT INTO cloud_flow_db.hr_lifecycle_task (tenant_id, application_id, task_name, task_type, owner_id, due_date, status, remark) VALUES
+(100000, 6001, '开通系统账号', 'IT_ACCOUNT', 7, '2026-06-08', 'PENDING', '创建邮箱和系统账号'),
+(100000, 6001, '准备入职资料', 'DOCUMENT', 1001, '2026-06-08', 'PENDING', '收集证件和合同材料'),
+(100000, 6004, '资产交接', 'HANDOVER', 1001, '2026-06-25', 'PENDING', '电脑、门禁卡、财务资料交接');
+
+INSERT INTO cloud_flow_db.hr_shift (id, tenant_id, shift_code, shift_name, start_time, end_time, break_minutes, work_minutes, color, status) VALUES
+(100, 100000, 'STANDARD', '标准班', '09:00:00', '18:00:00', 60, 480, '#0891b2', 1),
+(101, 100000, 'FLEX', '弹性班', '10:00:00', '19:00:00', 60, 480, '#7c3aed', 1);
+
+INSERT INTO cloud_flow_db.hr_attendance_rule (id, tenant_id, rule_code, rule_name, rule_type, shift_id, work_days, check_methods, config_json, status) VALUES
+(100, 100000, 'STANDARD_OFFICE', '标准办公考勤', 'FIXED', 100, JSON_ARRAY(1,2,3,4,5), JSON_ARRAY('GPS','WIFI'), JSON_OBJECT('lateThreshold',15,'earlyThreshold',15,'radius',500), 1),
+(101, 100000, 'FLEX_RD', '研发弹性考勤', 'FLEXIBLE', 101, JSON_ARRAY(1,2,3,4,5), JSON_ARRAY('WIFI'), JSON_OBJECT('coreStart','10:00','coreEnd','16:00'), 1);
+
+INSERT INTO cloud_flow_db.hr_schedule_assignment (tenant_id, target_type, target_id, target_name, rule_id, shift_id, schedule_date, effective_start, status) VALUES
+(100000, 'DEPT', 103, '人力资源部', 100, 100, NULL, '2026-01-01', 'ACTIVE'),
+(100000, 'DEPT', 101, '研发部', 101, 101, NULL, '2026-01-01', 'ACTIVE'),
+(100000, 'EMPLOYEE', 1002, '前端测试', 101, 101, CURDATE(), NULL, 'PUBLISHED');
+
+INSERT INTO cloud_flow_db.hr_attendance_record (tenant_id, employee_id, attendance_date, shift_id, check_type, check_time, expected_time, deviation_minutes, check_method, location, status, remark, create_by, update_by) VALUES
+(100000, 1002, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 101, 'CHECK_IN', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 9 HOUR + INTERVAL 55 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 10 HOUR, -5, 'WIFI', 'CloudFlow-Office', 'NORMAL', '弹性班签到', 'test_fe', 'test_fe'),
+(100000, 1002, DATE_SUB(CURDATE(), INTERVAL 1 DAY), 101, 'CHECK_OUT', DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR + INTERVAL 10 MINUTE, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 19 HOUR, 10, 'WIFI', 'CloudFlow-Office', 'NORMAL', '弹性班签退', 'test_fe', 'test_fe');
+
+INSERT INTO cloud_flow_db.hr_attendance_monthly (tenant_id, employee_id, year, month, work_days, actual_days, late_times, early_times, absent_days, leave_days, overtime_hours, attendance_rate, status) VALUES
+(100000, 1002, YEAR(CURDATE()), MONTH(CURDATE()), 21, 20, 0, 0, 0, 1, 3.5, 95.24, 'CONFIRMED'),
+(100000, 1003, YEAR(CURDATE()), MONTH(CURDATE()), 21, 21, 1, 0, 0, 0, 6.0, 100.00, 'CONFIRMED');
+
+INSERT INTO cloud_flow_db.hr_leave_type (id, tenant_id, leave_code, leave_name, need_quota, is_paid, unit, quota_rule, status) VALUES
+(100, 100000, 'ANNUAL', '年假', 1, 1, 'DAY', JSON_OBJECT('baseQuota',5,'maxQuota',15), 1),
+(101, 100000, 'SICK', '病假', 0, 1, 'DAY', NULL, 1),
+(102, 100000, 'COMP_TIME', '调休', 1, 1, 'HOUR', JSON_OBJECT('expiryDays',90), 1);
+
+INSERT INTO cloud_flow_db.hr_leave_quota (tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota, expiry_date, create_by, update_by) VALUES
+(100000, 1002, 100, YEAR(CURDATE()), 5, 1, 1, 3, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1002, 102, YEAR(CURDATE()), 16, 4, 0, 12, DATE_ADD(CURDATE(), INTERVAL 90 DAY), 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_time_request (tenant_id, request_no, request_type, employee_id, leave_type_id, start_time, end_time, duration, unit, reason, status, create_by, update_by) VALUES
+(100000, 'HRTM202605010001', 'LEAVE', 1002, 100, DATE_ADD(CURDATE(), INTERVAL 5 DAY) + INTERVAL 9 HOUR, DATE_ADD(CURDATE(), INTERVAL 5 DAY) + INTERVAL 18 HOUR, 1, 'DAY', '家庭事务请假', 'APPROVING', 'test_fe', 'test_fe'),
+(100000, 'HRTM202605010002', 'OVERTIME', 1003, NULL, CURDATE() + INTERVAL 19 HOUR, CURDATE() + INTERVAL 22 HOUR, 3, 'HOUR', '客户上线支持', 'APPROVED', 'test_be', 'test_be'),
+(100000, 'HRTM202605010003', 'SUPPLEMENT', 1002, NULL, DATE_SUB(CURDATE(), INTERVAL 1 DAY) + INTERVAL 10 HOUR, NULL, NULL, NULL, '忘记打卡补录', 'APPROVING', 'test_fe', 'test_fe');
+
+INSERT INTO cloud_flow_db.hr_comp_component (id, tenant_id, component_code, component_name, component_type, category, taxable, sort_order, status) VALUES
+(100, 100000, 'BASE', '基本工资', 'FIXED', 'BASE', 1, 1, 1),
+(101, 100000, 'ALLOWANCE', '岗位津贴', 'FIXED', 'ALLOWANCE', 1, 2, 1),
+(102, 100000, 'BONUS', '绩效奖金', 'VARIABLE', 'BONUS', 1, 3, 1);
+
+INSERT INTO cloud_flow_db.hr_comp_structure (id, tenant_id, structure_code, structure_name, component_config, description, status) VALUES
+(100, 100000, 'STANDARD', '标准薪资结构', JSON_ARRAY(JSON_OBJECT('componentId',100,'required',true), JSON_OBJECT('componentId',101,'required',false), JSON_OBJECT('componentId',102,'required',false)), '适用于研发与职能员工', 1);
+
+INSERT INTO cloud_flow_db.hr_comp_grade (id, tenant_id, grade_code, grade_name, level_id, min_salary, mid_salary, max_salary, currency, status) VALUES
+(100, 100000, 'P3', 'P3薪级', 102, 15000, 22000, 30000, 'CNY', 1),
+(101, 100000, 'M2', 'M2薪级', 104, 25000, 35000, 45000, 'CNY', 1);
+
+INSERT INTO cloud_flow_db.hr_employee_comp (tenant_id, employee_id, structure_id, grade_id, component_values, total_salary, effective_date, status, create_by, update_by) VALUES
+(100000, 1002, 100, 100, JSON_OBJECT('BASE',16000,'ALLOWANCE',2000,'BONUS',1000), 19000, '2026-02-10', 'ACTIVE', 'admin', 'admin'),
+(100000, 1003, 100, 100, JSON_OBJECT('BASE',20000,'ALLOWANCE',2500,'BONUS',1500), 24000, '2026-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1004, 100, 100, JSON_OBJECT('BASE',15000,'ALLOWANCE',2000,'BONUS',1500), 18500, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1005, 100, 100, JSON_OBJECT('BASE',18500,'ALLOWANCE',2500,'BONUS',1500), 22500, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1006, 100, 100, JSON_OBJECT('BASE',17000,'ALLOWANCE',2500,'BONUS',1500), 21000, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1007, 100, 100, JSON_OBJECT('BASE',13500,'ALLOWANCE',1500,'BONUS',1500), 16500, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1008, 100, 101, JSON_OBJECT('BASE',27000,'ALLOWANCE',3500,'BONUS',1500), 32000, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1009, 100, 100, JSON_OBJECT('BASE',16000,'ALLOWANCE',2000,'BONUS',1500), 19500, '2025-01-01', 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_comp_change (id, tenant_id, change_no, employee_id, change_type, before_total, after_total, change_amount, effective_date, reason, status, create_by, update_by) VALUES
+(8301, 100000, 'HRCG202604010001', 1003, 'PERFORMANCE', 24000, 25500, 1500, '2026-04-01', 'Q1研发效能绩效调薪', 'APPROVED', 'zhao', 'zhao'),
+(8302, 100000, 'HRCG202604010002', 1005, 'PERFORMANCE', 22500, 23500, 1000, '2026-04-01', 'Q1交付支撑绩效调薪', 'APPROVED', 'zhao', 'zhao'),
+(8303, 100000, 'HRCG202605010001', 1008, 'PERFORMANCE', 32000, 33800, 1800, '2026-06-01', '跨部门经营目标阶段绩效调薪', 'APPROVING', 'zhao', 'zhao');
+
+INSERT INTO cloud_flow_db.hr_benefit_scheme (id, tenant_id, scheme_code, scheme_name, city, benefit_config, effective_date, status) VALUES
+(100, 100000, 'SH_STANDARD', '上海标准五险一金', '上海', JSON_OBJECT('pensionCompany',16,'pensionPersonal',8,'medicalCompany',10,'medicalPersonal',2,'fundCompany',7,'fundPersonal',7), '2026-01-01', 1);
+
+INSERT INTO cloud_flow_db.hr_employee_benefit (tenant_id, employee_id, scheme_id, base_amount, effective_date, status, create_by, update_by) VALUES
+(100000, 1002, 100, 19000, '2026-02-10', 'ACTIVE', 'admin', 'admin'),
+(100000, 1003, 100, 24000, '2026-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1004, 100, 18500, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1005, 100, 22500, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1006, 100, 21000, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1007, 100, 16500, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1008, 100, 32000, '2025-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1009, 100, 19500, '2025-01-01', 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_tax_profile (tenant_id, employee_id, tax_residence_city, threshold, tax_config, status) VALUES
+(100000, 1002, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE'),
+(100000, 1003, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE'),
+(100000, 1004, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE'),
+(100000, 1005, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE'),
+(100000, 1006, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE'),
+(100000, 1007, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE'),
+(100000, 1008, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE'),
+(100000, 1009, '上海', 5000, JSON_OBJECT('currency','CNY','year',2026), 'ACTIVE');
+
+INSERT INTO cloud_flow_db.hr_tax_deduction (tenant_id, employee_id, deduction_type, amount, start_date, end_date, status, remark, create_by, update_by) VALUES
+(100000, 1002, 'HOUSING_RENT', 1500, '2026-02-01', NULL, 'ACTIVE', '住房租金专项扣除', 'admin', 'admin'),
+(100000, 1003, 'CONTINUING_EDU', 400, '2026-01-01', NULL, 'ACTIVE', '继续教育专项扣除', 'admin', 'admin'),
+(100000, 1006, 'CHILDREN_EDU', 1000, '2026-01-01', NULL, 'ACTIVE', '子女教育专项扣除', 'admin', 'admin'),
+(100000, 1007, 'HOUSING_RENT', 1500, '2026-01-01', NULL, 'ACTIVE', '住房租金专项扣除', 'admin', 'admin'),
+(100000, 1008, 'MORTGAGE', 1000, '2026-01-01', NULL, 'ACTIVE', '住房贷款利息专项扣除', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_performance_objective (id, tenant_id, objective_no, cycle_name, cycle_start_date, cycle_end_date, objective_name, owner_employee_id, metric_config, status, create_by, update_by) VALUES
+(9001, 100000, 'HRPF2026Q2001', '2026 Q2', '2026-04-01', '2026-06-30', '财务结算准确率提升', 1004,
+ JSON_OBJECT(
+   'totalTargetAmount', 110,
+   'scoreCap', 120,
+   'categoryCodes', JSON_ARRAY('ACCURACY', 'CLOSING'),
+   'categoryDefinitions', JSON_ARRAY(
+     JSON_OBJECT('categoryCode', 'ACCURACY', 'categoryName', '财务准确率'),
+     JSON_OBJECT('categoryCode', 'CLOSING', 'categoryName', '关账时效')
+   ),
+   'metrics', JSON_ARRAY(
+     JSON_OBJECT('metricCode', 'SETTLEMENT_ACCURACY', 'metricName', '结算准确率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 60),
+     JSON_OBJECT('metricCode', 'CLOSE_CYCLE', 'metricName', '关账完成项', 'metricUnit', '个', 'valueType', 'INTEGER', 'precision', 0, 'metricWeight', 40)
+   ),
+   'assignmentMeta', JSON_OBJECT(
+     '9101', JSON_OBJECT('targetAmount', 110, 'actualAmount', 0, 'ownerEmployeeId', 1004),
+     '9102', JSON_OBJECT('categoryCode', 'ACCURACY', 'categoryName', '财务准确率', 'metricCode', 'SETTLEMENT_ACCURACY', 'metricName', '结算准确率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 60, 'targetAmount', 60, 'actualAmount', 0, 'quotaSource', 'MANAGER', 'locked', true),
+     '9103', JSON_OBJECT('targetAmount', 35, 'actualAmount', 0),
+     '9104', JSON_OBJECT('targetAmount', 25, 'actualAmount', 0),
+     '9105', JSON_OBJECT('categoryCode', 'CLOSING', 'categoryName', '关账时效', 'metricCode', 'CLOSE_CYCLE', 'metricName', '关账完成项', 'metricUnit', '个', 'metricValueType', 'INTEGER', 'metricPrecision', 0, 'metricWeight', 40, 'targetAmount', 50, 'actualAmount', 0, 'quotaSource', 'DEPT_OWNER', 'locked', false),
+     '9106', JSON_OBJECT('targetAmount', 20, 'actualAmount', 0),
+     '9107', JSON_OBJECT('targetAmount', 30, 'actualAmount', 0)
+   )
+ ),
+ 'DRAFT', 'zhao', 'zhao'),
+(9002, 100000, 'HRPF2026Q2002', '2026 Q2', '2026-04-01', '2026-06-30', '招聘交付节奏改善', 1001,
+ JSON_OBJECT(
+   'totalTargetAmount', 45,
+   'scoreCap', 120,
+   'categoryCodes', JSON_ARRAY('HIRING', 'RETENTION'),
+   'categoryDefinitions', JSON_ARRAY(
+     JSON_OBJECT('categoryCode', 'HIRING', 'categoryName', '招聘转化'),
+     JSON_OBJECT('categoryCode', 'RETENTION', 'categoryName', '入职留存')
+   ),
+   'metrics', JSON_ARRAY(
+     JSON_OBJECT('metricCode', 'OFFER_ACCEPT_RATE', 'metricName', '录用接受率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 70),
+     JSON_OBJECT('metricCode', 'ONBOARDING_COMPLETION', 'metricName', '入职完成数', 'metricUnit', '人', 'valueType', 'INTEGER', 'precision', 0, 'metricWeight', 30)
+   ),
+   'assignmentMeta', JSON_OBJECT(
+     '9111', JSON_OBJECT('targetAmount', 45, 'actualAmount', 34, 'ownerEmployeeId', 1001),
+     '9112', JSON_OBJECT('categoryCode', 'HIRING', 'categoryName', '招聘转化', 'metricCode', 'OFFER_ACCEPT_RATE', 'metricName', '录用接受率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 70, 'targetAmount', 30, 'actualAmount', 24, 'quotaSource', 'MANAGER', 'locked', true),
+     '9113', JSON_OBJECT('targetAmount', 15, 'actualAmount', 12),
+     '9114', JSON_OBJECT('targetAmount', 15, 'actualAmount', 12),
+     '9115', JSON_OBJECT('categoryCode', 'RETENTION', 'categoryName', '入职留存', 'metricCode', 'ONBOARDING_COMPLETION', 'metricName', '入职完成数', 'metricUnit', '人', 'metricValueType', 'INTEGER', 'metricPrecision', 0, 'metricWeight', 30, 'targetAmount', 15, 'actualAmount', 10, 'quotaSource', 'DEPT_OWNER', 'locked', false),
+     '9116', JSON_OBJECT('targetAmount', 7, 'actualAmount', 5),
+     '9117', JSON_OBJECT('targetAmount', 8, 'actualAmount', 5)
+   )
+ ),
+ 'PLAN_APPROVING', 'zhao', 'zhao'),
+(9003, 100000, 'HRPF2026Q1001', '2026 Q1', '2026-01-01', '2026-03-31', '研发效能归档复盘', 1008,
+ JSON_OBJECT(
+   'totalTargetAmount', 100,
+   'scoreCap', 120,
+   'categoryCodes', JSON_ARRAY('QUALITY', 'DELIVERY'),
+   'categoryDefinitions', JSON_ARRAY(
+     JSON_OBJECT('categoryCode', 'QUALITY', 'categoryName', '质量改进'),
+     JSON_OBJECT('categoryCode', 'DELIVERY', 'categoryName', '交付效率')
+   ),
+   'metrics', JSON_ARRAY(
+     JSON_OBJECT('metricCode', 'DEFECT_CLOSE_RATE', 'metricName', '缺陷关闭率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 55),
+     JSON_OBJECT('metricCode', 'ON_TIME_RATE', 'metricName', '交付准时率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 45)
+   ),
+   'assignmentMeta', JSON_OBJECT(
+     '9121', JSON_OBJECT('targetAmount', 100, 'actualAmount', 92, 'ownerEmployeeId', 1008),
+     '9122', JSON_OBJECT('categoryCode', 'QUALITY', 'categoryName', '质量改进', 'metricCode', 'DEFECT_CLOSE_RATE', 'metricName', '缺陷关闭率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 55, 'targetAmount', 55, 'actualAmount', 52, 'quotaSource', 'MANAGER', 'locked', true),
+     '9123', JSON_OBJECT('targetAmount', 25, 'actualAmount', 24),
+     '9124', JSON_OBJECT('targetAmount', 30, 'actualAmount', 28),
+     '9125', JSON_OBJECT('categoryCode', 'DELIVERY', 'categoryName', '交付效率', 'metricCode', 'ON_TIME_RATE', 'metricName', '交付准时率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 45, 'targetAmount', 45, 'actualAmount', 40, 'quotaSource', 'MANAGER', 'locked', true),
+     '9126', JSON_OBJECT('targetAmount', 20, 'actualAmount', 18),
+     '9127', JSON_OBJECT('targetAmount', 25, 'actualAmount', 22)
+   )
+ ),
+ 'COMPLETED', 'zhao', 'zhao'),
+(9004, 100000, 'HRPF2026Q2004', '2026 Q2', '2026-04-01', '2026-06-30', '交付与回款联动复盘', 1008,
+ JSON_OBJECT(
+   'totalTargetAmount', 120,
+   'scoreCap', 120,
+   'categoryCodes', JSON_ARRAY('DELIVERY', 'CASH'),
+   'categoryDefinitions', JSON_ARRAY(
+     JSON_OBJECT('categoryCode', 'DELIVERY', 'categoryName', '交付验收'),
+     JSON_OBJECT('categoryCode', 'CASH', 'categoryName', '回款匹配')
+   ),
+   'metrics', JSON_ARRAY(
+     JSON_OBJECT('metricCode', 'PROJECT_ACCEPTANCE_RATE', 'metricName', '项目验收率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 60),
+     JSON_OBJECT('metricCode', 'COLLECTION_MATCH_RATE', 'metricName', '回款匹配率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 40)
+   ),
+   'assignmentMeta', JSON_OBJECT(
+     '9131', JSON_OBJECT('targetAmount', 70, 'actualAmount', 63, 'ownerEmployeeId', 1008),
+     '9132', JSON_OBJECT('categoryCode', 'DELIVERY', 'categoryName', '交付验收', 'metricCode', 'PROJECT_ACCEPTANCE_RATE', 'metricName', '项目验收率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 60, 'targetAmount', 70, 'actualAmount', 63, 'quotaSource', 'MANAGER', 'locked', true),
+     '9133', JSON_OBJECT('targetAmount', 30, 'actualAmount', 28),
+     '9134', JSON_OBJECT('targetAmount', 40, 'actualAmount', 35),
+     '9135', JSON_OBJECT('targetAmount', 50, 'actualAmount', 41, 'ownerEmployeeId', 1004),
+     '9136', JSON_OBJECT('categoryCode', 'CASH', 'categoryName', '回款匹配', 'metricCode', 'COLLECTION_MATCH_RATE', 'metricName', '回款匹配率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 40, 'targetAmount', 50, 'actualAmount', 41, 'quotaSource', 'MANAGER', 'locked', true),
+     '9137', JSON_OBJECT('targetAmount', 28, 'actualAmount', 23),
+     '9138', JSON_OBJECT('targetAmount', 22, 'actualAmount', 18)
+   )
+ ),
+ 'RESULT_APPROVING', 'zhao', 'zhao'),
+(9010, 100000, 'HRPF2026Q2010', '2026 Q2', '2026-04-01', '2026-06-30', '跨部门经营指标攻坚', 1008,
+ JSON_OBJECT(
+   'totalTargetAmount', 385,
+   'scoreCap', 130,
+   'categoryCodes', JSON_ARRAY('QUALITY', 'DELIVERY', 'TALENT'),
+   'categoryDefinitions', JSON_ARRAY(
+     JSON_OBJECT('categoryCode', 'QUALITY', 'categoryName', '质量改进'),
+     JSON_OBJECT('categoryCode', 'DELIVERY', 'categoryName', '交付效率'),
+     JSON_OBJECT('categoryCode', 'TALENT', 'categoryName', '人才发展')
+   ),
+   'metrics', JSON_ARRAY(
+     JSON_OBJECT('metricCode', 'DEFECT_CLOSE_RATE', 'metricName', '缺陷关闭率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 35),
+     JSON_OBJECT('metricCode', 'ON_TIME_RATE', 'metricName', '交付准时率', 'metricUnit', '%', 'valueType', 'PERCENT', 'precision', 2, 'metricWeight', 40),
+     JSON_OBJECT('metricCode', 'TRAINING_COVERAGE', 'metricName', '培训覆盖人数', 'metricUnit', '人', 'valueType', 'INTEGER', 'precision', 0, 'metricWeight', 25)
+   ),
+   'assignmentMeta', JSON_OBJECT(
+     '9151', JSON_OBJECT('targetAmount', 220, 'actualAmount', 187, 'ownerEmployeeId', 1008),
+     '9152', JSON_OBJECT('categoryCode', 'QUALITY', 'categoryName', '质量改进', 'metricCode', 'DEFECT_CLOSE_RATE', 'metricName', '缺陷关闭率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 35, 'targetAmount', 75, 'actualAmount', 63, 'quotaSource', 'MANAGER', 'locked', true),
+     '9153', JSON_OBJECT('targetAmount', 35, 'actualAmount', 30),
+     '9154', JSON_OBJECT('targetAmount', 40, 'actualAmount', 33),
+     '9155', JSON_OBJECT('categoryCode', 'DELIVERY', 'categoryName', '交付效率', 'metricCode', 'ON_TIME_RATE', 'metricName', '交付准时率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 40, 'targetAmount', 85, 'actualAmount', 71, 'quotaSource', 'MANAGER', 'locked', true),
+     '9156', JSON_OBJECT('targetAmount', 45, 'actualAmount', 37),
+     '9157', JSON_OBJECT('targetAmount', 40, 'actualAmount', 34),
+     '9158', JSON_OBJECT('categoryCode', 'TALENT', 'categoryName', '人才发展', 'metricCode', 'TRAINING_COVERAGE', 'metricName', '培训覆盖人数', 'metricUnit', '人', 'metricValueType', 'INTEGER', 'metricPrecision', 0, 'metricWeight', 25, 'targetAmount', 60, 'actualAmount', 53, 'quotaSource', 'DEPT_OWNER', 'locked', false),
+     '9159', JSON_OBJECT('targetAmount', 25, 'actualAmount', 22),
+     '9160', JSON_OBJECT('targetAmount', 35, 'actualAmount', 31),
+     '9161', JSON_OBJECT('targetAmount', 120, 'actualAmount', 101, 'ownerEmployeeId', 1004),
+     '9162', JSON_OBJECT('categoryCode', 'QUALITY', 'categoryName', '质量改进', 'metricCode', 'DEFECT_CLOSE_RATE', 'metricName', '缺陷关闭率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 35, 'targetAmount', 40, 'actualAmount', 34, 'quotaSource', 'MANAGER', 'locked', true),
+     '9163', JSON_OBJECT('targetAmount', 20, 'actualAmount', 17),
+     '9164', JSON_OBJECT('targetAmount', 20, 'actualAmount', 17),
+     '9165', JSON_OBJECT('categoryCode', 'DELIVERY', 'categoryName', '交付效率', 'metricCode', 'ON_TIME_RATE', 'metricName', '交付准时率', 'metricUnit', '%', 'metricValueType', 'PERCENT', 'metricPrecision', 2, 'metricWeight', 40, 'targetAmount', 45, 'actualAmount', 37, 'quotaSource', 'DEPT_OWNER', 'locked', false),
+     '9166', JSON_OBJECT('targetAmount', 20, 'actualAmount', 16),
+     '9167', JSON_OBJECT('targetAmount', 25, 'actualAmount', 21),
+     '9168', JSON_OBJECT('categoryCode', 'TALENT', 'categoryName', '人才发展', 'metricCode', 'TRAINING_COVERAGE', 'metricName', '培训覆盖人数', 'metricUnit', '人', 'metricValueType', 'INTEGER', 'metricPrecision', 0, 'metricWeight', 25, 'targetAmount', 35, 'actualAmount', 30, 'quotaSource', 'DEPT_OWNER', 'locked', false),
+     '9169', JSON_OBJECT('targetAmount', 15, 'actualAmount', 13),
+     '9170', JSON_OBJECT('targetAmount', 20, 'actualAmount', 17),
+     '9171', JSON_OBJECT('targetAmount', 45, 'actualAmount', 39, 'ownerEmployeeId', 1001),
+     '9172', JSON_OBJECT('categoryCode', 'TALENT', 'categoryName', '人才发展', 'metricCode', 'TRAINING_COVERAGE', 'metricName', '培训覆盖人数', 'metricUnit', '人', 'metricValueType', 'INTEGER', 'metricPrecision', 0, 'metricWeight', 25, 'targetAmount', 45, 'actualAmount', 39, 'quotaSource', 'MANAGER', 'locked', true),
+     '9173', JSON_OBJECT('targetAmount', 20, 'actualAmount', 17),
+     '9174', JSON_OBJECT('targetAmount', 25, 'actualAmount', 22)
+   )
+ ),
+ 'PLAN_APPROVED', 'zhao', 'zhao');
+
+INSERT INTO cloud_flow_db.hr_performance_assignment (id, tenant_id, objective_id, parent_id, assignee_type, assignee_id, assignee_name, target_value, actual_value, weight, status) VALUES
+(9101, 100000, 9001, NULL, 'DEPT', 102, '财务部', 110, 0, 100, 'ACTIVE'),
+(9102, 100000, 9001, 9101, 'DEPT', 102, '财务部', 60, 0, 60, 'ACTIVE'),
+(9103, 100000, 9001, 9102, 'EMPLOYEE', 1004, '王财务', 35, 0, 60, 'ACTIVE'),
+(9104, 100000, 9001, 9102, 'EMPLOYEE', 1006, '数据分析', 25, 0, 60, 'ACTIVE'),
+(9105, 100000, 9001, 9101, 'DEPT', 102, '财务部', 50, 0, 40, 'ACTIVE'),
+(9106, 100000, 9001, 9105, 'EMPLOYEE', 1004, '王财务', 20, 0, 40, 'ACTIVE'),
+(9107, 100000, 9001, 9105, 'EMPLOYEE', 1006, '数据分析', 30, 0, 40, 'ACTIVE'),
+(9111, 100000, 9002, NULL, 'DEPT', 103, '人力资源部', 45, 34, 100, 'ACTIVE'),
+(9112, 100000, 9002, 9111, 'DEPT', 103, '人力资源部', 30, 24, 70, 'ACTIVE'),
+(9113, 100000, 9002, 9112, 'EMPLOYEE', 1001, '赵HR', 15, 12, 70, 'ACTIVE'),
+(9114, 100000, 9002, 9112, 'EMPLOYEE', 1007, '招聘专员', 15, 12, 70, 'ACTIVE'),
+(9115, 100000, 9002, 9111, 'DEPT', 103, '人力资源部', 15, 10, 30, 'ACTIVE'),
+(9116, 100000, 9002, 9115, 'EMPLOYEE', 1001, '赵HR', 7, 5, 30, 'ACTIVE'),
+(9117, 100000, 9002, 9115, 'EMPLOYEE', 1007, '招聘专员', 8, 5, 30, 'ACTIVE'),
+(9121, 100000, 9003, NULL, 'DEPT', 101, '研发部', 100, 92, 100, 'ACTIVE'),
+(9122, 100000, 9003, 9121, 'DEPT', 101, '研发部', 55, 52, 55, 'ACTIVE'),
+(9123, 100000, 9003, 9122, 'EMPLOYEE', 1002, '前端测试', 25, 24, 55, 'ACTIVE'),
+(9124, 100000, 9003, 9122, 'EMPLOYEE', 1003, '后端测试', 30, 28, 55, 'ACTIVE'),
+(9125, 100000, 9003, 9121, 'DEPT', 101, '研发部', 45, 40, 45, 'ACTIVE'),
+(9126, 100000, 9003, 9125, 'EMPLOYEE', 1003, '后端测试', 20, 18, 45, 'ACTIVE'),
+(9127, 100000, 9003, 9125, 'EMPLOYEE', 1005, '测试开发', 25, 22, 45, 'ACTIVE'),
+(9131, 100000, 9004, NULL, 'DEPT', 101, '研发部', 70, 63, 100, 'ACTIVE'),
+(9132, 100000, 9004, 9131, 'DEPT', 101, '研发部', 70, 63, 60, 'ACTIVE'),
+(9133, 100000, 9004, 9132, 'EMPLOYEE', 1003, '后端测试', 30, 28, 60, 'ACTIVE'),
+(9134, 100000, 9004, 9132, 'EMPLOYEE', 1008, '交付经理', 40, 35, 60, 'ACTIVE'),
+(9135, 100000, 9004, NULL, 'DEPT', 102, '财务部', 50, 41, 100, 'ACTIVE'),
+(9136, 100000, 9004, 9135, 'DEPT', 102, '财务部', 50, 41, 40, 'ACTIVE'),
+(9137, 100000, 9004, 9136, 'EMPLOYEE', 1004, '王财务', 28, 23, 40, 'ACTIVE'),
+(9138, 100000, 9004, 9136, 'EMPLOYEE', 1006, '数据分析', 22, 18, 40, 'ACTIVE'),
+(9151, 100000, 9010, NULL, 'DEPT', 101, '研发部', 220, 187, 100, 'ACTIVE'),
+(9152, 100000, 9010, 9151, 'DEPT', 101, '研发部', 75, 63, 35, 'ACTIVE'),
+(9153, 100000, 9010, 9152, 'EMPLOYEE', 1002, '前端测试', 35, 30, 35, 'ACTIVE'),
+(9154, 100000, 9010, 9152, 'EMPLOYEE', 1003, '后端测试', 40, 33, 35, 'ACTIVE'),
+(9155, 100000, 9010, 9151, 'DEPT', 101, '研发部', 85, 71, 40, 'ACTIVE'),
+(9156, 100000, 9010, 9155, 'EMPLOYEE', 1003, '后端测试', 45, 37, 40, 'ACTIVE'),
+(9157, 100000, 9010, 9155, 'EMPLOYEE', 1008, '交付经理', 40, 34, 40, 'ACTIVE'),
+(9158, 100000, 9010, 9151, 'DEPT', 101, '研发部', 60, 53, 25, 'ACTIVE'),
+(9159, 100000, 9010, 9158, 'EMPLOYEE', 1005, '测试开发', 25, 22, 25, 'ACTIVE'),
+(9160, 100000, 9010, 9158, 'EMPLOYEE', 1009, '质量专员', 35, 31, 25, 'ACTIVE'),
+(9161, 100000, 9010, NULL, 'DEPT', 102, '财务部', 120, 101, 100, 'ACTIVE'),
+(9162, 100000, 9010, 9161, 'DEPT', 102, '财务部', 40, 34, 35, 'ACTIVE'),
+(9163, 100000, 9010, 9162, 'EMPLOYEE', 1004, '王财务', 20, 17, 35, 'ACTIVE'),
+(9164, 100000, 9010, 9162, 'EMPLOYEE', 1006, '数据分析', 20, 17, 35, 'ACTIVE'),
+(9165, 100000, 9010, 9161, 'DEPT', 102, '财务部', 45, 37, 40, 'ACTIVE'),
+(9166, 100000, 9010, 9165, 'EMPLOYEE', 1004, '王财务', 20, 16, 40, 'ACTIVE'),
+(9167, 100000, 9010, 9165, 'EMPLOYEE', 1006, '数据分析', 25, 21, 40, 'ACTIVE'),
+(9168, 100000, 9010, 9161, 'DEPT', 102, '财务部', 35, 30, 25, 'ACTIVE'),
+(9169, 100000, 9010, 9168, 'EMPLOYEE', 1006, '数据分析', 15, 13, 25, 'ACTIVE'),
+(9170, 100000, 9010, 9168, 'EMPLOYEE', 1004, '王财务', 20, 17, 25, 'ACTIVE'),
+(9171, 100000, 9010, NULL, 'DEPT', 103, '人力资源部', 45, 39, 100, 'ACTIVE'),
+(9172, 100000, 9010, 9171, 'DEPT', 103, '人力资源部', 45, 39, 25, 'ACTIVE'),
+(9173, 100000, 9010, 9172, 'EMPLOYEE', 1001, '赵HR', 20, 17, 25, 'ACTIVE'),
+(9174, 100000, 9010, 9172, 'EMPLOYEE', 1007, '招聘专员', 25, 22, 25, 'ACTIVE');
+
+INSERT INTO cloud_flow_db.hr_performance_result (id, tenant_id, objective_id, assignment_id, employee_id, score, grade, summary, status) VALUES
+(9201, 100000, 9003, 9123, 1002, 92, 'A', '前端质量任务达成 96%，返工率和提测缺陷均低于预警值。', 'APPROVED'),
+(9202, 100000, 9003, 9124, 1003, 93, 'A', '后端缺陷关闭节奏稳定，线上故障复盘闭环及时。', 'APPROVED'),
+(9203, 100000, 9003, 9126, 1003, 88, 'B+', '交付准时率达成 90%，关键里程碑按期完成。', 'APPROVED'),
+(9204, 100000, 9003, 9127, 1005, 86, 'B+', '测试开发支撑效率稳定，自动化脚本覆盖率持续提升。', 'APPROVED'),
+(9205, 100000, 9004, 9133, 1003, 89, 'B+', '项目验收材料齐套，跨团队交接顺畅。', 'SUBMITTED'),
+(9206, 100000, 9004, 9134, 1008, 90, 'A', '交付推进节奏稳定，客户里程碑确认及时。', 'SUBMITTED'),
+(9207, 100000, 9004, 9137, 1004, 84, 'B', '回款核销准确，但账龄压降仍有空间。', 'SUBMITTED'),
+(9208, 100000, 9004, 9138, 1006, 82, 'B', '数据台账维护完整，回款匹配支撑及时。', 'SUBMITTED');
+
+INSERT INTO cloud_flow_db.hr_performance_salary_adjustment (id, tenant_id, objective_id, employee_id, comp_change_id, adjustment_amount, reason, status) VALUES
+(9301, 100000, 9003, 1003, 8301, 1500, 'Q1研发效能归档后触发绩效调薪建议', 'APPROVED'),
+(9302, 100000, 9003, 1005, 8302, 1000, 'Q1交付支撑表现稳定，触发绩效调薪建议', 'APPROVED'),
+(9303, 100000, 9010, 1008, 8303, 1800, '跨部门经营指标阶段达成，生成绩效调薪申请', 'DRAFT');
