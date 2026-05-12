@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { crmApi, CrmContact, CrmCustomer, CrmDashboardSummary, CrmFollowUp, CrmOpportunity, CrmOpportunityBoardCard, CrmOpportunityBoardColumn, CrmQuote, CrmReceivable, CrmRenewal, CrmTicket } from '@/services/api/crm';
 import { contractApi, OaContract } from '@/services/api/contractRisk';
@@ -1331,13 +1331,13 @@ export default function CrmManagementPage() {
       <TablePageLayout
         filters={filterBar}
         table={(
-          <div className="overflow-x-auto">
-            {tab === 'customer' ? renderCustomerTable() : null}
-            {tab === 'quote' ? renderQuoteTable() : null}
+          <>
+            {tab === 'customer' ? <TableSurfaceCard className="overflow-x-auto">{renderCustomerTable()}</TableSurfaceCard> : null}
+            {tab === 'quote' ? <TableSurfaceCard className="overflow-x-auto">{renderQuoteTable()}</TableSurfaceCard> : null}
             {tab === 'receivable' ? renderReceivableTable() : null}
             {tab === 'renewal' ? renderRenewalTable() : null}
-            {tab === 'ticket' ? renderTicketTable() : null}
-          </div>
+            {tab === 'ticket' ? <TableSurfaceCard className="overflow-x-auto">{renderTicketTable()}</TableSurfaceCard> : null}
+          </>
         )}
       />
       )}

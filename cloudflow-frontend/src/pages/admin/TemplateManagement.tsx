@@ -14,7 +14,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination, TableRowActions } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -628,7 +628,7 @@ export const TemplateManagement: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="grid min-h-[620px] grid-cols-1 xl:grid-cols-[248px_minmax(0,1fr)]">
             <div className="border-b border-slate-200 xl:border-b-0 xl:border-r dark:border-slate-800">
               <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2.5 dark:border-slate-800">
@@ -812,7 +812,7 @@ export const TemplateManagement: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           <Pagination
             total={total}

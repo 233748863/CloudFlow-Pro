@@ -9,7 +9,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -406,7 +406,7 @@ export const HrEmployeePage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="grid h-full min-h-[720px] xl:grid-cols-[minmax(0,1.3fr)_minmax(400px,0.94fr)]">
             <div className="min-w-0 xl:border-r xl:border-slate-200 dark:xl:border-slate-800">
               <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
@@ -545,7 +545,7 @@ export const HrEmployeePage: React.FC = () => {
               />
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
       />
 
       <BaseDialog

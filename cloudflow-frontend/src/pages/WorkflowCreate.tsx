@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight, Layers3, PenTool } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button } from '@/components/common';
 
 type CreationDetail = {
@@ -79,8 +79,7 @@ export const WorkflowCreate: React.FC = () => {
           选择流程创建方式
         </div>
       }
-      table={
-        <div className="divide-y divide-slate-200 dark:divide-slate-800">
+      table={(<TableSurfaceCard><div className="divide-y divide-slate-200 dark:divide-slate-800">
           {creationOptions.map((option) => {
             const Icon = option.icon;
 
@@ -135,8 +134,7 @@ export const WorkflowCreate: React.FC = () => {
               </section>
             );
           })}
-        </div>
-      }
+        </div></TableSurfaceCard>)}
     />
   );
 };

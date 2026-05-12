@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, LoadingSpinner, Switch } from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
@@ -280,8 +280,7 @@ const WorkflowMonitor: React.FC = () => {
             </div>
           </div>
         }
-        table={
-          <div className="grid min-h-full xl:grid-cols-[minmax(0,1fr)_284px]">
+        table={(<TableSurfaceCard><div className="grid min-h-full xl:grid-cols-[minmax(0,1fr)_284px]">
             <div className="divide-y divide-slate-200 dark:divide-slate-800">
               <section className="p-5 sm:p-6">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -427,8 +426,7 @@ const WorkflowMonitor: React.FC = () => {
                 </div>
               </section>
             </aside>
-          </div>
-        }
+          </div></TableSurfaceCard>)}
       />
   );
 };

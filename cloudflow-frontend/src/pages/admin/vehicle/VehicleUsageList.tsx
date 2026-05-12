@@ -24,7 +24,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -776,7 +776,7 @@ const VehicleUsageList: React.FC = () => {
             </div>
           </div>
         }
-        table={activeTab === 'usage' ? usageTable : expenseTable}
+        table={(<TableSurfaceCard>{activeTab === 'usage' ? usageTable : expenseTable}</TableSurfaceCard>)}
         pagination={activeTab === 'usage'
           ? (usageTotal > 0 ? <Pagination total={usageTotal} page={usageQuery.pageNum} pageSize={usageQuery.pageSize} onPageChange={(page) => setUsageQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setUsageQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : undefined)
           : expenseTotal > 0 ? <Pagination total={expenseTotal} page={expenseQuery.pageNum} pageSize={expenseQuery.pageSize} onPageChange={(page) => setExpenseQuery((prev) => ({ ...prev, pageNum: page }))} onPageSizeChange={(pageSize) => setExpenseQuery((prev) => ({ ...prev, pageNum: 1, pageSize }))} /> : undefined}

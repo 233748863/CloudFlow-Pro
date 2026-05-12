@@ -36,7 +36,7 @@ import {
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { BaseDialog } from '@/components/common/BaseDialog';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { WorkflowDefinition as BaseWorkflowDefinition } from '../../types';
 import { 
   getProcessDefinitions, 
@@ -868,7 +868,7 @@ export const ProcessManagement = () => {
             ) : null}
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <>
             {selectedIds.length > 0 ? (
               <div className="border-b border-slate-200 px-4 py-2 dark:border-slate-800">
@@ -1070,7 +1070,7 @@ export const ProcessManagement = () => {
               </Table>
             </div>
           </>
-        )}
+        </TableSurfaceCard>)}
       />
 
       <BaseDialog

@@ -3,7 +3,7 @@ import { BadgeCheck, Clock3, Edit, Eye, Plus, RotateCcw, Send, Trash2, XCircle }
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import FileUpload from '@/components/FileUpload';
 import { licenseApi, licenseBorrowApi, OaLicense, OaLicenseBorrow } from '@/services/api/sealLicense';
@@ -241,7 +241,7 @@ export const LicenseBorrowPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1160px]">
@@ -300,7 +300,7 @@ export const LicenseBorrowPage: React.FC = () => {
               </table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={total > 0 ? (
           <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} showPageSizeSelector={false} showJump={false} onPageChange={(pageNum) => setQuery((prev) => ({ ...prev, pageNum }))} onPageSizeChange={() => {}} />
         ) : null}

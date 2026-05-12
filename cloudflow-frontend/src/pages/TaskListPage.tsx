@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/common';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import { useAuth } from '@/context/AuthContext';
 import { usePolling } from '../hooks/usePolling';
@@ -924,7 +924,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex flex-col">
             <div className="flex flex-col gap-2 border-b border-slate-200 px-4 py-3 lg:flex-row lg:items-center lg:justify-between dark:border-slate-800">
               <div>
@@ -1041,7 +1041,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
               )}
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={
           centerMode !== 'pending' && total > PAGE_SIZE ? (
             <Pagination

@@ -18,7 +18,7 @@ import {
   SysLogQuery,
 } from '@/services/api/log';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -494,7 +494,7 @@ export const OperationLogPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="divide-y divide-slate-200 dark:divide-slate-800">
             <section className="p-5 sm:p-6">
               <div className="flex flex-wrap items-start justify-between gap-3">
@@ -636,7 +636,7 @@ export const OperationLogPage: React.FC = () => {
               </div>
             </section>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

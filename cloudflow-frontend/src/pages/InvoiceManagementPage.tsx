@@ -8,7 +8,7 @@ import { contractApi, OaContract } from '@/services/api/contractRisk';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 
@@ -308,7 +308,7 @@ export default function InvoiceManagementPage() {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
             <table className="w-full min-w-[1360px]">
               <TableHeader>
@@ -379,7 +379,7 @@ export default function InvoiceManagementPage() {
               </tbody>
             </table>
           </div>
-        )}
+        </TableSurfaceCard>)}
       />
 
       <BaseDialog

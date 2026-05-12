@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import {
   Button,
@@ -487,7 +487,7 @@ const VehicleList: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="px-4 pt-4">
               {selectedIds.length > 0 ? (
@@ -666,7 +666,7 @@ const VehicleList: React.FC = () => {
               </Table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={total > 0 ? (
           <Pagination
             total={total}

@@ -14,7 +14,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -523,8 +523,7 @@ export const MenuList = () => {
             </div>
           </div>
         }
-        table={
-          <>
+        table={(<TableSurfaceCard><>
             <Table className="min-w-[1080px]">
               <TableHeader>
                 <TableRow>
@@ -549,8 +548,7 @@ export const MenuList = () => {
                 )}
               </TableBody>
             </Table>
-          </>
-        }
+          </></TableSurfaceCard>)}
       />
 
       <BaseDialog

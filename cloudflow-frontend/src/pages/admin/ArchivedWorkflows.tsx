@@ -15,7 +15,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -352,7 +352,7 @@ export const ArchivedWorkflows: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <>
             {selectedIds.length > 0 ? (
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-2 dark:border-slate-800">
@@ -499,7 +499,7 @@ export const ArchivedWorkflows: React.FC = () => {
               </Table>
             </div>
           </>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           <Pagination
             total={total}

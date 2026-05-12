@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import {
@@ -359,7 +359,7 @@ export const DutySchedulePage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <Table className="min-w-[1080px]">
@@ -455,7 +455,7 @@ export const DutySchedulePage: React.FC = () => {
               </Table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

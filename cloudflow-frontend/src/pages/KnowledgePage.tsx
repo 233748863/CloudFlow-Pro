@@ -21,7 +21,7 @@ import {
   AnnouncementTargetingEditor,
   type DeptItem,
 } from '@/components/admin/announcements';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   ConfirmDialog,
@@ -700,7 +700,7 @@ const KnowledgePage: React.FC = () => {
       <TablePageLayout
         className="gap-4"
         filters={renderFilters}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1180px]">
@@ -735,7 +735,7 @@ const KnowledgePage: React.FC = () => {
               </table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={viewMode !== 'library' ? (
           <Pagination
             page={pageNum}

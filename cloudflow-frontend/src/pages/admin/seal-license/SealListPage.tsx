@@ -6,7 +6,7 @@ import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import FileUpload from '@/components/FileUpload';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { OaSeal, OaSealRenewal, sealApi, sealRenewalApi } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
 import type { UserBrief } from '@/types/workflow';
@@ -392,7 +392,7 @@ export const SealListPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1180px]">
@@ -452,7 +452,7 @@ export const SealListPage: React.FC = () => {
               </table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={total > 0 ? (
           <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} showPageSizeSelector={false} showJump={false} onPageChange={(pageNum) => setQuery((prev) => ({ ...prev, pageNum }))} onPageSizeChange={() => {}} />
         ) : null}

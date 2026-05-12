@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 import { ConfirmDialog, ModalOverlay } from '@/components/common';
 import { toBackendDateString } from '../utils/dateFormat';
 import { Button, DatePicker, Input, SegmentedControl, SegmentedControlItem, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Textarea, TableHead, TableHeader } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 
 // ==================== 类型定义 ====================
@@ -1510,13 +1510,13 @@ export const MeetingRoomPage = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col p-4 sm:p-5">
             {activeTab === 'rooms' ? renderRoomsView() : null}
             {activeTab === 'my-bookings' ? renderMyBookingsView() : null}
             {activeTab === 'stats' ? renderStatsView() : null}
           </div>
-        )}
+        </TableSurfaceCard>)}
       />
 
       {/* 预订弹窗 */}

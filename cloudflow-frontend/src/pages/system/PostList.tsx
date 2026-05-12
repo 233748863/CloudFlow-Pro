@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { addPost, deletePost, getPostList, updatePost, type SysPost } from '../../services/api/system';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -351,7 +351,7 @@ export const PostList = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <>
             <div className="overflow-x-auto">
               <Table className="min-w-[920px]">
@@ -429,7 +429,7 @@ export const PostList = () => {
               </Table>
             </div>
           </>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

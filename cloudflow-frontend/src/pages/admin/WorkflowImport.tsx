@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   ImportResult,
   ValidationResult,
@@ -664,7 +664,7 @@ export const WorkflowImport: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <>
             <div className="border-b border-slate-200 px-4 py-2.5 dark:border-slate-800">
               <div className="flex flex-col gap-2.5 xl:flex-row xl:items-center xl:justify-between">
@@ -750,7 +750,7 @@ export const WorkflowImport: React.FC = () => {
               ) : null}
             </div>
           </>
-        )}
+        </TableSurfaceCard>)}
       />
   );
 };

@@ -3,7 +3,7 @@ import { CheckCircle2, Clock3, Plus, RotateCcw, Search, ShieldAlert, UserPlus, X
 import { toast } from 'sonner';
 import { BaseDialog, Button, Input, Label, Pagination, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableActionHead, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { contractApi, OaContract, OaRiskAlert, RiskStats, riskApi, RiskStatus } from '@/services/api/contractRisk';
 import { OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
 import { getVehicleList, SysVehicle } from '@/services/api/vehicle';
@@ -459,7 +459,7 @@ export const RiskAlertPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <Table className="min-w-[1120px]">
@@ -515,7 +515,7 @@ export const RiskAlertPage: React.FC = () => {
               </Table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={total > 0 ? (
           <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} showPageSizeSelector={false} showJump={false} onPageChange={(pageNum) => setQuery((prev) => ({ ...prev, pageNum }))} onPageSizeChange={() => {}} />
         ) : null}

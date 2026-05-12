@@ -21,7 +21,7 @@ import {
   Users,
   Wallet,
 } from 'lucide-react';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, Input } from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
@@ -568,7 +568,7 @@ export const HrDashboardPage: React.FC = () => {
           </div>
         </div>
       )}
-      table={(
+      table={(<TableSurfaceCard>
         <div className="grid min-h-[640px] gap-0 xl:grid-cols-[minmax(0,1.45fr)_minmax(360px,0.95fr)]">
           <div className="min-w-0 xl:border-r xl:border-slate-200 dark:xl:border-slate-800">
             <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
@@ -685,7 +685,7 @@ export const HrDashboardPage: React.FC = () => {
             </section>
           </div>
         </div>
-      )}
+      </TableSurfaceCard>)}
     />
   );
 };

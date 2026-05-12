@@ -13,7 +13,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -657,8 +657,7 @@ export const RoleList = () => {
             </div>
           </div>
         }
-        table={
-          <>
+        table={(<TableSurfaceCard><>
             <Table className="min-w-[980px]">
               <TableHeader>
                 <TableRow>
@@ -758,8 +757,7 @@ export const RoleList = () => {
                 )}
               </TableBody>
             </Table>
-          </>
-        }
+          </></TableSurfaceCard>)}
         pagination={
           total > 0 ? (
             <Pagination

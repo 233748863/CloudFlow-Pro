@@ -23,7 +23,7 @@ import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { ProcessTrace } from '@/components/ProcessTrace';
 import {
   Button,
@@ -667,7 +667,7 @@ export const LeaveApplicationPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[36rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px]">
@@ -760,7 +760,7 @@ export const LeaveApplicationPage: React.FC = () => {
               </table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

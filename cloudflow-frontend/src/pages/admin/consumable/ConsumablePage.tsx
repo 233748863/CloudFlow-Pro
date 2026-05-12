@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { BaseDialog } from "@/components/common/BaseDialog";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Pagination } from "@/components/common/Pagination";
-import { TablePageLayout } from "@/components/layout/TablePageLayout";
+import { TablePageLayout, TableSurfaceCard } from "@/components/layout/TablePageLayout";
 import {
   Button,
   DatePicker,
@@ -368,8 +368,7 @@ const ConsumablePage: React.FC = () => {
             </div>
           </div>
         }
-        table={
-          <div className="min-h-[38rem] overflow-x-auto">
+        table={(<TableSurfaceCard><div className="min-h-[38rem] overflow-x-auto">
             <table className="w-full min-w-[980px]">
               <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
                 <tr>
@@ -516,8 +515,7 @@ const ConsumablePage: React.FC = () => {
                 )}
               </tbody>
             </table>
-          </div>
-        }
+          </div></TableSurfaceCard>)}
         pagination={
           total > 0 ? (
             <Pagination

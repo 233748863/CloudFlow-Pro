@@ -48,7 +48,7 @@ import {
 import { BaseDialog } from '@/components/common';
 import { Pagination } from '@/components/common/Pagination';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { useAuth } from '@/context/AuthContext';
 import { createEvent, deleteEvent, getMeetingRooms, getMyEvents } from '../services/api/schedule';
 import type { MeetingRoom, SysScheduleEvent } from '../types';
@@ -919,8 +919,7 @@ export const SchedulePage = () => {
             </div>
           </div>
         }
-        table={
-          <div className="flex min-h-[44rem] flex-col">
+        table={(<TableSurfaceCard><div className="flex min-h-[44rem] flex-col">
             <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
@@ -1258,8 +1257,7 @@ export const SchedulePage = () => {
                 </div>
               ) : null}
             </div>
-          </div>
-        }
+          </div></TableSurfaceCard>)}
       />
 
       <BaseDialog

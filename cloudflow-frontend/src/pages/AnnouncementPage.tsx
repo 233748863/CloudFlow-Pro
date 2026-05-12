@@ -4,7 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { AnnouncementManageView } from '@/components/admin/announcements';
 import { AnnouncementDetailModal, AnnouncementListItem } from '@/components/common';
 import '@/components/common/announcement-overlays.css';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import {
@@ -165,7 +165,7 @@ export const AnnouncementPage = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[36rem] flex-col">
             {loading ? (
               <InlineState
@@ -193,7 +193,7 @@ export const AnnouncementPage = () => {
               />
             )}
           </div>
-        )}
+        </TableSurfaceCard>)}
       />
 
       <AnnouncementDetailModal

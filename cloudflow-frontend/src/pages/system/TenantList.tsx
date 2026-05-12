@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   DatePicker,
@@ -523,8 +523,7 @@ export const TenantList: React.FC = () => {
             </div>
           </div>
         }
-        table={
-          <>
+        table={(<TableSurfaceCard><>
             <Table className="min-w-[1180px]">
               <TableHeader>
                 <TableRow>
@@ -717,8 +716,7 @@ export const TenantList: React.FC = () => {
                 )}
               </TableBody>
             </Table>
-          </>
-        }
+          </></TableSurfaceCard>)}
         pagination={
           summary.total > 0 ? (
             <Pagination

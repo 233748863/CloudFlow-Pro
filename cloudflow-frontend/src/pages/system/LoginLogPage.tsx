@@ -3,7 +3,7 @@ import { Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -351,7 +351,7 @@ export const LoginLogPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <>
             <div className="overflow-x-auto">
               <Table className="min-w-[1040px]">
@@ -448,7 +448,7 @@ export const LoginLogPage: React.FC = () => {
               </Table>
             </div>
           </>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

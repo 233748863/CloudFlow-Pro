@@ -13,7 +13,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 
@@ -560,7 +560,7 @@ export default function ProjectManagementPage() {
             </Button>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[1180px]">
               <TableHeader>
@@ -605,7 +605,7 @@ export default function ProjectManagementPage() {
               </tbody>
             </table>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={total > 0 ? <Pagination total={total} page={pageNum} pageSize={10} showPageSizeSelector={false} showJump={false} onPageChange={setPageNum} onPageSizeChange={() => {}} /> : null}
       />
 

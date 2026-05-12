@@ -18,7 +18,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -608,7 +608,7 @@ const ProcessCategoryPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="grid min-h-[640px] grid-cols-1 xl:grid-cols-[232px_minmax(0,1fr)]">
             <div className="border-b border-slate-200 xl:border-b-0 xl:border-r dark:border-slate-800">
               <div className="flex items-center justify-between border-b border-slate-200 px-3.5 py-2.5 dark:border-slate-800">
@@ -732,7 +732,7 @@ const ProcessCategoryPage: React.FC = () => {
               )}
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
       />
 
       <BaseDialog

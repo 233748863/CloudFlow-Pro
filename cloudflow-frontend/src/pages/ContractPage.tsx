@@ -4,7 +4,7 @@ import { AlertTriangle, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import FileUpload from '@/components/FileUpload';
@@ -324,7 +324,7 @@ export const ContractPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[1200px]">
@@ -390,7 +390,7 @@ export const ContractPage: React.FC = () => {
               </table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={total > 0 ? (
           <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} showPageSizeSelector={false} showJump={false} onPageChange={(pageNum) => setQuery((prev) => ({ ...prev, pageNum }))} onPageSizeChange={() => {}} />
         ) : null}

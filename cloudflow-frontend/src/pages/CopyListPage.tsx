@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/common';
 import { BaseDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { ProcessTrace } from '../components/ProcessTrace';
@@ -537,7 +537,7 @@ export const CopyListPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="flex flex-1 flex-col">
             {records.length === 0 ? (
@@ -646,7 +646,7 @@ export const CopyListPage: React.FC = () => {
             )}
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

@@ -4,7 +4,7 @@ import { ArrowRight, FileSpreadsheet, GitMerge, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { FormBuilder } from '../components/FormBuilder';
 import { EmptyError, EmptyForms, SkeletonForm, Button } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { cn } from '@/utils/cn';
 import { useMount } from '../hooks/useMount';
 import { useAutoSave } from '../hooks/useAutoSave';
@@ -231,8 +231,7 @@ export const FormDesign = () => {
           </div>
         </div>
       }
-      table={
-        <div className="grid min-h-full xl:grid-cols-[220px_minmax(0,1fr)]">
+      table={(<TableSurfaceCard><div className="grid min-h-full xl:grid-cols-[220px_minmax(0,1fr)]">
           <aside className="border-b border-slate-200 dark:border-slate-800 xl:border-b-0 xl:border-r">
             <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3 dark:border-slate-800">
               <div className="text-sm font-medium text-slate-900 dark:text-slate-100">表单列表</div>
@@ -278,8 +277,7 @@ export const FormDesign = () => {
               initialForm={selectedForm}
             />
           </section>
-        </div>
-      }
+        </div></TableSurfaceCard>)}
     />
   );
 };

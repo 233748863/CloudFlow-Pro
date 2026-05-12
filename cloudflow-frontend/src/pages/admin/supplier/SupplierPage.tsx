@@ -6,7 +6,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -193,7 +193,7 @@ const SupplierPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="min-h-[38rem] overflow-x-auto">
             <table className="w-full min-w-[980px]">
               <TableHeader className="sticky top-0 z-10 bg-white dark:bg-slate-950/95">
@@ -239,7 +239,7 @@ const SupplierPage: React.FC = () => {
               </tbody>
             </table>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

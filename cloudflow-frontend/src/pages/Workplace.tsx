@@ -10,7 +10,7 @@ import {
   mapWorkflowBackendForm,
   normalizeWorkflowTags,
 } from '@/components/workflow/catalog';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   getFormDefinition,
   getFormDefinitions,
@@ -383,7 +383,7 @@ export const Workplace = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="grid min-h-[40rem] xl:grid-cols-[220px_minmax(0,1fr)]">
             <aside className="border-b border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-950/20 xl:border-b-0 xl:border-r">
               <div className="space-y-5 p-4">
@@ -442,7 +442,7 @@ export const Workplace = () => {
               </div>
             </section>
           </div>
-        )}
+        </TableSurfaceCard>)}
       />
     </div>
   );

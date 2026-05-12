@@ -3,7 +3,7 @@ import { Edit, Plus, RefreshCw, RotateCcw, Search, Tag, Trash2 } from 'lucide-re
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog, ConfirmDialog } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -548,7 +548,7 @@ export const DictPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="grid min-h-[660px] lg:grid-cols-[280px_minmax(0,1fr)]">
               <div className="border-b border-slate-200 dark:border-slate-800 lg:border-b-0 lg:border-r">
                 <div className="border-b border-slate-200 px-4 py-3 text-sm font-medium text-slate-900 dark:border-slate-800 dark:text-slate-100">
@@ -758,7 +758,7 @@ export const DictPage: React.FC = () => {
                 )}
               </div>
             </div>
-        )}
+        </TableSurfaceCard>)}
       />
 
       <BaseDialog

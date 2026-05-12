@@ -24,7 +24,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { ProcessTrace } from '@/components/ProcessTrace';
 import {
   Button,
@@ -459,7 +459,7 @@ export const AttendanceSupplementPage: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[36rem] flex-col">
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px]">
@@ -558,7 +558,7 @@ export const AttendanceSupplementPage: React.FC = () => {
               </table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

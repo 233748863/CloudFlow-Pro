@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -677,7 +677,7 @@ const AssetList: React.FC = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
             <div className="overflow-x-auto">
               <Table className="min-w-[980px]">
@@ -764,7 +764,7 @@ const AssetList: React.FC = () => {
               </Table>
             </div>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

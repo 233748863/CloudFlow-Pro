@@ -9,7 +9,7 @@ import {
   SelectValue,
   Button,
 } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { SourceCodeViewer } from '../components/SourceCodeViewer';
 import { getProcessDefinitions } from '../services/api/workflow';
 import { WorkflowDefinition } from '../types';
@@ -190,8 +190,7 @@ export const CodeGeneration = () => {
           </div>
         </div>
       }
-      table={
-        loading ? (
+      table={(<TableSurfaceCard>{loading ? (
           <InlineState
             title="正在加载已发布流程"
             description="系统正在读取流程定义并准备代码预览。"
@@ -206,8 +205,7 @@ export const CodeGeneration = () => {
             title="暂无可生成的已发布流程"
             description="请先确认流程已发布且模型可被正确解析。"
           />
-        )
-      }
+        )}</TableSurfaceCard>)}
     />
   );
 };

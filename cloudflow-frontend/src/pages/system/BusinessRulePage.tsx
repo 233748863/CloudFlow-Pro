@@ -27,7 +27,7 @@ import {
   TabsTrigger,
   Textarea,
 } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import {
   BusinessRule,
@@ -382,7 +382,7 @@ export const BusinessRulePage = () => {
           <TablePageLayout
             className="gap-3"
             filters={renderRuleFilters}
-            table={renderRuleTable}
+            table={<TableSurfaceCard>{renderRuleTable}</TableSurfaceCard>}
             pagination={total > 0 ? (
               <Pagination total={total} page={query.pageNum} pageSize={query.pageSize} onPageChange={(pageNum) => setQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
             ) : null}
@@ -415,50 +415,52 @@ export const BusinessRulePage = () => {
               </div>
             )}
             table={(
-              <div className="overflow-x-auto">
-                <Table className="min-w-[1050px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>版本</TableHead>
-                      <TableHead>规则编码</TableHead>
-                      <TableHead>阈值</TableHead>
-                      <TableHead>效果</TableHead>
-                      <TableHead>状态</TableHead>
-                      <TableHead>发布人</TableHead>
-                      <TableHead>发布时间</TableHead>
-                      <TableHead>备注</TableHead>
-                      <TableActionHead className="w-28">操作</TableActionHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {versionLoading ? (
-                      <TableStateRow colSpan={9} title="正在加载规则版本..." loading />
-                    ) : versions.length === 0 ? (
-                      <TableStateRow colSpan={9} title="暂无规则版本" />
-                    ) : versions.map((version) => (
-                      <TableRow key={version.id}>
-                        <TableCell>v{version.versionNo}</TableCell>
-                        <TableCell className="font-mono text-xs">{version.ruleCode}</TableCell>
-                        <TableCell>{version.thresholdValue ?? '-'}</TableCell>
-                        <TableCell><Badge value={version.effect} /></TableCell>
-                        <TableCell><Badge value={version.status} classNameMap={statusClassName} labelMap={statusLabelMap} /></TableCell>
-                        <TableCell>{version.publisherName || '-'}</TableCell>
-                        <TableCell>{formatDateTime(version.publishedTime)}</TableCell>
-                        <TableCell className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</TableCell>
-                        <TableCell>
-                          <TableRowActions
-                            align="end"
-                            actions={[
-                              { label: '发布版本', icon: <Play size={15} />, hidden: version.status !== 'DRAFT', onClick: () => setConfirmState({ type: 'publish', version }), tone: 'success' },
-                              { label: '回滚版本', icon: <Undo2 size={15} />, hidden: version.status === 'DRAFT', onClick: () => setConfirmState({ type: 'rollback', version }), tone: 'warning' },
-                            ]}
-                          />
-                        </TableCell>
+              <TableSurfaceCard>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[1050px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>版本</TableHead>
+                        <TableHead>规则编码</TableHead>
+                        <TableHead>阈值</TableHead>
+                        <TableHead>效果</TableHead>
+                        <TableHead>状态</TableHead>
+                        <TableHead>发布人</TableHead>
+                        <TableHead>发布时间</TableHead>
+                        <TableHead>备注</TableHead>
+                        <TableActionHead className="w-28">操作</TableActionHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {versionLoading ? (
+                        <TableStateRow colSpan={9} title="正在加载规则版本..." loading />
+                      ) : versions.length === 0 ? (
+                        <TableStateRow colSpan={9} title="暂无规则版本" />
+                      ) : versions.map((version) => (
+                        <TableRow key={version.id}>
+                          <TableCell>v{version.versionNo}</TableCell>
+                          <TableCell className="font-mono text-xs">{version.ruleCode}</TableCell>
+                          <TableCell>{version.thresholdValue ?? '-'}</TableCell>
+                          <TableCell><Badge value={version.effect} /></TableCell>
+                          <TableCell><Badge value={version.status} classNameMap={statusClassName} labelMap={statusLabelMap} /></TableCell>
+                          <TableCell>{version.publisherName || '-'}</TableCell>
+                          <TableCell>{formatDateTime(version.publishedTime)}</TableCell>
+                          <TableCell className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</TableCell>
+                          <TableCell>
+                            <TableRowActions
+                              align="end"
+                              actions={[
+                                { label: '发布版本', icon: <Play size={15} />, hidden: version.status !== 'DRAFT', onClick: () => setConfirmState({ type: 'publish', version }), tone: 'success' },
+                                { label: '回滚版本', icon: <Undo2 size={15} />, hidden: version.status === 'DRAFT', onClick: () => setConfirmState({ type: 'rollback', version }), tone: 'warning' },
+                              ]}
+                            />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TableSurfaceCard>
             )}
             pagination={versionTotal > 0 ? (
               <Pagination total={versionTotal} page={versionQuery.pageNum} pageSize={versionQuery.pageSize} onPageChange={(pageNum) => setVersionQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setVersionQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />
@@ -491,38 +493,40 @@ export const BusinessRulePage = () => {
               </div>
             )}
             table={(
-              <div className="overflow-x-auto">
-                <Table className="min-w-[980px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>规则编码</TableHead>
-                      <TableHead>业务</TableHead>
-                      <TableHead>阈值</TableHead>
-                      <TableHead>实际值</TableHead>
-                      <TableHead>效果</TableHead>
-                      <TableHead>结果</TableHead>
-                      <TableHead>命中时间</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {hitLoading ? (
-                      <TableStateRow colSpan={7} title="正在加载命中记录..." loading />
-                    ) : hits.length === 0 ? (
-                      <TableStateRow colSpan={7} title="暂无命中记录" />
-                    ) : hits.map((hit) => (
-                      <TableRow key={hit.id}>
-                        <TableCell className="font-mono text-xs">{hit.ruleCode}</TableCell>
-                        <TableCell>{hit.businessType}#{hit.businessId || '-'}</TableCell>
-                        <TableCell>{hit.thresholdValue ?? '-'}</TableCell>
-                        <TableCell>{hit.actualValue ?? '-'}</TableCell>
-                        <TableCell><Badge value={hit.effect} /></TableCell>
-                        <TableCell><Badge value={hit.hitResult} labelMap={hitResultLabelMap} /></TableCell>
-                        <TableCell>{formatDateTime(hit.createdTime)}</TableCell>
+              <TableSurfaceCard>
+                <div className="overflow-x-auto">
+                  <Table className="min-w-[980px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>规则编码</TableHead>
+                        <TableHead>业务</TableHead>
+                        <TableHead>阈值</TableHead>
+                        <TableHead>实际值</TableHead>
+                        <TableHead>效果</TableHead>
+                        <TableHead>结果</TableHead>
+                        <TableHead>命中时间</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
+                    </TableHeader>
+                    <TableBody>
+                      {hitLoading ? (
+                        <TableStateRow colSpan={7} title="正在加载命中记录..." loading />
+                      ) : hits.length === 0 ? (
+                        <TableStateRow colSpan={7} title="暂无命中记录" />
+                      ) : hits.map((hit) => (
+                        <TableRow key={hit.id}>
+                          <TableCell className="font-mono text-xs">{hit.ruleCode}</TableCell>
+                          <TableCell>{hit.businessType}#{hit.businessId || '-'}</TableCell>
+                          <TableCell>{hit.thresholdValue ?? '-'}</TableCell>
+                          <TableCell>{hit.actualValue ?? '-'}</TableCell>
+                          <TableCell><Badge value={hit.effect} /></TableCell>
+                          <TableCell><Badge value={hit.hitResult} labelMap={hitResultLabelMap} /></TableCell>
+                          <TableCell>{formatDateTime(hit.createdTime)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TableSurfaceCard>
             )}
             pagination={hitTotal > 0 ? (
               <Pagination total={hitTotal} page={hitQuery.pageNum} pageSize={hitQuery.pageSize} onPageChange={(pageNum) => setHitQuery((current) => ({ ...current, pageNum }))} onPageSizeChange={(pageSize) => setHitQuery((current) => ({ ...current, pageNum: 1, pageSize }))} />

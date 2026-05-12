@@ -15,7 +15,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { AuditEvent, AuditEventQuery, exportAuditEvents, listAuditEvents } from '@/services/api/auditEvent';
 import { downloadBlob } from '@/utils/download';
@@ -154,7 +154,7 @@ export const AuditEventPage = () => {
             </form>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <div className="overflow-x-auto">
             <Table className="min-w-[1080px]">
               <TableHeader>
@@ -197,7 +197,7 @@ export const AuditEventPage = () => {
               </TableBody>
             </Table>
           </div>
-        )}
+        </TableSurfaceCard>)}
         pagination={total > 0 ? (
           <Pagination
             total={total}

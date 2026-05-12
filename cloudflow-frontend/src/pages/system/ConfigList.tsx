@@ -11,7 +11,7 @@ import {
 } from '../../services/api/system';
 import { clearConfigCache } from '../../hooks/useSystemConfig';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
   Input,
@@ -372,7 +372,7 @@ export const ConfigList = () => {
             </div>
           </div>
         )}
-        table={(
+        table={(<TableSurfaceCard>
           <>
             <div className="overflow-x-auto">
               <Table className="min-w-[1080px]">
@@ -483,7 +483,7 @@ export const ConfigList = () => {
               </Table>
             </div>
           </>
-        )}
+        </TableSurfaceCard>)}
         pagination={(
           total > 0 ? (
             <Pagination

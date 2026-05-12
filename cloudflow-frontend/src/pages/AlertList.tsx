@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, Input, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/common/select';
 import {
@@ -625,8 +625,7 @@ const AlertList: React.FC = () => {
             </div>
           </div>
         }
-        table={
-          <div className="divide-y divide-slate-200 dark:divide-slate-800">
+        table={(<TableSurfaceCard><div className="divide-y divide-slate-200 dark:divide-slate-800">
             <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5">
               <div className="text-sm text-slate-500 dark:text-slate-400">
                 <span className="font-medium text-slate-900 dark:text-slate-100">{currentTabLabel}</span>
@@ -844,8 +843,7 @@ const AlertList: React.FC = () => {
                     })}
               </div>
             )}
-          </div>
-        }
+          </div></TableSurfaceCard>)}
       />
 
       <AnomalyDetailDialog

@@ -1409,7 +1409,6 @@ export const HrPerformancePage: React.FC = () => {
     <>
       <TablePageLayout
         className="animate-fade-in"
-        tableShell="none"
         actions={
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {metricItems.map((item) => (

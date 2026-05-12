@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/common';
-import { TablePageLayout } from '@/components/layout/TablePageLayout';
+import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { contactApi, Contact, DeptNode } from '../services/api/contact';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -301,8 +301,7 @@ export const ContactPage: React.FC = () => {
             </div>
           </div>
         }
-        table={
-          <div className="grid min-h-[40rem] xl:grid-cols-[184px_minmax(0,1fr)]">
+        table={(<TableSurfaceCard><div className="grid min-h-[40rem] xl:grid-cols-[184px_minmax(0,1fr)]">
             <aside className="border-b border-slate-200 bg-slate-50/40 dark:border-slate-800 dark:bg-slate-950/20 xl:border-b-0 xl:border-r">
               <div className="space-y-1 p-3">
                 <div className="px-2.5 pb-2 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
@@ -400,8 +399,7 @@ export const ContactPage: React.FC = () => {
                 </Table>
               </div>
             </div>
-          </div>
-        }
+          </div></TableSurfaceCard>)}
         pagination={
           total > 0 ? (
             <Pagination
