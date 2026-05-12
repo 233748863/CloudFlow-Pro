@@ -149,12 +149,6 @@ const MeetingRoomPage = React.lazy(() =>
     default: module.MeetingRoomPage,
   })),
 );
-const AttendanceCheckIn = React.lazy(
-  () => import("./pages/admin/attendance/AttendanceCheckIn"),
-);
-const AttendanceRulePage = React.lazy(
-  () => import("./pages/admin/attendance/AttendanceRule"),
-);
 const AssetList = React.lazy(() => import("./pages/admin/asset/AssetList"));
 const VehicleList = React.lazy(
   () => import("./pages/admin/vehicle/VehicleList"),
@@ -216,17 +210,6 @@ const OnlineUserPage = React.lazy(() =>
   })),
 );
 
-// HR 假勤与 OA 扩展模块页面
-// HR 假勤页面
-const AttendanceSupplementPage = React.lazy(
-  () => import("./pages/AttendanceSupplementPage"),
-);
-const OvertimeApplicationPage = React.lazy(
-  () => import("./pages/OvertimeApplicationPage"),
-);
-const LeaveApplicationPage = React.lazy(
-  () => import("./pages/LeaveApplicationPage"),
-);
 // OA 扩展页面
 const BusinessTripPage = React.lazy(() => import("./pages/BusinessTripPage"));
 const ContactPage = React.lazy(() => import("./pages/ContactPage"));
@@ -321,48 +304,28 @@ const HrRecruitmentPage = React.lazy(() =>
     default: module.default,
   })),
 );
-const HrHeadcountPage = React.lazy(() =>
-  import("./pages/hr/HrHeadcountPage").then((module) => ({
+const HrOrganizationPage = React.lazy(() =>
+  import("./pages/hr/HrOrganizationPage").then((module) => ({
     default: module.default,
   })),
 );
-const HrSalaryPage = React.lazy(() =>
-  import("./pages/hr/HrSalaryPage").then((module) => ({
+const HrLifecyclePage = React.lazy(() =>
+  import("./pages/hr/HrLifecyclePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrAttendancePage = React.lazy(() =>
+  import("./pages/hr/HrAttendancePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrCompensationPage = React.lazy(() =>
+  import("./pages/hr/HrCompensationPage").then((module) => ({
     default: module.default,
   })),
 );
 const HrPerformancePage = React.lazy(() =>
   import("./pages/hr/HrPerformancePage").then((module) => ({
-    default: module.default,
-  })),
-);
-const HrLeaveQuotaPage = React.lazy(() =>
-  import("./pages/hr/HrLeaveQuotaPage").then((module) => ({
-    default: module.default,
-  })),
-);
-const HrOnboardingPage = React.lazy(() =>
-  import("./pages/hr/HrOnboardingPage").then((module) => ({
-    default: module.default,
-  })),
-);
-const HrProbationPage = React.lazy(() =>
-  import("./pages/hr/HrProbationPage").then((module) => ({
-    default: module.default,
-  })),
-);
-const HrOfferPage = React.lazy(() =>
-  import("./pages/hr/HrOfferPage").then((module) => ({
-    default: module.default,
-  })),
-);
-const HrTransferPage = React.lazy(() =>
-  import("./pages/hr/HrTransferPage").then((module) => ({
-    default: module.default,
-  })),
-);
-const HrResignationPage = React.lazy(() =>
-  import("./pages/hr/HrResignationPage").then((module) => ({
     default: module.default,
   })),
 );
@@ -770,22 +733,8 @@ const desktopRoutes = [
               </Suspense>
             ),
           },
-          {
-            path: "/hr/attendance/checkin",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <AttendanceCheckIn />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/attendance/rule",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <AttendanceRulePage />
-              </Suspense>
-            ),
-          },
+
+
           {
             path: "/admin/asset",
             element: (
@@ -952,30 +901,9 @@ const desktopRoutes = [
           },
           // === HR 假勤与 OA 扩展模块路由 ===
           // HR 假勤路由
-          {
-            path: "/hr/attendance/supplement",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <AttendanceSupplementPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/overtime/applications",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <OvertimeApplicationPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/leave/application",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <LeaveApplicationPage />
-              </Suspense>
-            ),
-          },
+
+
+
           // OA 扩展路由
           {
             path: "/office/business-trip",
@@ -1160,18 +1088,34 @@ const desktopRoutes = [
             ),
           },
           {
-            path: "/hr/headcount",
+            path: "/hr/organization",
             element: (
               <Suspense fallback={<Loading />}>
-                <HrHeadcountPage />
+                <HrOrganizationPage />
               </Suspense>
             ),
           },
           {
-            path: "/hr/salary/*",
+            path: "/hr/lifecycle",
             element: (
               <Suspense fallback={<Loading />}>
-                <HrSalaryPage />
+                <HrLifecyclePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/attendance",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrAttendancePage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/hr/compensation",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <HrCompensationPage />
               </Suspense>
             ),
           },
@@ -1180,54 +1124,6 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <HrPerformancePage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/leave/quota",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <HrLeaveQuotaPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/onboarding",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <HrOnboardingPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/probation",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <HrProbationPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/offer",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <HrOfferPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/transfer",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <HrTransferPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/hr/resignation",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <HrResignationPage />
               </Suspense>
             ),
           },
@@ -1362,14 +1258,7 @@ const mobileRoutes = [
               </Suspense>
             ),
           },
-          {
-            path: "/hr/leave/application",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <MobileLeaveApplication />
-              </Suspense>
-            ),
-          },
+
           {
             path: "/reimbursement/request",
             element: (

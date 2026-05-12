@@ -25,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
   Table,
+  TableActionHead,
   TableBody,
   TableCell,
   TableHead,
@@ -118,6 +119,7 @@ type EmployeeSelectOption = {
   deptLabel: string;
   employee: HrEmployee;
 };
+type AssigneeLabelResolver = (node: PerformanceAssignment) => string;
 
 const defaultCreateForm = () => ({
   cycleName: '',
@@ -397,16 +399,101 @@ const findNode = (nodes: PerformanceAssignment[] = [], id: number): PerformanceA
   return null;
 };
 
-const nodeTitle = (node: PerformanceAssignment, fallbackMetric?: MetricDisplay | null) => {
+const defaultAssigneeLabel = (node: PerformanceAssignment) =>
+  node.assigneeName || (node.assigneeType === 'EMPLOYEE' ? `员工 #${node.assigneeId}` : `部门 #${node.assigneeId}`);
+
+const nodeTitle = (node: PerformanceAssignment, fallbackMetric?: MetricDisplay | null, assigneeLabel = defaultAssigneeLabel(node)) => {
   const metricName = node.metricName || node.metricCode || fallbackMetric?.metricName || fallbackMetric?.metricCode || '-';
   if (node.assigneeType === 'EMPLOYEE') {
-    return `${node.assigneeName || `员工${node.assigneeId}`} / ${node.categoryName || node.categoryCode || '-'} / ${metricName}`;
+    return `${assigneeLabel} / ${node.categoryName || node.categoryCode || '-'} / ${metricName}`;
   }
   if (node.categoryCode) {
-    return `${node.assigneeName || `部门${node.assigneeId}`} / ${node.categoryName || node.categoryCode || '-'} / ${metricName}`;
+    return `${assigneeLabel} / ${node.categoryName || node.categoryCode || '-'} / ${metricName}`;
   }
-  return node.assigneeName || `部门${node.assigneeId}`;
+  return assigneeLabel;
 };
+
+const nodeSubtitle = (node: PerformanceAssignment, fallbackMetric?: MetricDisplay | null) => {
+  if (node.assigneeType === 'EMPLOYEE') {
+    return [node.categoryName || node.categoryCode || '-', node.metricName || node.metricCode || fallbackMetric?.metricName || fallbackMetric?.metricCode || '-']
+      .filter(Boolean)
+      .join(' / ');
+  }
+  if (node.categoryCode) {
+    return [node.categoryName || node.categoryCode || '-', node.metricName || node.metricCode || fallbackMetric?.metricName || fallbackMetric?.metricCode || '-']
+      .filter(Boolean)
+      .join(' / ');
+  }
+  return `#${node.id}`;
+};
+
+type AssignmentContext = Pick<PerformanceAssignment,
+  'categoryCode'
+  | 'categoryName'
+  | 'metricCode'
+  | 'metricName'
+  | 'metricUnit'
+  | 'metricWeight'
+  | 'metricPrecision'
+  | 'metricValueType'
+  | 'quotaSource'
+>;
+
+const hydrateAssignmentContext = (
+  node: PerformanceAssignment,
+  parentContext: AssignmentContext = {},
+): PerformanceAssignment => {
+  const hydrated: PerformanceAssignment = {
+    ...node,
+    categoryCode: node.categoryCode || parentContext.categoryCode,
+    categoryName: node.categoryName || node.categoryCode || parentContext.categoryName || parentContext.categoryCode,
+    metricCode: node.metricCode || parentContext.metricCode,
+    metricName: node.metricName || node.metricCode || parentContext.metricName || parentContext.metricCode,
+    metricUnit: node.metricUnit || parentContext.metricUnit,
+    metricWeight: node.metricWeight ?? parentContext.metricWeight,
+    metricPrecision: node.metricPrecision ?? parentContext.metricPrecision,
+    metricValueType: node.metricValueType || parentContext.metricValueType,
+    quotaSource: node.quotaSource || parentContext.quotaSource,
+  };
+  const nextContext: AssignmentContext = {
+    categoryCode: hydrated.categoryCode,
+    categoryName: hydrated.categoryName,
+    metricCode: hydrated.metricCode,
+    metricName: hydrated.metricName,
+    metricUnit: hydrated.metricUnit,
+    metricWeight: hydrated.metricWeight,
+    metricPrecision: hydrated.metricPrecision,
+    metricValueType: hydrated.metricValueType,
+    quotaSource: hydrated.quotaSource,
+  };
+  return {
+    ...hydrated,
+    children: (node.children || []).map((child) => hydrateAssignmentContext(child, nextContext)),
+  };
+};
+
+const hydrateObjectiveDetail = (
+  detail: PerformanceObjective,
+  snapshot?: PerformanceObjective | null,
+): PerformanceObjective => ({
+  ...snapshot,
+  ...detail,
+  objectiveNo: detail.objectiveNo || snapshot?.objectiveNo,
+  cycleName: detail.cycleName || snapshot?.cycleName || '',
+  cycleStartDate: detail.cycleStartDate || snapshot?.cycleStartDate || '',
+  cycleEndDate: detail.cycleEndDate || snapshot?.cycleEndDate || '',
+  objectiveName: detail.objectiveName || snapshot?.objectiveName || '',
+  totalTargetAmount: Number(detail.totalTargetAmount || snapshot?.totalTargetAmount || 0),
+  actualAmount: Number(detail.actualAmount || snapshot?.actualAmount || 0),
+  completionRate: Number(detail.completionRate || snapshot?.completionRate || 0),
+  score: detail.score ?? snapshot?.score,
+  grade: detail.grade || snapshot?.grade,
+  scoreCap: Number(detail.scoreCap || snapshot?.scoreCap || 0) || undefined,
+  status: detail.status || snapshot?.status,
+  categoryCodes: detail.categoryCodes?.length ? detail.categoryCodes : (snapshot?.categoryCodes || []),
+  categoryDefinitions: detail.categoryDefinitions?.length ? detail.categoryDefinitions : (snapshot?.categoryDefinitions || []),
+  metrics: detail.metrics?.length ? detail.metrics : (snapshot?.metrics || []),
+});
 
 const weightedCompletion = (items: PerformanceAssignment[]) => {
   const map = new Map<string, { target: number; actual: number; weight: number; unit?: string }>();
@@ -433,6 +520,199 @@ const weightedCompletion = (items: PerformanceAssignment[]) => {
   });
   return weightTotal > 0 ? scoreTotal / weightTotal : 0;
 };
+
+type PerformanceTableShellProps = {
+  minWidthClassName?: string;
+  className?: string;
+  children: React.ReactNode;
+};
+
+const PerformanceTableShell: React.FC<PerformanceTableShellProps> = ({
+  minWidthClassName = 'min-w-[1080px]',
+  className,
+  children,
+}) => (
+  <div className={cn('performance-table-shell overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950', className)}>
+    <div className="performance-table-scroll overflow-auto">
+      {React.isValidElement(children)
+        ? React.cloneElement(children as React.ReactElement<{ className?: string; disableScrollWrapper?: boolean }>, {
+          className: cn('performance-table', minWidthClassName, 'table-fixed', (children as React.ReactElement<{ className?: string }>).props.className),
+          disableScrollWrapper: true,
+        })
+        : children}
+    </div>
+  </div>
+);
+
+const PerformanceSummaryCard = ({
+  label,
+  value,
+  valueClassName,
+  hint,
+}: {
+  label: string;
+  value: React.ReactNode;
+  valueClassName?: string;
+  hint?: string;
+}) => (
+  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+    <div className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{label}</div>
+    <div className={cn('mt-1 min-w-0 truncate text-sm font-semibold tabular-nums text-slate-900 dark:text-white', valueClassName)}>{value}</div>
+    {hint ? <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+  </div>
+);
+
+const PerformanceCompletionSummaryCard = ({
+  label,
+  rate,
+  hint,
+}: {
+  label: string;
+  rate?: number;
+  hint?: string;
+}) => {
+  const value = Number(rate || 0);
+  const progressWidth = Math.max(0, Math.min(value, 100));
+  const progressTone = value >= 100
+    ? 'bg-emerald-500'
+    : value >= 80
+      ? 'bg-amber-500'
+      : 'bg-red-500';
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
+      <div className="truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">{label}</div>
+      <div className="mt-2 flex items-end justify-between gap-3">
+        <div className={cn('text-3xl font-bold tabular-nums text-slate-900 dark:text-white', completionTone(value))}>
+          {value.toFixed(1)}%
+        </div>
+        <span className={cn('inline-flex rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums ring-1', completionBadgeClass(value))}>
+          综合达成
+        </span>
+      </div>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-200/90 dark:bg-slate-800">
+        <div
+          className={cn('h-full rounded-full transition-all', progressTone)}
+          style={{ width: `${progressWidth}%` }}
+        />
+      </div>
+      {hint ? <div className="mt-2 truncate text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
+    </div>
+  );
+};
+
+const MetricLabelCell = ({
+  name,
+  unit,
+  weight,
+  emptyLabel = '多指标汇总',
+}: {
+  name?: string | null;
+  unit?: string | null;
+  weight?: number | string | null;
+  emptyLabel?: string;
+}) => {
+  const resolvedName = name || emptyLabel;
+  const resolvedUnit = unit ? String(unit) : '';
+  const resolvedWeight = weight == null ? '' : `权重${Number(weight).toFixed(0)}`;
+  return (
+    <div className="min-w-0 text-left">
+      <div className="truncate text-sm font-medium text-slate-900 dark:text-white">{resolvedName}</div>
+      {(resolvedUnit || resolvedWeight) ? (
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+          {resolvedUnit ? <span className="badge badge-gray">{resolvedUnit}</span> : null}
+          {resolvedWeight ? <span className="badge badge-gray">{resolvedWeight}</span> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+};
+
+const PerformanceNodeCell = ({
+  title,
+  subtitle,
+  icon,
+  depth = 0,
+}: {
+  title: string;
+  subtitle?: string;
+  icon: React.ReactNode;
+  depth?: number;
+}) => (
+  <div className="flex items-center gap-2" style={{ paddingLeft: `${depth * 18}px` }}>
+    {icon}
+    <div className="min-w-0">
+      <div className="truncate font-medium text-slate-900 dark:text-white">{title}</div>
+      {subtitle ? <div className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">{subtitle}</div> : null}
+    </div>
+  </div>
+);
+
+const TreeTableColGroup = () => (
+  <colgroup>
+    <col style={{ width: '360px' }} />
+    <col style={{ width: '220px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '124px' }} />
+    <col style={{ width: '128px' }} />
+    <col style={{ width: '192px' }} />
+  </colgroup>
+);
+
+const MatrixCheckColGroup = () => (
+  <colgroup>
+    <col style={{ width: '220px' }} />
+    <col style={{ width: '180px' }} />
+    <col style={{ width: '180px' }} />
+    <col style={{ width: '180px' }} />
+    <col style={{ width: '156px' }} />
+  </colgroup>
+);
+
+const MetricMatrixColGroup = () => (
+  <colgroup>
+    <col style={{ width: '220px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '280px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '124px' }} />
+    <col style={{ width: '132px' }} />
+  </colgroup>
+);
+
+const EmployeeSummaryColGroup = () => (
+  <colgroup>
+    <col style={{ width: '220px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '600px' }} />
+    <col style={{ width: '132px' }} />
+  </colgroup>
+);
+
+const ProgressDeptColGroup = () => (
+  <colgroup>
+    <col style={{ width: '220px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '280px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '124px' }} />
+  </colgroup>
+);
+
+const ProgressEmployeeColGroup = () => (
+  <colgroup>
+    <col style={{ width: '220px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '280px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '120px' }} />
+    <col style={{ width: '124px' }} />
+    <col style={{ width: '192px' }} />
+  </colgroup>
+);
 
 export const HrPerformancePage: React.FC = () => {
   const [objectives, setObjectives] = useState<PerformanceObjective[]>([]);
@@ -463,12 +743,62 @@ export const HrPerformancePage: React.FC = () => {
   const [salaryForm, setSalaryForm] = useState({
     adjustmentReason: '',
     minScore: '60',
-    afterSalaryData: '{\n  "1": 0\n}',
     afterTotal: '',
     effectiveDate: '',
   });
 
-  const currentAssignments = currentObjective?.assignments || [];
+  const deptLabelById = useMemo(() => {
+    const map = new Map<number, string>();
+    deptOptions.forEach((option) => {
+      map.set(option.value, option.label);
+    });
+    return map;
+  }, [deptOptions]);
+  const employeeOptions = useMemo(
+    () => employees.map((employee): EmployeeSelectOption => {
+      const deptLabel = (employee.deptId ? deptLabelById.get(employee.deptId) : undefined) || employee.deptName || '未分配部门';
+      const label = buildEmployeeLabel({ ...employee, deptName: deptLabel });
+      return {
+        value: String(employee.id),
+        label,
+        searchLabel: `${employee.id} / ${label}`,
+        deptLabel,
+        employee,
+      };
+    }),
+    [deptLabelById, employees],
+  );
+  const employeeDisplayById = useMemo(() => {
+    const map = new Map<string, string>();
+    employeeOptions.forEach((option) => {
+      map.set(option.value, option.searchLabel);
+    });
+    return map;
+  }, [employeeOptions]);
+  const employeeInputPlaceholder = employeeLoading
+    ? '员工列表加载中...'
+    : employees.length
+      ? '输入员工ID、工号或姓名'
+      : '未加载到员工，请导入员工种子数据';
+  const resolveAssigneeLabel: AssigneeLabelResolver = (node) => {
+    if (node.assigneeName) return node.assigneeName;
+    if (node.assigneeType === 'EMPLOYEE') {
+      return employeeDisplayById.get(String(node.assigneeId)) || `员工 #${node.assigneeId}`;
+    }
+    return deptLabelById.get(Number(node.assigneeId)) || `部门 #${node.assigneeId}`;
+  };
+  const currentAssignments = useMemo(() => {
+    const decorate = (nodes: PerformanceAssignment[] = []): PerformanceAssignment[] =>
+      nodes.map((node) => {
+        const hydrated = hydrateAssignmentContext(node);
+        return {
+          ...hydrated,
+          assigneeName: resolveAssigneeLabel(hydrated),
+          children: decorate(hydrated.children || []),
+        };
+      });
+    return decorate(currentObjective?.assignments || []);
+  }, [currentObjective?.assignments, deptLabelById, employeeDisplayById]);
   const categoryNodes = useMemo(() => collectCategoryNodes(currentAssignments), [currentAssignments]);
   const assignmentMetricDefinitions = useMemo(() => {
     const metricMap = new Map<string, PerformanceMetric>();
@@ -511,7 +841,7 @@ export const HrPerformancePage: React.FC = () => {
       const targetAmount = Number(dept.targetAmount || 0);
       return {
         id: dept.id,
-        assigneeName: dept.assigneeName || `部门${dept.assigneeId}`,
+        assigneeName: dept.assigneeName || `部门 #${dept.assigneeId}`,
         targetAmount,
         categoryTotal,
         remainAmount: isMultiMetricObjective ? 0 : targetAmount - categoryTotal,
@@ -520,40 +850,6 @@ export const HrPerformancePage: React.FC = () => {
     }),
     [currentAssignments, isMultiMetricObjective],
   );
-  const deptLabelById = useMemo(() => {
-    const map = new Map<number, string>();
-    deptOptions.forEach((option) => {
-      map.set(option.value, option.label);
-    });
-    return map;
-  }, [deptOptions]);
-  const employeeOptions = useMemo(
-    () => employees.map((employee): EmployeeSelectOption => {
-      const deptLabel = (employee.deptId ? deptLabelById.get(employee.deptId) : undefined) || employee.deptName || '未分配部门';
-      const label = buildEmployeeLabel({ ...employee, deptName: deptLabel });
-      return {
-        value: String(employee.id),
-        label,
-        searchLabel: `${employee.id} / ${label}`,
-        deptLabel,
-        employee,
-      };
-    }),
-    [deptLabelById, employees],
-  );
-  const employeeDisplayById = useMemo(() => {
-    const map = new Map<string, string>();
-    employeeOptions.forEach((option) => {
-      map.set(option.value, option.searchLabel);
-    });
-    return map;
-  }, [employeeOptions]);
-  const employeeInputPlaceholder = employeeLoading
-    ? '员工列表加载中...'
-    : employees.length
-      ? '输入员工ID、工号或姓名'
-      : '未加载到员工，请导入员工种子数据';
-
   const employeeSummaryRows = useMemo<EmployeeSummaryRow[]>(() => {
     const map = new Map<number, {
       employeeId: number;
@@ -564,7 +860,7 @@ export const HrPerformancePage: React.FC = () => {
     leafTasks.forEach((item) => {
       const current = map.get(item.assigneeId) || {
         employeeId: item.assigneeId,
-        employeeName: item.assigneeName || `员工${item.assigneeId}`,
+        employeeName: item.assigneeName || `员工 #${item.assigneeId}`,
         tasks: [],
         categories: new Set<string>(),
       };
@@ -633,7 +929,7 @@ export const HrPerformancePage: React.FC = () => {
         ? keepCurrentId
         : rows[0]?.id;
       if (nextId) {
-        await loadTree(nextId);
+        await loadTree(nextId, rows.find((item) => item.id === nextId) || null);
       } else {
         setCurrentObjective(null);
       }
@@ -645,11 +941,12 @@ export const HrPerformancePage: React.FC = () => {
     }
   };
 
-  const loadTree = async (id: number) => {
+  const loadTree = async (id: number, snapshot?: PerformanceObjective | null) => {
     setTreeLoading(true);
     try {
       const detail = await getPerformanceObjectiveTree(id);
-      setCurrentObjective(detail);
+      const preview = snapshot || objectives.find((item) => item.id === id) || null;
+      setCurrentObjective(hydrateObjectiveDetail(detail, preview));
     } catch (error) {
       console.error(error);
       toast.error(getErrorMessage(error, '绩效目标树加载失败'));
@@ -892,7 +1189,7 @@ export const HrPerformancePage: React.FC = () => {
     setSplitRows((node.children || []).map((child) => ({
       key: String(child.id),
       employeeId: String(child.assigneeId),
-      employeeSearch: employeeDisplayById.get(String(child.assigneeId)) || `${child.assigneeId} / ${child.assigneeName || `员工${child.assigneeId}`}`,
+      employeeSearch: employeeDisplayById.get(String(child.assigneeId)) || `${child.assigneeId} / ${child.assigneeName || `员工 #${child.assigneeId}`}`,
       targetAmount: String(child.targetAmount ?? ''),
     })));
   };
@@ -1037,7 +1334,7 @@ export const HrPerformancePage: React.FC = () => {
         employeeId: Number(salaryEmployeeId),
         adjustmentReason: salaryForm.adjustmentReason,
         minScore: toAmount(salaryForm.minScore),
-        afterSalaryData: salaryForm.afterSalaryData,
+        afterSalaryData: JSON.stringify({ totalSalary: toAmount(salaryForm.afterTotal) }),
         afterTotal: toAmount(salaryForm.afterTotal),
         effectiveDate: salaryForm.effectiveDate,
       });
@@ -1112,6 +1409,7 @@ export const HrPerformancePage: React.FC = () => {
     <>
       <TablePageLayout
         className="animate-fade-in"
+        tableShell="none"
         actions={
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
             {metricItems.map((item) => (
@@ -1204,103 +1502,101 @@ export const HrPerformancePage: React.FC = () => {
           </div>
         }
         table={
-          <div className="flex min-h-0 flex-col">
-            <div className="border-b border-slate-100 px-4 py-4 dark:border-slate-800">
-              <div className="grid gap-4 lg:grid-cols-[300px_minmax(0,1fr)]">
-                <div className="space-y-2">
+          <div className="flex min-h-0 flex-col gap-4">
+            <div className="card p-4">
+              <div className="grid gap-4 xl:grid-cols-[minmax(280px,340px)_minmax(0,1fr)]">
+                <div className="min-w-0 rounded-xl border border-slate-200 bg-slate-50/70 p-4 dark:border-slate-800 dark:bg-slate-900/50">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">
                     Performance Objective
                   </div>
-                  <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  <div className="mt-2 truncate text-lg font-semibold text-slate-900 dark:text-slate-100">
                     {currentObjective?.objectiveName || '暂无绩效目标'}
                   </div>
-                  <div className="text-sm text-slate-500 dark:text-slate-400">
+                  <div className="mt-1 truncate text-sm text-slate-500 dark:text-slate-400">
                     {currentObjective ? `${currentObjective.cycleName} / ${currentObjective.objectiveNo}` : '创建目标后开始分解部门、考核类型与指标'}
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                    <div className="text-xs text-slate-500 dark:text-slate-400">总目标值</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
-                      {currentObjective && objectiveMetrics.length > 1 ? (metricTotalSummary || `${objectiveMetrics.length}项指标`) : formatValue(currentObjective?.totalTargetAmount, objectiveMetrics[0]?.metricUnit, metricPrecisionOf(objectiveMetrics[0]))}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                    <div className="text-xs text-slate-500 dark:text-slate-400">指标配置</div>
-                    <div className="mt-1 truncate text-sm font-semibold text-slate-900 dark:text-white">
-                      {objectiveMetrics.map((metric) => `${metric.metricName}${metric.metricUnit ? `(${metric.metricUnit})` : ''}`).join(' / ')}
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                    <div className="text-xs text-slate-500 dark:text-slate-400">完成率</div>
-                    <div className={cn('mt-1 text-sm font-semibold', completionTone(currentObjective?.completionRate))}>
-                      {Number(currentObjective?.completionRate || 0).toFixed(1)}%
-                    </div>
-                  </div>
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/60">
-                    <div className="text-xs text-slate-500 dark:text-slate-400">评分等级</div>
-                    <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">
-                      {currentObjective?.score?.toFixed?.(1) || '0.0'} / {currentObjective?.grade || 'D'}
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <PerformanceSummaryCard
+                    label="总目标值"
+                    value={currentObjective && objectiveMetrics.length > 1 ? (metricTotalSummary || `${objectiveMetrics.length}项指标`) : formatValue(currentObjective?.totalTargetAmount, objectiveMetrics[0]?.metricUnit, metricPrecisionOf(objectiveMetrics[0]))}
+                    hint={currentObjective && objectiveMetrics.length > 1 ? `${objectiveMetrics.length}项指标` : objectiveMetrics[0]?.metricUnit || undefined}
+                  />
+                  <PerformanceSummaryCard
+                    label="指标配置"
+                    value={objectiveMetrics.length}
+                    hint={objectiveMetrics.map((metric) => `${metric.metricName} · ${metric.metricUnit || '-'} · ${metricTypeLabel(metric.valueType)}`).join(' / ')}
+                  />
+                  <PerformanceSummaryCard
+                    label="完成率"
+                    value={`${Number(currentObjective?.completionRate || 0).toFixed(1)}%`}
+                    valueClassName={completionTone(currentObjective?.completionRate)}
+                    hint="权重折算后"
+                  />
+                  <PerformanceSummaryCard
+                    label="评分等级"
+                    value={`${currentObjective?.score?.toFixed?.(1) || '0.0'} / ${currentObjective?.grade || 'D'}`}
+                    hint={statusLabel(currentObjective?.status)}
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="flex min-h-0 flex-1 flex-col">
-              {loading || treeLoading ? (
-                <div className="flex items-center justify-center py-14 text-sm text-slate-500 dark:text-slate-400">
-                  <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
-                  加载绩效数据...
+            {loading || treeLoading ? (
+              <div className="card flex items-center justify-center py-14 text-sm text-slate-500 dark:text-slate-400">
+                <RefreshCcw className="mr-2 h-4 w-4 animate-spin" />
+                加载绩效数据...
+              </div>
+            ) : !currentObjective ? (
+              <div className="card empty-state">
+                <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-900">
+                  <Target className="h-10 w-10 text-slate-300 dark:text-slate-600" />
                 </div>
-              ) : !currentObjective ? (
-                <div className="empty-state">
-                  <div className="mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-900">
-                    <Target className="h-10 w-10 text-slate-300 dark:text-slate-600" />
-                  </div>
-                  <h3 className="empty-state-title">暂无绩效目标</h3>
-                  <p className="empty-state-description">创建周期目标后，可按部门、考核类型、指标和员工叶子任务逐层分解。</p>
-                </div>
-              ) : activeTab === 'tree' ? (
-                <TreeTable
-                  rows={treeRows}
-                  renderProgress={renderProgress}
-                  onSelect={loadTree}
-                  objectives={objectives}
-                  currentId={currentObjective.id}
-                  status={currentObjective.status}
-                  primaryMetric={objectiveMetrics[0]}
-                  isMultiMetric={isMultiMetricObjective}
-                  onSplit={openSplitDialog}
-                  onResult={(node) => {
-                    setResultNodeId(node.id);
-                    setResultActualAmount(String(node.actualAmount || ''));
-                  }}
-                />
-              ) : activeTab === 'matrix' ? (
-                <MatrixView departmentRows={departmentMatrixRows} categoryNodes={categoryNodes} isMultiMetric={isMultiMetricObjective} primaryMetric={objectiveMetrics[0]} renderProgress={renderProgress} />
-              ) : activeTab === 'employees' ? (
-                <EmployeeView rows={employeeSummaryRows} renderProgress={renderProgress} />
-              ) : activeTab === 'progress' ? (
-                <ProgressView categoryNodes={categoryNodes} leafTasks={leafTasks} status={currentObjective.status} renderProgress={renderProgress} onResult={(node) => {
+                <h3 className="empty-state-title">暂无绩效目标</h3>
+                <p className="empty-state-description">创建周期目标后，可按部门、考核类型、指标和员工叶子任务逐层分解。</p>
+              </div>
+            ) : activeTab === 'tree' ? (
+              <TreeTable
+                rows={treeRows}
+                renderProgress={renderProgress}
+                onSelect={loadTree}
+                objectives={objectives}
+                currentId={currentObjective.id}
+                status={currentObjective.status}
+                primaryMetric={objectiveMetrics[0]}
+                isMultiMetric={isMultiMetricObjective}
+                resolveAssigneeLabel={resolveAssigneeLabel}
+                onSplit={openSplitDialog}
+                onResult={(node) => {
                   setResultNodeId(node.id);
                   setResultActualAmount(String(node.actualAmount || ''));
-                }} />
-              ) : activeTab === 'archive' ? (
-                <ArchiveView objective={currentObjective} categoryNodes={categoryNodes} employeeRows={employeeSummaryRows} renderProgress={renderProgress} />
-              ) : (
-                <SalaryLinkView
-                  objective={currentObjective}
-                  employeeRows={employeeSummaryRows}
-                  salaryEmployeeId={salaryEmployeeId}
-                  setSalaryEmployeeId={setSalaryEmployeeId}
-                  salaryForm={salaryForm}
-                  setSalaryForm={setSalaryForm}
-                  onCreate={handleCreateSalaryAdjustment}
-                  pending={pendingAction === 'salary'}
-                />
-              )}
-            </div>
+                }}
+              />
+            ) : activeTab === 'matrix' ? (
+              <MatrixView departmentRows={departmentMatrixRows} categoryNodes={categoryNodes} isMultiMetric={isMultiMetricObjective} primaryMetric={objectiveMetrics[0]} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} />
+            ) : activeTab === 'employees' ? (
+              <div className="card p-4">
+                <EmployeeView rows={employeeSummaryRows} renderProgress={renderProgress} />
+              </div>
+            ) : activeTab === 'progress' ? (
+              <ProgressView categoryNodes={categoryNodes} leafTasks={leafTasks} status={currentObjective.status} renderProgress={renderProgress} resolveAssigneeLabel={resolveAssigneeLabel} onResult={(node) => {
+                setResultNodeId(node.id);
+                setResultActualAmount(String(node.actualAmount || ''));
+              }} />
+            ) : activeTab === 'archive' ? (
+              <ArchiveView objective={currentObjective} categoryNodes={categoryNodes} employeeRows={employeeSummaryRows} renderProgress={renderProgress} />
+            ) : (
+              <SalaryLinkView
+                objective={currentObjective}
+                employeeRows={employeeSummaryRows}
+                salaryEmployeeId={salaryEmployeeId}
+                setSalaryEmployeeId={setSalaryEmployeeId}
+                salaryForm={salaryForm}
+                setSalaryForm={setSalaryForm}
+                onCreate={handleCreateSalaryAdjustment}
+                pending={pendingAction === 'salary'}
+              />
+            )}
           </div>
         }
       />
@@ -1472,7 +1768,7 @@ export const HrPerformancePage: React.FC = () => {
 
       <BaseDialog
         open={Boolean(splitNode)}
-        title={splitNode ? `分解：${nodeTitle(splitNode)}` : '分解目标'}
+        title={splitNode ? `分解：${nodeTitle(splitNode, null, resolveAssigneeLabel(splitNode))}` : '分解目标'}
         description={splitNode?.categoryCode ? '把该类型指标目标值拆到具体员工。' : '补齐或调整部门下的考核类型指标，经理锁定值不可变更。'}
         width="wide"
         onClose={() => setSplitNodeId(null)}
@@ -1538,7 +1834,7 @@ export const HrPerformancePage: React.FC = () => {
 
       <BaseDialog
         open={Boolean(resultNode)}
-        title={resultNode ? `填报实绩：${nodeTitle(resultNode)}` : '填报实绩'}
+        title={resultNode ? `填报实绩：${nodeTitle(resultNode, null, resolveAssigneeLabel(resultNode))}` : '填报实绩'}
         width="narrow"
         onClose={() => setResultNodeId(null)}
         footer={
@@ -1613,6 +1909,7 @@ const TreeTable = ({
   status,
   primaryMetric,
   isMultiMetric,
+  resolveAssigneeLabel,
   renderProgress,
   onSelect,
   onSplit,
@@ -1624,6 +1921,7 @@ const TreeTable = ({
   status?: string;
   primaryMetric?: PerformanceMetric;
   isMultiMetric: boolean;
+  resolveAssigneeLabel: AssigneeLabelResolver;
   renderProgress: (rate?: number) => React.ReactNode;
   onSelect: (id: number) => void;
   onSplit: (node: PerformanceAssignment) => void;
@@ -1633,95 +1931,105 @@ const TreeTable = ({
   const canFillResult = status === 'PLAN_APPROVED';
 
   return (
-    <div className="grid min-h-0 flex-1 lg:grid-cols-[280px_minmax(0,1fr)]">
-      <div className="border-b border-slate-100 p-4 dark:border-slate-800 lg:border-b-0 lg:border-r">
-        <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">目标列表</div>
-        <div className="space-y-2">
-          {objectives.map((objective) => (
-            <button
-              key={objective.id}
-              type="button"
-              className={cn('cf-side-link cf-side-link-sm', objective.id === currentId && 'cf-side-link-active')}
-              onClick={() => onSelect(objective.id)}
-            >
-              <Target className="h-4 w-4" />
-              <span className="min-w-0 flex-1 truncate text-left">{objective.objectiveName}</span>
-              <span className="text-xs opacity-70">{objective.grade || '-'}</span>
-            </button>
-          ))}
+    <div className="card overflow-hidden">
+      <div className="grid min-h-0 flex-1 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="border-b border-slate-100 p-4 dark:border-slate-800 lg:border-b-0 lg:border-r">
+          <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400 dark:text-slate-500">目标列表</div>
+          <div className="space-y-2">
+            {objectives.map((objective) => (
+              <button
+                key={objective.id}
+                type="button"
+                className={cn('cf-side-link cf-side-link-sm', objective.id === currentId && 'cf-side-link-active')}
+                onClick={() => onSelect(objective.id)}
+              >
+                <Target className="h-4 w-4" />
+                <span className="min-w-0 flex-1 truncate text-left">{objective.objectiveName}</span>
+                <span className="text-xs opacity-70">{objective.grade || '-'}</span>
+              </button>
+            ))}
+          </div>
         </div>
-      </div>
-      <div className="min-w-0">
-        <div className="hidden md:block">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>节点</TableHead>
-                <TableHead className="text-center">指标</TableHead>
-                <TableHead className="text-center">目标值</TableHead>
-                <TableHead className="text-center">实际值</TableHead>
-                <TableHead className="text-center">完成率</TableHead>
-                <TableHead className="text-center">来源</TableHead>
-                <TableHead className="text-right">操作</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {rows.map((row) => {
-                const displayMetric = treeMetricDisplay(row, primaryMetric, isMultiMetric);
-                const displayUnit = displayMetric?.metricUnit || row.metricUnit;
-                const displayPrecision = metricPrecisionOf(displayMetric || row);
-                const showActual = Boolean(row.metricCode || !isMultiMetric);
-                return (
-                  <TableRow key={row.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-2" style={{ paddingLeft: `${row.depth * 18}px` }}>
-                        {row.depth === 0 ? <Layers3 className="h-4 w-4 text-teal-600" /> : row.assigneeType === 'EMPLOYEE' ? <Users className="h-4 w-4 text-slate-400" /> : <GitBranch className="h-4 w-4 text-cyan-600" />}
-                        <div>
-                          <div className="font-medium text-slate-900 dark:text-white">{nodeTitle(row, displayMetric)}</div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400">#{row.id}</div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-center">{displayMetric ? metricDescriptor(displayMetric) : '多指标汇总'}</TableCell>
-                    <TableCell className="text-center">{formatValue(row.targetAmount, displayUnit, displayPrecision)}</TableCell>
-                    <TableCell className="text-center">{showActual ? formatValue(row.actualAmount, displayUnit, displayPrecision) : '-'}</TableCell>
-                    <TableCell className="text-center">{renderProgress(row.completionRate)}</TableCell>
-                    <TableCell className="text-center">{row.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-gray">{row.quotaSource === 'DEPT_OWNER' ? '部门负责人' : '经理'}</span>}</TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        {row.assigneeType === 'DEPT' && canEditPlan ? <Button size="sm" variant="outline" onClick={() => onSplit(row)}>分解</Button> : null}
-                        {row.assigneeType === 'EMPLOYEE' && canFillResult ? <Button size="sm" variant="soft" onClick={() => onResult(row)}>填报</Button> : null}
-                      </div>
-                    </TableCell>
+        <div className="min-w-0">
+          <div className="hidden md:block">
+            <PerformanceTableShell minWidthClassName="min-w-[1216px]">
+              <Table>
+                <TreeTableColGroup />
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>节点</TableHead>
+                    <TableHead>指标</TableHead>
+                    <TableHead className="text-right">目标值</TableHead>
+                    <TableHead className="text-right">实际值</TableHead>
+                    <TableHead className="px-3 text-center">完成率</TableHead>
+                    <TableHead className="px-3 text-center">来源</TableHead>
+                    <TableActionHead className="w-48 px-4 py-3 text-right">操作</TableActionHead>
                   </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-        <div className="space-y-3 p-4 md:hidden">
-          {rows.map((row) => {
-            const displayMetric = treeMetricDisplay(row, primaryMetric, isMultiMetric);
-            const displayUnit = displayMetric?.metricUnit || row.metricUnit;
-            const displayPrecision = metricPrecisionOf(displayMetric || row);
-            const actualText = row.metricCode || !isMultiMetric ? formatValue(row.actualAmount, displayUnit, displayPrecision) : '-';
-            return (
-              <div key={row.id} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium text-slate-900 dark:text-white">{nodeTitle(row, displayMetric)}</div>
-                    <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">目标 {formatValue(row.targetAmount, displayUnit, displayPrecision)} / 实际 {actualText}</div>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((row) => {
+                    const displayMetric = treeMetricDisplay(row, primaryMetric, isMultiMetric);
+                    const displayUnit = displayMetric?.metricUnit || row.metricUnit;
+                    const displayPrecision = metricPrecisionOf(displayMetric || row);
+                    const showActual = Boolean(row.metricCode || !isMultiMetric);
+                    return (
+                      <TableRow key={row.id}>
+                        <TableCell>
+                          <PerformanceNodeCell
+                            depth={row.depth}
+                            icon={row.depth === 0 ? <Layers3 className="h-4 w-4 shrink-0 text-teal-600" /> : row.assigneeType === 'EMPLOYEE' ? <Users className="h-4 w-4 shrink-0 text-slate-400" /> : <GitBranch className="h-4 w-4 shrink-0 text-cyan-600" />}
+                            title={row.assigneeType === 'EMPLOYEE' ? resolveAssigneeLabel(row) : nodeTitle(row, null, resolveAssigneeLabel(row))}
+                            subtitle={row.assigneeType === 'EMPLOYEE' ? nodeSubtitle(row, displayMetric) : `#${row.id}${row.categoryCode ? ` · ${nodeSubtitle(row, displayMetric)}` : ''}`}
+                          />
+                        </TableCell>
+                        <TableCell className="px-3">
+                          <MetricLabelCell
+                            name={displayMetric?.metricName}
+                            unit={displayMetric?.metricUnit}
+                            weight={displayMetric?.metricWeight}
+                          />
+                        </TableCell>
+                        <TableCell className="text-right tabular-nums">{formatValue(row.targetAmount, displayUnit, displayPrecision)}</TableCell>
+                        <TableCell className="text-right tabular-nums">{showActual ? formatValue(row.actualAmount, displayUnit, displayPrecision) : '-'}</TableCell>
+                        <TableCell className="px-3 text-center">{renderProgress(row.completionRate)}</TableCell>
+                        <TableCell className="px-3 text-center">{row.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-gray">{row.quotaSource === 'DEPT_OWNER' ? '部门负责人' : '经理'}</span>}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-2">
+                            {row.assigneeType === 'DEPT' && canEditPlan ? <Button size="sm" variant="outline" className="min-w-[72px] justify-center" onClick={() => onSplit(row)}>分解</Button> : null}
+                            {row.assigneeType === 'EMPLOYEE' && canFillResult ? <Button size="sm" variant="soft" className="min-w-[72px] justify-center" onClick={() => onResult(row)}>填报</Button> : null}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </PerformanceTableShell>
+          </div>
+          <div className="space-y-3 p-4 md:hidden">
+            {rows.map((row) => {
+              const displayMetric = treeMetricDisplay(row, primaryMetric, isMultiMetric);
+              const displayUnit = displayMetric?.metricUnit || row.metricUnit;
+              const displayPrecision = metricPrecisionOf(displayMetric || row);
+              const actualText = row.metricCode || !isMultiMetric ? formatValue(row.actualAmount, displayUnit, displayPrecision) : '-';
+              return (
+                <div key={row.id} className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="font-medium text-slate-900 dark:text-white">{nodeTitle(row, displayMetric, resolveAssigneeLabel(row))}</div>
+                      <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">目标 {formatValue(row.targetAmount, displayUnit, displayPrecision)} / 实际 {actualText}</div>
+                    </div>
+                    {row.locked ? <span className="badge badge-warning">锁定</span> : null}
                   </div>
-                  {row.locked ? <span className="badge badge-warning">锁定</span> : null}
+                  <div className="mt-3">{renderProgress(row.completionRate)}</div>
+                  <div className="mt-3 flex justify-end gap-2">
+                    {row.assigneeType === 'DEPT' && canEditPlan ? <Button size="sm" variant="outline" onClick={() => onSplit(row)}>分解</Button> : null}
+                    {row.assigneeType === 'EMPLOYEE' && canFillResult ? <Button size="sm" variant="soft" onClick={() => onResult(row)}>填报</Button> : null}
+                  </div>
                 </div>
-                <div className="mt-3">{renderProgress(row.completionRate)}</div>
-                <div className="mt-3 flex justify-end gap-2">
-                  {row.assigneeType === 'DEPT' && canEditPlan ? <Button size="sm" variant="outline" onClick={() => onSplit(row)}>分解</Button> : null}
-                  {row.assigneeType === 'EMPLOYEE' && canFillResult ? <Button size="sm" variant="soft" onClick={() => onResult(row)}>填报</Button> : null}
-                </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
@@ -1734,98 +2042,113 @@ const MatrixView = ({
   isMultiMetric,
   primaryMetric,
   renderProgress,
+  resolveAssigneeLabel,
 }: {
   departmentRows: DepartmentMatrixRow[];
   categoryNodes: PerformanceAssignment[];
   isMultiMetric: boolean;
   primaryMetric?: PerformanceMetric;
   renderProgress: (rate?: number) => React.ReactNode;
+  resolveAssigneeLabel: AssigneeLabelResolver;
 }) => (
   <div className="space-y-4 p-4">
-    <div className="card overflow-hidden">
+    <div className="card">
       <div className="card-header">
         <div className="text-sm font-semibold text-slate-900 dark:text-white">部门目标值校验</div>
         <div className="text-xs text-slate-500 dark:text-slate-400">单指标按部门总目标值校验，多指标按每个类型指标的员工叶子合计校验。</div>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>部门</TableHead>
-            <TableHead className="text-center">部门总目标值</TableHead>
-            <TableHead className="text-center">类型指标合计</TableHead>
-            <TableHead className="text-center">剩余目标值</TableHead>
-            <TableHead className="text-center">校验</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {departmentRows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell className="font-medium">{row.assigneeName}</TableCell>
-              <TableCell className="text-center">{isMultiMetric ? '-' : formatValue(row.targetAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
-              <TableCell className="text-center">{isMultiMetric ? `${row.itemCount}项指标` : formatValue(row.categoryTotal, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
-              <TableCell className="text-center">{isMultiMetric ? '-' : formatValue(row.remainAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
-              <TableCell className="text-center">{isMultiMetric ? <span className="badge badge-gray">按指标校验</span> : toPrecisionUnits(row.remainAmount, metricPrecisionOf(primaryMetric)) === 0 ? <span className="badge badge-success">已平衡</span> : <span className="badge badge-warning">待补齐</span>}</TableCell>
+      <PerformanceTableShell minWidthClassName="min-w-[940px]">
+        <Table>
+          <MatrixCheckColGroup />
+          <TableHeader>
+            <TableRow>
+              <TableHead>部门</TableHead>
+              <TableHead className="text-right">部门总目标值</TableHead>
+              <TableHead className="text-right">类型指标合计</TableHead>
+              <TableHead className="text-right">剩余目标值</TableHead>
+              <TableHead className="px-3 text-center">校验</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {departmentRows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell className="font-medium">{row.assigneeName}</TableCell>
+                <TableCell className="text-right tabular-nums">{isMultiMetric ? '-' : formatValue(row.targetAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
+                <TableCell className="text-right tabular-nums">{isMultiMetric ? `${row.itemCount}项指标` : formatValue(row.categoryTotal, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
+                <TableCell className="text-right tabular-nums">{isMultiMetric ? '-' : formatValue(row.remainAmount, primaryMetric?.metricUnit, metricPrecisionOf(primaryMetric))}</TableCell>
+                <TableCell className="px-3 text-center">{isMultiMetric ? <span className="badge badge-gray">按指标校验</span> : toPrecisionUnits(row.remainAmount, metricPrecisionOf(primaryMetric)) === 0 ? <span className="badge badge-success">已平衡</span> : <span className="badge badge-warning">待补齐</span>}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </PerformanceTableShell>
     </div>
-    <div className="card overflow-hidden">
+    <div className="card">
       <div className="card-header">
         <div className="text-sm font-semibold text-slate-900 dark:text-white">类型指标矩阵</div>
         <div className="text-xs text-slate-500 dark:text-slate-400">经理锁定与部门补齐分开展示，每个指标按自己的单位计算完成率。</div>
       </div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>部门</TableHead>
-            <TableHead className="text-center">考核类型</TableHead>
-            <TableHead className="text-center">指标</TableHead>
-            <TableHead className="text-center">目标值</TableHead>
-            <TableHead className="text-center">实际值</TableHead>
-            <TableHead className="text-center">完成率</TableHead>
-            <TableHead className="text-center">状态</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {categoryNodes.map((node) => (
-            <TableRow key={node.id}>
-              <TableCell className="font-medium">{node.assigneeName}</TableCell>
-              <TableCell className="text-center">{node.categoryName || node.categoryCode || '-'}</TableCell>
-              <TableCell className="text-center">{metricDescriptor(node)}</TableCell>
-              <TableCell className="text-center">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-              <TableCell className="text-center">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-              <TableCell className="text-center">{renderProgress(node.completionRate)}</TableCell>
-              <TableCell className="text-center">{node.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-primary">部门补齐</span>}</TableCell>
+      <PerformanceTableShell minWidthClassName="min-w-[1160px]">
+        <Table>
+          <MetricMatrixColGroup />
+          <TableHeader>
+            <TableRow>
+              <TableHead>部门</TableHead>
+              <TableHead>考核类型</TableHead>
+              <TableHead>指标</TableHead>
+              <TableHead className="text-right">目标值</TableHead>
+              <TableHead className="text-right">实际值</TableHead>
+              <TableHead className="px-3 text-center">完成率</TableHead>
+              <TableHead className="px-3 text-center">状态</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {categoryNodes.map((node) => (
+              <TableRow key={node.id}>
+                <TableCell className="font-medium">{resolveAssigneeLabel(node)}</TableCell>
+                <TableCell>{node.categoryName || node.categoryCode || '-'}</TableCell>
+                <TableCell className="px-3">
+                  <MetricLabelCell name={node.metricName || node.metricCode} unit={node.metricUnit} weight={node.metricWeight} />
+                </TableCell>
+                <TableCell className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
+                <TableCell className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
+                <TableCell className="px-3 text-center">{renderProgress(node.completionRate)}</TableCell>
+                <TableCell className="px-3 text-center">{node.locked ? <span className="badge badge-warning">经理锁定</span> : <span className="badge badge-primary">部门补齐</span>}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </PerformanceTableShell>
     </div>
   </div>
 );
 
 const EmployeeView = ({ rows, renderProgress }: { rows: EmployeeSummaryRow[]; renderProgress: (rate?: number) => React.ReactNode }) => (
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>员工</TableHead>
-        <TableHead className="text-center">覆盖类型</TableHead>
-        <TableHead className="text-center">指标目标</TableHead>
-        <TableHead className="text-center">权重后完成率</TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      {rows.map((row) => (
-        <TableRow key={row.employeeId}>
-          <TableCell className="font-medium">{row.employeeName}</TableCell>
-          <TableCell className="text-center">{row.categories || '-'}</TableCell>
-          <TableCell className="max-w-[520px] truncate text-center">{row.metricSummary || '-'}</TableCell>
-          <TableCell className="text-center">{renderProgress(row.completionRate)}</TableCell>
+  <PerformanceTableShell minWidthClassName="min-w-[1080px]">
+    <Table>
+      <EmployeeSummaryColGroup />
+      <TableHeader>
+        <TableRow>
+          <TableHead>员工</TableHead>
+          <TableHead>覆盖类型</TableHead>
+          <TableHead>指标目标</TableHead>
+          <TableHead className="px-3 text-center">权重后完成率</TableHead>
         </TableRow>
-      ))}
-    </TableBody>
-  </Table>
+      </TableHeader>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.employeeId}>
+            <TableCell className="font-medium">{row.employeeName}</TableCell>
+            <TableCell>{row.categories || '-'}</TableCell>
+            <TableCell>
+              <div className="line-clamp-2 text-sm text-slate-700 dark:text-slate-200">{row.metricSummary || '-'}</div>
+            </TableCell>
+            <TableCell className="px-3 text-center">{renderProgress(row.completionRate)}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </PerformanceTableShell>
 );
 
 const ProgressView = ({
@@ -1833,81 +2156,93 @@ const ProgressView = ({
   leafTasks,
   status,
   renderProgress,
+  resolveAssigneeLabel,
   onResult,
 }: {
   categoryNodes: PerformanceAssignment[];
   leafTasks: PerformanceAssignment[];
   status?: string;
   renderProgress: (rate?: number) => React.ReactNode;
+  resolveAssigneeLabel: AssigneeLabelResolver;
   onResult: (node: PerformanceAssignment) => void;
 }) => {
   const canFillResult = status === 'PLAN_APPROVED';
 
   return (
     <div className="space-y-4 p-4">
-      <div className="card overflow-hidden">
+      <div className="card">
         <div className="card-header">
           <div className="text-sm font-semibold text-slate-900 dark:text-white">部门类型指标完成率</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">每个类型指标按自己的单位统计，部门总分由指标权重折算。</div>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>部门</TableHead>
-              <TableHead className="text-center">考核类型</TableHead>
-              <TableHead className="text-center">指标</TableHead>
-              <TableHead className="text-center">目标值</TableHead>
-              <TableHead className="text-center">实际值</TableHead>
-              <TableHead className="text-center">完成率</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categoryNodes.map((node) => (
-              <TableRow key={node.id}>
-                <TableCell className="font-medium">{node.assigneeName}</TableCell>
-                <TableCell className="text-center">{node.categoryName || node.categoryCode || '-'}</TableCell>
-                <TableCell className="text-center">{metricDescriptor(node)}</TableCell>
-                <TableCell className="text-center">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                <TableCell className="text-center">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                <TableCell className="text-center">{renderProgress(node.completionRate)}</TableCell>
+        <PerformanceTableShell minWidthClassName="min-w-[1120px]">
+          <Table>
+            <ProgressDeptColGroup />
+            <TableHeader>
+              <TableRow>
+                <TableHead>部门</TableHead>
+                <TableHead>考核类型</TableHead>
+                <TableHead>指标</TableHead>
+                <TableHead className="text-right">目标值</TableHead>
+                <TableHead className="text-right">实际值</TableHead>
+                <TableHead className="px-3 text-center">完成率</TableHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {categoryNodes.map((node) => (
+                <TableRow key={node.id}>
+                  <TableCell className="font-medium">{resolveAssigneeLabel(node)}</TableCell>
+                  <TableCell>{node.categoryName || node.categoryCode || '-'}</TableCell>
+                  <TableCell className="px-3">
+                    <MetricLabelCell name={node.metricName || node.metricCode} unit={node.metricUnit} weight={node.metricWeight} />
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
+                  <TableCell className="px-3 text-center">{renderProgress(node.completionRate)}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </PerformanceTableShell>
       </div>
-      <div className="card overflow-hidden">
+      <div className="card">
         <div className="card-header">
           <div className="text-sm font-semibold text-slate-900 dark:text-white">员工个人完成率</div>
           <div className="text-xs text-slate-500 dark:text-slate-400">叶子任务实绩汇总到个人、类型指标和部门。</div>
         </div>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>员工叶子任务</TableHead>
-              <TableHead className="text-center">类型</TableHead>
-              <TableHead className="text-center">指标</TableHead>
-              <TableHead className="text-center">目标值</TableHead>
-              <TableHead className="text-center">实际值</TableHead>
-              <TableHead className="text-center">完成率</TableHead>
-              <TableHead className="text-right">操作</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {leafTasks.map((node) => (
-              <TableRow key={node.id}>
-                <TableCell className="font-medium">{node.assigneeName}</TableCell>
-                <TableCell className="text-center">{node.categoryName || node.categoryCode || '-'}</TableCell>
-                <TableCell className="text-center">{metricDescriptor(node)}</TableCell>
-                <TableCell className="text-center">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                <TableCell className="text-center">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
-                <TableCell className="text-center">{renderProgress(node.completionRate)}</TableCell>
-                <TableCell className="text-right">
-                  {canFillResult ? <Button size="sm" variant="soft" onClick={() => onResult(node)}>填报实绩</Button> : <span className="text-xs text-slate-400">待执行</span>}
-                </TableCell>
+        <PerformanceTableShell minWidthClassName="min-w-[1180px]">
+          <Table>
+            <ProgressEmployeeColGroup />
+            <TableHeader>
+              <TableRow>
+                <TableHead>员工叶子任务</TableHead>
+                <TableHead>类型</TableHead>
+                <TableHead>指标</TableHead>
+                <TableHead className="text-right">目标值</TableHead>
+                <TableHead className="text-right">实际值</TableHead>
+                <TableHead className="px-3 text-center">完成率</TableHead>
+                <TableActionHead className="w-48 px-4 py-3 text-right">操作</TableActionHead>
               </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+              {leafTasks.map((node) => (
+                <TableRow key={node.id}>
+                  <TableCell className="font-medium">{resolveAssigneeLabel(node)}</TableCell>
+                  <TableCell>{node.categoryName || node.categoryCode || '-'}</TableCell>
+                  <TableCell className="px-3">
+                    <MetricLabelCell name={node.metricName || node.metricCode} unit={node.metricUnit} weight={node.metricWeight} />
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{formatValue(node.targetAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
+                  <TableCell className="text-right tabular-nums">{formatValue(node.actualAmount, node.metricUnit, metricPrecisionOf(node))}</TableCell>
+                  <TableCell className="px-3 text-center">{renderProgress(node.completionRate)}</TableCell>
+                  <TableCell className="text-right">
+                    {canFillResult ? <Button size="sm" variant="soft" className="min-w-[96px] justify-center" onClick={() => onResult(node)}>填报实绩</Button> : <span className="text-xs text-slate-400">待执行</span>}
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </PerformanceTableShell>
       </div>
     </div>
   );
@@ -1915,7 +2250,7 @@ const ProgressView = ({
 
 const ArchiveView = ({ objective, categoryNodes, employeeRows, renderProgress }: { objective: PerformanceObjective; categoryNodes: PerformanceAssignment[]; employeeRows: EmployeeSummaryRow[]; renderProgress: (rate?: number) => React.ReactNode }) => (
   <div className="space-y-6 p-4">
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
       <div className="card p-4">
         <div className="text-sm text-slate-500 dark:text-slate-400">周期总分</div>
         <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{Number(objective.score || 0).toFixed(1)}</div>
@@ -1931,11 +2266,37 @@ const ArchiveView = ({ objective, categoryNodes, employeeRows, renderProgress }:
         <div className="mt-2 text-3xl font-bold text-slate-900 dark:text-white">{objective.leafTaskCount || 0}</div>
         <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">个人绩效口径</div>
       </div>
+      <PerformanceCompletionSummaryCard
+        label="权重后总完成率"
+        rate={objective.completionRate}
+        hint="权重折算后"
+      />
     </div>
-    <div className="card p-4">
-      <div className="mb-3 text-sm font-semibold text-slate-900 dark:text-white">权重后总完成率</div>
-      {renderProgress(objective.completionRate)}
-    </div>
+    <PerformanceTableShell minWidthClassName="min-w-[1080px]">
+      <Table>
+        <EmployeeSummaryColGroup />
+        <TableHeader>
+          <TableRow>
+            <TableHead>员工</TableHead>
+            <TableHead>覆盖类型</TableHead>
+            <TableHead>指标目标</TableHead>
+            <TableHead className="px-3 text-center">权重后完成率</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {employeeRows.map((row) => (
+            <TableRow key={row.employeeId}>
+              <TableCell className="font-medium">{row.employeeName}</TableCell>
+              <TableCell>{row.categories || '-'}</TableCell>
+              <TableCell>
+                <div className="line-clamp-2 text-sm text-slate-700 dark:text-slate-200">{row.metricSummary || '-'}</div>
+              </TableCell>
+              <TableCell className="px-3 text-center">{renderProgress(row.completionRate)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </PerformanceTableShell>
   </div>
 );
 
@@ -1953,13 +2314,13 @@ const SalaryLinkView = ({
   employeeRows: Array<{ employeeId: number; employeeName: string }>;
   salaryEmployeeId: string;
   setSalaryEmployeeId: (value: string) => void;
-  salaryForm: { adjustmentReason: string; minScore: string; afterSalaryData: string; afterTotal: string; effectiveDate: string };
-  setSalaryForm: React.Dispatch<React.SetStateAction<{ adjustmentReason: string; minScore: string; afterSalaryData: string; afterTotal: string; effectiveDate: string }>>;
+  salaryForm: { adjustmentReason: string; minScore: string; afterTotal: string; effectiveDate: string };
+  setSalaryForm: React.Dispatch<React.SetStateAction<{ adjustmentReason: string; minScore: string; afterTotal: string; effectiveDate: string }>>;
   onCreate: () => void;
   pending: boolean;
 }) => (
   <div className="p-4">
-    <div className="card max-w-3xl p-5">
+    <div className="card max-w-4xl p-5">
       <div className="mb-4 flex items-center gap-3">
         <div className="stat-icon stat-icon-primary"><BarChart3 className="h-6 w-6" /></div>
         <div>
@@ -1985,7 +2346,6 @@ const SalaryLinkView = ({
           <Field label="最低绩效分"><Input type="number" value={salaryForm.minScore} onChange={(e) => setSalaryForm((prev) => ({ ...prev, minScore: e.target.value }))} /></Field>
           <Field label="调薪后总额"><Input type="number" value={salaryForm.afterTotal} onChange={(e) => setSalaryForm((prev) => ({ ...prev, afterTotal: e.target.value }))} /></Field>
           <Field label="生效日期"><DatePicker type="date" className="h-11" value={salaryForm.effectiveDate} onChange={(e) => setSalaryForm((prev) => ({ ...prev, effectiveDate: e.target.value }))} /></Field>
-          <Field label="调薪后薪资明细 JSON"><Textarea rows={6} value={salaryForm.afterSalaryData} onChange={(e) => setSalaryForm((prev) => ({ ...prev, afterSalaryData: e.target.value }))} /></Field>
           <div><Button onClick={onCreate} disabled={pending}>生成调薪申请</Button></div>
         </div>
       )}

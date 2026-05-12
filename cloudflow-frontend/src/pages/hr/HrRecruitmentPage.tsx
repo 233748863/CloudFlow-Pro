@@ -39,27 +39,38 @@ import {
   DeptTreeNode,
   Interview,
   InterviewSchedulePayload,
+  Offer,
+  OfferPayload,
   PositionOption,
   RecruitmentRequest,
   RecruitmentRequestPayload,
+  acceptOffer,
   approveRecruitmentRequest,
+  approveOffer,
   cancelRecruitmentRequest,
   completeRecruitmentRequest,
+  convertOfferToOnboarding,
   createCandidate,
+  createOffer,
   createRecruitmentRequest,
   getDeptTreeOptions,
   getPositionOptions,
   listCandidates,
   listInterviews,
+  listOffers,
   listRecruitmentRequests,
+  rejectOffer,
   scheduleInterview,
+  sendOffer,
+  submitOffer,
   submitRecruitmentRequest,
   updateCandidateStatus,
 } from '@/services/api/hr';
 import { getMeetingRooms } from '@/services/api/schedule';
 import { MeetingRoom } from '@/types';
+import { enumLabel, formatDateValue, formatDateTimeValue, formatMoneyValue, optionLabel, optionOrIdLabel } from './hrShared';
 
-type RecruitmentTab = 'request' | 'candidate' | 'interview';
+type RecruitmentTab = 'request' | 'candidate' | 'interview' | 'offer';
 
 const normalizeRows = <T,>(data: unknown): T[] => {
   if (!data) return [];
@@ -103,6 +114,14 @@ const requestStatusTone: Record<string, string> = {
   CANCELLED: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
 };
 
+const requestStatusLabels: Record<string, string> = {
+  DRAFT: '草稿',
+  APPROVING: '审批中',
+  RECRUITING: '招聘中',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消',
+};
+
 const candidateStatusTone: Record<string, string> = {
   NEW: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
   SCREENING: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
@@ -112,10 +131,44 @@ const candidateStatusTone: Record<string, string> = {
   REJECTED: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
 };
 
+const candidateStatusLabels: Record<string, string> = {
+  NEW: '新简历',
+  SCREENING: '筛选中',
+  INTERVIEW: '面试中',
+  OFFER: 'Offer阶段',
+  HIRED: '已录用',
+  REJECTED: '已拒绝',
+};
+
 const interviewStatusTone: Record<string, string> = {
   SCHEDULED: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
   COMPLETED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
   CANCELLED: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+};
+
+const interviewRoundLabels: Record<string, string> = {
+  FIRST: '初试',
+  SECOND: '复试',
+  FINAL: '终面',
+};
+
+const interviewTypeLabels: Record<string, string> = {
+  PHONE: '电话面试',
+  VIDEO: '视频面试',
+  ONSITE: '现场面试',
+};
+
+const interviewStatusLabels: Record<string, string> = {
+  SCHEDULED: '已排期',
+  COMPLETED: '已完成',
+  CANCELLED: '已取消',
+};
+
+const sourceLabels: Record<string, string> = {
+  WEBSITE: '官网',
+  REFERRAL: '内推',
+  HEADHUNTER: '猎头',
+  CAMPUS: '校招',
 };
 
 const editableCandidateStatuses = ['NEW', 'SCREENING', 'INTERVIEW', 'REJECTED'];
@@ -140,6 +193,24 @@ const candidateFormDefault: CandidatePayload = {
   source: 'WEBSITE',
 };
 
+const offerStatusTone: Record<string, string> = {
+  DRAFT: 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+  APPROVING: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+  APPROVED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+  SENT: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
+  ACCEPTED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+  REJECTED: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+};
+
+const offerStatusLabels: Record<string, string> = {
+  DRAFT: '草稿',
+  APPROVING: '审批中',
+  APPROVED: '已审批',
+  SENT: '已发送',
+  ACCEPTED: '已接受',
+  REJECTED: '已拒绝',
+};
+
 const interviewFormDefault: InterviewSchedulePayload = {
   candidateId: 0,
   interviewRound: 'FIRST',
@@ -149,6 +220,15 @@ const interviewFormDefault: InterviewSchedulePayload = {
   location: '',
   meetingRoomId: undefined,
   interviewerIds: [],
+};
+
+const offerFormDefault: OfferPayload = {
+  candidateId: 0,
+  positionId: 0,
+  salary: 20000,
+  expectedArrivalDate: '',
+  expireDate: '',
+  offerContent: '',
 };
 
 const splitAttachmentUrls = (value?: string[] | string) => {
@@ -233,6 +313,7 @@ export const HrRecruitmentPage: React.FC = () => {
   const [requests, setRequests] = useState<RecruitmentRequest[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [offers, setOffers] = useState<Offer[]>([]);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [positionOptions, setPositionOptions] = useState<PositionOption[]>([]);
   const [meetingRooms, setMeetingRooms] = useState<MeetingRoom[]>([]);
@@ -243,19 +324,22 @@ export const HrRecruitmentPage: React.FC = () => {
   const [requestDialog, setRequestDialog] = useState(false);
   const [candidateDialog, setCandidateDialog] = useState(false);
   const [interviewDialog, setInterviewDialog] = useState(false);
+  const [offerDialog, setOfferDialog] = useState(false);
   const [rejectCandidateId, setRejectCandidateId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [requestForm, setRequestForm] = useState<RecruitmentRequestPayload>(requestFormDefault);
   const [candidateForm, setCandidateForm] = useState<CandidatePayload>(candidateFormDefault);
   const [interviewForm, setInterviewForm] = useState<InterviewSchedulePayload>(interviewFormDefault);
+  const [offerForm, setOfferForm] = useState<OfferPayload>(offerFormDefault);
 
   const loadData = async () => {
     setLoading(true);
     try {
-      const [requestRes, candidateRes, interviewRes, deptRes, positionRes, roomRes] = await Promise.all([
+      const [requestRes, candidateRes, interviewRes, offerRes, deptRes, positionRes, roomRes] = await Promise.all([
         listRecruitmentRequests({ pageNum: 1, pageSize: 50 }),
         listCandidates({ pageNum: 1, pageSize: 50 }),
         listInterviews(),
+        listOffers(),
         getDeptTreeOptions(),
         getPositionOptions(),
         getMeetingRooms(),
@@ -263,6 +347,7 @@ export const HrRecruitmentPage: React.FC = () => {
       setRequests(normalizeRows<RecruitmentRequest>(requestRes));
       setCandidates(normalizeRows<Candidate>(candidateRes));
       setInterviews(normalizeRows<Interview>(interviewRes));
+      setOffers(normalizeRows<Offer>(offerRes));
       setDeptOptions(flattenDeptTree(Array.isArray(deptRes) ? deptRes : []));
       setPositionOptions(Array.isArray(positionRes) ? positionRes : []);
       setMeetingRooms(Array.isArray(roomRes) ? roomRes : []);
@@ -314,6 +399,16 @@ export const HrRecruitmentPage: React.FC = () => {
     [candidates, keyword],
   );
 
+  const filteredOffers = useMemo(
+    () =>
+      offers.filter((item) =>
+        [item.offerNo, item.candidateName, item.positionName, item.statusDesc]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(keyword.toLowerCase())),
+      ),
+    [offers, keyword],
+  );
+
   const interviewableCandidates = useMemo(
     () =>
       candidates.filter(
@@ -329,9 +424,24 @@ export const HrRecruitmentPage: React.FC = () => {
     [meetingRooms],
   );
 
+  const offerableCandidates = useMemo(
+    () => candidates.filter((item) => ['INTERVIEW', 'OFFER'].includes(String(item.status || '').toUpperCase())),
+    [candidates],
+  );
+
   const selectedMeetingRoom = useMemo(
     () => availableMeetingRooms.find((room) => getRoomId(room) === interviewForm.meetingRoomId),
     [availableMeetingRooms, interviewForm.meetingRoomId],
+  );
+
+  const positionSelectOptions = useMemo(
+    () => positionOptions.map((item) => ({ label: item.positionName || item.positionCode || String(item.id), value: item.id })),
+    [positionOptions],
+  );
+
+  const candidateSelectOptions = useMemo(
+    () => candidates.map((item) => ({ label: `${item.name} / ${item.positionName || optionLabel(positionSelectOptions, item.positionId)}`, value: item.id })),
+    [candidates, positionSelectOptions],
   );
 
   useEffect(() => {
@@ -362,6 +472,30 @@ export const HrRecruitmentPage: React.FC = () => {
     }
   }, [interviewForm.candidateId, interviewableCandidates]);
 
+  useEffect(() => {
+    if (offerableCandidates.length && !offerForm.candidateId) {
+      const candidate = offerableCandidates[0];
+      setOfferForm((prev) => ({
+        ...prev,
+        candidateId: candidate.id,
+        positionId: candidate.positionId || prev.positionId || 0,
+      }));
+      return;
+    }
+
+    if (
+      offerForm.candidateId
+      && !offerableCandidates.some((item) => item.id === offerForm.candidateId)
+    ) {
+      const candidate = offerableCandidates[0];
+      setOfferForm((prev) => ({
+        ...prev,
+        candidateId: candidate?.id || 0,
+        positionId: candidate?.positionId || prev.positionId || 0,
+      }));
+    }
+  }, [offerForm.candidateId, offerableCandidates]);
+
   const closeRequestDialog = () => {
     setRequestDialog(false);
     setRequestForm(requestFormDefault);
@@ -375,6 +509,11 @@ export const HrRecruitmentPage: React.FC = () => {
   const closeInterviewDialog = () => {
     setInterviewDialog(false);
     setInterviewForm(interviewFormDefault);
+  };
+
+  const closeOfferDialog = () => {
+    setOfferDialog(false);
+    setOfferForm(offerFormDefault);
   };
 
   const handleCreateRequest = async () => {
@@ -486,6 +625,46 @@ export const HrRecruitmentPage: React.FC = () => {
     }
   };
 
+  const handleCreateOffer = async () => {
+    if (!offerForm.candidateId) {
+      toast.error('请选择候选人');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createOffer({
+        ...offerForm,
+        expectedDate: offerForm.expectedArrivalDate,
+        expiryDate: offerForm.expireDate,
+      });
+      toast.success('Offer已创建');
+      closeOfferDialog();
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || 'Offer创建失败');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleOfferAction = async (id: number, action: 'submit' | 'approve' | 'send' | 'accept' | 'reject' | 'convert') => {
+    try {
+      if (action === 'submit') await submitOffer(id);
+      if (action === 'approve') await approveOffer(id);
+      if (action === 'send') await sendOffer(id);
+      if (action === 'accept') await acceptOffer(id);
+      if (action === 'reject') await rejectOffer(id);
+      if (action === 'convert') await convertOfferToOnboarding(id);
+      toast.success(action === 'convert' ? '已转入入职办理' : 'Offer状态已更新');
+      await loadData();
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error?.message || 'Offer操作失败');
+    }
+  };
+
   const handleCandidateStatusChange = async (id: number, status: string) => {
     if (status === 'REJECTED') {
       setRejectCandidateId(id);
@@ -553,6 +732,9 @@ export const HrRecruitmentPage: React.FC = () => {
         <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2.5 py-1 text-xs text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200">
           可安排面试 {loading ? '--' : interviewableCandidates.length}
         </span>
+        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+          Offer {loading ? '--' : offers.length}
+        </span>
 
         <div className="ml-auto flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => void loadData()}>
@@ -570,6 +752,10 @@ export const HrRecruitmentPage: React.FC = () => {
           <Button variant="outline" size="sm" onClick={() => setInterviewDialog(true)}>
             <CalendarRange size={14} className="mr-1.5" />
             安排面试
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setOfferDialog(true)}>
+            <Plus size={14} className="mr-1.5" />
+            新建Offer
           </Button>
         </div>
       </div>
@@ -606,6 +792,9 @@ export const HrRecruitmentPage: React.FC = () => {
           </TabsTrigger>
           <TabsTrigger value="interview" className="flex-1 lg:flex-none">
             面试安排
+          </TabsTrigger>
+          <TabsTrigger value="offer" className="flex-1 lg:flex-none">
+            Offer
           </TabsTrigger>
         </TabsList>
 
@@ -665,7 +854,7 @@ export const HrRecruitmentPage: React.FC = () => {
                               requestStatusTone[item.status] || requestStatusTone.DRAFT,
                             ].join(' ')}
                           >
-                            {item.statusDesc || item.status}
+                            {item.statusDesc || enumLabel(requestStatusLabels, item.status)}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
@@ -761,7 +950,7 @@ export const HrRecruitmentPage: React.FC = () => {
                           </div>
                         </TableCell>
                         <TableCell>{item.phone}</TableCell>
-                        <TableCell>{item.sourceDesc || item.source || '-'}</TableCell>
+                        <TableCell>{item.sourceDesc || enumLabel(sourceLabels, item.source)}</TableCell>
                         <TableCell>{item.positionName || '-'}</TableCell>
                         <TableCell>
                           <span
@@ -770,13 +959,13 @@ export const HrRecruitmentPage: React.FC = () => {
                               candidateStatusTone[item.status] || candidateStatusTone.NEW,
                             ].join(' ')}
                           >
-                            {item.statusDesc || item.status}
+                            {item.statusDesc || enumLabel(candidateStatusLabels, item.status)}
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
                           {['OFFER', 'HIRED'].includes(item.status) ? (
                             <div className="ml-auto w-[180px] text-right text-xs text-slate-500 dark:text-slate-400">
-                              请在 Offer / 入职模块继续推进
+                              请在 Offer 或员工异动中继续推进
                             </div>
                           ) : (
                             <Select
@@ -855,13 +1044,13 @@ export const HrRecruitmentPage: React.FC = () => {
                         <TableCell className="font-medium text-slate-900 dark:text-slate-100">
                           {item.candidateName || '-'}
                         </TableCell>
-                        <TableCell>{item.interviewRoundName || item.interviewRound}</TableCell>
-                        <TableCell>{item.interviewTypeName || item.interviewType}</TableCell>
+                        <TableCell>{item.interviewRoundName || enumLabel(interviewRoundLabels, item.interviewRound)}</TableCell>
+                        <TableCell>{item.interviewTypeName || enumLabel(interviewTypeLabels, item.interviewType)}</TableCell>
                         <TableCell>
-                          <div>{item.interviewTime || '-'}</div>
+                          <div>{formatDateTimeValue(item.interviewTime)}</div>
                           {item.interviewEndTime ? (
                             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                              至 {item.interviewEndTime}
+                              至 {formatDateTimeValue(item.interviewEndTime)}
                             </div>
                           ) : null}
                         </TableCell>
@@ -873,11 +1062,92 @@ export const HrRecruitmentPage: React.FC = () => {
                               interviewStatusTone[item.status] || interviewStatusTone.SCHEDULED,
                             ].join(' ')}
                           >
-                            {item.statusName || item.status}
+                            {item.statusName || item.statusDesc || enumLabel(interviewStatusLabels, item.status)}
                           </span>
                         </TableCell>
                       </TableRow>
                     ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="offer" className="space-y-0">
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+              <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">Offer</div>
+              <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                {loading ? '同步中' : `${filteredOffers.length} 条`}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table className="min-w-[980px]">
+                <TableHeader className="bg-slate-50/80 dark:bg-slate-900/60">
+                  <TableRow>
+                    <TableHead>Offer编号</TableHead>
+                    <TableHead>候选人</TableHead>
+                    <TableHead>岗位</TableHead>
+                    <TableHead>薪资</TableHead>
+                    <TableHead>到岗日期</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableHead className="text-right">操作</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {loading ? (
+                    <TableStateRow colSpan={7} title="正在加载Offer..." loading />
+                  ) : filteredOffers.length === 0 ? (
+                    <TableStateRow colSpan={7} title="暂无Offer" />
+                  ) : (
+                    filteredOffers.map((item) => {
+                      const status = String(item.status || '').toUpperCase();
+                      return (
+                        <TableRow key={item.id}>
+                          <TableCell className="font-medium text-slate-900 dark:text-slate-100">
+                            {item.offerNo || '-'}
+                          </TableCell>
+                          <TableCell>{item.candidateName || optionOrIdLabel('候选人', candidateSelectOptions, item.candidateId)}</TableCell>
+                          <TableCell>{item.positionName || optionOrIdLabel('职位', positionSelectOptions, item.positionId)}</TableCell>
+                          <TableCell>{formatMoneyValue(item.salary)}</TableCell>
+                          <TableCell>{formatDateValue(item.expectedArrivalDate || item.expectedDate)}</TableCell>
+                          <TableCell>
+                            <span
+                              className={[
+                                'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
+                                offerStatusTone[status] || offerStatusTone.DRAFT,
+                              ].join(' ')}
+                            >
+                              {item.statusDesc || enumLabel(offerStatusLabels, item.status)}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex flex-wrap justify-end gap-2">
+                              <Button size="sm" variant="outline" disabled={status !== 'DRAFT'} onClick={() => void handleOfferAction(item.id, 'submit')}>
+                                提交
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={status !== 'APPROVING'} onClick={() => void handleOfferAction(item.id, 'approve')}>
+                                通过
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={status !== 'APPROVED'} onClick={() => void handleOfferAction(item.id, 'send')}>
+                                发送
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={status !== 'SENT'} onClick={() => void handleOfferAction(item.id, 'accept')}>
+                                接受
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={!['SENT', 'APPROVING'].includes(status)} onClick={() => void handleOfferAction(item.id, 'reject')}>
+                                拒绝
+                              </Button>
+                              <Button size="sm" variant="outline" disabled={status !== 'ACCEPTED'} onClick={() => void handleOfferAction(item.id, 'convert')}>
+                                转入职
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
                   )}
                 </TableBody>
               </Table>
@@ -1306,6 +1576,126 @@ export const HrRecruitmentPage: React.FC = () => {
                   />
                 </div>
               )}
+            </div>
+          </DialogSection>
+        </div>
+      </BaseDialog>
+
+      <BaseDialog
+        open={offerDialog}
+        title="新建Offer"
+        onClose={closeOfferDialog}
+        maxWidthClassName="max-w-3xl"
+        footer={(
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={closeOfferDialog}>
+              取消
+            </Button>
+            <Button
+              disabled={submitting || !offerableCandidates.length || !offerForm.candidateId}
+              onClick={() => void handleCreateOffer()}
+            >
+              {submitting ? '提交中...' : '创建Offer'}
+            </Button>
+          </div>
+        )}
+      >
+        <div className="space-y-4">
+          {!offerableCandidates.length ? (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+              当前没有可发 Offer 的候选人。
+            </div>
+          ) : null}
+          <DialogSection title="Offer信息">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              <div className="space-y-2 xl:col-span-3">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">候选人</Label>
+                <Select
+                  value={offerForm.candidateId ? String(offerForm.candidateId) : undefined}
+                  onValueChange={(value) => {
+                    const candidate = offerableCandidates.find((item) => item.id === Number(value));
+                    setOfferForm((prev) => ({
+                      ...prev,
+                      candidateId: Number(value),
+                      positionId: candidate?.positionId || prev.positionId || 0,
+                    }));
+                  }}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="请选择候选人" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {offerableCandidates.map((item) => (
+                      <SelectItem key={item.id} value={String(item.id)}>
+                        {item.name} / {item.positionName || '-'}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
+                <Select
+                  value={offerForm.positionId ? String(offerForm.positionId) : undefined}
+                  onValueChange={(value) =>
+                    setOfferForm((prev) => ({ ...prev, positionId: Number(value) }))
+                  }
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="请选择职位" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {positionOptions.map((option) => (
+                      <SelectItem key={option.id} value={String(option.id)}>
+                        {option.positionName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资</Label>
+                <Input
+                  type="number"
+                  value={offerForm.salary || ''}
+                  onChange={(event) =>
+                    setOfferForm((prev) => ({ ...prev, salary: Number(event.target.value) || 0 }))
+                  }
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">预计到岗</Label>
+                <DatePicker
+                  type="date"
+                  value={offerForm.expectedArrivalDate || ''}
+                  onChange={(event) =>
+                    setOfferForm((prev) => ({ ...prev, expectedArrivalDate: event.target.value }))
+                  }
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">有效期至</Label>
+                <DatePicker
+                  type="date"
+                  value={offerForm.expireDate || ''}
+                  onChange={(event) =>
+                    setOfferForm((prev) => ({ ...prev, expireDate: event.target.value }))
+                  }
+                  className="h-11"
+                />
+              </div>
+              <div className="space-y-2 xl:col-span-3">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Offer内容</Label>
+                <Textarea
+                  rows={4}
+                  value={offerForm.offerContent || ''}
+                  onChange={(event) =>
+                    setOfferForm((prev) => ({ ...prev, offerContent: event.target.value }))
+                  }
+                />
+              </div>
             </div>
           </DialogSection>
         </div>

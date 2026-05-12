@@ -22,17 +22,23 @@ export interface AttendanceSupplement {
 
 interface AttendanceSupplementRecord {
   id?: number;
+  requestNo?: string;
+  requestType?: string;
   employeeId?: number;
   employeeName?: string;
   employeeNo?: string;
   deptName?: string;
-  attendanceDate: string;
-  checkType: string;
-  checkTime: string;
+  attendanceDate?: string;
+  checkType?: string;
+  checkTime?: string;
+  startTime?: string;
+  endTime?: string;
+  unit?: string;
   checkMethod?: string;
   location?: string;
   status?: string;
   processInstanceId?: string;
+  reason?: string;
   remark?: string;
   createTime?: string;
   updateTime?: string;
@@ -55,23 +61,33 @@ const normalizeCheckTime = (attendanceDate: string, checkTime: string) => {
 
 const normalizePayload = async (data: AttendanceSupplementForm) => {
   const employee = await assertCurrentEmployeeCanStartSelfService('考勤补录');
+  const checkTime = normalizeCheckTime(data.attendanceDate, data.checkTime);
   return {
-    ...data,
+    requestType: 'SUPPLEMENT',
+    requestNo: `HRTM${Date.now()}`,
     employeeId: employee.id,
-    checkTime: normalizeCheckTime(data.attendanceDate, data.checkTime),
+    startTime: checkTime,
+    endTime: checkTime,
+    unit: data.checkType,
     reason: data.reason.trim(),
   };
 };
 
+const getRequestCheckTime = (item: AttendanceSupplementRecord) =>
+  item.checkTime || item.startTime || item.endTime || '';
+
+const getRequestDate = (item: AttendanceSupplementRecord) =>
+  item.attendanceDate || getRequestCheckTime(item).slice(0, 10);
+
 const mapRecord = (item: AttendanceSupplementRecord): AttendanceSupplement => ({
   id: item.id,
-  supplementNo: item.id ? `ATTENDANCE-${item.id}` : undefined,
+  supplementNo: item.requestNo || (item.id ? `ATTENDANCE-${item.id}` : undefined),
   employeeId: item.employeeId,
   employeeName: item.employeeName,
-  attendanceDate: item.attendanceDate,
-  checkType: item.checkType,
-  checkTime: item.checkTime,
-  reason: item.remark || '',
+  attendanceDate: getRequestDate(item),
+  checkType: item.checkType || item.unit || '',
+  checkTime: getRequestCheckTime(item),
+  reason: item.reason || item.remark || '',
   status: item.status,
   processInstanceId: item.processInstanceId,
   createTime: item.createTime,
@@ -102,11 +118,12 @@ export const attendanceSupplementApi = {
     userId?: number;
   }) => {
     const employeeId = await resolveCurrentEmployeeId(params.userId);
-    const records = (await request.get<AttendanceSupplementRecord[]>('/hr/attendance/supplement/list', {
+    const records = (await request.get<AttendanceSupplementRecord[]>('/hr/attendance/time-requests', {
       params: {
+        requestType: 'SUPPLEMENT',
         employeeId,
         status: normalizeOptionalFilter(params.status),
-        checkType: normalizeOptionalFilter(params.checkType),
+        unit: normalizeOptionalFilter(params.checkType),
       },
     })).map(mapRecord);
 
@@ -133,27 +150,29 @@ export const attendanceSupplementApi = {
   },
 
   getInfo: async (id: number) =>
-    mapRecord(await request.get<AttendanceSupplementRecord>(`/hr/attendance/supplement/${id}`)),
+    mapRecord((await request.get<AttendanceSupplementRecord[]>('/hr/attendance/time-requests', {
+      params: { requestType: 'SUPPLEMENT' },
+    })).find((item) => item.id === id) || ({} as AttendanceSupplementRecord)),
 
   add: async (data: AttendanceSupplementForm) =>
-    request.post<number>('/hr/attendance/supplement', await normalizePayload(data)),
+    request.post<number>('/hr/attendance/time-requests', await normalizePayload(data)),
 
   edit: async (data: AttendanceSupplementForm) => {
     if (!data.id) {
       throw new Error('缺少考勤补录申请 ID');
     }
-    await request.put<void>(`/hr/attendance/supplement/${data.id}`, await normalizePayload(data));
+    await request.put<void>(`/hr/attendance/time-requests/${data.id}`, await normalizePayload(data));
     return true;
   },
 
   remove: async (ids: number[]) => {
-    await Promise.all(ids.map((id) => request.delete<void>(`/hr/attendance/supplement/${id}`)));
+    await Promise.all(ids.map((id) => request.delete<void>(`/hr/attendance/time-requests/${id}`)));
     return true;
   },
 
   submit: async (id: number) => {
     await assertCurrentEmployeeCanStartSelfService('提交考勤补录');
-    await request.post<void>(`/hr/attendance/supplement/${id}/submit`);
+    await request.post<void>(`/hr/attendance/time-requests/${id}/submit`);
     return true;
   },
 };

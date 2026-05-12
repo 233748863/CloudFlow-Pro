@@ -170,12 +170,17 @@ const defaultContactForm: ContactFormState = {
 const textValue = (value?: string | number | null) =>
   value == null || value === '' ? '-' : String(value);
 
+type AttachmentValue = string[] | string | null | undefined;
+
 const splitAttachmentValue = (value?: string | null) =>
   value?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
 
-const mergeAttachmentValue = (attachmentUrls?: string[] | null) => {
+const mergeAttachmentValue = (attachmentUrls?: AttachmentValue) => {
   const normalizedUrls = new Set<string>();
-  attachmentUrls?.forEach((url) => {
+  const urls = Array.isArray(attachmentUrls)
+    ? attachmentUrls
+    : splitAttachmentValue(typeof attachmentUrls === 'string' ? attachmentUrls : '');
+  urls.forEach((url) => {
     if (url?.trim()) {
       normalizedUrls.add(url.trim());
     }
@@ -183,16 +188,16 @@ const mergeAttachmentValue = (attachmentUrls?: string[] | null) => {
   return Array.from(normalizedUrls).join(',');
 };
 
-const getAttachmentList = (attachmentUrls?: string[] | null) =>
+const getAttachmentList = (attachmentUrls?: AttachmentValue) =>
   splitAttachmentValue(mergeAttachmentValue(attachmentUrls));
 
-const getAttachmentCount = (attachmentUrls?: string[] | null) =>
+const getAttachmentCount = (attachmentUrls?: AttachmentValue) =>
   getAttachmentList(attachmentUrls).length;
 
 const AttachmentLinks = ({
   attachmentUrls,
 }: {
-  attachmentUrls?: string[] | null;
+  attachmentUrls?: AttachmentValue;
 }) => {
   const attachmentList = getAttachmentList(attachmentUrls);
   if (attachmentList.length === 0) {
