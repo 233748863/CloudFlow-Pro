@@ -153,6 +153,7 @@ function Install-BackendDependencies {
     $outLog = Join-Path $LogRoot "backend-install-$stamp.out.log"
     $errLog = Join-Path $LogRoot "backend-install-$stamp.err.log"
     $mvnArgs = @(
+        "clean",
         "-pl",
         "cloudflow-gateway,cloudflow-auth,cloudflow-service-workflow,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-hr",
         "-am",
