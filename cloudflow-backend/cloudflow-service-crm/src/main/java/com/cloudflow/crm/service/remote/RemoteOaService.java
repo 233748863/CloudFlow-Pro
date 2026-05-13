@@ -92,6 +92,8 @@ public interface RemoteOaService {
         private Long customerId;
         private String customerName;
         private String remark;
+        private String sourceType;
+        private Long sourceId;
     }
 
     @Data

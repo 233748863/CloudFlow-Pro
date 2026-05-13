@@ -185,6 +185,7 @@ CREATE TABLE oa_crm_receivable (
   due_date           DATE            DEFAULT NULL COMMENT '应收日期',
   received_date      DATE            DEFAULT NULL COMMENT '实收日期',
   invoice_status     VARCHAR(20)     DEFAULT 'NONE' COMMENT '发票状态',
+  invoice_id         BIGINT(20)      DEFAULT NULL COMMENT '关联 OA 发票ID（反向同步时写入）',
   owner_id           BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
   owner_name         VARCHAR(64)     DEFAULT NULL COMMENT '负责人姓名',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
@@ -263,5 +264,68 @@ CREATE TABLE oa_crm_service_ticket (
   KEY idx_crm_ticket_status (status),
   KEY idx_crm_ticket_severity (severity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM服务工单表';
+
+-- ============================================================================
+-- CRM 客户/商机交接待办（员工离职触发生成）
+-- ============================================================================
+DROP TABLE IF EXISTS oa_crm_handover_task;
+CREATE TABLE oa_crm_handover_task (
+  handover_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '交接任务ID',
+  tenant_id          BIGINT(20)      NOT NULL DEFAULT 100000 COMMENT '租户ID',
+  from_owner_id      BIGINT(20)      NOT NULL COMMENT '原负责人 userId',
+  from_owner_name    VARCHAR(80)     DEFAULT NULL COMMENT '原负责人姓名',
+  from_dept_id       BIGINT(20)      DEFAULT NULL COMMENT '原部门ID',
+  business_type      VARCHAR(30)     NOT NULL COMMENT '业务类型 CRM_CUSTOMER / CRM_OPPORTUNITY',
+  business_id        BIGINT(20)      NOT NULL COMMENT '业务ID',
+  business_name      VARCHAR(200)    DEFAULT NULL COMMENT '业务名称快照',
+  status             VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态 PENDING / REASSIGNED / CLOSED',
+  to_owner_id        BIGINT(20)      DEFAULT NULL COMMENT '新负责人 userId',
+  to_owner_name      VARCHAR(80)     DEFAULT NULL COMMENT '新负责人姓名',
+  trigger_source     VARCHAR(30)     DEFAULT 'EMPLOYEE_LEFT' COMMENT '触发来源',
+  trigger_event_id   VARCHAR(64)     DEFAULT NULL COMMENT 'Redis Stream 记录ID，幂等用',
+  remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (handover_id),
+  UNIQUE KEY uk_crm_handover_biz (tenant_id, business_type, business_id, from_owner_id, status),
+  KEY idx_crm_handover_owner (from_owner_id),
+  KEY idx_crm_handover_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 交接待办';
+
+-- ============================================================================
+-- CRM 通用审批流水（承载客户领取/公海释放、商机降级关闭、客户分级变更、退款）
+-- ============================================================================
+DROP TABLE IF EXISTS oa_crm_approval;
+CREATE TABLE oa_crm_approval (
+  approval_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '审批ID',
+  tenant_id          BIGINT(20)      NOT NULL DEFAULT 100000 COMMENT '租户ID',
+  approval_no        VARCHAR(50)     NOT NULL COMMENT '审批编号',
+  business_type      VARCHAR(40)     NOT NULL COMMENT '业务类型: crm_customer_claim / crm_customer_level / crm_opportunity_downgrade / crm_refund',
+  action_type        VARCHAR(30)     DEFAULT NULL COMMENT '业务动作(CLAIM/RELEASE/DOWNGRADE/CLOSE/LEVEL_UP/LEVEL_DOWN/REFUND)',
+  business_ref_type  VARCHAR(30)     DEFAULT NULL COMMENT '业务目标 CRM_CUSTOMER/CRM_OPPORTUNITY/CRM_RECEIVABLE',
+  business_ref_id    BIGINT(20)      DEFAULT NULL COMMENT '业务目标ID',
+  business_ref_name  VARCHAR(200)    DEFAULT NULL COMMENT '业务目标名称快照',
+  payload_json       JSON            DEFAULT NULL COMMENT '申请详情（如调整前/后值、金额等）',
+  applicant_id       BIGINT(20)      DEFAULT NULL COMMENT '申请人 userId',
+  applicant_name     VARCHAR(80)     DEFAULT NULL COMMENT '申请人姓名',
+  dept_id            BIGINT(20)      DEFAULT NULL COMMENT '申请部门',
+  dept_name          VARCHAR(80)     DEFAULT NULL COMMENT '申请部门名称',
+  status             VARCHAR(20)     DEFAULT 'DRAFT' COMMENT 'DRAFT/PENDING/APPROVED/REJECTED/CANCELLED',
+  instance_id        VARCHAR(80)     DEFAULT NULL COMMENT '流程实例ID',
+  approval_comment   VARCHAR(500)    DEFAULT NULL COMMENT '审批意见',
+  remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (approval_id),
+  UNIQUE KEY uk_crm_approval_no (tenant_id, approval_no),
+  KEY idx_crm_approval_business (business_type, business_ref_id),
+  KEY idx_crm_approval_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 通用审批流水';
 
 SET FOREIGN_KEY_CHECKS = 1;

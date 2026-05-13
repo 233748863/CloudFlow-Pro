@@ -1,20 +1,26 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmOpportunity;
+import com.cloudflow.crm.domain.CrmQuote;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardCardVO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardColumnVO;
-import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
+import com.cloudflow.crm.mapper.CrmQuoteMapper;
+import com.cloudflow.crm.service.CrmEventPublisher;
+import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmOpportunityService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -26,13 +32,16 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityMapper, CrmOpportunity>
         implements ICrmOpportunityService {
 
     private final ICrmCustomerService customerService;
+    private final CrmQuoteMapper quoteMapper;
     private final RemoteOaService remoteOaService;
+    private final CrmEventPublisher crmEventPublisher;
 
     @Override
     public PageResult<CrmOpportunity> queryPage(CrmOpportunity query, PageQuery pageQuery) {
@@ -80,14 +89,97 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
         opportunity.setStage(CrmConstants.OpportunityStage.WON);
         opportunity.setStatus(CrmConstants.OpportunityStatus.CLOSED);
+        opportunity.setStageChangedTime(now());
         opportunity.setUpdateBy(currentUserName());
         opportunity.setUpdateTime(now());
         boolean updated = updateById(opportunity);
         if (updated) {
-            createProjectDraft(opportunityId);
+            Long contractId = ensureContractDraft(opportunity);
+            publishOpportunityWon(opportunity, contractId);
             customerService.refreshHealth(opportunity.getCustomerId());
         }
         return updated;
+    }
+
+    /**
+     * 赢单后确保有合同草稿：优先复用已接受报价的 contractId；
+     * 否则基于商机直接落合同草稿，返回合同 ID。
+     * 合同真正审批通过后由 3.2 的事件触发后续项目/预算。
+     */
+    private Long ensureContractDraft(CrmOpportunity opportunity) {
+        try {
+            CrmQuote existingQuote = findAcceptedQuote(opportunity.getOpportunityId());
+            if (existingQuote != null && existingQuote.getContractId() != null) {
+                return existingQuote.getContractId();
+            }
+            RemoteOaService.ContractDraftRequest request = buildContractDraftRequest(opportunity);
+            R<Long> response = remoteOaService.createContract("true", CrmConstants.SERVICE_NAME, request);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                log.warn("商机赢单自动建合同失败: opportunityId={}, msg={}",
+                        opportunity.getOpportunityId(),
+                        response != null ? response.getMsg() : "no response");
+                return null;
+            }
+            Long contractId = response.getData();
+            if (existingQuote != null) {
+                LambdaUpdateWrapper<CrmQuote> wrapper = new LambdaUpdateWrapper<CrmQuote>()
+                        .eq(CrmQuote::getQuoteId, existingQuote.getQuoteId())
+                        .set(CrmQuote::getContractId, contractId)
+                        .set(CrmQuote::getUpdateBy, currentUserName())
+                        .set(CrmQuote::getUpdateTime, now());
+                quoteMapper.update(null, wrapper);
+            }
+            return contractId;
+        } catch (Exception ex) {
+            log.warn("商机赢单自动建合同异常: opportunityId={}", opportunity.getOpportunityId(), ex);
+            return null;
+        }
+    }
+
+    private CrmQuote findAcceptedQuote(Long opportunityId) {
+        List<CrmQuote> quotes = quoteMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
+                .eq(CrmQuote::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmQuote::getOpportunityId, opportunityId)
+                .in(CrmQuote::getStatus,
+                        CrmConstants.QuoteStatus.ACCEPTED,
+                        CrmConstants.QuoteStatus.APPROVED,
+                        CrmConstants.QuoteStatus.SENT)
+                .orderByDesc(CrmQuote::getUpdateTime));
+        return quotes.isEmpty() ? null : quotes.get(0);
+    }
+
+    private RemoteOaService.ContractDraftRequest buildContractDraftRequest(CrmOpportunity opportunity) {
+        RemoteOaService.ContractDraftRequest request = new RemoteOaService.ContractDraftRequest();
+        request.setContractName(opportunity.getOpportunityName() + " 合同");
+        request.setCounterpartyName(opportunity.getCustomerName());
+        request.setContractType("SALES");
+        request.setAmount(opportunity.getExpectedAmount() == null ? BigDecimal.ZERO : opportunity.getExpectedAmount());
+        request.setCurrency("CNY");
+        request.setOwnerId(opportunity.getOwnerId());
+        request.setOwnerName(opportunity.getOwnerName());
+        request.setDeptId(opportunity.getDeptId());
+        request.setDeptName(opportunity.getDeptName());
+        request.setCustomerId(opportunity.getCustomerId());
+        request.setCustomerName(opportunity.getCustomerName());
+        request.setSourceType("CRM_OPPORTUNITY");
+        request.setSourceId(opportunity.getOpportunityId());
+        request.setRemark("由 CRM 商机赢单 #" + opportunity.getOpportunityId() + " 自动生成");
+        return request;
+    }
+
+    private void publishOpportunityWon(CrmOpportunity opportunity, Long contractId) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("opportunityId", opportunity.getOpportunityId());
+        fields.put("opportunityName", opportunity.getOpportunityName());
+        fields.put("customerId", opportunity.getCustomerId());
+        fields.put("customerName", opportunity.getCustomerName());
+        fields.put("ownerId", opportunity.getOwnerId());
+        fields.put("ownerName", opportunity.getOwnerName());
+        fields.put("deptId", opportunity.getDeptId());
+        fields.put("expectedAmount", opportunity.getExpectedAmount());
+        fields.put("contractId", contractId);
+        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_OPPORTUNITY_WON,
+                opportunity.getTenantId(), fields);
     }
 
     @Override

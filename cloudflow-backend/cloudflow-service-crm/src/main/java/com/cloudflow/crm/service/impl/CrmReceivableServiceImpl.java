@@ -134,6 +134,9 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
         String invoiceStatus = normalizeInvoiceStatus(syncDTO == null ? null : syncDTO.getInvoiceStatus());
         receivable.setInvoiceStatus(invoiceStatus);
+        if (syncDTO != null && syncDTO.getInvoiceId() != null) {
+            receivable.setInvoiceId(syncDTO.getInvoiceId());
+        }
 
         BigDecimal plannedAmount = zeroIfNull(receivable.getPlannedAmount());
         BigDecimal currentReceived = zeroIfNull(receivable.getReceivedAmount());

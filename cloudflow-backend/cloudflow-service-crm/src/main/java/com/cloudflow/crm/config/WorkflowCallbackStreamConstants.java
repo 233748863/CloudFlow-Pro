@@ -13,6 +13,10 @@ public final class WorkflowCallbackStreamConstants {
 
     public static final String BUSINESS_TYPE_CRM_QUOTE = "crm_quote";
     public static final String BUSINESS_TYPE_CRM_RENEWAL = "crm_renewal";
+    public static final String BUSINESS_TYPE_CRM_CUSTOMER_CLAIM = "crm_customer_claim";
+    public static final String BUSINESS_TYPE_CRM_CUSTOMER_LEVEL = "crm_customer_level";
+    public static final String BUSINESS_TYPE_CRM_OPPORTUNITY_DOWNGRADE = "crm_opportunity_downgrade";
+    public static final String BUSINESS_TYPE_CRM_REFUND = "crm_refund";
 
     public static void applyCallbackMetadata(Map<String, Object> variables,
                                              String businessType,

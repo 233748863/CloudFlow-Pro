@@ -4,16 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.R;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmFollowUp;
+import com.cloudflow.crm.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmFollowUpMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
 import com.cloudflow.crm.mapper.CrmRenewalMapper;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
 import com.cloudflow.crm.service.ICrmCustomerService;
+import com.cloudflow.crm.service.remote.RemoteHrService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -33,6 +37,7 @@ import java.util.Objects;
  * 已拆分到 {@link CrmCustomerWorkspaceServiceImpl}（读聚合）
  * 与 {@link CrmCrossModuleDraftServiceImpl}（调 OA 的集成层）。
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper, CrmCustomer>
@@ -42,6 +47,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
     private final CrmRenewalMapper renewalMapper;
     private final CrmReceivableMapper receivableMapper;
     private final CrmServiceTicketMapper serviceTicketMapper;
+    private final RemoteHrService remoteHrService;
 
     @Override
     public PageResult<CrmCustomer> queryPage(CrmCustomer query, PageQuery pageQuery) {
@@ -59,6 +65,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
     @Override
     public boolean createCustomer(CrmCustomer customer) {
         validate(customer);
+        enrichOwnerFromHr(customer);
         Localize.fillCustomerDefaults(customer, currentTenantId(), currentUserName(), now());
         boolean saved = save(customer);
         if (saved) {
@@ -73,6 +80,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
             throw new IllegalArgumentException("客户ID不能为空");
         }
         validate(customer);
+        enrichOwnerFromHr(customer);
         CrmCustomer persisted = requireById(customer.getCustomerId(), "客户不存在");
         customer.setTenantId(persisted.getTenantId());
         customer.setUpdateBy(currentUserName());
@@ -82,6 +90,37 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
             refreshHealth(customer.getCustomerId());
         }
         return updated;
+    }
+
+    /**
+     * 若传入了 ownerId（按约定是 sys_user.user_id），尝试从 HR 补齐员工名称与部门快照，
+     * 并拒绝已离职的员工担任客户归属。HR 服务不可用时仅打印日志，避免阻塞业务。
+     */
+    private void enrichOwnerFromHr(CrmCustomer customer) {
+        if (customer == null || customer.getOwnerId() == null) {
+            return;
+        }
+        try {
+            R<HrEmployeeSummaryVO> response = remoteHrService.getEmployeeByUserId(customer.getOwnerId());
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                return;
+            }
+            HrEmployeeSummaryVO employee = response.getData();
+            if (!employee.isActive()) {
+                throw new IllegalArgumentException("客户归属员工已离职，请选择其它员工");
+            }
+            if (!StringUtils.hasText(customer.getOwnerName())) {
+                customer.setOwnerName(employee.getEmployeeName());
+            }
+            if (customer.getDeptId() == null && employee.getDeptId() != null) {
+                customer.setDeptId(employee.getDeptId());
+                customer.setDeptName(employee.getDeptName());
+            }
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.warn("enrichOwnerFromHr failed, ownerId={}, error={}", customer.getOwnerId(), ex.getMessage());
+        }
     }
 
     @Override

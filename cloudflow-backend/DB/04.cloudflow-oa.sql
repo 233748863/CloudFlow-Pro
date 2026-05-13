@@ -689,6 +689,8 @@ CREATE TABLE oa_contract (
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/SEALING/SEALED/ACTIVE/EXPIRED/TERMINATED/CANCELLED)',
   risk_level        VARCHAR(20)     DEFAULT 'LOW' COMMENT '风险等级(LOW/MEDIUM/HIGH/CRITICAL)',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  source_type       VARCHAR(30)     DEFAULT 'MANUAL' COMMENT '来源类型 MANUAL/CRM_OPPORTUNITY/CRM_CUSTOMER',
+  source_id         BIGINT(20)      DEFAULT NULL COMMENT '来源业务ID',
   del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',

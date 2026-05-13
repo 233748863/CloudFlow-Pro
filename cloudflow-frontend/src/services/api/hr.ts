@@ -1596,3 +1596,45 @@ export const listWorkCalendarDays = async (_params?: HrRecord) => [] as WorkCale
 export const createWorkCalendarDay = async (_data: Omit<WorkCalendarDay, 'id'> & HrRecord) => 0;
 export const updateWorkCalendarDay = async (_id: number, _data: Partial<WorkCalendarDay> & HrRecord) => undefined;
 export const deleteWorkCalendarDay = async (_id: number) => undefined;
+
+// ============================================================================
+// CRM 销售业绩聚合（HR 绩效看板展示用），透传到 service-crm /inner/crm/performance/*
+// ============================================================================
+
+export interface CrmPerformanceSummary {
+  dimension: 'OWNER' | 'DEPT' | string;
+  targetId: number;
+  targetName?: string;
+  wonOpportunityCount: number;
+  wonAmount: number;
+  contractAmount: number;
+  receivedAmount: number;
+  outstandingAmount: number;
+  followUpCount: number;
+  customerCount: number;
+}
+
+export interface CrmPerformanceRangeQuery {
+  startDate?: string;
+  endDate?: string;
+}
+
+export const summarizeCrmPerformanceByOwner = (ownerIds: number[], range?: CrmPerformanceRangeQuery) =>
+  request.get<CrmPerformanceSummary[]>('/hr/performance/crm/owners', {
+    params: { ownerIds: ownerIds.join(','), ...(range || {}) },
+  });
+
+export const summarizeCrmPerformanceByDept = (deptIds: number[], range?: CrmPerformanceRangeQuery) =>
+  request.get<CrmPerformanceSummary[]>('/hr/performance/crm/depts', {
+    params: { deptIds: deptIds.join(','), ...(range || {}) },
+  });
+
+export const listCrmTopOwners = (limit: number = 10, range?: CrmPerformanceRangeQuery) =>
+  request.get<CrmPerformanceSummary[]>('/hr/performance/crm/top-owners', {
+    params: { limit, ...(range || {}) },
+  });
+
+export const listCrmTopDepartments = (limit: number = 10, range?: CrmPerformanceRangeQuery) =>
+  request.get<CrmPerformanceSummary[]>('/hr/performance/crm/top-depts', {
+    params: { limit, ...(range || {}) },
+  });

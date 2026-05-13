@@ -54,6 +54,8 @@ public class OaContract implements Serializable {
     private String status;
     private String riskLevel;
     private String remark;
+    private String sourceType;
+    private Long sourceId;
     private String delFlag;
     private String createBy;
 

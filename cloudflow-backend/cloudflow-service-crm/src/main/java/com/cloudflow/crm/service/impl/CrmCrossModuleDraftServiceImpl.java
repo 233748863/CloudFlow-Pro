@@ -1,11 +1,13 @@
 package com.cloudflow.crm.service.impl;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
+import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCrossModuleDraftService;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.remote.RemoteOaService;
@@ -17,6 +19,8 @@ import org.springframework.util.StringUtils;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -33,6 +37,7 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
     private final CrmReceivableMapper receivableMapper;
     private final ICrmCustomerService customerService;
     private final RemoteOaService remoteOaService;
+    private final CrmEventPublisher crmEventPublisher;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -211,8 +216,26 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
         boolean updated = receivableMapper.updateById(receivable) > 0;
         if (updated) {
             customerService.refreshHealth(customer.getCustomerId());
+            publishReceivableConfirmed(customer, receivable);
         }
         return updated;
+    }
+
+    private void publishReceivableConfirmed(CrmCustomer customer, CrmReceivable receivable) {
+        Map<String, Object> fields = new LinkedHashMap<>();
+        fields.put("receivableId", receivable.getReceivableId());
+        fields.put("receivableNo", receivable.getReceivableNo());
+        fields.put("receivableName", receivable.getReceivableName());
+        fields.put("customerId", receivable.getCustomerId());
+        fields.put("customerName", customer.getCustomerName());
+        fields.put("contractId", receivable.getContractId());
+        fields.put("contractNo", receivable.getContractNo());
+        fields.put("invoiceId", receivable.getInvoiceId());
+        fields.put("plannedAmount", receivable.getPlannedAmount());
+        fields.put("receivedAmount", receivable.getReceivedAmount());
+        fields.put("receivedDate", receivable.getReceivedDate());
+        crmEventPublisher.publish(CrmEventStreamConstants.EVENT_RECEIVABLE_CONFIRMED,
+                customer.getTenantId(), fields);
     }
 
     private CrmCustomer requireCustomer(Long customerId) {

@@ -33,6 +33,7 @@ public class CrmReceivable implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate receivedDate;
     private String invoiceStatus;
+    private Long invoiceId;
     private Long ownerId;
     private String ownerName;
     private String remark;

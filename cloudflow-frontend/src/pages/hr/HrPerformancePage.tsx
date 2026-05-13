@@ -41,11 +41,14 @@ import {
   PerformanceMetric,
   PerformanceObjective,
   PerformanceOverview,
+  CrmPerformanceSummary,
   createPerformanceObjective,
   createPerformanceSalaryAdjustment,
   getDeptTreeOptions,
   getPerformanceObjectiveTree,
   getPerformanceOverview,
+  listCrmTopDepartments,
+  listCrmTopOwners,
   listEmployees,
   listPerformanceObjectives,
   savePerformanceAssignmentChildren,
@@ -58,7 +61,7 @@ import { cn } from '@/utils/cn';
 
 const ALL_STATUS = '__all__';
 
-type PerformanceTab = 'tree' | 'matrix' | 'employees' | 'progress' | 'archive' | 'salary';
+type PerformanceTab = 'tree' | 'matrix' | 'employees' | 'progress' | 'archive' | 'salary' | 'sales';
 type CreateCategoryRow = {
   key: string;
   categoryCode: string;
@@ -1395,6 +1398,7 @@ export const HrPerformancePage: React.FC = () => {
     { value: 'progress', label: '进度填报' },
     { value: 'archive', label: '评分归档' },
     { value: 'salary', label: '调薪联动' },
+    { value: 'sales', label: '销售业绩' },
   ];
 
   const splitMetric = splitNode?.categoryCode ? splitNode : objectiveMetrics[0];
@@ -1581,6 +1585,8 @@ export const HrPerformancePage: React.FC = () => {
               }} />
             ) : activeTab === 'archive' ? (
               <ArchiveView objective={currentObjective} categoryNodes={categoryNodes} employeeRows={employeeSummaryRows} renderProgress={renderProgress} />
+            ) : activeTab === 'sales' ? (
+              <CrmSalesView />
             ) : (
               <SalaryLinkView
                 objective={currentObjective}
@@ -2350,3 +2356,183 @@ const SalaryLinkView = ({
 );
 
 export default HrPerformancePage;
+
+const numberFormatter = new Intl.NumberFormat('zh-CN', { maximumFractionDigits: 2 });
+const currencyFormatter = new Intl.NumberFormat('zh-CN', {
+  style: 'currency',
+  currency: 'CNY',
+  maximumFractionDigits: 0,
+});
+
+const CrmSalesView: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string>('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [topOwners, setTopOwners] = useState<CrmPerformanceSummary[]>([]);
+  const [topDepartments, setTopDepartments] = useState<CrmPerformanceSummary[]>([]);
+
+  const fetchAll = React.useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const range = startDate && endDate ? { startDate, endDate } : undefined;
+      const [owners, depts] = await Promise.all([
+        listCrmTopOwners(10, range),
+        listCrmTopDepartments(10, range),
+      ]);
+      setTopOwners(owners || []);
+      setTopDepartments(depts || []);
+    } catch (ex) {
+      setError(getErrorMessage(ex));
+    } finally {
+      setLoading(false);
+    }
+  }, [startDate, endDate]);
+
+  useEffect(() => {
+    void fetchAll();
+  }, [fetchAll]);
+
+  const totals = useMemo(() => {
+    const seed = {
+      wonOpportunityCount: 0,
+      contractAmount: 0,
+      receivedAmount: 0,
+      followUpCount: 0,
+    };
+    return topOwners.reduce(
+      (acc, item) => ({
+        wonOpportunityCount: acc.wonOpportunityCount + (item.wonOpportunityCount || 0),
+        contractAmount: acc.contractAmount + Number(item.contractAmount || 0),
+        receivedAmount: acc.receivedAmount + Number(item.receivedAmount || 0),
+        followUpCount: acc.followUpCount + (item.followUpCount || 0),
+      }),
+      seed,
+    );
+  }, [topOwners]);
+
+  const cards = [
+    {
+      title: '赢单数',
+      value: numberFormatter.format(totals.wonOpportunityCount),
+      icon: <Target className="h-6 w-6" />,
+      iconVariant: 'primary' as const,
+      meta: '期间新增 WON 商机总数',
+    },
+    {
+      title: '合同金额',
+      value: currencyFormatter.format(totals.contractAmount),
+      icon: <ClipboardList className="h-6 w-6" />,
+      iconVariant: 'success' as const,
+      meta: '赢单商机合计（含期望金额近似）',
+    },
+    {
+      title: '已到账回款',
+      value: currencyFormatter.format(totals.receivedAmount),
+      icon: <CheckCircle2 className="h-6 w-6" />,
+      iconVariant: 'success' as const,
+      meta: '按回款到账日统计',
+    },
+    {
+      title: '跟进记录',
+      value: numberFormatter.format(totals.followUpCount),
+      icon: <BarChart3 className="h-6 w-6" />,
+      iconVariant: 'primary' as const,
+      meta: '期间新增跟进条数',
+    },
+  ];
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="card flex flex-wrap items-end gap-3 p-4">
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-slate-500">起始日期</Label>
+          <DatePicker type="date" className="h-9 w-40" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        </div>
+        <div className="flex flex-col gap-1">
+          <Label className="text-xs text-slate-500">结束日期</Label>
+          <DatePicker type="date" className="h-9 w-40" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </div>
+        <Button variant="outline" onClick={() => void fetchAll()} disabled={loading}>
+          <RefreshCcw className={cn('h-4 w-4', loading && 'animate-spin')} />
+          刷新
+        </Button>
+        {error ? <span className="text-sm text-red-600 dark:text-red-400">{error}</span> : null}
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {cards.map((card) => (
+          <StatCard
+            key={card.title}
+            title={card.title}
+            value={card.value}
+            icon={card.icon}
+            iconVariant={card.iconVariant}
+            meta={card.meta}
+          />
+        ))}
+      </div>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <CrmSalesRankTable title="员工业绩 Top 10" subtitle="按已到账回款金额倒序" rows={topOwners} dimensionLabel="员工" />
+        <CrmSalesRankTable title="部门业绩 Top 10" subtitle="按已到账回款金额倒序" rows={topDepartments} dimensionLabel="部门" />
+      </div>
+    </div>
+  );
+};
+
+type CrmSalesRankTableProps = {
+  title: string;
+  subtitle: string;
+  rows: CrmPerformanceSummary[];
+  dimensionLabel: string;
+};
+
+const CrmSalesRankTable: React.FC<CrmSalesRankTableProps> = ({ title, subtitle, rows, dimensionLabel }) => (
+  <div className="card overflow-hidden">
+    <div className="flex items-center justify-between px-4 py-3">
+      <div>
+        <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{title}</div>
+        <div className="text-xs text-slate-500 dark:text-slate-400">{subtitle}</div>
+      </div>
+      <Users className="h-5 w-5 text-slate-400" />
+    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-12">#</TableHead>
+          <TableHead>{dimensionLabel}</TableHead>
+          <TableHead className="text-right">赢单</TableHead>
+          <TableHead className="text-right">合同金额</TableHead>
+          <TableHead className="text-right">已到账</TableHead>
+          <TableHead className="text-right">未到账</TableHead>
+          <TableHead className="text-right">跟进</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {rows.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={7} className="py-8 text-center text-sm text-slate-500">
+              暂无数据
+            </TableCell>
+          </TableRow>
+        ) : (
+          rows.map((row, index) => (
+            <TableRow key={`${row.dimension}-${row.targetId}`}>
+              <TableCell className="tabular-nums text-slate-500">{index + 1}</TableCell>
+              <TableCell className="font-medium text-slate-800 dark:text-slate-200">
+                {row.targetName || `#${row.targetId}`}
+              </TableCell>
+              <TableCell className="text-right tabular-nums">{row.wonOpportunityCount}</TableCell>
+              <TableCell className="text-right tabular-nums">{currencyFormatter.format(Number(row.contractAmount || 0))}</TableCell>
+              <TableCell className="text-right tabular-nums">{currencyFormatter.format(Number(row.receivedAmount || 0))}</TableCell>
+              <TableCell className="text-right tabular-nums text-amber-600 dark:text-amber-400">{currencyFormatter.format(Number(row.outstandingAmount || 0))}</TableCell>
+              <TableCell className="text-right tabular-nums">{row.followUpCount}</TableCell>
+            </TableRow>
+          ))
+        )}
+      </TableBody>
+    </Table>
+  </div>
+);

@@ -33,6 +33,8 @@ public class HrDomainCrudService {
     private static final Set<String> IGNORED_QUERY_KEYS = Set.of("pageNum", "pageSize", "current", "size", "keyword");
     private static final Set<String> AUTO_COLUMNS = Set.of("id", "tenant_id", "create_time", "update_time", "deleted");
 
+    private static final Set<String> RESIGNATION_EFFECTIVE_STATUSES = Set.of("EFFECTIVE", "COMPLETED");
+
     /**
      * 高敏感"薪税"表写白名单：只有具备特权角色的用户才能 INSERT/UPDATE/DELETE。
      * 列表覆盖薪资结构、薪资发放、调薪、绩效调薪、社保、个税档案、个税扣除等。
@@ -111,6 +113,7 @@ public class HrDomainCrudService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final HrEventPublisher hrEventPublisher;
     private final Map<String, Set<String>> columnCache = new ConcurrentHashMap<>();
 
     public List<Map<String, Object>> list(String tableName, Map<String, ?> query) {
@@ -239,6 +242,41 @@ public class HrDomainCrudService {
             }
             saveLifecycleDetail(id, String.valueOf(current.get("type")), detail);
         }
+        maybePublishEmployeeLeftEvent(id);
+    }
+
+    private void maybePublishEmployeeLeftEvent(Long applicationId) {
+        if (applicationId == null) {
+            return;
+        }
+        Map<String, Object> application = get("hr_lifecycle_application", applicationId);
+        if (application.isEmpty()) {
+            return;
+        }
+        String type = String.valueOf(application.getOrDefault("type", ""));
+        if (!"RESIGNATION".equalsIgnoreCase(type)) {
+            return;
+        }
+        String status = String.valueOf(application.getOrDefault("status", "")).toUpperCase(Locale.ROOT);
+        if (!RESIGNATION_EFFECTIVE_STATUSES.contains(status)) {
+            return;
+        }
+        Long employeeId = toLong(application.get("employeeId"));
+        if (employeeId == null) {
+            return;
+        }
+        Map<String, Object> employee = get("hr_employee", employeeId);
+        Long userId = toLong(employee.get("userId"));
+        String employeeName = String.valueOf(employee.getOrDefault("name",
+                application.getOrDefault("name", "")));
+        Long deptId = toLong(firstValue(employee, "deptId"));
+        if (deptId == null) {
+            deptId = toLong(application.get("deptId"));
+        }
+        String deptName = employee.get("deptName") != null
+                ? String.valueOf(employee.get("deptName"))
+                : (application.get("deptName") != null ? String.valueOf(application.get("deptName")) : null);
+        hrEventPublisher.publishEmployeeLeft(employeeId, userId, employeeName, deptId, deptName);
     }
 
     public void completeLifecycleTask(Long id, Map<String, Object> payload) {
