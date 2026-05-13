@@ -79,6 +79,12 @@ public class RemoteOaFallbackFactory implements FallbackFactory<RemoteOaService>
                 log.error("CRM 作废OA发票失败: {}", invoiceId);
                 return R.fail("OA 服务暂时不可用，无法作废发票");
             }
+
+            @Override
+            public R<Long> publishAnnouncement(String innerCall, String fromService, RemoteOaService.AnnouncementPublishRequest request) {
+                log.error("CRM 发布OA公告失败: {}", request != null ? request.getTitle() : null);
+                return R.fail("OA 服务暂时不可用，无法发布公告");
+            }
         };
     }
 }

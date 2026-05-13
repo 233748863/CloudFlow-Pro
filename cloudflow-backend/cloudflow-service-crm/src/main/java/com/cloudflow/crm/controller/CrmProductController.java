@@ -1,0 +1,63 @@
+package com.cloudflow.crm.controller;
+
+import com.cloudflow.common.core.domain.PageQuery;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.crm.domain.CrmProduct;
+import com.cloudflow.crm.service.ICrmProductService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/product")
+@RequiredArgsConstructor
+public class CrmProductController {
+
+    private final ICrmProductService productService;
+
+    @GetMapping("/list")
+    public R<PageResult<CrmProduct>> list(CrmProduct query, PageQuery pageQuery) {
+        return R.ok(productService.queryPage(query, pageQuery));
+    }
+
+    @GetMapping("/{id}")
+    public R<CrmProduct> getInfo(@PathVariable("id") Long id) {
+        CrmProduct product = productService.getById(id);
+        return product == null || !"0".equals(product.getDelFlag()) ? R.fail("产品不存在") : R.ok(product);
+    }
+
+    @SysLog("新增CRM产品")
+    @PostMapping
+    public R<Void> add(@RequestBody CrmProduct product) {
+        try {
+            return R.result(productService.createProduct(product));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("修改CRM产品")
+    @PutMapping
+    public R<Void> edit(@RequestBody CrmProduct product) {
+        try {
+            return R.result(productService.updateProduct(product));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
+    }
+
+    @SysLog("删除CRM产品")
+    @DeleteMapping("/{ids}")
+    public R<Void> remove(@PathVariable("ids") List<Long> ids) {
+        for (Long id : ids) {
+            CrmProduct product = new CrmProduct();
+            product.setProductId(id);
+            product.setDelFlag("1");
+            productService.updateById(product);
+        }
+        return R.ok();
+    }
+}

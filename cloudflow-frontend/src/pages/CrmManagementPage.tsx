@@ -2,20 +2,20 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Eye, FolderKanban, Handshake, LifeBuoy, Plus, ReceiptText, RefreshCcw, Send, ShieldAlert, Target, TriangleAlert, UserRound, Wallet } from 'lucide-react';
+import { Eye, FolderKanban, Handshake, LifeBuoy, Plus, ReceiptText, RefreshCcw, Send, ShieldAlert, Target, Trash2, TriangleAlert, UserRound, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { crmApi, CrmContact, CrmCustomer, CrmDashboardSummary, CrmFollowUp, CrmOpportunity, CrmOpportunityBoardCard, CrmOpportunityBoardColumn, CrmQuote, CrmReceivable, CrmRenewal, CrmTicket } from '@/services/api/crm';
+import { crmApi, CrmContact, CrmCustomer, CrmDashboardSummary, CrmFollowUp, CrmOpportunity, CrmOpportunityBoardCard, CrmOpportunityBoardColumn, CrmProduct, CrmQuote, CrmQuoteLine, CrmReceivable, CrmRenewal, CrmTicket } from '@/services/api/crm';
 import { contractApi, OaContract } from '@/services/api/contractRisk';
 import { invoiceApi, Invoice } from '@/services/api/invoice';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 
-type CrmTab = 'customer' | 'opportunity' | 'quote' | 'receivable' | 'renewal' | 'ticket';
+type CrmTab = 'dashboard' | 'customer' | 'opportunity' | 'quote' | 'receivable' | 'renewal' | 'ticket';
 
 type DialogState =
   | { type: 'customer'; item?: CrmCustomer | null }
@@ -33,6 +33,7 @@ type ConfirmState =
   | null;
 
 const tabLabelMap: Record<CrmTab, string> = {
+  dashboard: '销售仪表盘',
   customer: '客户管理',
   opportunity: '商机管理',
   quote: '报价管理',
@@ -43,7 +44,8 @@ const tabLabelMap: Record<CrmTab, string> = {
 
 const emptyCustomer: CrmCustomer = { customerName: '', customerType: 'ENTERPRISE', status: 'ACTIVE' };
 const emptyOpportunity: CrmOpportunity = { customerId: 0, opportunityName: '', stage: 'LEAD', status: 'OPEN', expectedAmount: 0, winRate: 0 };
-const emptyQuote: CrmQuote = { customerId: 0, quoteName: '', totalAmount: 0, taxAmount: 0, currency: 'CNY', status: 'DRAFT' };
+const emptyQuoteLine: CrmQuoteLine = { quantity: 1, unitPrice: 0, discountRate: 100, taxRate: 0, lineAmount: 0, taxAmount: 0 };
+const emptyQuote: CrmQuote = { customerId: 0, quoteName: '', totalAmount: 0, taxAmount: 0, currency: 'CNY', status: 'DRAFT', quoteLines: [emptyQuoteLine] };
 const emptyReceivable: CrmReceivable = { customerId: 0, receivableName: '', plannedAmount: 0, invoiceStatus: 'NONE', status: 'PLANNED' };
 const emptyRenewal: CrmRenewal = { customerId: 0, renewalName: '', renewalAmount: 0, status: 'PLANNED' };
 const emptyTicket: CrmTicket = { customerId: 0, ticketTitle: '', severity: 'LOW', issueType: 'OTHER', status: 'OPEN' };
@@ -217,7 +219,7 @@ export default function CrmManagementPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
-  const [tab, setTab] = useState<CrmTab>('customer');
+  const [tab, setTab] = useState<CrmTab>('dashboard');
   const [keyword, setKeyword] = useState('');
   const [customers, setCustomers] = useState<CrmCustomer[]>([]);
   const [customerRefs, setCustomerRefs] = useState<CrmCustomer[]>([]);
@@ -226,6 +228,7 @@ export default function CrmManagementPage() {
   const [opportunities, setOpportunities] = useState<CrmOpportunity[]>([]);
   const [opportunityRefs, setOpportunityRefs] = useState<CrmOpportunity[]>([]);
   const [quotes, setQuotes] = useState<CrmQuote[]>([]);
+  const [productRefs, setProductRefs] = useState<CrmProduct[]>([]);
   const [receivables, setReceivables] = useState<CrmReceivable[]>([]);
   const [renewals, setRenewals] = useState<CrmRenewal[]>([]);
   const [tickets, setTickets] = useState<CrmTicket[]>([]);
@@ -261,9 +264,14 @@ export default function CrmManagementPage() {
     [contracts],
   );
 
+  const productOptions = useMemo(
+    () => productRefs.map((item) => ({ label: `${item.productName} / ${item.productNo || '-'} / ${Number(item.standardPrice || 0).toLocaleString('zh-CN')}`, value: String(item.productId) })),
+    [productRefs],
+  );
+
   const load = async () => {
     try {
-      const [c, cRef, ct, fu, o, oRef, q, r, n, t, contractResult, dashboardResult, boardResult] = await Promise.all([
+      const [c, cRef, ct, fu, o, oRef, q, r, n, t, contractResult, dashboardResult, boardResult, productResult] = await Promise.all([
         crmApi.listCustomers({ pageNum: 1, pageSize: 50, customerName: keyword || undefined, customerTags: keyword || undefined }),
         crmApi.listCustomers({ pageNum: 1, pageSize: 200 }),
         crmApi.listContacts({ pageNum: 1, pageSize: 100 }),
@@ -277,6 +285,7 @@ export default function CrmManagementPage() {
         contractApi.list({ pageNum: 1, pageSize: 200 }),
         crmApi.getDashboardSummary(),
         crmApi.getOpportunityBoard(),
+        crmApi.listProducts({ pageNum: 1, pageSize: 200, status: 'ACTIVE' }),
       ]);
       setCustomers(c.rows || []);
       setCustomerRefs(cRef.rows || []);
@@ -285,6 +294,7 @@ export default function CrmManagementPage() {
       setOpportunities(o.rows || []);
       setOpportunityRefs(oRef.rows || []);
       setQuotes(q.rows || []);
+      setProductRefs(productResult.rows || []);
       setReceivables(r.rows || []);
       setRenewals(n.rows || []);
       setTickets(t.rows || []);
@@ -301,14 +311,27 @@ export default function CrmManagementPage() {
   }, [keyword]);
 
   useEffect(() => {
+    const pathTabMap: Record<string, CrmTab> = {
+      '/office/crm/customers': 'customer',
+      '/office/crm/opportunities': 'opportunity',
+      '/office/crm/quotes': 'quote',
+      '/office/crm/receivables': 'receivable',
+      '/office/crm/renewals': 'renewal',
+      '/office/crm/tickets': 'ticket',
+    };
+    const pathTab = pathTabMap[location.pathname];
+    if (pathTab) {
+      setTab(pathTab);
+      return;
+    }
     const search = new URLSearchParams(location.search);
     const nextTab = search.get('tab') as CrmTab | null;
     if (nextTab && ['customer', 'opportunity', 'quote', 'receivable', 'renewal', 'ticket'].includes(nextTab)) {
       setTab(nextTab);
       return;
     }
-    setTab('customer');
-  }, [location.search]);
+    setTab('dashboard');
+  }, [location.pathname, location.search]);
 
   const resetForms = () => {
     setCustomerForm(emptyCustomer);
@@ -331,7 +354,28 @@ export default function CrmManagementPage() {
     if (next.type === 'contact') setContactForm(next.item || emptyContact);
     if (next.type === 'followUp') setFollowUpForm(next.item || emptyFollowUp);
     if (next.type === 'opportunity') setOpportunityForm(next.item || emptyOpportunity);
-    if (next.type === 'quote') setQuoteForm(next.item || emptyQuote);
+    if (next.type === 'quote') {
+      if (next.item?.quoteId) {
+        void crmApi.getQuoteDetail(next.item.quoteId)
+          .then((detail) => {
+            setQuoteForm({
+              ...emptyQuote,
+              ...detail,
+              quoteLines: detail.quoteLines && detail.quoteLines.length ? detail.quoteLines : [{ ...emptyQuoteLine, sortNo: 1 }],
+            });
+          })
+          .catch((error) => {
+            toast.error(getErrorMessage(error, '加载报价明细失败'));
+            setQuoteForm(next.item || emptyQuote);
+          });
+      } else {
+        setQuoteForm({
+          ...emptyQuote,
+          ...(next.item || {}),
+          quoteLines: next.item?.quoteLines && next.item.quoteLines.length ? next.item.quoteLines : [{ ...emptyQuoteLine, sortNo: 1 }],
+        });
+      }
+    }
     if (next.type === 'receivable') setReceivableForm(next.item || emptyReceivable);
     if (next.type === 'renewal') setRenewalForm(next.item || emptyRenewal);
     if (next.type === 'ticket') setTicketForm(next.item || emptyTicket);
@@ -367,6 +411,84 @@ export default function CrmManagementPage() {
       customerId: matched.customerId || prev.customerId,
       customerName: matched.customerName || prev.customerName,
     }));
+  };
+
+  const calcQuoteLineAmount = (line: CrmQuoteLine) => {
+    const quantity = Number(line.quantity || 0);
+    const unitPrice = Number(line.unitPrice || 0);
+    const discountRate = Number(line.discountRate ?? 100);
+    return Number(((quantity * unitPrice * discountRate) / 100).toFixed(2));
+  };
+
+  const calcQuoteTaxAmount = (line: CrmQuoteLine) => {
+    const lineAmount = Number(line.lineAmount ?? calcQuoteLineAmount(line));
+    const taxRate = Number(line.taxRate || 0);
+    return Number(((lineAmount * taxRate) / 100).toFixed(2));
+  };
+
+  const syncQuoteTotals = (lines: CrmQuoteLine[]) => {
+    const totalAmount = Number(lines.reduce((sum, line) => sum + Number(line.lineAmount || 0), 0).toFixed(2));
+    const taxAmount = Number(lines.reduce((sum, line) => sum + Number(line.taxAmount || 0), 0).toFixed(2));
+    setQuoteForm((prev) => ({ ...prev, quoteLines: lines, totalAmount, taxAmount }));
+  };
+
+  const updateQuoteLine = (index: number, patch: Partial<CrmQuoteLine>) => {
+    const currentLines = quoteForm.quoteLines && quoteForm.quoteLines.length ? quoteForm.quoteLines : [emptyQuoteLine];
+    const nextLines = currentLines.map((line, lineIndex) => {
+      if (lineIndex !== index) {
+        return line;
+      }
+      const merged = { ...line, ...patch };
+      const lineAmount = calcQuoteLineAmount(merged);
+      const taxAmount = calcQuoteTaxAmount({ ...merged, lineAmount });
+      return {
+        ...merged,
+        sortNo: merged.sortNo || index + 1,
+        lineAmount,
+        taxAmount,
+      };
+    });
+    syncQuoteTotals(nextLines);
+  };
+
+  const selectQuoteLineProduct = (index: number, productId?: number) => {
+    if (!productId) {
+      updateQuoteLine(index, {
+        productId: undefined,
+        productNo: undefined,
+        productName: undefined,
+        category: undefined,
+        spec: undefined,
+        unit: undefined,
+        unitPrice: 0,
+      });
+      return;
+    }
+    const matched = productRefs.find((item) => item.productId === productId);
+    if (!matched) {
+      return;
+    }
+    updateQuoteLine(index, {
+      productId: matched.productId,
+      productNo: matched.productNo,
+      productName: matched.productName,
+      category: matched.category,
+      spec: matched.spec,
+      unit: matched.unit,
+      unitPrice: Number(matched.standardPrice || 0),
+    });
+  };
+
+  const addQuoteLine = () => {
+    const currentLines = quoteForm.quoteLines && quoteForm.quoteLines.length ? quoteForm.quoteLines : [];
+    const nextLines = [...currentLines, { ...emptyQuoteLine, sortNo: currentLines.length + 1 }];
+    syncQuoteTotals(nextLines);
+  };
+
+  const removeQuoteLine = (index: number) => {
+    const currentLines = quoteForm.quoteLines && quoteForm.quoteLines.length ? quoteForm.quoteLines : [];
+    const filtered = currentLines.filter((_, lineIndex) => lineIndex !== index).map((line, lineIndex) => ({ ...line, sortNo: lineIndex + 1 }));
+    syncQuoteTotals(filtered.length ? filtered : [{ ...emptyQuoteLine, sortNo: 1 }]);
   };
 
   const saveDialog = async () => {
@@ -512,6 +634,35 @@ export default function CrmManagementPage() {
     let badgeText = '';
     let metrics: Array<{ label: string; value: React.ReactNode; hint?: string; valueClassName?: string }> = [];
     let focusItems: Array<{ label: string; title: string; meta?: string }> = [];
+
+    if (tab === 'dashboard') {
+      description = '销售业绩与经营协同的整体视图，下钻请使用快捷入口跳转到具体模块';
+      badgeText = `${customers.length} 个客户 / ${opportunities.length} 个商机`;
+      metrics = [
+        { label: '商务谈判', value: negotiationOpportunityCount, hint: 'NEGOTIATION 阶段', valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+        { label: '待审批报价', value: dashboard.pendingQuotes.length, hint: '待经理审批', valueClassName: 'text-teal-700 dark:text-teal-300' },
+        { label: '回款余额', value: formatDashboardNumber(totalOutstandingAmount), hint: `${totalReceivableCount} 条回款计划`, valueClassName: 'text-cyan-700 dark:text-cyan-300' },
+        { label: '风险与协同', value: riskAndTodoCount, hint: '停滞、预算阈值、跨模块待办', valueClassName: 'text-amber-700 dark:text-amber-300' },
+      ];
+      focusItems = [
+        {
+          label: '优先事项',
+          title: priorityQuote?.quoteName || '当前无待审批报价',
+          meta: priorityQuote ? `${priorityQuote.customerName || '-'} / ${formatDashboardNumber(priorityQuote.totalAmount)}` : '可把精力转向客户经营与回款跟进',
+        },
+        {
+          label: '协同提醒',
+          title: dashboard.crossModuleTodos[0]?.title || priorityRisk?.title || staleCustomer?.customerName || '当前无跨模块待办',
+          meta: dashboard.crossModuleTodos[0]
+            ? `${dashboard.crossModuleTodos[0].sourceLabel || dashboard.crossModuleTodos[0].module || '-'} / ${renderStatus(dashboard.crossModuleTodos[0].status)}`
+            : priorityRisk
+              ? `${priorityRisk.sourceLabel || priorityRisk.module || '-'} / ${renderStatus(priorityRisk.status)}`
+              : staleCustomer
+                ? '7天未跟进客户'
+                : '经营协同状态正常',
+        },
+      ];
+    }
 
     if (tab === 'customer') {
       description = '客户、报价、回款与跨模块协同的经营摘要';
@@ -853,7 +1004,10 @@ export default function CrmManagementPage() {
               <div className="text-xs text-slate-500">{item.quoteNo || '-'}</div>
             </td>
             <td className="px-4 py-3 text-sm">{item.customerName || '-'}</td>
-            <td className="px-4 py-3 text-sm">{item.totalAmount || 0}</td>
+            <td className="px-4 py-3 text-sm">
+              <div>{item.totalAmount || 0}</div>
+              <div className="text-xs text-slate-500">{item.quoteLines?.length || 0} 行 / 税额 {item.taxAmount || 0}</div>
+            </td>
             <td className="px-4 py-3 text-sm">{renderStatus(item.status)}</td>
             <td className="px-4 py-3 text-sm">{item.contractNo || '-'}</td>
             <td className="px-4 py-3 text-right">
@@ -1180,9 +1334,54 @@ export default function CrmManagementPage() {
               </Select>
             </div>
             <Input value={quoteForm.quoteName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, quoteName: e.target.value }))} placeholder="报价名称" />
-            <Input type="number" value={String(quoteForm.totalAmount || 0)} onChange={(e) => setQuoteForm((prev) => ({ ...prev, totalAmount: Number(e.target.value || 0) }))} placeholder="总金额" />
-            <Input type="number" value={String(quoteForm.taxAmount || 0)} onChange={(e) => setQuoteForm((prev) => ({ ...prev, taxAmount: Number(e.target.value || 0) }))} placeholder="税额" />
             <Input value={quoteForm.ownerName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="负责人" />
+            <Input value={quoteForm.currency || 'CNY'} onChange={(e) => setQuoteForm((prev) => ({ ...prev, currency: e.target.value }))} placeholder="币种" />
+            <Input type="date" value={quoteForm.validUntil || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, validUntil: e.target.value }))} placeholder="有效期至" />
+            <div className="md:col-span-2 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
+              <div className="mb-3 flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">报价行项目</div>
+                  <div className="text-xs text-slate-500">按产品带入标准价，可继续调整数量、折扣与税率。</div>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={addQuoteLine}><Plus size={14} className="mr-1.5" />新增行</Button>
+              </div>
+              <div className="space-y-3">
+                {(quoteForm.quoteLines && quoteForm.quoteLines.length ? quoteForm.quoteLines : [{ ...emptyQuoteLine, sortNo: 1 }]).map((line, index) => (
+                  <div key={line.quoteLineId || `line-${index}`} className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+                    <div className="mb-3 flex items-center justify-between">
+                      <div className="text-sm font-medium">第 {index + 1} 行</div>
+                      <Button type="button" size="sm" variant="ghost" onClick={() => removeQuoteLine(index)} disabled={(quoteForm.quoteLines?.length || 1) <= 1}><Trash2 size={14} /></Button>
+                    </div>
+                    <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                      <div className="xl:col-span-2">
+                        <Select value={line.productId ? String(line.productId) : 'NONE'} onValueChange={(value) => selectQuoteLineProduct(index, value === 'NONE' ? undefined : Number(value))}>
+                          <SelectTrigger><SelectValue placeholder="选择产品" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NONE">手工录入</SelectItem>
+                            {productOptions.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input value={line.productName || ''} onChange={(e) => updateQuoteLine(index, { productName: e.target.value })} placeholder="产品名称" />
+                      <Input value={line.productNo || ''} onChange={(e) => updateQuoteLine(index, { productNo: e.target.value })} placeholder="产品编号" />
+                      <Input value={line.category || ''} onChange={(e) => updateQuoteLine(index, { category: e.target.value })} placeholder="分类" />
+                      <Input value={line.spec || ''} onChange={(e) => updateQuoteLine(index, { spec: e.target.value })} placeholder="规格" />
+                      <Input value={line.unit || ''} onChange={(e) => updateQuoteLine(index, { unit: e.target.value })} placeholder="单位" />
+                      <Input type="number" value={String(line.quantity ?? 1)} onChange={(e) => updateQuoteLine(index, { quantity: Number(e.target.value || 0) })} placeholder="数量" />
+                      <Input type="number" value={String(line.unitPrice ?? 0)} onChange={(e) => updateQuoteLine(index, { unitPrice: Number(e.target.value || 0) })} placeholder="单价" />
+                      <Input type="number" value={String(line.discountRate ?? 100)} onChange={(e) => updateQuoteLine(index, { discountRate: Number(e.target.value || 0) })} placeholder="折扣率" />
+                      <Input type="number" value={String(line.taxRate ?? 0)} onChange={(e) => updateQuoteLine(index, { taxRate: Number(e.target.value || 0) })} placeholder="税率" />
+                      <Input value={String(line.lineAmount ?? 0)} readOnly placeholder="行金额" />
+                      <Input value={String(line.taxAmount ?? 0)} readOnly placeholder="税额" />
+                      <Textarea className="md:col-span-2 xl:col-span-4" value={line.remark || ''} onChange={(e) => updateQuoteLine(index, { remark: e.target.value })} placeholder="行备注、折扣说明、交付边界" rows={2} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Input type="number" value={String(quoteForm.totalAmount || 0)} readOnly placeholder="总金额" />
+            <Input type="number" value={String(quoteForm.taxAmount || 0)} readOnly placeholder="税额" />
+            <Textarea className="md:col-span-2" value={quoteForm.remark || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, remark: e.target.value }))} placeholder="报价说明、商务条款、附件说明" rows={3} />
           </div>
         </BaseDialog>
       );
@@ -1330,20 +1529,42 @@ export default function CrmManagementPage() {
 
   const currentViewLabel = tabLabelMap[tab];
   const filterBar = (
-    <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
-      <div className="flex flex-wrap items-center gap-3">
-        <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="客户 / 商机 / 报价关键字" className="w-full sm:w-[280px]" />
-        <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-          当前视图 · {currentViewLabel}
+    <div className="space-y-3">
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
+          <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="客户 / 商机 / 报价关键字" className="w-full sm:w-[280px]" />
+          <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            当前视图 · {currentViewLabel}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {tab === 'customer' ? <Button size="sm" onClick={() => openDialog({ type: 'customer' })}><Plus size={14} className="mr-1.5" />新增客户</Button> : null}
+          {tab === 'opportunity' ? <Button size="sm" onClick={() => openDialog({ type: 'opportunity' })}><Plus size={14} className="mr-1.5" />新增商机</Button> : null}
+          {tab === 'quote' ? <Button size="sm" onClick={() => openDialog({ type: 'quote' })}><Plus size={14} className="mr-1.5" />新增报价</Button> : null}
+          {tab === 'receivable' ? <Button size="sm" onClick={() => openDialog({ type: 'receivable' })}><Plus size={14} className="mr-1.5" />新增回款</Button> : null}
+          {tab === 'renewal' ? <Button size="sm" onClick={() => openDialog({ type: 'renewal' })}><Plus size={14} className="mr-1.5" />新增续约</Button> : null}
+          {tab === 'ticket' ? <Button size="sm" onClick={() => openDialog({ type: 'ticket' })}><Plus size={14} className="mr-1.5" />新增工单</Button> : null}
         </div>
       </div>
-      <div className="flex items-center gap-2">
-        {tab === 'customer' ? <Button size="sm" onClick={() => openDialog({ type: 'customer' })}><Plus size={14} className="mr-1.5" />新增客户</Button> : null}
-        {tab === 'opportunity' ? <Button size="sm" onClick={() => openDialog({ type: 'opportunity' })}><Plus size={14} className="mr-1.5" />新增商机</Button> : null}
-        {tab === 'quote' ? <Button size="sm" onClick={() => openDialog({ type: 'quote' })}><Plus size={14} className="mr-1.5" />新增报价</Button> : null}
-        {tab === 'receivable' ? <Button size="sm" onClick={() => openDialog({ type: 'receivable' })}><Plus size={14} className="mr-1.5" />新增回款</Button> : null}
-        {tab === 'renewal' ? <Button size="sm" onClick={() => openDialog({ type: 'renewal' })}><Plus size={14} className="mr-1.5" />新增续约</Button> : null}
-        {tab === 'ticket' ? <Button size="sm" onClick={() => openDialog({ type: 'ticket' })}><Plus size={14} className="mr-1.5" />新增工单</Button> : null}
+    </div>
+  );
+
+  const dashboardShortcuts = (
+    <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="text-sm font-medium text-slate-700 dark:text-slate-200">快捷入口</div>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customers')}>客户管理</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/opportunities')}>商机看板</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/quotes')}>报价管理</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/receivables')}>回款台账</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/renewals')}>续约管理</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/tickets')}>服务工单</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/leads')}>线索池</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/products')}>产品库</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/price-books')}>价目表</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/sales-targets')}>销售目标</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customer-pool')}>客户公海</Button>
+        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/assignment-rules')}>分配规则</Button>
       </div>
     </div>
   );
@@ -1352,12 +1573,16 @@ export default function CrmManagementPage() {
     <div className="space-y-4">
       {renderDashboard()}
 
+      {tab === 'dashboard' ? dashboardShortcuts : null}
+
       {tab === 'opportunity' ? (
         <div className="space-y-6">
           {filterBar}
           {renderOpportunityTable()}
         </div>
-      ) : (
+      ) : null}
+
+      {tab !== 'dashboard' && tab !== 'opportunity' ? (
       <TablePageLayout
         filters={filterBar}
         table={(
@@ -1370,7 +1595,7 @@ export default function CrmManagementPage() {
           </>
         )}
       />
-      )}
+      ) : null}
 
       {renderDialog()}
 

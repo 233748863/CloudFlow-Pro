@@ -8,6 +8,151 @@
 SET NAMES utf8mb4;
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS oa_crm_lead;
+CREATE TABLE oa_crm_lead (
+  lead_id            BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '线索ID',
+  tenant_id          BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  lead_no            VARCHAR(50)     NOT NULL COMMENT '线索编号',
+  lead_name          VARCHAR(120)    NOT NULL COMMENT '线索名称',
+  company_name       VARCHAR(120)    DEFAULT NULL COMMENT '公司名称',
+  contact_name       VARCHAR(64)     DEFAULT NULL COMMENT '联系人姓名',
+  mobile             VARCHAR(30)     DEFAULT NULL COMMENT '手机号',
+  phone              VARCHAR(30)     DEFAULT NULL COMMENT '联系电话',
+  email              VARCHAR(100)    DEFAULT NULL COMMENT '联系邮箱',
+  source             VARCHAR(30)     DEFAULT NULL COMMENT '线索来源',
+  industry           VARCHAR(64)     DEFAULT NULL COMMENT '行业',
+  status             VARCHAR(20)     DEFAULT 'NEW' COMMENT '线索状态',
+  owner_id           BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
+  owner_name         VARCHAR(64)     DEFAULT NULL COMMENT '负责人姓名',
+  dept_id            BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name          VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  next_follow_up_time DATETIME       DEFAULT NULL COMMENT '下次跟进时间',
+  last_follow_up_time DATETIME       DEFAULT NULL COMMENT '最近跟进时间',
+  converted_customer_id BIGINT(20)   DEFAULT NULL COMMENT '转化后的客户ID',
+  converted_time     DATETIME        DEFAULT NULL COMMENT '转化时间',
+  remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (lead_id),
+  UNIQUE KEY uk_crm_lead_no (tenant_id, lead_no),
+  KEY idx_crm_lead_owner (owner_id),
+  KEY idx_crm_lead_status (status),
+  KEY idx_crm_lead_company (company_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM线索表';
+
+DROP TABLE IF EXISTS oa_crm_product;
+CREATE TABLE oa_crm_product (
+  product_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '产品ID',
+  tenant_id          BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  product_no         VARCHAR(50)     NOT NULL COMMENT '产品编号',
+  product_name       VARCHAR(120)    NOT NULL COMMENT '产品名称',
+  category           VARCHAR(64)     DEFAULT NULL COMMENT '产品分类',
+  spec               VARCHAR(255)    DEFAULT NULL COMMENT '规格型号',
+  unit               VARCHAR(30)     DEFAULT NULL COMMENT '单位',
+  standard_price     DECIMAL(16,2)   DEFAULT 0.00 COMMENT '标准单价',
+  currency           VARCHAR(10)     DEFAULT 'CNY' COMMENT '币种',
+  status             VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态',
+  owner_id           BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
+  owner_name         VARCHAR(64)     DEFAULT NULL COMMENT '负责人姓名',
+  remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (product_id),
+  UNIQUE KEY uk_crm_product_no (tenant_id, product_no),
+  KEY idx_crm_product_name (product_name),
+  KEY idx_crm_product_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM产品表';
+
+DROP TABLE IF EXISTS oa_crm_price_book;
+CREATE TABLE oa_crm_price_book (
+  price_book_id      BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '价目表ID',
+  tenant_id          BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  price_book_no      VARCHAR(50)     NOT NULL COMMENT '价目表编号',
+  price_book_name    VARCHAR(120)    NOT NULL COMMENT '价目表名称',
+  currency           VARCHAR(10)     DEFAULT 'CNY' COMMENT '币种',
+  start_date         DATE            DEFAULT NULL COMMENT '生效开始日期',
+  end_date           DATE            DEFAULT NULL COMMENT '生效结束日期',
+  status             VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态',
+  owner_id           BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
+  owner_name         VARCHAR(64)     DEFAULT NULL COMMENT '负责人姓名',
+  remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (price_book_id),
+  UNIQUE KEY uk_crm_price_book_no (tenant_id, price_book_no),
+  KEY idx_crm_price_book_name (price_book_name),
+  KEY idx_crm_price_book_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM价目表';
+
+DROP TABLE IF EXISTS oa_crm_quote_line;
+CREATE TABLE oa_crm_quote_line (
+  quote_line_id      BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '报价行ID',
+  tenant_id          BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  quote_id           BIGINT(20)      NOT NULL COMMENT '报价ID',
+  sort_no            INT(11)         DEFAULT 1 COMMENT '排序号',
+  product_id         BIGINT(20)      DEFAULT NULL COMMENT '产品ID',
+  product_no         VARCHAR(50)     DEFAULT NULL COMMENT '产品编号快照',
+  product_name       VARCHAR(120)    NOT NULL COMMENT '产品名称快照',
+  category           VARCHAR(64)     DEFAULT NULL COMMENT '产品分类快照',
+  spec               VARCHAR(255)    DEFAULT NULL COMMENT '规格型号快照',
+  unit               VARCHAR(30)     DEFAULT NULL COMMENT '单位快照',
+  quantity           DECIMAL(16,2)   DEFAULT 1.00 COMMENT '数量',
+  unit_price         DECIMAL(16,2)   DEFAULT 0.00 COMMENT '单价',
+  discount_rate      DECIMAL(5,2)    DEFAULT 100.00 COMMENT '折扣率',
+  tax_rate           DECIMAL(5,2)    DEFAULT 0.00 COMMENT '税率',
+  line_amount        DECIMAL(16,2)   DEFAULT 0.00 COMMENT '行金额',
+  tax_amount         DECIMAL(16,2)   DEFAULT 0.00 COMMENT '行税额',
+  remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (quote_line_id),
+  KEY idx_crm_quote_line_quote (quote_id),
+  KEY idx_crm_quote_line_product (product_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM报价行项目表';
+
+DROP TABLE IF EXISTS oa_crm_sales_target;
+CREATE TABLE oa_crm_sales_target (
+  sales_target_id     BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '销售目标ID',
+  tenant_id           BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  target_no           VARCHAR(50)     NOT NULL COMMENT '目标编号',
+  target_name         VARCHAR(120)    NOT NULL COMMENT '目标名称',
+  dimension_type      VARCHAR(20)     NOT NULL COMMENT '维度类型：OWNER/DEPT',
+  period_type         VARCHAR(20)     NOT NULL COMMENT '周期类型：MONTH/QUARTER/YEAR',
+  target_year         INT(11)         NOT NULL COMMENT '目标年份',
+  target_period       INT(11)         DEFAULT NULL COMMENT '目标周期值（月1-12 / 季1-4）',
+  dept_id             BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
+  dept_name           VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  owner_id            BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
+  owner_name          VARCHAR(64)     DEFAULT NULL COMMENT '负责人姓名',
+  target_amount       DECIMAL(16,2)   NOT NULL COMMENT '目标金额',
+  status              VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态',
+  remark              VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag            CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by           VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by           VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (sales_target_id),
+  UNIQUE KEY uk_crm_sales_target_no (tenant_id, target_no),
+  KEY idx_crm_sales_target_dimension (dimension_type),
+  KEY idx_crm_sales_target_period (period_type, target_year, target_period),
+  KEY idx_crm_sales_target_owner (owner_id),
+  KEY idx_crm_sales_target_dept (dept_id),
+  KEY idx_crm_sales_target_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM销售目标与配额表';
+
 DROP TABLE IF EXISTS oa_crm_customer;
 CREATE TABLE oa_crm_customer (
   customer_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '客户ID',
@@ -34,6 +179,10 @@ CREATE TABLE oa_crm_customer (
   health_reason      VARCHAR(500)    DEFAULT NULL COMMENT '健康度原因',
   last_follow_up_time DATETIME       DEFAULT NULL COMMENT '最近跟进时间',
   next_follow_up_time DATETIME       DEFAULT NULL COMMENT '下次跟进时间',
+  pool_flag          CHAR(1)         DEFAULT '0' COMMENT '是否在公海：0否 1是',
+  pooled_time        DATETIME        DEFAULT NULL COMMENT '入池时间',
+  original_owner_id  BIGINT(20)      DEFAULT NULL COMMENT '入池前原负责人ID',
+  original_owner_name VARCHAR(64)    DEFAULT NULL COMMENT '入池前原负责人姓名',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   status             VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态',
   del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
@@ -45,7 +194,8 @@ CREATE TABLE oa_crm_customer (
   UNIQUE KEY uk_crm_customer_code (tenant_id, customer_code),
   KEY idx_crm_customer_owner (owner_id),
   KEY idx_crm_customer_health (health_level),
-  KEY idx_crm_customer_name (customer_name)
+  KEY idx_crm_customer_name (customer_name),
+  KEY idx_crm_customer_pool (pool_flag, last_follow_up_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM客户表';
 
 DROP TABLE IF EXISTS oa_crm_contact;
@@ -327,5 +477,61 @@ CREATE TABLE oa_crm_approval (
   KEY idx_crm_approval_business (business_type, business_ref_id),
   KEY idx_crm_approval_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 通用审批流水';
+
+-- ============================================================================
+-- CRM 客户公海操作日志
+-- ============================================================================
+DROP TABLE IF EXISTS oa_crm_customer_pool_log;
+CREATE TABLE oa_crm_customer_pool_log (
+  log_id              BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '日志ID',
+  tenant_id           BIGINT(20)      NOT NULL DEFAULT 100000 COMMENT '租户ID',
+  customer_id         BIGINT(20)      NOT NULL COMMENT '客户ID',
+  customer_name       VARCHAR(120)    DEFAULT NULL COMMENT '客户名称快照',
+  action_type         VARCHAR(30)     NOT NULL COMMENT '动作类型 RELEASE/CLAIM/ASSIGN/AUTO_RELEASE',
+  from_owner_id       BIGINT(20)      DEFAULT NULL COMMENT '变更前负责人ID',
+  from_owner_name     VARCHAR(80)     DEFAULT NULL COMMENT '变更前负责人姓名',
+  to_owner_id         BIGINT(20)      DEFAULT NULL COMMENT '变更后负责人ID',
+  to_owner_name       VARCHAR(80)     DEFAULT NULL COMMENT '变更后负责人姓名',
+  rule_id             BIGINT(20)      DEFAULT NULL COMMENT '触发规则ID',
+  reason              VARCHAR(500)    DEFAULT NULL COMMENT '触发原因/说明',
+  del_flag            CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by           VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by           VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (log_id),
+  KEY idx_crm_pool_log_customer (customer_id),
+  KEY idx_crm_pool_log_action (action_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 客户公海操作日志';
+
+-- ============================================================================
+-- CRM 客户分配规则（自动回收 + 抢单策略）
+-- ============================================================================
+DROP TABLE IF EXISTS oa_crm_assignment_rule;
+CREATE TABLE oa_crm_assignment_rule (
+  rule_id             BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '规则ID',
+  tenant_id           BIGINT(20)      NOT NULL DEFAULT 100000 COMMENT '租户ID',
+  rule_name           VARCHAR(120)    NOT NULL COMMENT '规则名称',
+  rule_type           VARCHAR(30)     NOT NULL COMMENT '规则类型 AUTO_RELEASE/CLAIM_LIMIT/ASSIGN',
+  priority            INT(11)         DEFAULT 100 COMMENT '优先级，数字越小越先匹配',
+  status              VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态 ACTIVE/INACTIVE',
+  inactive_days       INT(11)         DEFAULT NULL COMMENT '连续未跟进天数阈值（AUTO_RELEASE 用）',
+  max_per_owner       INT(11)         DEFAULT NULL COMMENT '单人持有上限（CLAIM_LIMIT 用）',
+  dept_id             BIGINT(20)      DEFAULT NULL COMMENT '仅对指定部门生效',
+  dept_name           VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
+  customer_level      VARCHAR(20)     DEFAULT NULL COMMENT '仅对指定客户等级生效',
+  customer_tags       VARCHAR(255)    DEFAULT NULL COMMENT '匹配客户标签（逗号分隔）',
+  effective_start     DATE            DEFAULT NULL COMMENT '生效开始日期',
+  effective_end       DATE            DEFAULT NULL COMMENT '生效结束日期',
+  remark              VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  del_flag            CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  create_by           VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time         DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by           VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (rule_id),
+  KEY idx_crm_assign_rule_type (rule_type, status),
+  KEY idx_crm_assign_rule_priority (priority)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 客户分配规则';
 
 SET FOREIGN_KEY_CHECKS = 1;

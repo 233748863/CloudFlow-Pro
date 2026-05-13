@@ -25,8 +25,12 @@ public class CrmQuoteController {
 
     @GetMapping("/{id}")
     public R<CrmQuote> getInfo(@PathVariable("id") Long id) {
-        CrmQuote quote = quoteService.getById(id);
-        return quote == null || !"0".equals(quote.getDelFlag()) ? R.fail("报价不存在") : R.ok(quote);
+        try {
+            CrmQuote quote = quoteService.getQuoteDetail(id);
+            return quote == null || !"0".equals(quote.getDelFlag()) ? R.fail("报价不存在") : R.ok(quote);
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @SysLog("新增CRM报价")

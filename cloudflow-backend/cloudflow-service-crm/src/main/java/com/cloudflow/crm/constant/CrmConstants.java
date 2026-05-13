@@ -30,6 +30,83 @@ public final class CrmConstants {
         public static final String ACTIVE = "ACTIVE";
     }
 
+    /** 客户是否在公海（对应 oa_crm_customer.pool_flag）。 */
+    public static final class CustomerPoolFlag {
+        private CustomerPoolFlag() {}
+        public static final String OUT_OF_POOL = "0";
+        public static final String IN_POOL = "1";
+    }
+
+    /** 客户公海操作日志动作类型。 */
+    public static final class PoolAction {
+        private PoolAction() {}
+        public static final String RELEASE = "RELEASE";
+        public static final String CLAIM = "CLAIM";
+        public static final String ASSIGN = "ASSIGN";
+        public static final String AUTO_RELEASE = "AUTO_RELEASE";
+    }
+
+    /** 客户分配规则类型。 */
+    public static final class AssignmentRuleType {
+        private AssignmentRuleType() {}
+        public static final String AUTO_RELEASE = "AUTO_RELEASE";
+        public static final String CLAIM_LIMIT = "CLAIM_LIMIT";
+        public static final String ASSIGN = "ASSIGN";
+    }
+
+    /** 客户分配规则状态。 */
+    public static final class AssignmentRuleStatus {
+        private AssignmentRuleStatus() {}
+        public static final String ACTIVE = "ACTIVE";
+        public static final String INACTIVE = "INACTIVE";
+    }
+
+    /** 线索状态。 */
+    public static final class LeadStatus {
+        private LeadStatus() {}
+        public static final String NEW = "NEW";
+        public static final String FOLLOWING = "FOLLOWING";
+        public static final String QUALIFIED = "QUALIFIED";
+        public static final String CONVERTED = "CONVERTED";
+        public static final String CLOSED = "CLOSED";
+    }
+
+    /** 产品状态。 */
+    public static final class ProductStatus {
+        private ProductStatus() {}
+        public static final String ACTIVE = "ACTIVE";
+        public static final String INACTIVE = "INACTIVE";
+    }
+
+    /** 价目表状态。 */
+    public static final class PriceBookStatus {
+        private PriceBookStatus() {}
+        public static final String ACTIVE = "ACTIVE";
+        public static final String INACTIVE = "INACTIVE";
+    }
+
+    /** 销售目标维度。 */
+    public static final class SalesTargetDimension {
+        private SalesTargetDimension() {}
+        public static final String OWNER = "OWNER";
+        public static final String DEPT = "DEPT";
+    }
+
+    /** 销售目标周期。 */
+    public static final class SalesTargetPeriod {
+        private SalesTargetPeriod() {}
+        public static final String MONTH = "MONTH";
+        public static final String QUARTER = "QUARTER";
+        public static final String YEAR = "YEAR";
+    }
+
+    /** 销售目标状态。 */
+    public static final class SalesTargetStatus {
+        private SalesTargetStatus() {}
+        public static final String ACTIVE = "ACTIVE";
+        public static final String INACTIVE = "INACTIVE";
+    }
+
     /** 商机阶段。 */
     public static final class OpportunityStage {
         private OpportunityStage() {}
@@ -130,7 +207,11 @@ public final class CrmConstants {
     /** 单据编号前缀。 */
     public static final class NoPrefix {
         private NoPrefix() {}
+        public static final String LEAD = "XS";
         public static final String CUSTOMER = "KH";
+        public static final String PRODUCT = "CP";
+        public static final String PRICE_BOOK = "JM";
+        public static final String SALES_TARGET = "MB";
         public static final String QUOTE = "BJ";
         public static final String RENEWAL = "XY";
         public static final String RECEIVABLE = "SK";

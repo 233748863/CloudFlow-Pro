@@ -221,6 +221,12 @@ const ProjectManagementPage = React.lazy(() => import("./pages/ProjectManagement
 const BudgetManagementPage = React.lazy(() => import("./pages/BudgetManagementPage"));
 const InvoiceManagementPage = React.lazy(() => import("./pages/InvoiceManagementPage"));
 const CrmManagementPage = React.lazy(() => import("./pages/CrmManagementPage"));
+const CrmLeadPage = React.lazy(() => import("./pages/CrmLeadPage"));
+const CrmProductPage = React.lazy(() => import("./pages/CrmProductPage"));
+const CrmPriceBookPage = React.lazy(() => import("./pages/CrmPriceBookPage"));
+const CrmSalesTargetPage = React.lazy(() => import("./pages/CrmSalesTargetPage"));
+const CrmCustomerPoolPage = React.lazy(() => import("./pages/CrmCustomerPoolPage"));
+const CrmAssignmentRulePage = React.lazy(() => import("./pages/CrmAssignmentRulePage"));
 const CrmCustomerWorkspacePage = React.lazy(() => import("./pages/CrmCustomerWorkspacePage"));
 const VisitorPage = React.lazy(() => import("./pages/VisitorPage"));
 const DutySchedulePage = React.lazy(() => import("./pages/DutySchedulePage"));
@@ -856,6 +862,102 @@ const desktopRoutes = [
             element: (
               <Suspense fallback={<Loading />}>
                 <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/customers",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/opportunities",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/quotes",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/receivables",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/renewals",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/tickets",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmManagementPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/leads",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmLeadPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/products",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmProductPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/price-books",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmPriceBookPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/sales-targets",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmSalesTargetPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/customer-pool",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmCustomerPoolPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: "/office/crm/assignment-rules",
+            element: (
+              <Suspense fallback={<Loading />}>
+                <CrmAssignmentRulePage />
               </Suspense>
             ),
           },

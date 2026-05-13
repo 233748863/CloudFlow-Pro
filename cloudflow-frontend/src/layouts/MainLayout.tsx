@@ -189,12 +189,16 @@ export const MainLayout = () => {
       return currentKey === '/';
     }
 
-    if (isCrmCustomerWorkspaceRoute && path === '/office/crm' && query === 'tab=customer') {
+    if (isCrmCustomerWorkspaceRoute && path === '/office/crm/customers') {
       return true;
     }
 
     if (query) {
       return currentKey === targetKey;
+    }
+
+    if (path === '/office/crm') {
+      return location.pathname === '/office/crm';
     }
 
     return location.pathname === path || location.pathname.startsWith(`${path}/`);

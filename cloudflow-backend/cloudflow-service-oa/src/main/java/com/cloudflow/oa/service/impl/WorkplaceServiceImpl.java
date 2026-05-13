@@ -422,13 +422,13 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             return "/office/crm/customer/" + businessId;
         }
         if ("CRM_RECEIVABLE".equals(normalized)) {
-            return "/office/crm?tab=receivable";
+            return "/office/crm/receivables";
         }
         if ("CRM_QUOTE".equals(normalized)) {
-            return "/office/crm?tab=quote";
+            return "/office/crm/quotes";
         }
         if ("CRM_RENEWAL".equals(normalized)) {
-            return "/office/crm?tab=renewal";
+            return "/office/crm/renewals";
         }
         if ("ASSET".equals(normalized)) {
             return "/asset/" + businessId;

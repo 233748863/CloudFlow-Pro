@@ -25,8 +25,54 @@ export interface CrmCustomer {
   healthReason?: string;
   lastFollowUpTime?: string;
   nextFollowUpTime?: string;
+  poolFlag?: string;
+  pooledTime?: string;
+  originalOwnerId?: number;
+  originalOwnerName?: string;
   remark?: string;
   status?: string;
+}
+
+export interface CrmLead {
+  leadId?: number;
+  leadNo?: string;
+  leadName: string;
+  companyName?: string;
+  contactName?: string;
+  mobile?: string;
+  phone?: string;
+  email?: string;
+  source?: string;
+  industry?: string;
+  status?: string;
+  ownerId?: number;
+  ownerName?: string;
+  deptId?: number;
+  deptName?: string;
+  nextFollowUpTime?: string;
+  lastFollowUpTime?: string;
+  convertedCustomerId?: number;
+  convertedTime?: string;
+  remark?: string;
+}
+
+export interface CrmLeadConvertRequest {
+  leadId: number;
+  customerName?: string;
+  customerType?: string;
+  industry?: string;
+  source?: string;
+  customerTags?: string;
+  ownerId?: number;
+  ownerName?: string;
+  phone?: string;
+  email?: string;
+  website?: string;
+  province?: string;
+  city?: string;
+  address?: string;
+  creditCode?: string;
+  remark?: string;
 }
 
 export interface CrmOpportunity {
@@ -72,6 +118,80 @@ export interface CrmQuote {
   attachmentUrl?: string;
   remark?: string;
   status?: string;
+  quoteLines?: CrmQuoteLine[];
+}
+
+export interface CrmProduct {
+  productId?: number;
+  productNo?: string;
+  productName: string;
+  category?: string;
+  spec?: string;
+  unit?: string;
+  standardPrice?: number;
+  currency?: string;
+  status?: string;
+  ownerId?: number;
+  ownerName?: string;
+  remark?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface CrmPriceBook {
+  priceBookId?: number;
+  priceBookNo?: string;
+  priceBookName: string;
+  currency?: string;
+  startDate?: string;
+  endDate?: string;
+  status?: string;
+  ownerId?: number;
+  ownerName?: string;
+  remark?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface CrmSalesTarget {
+  salesTargetId?: number;
+  targetNo?: string;
+  targetName: string;
+  dimensionType: 'OWNER' | 'DEPT' | string;
+  periodType: 'MONTH' | 'QUARTER' | 'YEAR' | string;
+  targetYear: number;
+  targetPeriod?: number;
+  deptId?: number;
+  deptName?: string;
+  ownerId?: number;
+  ownerName?: string;
+  targetAmount: number;
+  achievedAmount?: number;
+  completionRate?: number;
+  gapAmount?: number;
+  periodLabel?: string;
+  status?: string;
+  remark?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface CrmQuoteLine {
+  quoteLineId?: number;
+  sortNo?: number;
+  productId?: number;
+  productNo?: string;
+  productName?: string;
+  category?: string;
+  spec?: string;
+  unit?: string;
+  quantity?: number;
+  unitPrice?: number;
+  discountRate?: number;
+  taxRate?: number;
+  lineAmount?: number;
+  taxAmount?: number;
+  remark?: string;
 }
 
 export interface CrmReceivable {
@@ -281,6 +401,49 @@ export interface CrmWorkspaceRiskItem {
   businessType?: string;
 }
 
+export interface CrmAssignmentRule {
+  ruleId?: number;
+  ruleName: string;
+  ruleType: 'AUTO_RELEASE' | 'CLAIM_LIMIT' | 'ASSIGN';
+  priority?: number;
+  status?: string;
+  inactiveDays?: number;
+  maxPerOwner?: number;
+  deptId?: number;
+  deptName?: string;
+  customerLevel?: string;
+  customerTags?: string;
+  effectiveStart?: string;
+  effectiveEnd?: string;
+  remark?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface CrmCustomerPoolLog {
+  logId?: number;
+  customerId?: number;
+  customerName?: string;
+  actionType?: string;
+  fromOwnerId?: number;
+  fromOwnerName?: string;
+  toOwnerId?: number;
+  toOwnerName?: string;
+  ruleId?: number;
+  reason?: string;
+  createTime?: string;
+  createBy?: string;
+}
+
+export interface CrmCustomerAssignRequest {
+  customerId: number;
+  ownerId: number;
+  ownerName: string;
+  deptId?: number;
+  deptName?: string;
+  reason?: string;
+}
+
 export interface CrmLinkSummary {
   contractCount?: number;
   invoiceCount?: number;
@@ -324,6 +487,69 @@ export interface CrmDashboardSummary {
 }
 
 export const crmApi = {
+  listLeads: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    leadName?: string;
+    companyName?: string;
+    contactName?: string;
+    mobile?: string;
+    status?: string;
+    ownerId?: number;
+  }) => request.get('/crm/lead/list', { params }) as Promise<PageResult<CrmLead>>,
+
+  addLead: (data: CrmLead) => request.post('/crm/lead', data),
+
+  editLead: (data: CrmLead) => request.put('/crm/lead', data),
+
+  convertLead: (data: CrmLeadConvertRequest) => request.post('/crm/lead/convert', data) as Promise<number>,
+
+  removeLead: (ids: number[]) => request.delete(`/crm/lead/${ids.join(',')}`),
+
+  listProducts: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    productName?: string;
+    category?: string;
+    status?: string;
+  }) => request.get('/crm/product/list', { params }) as Promise<PageResult<CrmProduct>>,
+
+  addProduct: (data: CrmProduct) => request.post('/crm/product', data),
+
+  editProduct: (data: CrmProduct) => request.put('/crm/product', data),
+
+  removeProduct: (ids: number[]) => request.delete(`/crm/product/${ids.join(',')}`),
+
+  listPriceBooks: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    priceBookName?: string;
+    status?: string;
+  }) => request.get('/crm/price-book/list', { params }) as Promise<PageResult<CrmPriceBook>>,
+
+  addPriceBook: (data: CrmPriceBook) => request.post('/crm/price-book', data),
+
+  editPriceBook: (data: CrmPriceBook) => request.put('/crm/price-book', data),
+
+  removePriceBook: (ids: number[]) => request.delete(`/crm/price-book/${ids.join(',')}`),
+
+  listSalesTargets: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    targetName?: string;
+    dimensionType?: string;
+    periodType?: string;
+    targetYear?: number;
+    targetPeriod?: number;
+    status?: string;
+  }) => request.get('/crm/sales-target/list', { params }) as Promise<PageResult<CrmSalesTarget>>,
+
+  addSalesTarget: (data: CrmSalesTarget) => request.post('/crm/sales-target', data),
+
+  editSalesTarget: (data: CrmSalesTarget) => request.put('/crm/sales-target', data),
+
+  removeSalesTarget: (ids: number[]) => request.delete(`/crm/sales-target/${ids.join(',')}`),
+
   listCustomers: (params: {
     pageNum?: number;
     pageSize?: number;
@@ -494,6 +720,8 @@ export const crmApi = {
     status?: string;
   }) => request.get('/crm/quote/list', { params }) as Promise<PageResult<CrmQuote>>,
 
+  getQuoteDetail: (id: number) => request.get(`/crm/quote/${id}`) as Promise<CrmQuote>,
+
   addQuote: (data: CrmQuote) => request.post('/crm/quote', data),
 
   editQuote: (data: CrmQuote) => request.put('/crm/quote', data),
@@ -566,4 +794,43 @@ export const crmApi = {
   closeTicket: (id: number) => request.post(`/crm/ticket/${id}/close`),
 
   removeTicket: (ids: number[]) => request.delete(`/crm/ticket/${ids.join(',')}`),
+
+  listCustomerPool: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    customerName?: string;
+    industry?: string;
+    levelCode?: string;
+    customerTags?: string;
+  }) => request.get('/crm/customer-pool/list', { params }) as Promise<PageResult<CrmCustomer>>,
+
+  listCustomerPoolLogs: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    customerId?: number;
+  }) => request.get('/crm/customer-pool/logs', { params }) as Promise<PageResult<CrmCustomerPoolLog>>,
+
+  releaseCustomer: (customerId: number, reason?: string) =>
+    request.post(`/crm/customer-pool/${customerId}/release`, { reason }),
+
+  claimCustomer: (customerId: number, reason?: string) =>
+    request.post(`/crm/customer-pool/${customerId}/claim`, { reason }),
+
+  assignCustomer: (data: CrmCustomerAssignRequest) => request.post('/crm/customer-pool/assign', data),
+
+  triggerAutoRelease: () => request.post('/crm/customer-pool/auto-release') as Promise<number>,
+
+  listAssignmentRules: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    ruleName?: string;
+    ruleType?: string;
+    status?: string;
+  }) => request.get('/crm/assignment-rule/list', { params }) as Promise<PageResult<CrmAssignmentRule>>,
+
+  addAssignmentRule: (data: CrmAssignmentRule) => request.post('/crm/assignment-rule', data),
+
+  editAssignmentRule: (data: CrmAssignmentRule) => request.put('/crm/assignment-rule', data),
+
+  removeAssignmentRule: (ids: number[]) => request.delete(`/crm/assignment-rule/${ids.join(',')}`),
 };

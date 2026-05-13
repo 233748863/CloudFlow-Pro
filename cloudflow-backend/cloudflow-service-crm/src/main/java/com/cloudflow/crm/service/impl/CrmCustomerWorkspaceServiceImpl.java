@@ -490,7 +490,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .limit(3)
                 .forEach(item -> todos.add(todo("quote-" + item.getQuoteId(), "CRM", "CRM 报价",
                         item.getQuoteName(), "报价待继续推进", item.getStatus(),
-                        "/office/crm?tab=quote", item.getQuoteId(), "CRM_QUOTE")));
+                        "/office/crm/quotes", item.getQuoteId(), "CRM_QUOTE")));
         workspace.getContracts().stream()
                 .filter(item -> List.of("DRAFT", "PENDING", "APPROVED", "ACTIVE", "SEALING").contains(item.getStatus()))
                 .limit(3)
@@ -515,7 +515,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .limit(3)
                 .forEach(item -> todos.add(todo("receivable-" + item.getReceivableId(), "CRM", "CRM 回款",
                         item.getReceivableName(), "回款未完成或待确认", item.getStatus(),
-                        "/office/crm?tab=receivable", item.getReceivableId(), "CRM_RECEIVABLE")));
+                        "/office/crm/receivables", item.getReceivableId(), "CRM_RECEIVABLE")));
         return todos.stream().limit(8).toList();
     }
 
@@ -628,7 +628,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                         "报价状态变更为 " + item.getStatus(),
                         item.getOwnerName(),
                         item.getUpdateTime() != null ? item.getUpdateTime() : item.getCreateTime(),
-                        "/office/crm?tab=quote",
+                        "/office/crm/quotes",
                         item.getQuoteId(),
                         "CRM_QUOTE")));
         receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
@@ -643,7 +643,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                         "回款状态 " + item.getStatus() + "，发票状态 " + item.getInvoiceStatus(),
                         item.getOwnerName(),
                         item.getUpdateTime() != null ? item.getUpdateTime() : item.getCreateTime(),
-                        "/office/crm?tab=receivable",
+                        "/office/crm/receivables",
                         item.getReceivableId(),
                         "CRM_RECEIVABLE")));
         return activities.stream()

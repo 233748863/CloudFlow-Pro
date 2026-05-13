@@ -9,6 +9,8 @@ public interface ICrmQuoteService extends IService<CrmQuote> {
 
     PageResult<CrmQuote> queryPage(CrmQuote query, PageQuery pageQuery);
 
+    CrmQuote getQuoteDetail(Long quoteId);
+
     boolean createQuote(CrmQuote quote);
 
     boolean updateQuote(CrmQuote quote);

@@ -287,7 +287,7 @@ export default function CrmCustomerWorkspacePage() {
   if (!workspace) {
     return (
       <div className="space-y-4">
-        <Button variant="outline" size="sm" onClick={() => navigate('/office/crm?tab=customer')}>
+        <Button variant="outline" size="sm" onClick={() => navigate('/office/crm/customers')}>
           <ArrowLeft size={14} className="mr-1.5" />返回客户管理
         </Button>
         <div className="rounded-2xl border border-dashed border-slate-300 px-6 py-16 text-center text-sm text-slate-500 dark:border-slate-700">
@@ -305,7 +305,7 @@ export default function CrmCustomerWorkspacePage() {
         description={`客户360 = 客户资料、销售、合同、回款、续约、工单、项目集中工作区。负责人 ${workspace.customer.ownerName || '-'}，最近跟进 ${formatDateTimeDisplay(workspace.customer.lastFollowUpTime)}。`}
         actions={(
           <>
-            <Button variant="outline" size="sm" onClick={() => navigate('/office/crm?tab=customer')}>
+            <Button variant="outline" size="sm" onClick={() => navigate('/office/crm/customers')}>
               <ArrowLeft size={14} className="mr-1.5" />返回客户管理
             </Button>
             <Button size="sm" onClick={() => void load()}>

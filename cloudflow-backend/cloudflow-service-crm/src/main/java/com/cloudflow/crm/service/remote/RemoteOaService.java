@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @FeignClient(
         name = "cloudflow-service-oa",
@@ -77,6 +78,28 @@ public interface RemoteOaService {
     @PostMapping("/invoice/{id}/void")
     R<Void> voidInvoice(@PathVariable("id") Long invoiceId,
                         @RequestBody InvoiceVoidRequest request);
+
+    @PostMapping("/inner/oa/announcement/publish")
+    R<Long> publishAnnouncement(@RequestHeader("X-Inner-Call") String innerCall,
+                                @RequestHeader("X-From-Service") String fromService,
+                                @RequestBody AnnouncementPublishRequest request);
+
+    @Data
+    class AnnouncementPublishRequest {
+        private String title;
+        private String content;
+        /** 1:通知 2:公告 3:紧急 */
+        private String type;
+        /** L 低 M 中 H 高 */
+        private String priority;
+        /** ALL / DEPT / ROLE */
+        private String scopeType;
+        private String scopeValue;
+        private Long tenantId;
+        private Long senderId;
+        private String createBy;
+        private LocalDateTime expireTime;
+    }
 
     @Data
     class ContractDraftRequest {
