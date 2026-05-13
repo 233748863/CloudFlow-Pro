@@ -11,6 +11,7 @@ import { useAutoSave } from '../hooks/useAutoSave';
 import { getFormDefinitions, saveFormDefinition } from '../services/api/workflow';
 import { logForm } from '../lib/logger';
 import { FormDefinition } from '../types';
+import { mapBackendFormDefinitions } from '@/utils/formDefinition';
 
 const NEW_FORM_NAME = '新表单';
 
@@ -62,31 +63,7 @@ export const FormDesign = () => {
 
       const formList = await getFormDefinitions();
       if (Array.isArray(formList)) {
-        const mapped = formList.map((item: any) => {
-          let fields = item.fields || [];
-
-          if (typeof item.fieldsJson === 'string') {
-            try {
-              fields = JSON.parse(item.fieldsJson);
-            } catch (parseErr) {
-              try {
-                const sanitized = item.fieldsJson.replace(/\\([^"\\\/bfnrtu])/g, '\\\\$1');
-                fields = JSON.parse(sanitized);
-              } catch {
-                logForm.warn(`表单 ${item.formId || item.id} 的 fieldsJson 解析失败，使用空字段`, parseErr);
-                fields = [];
-              }
-            }
-          } else if (item.fieldsJson) {
-            fields = item.fieldsJson;
-          }
-
-          return {
-            id: item.id || item.formId,
-            name: item.name || item.formName,
-            fields,
-          } as FormDefinition;
-        });
+        const mapped = mapBackendFormDefinitions(formList);
 
         setForms(mapped);
         if (mapped.length > 0) {

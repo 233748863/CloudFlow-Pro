@@ -76,6 +76,7 @@ export interface TableRowActionsProps {
   maxVisibleActions?: number;
   overflowLabel?: string;
   compactAt?: number;
+  buttonLayout?: 'stacked' | 'compact';
 }
 
 const DEFAULT_ACTION_PRESETS: Record<ActionSemanticKey, ActionPreset> = {
@@ -194,7 +195,7 @@ function useActionLayout(actions: TableRowActionItem[], maxVisibleActions: numbe
 
 interface ActionItemButtonProps {
   action: TableRowActionItem;
-  layout: 'stacked' | 'menu';
+  layout: 'stacked' | 'menu' | 'compact';
 }
 
 function ActionItemButton({ action, layout }: ActionItemButtonProps) {
@@ -218,7 +219,9 @@ function ActionItemButton({ action, layout }: ActionItemButtonProps) {
       className={cn(
         layout === 'stacked'
           ? 'h-auto min-w-[3.75rem] flex-col gap-0.5 rounded-xl border-0 px-2 py-1.5 text-[11px] font-medium shadow-none'
-          : 'h-auto w-full justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium shadow-none',
+          : layout === 'compact'
+            ? 'h-8 min-w-0 gap-1 rounded-lg px-2.5 text-xs font-medium shadow-none'
+            : 'h-auto w-full justify-start gap-2 rounded-lg px-3 py-2 text-xs font-medium shadow-none',
         'disabled:border-transparent disabled:bg-transparent disabled:text-slate-300 disabled:hover:bg-transparent',
         toneClassMap[tone],
         passthroughClassName,
@@ -235,9 +238,10 @@ function ActionItemButton({ action, layout }: ActionItemButtonProps) {
 interface ActionOverflowMenuProps {
   actions: TableRowActionItem[];
   label: string;
+  compact?: boolean;
 }
 
-function ActionOverflowMenu({ actions, label }: ActionOverflowMenuProps) {
+function ActionOverflowMenu({ actions, label, compact = false }: ActionOverflowMenuProps) {
   const [open, setOpen] = useState(false);
   const [placement, setPlacement] = useState<OverflowMenuPlacement>({
     top: 0,
@@ -364,12 +368,17 @@ function ActionOverflowMenu({ actions, label }: ActionOverflowMenuProps) {
         variant="ghost"
         size="sm"
         onClick={() => setOpen((current) => !current)}
-        className="h-auto min-w-[3.75rem] flex-col gap-0.5 rounded-xl border-0 px-2 py-1.5 text-[11px] font-medium text-slate-600 shadow-none hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+        className={cn(
+          compact
+            ? 'h-8 min-w-0 gap-1 rounded-lg px-2.5 text-xs font-medium'
+            : 'h-auto min-w-[3.75rem] flex-col gap-0.5 rounded-xl px-2 py-1.5 text-[11px] font-medium',
+          'border-0 text-slate-600 shadow-none hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+        )}
         title={label}
         aria-label={label}
       >
         <MoreHorizontal size={16} />
-        <span className="leading-tight text-center whitespace-normal">{label}</span>
+        <span className={cn(compact ? 'leading-none whitespace-nowrap' : 'leading-tight text-center whitespace-normal')}>{label}</span>
       </Button>
       {menu}
     </div>
@@ -382,20 +391,22 @@ export function ActionCell({
   align = 'end',
   maxVisibleActions = 2,
   overflowLabel = '更多操作',
+  buttonLayout = 'stacked',
 }: {
   actions: TableRowActionItem[];
   className?: string;
   align?: 'start' | 'center' | 'end';
   maxVisibleActions?: number;
   overflowLabel?: string;
+  buttonLayout?: 'stacked' | 'compact';
 }) {
   const { visibleActions, overflowActions } = useActionLayout(actions, maxVisibleActions);
   return (
     <div className={cn('flex items-start gap-1.5', alignClassMap[align], className)}>
       {visibleActions.map((action, index) => (
-        <ActionItemButton key={action.key ?? `${action.label}-${index}`} action={action} layout="stacked" />
+        <ActionItemButton key={action.key ?? `${action.label}-${index}`} action={action} layout={buttonLayout} />
       ))}
-      <ActionOverflowMenu actions={overflowActions} label={overflowLabel} />
+      <ActionOverflowMenu actions={overflowActions} label={overflowLabel} compact={buttonLayout === 'compact'} />
     </div>
   );
 }
@@ -443,6 +454,7 @@ export function TableRowActions({
   maxVisibleActions,
   overflowLabel = '更多操作',
   compactAt,
+  buttonLayout = 'stacked',
 }: TableRowActionsProps) {
   const visibleActions = actions.filter((action) => !action.hidden);
 
@@ -499,6 +511,7 @@ export function TableRowActions({
       align={align}
       maxVisibleActions={computedMaxVisibleActions}
       overflowLabel={overflowLabel}
+      buttonLayout={buttonLayout}
       className={className}
     />
   );

@@ -212,9 +212,7 @@ const createDashboardPayload = (processDefKey?: string) => {
       compareStartDate: '2026-05-07',
       compareEndDate: '2026-05-09',
       processDefKey: processDefKey || '',
-      processLabel: processDefKey
-        ? processes[0]?.processName || processDefKey
-        : '全部流程',
+      processLabel: processDefKey ? processes[0]?.processName || processDefKey : '全部流程',
       daySpan: 3,
     },
     summary,
@@ -235,7 +233,9 @@ const createDashboardPayload = (processDefKey?: string) => {
       anomalyInstanceRate: 6.3,
       healthLabel: '预警',
     },
-    trend: processDefKey ? trendRows.map((item) => ({ ...item, totalCount: processDefKey === 'biz_reimburse' ? 6 : 4 })) : trendRows,
+    trend: processDefKey
+      ? trendRows.map((item) => ({ ...item, totalCount: processDefKey === 'biz_reimburse' ? 6 : 4 }))
+      : trendRows,
     processes,
   };
 };
@@ -288,6 +288,44 @@ const emptyDashboardPayload = {
   processes: [],
 };
 
+const createRiskBreakdownPayload = (processDefKey?: string) => {
+  if (processDefKey === 'vehicle_approval') {
+    return {
+      timeoutLevels: [],
+      anomalyTypes: [],
+      totals: {
+        timeoutTotal: 0,
+        anomalyTotal: 0,
+      },
+    };
+  }
+
+  return {
+    timeoutLevels: [
+      { level: 'REMIND', label: '提醒', count: processDefKey ? 1 : 2, rate: processDefKey ? 33.3 : 40.0 },
+      { level: 'WARNING', label: '警告', count: processDefKey ? 1 : 2, rate: processDefKey ? 33.3 : 40.0 },
+      { level: 'CRITICAL', label: '严重', count: processDefKey ? 1 : 1, rate: processDefKey ? 33.3 : 20.0 },
+    ],
+    anomalyTypes: [
+      { type: 'EXECUTION_FAILED', label: '执行失败', count: 1, rate: processDefKey ? 100.0 : 50.0 },
+      ...(processDefKey ? [] : [{ type: 'NO_ASSIGNEE', label: '无人认领', count: 1, rate: 50.0 }]),
+    ],
+    totals: {
+      timeoutTotal: processDefKey ? 3 : 5,
+      anomalyTotal: processDefKey ? 1 : 2,
+    },
+  };
+};
+
+const emptyRiskBreakdownPayload = {
+  timeoutLevels: [],
+  anomalyTypes: [],
+  totals: {
+    timeoutTotal: 0,
+    anomalyTotal: 0,
+  },
+};
+
 async function mockWorkflowPerformancePage(page: import('@playwright/test').Page, empty = false) {
   await page.addInitScript(() => {
     localStorage.setItem('cloudflow_pro_user', JSON.stringify({
@@ -336,6 +374,23 @@ async function mockWorkflowPerformancePage(page: import('@playwright/test').Page
       body: JSON.stringify({ code: 200, msg: 'success', data: createDashboardPayload(processDefKey) }),
     });
   });
+  await page.route('**/workflow/monitor/performance/risk-breakdown**', async (route) => {
+    if (empty) {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ code: 200, msg: 'success', data: emptyRiskBreakdownPayload }),
+      });
+      return;
+    }
+    const url = new URL(route.request().url());
+    const processDefKey = url.searchParams.get('processDefKey') || undefined;
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ code: 200, msg: 'success', data: createRiskBreakdownPayload(processDefKey) }),
+    });
+  });
 }
 
 test.describe('workflow performance dashboard', () => {
@@ -344,42 +399,43 @@ test.describe('workflow performance dashboard', () => {
     await page.goto('/workflow/performance');
   });
 
-  test('renders kpis, charts and detail table', async ({ page }) => {
-    await expect(page.getByText('历史性能分析看板')).toBeVisible();
+  test('renders dashboard cards with right-side risk breakdown', async ({ page }) => {
     await expect(page.locator('.stat-label').filter({ hasText: '流程总量' }).first()).toBeVisible();
-    await expect(page.getByText('执行趋势图')).toBeVisible();
-    await expect(page.getByText('风险趋势图')).toBeVisible();
-    await expect(page.getByText('流程效率排行')).toBeVisible();
-    await expect(page.getByText('风险矩阵')).toBeVisible();
-    await expect(page.getByText('流程明细表')).toBeVisible();
-    await expect(page.getByTestId('performance-detail-table')).toBeVisible();
-    await expect(page.getByTestId('performance-ranking-biz_reimburse')).toBeVisible();
-    await expect(page.getByTestId('performance-ranking-vehicle_approval')).toBeVisible();
+    await expect(page.getByTestId('execution-trend-card')).toBeVisible();
+    await expect(page.getByTestId('risk-trend-card')).toBeVisible();
+    await expect(page.getByTestId('process-ranking-card')).toBeVisible();
+    await expect(page.getByTestId('risk-matrix-card')).toBeVisible();
+    await expect(page.getByTestId('timeout-level-card')).toBeVisible();
+    await expect(page.getByTestId('anomaly-type-card')).toBeVisible();
+    await expect(page.getByTestId('process-detail-card')).toBeVisible();
     await expect(page.getByTestId('performance-detail-table')).toContainText('财务报销流程');
     await expect(page.getByTestId('performance-detail-table')).toContainText('用车审批流程');
   });
 
-  test('clicking ranking row filters the dashboard in-page', async ({ page }) => {
+  test('clicking ranking row updates detail and right-side breakdown', async ({ page }) => {
     await page.getByTestId('performance-ranking-biz_reimburse').click();
 
     await expect(page.getByText('已选流程：财务报销流程')).toBeVisible();
     await expect(page.getByTestId('performance-detail-table')).toContainText('财务报销流程');
     await expect(page.getByTestId('performance-detail-table')).not.toContainText('用车审批流程');
+    await expect(page.getByTestId('timeout-level-card')).toContainText('提醒');
+    await expect(page.getByTestId('anomaly-type-card')).toContainText('执行失败');
   });
 
-  test('clicking risk matrix bubble filters the dashboard in-page', async ({ page }) => {
+  test('clicking risk matrix bubble keeps right-side cards in sync', async ({ page }) => {
     await page.locator('[data-testid="performance-matrix-vehicle_approval"]').click();
 
     await expect(page.getByText('已选流程：用车审批流程')).toBeVisible();
     await expect(page.getByTestId('performance-detail-table')).toContainText('用车审批流程');
-    await expect(page.getByTestId('performance-detail-table')).not.toContainText('财务报销流程');
+    await expect(page.getByText('暂无超时等级分布')).toBeVisible();
+    await expect(page.getByText('暂无异常类型排行')).toBeVisible();
   });
 
   test('keeps page overflow contained on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload();
-    await expect(page.getByText('历史性能分析看板')).toBeVisible();
 
+    await expect(page.getByTestId('execution-trend-card')).toBeVisible();
     const pageOverflowX = await page.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth);
     expect(pageOverflowX).toBeFalsy();
   });
@@ -393,5 +449,7 @@ test('shows empty states when dashboard has no data', async ({ page }) => {
   await expect(page.getByText('暂无风险趋势')).toBeVisible();
   await expect(page.getByText('暂无流程排行')).toBeVisible();
   await expect(page.getByText('暂无风险矩阵')).toBeVisible();
+  await expect(page.getByText('暂无超时等级分布')).toBeVisible();
+  await expect(page.getByText('暂无异常类型排行')).toBeVisible();
   await expect(page.getByText('暂无流程明细')).toBeVisible();
 });

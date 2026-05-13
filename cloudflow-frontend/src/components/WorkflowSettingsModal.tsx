@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { BaseDialog } from '@/components/common';
 import { Button } from '@/components/common';
 import { Input } from './common/input';
@@ -52,6 +52,27 @@ const parseTagText = (value: string) =>
     .map((item) => item.trim())
     .filter(Boolean);
 
+type FormOption = {
+  id: string;
+  name: string;
+};
+
+const normalizeFormOption = (form?: FormDefinition | null): FormOption | null => {
+  if (!form) {
+    return null;
+  }
+
+  const rawId = form.id ?? '';
+  const id = String(rawId).trim();
+  if (!id) {
+    return null;
+  }
+
+  const rawName = form.name ?? id;
+  const name = String(rawName).trim() || id;
+  return { id, name };
+};
+
 export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   open,
   onClose,
@@ -74,12 +95,19 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
   const [formId, setFormId] = useState(initialFormId);
   const [startPermissionType, setStartPermissionType] = useState(initialStartPermissionType || 'ALL');
   const [startPermissionValue, setStartPermissionValue] = useState(initialStartPermissionValue || '');
-  const [formList, setFormList] = useState<Array<{ id: string; name: string }>>([]);
   const [roleList, setRoleList] = useState<SysRole[]>([]);
   const [userList, setUserList] = useState<SysUser[]>([]);
   const [deptList, setDeptList] = useState<SysDept[]>([]);
   const [loadingPermissions, setLoadingPermissions] = useState(false);
   const loadingForms = false;
+
+  const formList = useMemo(
+    () =>
+      availableForms
+        .map((form) => normalizeFormOption(form))
+        .filter((form): form is FormOption => Boolean(form)),
+    [availableForms],
+  );
 
   useEffect(() => {
     setDescription(initialDescription);
@@ -96,15 +124,6 @@ export const WorkflowSettingsModal: React.FC<WorkflowSettingsModalProps> = ({
     initialStartPermissionType,
     initialStartPermissionValue,
   ]);
-
-  useEffect(() => {
-    setFormList(
-      availableForms.map((form) => ({
-        id: String(form.id),
-        name: String(form.name),
-      })),
-    );
-  }, [availableForms]);
 
   useEffect(() => {
     setRoleList(Array.isArray(availableRoles) ? availableRoles : []);

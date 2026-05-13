@@ -1,10 +1,12 @@
 package com.cloudflow.workflow.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.cloudflow.workflow.domain.monitor.PerformanceTimeoutLevelBreakdownItem;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -53,4 +55,14 @@ public interface TimeoutAlertMapper extends BaseMapper<TimeoutAlert> {
      */
     List<TimeoutAlert> selectByAssignee(@Param("tenantId") Long tenantId, 
                                         @Param("assigneeId") Long assigneeId);
+
+    /**
+     * 查询超时等级分布。
+     */
+    List<PerformanceTimeoutLevelBreakdownItem> selectTimeoutLevelBreakdown(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("processDefKey") String processDefKey,
+            @Param("tenantId") Long tenantId
+    );
 }

@@ -974,7 +974,7 @@ export const SchedulePage = () => {
               </div>
             </div>
 
-            <div className="schedule-calendar relative h-[620px] border-b border-slate-200 p-4 dark:border-slate-800 xl:h-[680px]">
+            <div className="schedule-calendar relative h-[620px] border-b border-slate-200 dark:border-slate-800 xl:h-[680px]">
                 <style>{`
                   .schedule-calendar .fc { height: 100%; color: #0f172a; }
                   .dark .schedule-calendar .fc { color: #e2e8f0; }
@@ -982,14 +982,14 @@ export const SchedulePage = () => {
                   .schedule-calendar .fc-scrollgrid,
                   .schedule-calendar .fc-theme-standard .fc-scrollgrid {
                     overflow: hidden;
-                    border-radius: 16px;
-                    border: 1px solid rgba(226, 232, 240, 0.95);
-                    background: #ffffff;
+                    border-radius: 0;
+                    border: 0;
+                    background: transparent;
                   }
                   .dark .schedule-calendar .fc-scrollgrid,
                   .dark .schedule-calendar .fc-theme-standard .fc-scrollgrid {
-                    border-color: rgba(30, 41, 59, 0.95);
-                    background: rgba(2, 6, 23, 0.96);
+                    border-color: transparent;
+                    background: transparent;
                   }
                   .schedule-calendar .fc-col-header-cell {
                     background: rgba(248, 250, 252, 0.92);
@@ -1022,11 +1022,15 @@ export const SchedulePage = () => {
                   .dark .schedule-calendar .fc-day-other .fc-daygrid-day-number {
                     color: #64748b;
                   }
+                  .schedule-calendar .fc-theme-standard td,
+                  .schedule-calendar .fc-theme-standard th,
                   .schedule-calendar .fc-timegrid-slot,
                   .schedule-calendar .fc-daygrid-day,
                   .schedule-calendar .fc-col-header-cell {
                     border-color: rgba(226, 232, 240, 0.95);
                   }
+                  .dark .schedule-calendar .fc-theme-standard td,
+                  .dark .schedule-calendar .fc-theme-standard th,
                   .dark .schedule-calendar .fc-timegrid-slot,
                   .dark .schedule-calendar .fc-daygrid-day,
                   .dark .schedule-calendar .fc-col-header-cell {
@@ -1088,7 +1092,7 @@ export const SchedulePage = () => {
                   }
                 `}</style>
                 {isLoadingEvents ? (
-                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-2xl bg-white/70 dark:bg-slate-950/70">
+                  <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center bg-white/70 dark:bg-slate-950/70">
                     <div className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300">
                       正在同步日程...
                     </div>

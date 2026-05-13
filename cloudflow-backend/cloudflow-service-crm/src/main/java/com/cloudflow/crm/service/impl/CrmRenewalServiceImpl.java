@@ -6,6 +6,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmRenewal;
 import com.cloudflow.crm.domain.dto.WorkflowProcessStartDTO;
@@ -19,7 +20,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,7 +42,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         eqIfPresent(wrapper, CrmRenewal::getStatus, query.getStatus());
         PageResult<CrmRenewal> result = pageResult(pageQuery, wrapper);
         if (result.getRows() != null) {
-            result.getRows().forEach(this::enrichRisk);
+            result.getRows().forEach(CrmRenewalRiskEvaluator::enrich);
         }
         return result;
     }
@@ -51,7 +51,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
     public CrmRenewal getRenewalInfo(Long renewalId) {
         CrmRenewal renewal = getById(renewalId);
         if (renewal != null) {
-            enrichRisk(renewal);
+            CrmRenewalRiskEvaluator.enrich(renewal);
         }
         return renewal;
     }
@@ -61,7 +61,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         fillBindingSnapshot(renewal);
         validate(renewal);
         if (!StringUtils.hasText(renewal.getRenewalNo())) {
-            renewal.setRenewalNo(Localize.nextNo("XY"));
+            renewal.setRenewalNo(Localize.nextNo(CrmConstants.NoPrefix.RENEWAL));
         }
         if (renewal.getOwnerId() == null) {
             renewal.setOwnerId(UserContext.getUserId());
@@ -111,11 +111,12 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         if (!"0".equals(renewal.getDelFlag())) {
             throw new IllegalArgumentException("续约记录不存在");
         }
-        if (!"PLANNED".equals(renewal.getStatus()) && !"NEGOTIATING".equals(renewal.getStatus())) {
+        if (!CrmConstants.RenewalStatus.PLANNED.equals(renewal.getStatus())
+                && !CrmConstants.RenewalStatus.NEGOTIATING.equals(renewal.getStatus())) {
             throw new IllegalArgumentException("只有计划中或洽谈中续约可以提交审批");
         }
 
-        renewal.setStatus("PENDING");
+        renewal.setStatus(CrmConstants.RenewalStatus.PENDING);
         renewal.setUpdateBy(currentUserName());
         renewal.setUpdateTime(now());
 
@@ -167,7 +168,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
             renewal.setRenewalAmount(BigDecimal.ZERO);
         }
         if (!StringUtils.hasText(renewal.getStatus())) {
-            renewal.setStatus("PLANNED");
+            renewal.setStatus(CrmConstants.RenewalStatus.PLANNED);
         }
     }
 
@@ -210,51 +211,5 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
             return instanceId != null ? String.valueOf(instanceId) : null;
         }
         return data != null ? String.valueOf(data) : null;
-    }
-
-    private void enrichRisk(CrmRenewal renewal) {
-        if (renewal == null) {
-            return;
-        }
-        String status = renewal.getStatus();
-        if ("WON".equalsIgnoreCase(status) || "CLOSED".equalsIgnoreCase(status)) {
-            renewal.setRiskLevel("LOW");
-            renewal.setRiskReason("续约已完成");
-            return;
-        }
-        if ("LOST".equalsIgnoreCase(status)) {
-            renewal.setRiskLevel("HIGH");
-            renewal.setRiskReason("续约已丢单");
-            return;
-        }
-
-        LocalDate today = LocalDate.now();
-        if (renewal.getCurrentExpireDate() != null) {
-            long daysToExpire = java.time.temporal.ChronoUnit.DAYS.between(today, renewal.getCurrentExpireDate());
-            if (daysToExpire < 0) {
-                renewal.setRiskLevel("HIGH");
-                renewal.setRiskReason("当前合同已到期");
-                return;
-            }
-            if (daysToExpire <= 30) {
-                renewal.setRiskLevel("HIGH");
-                renewal.setRiskReason("30天内合同到期");
-                return;
-            }
-            if (daysToExpire <= 90) {
-                renewal.setRiskLevel("MEDIUM");
-                renewal.setRiskReason("90天内合同到期");
-                return;
-            }
-        }
-
-        if (renewal.getExpectedSignDate() != null && renewal.getExpectedSignDate().isBefore(today)) {
-            renewal.setRiskLevel("MEDIUM");
-            renewal.setRiskReason("预计签约日期已逾期");
-            return;
-        }
-
-        renewal.setRiskLevel("LOW");
-        renewal.setRiskReason("续约节奏正常");
     }
 }

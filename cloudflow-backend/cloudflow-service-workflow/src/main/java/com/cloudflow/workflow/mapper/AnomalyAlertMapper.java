@@ -2,9 +2,11 @@ package com.cloudflow.workflow.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
+import com.cloudflow.workflow.domain.monitor.PerformanceAnomalyTypeBreakdownItem;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -65,4 +67,14 @@ public interface AnomalyAlertMapper extends BaseMapper<AnomalyAlert> {
     List<AnomalyAlert> selectTypeStatistics(@Param("tenantId") Long tenantId,
                                            @Param("startDate") LocalDateTime startDate,
                                            @Param("endDate") LocalDateTime endDate);
+
+    /**
+     * 查询异常类型分布。
+     */
+    List<PerformanceAnomalyTypeBreakdownItem> selectAnomalyTypeBreakdown(
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("processDefKey") String processDefKey,
+            @Param("tenantId") Long tenantId
+    );
 }

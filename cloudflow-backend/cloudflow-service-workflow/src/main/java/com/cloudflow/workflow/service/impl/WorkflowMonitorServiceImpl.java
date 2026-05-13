@@ -179,6 +179,18 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
                                resultPage.getCurrent(), resultPage.getSize());
     }
 
+    private static final Map<String, String> TIMEOUT_LEVEL_LABELS = Map.of(
+            "REMIND", "提醒",
+            "WARNING", "警告",
+            "CRITICAL", "严重"
+    );
+    private static final Map<String, String> ANOMALY_TYPE_LABELS = Map.of(
+            "EXECUTION_FAILED", "执行失败",
+            "NO_ASSIGNEE", "无人认领",
+            "DEADLOCK", "死锁",
+            "DATA_INCONSISTENCY", "数据不一致"
+    );
+
     @Override
     @Transactional
     public TimeoutAlertHandleResult handleTimeoutAlert(Long alertId, String action) {
@@ -343,6 +355,41 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         response.setCompareSummary(buildSummary(compareRows));
         response.setTrend(buildTrend(currentRows));
         response.setProcesses(buildProcessRows(currentRows));
+        return response;
+    }
+
+    @Override
+    public PerformanceRiskBreakdownResponse getPerformanceRiskBreakdown(LocalDate startDate, LocalDate endDate,
+                                                                        String processDefKey) {
+        Long tenantId = resolveTenantId();
+        LocalDate[] normalizedRange = normalizeDateRange(startDate, endDate);
+        List<PerformanceTimeoutLevelBreakdownItem> timeoutLevels = timeoutAlertMapper.selectTimeoutLevelBreakdown(
+                normalizedRange[0], normalizedRange[1], processDefKey, tenantId
+        );
+        List<PerformanceAnomalyTypeBreakdownItem> anomalyTypes = anomalyAlertMapper.selectAnomalyTypeBreakdown(
+                normalizedRange[0], normalizedRange[1], processDefKey, tenantId
+        );
+
+        int timeoutTotal = timeoutLevels.stream().mapToInt((item) -> safeInt(item.getCount())).sum();
+        int anomalyTotal = anomalyTypes.stream().mapToInt((item) -> safeInt(item.getCount())).sum();
+
+        timeoutLevels.forEach((item) -> {
+            item.setLabel(resolveTimeoutLevelLabel(item.getLevel()));
+            item.setRate(roundRate(safeInt(item.getCount()), timeoutTotal));
+        });
+        anomalyTypes.forEach((item) -> {
+            item.setLabel(resolveAnomalyTypeLabel(item.getType()));
+            item.setRate(roundRate(safeInt(item.getCount()), anomalyTotal));
+        });
+
+        PerformanceRiskBreakdownTotals totals = new PerformanceRiskBreakdownTotals();
+        totals.setTimeoutTotal(timeoutTotal);
+        totals.setAnomalyTotal(anomalyTotal);
+
+        PerformanceRiskBreakdownResponse response = new PerformanceRiskBreakdownResponse();
+        response.setTimeoutLevels(timeoutLevels);
+        response.setAnomalyTypes(anomalyTypes);
+        response.setTotals(totals);
         return response;
     }
 
@@ -676,6 +723,17 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
             return null;
         }
         return StringUtils.hasText(user.getNickName()) ? user.getNickName() : user.getUserName();
+    }
+
+    private String resolveTimeoutLevelLabel(String level) {
+        return TIMEOUT_LEVEL_LABELS.getOrDefault(level, StringUtils.hasText(level) ? level : "未知");
+    }
+
+    private String resolveAnomalyTypeLabel(String type) {
+        if (!StringUtils.hasText(type)) {
+            return "未知";
+        }
+        return ANOMALY_TYPE_LABELS.getOrDefault(type, type);
     }
 
     private String resolveHealthLabel(double successRate, double timeoutInstanceRate, double anomalyInstanceRate,

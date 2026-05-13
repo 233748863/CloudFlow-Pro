@@ -168,6 +168,8 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD:-cloudflow_redis_2026}
+      # CORS 白名单：逗号分隔的允许 Origin 列表；默认覆盖 Docker 前端 Nginx（https+http）和 Vite 开发端口
+      CLOUDFLOW_CORS_ALLOWED_ORIGINS: ${CLOUDFLOW_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,https://localhost,http://localhost}
       # JVM 参数
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     ports:

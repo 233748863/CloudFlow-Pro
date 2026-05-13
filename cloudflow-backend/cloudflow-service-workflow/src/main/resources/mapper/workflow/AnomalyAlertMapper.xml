@@ -153,6 +153,21 @@
         ORDER BY alert_count DESC, aa.anomaly_type ASC
     </select>
 
+    <select id="selectAnomalyTypeBreakdown" resultType="com.cloudflow.workflow.domain.monitor.PerformanceAnomalyTypeBreakdownItem">
+        SELECT
+            aa.anomaly_type AS type,
+            COUNT(*) AS count
+        FROM wf_anomaly_alert aa
+        WHERE aa.tenant_id = #{tenantId}
+          AND DATE(COALESCE(aa.alert_time, aa.create_time)) <![CDATA[>=]]> #{startDate}
+          AND DATE(COALESCE(aa.alert_time, aa.create_time)) <![CDATA[<=]]> #{endDate}
+          <if test="processDefKey != null and processDefKey != ''">
+            AND aa.process_def_key = #{processDefKey}
+          </if>
+        GROUP BY aa.anomaly_type
+        ORDER BY count DESC, aa.anomaly_type ASC
+    </select>
+
     <!--
         updateById 使用 MyBatis-Plus 默认实现。
         原因：BaseMapper.updateById(entity) 的实体参数名为 et，

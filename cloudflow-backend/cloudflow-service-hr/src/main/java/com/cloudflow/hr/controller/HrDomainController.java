@@ -1,5 +1,6 @@
 package com.cloudflow.hr.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.service.HrDomainCrudService;
 import com.cloudflow.hr.service.HrPerformanceService;
@@ -19,6 +20,7 @@ import java.util.Map;
 @RestController
 @RequestMapping
 @RequiredArgsConstructor
+@SaCheckLogin
 public class HrDomainController {
 
     private final HrDomainCrudService crudService;

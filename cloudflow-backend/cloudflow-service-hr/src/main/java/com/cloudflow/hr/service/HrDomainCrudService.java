@@ -1,6 +1,9 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.exception.HrBusinessException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +32,48 @@ public class HrDomainCrudService {
     private static final Pattern SQL_IDENTIFIER = Pattern.compile("[a-zA-Z][a-zA-Z0-9_]*");
     private static final Set<String> IGNORED_QUERY_KEYS = Set.of("pageNum", "pageSize", "current", "size", "keyword");
     private static final Set<String> AUTO_COLUMNS = Set.of("id", "tenant_id", "create_time", "update_time", "deleted");
+
+    /**
+     * 高敏感"薪税"表写白名单：只有具备特权角色的用户才能 INSERT/UPDATE/DELETE。
+     * 列表覆盖薪资结构、薪资发放、调薪、绩效调薪、社保、个税档案、个税扣除等。
+     */
+    private static final Set<String> HIGH_SENSITIVE_WRITE_TABLES = Set.of(
+            "hr_payroll",
+            "hr_employee_salary",
+            "hr_salary_adjustment",
+            "hr_performance_salary_adjustment",
+            "hr_employee_comp",
+            "hr_employee_benefit",
+            "hr_tax_profile",
+            "hr_tax_deduction",
+            "hr_social_security",
+            "hr_salary_grade",
+            "hr_salary_structure",
+            "hr_salary_structure_item",
+            "hr_salary_item"
+    );
+
+    /**
+     * 拥有 HR 特权的角色：可写高敏表，并可看到敏感字段原文。
+     */
+    private static final Set<String> HIGH_SENSITIVE_ROLES = Set.of(
+            "admin", "hr_admin", "hr_manager", "hr_specialist"
+    );
+
+    /**
+     * 需脱敏返回的列名（snake_case）。具备 HR 特权角色的请求会跳过脱敏。
+     */
+    private static final Set<String> MASK_COLUMNS = Set.of(
+            "id_card", "id_number", "identity_card", "identity_no",
+            "bank_account", "bank_card", "bank_no", "card_no",
+            "salary", "base_salary", "monthly_salary", "actual_salary",
+            "min_salary", "max_salary", "mid_salary", "total_salary",
+            "salary_amount", "gross_salary", "net_salary",
+            "bonus", "subsidy", "performance_pay",
+            "tax_amount", "social_security_amount", "housing_fund_amount",
+            "phone", "mobile", "telephone",
+            "email", "home_address", "address"
+    );
     private static final Map<String, String> STATUS_LABELS = Map.ofEntries(
             Map.entry("DRAFT", "草稿"),
             Map.entry("APPROVING", "审批中"),
@@ -71,15 +116,21 @@ public class HrDomainCrudService {
     public List<Map<String, Object>> list(String tableName, Map<String, ?> query) {
         QueryParts parts = buildQuery(tableName, query, false);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(parts.sql(), parts.args().toArray());
-        return rows.stream().map(this::toCamelCaseMap).toList();
+        boolean privileged = isPrivilegedUser();
+        return rows.stream()
+                .map(this::toCamelCaseMap)
+                .map(row -> maskRow(row, privileged))
+                .toList();
     }
 
     public Map<String, Object> page(String tableName, Map<String, ?> query) {
         QueryParts listParts = buildQuery(tableName, query, true);
         QueryParts countParts = buildCountQuery(tableName, query);
+        boolean privileged = isPrivilegedUser();
         List<Map<String, Object>> records = jdbcTemplate.queryForList(listParts.sql(), listParts.args().toArray())
                 .stream()
                 .map(this::toCamelCaseMap)
+                .map(row -> maskRow(row, privileged))
                 .toList();
         Long total = jdbcTemplate.queryForObject(countParts.sql(), Long.class, countParts.args().toArray());
 
@@ -208,13 +259,18 @@ public class HrDomainCrudService {
         args.add(id);
         appendTenantWhere(sql, args, columns);
         appendDeletedWhere(sql, columns);
+        appendDataScope(sql, args, columns);
 
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString(), args.toArray());
-        return rows.isEmpty() ? Map.of() : toCamelCaseMap(rows.get(0));
+        if (rows.isEmpty()) {
+            return Map.of();
+        }
+        return maskRow(toCamelCaseMap(rows.get(0)), isPrivilegedUser());
     }
 
     public Long create(String tableName, Map<String, Object> payload) {
         String table = sanitizeIdentifier(tableName);
+        assertWriteAllowed(table);
         Set<String> columns = getColumns(table);
         Map<String, Object> values = toColumnValueMap(payload, columns, true);
 
@@ -245,6 +301,7 @@ public class HrDomainCrudService {
 
     public void update(String tableName, Long id, Map<String, Object> payload) {
         String table = sanitizeIdentifier(tableName);
+        assertWriteAllowed(table);
         Set<String> columns = getColumns(table);
         Map<String, Object> values = toColumnValueMap(payload, columns, false);
         values.remove("id");
@@ -270,6 +327,7 @@ public class HrDomainCrudService {
 
     public void delete(String tableName, Long id) {
         String table = sanitizeIdentifier(tableName);
+        assertWriteAllowed(table);
         Set<String> columns = getColumns(table);
         List<Object> args = new ArrayList<>();
         StringBuilder sql;
@@ -303,6 +361,7 @@ public class HrDomainCrudService {
     }
 
     public void setHeadcountActualCount(Long id, Integer actualCount) {
+        assertWriteAllowed("hr_headcount");
         jdbcTemplate.update(
                 "UPDATE hr_headcount SET actual_count = ?, vacancy_count = approved_count - ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
                 actualCount, actualCount, id, tenantId()
@@ -610,6 +669,7 @@ public class HrDomainCrudService {
     private void appendFilters(StringBuilder sql, List<Object> args, Set<String> columns, Map<String, ?> query) {
         appendTenantWhere(sql, args, columns);
         appendDeletedWhere(sql, columns);
+        appendDataScope(sql, args, columns);
 
         for (Map.Entry<String, ?> entry : query.entrySet()) {
             String key = entry.getKey();
@@ -769,6 +829,133 @@ public class HrDomainCrudService {
     private long tenantId() {
         Long tenantId = TenantContext.getTenantId();
         return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+    }
+
+    /**
+     * 是否具备 HR 特权角色。特权用户写高敏表不会被拒，读取也不会被脱敏。
+     */
+    private boolean isPrivilegedUser() {
+        Set<String> roles = UserContext.getRoles();
+        if (roles == null || roles.isEmpty()) {
+            return false;
+        }
+        for (String role : roles) {
+            if (role == null) {
+                continue;
+            }
+            if (HIGH_SENSITIVE_ROLES.contains(role.toLowerCase(Locale.ROOT))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 高敏感薪税表写操作权限校验。
+     * 非特权角色调用任意写入接口会被拒绝；普通表不受影响。
+     */
+    private void assertWriteAllowed(String tableName) {
+        if (tableName == null || !HIGH_SENSITIVE_WRITE_TABLES.contains(tableName)) {
+            return;
+        }
+        if (!isPrivilegedUser()) {
+            throw new HrBusinessException(
+                    "FORBIDDEN_SENSITIVE_WRITE",
+                    "无权操作敏感薪税数据表：" + tableName + "，请联系 HR 管理员");
+        }
+    }
+
+    /**
+     * 数据权限过滤：基于 UserContext.dsType / dsDeptIds / userId / userName 收紧查询范围。
+     * 仅当表含相应列（dept_id / user_id / create_by）才会追加条件，避免误伤字典与共享表。
+     * 特权角色（admin/hr_manager 等）不受限制。
+     */
+    private void appendDataScope(StringBuilder sql, List<Object> args, Set<String> columns) {
+        if (isPrivilegedUser()) {
+            return;
+        }
+        Integer dsType = UserContext.getDsType();
+        if (dsType == null || dsType == 0) {
+            return;
+        }
+        Long currentUserId = UserContext.getUserId();
+        String currentUserName = UserContext.getUserName();
+
+        if (dsType == 4) {
+            // 仅本人：优先 user_id，其次 create_by
+            if (columns.contains("user_id") && currentUserId != null) {
+                sql.append(" AND user_id = ?");
+                args.add(currentUserId);
+            } else if (columns.contains("create_by") && StringUtils.hasText(currentUserName)) {
+                sql.append(" AND create_by = ?");
+                args.add(currentUserName);
+            }
+            return;
+        }
+
+        // 1/2/3 部门类：登录时已计算好部门列表
+        List<Long> deptIds = UserContext.getDsDeptIds();
+        if (deptIds == null || deptIds.isEmpty()) {
+            // 部门为空 → 降级为仅本人，保证安全
+            if (columns.contains("create_by") && StringUtils.hasText(currentUserName)) {
+                sql.append(" AND create_by = ?");
+                args.add(currentUserName);
+            }
+            return;
+        }
+        if (columns.contains("dept_id")) {
+            sql.append(" AND dept_id IN (");
+            for (int i = 0; i < deptIds.size(); i++) {
+                if (i > 0) {
+                    sql.append(",");
+                }
+                sql.append("?");
+                args.add(deptIds.get(i));
+            }
+            sql.append(")");
+        }
+    }
+
+    /**
+     * 行级敏感字段脱敏。
+     * 特权角色跳过；其余角色对 MASK_COLUMNS 中的列调用 SensitiveUtils.maskByFieldName。
+     */
+    private Map<String, Object> maskRow(Map<String, Object> camelRow, boolean privileged) {
+        if (privileged || camelRow == null || camelRow.isEmpty()) {
+            return camelRow;
+        }
+        Map<String, Object> result = new LinkedHashMap<>(camelRow);
+        for (Map.Entry<String, Object> entry : result.entrySet()) {
+            Object value = entry.getValue();
+            if (!(value instanceof CharSequence) && !(value instanceof Number)) {
+                continue;
+            }
+            String snake = camelToSnake(entry.getKey());
+            if (!MASK_COLUMNS.contains(snake)) {
+                continue;
+            }
+            entry.setValue(SensitiveUtils.maskByFieldName(snake, String.valueOf(value)));
+        }
+        return result;
+    }
+
+    private String camelToSnake(String camel) {
+        if (camel == null || camel.isEmpty()) {
+            return camel;
+        }
+        StringBuilder sb = new StringBuilder(camel.length() + 4);
+        for (int i = 0; i < camel.length(); i++) {
+            char c = camel.charAt(i);
+            if (Character.isUpperCase(c)) {
+                if (i > 0) {
+                    sb.append('_');
+                }
+                sb.append(Character.toLowerCase(c));
+            } else {
+                sb.append(c);
+            }
+        }
+        return sb.toString();
     }
 
     private Long toLong(Object value) {

@@ -93,6 +93,10 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-ratelimiter</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-sensitive</artifactId>
+        </dependency>
 
         <!-- HR 模块直接使用的第三方库 -->
         <dependency>

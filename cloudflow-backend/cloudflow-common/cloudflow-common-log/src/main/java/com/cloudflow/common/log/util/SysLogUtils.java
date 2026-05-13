@@ -2,10 +2,10 @@ package com.cloudflow.common.log.util;
 
 import cn.hutool.core.map.MapUtil;
 import cn.hutool.core.util.ArrayUtil;
-import cn.hutool.extra.servlet.JakartaServletUtil;
 import cn.hutool.extra.spring.SpringUtil;
 import cn.hutool.http.HttpUtil;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.common.log.config.CloudFlowLogProperties;
 import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.cloudflow.common.tenant.TenantConfigProperties;
@@ -53,7 +53,7 @@ public class SysLogUtils {
         sysLog.setLogType(LogTypeEnum.NORMAL.getType());
         sysLog.setRequestUri(request.getRequestURI());
         sysLog.setMethod(request.getMethod());
-        sysLog.setRemoteAddr(JakartaServletUtil.getClientIP(request));
+        sysLog.setRemoteAddr(IpUtils.getIpAddr(request));
         sysLog.setUserAgent(request.getHeader(HttpHeaders.USER_AGENT));
         sysLog.setCreateTime(LocalDateTime.now());
 

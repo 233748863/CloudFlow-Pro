@@ -390,12 +390,6 @@ export const CacheMonitor = () => {
   return (
     <>
       <div className="space-y-4">
-        <div className="min-w-0">
-          <h1 className="text-[26px] font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            缓存监控
-          </h1>
-        </div>
-
         <TablePageLayout
           className="gap-3"
           actions={(
@@ -478,10 +472,9 @@ export const CacheMonitor = () => {
           )}
           table={
             activeTab === 'overview' ? (
-              <div className="divide-y divide-slate-200 dark:divide-slate-800">
-                <section className="p-5 sm:p-6">
-                  <div className="grid gap-4 xl:grid-cols-2">
-                    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+              <div className="space-y-4">
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                       <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-100">
                         基本信息
                       </div>
@@ -514,9 +507,9 @@ export const CacheMonitor = () => {
                           </table>
                         </div>
                       )}
-                    </div>
+                  </div>
 
-                    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
+                  <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                       <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-100">
                         命令统计 Top 10
                       </div>
@@ -549,72 +542,69 @@ export const CacheMonitor = () => {
                           })}
                         </div>
                       )}
-                    </div>
                   </div>
-                </section>
+                </div>
 
-                <section className="p-5 sm:p-6">
-                  <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+                  <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-100">
                     Key 分组
                   </div>
-                  <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-                    <Table className="min-w-[560px]">
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>前缀</TableHead>
-                          <TableHead>数量</TableHead>
-                          <TableHead>占比</TableHead>
+                  <Table className="min-w-[560px]">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>前缀</TableHead>
+                        <TableHead>数量</TableHead>
+                        <TableHead>占比</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading && keyGroups.length === 0 ? (
+                        <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+                          <TableCell colSpan={3} className="px-4 py-16">
+                            <InlineState title="正在加载 Key 分组..." loading className="py-0" />
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {loading && keyGroups.length === 0 ? (
-                          <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                            <TableCell colSpan={3} className="px-4 py-16">
-                              <InlineState title="正在加载 Key 分组..." loading className="py-0" />
-                            </TableCell>
-                          </TableRow>
-                        ) : keyGroups.length === 0 ? (
-                          <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                            <TableCell colSpan={3} className="px-4 py-16">
-                              <InlineState title="暂无 Key 数据" className="py-0" />
-                            </TableCell>
-                          </TableRow>
-                        ) : (
-                          keyGroups.map((group) => {
-                            const percent = dbSize > 0 ? ((group.count / dbSize) * 100).toFixed(1) : '0';
-                            return (
-                              <TableRow key={group.prefix}>
-                                <TableCell className="py-4 font-mono text-sm text-slate-800 dark:text-slate-100">
-                                  {group.prefix}*
-                                </TableCell>
-                                <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
-                                  {group.count}
-                                </TableCell>
-                                <TableCell className="py-4 text-sm">
-                                  <div className="flex items-center gap-2">
-                                    <div className="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-800">
-                                      <div
-                                        className="h-2 rounded-full bg-emerald-500"
-                                        style={{ width: `${Math.min(parseFloat(percent), 100)}%` }}
-                                      />
-                                    </div>
-                                    <span className="text-slate-500 dark:text-slate-400">
-                                      {percent}%
-                                    </span>
+                      ) : keyGroups.length === 0 ? (
+                        <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+                          <TableCell colSpan={3} className="px-4 py-16">
+                            <InlineState title="暂无 Key 数据" className="py-0" />
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        keyGroups.map((group) => {
+                          const percent = dbSize > 0 ? ((group.count / dbSize) * 100).toFixed(1) : '0';
+                          return (
+                            <TableRow key={group.prefix}>
+                              <TableCell className="py-4 font-mono text-sm text-slate-800 dark:text-slate-100">
+                                {group.prefix}*
+                              </TableCell>
+                              <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">
+                                {group.count}
+                              </TableCell>
+                              <TableCell className="py-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                  <div className="h-2 w-24 rounded-full bg-slate-100 dark:bg-slate-800">
+                                    <div
+                                      className="h-2 rounded-full bg-emerald-500"
+                                      style={{ width: `${Math.min(parseFloat(percent), 100)}%` }}
+                                    />
                                   </div>
-                                </TableCell>
-                              </TableRow>
-                            );
-                          })
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </section>
+                                  <span className="text-slate-500 dark:text-slate-400">
+                                    {percent}%
+                                  </span>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
             ) : (
-              <div className="grid min-h-[40rem] xl:grid-cols-[320px_minmax(0,1fr)]">
-                <div className="border-b border-slate-200 xl:border-b-0 xl:border-r dark:border-slate-800">
+              <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                   <div className="border-b border-slate-200 px-4 py-3 text-sm font-semibold text-slate-900 dark:border-slate-800 dark:text-slate-100">
                     Key 树
                   </div>
@@ -641,7 +631,7 @@ export const CacheMonitor = () => {
                   </div>
                 </div>
 
-                <div className="min-w-0">
+                <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
                   <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
                     <div>
                       <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">

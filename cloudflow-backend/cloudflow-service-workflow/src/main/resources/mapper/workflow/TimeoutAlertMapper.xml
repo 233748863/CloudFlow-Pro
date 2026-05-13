@@ -124,6 +124,45 @@
         WHERE ta.id = #{id}
     </select>
 
+    <select id="selectTimeoutLevelBreakdown" resultType="com.cloudflow.workflow.domain.monitor.PerformanceTimeoutLevelBreakdownItem">
+        SELECT
+            x.timeout_level AS level,
+            COUNT(*) AS count
+        FROM (
+            SELECT
+                ta.timeout_level,
+                ta.alert_time,
+                pm.process_def_key
+            FROM wf_timeout_alert ta
+            JOIN wf_process_monitor pm
+              ON ta.alert_type = 'PROCESS'
+             AND pm.tenant_id = ta.tenant_id
+             AND pm.instance_id = ta.target_id
+            WHERE ta.tenant_id = #{tenantId}
+            UNION ALL
+            SELECT
+                ta.timeout_level,
+                ta.alert_time,
+                pm.process_def_key
+            FROM wf_timeout_alert ta
+            JOIN wf_task_monitor tm
+              ON ta.alert_type = 'TASK'
+             AND tm.tenant_id = ta.tenant_id
+             AND tm.task_id = ta.target_id
+            JOIN wf_process_monitor pm
+              ON pm.tenant_id = tm.tenant_id
+             AND pm.instance_id = tm.instance_id
+            WHERE ta.tenant_id = #{tenantId}
+        ) x
+        WHERE DATE(x.alert_time) <![CDATA[>=]]> #{startDate}
+          AND DATE(x.alert_time) <![CDATA[<=]]> #{endDate}
+          <if test="processDefKey != null and processDefKey != ''">
+            AND x.process_def_key = #{processDefKey}
+          </if>
+        GROUP BY x.timeout_level
+        ORDER BY FIELD(x.timeout_level, 'REMIND', 'WARNING', 'CRITICAL')
+    </select>
+
     <!-- 更新告警 -->
     <!--
         updateById 使用 MyBatis-Plus 默认实现。

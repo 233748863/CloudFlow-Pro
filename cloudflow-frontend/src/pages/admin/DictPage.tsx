@@ -53,7 +53,7 @@ type DeleteTarget =
   | { type: 'dictData'; item: SysDictData };
 
 const DEFAULT_STATUS_VALUE = '__all__';
-const DEFAULT_LIST_CLASS_VALUE = '__default__';
+const DEFAULT_LIST_CLASS_VALUE = 'default';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
 
 const createTypeForm = (): DictTypeFormState => ({
@@ -67,7 +67,7 @@ const createDataForm = (): DictDataFormState => ({
   dictLabel: '',
   dictValue: '',
   dictSort: 0,
-  listClass: '',
+  listClass: DEFAULT_LIST_CLASS_VALUE,
   isDefault: 'N',
   status: '0',
   remark: '',
@@ -339,7 +339,7 @@ export const DictPage: React.FC = () => {
         dictLabel: item.dictLabel,
         dictValue: item.dictValue,
         dictSort: item.dictSort || 0,
-        listClass: item.listClass || '',
+        listClass: item.listClass || DEFAULT_LIST_CLASS_VALUE,
         isDefault: item.isDefault || 'N',
         status: item.status || '0',
         remark: item.remark || '',
@@ -901,7 +901,7 @@ export const DictPage: React.FC = () => {
                 onValueChange={(value) =>
                   setDataForm((current) => ({
                     ...current,
-                    listClass: value === DEFAULT_LIST_CLASS_VALUE ? '' : value,
+                    listClass: value,
                   }))
                 }
               >

@@ -160,6 +160,29 @@ export interface PerformanceDashboardResponse {
   processes: PerformanceDashboardProcessRow[];
 }
 
+export interface PerformanceTimeoutLevelBreakdownItem {
+  level: 'REMIND' | 'WARNING' | 'CRITICAL' | string;
+  label: string;
+  count: number;
+  rate: number;
+}
+
+export interface PerformanceAnomalyTypeBreakdownItem {
+  type: string;
+  label: string;
+  count: number;
+  rate: number;
+}
+
+export interface PerformanceRiskBreakdownResponse {
+  timeoutLevels: PerformanceTimeoutLevelBreakdownItem[];
+  anomalyTypes: PerformanceAnomalyTypeBreakdownItem[];
+  totals: {
+    timeoutTotal: number;
+    anomalyTotal: number;
+  };
+}
+
 /**
  * 监控概览数据
  */
@@ -300,6 +323,17 @@ export async function getPerformanceDashboard(params?: {
 }
 
 /**
+ * 获取性能风险拆解
+ */
+export async function getPerformanceRiskBreakdown(params?: {
+  startDate?: string;
+  endDate?: string;
+  processDefKey?: string;
+}): Promise<PerformanceRiskBreakdownResponse> {
+  return request.get('/workflow/monitor/performance/risk-breakdown', { params });
+}
+
+/**
  * 获取性能统计数据
  */
 export async function getPerformanceStats(params?: {
@@ -346,6 +380,7 @@ export default {
   
   // 性能统计
   getPerformanceDashboard,
+  getPerformanceRiskBreakdown,
   getPerformanceStats,
   getMonitorOverview,
   getProcessTrend,

@@ -13,6 +13,7 @@ import {
 import { getRoleOptions, getUserList } from '../services/api/auth';
 import { mapBackendUserToFrontend } from '../utils/mappers';
 import { normalizeWorkflowCategory } from '../utils/workflowCategory';
+import { mapBackendFormDefinitions } from '../utils/formDefinition';
 import { useAutoSave } from '../hooks/useAutoSave';
 import { toast } from 'sonner';
 import { logWorkflow } from '../lib/logger';
@@ -187,38 +188,7 @@ const mapBackendWorkflow = (w: any): WorkflowDefinition => ({
   deptId: w?.deptId,
 });
 
-const mapBackendForms = (forms: any[]): FormDefinition[] =>
-  forms.map((f: any) => {
-    let fields: any[] = [];
-    const raw =
-      typeof f.fieldsJson === 'string'
-        ? f.fieldsJson
-        : typeof f.formSchema === 'string'
-          ? f.formSchema
-          : null;
-
-    if (raw) {
-      try {
-        fields = JSON.parse(raw);
-      } catch {
-        try {
-          const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
-          fields = JSON.parse(sanitized);
-        } catch (parseError) {
-          logWorkflow.error('瑙ｆ瀽琛ㄥ崟瀛楁澶辫触:', parseError);
-          fields = [];
-        }
-      }
-    } else {
-      fields = [];
-    }
-
-    return {
-      id: f.formId,
-      name: f.formName,
-      fields,
-    };
-  });
+const mapBackendForms = (forms: any[]): FormDefinition[] => mapBackendFormDefinitions(forms);
 
 const buildWorkflowSavePayload = (wf: WorkflowDefinition) => ({
   definitionId: wf.id.startsWith('new_') ? undefined : wf.id,

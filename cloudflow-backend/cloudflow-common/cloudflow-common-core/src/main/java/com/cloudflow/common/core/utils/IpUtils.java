@@ -52,7 +52,7 @@ public class IpUtils {
             }
         }
 
-        return "0:0:0:0:0:0:0:1".equals(ip) ? "127.0.0.1" : ip;
+        return normalizeIp(ip);
     }
 
     /**
@@ -60,5 +60,23 @@ public class IpUtils {
      */
     private static boolean isValidIp(String ip) {
         return StringUtils.hasText(ip) && !"unknown".equalsIgnoreCase(ip);
+    }
+
+    /**
+     * 归一化常见回环与 IPv4-mapped IPv6 表示，避免日志中出现不直观的地址格式。
+     */
+    private static String normalizeIp(String ip) {
+        if (!isValidIp(ip)) {
+            return "unknown";
+        }
+
+        String normalized = ip.trim();
+        if ("0:0:0:0:0:0:0:1".equals(normalized) || "::1".equals(normalized)) {
+            return "127.0.0.1";
+        }
+        if (normalized.regionMatches(true, 0, "::ffff:", 0, 7)) {
+            return normalized.substring(7);
+        }
+        return normalized;
     }
 }

@@ -197,6 +197,20 @@ public class WorkflowMonitorController {
     }
 
     /**
+     * 获取性能风险拆解
+     */
+    @Operation(summary = "获取性能风险拆解", description = "获取指定时间范围内的超时等级分布与异常类型排行")
+    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @GetMapping("/performance/risk-breakdown")
+    public R<PerformanceRiskBreakdownResponse> getPerformanceRiskBreakdown(
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
+            @RequestParam(required = false) String processDefKey) {
+
+        return R.ok(monitorService.getPerformanceRiskBreakdown(startDate, endDate, processDefKey));
+    }
+
+    /**
      * 获取性能统计数据
      */
     @Operation(summary = "获取性能统计", description = "获取指定时间范围内的流程性能统计数据")

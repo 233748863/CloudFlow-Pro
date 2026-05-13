@@ -6,6 +6,7 @@ import {
   Clock3,
   Download,
   Gauge,
+  PieChart,
   RefreshCw,
   ShieldAlert,
   TrendingUp,
@@ -34,10 +35,14 @@ import {
 } from '@/components/common';
 import {
   getPerformanceDashboard,
+  getPerformanceRiskBreakdown,
+  PerformanceAnomalyTypeBreakdownItem,
   PerformanceDashboardProcessRow,
   PerformanceDashboardResponse,
   PerformanceDashboardSummary,
   PerformanceDashboardTrendPoint,
+  PerformanceRiskBreakdownResponse,
+  PerformanceTimeoutLevelBreakdownItem,
 } from '@/services/api/monitor';
 import { downloadBlob } from '@/utils/download';
 import { cn } from '@/utils/cn';
@@ -123,6 +128,27 @@ const getTooltipTransform = (xPercent: number) => {
   return 'translateX(-50%)';
 };
 
+const polarToCartesian = (centerX: number, centerY: number, radius: number, angle: number) => {
+  const angleInRadians = ((angle - 90) * Math.PI) / 180;
+  return {
+    x: centerX + radius * Math.cos(angleInRadians),
+    y: centerY + radius * Math.sin(angleInRadians),
+  };
+};
+
+const describeArc = (
+  centerX: number,
+  centerY: number,
+  radius: number,
+  startAngle: number,
+  endAngle: number,
+) => {
+  const start = polarToCartesian(centerX, centerY, radius, startAngle);
+  const end = polarToCartesian(centerX, centerY, radius, endAngle);
+  const largeArcFlag = endAngle - startAngle > 180 ? 1 : 0;
+  return `M ${start.x} ${start.y} A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`;
+};
+
 const escapeCsv = (value: string | number) => {
   const text = String(value ?? '');
   if (text.includes(',') || text.includes('"') || text.includes('\n')) {
@@ -201,15 +227,33 @@ const ChartCard: React.FC<{
   action?: React.ReactNode;
   children: React.ReactNode;
   loading?: boolean;
-}> = ({ title, description, action, children, loading = false }) => (
-  <div className="relative overflow-hidden rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 sm:p-6">
+  testId?: string;
+  compact?: boolean;
+  contentClassName?: string;
+}> = ({
+  title,
+  description,
+  action,
+  children,
+  loading = false,
+  testId,
+  compact = false,
+  contentClassName,
+}) => (
+  <div
+    data-testid={testId}
+    className={cn(
+      'relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88',
+      compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6',
+    )}
+  >
     {loading ? (
       <div className="absolute inset-0 z-10 flex items-center justify-center bg-white/70 backdrop-blur-sm dark:bg-slate-950/72">
         <RefreshCw className="h-5 w-5 animate-spin text-slate-400 dark:text-slate-500" />
       </div>
     ) : null}
     <SectionHeader title={title} description={description} action={action} />
-    <div className="mt-5">{children}</div>
+    <div className={cn(compact ? 'mt-4' : 'mt-5', contentClassName)}>{children}</div>
   </div>
 );
 
@@ -261,9 +305,9 @@ const ExecutionTrendChart: React.FC<{
     );
   }
 
-  const width = 960;
-  const height = 280;
-  const padding = { top: 18, right: 28, bottom: 40, left: 44 };
+  const width = 760;
+  const height = 236;
+  const padding = { top: 18, right: 24, bottom: 34, left: 40 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
   const maxCount = Math.max(...data.map((item) => Math.max(item.totalCount, item.completedCount)), 1);
@@ -327,8 +371,8 @@ const ExecutionTrendChart: React.FC<{
           </div>
         ) : null}
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/45">
-          <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full min-w-[760px]">
+        <div className="relative">
+          <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full">
             {Array.from({ length: 5 }, (_, index) => {
               const value = Math.round((maxCount / 4) * index);
               const y = yCount(value);
@@ -437,9 +481,9 @@ const RiskTrendChart: React.FC<{
     );
   }
 
-  const width = 960;
-  const height = 280;
-  const padding = { top: 18, right: 28, bottom: 40, left: 44 };
+  const width = 760;
+  const height = 236;
+  const padding = { top: 18, right: 24, bottom: 34, left: 40 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
   const maxRate = Math.max(
@@ -499,8 +543,8 @@ const RiskTrendChart: React.FC<{
           </div>
         ) : null}
 
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/45">
-          <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full min-w-[760px]">
+        <div className="relative">
+          <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full">
             {Array.from({ length: 5 }, (_, index) => {
               const value = (maxRate / 4) * index;
               const lineY = y(value);
@@ -587,11 +631,11 @@ const ProcessRankingChart: React.FC<{
     );
   }
 
-  const rows = data.slice(0, 8);
+  const rows = data.slice(0, 4);
   const maxTotal = Math.max(...rows.map((item) => item.totalCount), 1);
 
   return (
-    <div className="space-y-3">
+    <div className="divide-y divide-slate-100 dark:divide-slate-800">
       {rows.map((item, index) => {
         const selected = selectedProcess === item.processDefKey;
         const barWidth = `${Math.max((item.totalCount / maxTotal) * 100, 8)}%`;
@@ -603,52 +647,78 @@ const ProcessRankingChart: React.FC<{
             data-testid={`performance-ranking-${item.processDefKey}`}
             aria-label={`流程排行 ${item.processName}`}
             className={cn(
-              'w-full rounded-2xl border px-4 py-4 text-left transition-colors',
+              'w-full rounded-xl px-1 py-2 text-left transition-colors',
               selected
-                ? 'border-cyan-300 bg-cyan-50/70 dark:border-cyan-700 dark:bg-cyan-950/20'
-                : 'border-slate-200 bg-slate-50/70 hover:bg-slate-100/80 dark:border-slate-800 dark:bg-slate-900/45 dark:hover:bg-slate-900/70',
+                ? 'bg-cyan-50/80 dark:bg-cyan-950/18'
+                : 'hover:bg-slate-50/80 dark:hover:bg-slate-900/55',
             )}
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="grid gap-3 md:grid-cols-[32px_minmax(0,1fr)_136px] md:items-center">
+              <div className="flex items-center">
+                <span
+                  className={cn(
+                    'inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-semibold',
+                    selected
+                      ? 'bg-cyan-600 text-white dark:bg-cyan-500 dark:text-slate-950'
+                      : 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900',
+                  )}
+                >
+                  {index + 1}
+                </span>
+              </div>
               <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white dark:bg-slate-100 dark:text-slate-900">
-                    {index + 1}
-                  </span>
-                  <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    {item.processName}
-                  </span>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {item.processName}
+                    </div>
+                    <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                      {item.processDefKey}
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100 md:hidden">
+                    {formatCount(item.totalCount)}
+                  </div>
                 </div>
-                <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                  {item.processDefKey}
+                <div className="mt-2 flex items-center gap-3">
+                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+                    <div
+                      className={cn(
+                        'h-full rounded-full',
+                        item.successRate >= 95
+                          ? 'bg-emerald-500'
+                          : item.successRate >= 80
+                            ? 'bg-amber-500'
+                            : 'bg-rose-500',
+                      )}
+                      style={{ width: barWidth }}
+                    />
+                  </div>
+                  <div className="hidden shrink-0 text-sm font-semibold text-slate-900 dark:text-slate-100 md:block">
+                    {formatCount(item.totalCount)}
+                  </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {formatCount(item.totalCount)}
+              <div className="grid grid-cols-3 gap-2 text-left text-[11px] md:grid-cols-1 md:text-right">
+                <div>
+                  <div className="text-slate-400 dark:text-slate-500">完成率</div>
+                  <div className={cn('mt-0.5 text-sm font-semibold', getSuccessTone(item.successRate))}>
+                    {formatPercent(item.successRate)}
+                  </div>
                 </div>
-                <div className={cn('mt-1 text-xs font-medium', getSuccessTone(item.successRate))}>
-                  完成率 {formatPercent(item.successRate)}
+                <div>
+                  <div className="text-slate-400 dark:text-slate-500">失败率</div>
+                  <div className={cn('mt-0.5 text-sm font-semibold', getRiskTone(item.failedRate))}>
+                    {formatPercent(item.failedRate)}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-slate-400 dark:text-slate-500">平均时长</div>
+                  <div className="mt-0.5 text-sm font-semibold text-slate-900 dark:text-slate-100">
+                    {formatDurationCompact(item.avgDurationMs)}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-              <div
-                className={cn(
-                  'h-full rounded-full',
-                  item.successRate >= 95
-                    ? 'bg-emerald-500'
-                    : item.successRate >= 80
-                      ? 'bg-amber-500'
-                      : 'bg-rose-500',
-                )}
-                style={{ width: barWidth }}
-              />
-            </div>
-            <div className="mt-3 flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
-              <span>平均时长 {formatDuration(item.avgDurationMs)}</span>
-              <span>失败率 {formatPercent(item.failedRate)}</span>
-              <span>风险评分 {item.riskScore.toFixed(1)}</span>
             </div>
           </button>
         );
@@ -676,9 +746,9 @@ const RiskMatrixChart: React.FC<{
     );
   }
 
-  const width = 920;
-  const height = 280;
-  const padding = { top: 18, right: 24, bottom: 44, left: 46 };
+  const width = 720;
+  const height = 152;
+  const padding = { top: 16, right: 16, bottom: 28, left: 30 };
   const chartW = width - padding.left - padding.right;
   const chartH = height - padding.top - padding.bottom;
   const maxDuration = Math.max(...data.map((item) => item.avgDurationMs), 1);
@@ -688,7 +758,7 @@ const RiskMatrixChart: React.FC<{
 
   const toX = (value: number) => padding.left + (value / maxDuration) * chartW;
   const toY = (value: number) => padding.top + chartH - (value / maxRisk) * chartH;
-  const radius = (value: number) => 8 + (value / maxTotal) * 14;
+  const radius = (value: number) => 6 + (value / maxTotal) * 10;
 
   return (
     <div className="relative" onMouseLeave={() => setHoveredKey(null)}>
@@ -718,8 +788,8 @@ const RiskMatrixChart: React.FC<{
         </div>
       ) : null}
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-slate-50/50 p-3 dark:border-slate-800 dark:bg-slate-900/45">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full min-w-[760px]">
+      <div className="relative">
+        <svg viewBox={`0 0 ${width} ${height}`} className="block h-auto w-full">
           {Array.from({ length: 5 }, (_, index) => {
             const x = padding.left + (chartW / 4) * index;
             return (
@@ -792,24 +862,24 @@ const RiskMatrixChart: React.FC<{
             x={16}
             y={height / 2}
             textAnchor="middle"
-            fontSize={11}
+            fontSize={10}
             fill="currentColor"
             transform={`rotate(-90 16 ${height / 2})`}
             className="text-slate-500 dark:text-slate-400"
           >
-            风险强度（超时实例率 + 异常实例率）
+            风险强度
           </text>
 
-          <text x={padding.left} y={height - 22} fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={padding.left} y={height - 14} fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
             0
           </text>
-          <text x={width - padding.right} y={height - 22} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={width - padding.right} y={height - 14} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
             {formatChartDuration(maxDuration)}
           </text>
-          <text x={padding.left - 8} y={padding.top + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={padding.left - 6} y={padding.top + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
             {formatPercent(maxRisk)}
           </text>
-          <text x={padding.left - 8} y={height - padding.bottom + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
+          <text x={padding.left - 6} y={height - padding.bottom + 4} textAnchor="end" fontSize={10} fill="currentColor" className="text-slate-400 dark:text-slate-500">
             0.0%
           </text>
         </svg>
@@ -818,8 +888,164 @@ const RiskMatrixChart: React.FC<{
   );
 };
 
+const timeoutLevelTone = (level: string) => {
+  if (level === 'CRITICAL') {
+    return { stroke: '#f43f5e', dot: 'bg-rose-500', text: 'text-rose-600 dark:text-rose-300' };
+  }
+  if (level === 'WARNING') {
+    return { stroke: '#f59e0b', dot: 'bg-amber-500', text: 'text-amber-600 dark:text-amber-300' };
+  }
+  return { stroke: '#06b6d4', dot: 'bg-cyan-500', text: 'text-cyan-600 dark:text-cyan-300' };
+};
+
+const TimeoutLevelDistributionCard: React.FC<{
+  items: PerformanceTimeoutLevelBreakdownItem[];
+  total: number;
+  loading: boolean;
+}> = ({ items, total, loading }) => {
+  if (total <= 0 || items.length === 0) {
+    return (
+      <EmptyBlock
+        title="暂无超时等级分布"
+        description="当前筛选区间没有超时事件。"
+        icon={<PieChart className="h-5 w-5" />}
+        loading={loading}
+      />
+    );
+  }
+
+  const size = 112;
+  const strokeWidth = 16;
+  const center = size / 2;
+  const radius = (size - strokeWidth) / 2;
+  let startAngle = 0;
+  const segments = items.map((item) => {
+    const angle = total <= 0 ? 0 : (item.count / total) * 360;
+    const segment = {
+      ...item,
+      startAngle,
+      endAngle: startAngle + angle,
+    };
+    startAngle += angle;
+    return segment;
+  });
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-[112px_minmax(0,1fr)] sm:items-center">
+      <div className="relative mx-auto h-28 w-28">
+        <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+          <div className="text-xl font-semibold text-slate-900 dark:text-slate-100">{formatCount(total)}</div>
+          <div className="mt-1 text-[11px] uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            超时事件
+          </div>
+        </div>
+        <svg viewBox={`0 0 ${size} ${size}`} className="h-full w-full">
+          <circle
+            cx={center}
+            cy={center}
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={strokeWidth}
+            className="text-slate-200 dark:text-slate-800"
+          />
+          {segments.map((segment) => {
+            const tone = timeoutLevelTone(segment.level);
+            return segment.endAngle <= segment.startAngle ? null : (
+              <path
+                key={segment.level}
+                d={describeArc(center, center, radius, segment.startAngle, segment.endAngle)}
+                fill="none"
+                stroke={tone.stroke}
+                strokeWidth={strokeWidth}
+                strokeLinecap="butt"
+              />
+            );
+          })}
+        </svg>
+      </div>
+
+      <div className="space-y-3">
+        {segments.map((item) => {
+          const tone = timeoutLevelTone(item.level);
+          return (
+            <div key={item.level} className="flex items-center justify-between gap-3">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className={cn('inline-block h-2.5 w-2.5 rounded-full', tone.dot)} />
+                <span className="truncate text-sm text-slate-700 dark:text-slate-200">{item.label}</span>
+              </div>
+              <div className="text-right">
+                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                  {formatCount(item.count)}
+                </div>
+                <div className={cn('text-xs', tone.text)}>{formatPercent(item.rate)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};
+
+const anomalyBarTone = (index: number) => {
+  const tones = [
+    'bg-rose-500',
+    'bg-pink-500',
+    'bg-orange-500',
+    'bg-amber-500',
+    'bg-slate-500',
+  ];
+  return tones[index % tones.length];
+};
+
+const AnomalyTypeRankingCard: React.FC<{
+  items: PerformanceAnomalyTypeBreakdownItem[];
+  total: number;
+  loading: boolean;
+}> = ({ items, total, loading }) => {
+  if (total <= 0 || items.length === 0) {
+    return (
+      <EmptyBlock
+        title="暂无异常类型排行"
+        description="当前筛选区间没有异常事件。"
+        icon={<AlertTriangle className="h-5 w-5" />}
+        loading={loading}
+      />
+    );
+  }
+
+  const rows = items.slice(0, 4);
+  const maxCount = Math.max(...rows.map((item) => item.count), 1);
+
+  return (
+    <div className="space-y-3">
+      {rows.map((item, index) => (
+        <div key={item.type} className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="truncate text-sm text-slate-700 dark:text-slate-200">{item.label}</div>
+            <div className="text-right">
+              <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {formatCount(item.count)}
+              </span>
+              <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">{formatPercent(item.rate)}</span>
+            </div>
+          </div>
+          <div className="h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
+            <div
+              className={cn('h-full rounded-full', anomalyBarTone(index))}
+              style={{ width: `${Math.max((item.count / maxCount) * 100, 10)}%` }}
+            />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const PerformanceStatsPage: React.FC = () => {
   const [dashboard, setDashboard] = useState<PerformanceDashboardResponse | null>(null);
+  const [riskBreakdown, setRiskBreakdown] = useState<PerformanceRiskBreakdownResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [dateRange, setDateRange] = useState({
     startDate: getDaysAgoDateString(29),
@@ -832,19 +1058,31 @@ const PerformanceStatsPage: React.FC = () => {
   const loadDashboard = async () => {
     try {
       setLoading(true);
-      const data = await getPerformanceDashboard({
-        startDate: dateRange.startDate,
-        endDate: dateRange.endDate,
-        processDefKey: selectedProcess || undefined,
-      });
-      setDashboard(data);
+      const [dashboardData, riskBreakdownData] = await Promise.all([
+        getPerformanceDashboard({
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          processDefKey: selectedProcess || undefined,
+        }),
+        getPerformanceRiskBreakdown({
+          startDate: dateRange.startDate,
+          endDate: dateRange.endDate,
+          processDefKey: selectedProcess || undefined,
+        }),
+      ]);
+      setDashboard(dashboardData);
+      setRiskBreakdown(riskBreakdownData);
       setProcessCatalog((previous) => {
         const next = { ...previous };
-        data.processes.forEach((item) => {
+        dashboardData.processes.forEach((item) => {
           next[item.processDefKey] = item.processName;
         });
-        if (data.context.processDefKey && data.context.processLabel && data.context.processLabel !== '全部流程') {
-          next[data.context.processDefKey] = data.context.processLabel;
+        if (
+          dashboardData.context.processDefKey
+          && dashboardData.context.processLabel
+          && dashboardData.context.processLabel !== '全部流程'
+        ) {
+          next[dashboardData.context.processDefKey] = dashboardData.context.processLabel;
         }
         return next;
       });
@@ -910,6 +1148,10 @@ const PerformanceStatsPage: React.FC = () => {
   const compareSummary = dashboard?.compareSummary ?? summary;
   const trendRows = dashboard?.trend ?? [];
   const processRows = dashboard?.processes ?? [];
+  const timeoutBreakdown = riskBreakdown?.timeoutLevels ?? [];
+  const anomalyBreakdown = riskBreakdown?.anomalyTypes ?? [];
+  const timeoutBreakdownTotal = riskBreakdown?.totals.timeoutTotal ?? 0;
+  const anomalyBreakdownTotal = riskBreakdown?.totals.anomalyTotal ?? 0;
   const selectedProcessLabel = dashboard?.context.processLabel
     || processCatalog[selectedProcess]
     || '全部流程';
@@ -1143,154 +1385,173 @@ const PerformanceStatsPage: React.FC = () => {
               ))}
             </div>
 
-            <TableSurfaceCard>
-              <div className="space-y-6 p-5 sm:p-6">
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-[linear-gradient(135deg,rgba(8,145,178,0.08),rgba(20,184,166,0.06),rgba(245,158,11,0.07))] px-4 py-4 dark:border-slate-800 dark:bg-[linear-gradient(135deg,rgba(6,182,212,0.10),rgba(16,185,129,0.08),rgba(245,158,11,0.06))]">
-                  <div>
-                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      历史性能分析看板
-                    </div>
-                    <div className="mt-1 text-xs leading-6 text-slate-600 dark:text-slate-300">
-                      当前区间与上一等长区间自动对比，图表点击会联动下方流程明细。
-                    </div>
-                  </div>
-                  {selectedProcess ? (
-                    <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-white/70 px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm dark:bg-slate-950/70 dark:text-slate-200">
-                        已选流程：{selectedProcessLabel}
-                      </span>
-                      <Button variant="outline" size="sm" onClick={() => setSelectedProcess('')}>
-                        清除选择
-                      </Button>
-                    </div>
-                  ) : null}
+            {selectedProcess ? (
+              <div className="flex justify-end">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-200">
+                    已选流程：{selectedProcessLabel}
+                  </span>
+                  <Button variant="outline" size="sm" onClick={() => setSelectedProcess('')}>
+                    清除选择
+                  </Button>
                 </div>
+              </div>
+            ) : null}
 
-                <div className="grid gap-4 xl:grid-cols-2">
-                  <ChartCard
-                    title="执行趋势图"
-                    description="柱状对比流程总量与完成数，折线观察平均处理时长。"
-                    loading={loading}
-                  >
-                    <ExecutionTrendChart data={trendRows} loading={loading} />
-                  </ChartCard>
+            <div className="grid gap-4 xl:grid-cols-2">
+              <ChartCard title="执行趋势图" loading={loading} testId="execution-trend-card">
+                <ExecutionTrendChart data={trendRows} loading={loading} />
+              </ChartCard>
 
-                  <ChartCard
-                    title="风险趋势图"
-                    description="跟踪超时实例率与异常实例率，悬停可同时查看事件数。"
-                    loading={loading}
-                  >
-                    <RiskTrendChart data={trendRows} loading={loading} />
-                  </ChartCard>
+              <ChartCard title="风险趋势图" loading={loading} testId="risk-trend-card">
+                <RiskTrendChart data={trendRows} loading={loading} />
+              </ChartCard>
+            </div>
 
-                  <ChartCard
-                    title="流程效率排行"
-                    description="按流程总量排序，颜色映射完成率，点击行可筛到单流程。"
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:items-start">
+              <ChartCard
+                title="流程效率排行"
+                loading={loading}
+                testId="process-ranking-card"
+                compact
+                action={
+                  <span className="text-xs text-slate-500 dark:text-slate-400">
+                    {processRows.length} 项
+                  </span>
+                }
+              >
+                <ProcessRankingChart
+                  data={processRows}
+                  selectedProcess={selectedProcess}
+                  onSelect={selectProcessFromChart}
+                  loading={loading}
+                />
+              </ChartCard>
+
+              <div className="grid gap-4">
+                <ChartCard title="风险矩阵" loading={loading} testId="risk-matrix-card" compact>
+                  <RiskMatrixChart
+                    data={processRows}
+                    selectedProcess={selectedProcess}
+                    onSelect={selectProcessFromChart}
                     loading={loading}
+                  />
+                </ChartCard>
+
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-2">
+                  <ChartCard
+                    title="超时等级分布"
+                    loading={loading}
+                    testId="timeout-level-card"
+                    compact
                     action={
                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                        {processRows.length} 项
+                        {timeoutBreakdownTotal} 个
                       </span>
                     }
                   >
-                    <ProcessRankingChart
-                      data={processRows}
-                      selectedProcess={selectedProcess}
-                      onSelect={selectProcessFromChart}
+                    <TimeoutLevelDistributionCard
+                      items={timeoutBreakdown}
+                      total={timeoutBreakdownTotal}
                       loading={loading}
                     />
                   </ChartCard>
 
                   <ChartCard
-                    title="风险矩阵"
-                    description="横轴是平均时长，纵轴是风险强度，圆越大说明流程量越高。"
+                    title="异常类型排行"
                     loading={loading}
+                    testId="anomaly-type-card"
+                    compact
+                    action={
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {anomalyBreakdownTotal} 个
+                      </span>
+                    }
                   >
-                    <RiskMatrixChart
-                      data={processRows}
-                      selectedProcess={selectedProcess}
-                      onSelect={selectProcessFromChart}
+                    <AnomalyTypeRankingCard
+                      items={anomalyBreakdown}
+                      total={anomalyBreakdownTotal}
                       loading={loading}
                     />
                   </ChartCard>
                 </div>
-
-                <ChartCard
-                  title="流程明细表"
-                  description="默认按风险评分倒序，展示当前筛选与图表联动后的流程聚合数据。"
-                  loading={loading}
-                  action={
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {processRows.length} 条
-                    </span>
-                  }
-                >
-                  <div
-                    data-testid="performance-detail-table"
-                    className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800"
-                  >
-                    <Table className="min-w-[1140px]">
-                      <TableHeader>
-                        <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-                          <TableHead className="w-[22%]">流程</TableHead>
-                          <TableHead className="text-right">总量</TableHead>
-                          <TableHead className="text-right">完成</TableHead>
-                          <TableHead className="text-right">失败</TableHead>
-                          <TableHead className="text-right">平均时长</TableHead>
-                          <TableHead className="text-right">完成率</TableHead>
-                          <TableHead className="text-right">失败率</TableHead>
-                          <TableHead className="text-right">超时实例率</TableHead>
-                          <TableHead className="text-right">超时事件数</TableHead>
-                          <TableHead className="text-right">异常实例率</TableHead>
-                          <TableHead className="text-right">异常事件数</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {processRows.length > 0 ? (
-                          processRows.map((item) => (
-                            <TableRow
-                              key={item.processDefKey}
-                              className={cn(
-                                selectedProcess === item.processDefKey && 'bg-cyan-50/60 dark:bg-cyan-950/10',
-                              )}
-                            >
-                              <TableCell className="min-w-0">
-                                <div className="truncate font-medium text-slate-900 dark:text-slate-100">
-                                  {item.processName}
-                                </div>
-                                <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
-                                  {item.processDefKey}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right">{formatCount(item.totalCount)}</TableCell>
-                              <TableCell className="text-right">{formatCount(item.completedCount)}</TableCell>
-                              <TableCell className="text-right">{formatCount(item.failedCount)}</TableCell>
-                              <TableCell className="text-right">{formatDuration(item.avgDurationMs)}</TableCell>
-                              <TableCell className={cn('text-right font-semibold', getSuccessTone(item.successRate))}>
-                                {formatPercent(item.successRate)}
-                              </TableCell>
-                              <TableCell className={cn('text-right font-semibold', getRiskTone(item.failedRate))}>
-                                {formatPercent(item.failedRate)}
-                              </TableCell>
-                              <TableCell className={cn('text-right font-semibold', getRiskTone(item.timeoutInstanceRate))}>
-                                {formatPercent(item.timeoutInstanceRate)}
-                              </TableCell>
-                              <TableCell className="text-right">{formatCount(item.timeoutEventCount)}</TableCell>
-                              <TableCell className={cn('text-right font-semibold', getRiskTone(item.anomalyInstanceRate))}>
-                                {formatPercent(item.anomalyInstanceRate)}
-                              </TableCell>
-                              <TableCell className="text-right">{formatCount(item.anomalyEventCount)}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableEmptyRow colSpan={11} loading={loading} />
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </ChartCard>
               </div>
-            </TableSurfaceCard>
+            </div>
+
+            <ChartCard
+              title="流程明细表"
+              loading={loading}
+              testId="process-detail-card"
+              contentClassName="-mx-5 -mb-5 sm:-mx-6 sm:-mb-6"
+              action={
+                <span className="text-xs text-slate-500 dark:text-slate-400">
+                  {processRows.length} 条
+                </span>
+              }
+            >
+              <Table
+                data-testid="performance-detail-table"
+                className="min-w-[1140px]"
+                wrapperClassName="overflow-x-auto"
+              >
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+                    <TableHead className="w-[22%]">流程</TableHead>
+                    <TableHead className="text-right">总量</TableHead>
+                    <TableHead className="text-right">完成</TableHead>
+                    <TableHead className="text-right">失败</TableHead>
+                    <TableHead className="text-right">平均时长</TableHead>
+                    <TableHead className="text-right">完成率</TableHead>
+                    <TableHead className="text-right">失败率</TableHead>
+                    <TableHead className="text-right">超时实例率</TableHead>
+                    <TableHead className="text-right">超时事件数</TableHead>
+                    <TableHead className="text-right">异常实例率</TableHead>
+                    <TableHead className="text-right">异常事件数</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {processRows.length > 0 ? (
+                    processRows.map((item) => (
+                      <TableRow
+                        key={item.processDefKey}
+                        className={cn(
+                          selectedProcess === item.processDefKey && 'bg-cyan-50/60 dark:bg-cyan-950/10',
+                        )}
+                      >
+                        <TableCell className="min-w-0">
+                          <div className="truncate font-medium text-slate-900 dark:text-slate-100">
+                            {item.processName}
+                          </div>
+                          <div className="mt-1 truncate text-xs text-slate-500 dark:text-slate-400">
+                            {item.processDefKey}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">{formatCount(item.totalCount)}</TableCell>
+                        <TableCell className="text-right">{formatCount(item.completedCount)}</TableCell>
+                        <TableCell className="text-right">{formatCount(item.failedCount)}</TableCell>
+                        <TableCell className="text-right">{formatDuration(item.avgDurationMs)}</TableCell>
+                        <TableCell className={cn('text-right font-semibold', getSuccessTone(item.successRate))}>
+                          {formatPercent(item.successRate)}
+                        </TableCell>
+                        <TableCell className={cn('text-right font-semibold', getRiskTone(item.failedRate))}>
+                          {formatPercent(item.failedRate)}
+                        </TableCell>
+                        <TableCell className={cn('text-right font-semibold', getRiskTone(item.timeoutInstanceRate))}>
+                          {formatPercent(item.timeoutInstanceRate)}
+                        </TableCell>
+                        <TableCell className="text-right">{formatCount(item.timeoutEventCount)}</TableCell>
+                        <TableCell className={cn('text-right font-semibold', getRiskTone(item.anomalyInstanceRate))}>
+                          {formatPercent(item.anomalyInstanceRate)}
+                        </TableCell>
+                        <TableCell className="text-right">{formatCount(item.anomalyEventCount)}</TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableEmptyRow colSpan={11} loading={loading} />
+                  )}
+                </TableBody>
+              </Table>
+            </ChartCard>
           </div>
         )
       }

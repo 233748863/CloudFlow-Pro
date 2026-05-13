@@ -3,6 +3,7 @@ package com.cloudflow.workflow.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.workflow.domain.WfAuditLog;
 import com.cloudflow.workflow.domain.dto.AuditLogDTO;
 import com.cloudflow.workflow.enums.OperationType;
@@ -276,23 +277,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
         if (request == null) {
             return "UNKNOWN";
         }
-
-        String ip = request.getHeader("X-Forwarded-For");
-        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (StringUtils.hasText(ip) && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
+        String ip = IpUtils.getIpAddr(request);
         return StringUtils.hasText(ip) ? ip : "UNKNOWN";
     }
 

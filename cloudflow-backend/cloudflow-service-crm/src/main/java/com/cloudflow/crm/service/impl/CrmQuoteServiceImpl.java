@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.crm.domain.CrmQuote;
@@ -47,7 +48,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         fillCustomerSnapshot(quote);
         validate(quote);
         if (!StringUtils.hasText(quote.getQuoteNo())) {
-            quote.setQuoteNo(Localize.nextNo("BJ"));
+            quote.setQuoteNo(Localize.nextNo(CrmConstants.NoPrefix.QUOTE));
         }
         if (quote.getOwnerId() == null) {
             quote.setOwnerId(UserContext.getUserId());
@@ -89,11 +90,12 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (!"0".equals(quote.getDelFlag())) {
             throw new IllegalArgumentException("报价不存在");
         }
-        if (!"DRAFT".equals(quote.getStatus()) && !"REJECTED".equals(quote.getStatus())) {
+        if (!CrmConstants.QuoteStatus.DRAFT.equals(quote.getStatus())
+                && !CrmConstants.QuoteStatus.REJECTED.equals(quote.getStatus())) {
             throw new IllegalArgumentException("只有草稿或已驳回报价可以提交审批");
         }
 
-        quote.setStatus("PENDING");
+        quote.setStatus(CrmConstants.QuoteStatus.PENDING);
         quote.setUpdateBy(currentUserName());
         quote.setUpdateTime(now());
 
@@ -129,10 +131,12 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     @Override
     public boolean sendQuote(Long quoteId) {
         CrmQuote quote = requireById(quoteId, "报价不存在");
-        if (!"APPROVED".equals(quote.getStatus()) && !"REJECTED".equals(quote.getStatus()) && !"DRAFT".equals(quote.getStatus())) {
+        if (!CrmConstants.QuoteStatus.APPROVED.equals(quote.getStatus())
+                && !CrmConstants.QuoteStatus.REJECTED.equals(quote.getStatus())
+                && !CrmConstants.QuoteStatus.DRAFT.equals(quote.getStatus())) {
             throw new IllegalArgumentException("当前报价状态不允许发送");
         }
-        quote.setStatus("SENT");
+        quote.setStatus(CrmConstants.QuoteStatus.SENT);
         quote.setUpdateBy(currentUserName());
         quote.setUpdateTime(now());
         boolean updated = updateById(quote);
@@ -145,13 +149,14 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     @Override
     public boolean acceptQuote(Long quoteId) {
         CrmQuote quote = requireById(quoteId, "报价不存在");
-        if (!"APPROVED".equals(quote.getStatus()) && !"SENT".equals(quote.getStatus())) {
+        if (!CrmConstants.QuoteStatus.APPROVED.equals(quote.getStatus())
+                && !CrmConstants.QuoteStatus.SENT.equals(quote.getStatus())) {
             throw new IllegalArgumentException("当前报价状态不允许接受");
         }
         if (quote.getContractId() == null) {
             createContractDraft(quoteId);
         }
-        quote.setStatus("ACCEPTED");
+        quote.setStatus(CrmConstants.QuoteStatus.ACCEPTED);
         quote.setUpdateBy(currentUserName());
         quote.setUpdateTime(now());
         boolean updated = updateById(quote);
@@ -205,10 +210,10 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     @Override
     public boolean expireQuote(Long quoteId) {
         CrmQuote quote = requireById(quoteId, "报价不存在");
-        if ("ACCEPTED".equals(quote.getStatus())) {
+        if (CrmConstants.QuoteStatus.ACCEPTED.equals(quote.getStatus())) {
             throw new IllegalArgumentException("已接受报价不能设为过期");
         }
-        quote.setStatus("EXPIRED");
+        quote.setStatus(CrmConstants.QuoteStatus.EXPIRED);
         quote.setUpdateBy(currentUserName());
         quote.setUpdateTime(now());
         boolean updated = updateById(quote);
@@ -238,7 +243,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
             quote.setCurrency("CNY");
         }
         if (!StringUtils.hasText(quote.getStatus())) {
-            quote.setStatus("DRAFT");
+            quote.setStatus(CrmConstants.QuoteStatus.DRAFT);
         }
     }
 

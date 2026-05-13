@@ -30,8 +30,8 @@ export const OrgStructurePage = () => {
   const currentDeptLabel = stats.selectedDeptName || '全部用户';
 
   return (
-    <section className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-      <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 lg:flex-row lg:items-center lg:justify-between">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500 dark:text-slate-400">
           <span>{currentDeptLabel}</span>
           <span>部门 {stats.deptSearch ? stats.filteredDepartments : stats.totalDepartments}</span>
@@ -46,9 +46,7 @@ export const OrgStructurePage = () => {
         </div>
       </div>
 
-      <div className="p-4">
-        <OrgStructure refreshSignal={refreshSignal} onStatsChange={setStats} />
-      </div>
-    </section>
+      <OrgStructure refreshSignal={refreshSignal} onStatsChange={setStats} />
+    </div>
   );
 };

@@ -5,6 +5,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardCardVO;
@@ -77,8 +78,8 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
     @Override
     public boolean winOpportunity(Long opportunityId) {
         CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
-        opportunity.setStage("WON");
-        opportunity.setStatus("CLOSED");
+        opportunity.setStage(CrmConstants.OpportunityStage.WON);
+        opportunity.setStatus(CrmConstants.OpportunityStatus.CLOSED);
         opportunity.setUpdateBy(currentUserName());
         opportunity.setUpdateTime(now());
         boolean updated = updateById(opportunity);
@@ -92,8 +93,8 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
     @Override
     public boolean loseOpportunity(Long opportunityId, String lostReason) {
         CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
-        opportunity.setStage("LOST");
-        opportunity.setStatus("CLOSED");
+        opportunity.setStage(CrmConstants.OpportunityStage.LOST);
+        opportunity.setStatus(CrmConstants.OpportunityStatus.CLOSED);
         opportunity.setLostReason(StringUtils.hasText(lostReason) ? lostReason : opportunity.getLostReason());
         opportunity.setUpdateBy(currentUserName());
         opportunity.setUpdateTime(now());
@@ -119,7 +120,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         request.setBudgetAmount(opportunity.getExpectedAmount());
         request.setPriority("MEDIUM");
         request.setStatus("DRAFT");
-        request.setRiskLevel("LOW");
+        request.setRiskLevel(CrmConstants.RiskLevel.LOW);
         request.setSourceType("CRM_OPPORTUNITY");
         request.setSourceId(opportunityId);
         request.setSourceName(opportunity.getOpportunityName());
@@ -196,7 +197,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         }
         CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
         opportunity.setStage(stage);
-        opportunity.setStatus("OPEN");
+        opportunity.setStatus(CrmConstants.OpportunityStatus.OPEN);
         opportunity.setStageChangedTime(now());
         opportunity.setUpdateBy(currentUserName());
         opportunity.setUpdateTime(now());
@@ -220,10 +221,10 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
             opportunity.setWinRate(BigDecimal.ZERO);
         }
         if (!StringUtils.hasText(opportunity.getStage())) {
-            opportunity.setStage("LEAD");
+            opportunity.setStage(CrmConstants.OpportunityStage.LEAD);
         }
         if (!StringUtils.hasText(opportunity.getStatus())) {
-            opportunity.setStatus("OPEN");
+            opportunity.setStatus(CrmConstants.OpportunityStatus.OPEN);
         }
         if (opportunity.getStageChangedTime() == null) {
             opportunity.setStageChangedTime(now());

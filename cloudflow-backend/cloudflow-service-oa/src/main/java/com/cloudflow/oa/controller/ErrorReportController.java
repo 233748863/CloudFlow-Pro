@@ -1,6 +1,7 @@
 package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.oa.domain.FrontendErrorLog;
 import com.cloudflow.oa.service.IFrontendErrorLogService;
 import lombok.RequiredArgsConstructor;
@@ -57,28 +58,6 @@ public class ErrorReportController {
      * 依次检查常见的代理头，最后降级为 remoteAddr
      */
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            // X-Forwarded-For 可能包含多个IP，取第一个（客户端真实IP）
-            int commaIndex = ip.indexOf(',');
-            return commaIndex > 0 ? ip.substring(0, commaIndex).trim() : ip.trim();
-        }
-
-        ip = request.getHeader("X-Real-IP");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip.trim();
-        }
-
-        ip = request.getHeader("Proxy-Client-IP");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip.trim();
-        }
-
-        ip = request.getHeader("WL-Proxy-Client-IP");
-        if (ip != null && !ip.isEmpty() && !"unknown".equalsIgnoreCase(ip)) {
-            return ip.trim();
-        }
-
-        return request.getRemoteAddr();
+        return IpUtils.getIpAddr(request);
     }
 }

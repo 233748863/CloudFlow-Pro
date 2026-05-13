@@ -76,6 +76,12 @@ public interface WorkflowMonitorService {
                                                          String processDefKey);
 
     /**
+     * 获取风险拆解数据
+     */
+    PerformanceRiskBreakdownResponse getPerformanceRiskBreakdown(LocalDate startDate, LocalDate endDate,
+                                                                 String processDefKey);
+
+    /**
      * 获取性能统计数据
      */
     List<PerformanceStats> getPerformanceStats(LocalDate startDate, LocalDate endDate, 

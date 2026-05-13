@@ -45,18 +45,9 @@ const KeyValueRow: React.FC<{
   label: string;
   value: React.ReactNode;
 }> = ({ label, value }) => (
-  <div className="flex flex-col gap-1 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800 sm:flex-row sm:items-center sm:gap-4">
+  <div className="flex flex-col gap-1 px-5 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
     <div className="w-24 flex-shrink-0 text-xs text-slate-500 dark:text-slate-400">{label}</div>
     <div className="min-w-0 flex-1 text-sm text-slate-700 dark:text-slate-200 sm:text-right">{value}</div>
-  </div>
-);
-
-const DetailRows: React.FC<{
-  children: React.ReactNode;
-  className?: string;
-}> = ({ children, className }) => (
-  <div className={cn('overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800', className)}>
-    {children}
   </div>
 );
 
@@ -280,153 +271,162 @@ const WorkflowMonitor: React.FC = () => {
             </div>
           </div>
         }
-        table={(<TableSurfaceCard><div className="grid min-h-full xl:grid-cols-[minmax(0,1fr)_284px]">
-            <div className="divide-y divide-slate-200 dark:divide-slate-800">
-              <section className="p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">运行趋势</div>
-                  </div>
-                  <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
-                    最近 7 天
-                  </span>
-                </div>
-
-                {visibleTrends.length === 0 ? (
-                  <EmptyBlock
-                    title="暂无趋势数据"
-                    icon={<TrendingUp className="h-5 w-5" />}
-                  />
-                ) : (
-                  <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-                    <div className="hidden bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:bg-slate-900/70 dark:text-slate-500 md:grid md:grid-cols-[120px_repeat(4,minmax(0,1fr))_140px]">
-                      <span>日期</span>
-                      <span>启动</span>
-                      <span>完成</span>
-                      <span>超时</span>
-                      <span>异常</span>
-                      <span>运行中</span>
+        table={(
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_284px]">
+            <div className="space-y-4">
+              <TableSurfaceCard>
+                <section className="p-5 sm:p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">运行趋势</div>
                     </div>
+                    <span className="text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                      最近 7 天
+                    </span>
+                  </div>
 
-                    {visibleTrends.map((item) => (
-                      <div
-                        key={item.date}
-                        className="grid gap-3 border-t border-slate-200 px-4 py-3 first:border-t-0 dark:border-slate-800 md:grid-cols-[120px_repeat(4,minmax(0,1fr))_140px] md:items-center"
-                      >
-                        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {item.date}
+                  {visibleTrends.length === 0 ? (
+                    <EmptyBlock
+                      title="暂无趋势数据"
+                      icon={<TrendingUp className="h-5 w-5" />}
+                    />
+                  ) : (
+                    <div className="mt-4 overflow-x-auto">
+                      <div className="min-w-[760px]">
+                        <div className="hidden border-y border-slate-200 bg-slate-50 px-4 py-3 text-[11px] font-medium uppercase tracking-[0.14em] text-slate-400 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-500 md:grid md:grid-cols-[120px_repeat(4,minmax(0,1fr))_140px]">
+                          <span>日期</span>
+                          <span>启动</span>
+                          <span>完成</span>
+                          <span>超时</span>
+                          <span>异常</span>
+                          <span>运行中</span>
                         </div>
-                        <div className="text-sm text-slate-600 dark:text-slate-300">{item.started}</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-300">{item.completed}</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-300">{item.timeout}</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-300">{item.anomaly}</div>
-                        <div className="text-sm text-slate-600 dark:text-slate-300">{item.running}</div>
+
+                        {visibleTrends.map((item) => (
+                          <div
+                            key={item.date}
+                            className="grid gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 md:grid-cols-[120px_repeat(4,minmax(0,1fr))_140px] md:items-center"
+                          >
+                            <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              {item.date}
+                            </div>
+                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.started}</div>
+                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.completed}</div>
+                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.timeout}</div>
+                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.anomaly}</div>
+                            <div className="text-sm text-slate-600 dark:text-slate-300">{item.running}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </section>
+              </TableSurfaceCard>
+
+              <TableSurfaceCard>
+                <section className="p-5 sm:p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">超时告警</div>
+                    </div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {timeoutAlerts.length} 条
+                    </span>
+                  </div>
+
+                  <div className="mt-4 border-t border-slate-200 dark:border-slate-800">
+                    {timeoutAlerts.length > 0 ? (
+                      timeoutAlerts.map((alert, index) => (
+                        <div
+                          key={alert.id}
+                          className={cn(index > 0 && 'border-t border-slate-200 dark:border-slate-800')}
+                        >
+                          <AlertFeedRow alert={alert} type="timeout" />
+                        </div>
+                      ))
+                    ) : (
+                      <EmptyBlock
+                        title="暂无超时告警"
+                        icon={<Clock3 className="h-5 w-5" />}
+                      />
+                    )}
+                  </div>
+                </section>
+              </TableSurfaceCard>
+
+              <TableSurfaceCard>
+                <section className="p-5 sm:p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-medium text-slate-900 dark:text-slate-100">异常告警</div>
+                    </div>
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      {anomalyAlerts.length} 条
+                    </span>
+                  </div>
+
+                  <div className="mt-4 border-t border-slate-200 dark:border-slate-800">
+                    {anomalyAlerts.length > 0 ? (
+                      anomalyAlerts.map((alert, index) => (
+                        <div
+                          key={alert.id}
+                          className={cn(index > 0 && 'border-t border-slate-200 dark:border-slate-800')}
+                        >
+                          <AlertFeedRow alert={alert} type="anomaly" />
+                        </div>
+                      ))
+                    ) : (
+                      <EmptyBlock
+                        title="暂无异常告警"
+                        icon={<AlertTriangle className="h-5 w-5" />}
+                      />
+                    )}
+                  </div>
+                </section>
+              </TableSurfaceCard>
+            </div>
+
+            <aside className="space-y-4">
+              <TableSurfaceCard>
+                <section className="p-5 sm:p-6">
+                  <div className="border-y border-slate-200 dark:border-slate-800">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                      <KeyValueRow label="最后更新" value={lastUpdateTime} />
+                      <KeyValueRow label="自动刷新" value={autoRefresh ? '开启' : '关闭'} />
+                      <KeyValueRow label="运行中 / 待办" value={`${overview?.runningCount || 0} / ${overview?.pendingTaskCount || 0}`} />
+                      <KeyValueRow label="严重超时" value={`${overview?.criticalAlertCount || 0} 条`} />
+                      <KeyValueRow label="警告提醒" value={`${overview?.warningAlertCount || 0} 条`} />
+                      <KeyValueRow label="异常未解决" value={`${overview?.unresolvedAnomalyCount || anomalyAlerts.length} 条`} />
+                      <KeyValueRow label="平均完成时间" value={formatDuration(overview?.avgCompletionTimeMs || 0)} />
+                      <KeyValueRow label="整体成功率" value={`${(overview?.successRate || 0).toFixed(1)}%`} />
+                    </div>
+                  </div>
+                </section>
+              </TableSurfaceCard>
+
+              <TableSurfaceCard>
+                <section className="p-5 sm:p-6">
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {[
+                      { label: '超时告警', value: summary.timeoutCount },
+                      { label: '异常告警', value: summary.anomalyCount },
+                      { label: '成功率', value: `${(overview?.successRate || 0).toFixed(1)}%` },
+                      { label: '平均时长', value: formatDuration(overview?.avgCompletionTimeMs || 0) },
+                    ].map((item) => (
+                      <div
+                        key={item.label}
+                        className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                      >
+                        <span className="text-sm text-slate-600 dark:text-slate-300">{item.label}</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.value}</span>
                       </div>
                     ))}
                   </div>
-                )}
-              </section>
-
-              <section className="p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">超时告警</div>
-                  </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {timeoutAlerts.length} 条
-                  </span>
-                </div>
-
-                <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-                  {timeoutAlerts.length > 0 ? (
-                    timeoutAlerts.map((alert, index) => (
-                      <div
-                        key={alert.id}
-                        className={cn(index > 0 && 'border-t border-slate-200 dark:border-slate-800')}
-                      >
-                        <AlertFeedRow alert={alert} type="timeout" />
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyBlock
-                      title="暂无超时告警"
-                      icon={<Clock3 className="h-5 w-5" />}
-                    />
-                  )}
-                </div>
-              </section>
-
-              <section className="p-5 sm:p-6">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">异常告警</div>
-                  </div>
-                  <span className="text-xs text-slate-500 dark:text-slate-400">
-                    {anomalyAlerts.length} 条
-                  </span>
-                </div>
-
-                <div className="mt-4 overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-                  {anomalyAlerts.length > 0 ? (
-                    anomalyAlerts.map((alert, index) => (
-                      <div
-                        key={alert.id}
-                        className={cn(index > 0 && 'border-t border-slate-200 dark:border-slate-800')}
-                      >
-                        <AlertFeedRow alert={alert} type="anomaly" />
-                      </div>
-                    ))
-                  ) : (
-                    <EmptyBlock
-                      title="暂无异常告警"
-                      icon={<AlertTriangle className="h-5 w-5" />}
-                    />
-                  )}
-                </div>
-              </section>
-            </div>
-
-            <aside className="border-t border-slate-200 dark:border-slate-800 xl:border-l xl:border-t-0">
-              <section className="p-5 dark:border-slate-800 sm:p-6">
-                <DetailRows>
-                  <KeyValueRow label="最后更新" value={lastUpdateTime} />
-                  <KeyValueRow label="自动刷新" value={autoRefresh ? '开启' : '关闭'} />
-                  <KeyValueRow label="运行中 / 待办" value={`${overview?.runningCount || 0} / ${overview?.pendingTaskCount || 0}`} />
-                  <KeyValueRow label="严重超时" value={`${overview?.criticalAlertCount || 0} 条`} />
-                  <KeyValueRow label="警告提醒" value={`${overview?.warningAlertCount || 0} 条`} />
-                  <KeyValueRow label="异常未解决" value={`${overview?.unresolvedAnomalyCount || anomalyAlerts.length} 条`} />
-                  <KeyValueRow label="平均完成时间" value={formatDuration(overview?.avgCompletionTimeMs || 0)} />
-                  <KeyValueRow label="整体成功率" value={`${(overview?.successRate || 0).toFixed(1)}%`} />
-                </DetailRows>
-
-                <div className="mt-4">
-                  {[
-                    { label: '超时告警', value: summary.timeoutCount },
-                    { label: '异常告警', value: summary.anomalyCount },
-                    { label: '成功率', value: `${(overview?.successRate || 0).toFixed(1)}%` },
-                    { label: '平均时长', value: formatDuration(overview?.avgCompletionTimeMs || 0) },
-                  ].length > 0 ? (
-                    <div className="overflow-hidden rounded-xl border border-slate-200 dark:border-slate-800">
-                      {[
-                        { label: '超时告警', value: summary.timeoutCount },
-                        { label: '异常告警', value: summary.anomalyCount },
-                        { label: '成功率', value: `${(overview?.successRate || 0).toFixed(1)}%` },
-                        { label: '平均时长', value: formatDuration(overview?.avgCompletionTimeMs || 0) },
-                      ].map((item) => (
-                        <div
-                          key={item.label}
-                          className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 last:border-b-0 dark:border-slate-800"
-                        >
-                          <span className="text-sm text-slate-600 dark:text-slate-300">{item.label}</span>
-                          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{item.value}</span>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              </section>
+                </section>
+              </TableSurfaceCard>
             </aside>
-          </div></TableSurfaceCard>)}
+          </div>
+        )}
       />
   );
 };

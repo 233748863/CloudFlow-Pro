@@ -47,6 +47,7 @@ import {
   mapTaskToUnified,
   mapWorkTaskToUnified,
 } from '../utils/mappers';
+import { mapBackendFormDefinition } from '@/utils/formDefinition';
 
 const PAGE_SIZE = 12;
 
@@ -57,34 +58,12 @@ type FilterType = 'all' | 'process' | 'work';
 type ViewMode = 'list' | 'board';
 type ApplicationStatus = 'ALL' | 'RUNNING' | 'COMPLETED' | 'REJECTED' | 'REVOKED';
 
-const mapBackendForm = (f: any): FormDefinition => {
-  let fields: any[] = [];
-  const raw =
-    typeof f?.fieldsJson === 'string'
-      ? f.fieldsJson
-      : typeof f?.formSchema === 'string'
-        ? f.formSchema
-        : null;
-
-  if (raw) {
-    try {
-      fields = JSON.parse(raw);
-    } catch {
-      try {
-        const sanitized = raw.replace(/\\([^"\\/bfnrtu])/g, '\\\\$1');
-        fields = JSON.parse(sanitized);
-      } catch {
-        fields = [];
-      }
-    }
-  }
-
-  return {
-    id: String(f?.formId || ''),
-    name: f?.formName || '未命名表单',
-    fields,
+const mapBackendForm = (f: any): FormDefinition =>
+  mapBackendFormDefinition(f) ?? {
+    id: '',
+    name: '未命名表单',
+    fields: [],
   };
-};
 
 const statusTabs: Array<{ key: ApplicationStatus; label: string }> = [
   { key: 'ALL', label: '全部' },

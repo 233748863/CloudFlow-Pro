@@ -50,6 +50,34 @@ function extractList<T = any>(res: unknown): T[] {
   return [] as T[];
 }
 
+function extractPageMeta(res: unknown): {
+  total: number | null;
+  pageNum: number | null;
+  pageSize: number | null;
+} {
+  if (!res || typeof res !== "object" || Array.isArray(res)) {
+    return { total: null, pageNum: null, pageSize: null };
+  }
+
+  const obj = res as Record<string, unknown>;
+  const toNumber = (value: unknown) => {
+    if (typeof value === "number" && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  return {
+    total: toNumber(obj.total),
+    pageNum: toNumber(obj.pageNum ?? obj.current),
+    pageSize: toNumber(obj.pageSize ?? obj.size),
+  };
+}
+
 /**
  * 开发环境日志记录
  */
@@ -404,8 +432,33 @@ export async function deployProcessDefinition(
  * 获取表单定义列表
  */
 export async function getFormDefinitions(): Promise<FormDefinitionListItem[]> {
-  logApiCall("GET", "/workflow/forms");
-  return request.get("/workflow/forms").then(extractList);
+  const pageSize = 200;
+  const allForms: FormDefinitionListItem[] = [];
+  let pageNum = 1;
+
+  while (true) {
+    logApiCall("GET", "/workflow/forms", { pageNum, pageSize });
+    const response = await request.get("/workflow/forms", {
+      params: { pageNum, pageSize },
+    });
+    const records = extractList<FormDefinitionListItem>(response);
+    allForms.push(...records);
+
+    const { total } = extractPageMeta(response);
+    if (records.length === 0) {
+      break;
+    }
+    if (total !== null && allForms.length >= total) {
+      break;
+    }
+    if (records.length < pageSize) {
+      break;
+    }
+
+    pageNum += 1;
+  }
+
+  return allForms;
 }
 
 /**

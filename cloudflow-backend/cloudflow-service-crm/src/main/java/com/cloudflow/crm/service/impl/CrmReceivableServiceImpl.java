@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.dto.ReceivableInvoiceSyncDTO;
@@ -49,7 +50,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         fillBindingSnapshot(receivable);
         validate(receivable);
         if (!StringUtils.hasText(receivable.getReceivableNo())) {
-            receivable.setReceivableNo(Localize.nextNo("SK"));
+            receivable.setReceivableNo(Localize.nextNo(CrmConstants.NoPrefix.RECEIVABLE));
         }
         if (receivable.getOwnerId() == null) {
             receivable.setOwnerId(UserContext.getUserId());
@@ -98,7 +99,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         receivable.setReceivedAmount(receivable.getPlannedAmount());
         receivable.setOutstandingAmount(BigDecimal.ZERO);
         receivable.setReceivedDate(receivable.getReceivedDate() == null ? java.time.LocalDate.now() : receivable.getReceivedDate());
-        receivable.setStatus("RECEIVED");
+        receivable.setStatus(CrmConstants.ReceivableStatus.RECEIVED);
         receivable.setUpdateBy(currentUserName());
         receivable.setUpdateTime(now());
         boolean updated = updateById(receivable);
@@ -147,8 +148,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         } else if ("WRITEOFF_PARTIAL".equals(invoiceStatus)) {
             BigDecimal receivedAmount = currentReceived.max(plannedAmount.min(syncedWriteoffAmount));
             applyReceivableAmounts(receivable, receivedAmount, syncDate);
-        } else {
-            applyReceivableAmounts(receivable, currentReceived, receivable.getReceivedDate());
+        } else {            applyReceivableAmounts(receivable, currentReceived, receivable.getReceivedDate());
         }
 
         receivable.setUpdateBy("oa-invoice-sync");

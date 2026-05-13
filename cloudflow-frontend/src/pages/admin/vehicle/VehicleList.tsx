@@ -489,9 +489,9 @@ const VehicleList: React.FC = () => {
         )}
         table={(<TableSurfaceCard>
           <div className="flex min-h-[40rem] flex-col">
-            <div className="px-4 pt-4">
-              {selectedIds.length > 0 ? (
-                <div className="mb-4 flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
+            {selectedIds.length > 0 ? (
+              <div className="border-b border-slate-200 px-4 py-3 dark:border-slate-800">
+                <div className="flex flex-wrap items-center gap-3 text-sm text-slate-600 dark:text-slate-300">
                   <span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-600 dark:bg-slate-900 dark:text-slate-300">
                     已选 {selectedIds.length} 辆
                   </span>
@@ -505,10 +505,10 @@ const VehicleList: React.FC = () => {
                     批量删除
                   </Button>
                 </div>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
             <div className="overflow-x-auto">
-              <Table className="min-w-[1620px] table-fixed">
+              <Table disableScrollWrapper className="min-w-[1556px] table-auto">
                 <colgroup>
                   <col className="w-11" />
                   <col className="w-32" />
@@ -520,8 +520,8 @@ const VehicleList: React.FC = () => {
                   <col className="w-40" />
                   <col className="w-[9.25rem]" />
                   <col className="w-32" />
-                  <col className="w-36" />
-                  <col className="w-36" />
+                  <col className="w-32" />
+                  <col className="w-24" />
                 </colgroup>
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="border-slate-100 bg-transparent hover:bg-transparent dark:border-slate-800">
@@ -538,7 +538,7 @@ const VehicleList: React.FC = () => {
                     <TableHead className="px-3 py-3">保险 / 年检</TableHead>
                     <TableHead className="px-3 py-3">30天成本</TableHead>
                     <TableHead className="px-3 py-3">风险</TableHead>
-                    <TableHead className="px-3 py-3 text-right">操作</TableHead>
+                    <TableHead className="px-2 py-3 text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -640,11 +640,12 @@ const VehicleList: React.FC = () => {
                               <WarningTags value={vehicle.warningTags} compact maxVisible={1} />
                             </div>
                           </TableCell>
-                          <TableCell className="px-3 py-2.5 text-right">
+                          <TableCell className="px-2 py-2.5 text-right">
                             <TableRowActions
                               align="end"
                               maxVisibleActions={1}
                               overflowLabel="更多"
+                              buttonLayout="compact"
                               actions={[
                                 { label: '详情', icon: <Eye size={14} />, onClick: () => handleViewDetail(vehicle), tone: 'neutral', isPrimary: true },
                                 { label: '编辑', icon: <Edit2 size={14} />, onClick: () => handleEdit(vehicle), tone: 'neutral', menuOnly: true },
@@ -661,7 +662,7 @@ const VehicleList: React.FC = () => {
                         </TableRow>
                       );
                     })
-                  )}
+                    )}
                 </TableBody>
               </Table>
             </div>

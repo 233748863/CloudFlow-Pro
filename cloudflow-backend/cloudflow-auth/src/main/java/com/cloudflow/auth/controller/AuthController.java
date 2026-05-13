@@ -22,6 +22,7 @@ import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.tenant.TenantConfigProperties;
+import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.common.core.utils.TokenService;
 import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
 import com.cloudflow.common.ratelimiter.enums.LimitType;
@@ -680,23 +681,7 @@ public class AuthController {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("WL-Proxy-Client-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        if (ip != null && ip.contains(",")) {
-            ip = ip.split(",")[0].trim();
-        }
-        return ip;
+        return IpUtils.getIpAddr(request);
     }
 
     /**
