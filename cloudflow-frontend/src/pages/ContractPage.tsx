@@ -14,6 +14,7 @@ import { projectApi, Project } from '@/services/api/project';
 import { budgetApi, BudgetSubject } from '@/services/api/budget';
 import { OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
 import { PageResult } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 
@@ -107,6 +108,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
 );
 
 export const ContractPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [rows, setRows] = useState<OaContract[]>([]);
@@ -317,7 +319,7 @@ export const ContractPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button size="sm" onClick={openCreate}>
+              <Button size="sm" onClick={openCreate} disabled={!hasPermission('office:contract:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新建合同
               </Button>
@@ -377,10 +379,10 @@ export const ContractPage: React.FC = () => {
                           overflowLabel="更多"
                           actions={[
                             { label: '查看详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), semantic: 'view', isPrimary: true },
-                            { label: '编辑合同', icon: <Edit size={14} />, onClick: () => openEdit(item), hidden: !['DRAFT', 'REJECTED', 'APPROVED', 'ACTIVE'].includes(item.status || 'DRAFT'), semantic: 'edit', isPrimary: true },
-                            { label: '提交审批', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.contractId!, title: '提交合同审批', message: '提交后将进入合同审批流程。', confirmText: '提交' }), hidden: !['DRAFT', 'REJECTED'].includes(item.status || 'DRAFT'), semantic: 'submit' },
-                            { label: '取消合同', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.contractId!, title: '取消合同', message: '取消后该合同不再继续审批。', confirmText: '取消' }), hidden: !['DRAFT', 'PENDING'].includes(item.status || 'DRAFT'), semantic: 'disable' },
-                            { label: '删除合同', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.contractId!, title: '删除合同', message: '删除后当前合同不可恢复。', confirmText: '删除', danger: true }), hidden: !['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status || 'DRAFT'), semantic: 'delete', danger: true },
+                            { label: '编辑合同', icon: <Edit size={14} />, onClick: () => openEdit(item), hidden: !['DRAFT', 'REJECTED', 'APPROVED', 'ACTIVE'].includes(item.status || 'DRAFT'), semantic: 'edit', isPrimary: true, permissionKey: 'office:contract:edit' },
+                            { label: '提交审批', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.contractId!, title: '提交合同审批', message: '提交后将进入合同审批流程。', confirmText: '提交' }), hidden: !['DRAFT', 'REJECTED'].includes(item.status || 'DRAFT'), semantic: 'submit', permissionKey: 'office:contract:submit' },
+                            { label: '取消合同', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.contractId!, title: '取消合同', message: '取消后该合同不再继续审批。', confirmText: '取消' }), hidden: !['DRAFT', 'PENDING'].includes(item.status || 'DRAFT'), semantic: 'disable', permissionKey: 'office:contract:cancel' },
+                            { label: '删除合同', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.contractId!, title: '删除合同', message: '删除后当前合同不可恢复。', confirmText: '删除', danger: true }), hidden: !['DRAFT', 'REJECTED', 'CANCELLED'].includes(item.status || 'DRAFT'), semantic: 'delete', danger: true, permissionKey: 'office:contract:remove' },
                           ]}
                         />
                       </td>

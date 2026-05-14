@@ -7,6 +7,7 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import FileUpload from '@/components/FileUpload';
 import { licenseApi, licenseBorrowApi, OaLicense, OaLicenseBorrow } from '@/services/api/sealLicense';
+import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay, toBackendDateString, toLocalDatetimeString } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -72,6 +73,7 @@ const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolea
 );
 
 export const LicenseBorrowPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [rows, setRows] = useState<OaLicenseBorrow[]>([]);
   const [licenses, setLicenses] = useState<OaLicense[]>([]);
   const [total, setTotal] = useState(0);
@@ -234,7 +236,7 @@ export const LicenseBorrowPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button size="sm" onClick={openCreate}>
+              <Button size="sm" onClick={openCreate} disabled={!hasPermission('office:license:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新建申请
               </Button>
@@ -287,10 +289,10 @@ export const LicenseBorrowPage: React.FC = () => {
                           align="end"
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
-                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: item.status !== 'DRAFT' },
-                            { label: '提交', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.id!, title: '提交证照借用申请', message: '提交后将进入证照借用审批流程。', confirmText: '提交' }), tone: 'success', hidden: item.status !== 'DRAFT' },
-                            { label: '取消', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.id!, title: '取消证照借用申请', message: '取消后该申请不再继续审批。', confirmText: '取消' }), tone: 'warning', hidden: item.status !== 'PENDING' },
-                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.id!, title: '删除证照借用申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true }), tone: 'danger', hidden: item.status !== 'DRAFT' },
+                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: item.status !== 'DRAFT', permissionKey: 'office:license:edit' },
+                            { label: '提交', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.id!, title: '提交证照借用申请', message: '提交后将进入证照借用审批流程。', confirmText: '提交' }), tone: 'success', hidden: item.status !== 'DRAFT', permissionKey: 'office:license:submit' },
+                            { label: '取消', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.id!, title: '取消证照借用申请', message: '取消后该申请不再继续审批。', confirmText: '取消' }), tone: 'warning', hidden: item.status !== 'PENDING', permissionKey: 'office:license:cancel' },
+                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.id!, title: '删除证照借用申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true }), tone: 'danger', hidden: item.status !== 'DRAFT', permissionKey: 'office:license:remove' },
                           ]}
                         />
                       </td>
@@ -314,7 +316,7 @@ export const LicenseBorrowPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={closeDialog}>取消</Button>
-            <Button onClick={() => void saveForm()} disabled={saving}>保存</Button>
+            <Button onClick={() => void saveForm()} disabled={saving || !hasPermission(form.id ? 'office:license:edit' : 'office:license:add')}>保存</Button>
           </>
         )}
       >

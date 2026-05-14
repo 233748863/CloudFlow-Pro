@@ -23,12 +23,14 @@ import java.util.List;
 @RestController
 @RequestMapping("/duty")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class DutyScheduleController {
 
     private final IDutyScheduleService dutyScheduleService;
 
     /** 分页查询值班排班列表 */
     @GetMapping("/list")
+    @SaCheckPermission("admin:duty:list")
     public R list(DutySchedule query,
                   @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
                   @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
@@ -38,6 +40,7 @@ public class DutyScheduleController {
 
     /** 按月查询值班列表（日历视图） */
     @GetMapping("/calendar")
+    @SaCheckPermission("admin:duty:list")
     public R calendar(@RequestParam("year") int year,
                       @RequestParam("month") int month,
                       @RequestParam(value = "deptId", required = false) Long deptId) {
@@ -47,6 +50,7 @@ public class DutyScheduleController {
 
     /** 获取详情 */
     @GetMapping("/{id}")
+    @SaCheckPermission("admin:duty:list")
     public R getInfo(@PathVariable("id") Long id) {
         DutySchedule schedule = dutyScheduleService.getById(id);
         return schedule != null ? R.ok(schedule) : R.fail("值班排班不存在");
@@ -55,7 +59,7 @@ public class DutyScheduleController {
     /** 新增排班 - 仅管理员/经理 */
     @SysLog("新增值班排班")
     @PostMapping
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:duty:add")
     public R add(@RequestBody DutySchedule schedule) {
         // 填充当前登录用户信息作为创建者
         schedule.setCreateBy(UserContext.getUserName());
@@ -66,7 +70,7 @@ public class DutyScheduleController {
     /** 批量新增排班 - 仅管理员/经理 */
     @SysLog("批量新增值班排班")
     @PostMapping("/batch")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:duty:add")
     public R addBatch(@RequestBody List<DutySchedule> schedules) {
         String currentUser = UserContext.getUserName();
         schedules.forEach(s -> {
@@ -79,7 +83,7 @@ public class DutyScheduleController {
     /** 修改排班 - 仅管理员/经理 */
     @SysLog("修改值班排班")
     @PutMapping
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:duty:edit")
     public R edit(@RequestBody DutySchedule schedule) {
         if (schedule.getScheduleId() == null) {
             return R.fail("排班ID不能为空");
@@ -90,7 +94,7 @@ public class DutyScheduleController {
     /** 删除排班 - 仅管理员/经理 */
     @SysLog("删除值班排班")
     @DeleteMapping("/{ids}")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:duty:remove")
     public R remove(@PathVariable("ids") List<Long> ids) {
         return R.result(dutyScheduleService.removeBatchByIds(ids));
     }
@@ -98,6 +102,7 @@ public class DutyScheduleController {
     /** 值班签到 */
     @SysLog("值班签到")
     @PutMapping("/checkin/{id}")
+    @SaCheckPermission("admin:duty:checkin")
     public R checkIn(@PathVariable("id") Long id) {
         return R.result(dutyScheduleService.checkIn(id));
     }
@@ -105,6 +110,7 @@ public class DutyScheduleController {
     /** 值班签退 */
     @SysLog("值班签退")
     @PutMapping("/checkout/{id}")
+    @SaCheckPermission("admin:duty:checkout")
     public R checkOut(@PathVariable("id") Long id) {
         return R.result(dutyScheduleService.checkOut(id));
     }
@@ -112,6 +118,7 @@ public class DutyScheduleController {
     /** 换班申请 */
     @SysLog("换班申请")
     @PutMapping("/swap/{id}")
+    @SaCheckPermission("admin:duty:swap")
     public R swap(@PathVariable("id") Long id, @RequestBody DutySwapDTO dto) {
         return R.result(dutyScheduleService.swapDuty(id, dto.getBackupUserId(), dto.getBackupUserName(), dto.getReason()));
     }

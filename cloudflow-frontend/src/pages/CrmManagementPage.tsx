@@ -4,7 +4,7 @@ import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, us
 import { CSS } from '@dnd-kit/utilities';
 import { Eye, FolderKanban, Handshake, LifeBuoy, Plus, ReceiptText, RefreshCcw, Send, ShieldAlert, Target, Trash2, TriangleAlert, UserRound, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
+import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
@@ -14,6 +14,7 @@ import { contractApi, OaContract } from '@/services/api/contractRisk';
 import { invoiceApi, Invoice } from '@/services/api/invoice';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
+import { useAuth } from '@/context/AuthContext';
 
 type CrmTab = 'dashboard' | 'customer' | 'opportunity' | 'quote' | 'receivable' | 'renewal' | 'ticket';
 
@@ -31,6 +32,16 @@ type DialogState =
 type ConfirmState =
   | { action: 'submitQuote' | 'sendQuote' | 'acceptQuote' | 'expireQuote' | 'winOpportunity' | 'loseOpportunity' | 'confirmReceivable' | 'resolveTicket' | 'closeTicket'; item: any }
   | null;
+
+const tabPermissionMap: Record<CrmTab, string> = {
+  dashboard: 'crm:dashboard:view',
+  customer: 'crm:customer:list',
+  opportunity: 'crm:opportunity:list',
+  quote: 'crm:quote:list',
+  receivable: 'crm:receivable:list',
+  renewal: 'crm:renewal:list',
+  ticket: 'crm:ticket:list',
+};
 
 const tabLabelMap: Record<CrmTab, string> = {
   dashboard: '销售仪表盘',
@@ -218,6 +229,11 @@ const DroppableStageColumn: React.FC<{
 export default function CrmManagementPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const userPermissions = user?.permissions || [];
+  const hasPermission = (permission: string) =>
+    userPermissions.includes(permission) || userPermissions.includes('*:*:*') || userPermissions.includes('*');
+  const availableTabs = (Object.keys(tabPermissionMap) as CrmTab[]).filter((item) => hasPermission(tabPermissionMap[item]));
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [tab, setTab] = useState<CrmTab>('dashboard');
   const [keyword, setKeyword] = useState('');
@@ -320,18 +336,24 @@ export default function CrmManagementPage() {
       '/office/crm/tickets': 'ticket',
     };
     const pathTab = pathTabMap[location.pathname];
-    if (pathTab) {
+    if (pathTab && hasPermission(tabPermissionMap[pathTab])) {
       setTab(pathTab);
       return;
     }
     const search = new URLSearchParams(location.search);
     const nextTab = search.get('tab') as CrmTab | null;
-    if (nextTab && ['customer', 'opportunity', 'quote', 'receivable', 'renewal', 'ticket'].includes(nextTab)) {
+    if (nextTab && ['customer', 'opportunity', 'quote', 'receivable', 'renewal', 'ticket'].includes(nextTab) && hasPermission(tabPermissionMap[nextTab])) {
       setTab(nextTab);
       return;
     }
-    setTab('dashboard');
-  }, [location.pathname, location.search]);
+    setTab(availableTabs[0] || 'dashboard');
+  }, [location.pathname, location.search, userPermissions.join(',')]);
+
+  useEffect(() => {
+    if (!availableTabs.includes(tab)) {
+      setTab(availableTabs[0] || 'dashboard');
+    }
+  }, [tab, availableTabs.join(',')]);
 
   const resetForms = () => {
     setCustomerForm(emptyCustomer);
@@ -887,9 +909,9 @@ export default function CrmManagementPage() {
                   overflowLabel="更多"
                   actions={[
                     { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                    { label: '编辑客户', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'customer', item }), semantic: 'edit', isPrimary: true },
-                    { label: '新增联系人', icon: <UserRound size={14} />, onClick: () => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } }), semantic: 'custom' },
-                    { label: '新增跟进', icon: <RefreshCcw size={14} />, onClick: () => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } }), semantic: 'custom' },
+                    { label: '编辑客户', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'customer', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:customer:edit' },
+                    { label: '新增联系人', icon: <UserRound size={14} />, onClick: () => openDialog({ type: 'contact', item: { ...emptyContact, customerId: item.customerId! } }), semantic: 'custom', permissionKey: 'crm:contact:add' },
+                    { label: '新增跟进', icon: <RefreshCcw size={14} />, onClick: () => openDialog({ type: 'followUp', item: { ...emptyFollowUp, customerId: item.customerId! } }), semantic: 'custom', permissionKey: 'crm:follow-up:add' },
                   ]}
                 />
               </td>
@@ -954,9 +976,9 @@ export default function CrmManagementPage() {
                       overflowLabel="更多"
                       actions={[
                         { label: '客户360', icon: <Handshake size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                        { label: '编辑商机', icon: <Target size={14} />, onClick: () => openDialog({ type: 'opportunity', item }), semantic: 'edit', isPrimary: true },
-                        { label: '赢单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'winOpportunity', item }), semantic: 'process' },
-                        { label: '输单', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }), semantic: 'disable' },
+                        { label: '编辑商机', icon: <Target size={14} />, onClick: () => openDialog({ type: 'opportunity', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:opportunity:edit' },
+                        { label: '赢单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'winOpportunity', item }), semantic: 'process', permissionKey: 'crm:opportunity:win' },
+                        { label: '输单', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'loseOpportunity', item: { ...item, lostReason: item.lostReason || '客户放弃' } }), semantic: 'disable', permissionKey: 'crm:opportunity:lose' },
                         {
                           label: '转项目',
                           icon: <FolderKanban size={14} />,
@@ -971,6 +993,7 @@ export default function CrmManagementPage() {
                             }
                           },
                           semantic: 'custom',
+                          permissionKey: 'crm:project:draft',
                         },
                       ]}
                     />
@@ -1016,11 +1039,11 @@ export default function CrmManagementPage() {
                 overflowLabel="更多"
                 actions={[
                   { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                  { label: '编辑报价', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'quote', item }), semantic: 'edit', isPrimary: true },
-                  { label: '提交提审', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'submitQuote', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit' },
-                  { label: '发送报价', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'sendQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'send' },
-                  { label: '接受报价', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'acceptQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'SENT', semantic: 'process' },
-                  { label: '标记过期', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'expireQuote', item }), hidden: item.status === 'ACCEPTED' || item.status === 'EXPIRED', semantic: 'disable' },
+                  { label: '编辑报价', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'quote', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:quote:edit' },
+                  { label: '提交提审', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'submitQuote', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit', permissionKey: 'crm:quote:submit' },
+                  { label: '发送报价', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'sendQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'send', permissionKey: 'crm:quote:send' },
+                  { label: '接受报价', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'acceptQuote', item }), hidden: item.status !== 'APPROVED' && item.status !== 'SENT', semantic: 'process', permissionKey: 'crm:quote:accept' },
+                  { label: '标记过期', icon: <TriangleAlert size={14} />, onClick: () => setConfirm({ action: 'expireQuote', item }), hidden: item.status === 'ACCEPTED' || item.status === 'EXPIRED', semantic: 'disable', permissionKey: 'crm:quote:expire' },
                   {
                     label: '转合同',
                     icon: <Plus size={14} />,
@@ -1033,10 +1056,11 @@ export default function CrmManagementPage() {
                         } catch (error) {
                           toast.error(getErrorMessage(error, '生成合同草稿失败'));
                         }
-                      },
-                      semantic: 'custom',
                     },
-                  ]}
+                    semantic: 'custom',
+                    permissionKey: 'crm:contract:draft',
+                  },
+                ]}
                 />
               </td>
           </tr>
@@ -1075,8 +1099,8 @@ export default function CrmManagementPage() {
                   overflowLabel="更多"
                   actions={[
                     { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                    { label: '编辑回款', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'receivable', item }), semantic: 'edit', isPrimary: true },
-                    { label: '确认回款', icon: <Wallet size={14} />, onClick: () => setConfirm({ action: 'confirmReceivable', item }), hidden: item.status === 'RECEIVED', semantic: 'process' },
+                    { label: '编辑回款', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'receivable', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:receivable:edit' },
+                    { label: '确认回款', icon: <Wallet size={14} />, onClick: () => setConfirm({ action: 'confirmReceivable', item }), hidden: item.status === 'RECEIVED', semantic: 'process', permissionKey: 'crm:receivable:confirm' },
                     {
                       label: '绑定发票',
                       icon: <ReceiptText size={14} />,
@@ -1085,6 +1109,7 @@ export default function CrmManagementPage() {
                         openDialog({ type: 'receivable', item });
                       },
                       semantic: 'bind',
+                      permissionKey: 'crm:receivable:bind-invoice',
                     },
                   ]}
                 />
@@ -1126,7 +1151,7 @@ export default function CrmManagementPage() {
                   overflowLabel="更多"
                   actions={[
                     { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                    { label: '编辑续约', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'renewal', item }), semantic: 'edit', isPrimary: true },
+                    { label: '编辑续约', icon: <Handshake size={14} />, onClick: () => openDialog({ type: 'renewal', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:renewal:edit' },
                     {
                       label: '提交提审',
                       icon: <Send size={14} />,
@@ -1141,6 +1166,7 @@ export default function CrmManagementPage() {
                       },
                       hidden: item.status !== 'PLANNED' && item.status !== 'NEGOTIATING',
                       semantic: 'submit',
+                      permissionKey: 'crm:renewal:submit',
                     },
                   ]}
                 />
@@ -1178,9 +1204,9 @@ export default function CrmManagementPage() {
                 overflowLabel="更多"
                 actions={[
                   { label: '客户360', icon: <Eye size={14} />, onClick: () => openCustomerWorkspace(item.customerId), semantic: 'view', isPrimary: true },
-                  { label: '编辑工单', icon: <LifeBuoy size={14} />, onClick: () => openDialog({ type: 'ticket', item }), semantic: 'edit', isPrimary: true },
-                  { label: '解决工单', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } }), hidden: item.status === 'RESOLVED' || item.status === 'CLOSED', semantic: 'process' },
-                  { label: '关闭工单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'closeTicket', item }), hidden: item.status === 'CLOSED', semantic: 'disable' },
+                  { label: '编辑工单', icon: <LifeBuoy size={14} />, onClick: () => openDialog({ type: 'ticket', item }), semantic: 'edit', isPrimary: true, permissionKey: 'crm:ticket:edit' },
+                  { label: '解决工单', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ action: 'resolveTicket', item: { ...item, solution: item.solution || '已处理完成' } }), hidden: item.status === 'RESOLVED' || item.status === 'CLOSED', semantic: 'process', permissionKey: 'crm:ticket:resolve' },
+                  { label: '关闭工单', icon: <Send size={14} />, onClick: () => setConfirm({ action: 'closeTicket', item }), hidden: item.status === 'CLOSED', semantic: 'disable', permissionKey: 'crm:ticket:close' },
                 ]}
               />
             </td>
@@ -1262,7 +1288,8 @@ export default function CrmManagementPage() {
             </div>
             <Textarea className="md:col-span-2" value={followUpForm.content || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, content: e.target.value }))} placeholder="跟进内容，例如：客户已确认报价范围，待内部审批。" />
             <Input value={followUpForm.ownerName || ''} onChange={(e) => setFollowUpForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="跟进人" />
-            <Input
+            <DatePicker
+              className="h-11"
               type="datetime-local"
               value={followUpForm.nextFollowUpTime ? String(followUpForm.nextFollowUpTime).slice(0, 16) : ''}
               onChange={(e) => setFollowUpForm((prev) => ({ ...prev, nextFollowUpTime: e.target.value ? `${e.target.value}:00` : undefined }))}
@@ -1291,7 +1318,7 @@ export default function CrmManagementPage() {
             <Input type="number" value={String(opportunityForm.expectedAmount || 0)} onChange={(e) => setOpportunityForm((prev) => ({ ...prev, expectedAmount: Number(e.target.value || 0) }))} placeholder="预计金额" />
             <Input type="number" value={String(opportunityForm.winRate || 0)} onChange={(e) => setOpportunityForm((prev) => ({ ...prev, winRate: Number(e.target.value || 0) }))} placeholder="赢单率 0-100" />
             <Input value={opportunityForm.ownerName || ''} onChange={(e) => setOpportunityForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="负责人" />
-            <Input type="date" value={opportunityForm.expectedSignDate || ''} onChange={(e) => setOpportunityForm((prev) => ({ ...prev, expectedSignDate: e.target.value }))} placeholder="预计签约日期" />
+            <DatePicker className="h-11" type="date" value={opportunityForm.expectedSignDate || ''} onChange={(e) => setOpportunityForm((prev) => ({ ...prev, expectedSignDate: e.target.value }))} placeholder="预计签约日期" />
             <Textarea className="md:col-span-2" value={opportunityForm.remark || ''} onChange={(e) => setOpportunityForm((prev) => ({ ...prev, remark: e.target.value }))} placeholder="商机背景、阶段说明、当前阻塞项" />
           </div>
         </BaseDialog>
@@ -1336,7 +1363,7 @@ export default function CrmManagementPage() {
             <Input value={quoteForm.quoteName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, quoteName: e.target.value }))} placeholder="报价名称" />
             <Input value={quoteForm.ownerName || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="负责人" />
             <Input value={quoteForm.currency || 'CNY'} onChange={(e) => setQuoteForm((prev) => ({ ...prev, currency: e.target.value }))} placeholder="币种" />
-            <Input type="date" value={quoteForm.validUntil || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, validUntil: e.target.value }))} placeholder="有效期至" />
+            <DatePicker className="h-11" type="date" value={quoteForm.validUntil || ''} onChange={(e) => setQuoteForm((prev) => ({ ...prev, validUntil: e.target.value }))} placeholder="有效期至" />
             <div className="md:col-span-2 rounded-xl border border-slate-200 p-4 dark:border-slate-800">
               <div className="mb-3 flex items-center justify-between">
                 <div>
@@ -1418,7 +1445,7 @@ export default function CrmManagementPage() {
             <Input value={receivableForm.receivableName || ''} onChange={(e) => setReceivableForm((prev) => ({ ...prev, receivableName: e.target.value }))} placeholder="回款名称" />
             <Input type="number" value={String(receivableForm.plannedAmount || 0)} onChange={(e) => setReceivableForm((prev) => ({ ...prev, plannedAmount: Number(e.target.value || 0) }))} placeholder="计划金额" />
             <Input value={receivableForm.contractNo || ''} onChange={(e) => setReceivableForm((prev) => ({ ...prev, contractNo: e.target.value }))} placeholder="合同编号" />
-            <Input type="date" value={receivableForm.dueDate || ''} onChange={(e) => setReceivableForm((prev) => ({ ...prev, dueDate: e.target.value }))} placeholder="到期日期" />
+            <DatePicker className="h-11" type="date" value={receivableForm.dueDate || ''} onChange={(e) => setReceivableForm((prev) => ({ ...prev, dueDate: e.target.value }))} placeholder="到期日期" />
             {receivableForm.receivableId ? (
               <div className="md:col-span-2 space-y-2 rounded-xl border border-slate-200 p-3 dark:border-slate-800">
                 <div className="text-sm font-medium">销项发票联动</div>
@@ -1474,7 +1501,7 @@ export default function CrmManagementPage() {
             <Input value={renewalForm.renewalName || ''} onChange={(e) => setRenewalForm((prev) => ({ ...prev, renewalName: e.target.value }))} placeholder="续约名称" />
             <Input type="number" value={String(renewalForm.renewalAmount || 0)} onChange={(e) => setRenewalForm((prev) => ({ ...prev, renewalAmount: Number(e.target.value || 0) }))} placeholder="续约金额" />
             <Input value={renewalForm.contractNo || ''} onChange={(e) => setRenewalForm((prev) => ({ ...prev, contractNo: e.target.value }))} placeholder="合同编号" />
-            <Input type="date" value={renewalForm.currentExpireDate || ''} onChange={(e) => setRenewalForm((prev) => ({ ...prev, currentExpireDate: e.target.value }))} placeholder="当前到期日期" />
+            <DatePicker className="h-11" type="date" value={renewalForm.currentExpireDate || ''} onChange={(e) => setRenewalForm((prev) => ({ ...prev, currentExpireDate: e.target.value }))} placeholder="当前到期日期" />
           </div>
         </BaseDialog>
       );
@@ -1538,12 +1565,12 @@ export default function CrmManagementPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {tab === 'customer' ? <Button size="sm" onClick={() => openDialog({ type: 'customer' })}><Plus size={14} className="mr-1.5" />新增客户</Button> : null}
-          {tab === 'opportunity' ? <Button size="sm" onClick={() => openDialog({ type: 'opportunity' })}><Plus size={14} className="mr-1.5" />新增商机</Button> : null}
-          {tab === 'quote' ? <Button size="sm" onClick={() => openDialog({ type: 'quote' })}><Plus size={14} className="mr-1.5" />新增报价</Button> : null}
-          {tab === 'receivable' ? <Button size="sm" onClick={() => openDialog({ type: 'receivable' })}><Plus size={14} className="mr-1.5" />新增回款</Button> : null}
-          {tab === 'renewal' ? <Button size="sm" onClick={() => openDialog({ type: 'renewal' })}><Plus size={14} className="mr-1.5" />新增续约</Button> : null}
-          {tab === 'ticket' ? <Button size="sm" onClick={() => openDialog({ type: 'ticket' })}><Plus size={14} className="mr-1.5" />新增工单</Button> : null}
+          {tab === 'customer' && hasPermission('crm:customer:add') ? <Button size="sm" onClick={() => openDialog({ type: 'customer' })}><Plus size={14} className="mr-1.5" />新增客户</Button> : null}
+          {tab === 'opportunity' && hasPermission('crm:opportunity:add') ? <Button size="sm" onClick={() => openDialog({ type: 'opportunity' })}><Plus size={14} className="mr-1.5" />新增商机</Button> : null}
+          {tab === 'quote' && hasPermission('crm:quote:add') ? <Button size="sm" onClick={() => openDialog({ type: 'quote' })}><Plus size={14} className="mr-1.5" />新增报价</Button> : null}
+          {tab === 'receivable' && hasPermission('crm:receivable:add') ? <Button size="sm" onClick={() => openDialog({ type: 'receivable' })}><Plus size={14} className="mr-1.5" />新增回款</Button> : null}
+          {tab === 'renewal' && hasPermission('crm:renewal:add') ? <Button size="sm" onClick={() => openDialog({ type: 'renewal' })}><Plus size={14} className="mr-1.5" />新增续约</Button> : null}
+          {tab === 'ticket' && hasPermission('crm:ticket:add') ? <Button size="sm" onClick={() => openDialog({ type: 'ticket' })}><Plus size={14} className="mr-1.5" />新增工单</Button> : null}
         </div>
       </div>
     </div>
@@ -1551,20 +1578,20 @@ export default function CrmManagementPage() {
 
   const dashboardShortcuts = (
     <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="text-sm font-medium text-slate-700 dark:text-slate-200">快捷入口</div>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customers')}>客户管理</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/opportunities')}>商机看板</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/quotes')}>报价管理</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/receivables')}>回款台账</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/renewals')}>续约管理</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/tickets')}>服务工单</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/leads')}>线索池</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/products')}>产品库</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/price-books')}>价目表</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/sales-targets')}>销售目标</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customer-pool')}>客户公海</Button>
-        <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/assignment-rules')}>分配规则</Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="text-sm font-medium text-slate-700 dark:text-slate-200">快捷入口</div>
+        {hasPermission('crm:customer:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customers')}>客户管理</Button> : null}
+        {hasPermission('crm:opportunity:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/opportunities')}>商机看板</Button> : null}
+        {hasPermission('crm:quote:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/quotes')}>报价管理</Button> : null}
+        {hasPermission('crm:receivable:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/receivables')}>回款台账</Button> : null}
+        {hasPermission('crm:renewal:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/renewals')}>续约管理</Button> : null}
+        {hasPermission('crm:ticket:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/tickets')}>服务工单</Button> : null}
+        {hasPermission('crm:lead:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/leads')}>线索池</Button> : null}
+        {hasPermission('crm:product:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/products')}>产品库</Button> : null}
+        {hasPermission('crm:price-book:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/price-books')}>价目表</Button> : null}
+        {hasPermission('crm:sales-target:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/sales-targets')}>销售目标</Button> : null}
+        {hasPermission('crm:customer-pool:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customer-pool')}>客户公海</Button> : null}
+        {hasPermission('crm:assignment-rule:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/assignment-rules')}>分配规则</Button> : null}
       </div>
     </div>
   );
@@ -1610,4 +1637,3 @@ export default function CrmManagementPage() {
     </div>
   );
 }
-

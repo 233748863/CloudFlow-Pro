@@ -161,8 +161,8 @@ export default function CrmProductPage() {
                           align="end"
                           overflowLabel="更多"
                           actions={[
-                            { label: '编辑产品', icon: <Boxes size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true },
-                            { label: '删除产品', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true },
+                            { label: '编辑产品', icon: <Boxes size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:product:edit' },
+                            { label: '删除产品', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:product:remove' },
                           ]}
                         />
                       </td>

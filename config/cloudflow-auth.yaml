@@ -14,15 +14,15 @@ spring:
       datasource:
         # ---- 主数据源（认证业务库） ----
         master:
-          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-          username: root
-          password: Juwangkeji@2025
+          url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS:useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true}&serverTimezone=Asia/Shanghai}
+          username: ${DB_USERNAME:root}
+          password: ${DB_PASSWORD}
           driver-class-name: com.mysql.cj.jdbc.Driver
         # ---- 按需添加更多数据源 ----
         # slave:
-        #   url: jdbc:mysql://192.168.1.173:3306/cloud_flow_slave?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-        #   username: root
-        #   password: Juwangkeji@2025
+        #   url: jdbc:mysql://192.168.1.173:3306/cloud_flow_slave?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+        #   username: ${DB_USERNAME:root}
+        #   password: ${DB_PASSWORD}
         #   driver-class-name: com.mysql.cj.jdbc.Driver
       hikari:
         pool-name: AuthHikariCP
@@ -34,9 +34,9 @@ spring:
   
   data:
     redis:
-      host: 192.168.1.173
-      port: 6379
-      password: Juwangkeji@2025
+      host: ${REDIS_HOST:192.168.1.173}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
       database: 0
       timeout: 3000ms
       lettuce:
@@ -103,5 +103,6 @@ auth:
 # 日志配置
 logging:
   level:
-    com.cloudflow.auth: DEBUG
-    com.cloudflow.auth.mapper: DEBUG
+    root: INFO
+    com.cloudflow.auth: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.auth.mapper: ${LOG_LEVEL_MAPPER:WARN}

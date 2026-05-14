@@ -4,6 +4,7 @@ import cn.hutool.core.codec.Base64;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.symmetric.AES;
 import cn.hutool.crypto.symmetric.SM4;
+import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.encrypt.enums.AlgorithmType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 public class EncryptUtils {
 
     private static final Logger log = LoggerFactory.getLogger(EncryptUtils.class);
+    private static final String DECRYPT_FAILURE_PLACEHOLDER = "***";
 
     private EncryptUtils() {
     }
@@ -50,8 +52,8 @@ public class EncryptUtils {
                 case BASE64 -> Base64.encode(plainText);
             };
         } catch (Exception e) {
-            log.error("[Encrypt] 加密失败, algorithm={}: {}", algorithm, e.getMessage());
-            return plainText;
+            log.error("[Encrypt] 加密失败, algorithm={}, plainTextLength={}", algorithm, plainText.length(), e);
+            throw new EncryptException("字段加密失败", e);
         }
     }
 
@@ -80,9 +82,14 @@ public class EncryptUtils {
                 case BASE64 -> Base64.decodeStr(cipherText);
             };
         } catch (Exception e) {
-            log.error("[Encrypt] 解密失败, algorithm={}: {}", algorithm, e.getMessage());
-            // 解密失败返回原文，避免数据丢失
-            return cipherText;
+            log.warn("[Encrypt] 解密失败, algorithm={}, cipherTextLength={}", algorithm, cipherText.length(), e);
+            return DECRYPT_FAILURE_PLACEHOLDER;
+        }
+    }
+
+    public static class EncryptException extends ServiceException {
+        public EncryptException(String message, Throwable cause) {
+            super(message, cause);
         }
     }
 }

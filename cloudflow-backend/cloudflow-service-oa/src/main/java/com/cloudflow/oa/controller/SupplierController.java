@@ -1,7 +1,7 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -18,11 +18,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/supplier")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class SupplierController {
 
     private final ISupplierService supplierService;
 
     @GetMapping("/list")
+    @SaCheckPermission("admin:supplier:list")
     public R<IPage<SysSupplier>> list(SysSupplier query,
                                       @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
                                       @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
@@ -30,6 +32,7 @@ public class SupplierController {
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("admin:supplier:list")
     public R<SysSupplier> getInfo(@PathVariable Long id) {
         SysSupplier supplier = supplierService.getById(id);
         if (supplier == null || !"0".equals(supplier.getDelFlag())) {
@@ -40,7 +43,7 @@ public class SupplierController {
 
     @SysLog("新增供应商")
     @PostMapping
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:supplier:add")
     public R<Void> add(@RequestBody SysSupplier supplier) {
         try {
             return supplierService.createSupplier(supplier) ? R.ok() : R.fail("创建失败");
@@ -51,7 +54,7 @@ public class SupplierController {
 
     @SysLog("修改供应商")
     @PutMapping
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:supplier:edit")
     public R<Void> edit(@RequestBody SysSupplier supplier) {
         try {
             return supplierService.updateSupplier(supplier) ? R.ok() : R.fail("更新失败");
@@ -62,7 +65,7 @@ public class SupplierController {
 
     @SysLog("删除供应商")
     @DeleteMapping("/{ids}")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:supplier:remove")
     public R<Void> remove(@PathVariable List<Long> ids) {
         for (Long id : ids) {
             SysSupplier supplier = new SysSupplier();

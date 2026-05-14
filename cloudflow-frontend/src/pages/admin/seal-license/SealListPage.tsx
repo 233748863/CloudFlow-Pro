@@ -8,6 +8,7 @@ import FileUpload from '@/components/FileUpload';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { OaSeal, OaSealRenewal, sealApi, sealRenewalApi } from '@/services/api/sealLicense';
+import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
 import type { UserBrief } from '@/types/workflow';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
@@ -144,6 +145,7 @@ const DetailField: React.FC<{ label: string; value: React.ReactNode }> = ({ labe
 );
 
 export const SealListPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [rows, setRows] = useState<OaSeal[]>([]);
   const [total, setTotal] = useState(0);
   const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, sealName: '', status: '', expiry: '' });
@@ -385,7 +387,7 @@ export const SealListPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button size="sm" onClick={openCreate}>
+              <Button size="sm" onClick={openCreate} disabled={!hasPermission('admin:seal:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增印章
               </Button>
@@ -439,10 +441,10 @@ export const SealListPage: React.FC = () => {
                           align="end"
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => setDetailSeal(item), tone: 'neutral' },
-                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: isBorrowLocked(item) },
-                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !canRemindExpiry(item) },
-                            { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' || isBorrowLocked(item) },
-                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => item.sealId && setDeleteId(item.sealId), tone: 'danger', hidden: isBorrowLocked(item) },
+                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: isBorrowLocked(item), permissionKey: 'admin:seal:edit' },
+                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !canRemindExpiry(item), permissionKey: 'admin:seal:remind' },
+                            { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' || isBorrowLocked(item), permissionKey: 'admin:seal-renewal:add' },
+                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => item.sealId && setDeleteId(item.sealId), tone: 'danger', hidden: isBorrowLocked(item), permissionKey: 'admin:seal:remove' },
                           ]}
                         />
                       </td>
@@ -468,7 +470,7 @@ export const SealListPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>取消</Button>
-            <Button onClick={() => void save()}>保存</Button>
+            <Button onClick={() => void save()} disabled={form.sealId ? !hasPermission('admin:seal:edit') : !hasPermission('admin:seal:add')}>保存</Button>
           </>
         )}
       >
@@ -630,7 +632,7 @@ export const SealListPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => { setRenewalDialogOpen(false); setRenewalSeal(null); setRenewalRows([]); }}>关闭</Button>
-            <Button onClick={() => void saveRenewal()}>保存续期草稿</Button>
+            <Button onClick={() => void saveRenewal()} disabled={!hasPermission(renewalForm.id ? 'admin:seal-renewal:edit' : 'admin:seal-renewal:add')}>保存续期草稿</Button>
           </>
         )}
       >
@@ -658,10 +660,10 @@ export const SealListPage: React.FC = () => {
                       <TableRowActions
                         align="end"
                         actions={[
-                          { label: '编辑', icon: <Edit size={14} />, onClick: () => setRenewalForm({ ...item }), tone: 'primary', hidden: item.status !== 'DRAFT' },
-                          { label: '提交', icon: <Send size={14} />, onClick: () => void submitRenewal(item.id), tone: 'success', hidden: item.status !== 'DRAFT' },
-                          { label: '取消', icon: <XCircle size={14} />, onClick: () => void cancelRenewal(item.id), tone: 'warning', hidden: item.status !== 'PENDING' },
-                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => void removeRenewal(item.id), tone: 'danger', hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' && item.status !== 'CANCELLED' },
+                          { label: '编辑', icon: <Edit size={14} />, onClick: () => setRenewalForm({ ...item }), tone: 'primary', hidden: item.status !== 'DRAFT', permissionKey: 'admin:seal-renewal:edit' },
+                          { label: '提交', icon: <Send size={14} />, onClick: () => void submitRenewal(item.id), tone: 'success', hidden: item.status !== 'DRAFT', permissionKey: 'admin:seal-renewal:submit' },
+                          { label: '取消', icon: <XCircle size={14} />, onClick: () => void cancelRenewal(item.id), tone: 'warning', hidden: item.status !== 'PENDING', permissionKey: 'admin:seal-renewal:cancel' },
+                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => void removeRenewal(item.id), tone: 'danger', hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' && item.status !== 'CANCELLED', permissionKey: 'admin:seal-renewal:remove' },
                         ]}
                       />
                     </div>

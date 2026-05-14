@@ -20,6 +20,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
+import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   borrowAsset,
@@ -195,6 +196,7 @@ const escapeHtml = (value?: string | number | null) => String(value ?? '').repla
 }[char] || char));
 
 const AssetList: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -596,7 +598,7 @@ const AssetList: React.FC = () => {
                 <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                 刷新
               </Button>
-              <Button size="sm" onClick={handleAdd}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:asset:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增资产
               </Button>
@@ -739,6 +741,7 @@ const AssetList: React.FC = () => {
                                 icon: <Edit size={14} />,
                                 onClick: () => handleEdit(asset),
                                 tone: 'neutral',
+                                permissionKey: 'admin:asset:edit',
                               },
                               {
                                 label: '领用',
@@ -746,6 +749,7 @@ const AssetList: React.FC = () => {
                                 onClick: () => openBorrowDialog(asset),
                                 tone: 'neutral',
                                 hidden: asset.status !== '1',
+                                permissionKey: 'admin:asset:borrow',
                               },
                               {
                                 label: '归还',
@@ -753,6 +757,7 @@ const AssetList: React.FC = () => {
                                 onClick: () => openReturnConfirm(asset),
                                 tone: 'neutral',
                                 hidden: asset.status !== '2',
+                                permissionKey: 'admin:asset:return',
                               },
                             ]}
                           />

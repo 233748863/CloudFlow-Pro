@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$TimeoutSeconds = 180
 )
 
@@ -53,6 +53,185 @@ $FrontendService = @{
     Name = "frontend"
     Port = 3000
     MainClass = "vite"
+}
+
+function Get-EnvValue {
+    param([string]$Name)
+
+    $item = Get-Item -Path "Env:$Name" -ErrorAction SilentlyContinue
+    if ($null -eq $item) {
+        return $null
+    }
+
+    return $item.Value
+}
+
+function Set-ProcessEnvDefault {
+    param(
+        [string]$Name,
+        [string]$Value
+    )
+
+    if (-not [string]::IsNullOrWhiteSpace((Get-EnvValue -Name $Name))) {
+        return
+    }
+
+    Set-Item -Path "Env:$Name" -Value $Value
+}
+
+function Import-DotEnvFile {
+    $envFile = Join-Path $Root ".env"
+    if (-not (Test-Path $envFile)) {
+        return
+    }
+
+    foreach ($line in Get-Content -Path $envFile) {
+        $trimmed = $line.Trim()
+        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+            continue
+        }
+
+        $parts = $trimmed -split '=', 2
+        if ($parts.Count -ne 2) {
+            continue
+        }
+
+        $name = $parts[0].Trim()
+        $value = $parts[1].Trim()
+
+        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+            $value = $value.Substring(1, $value.Length - 2)
+        }
+
+        if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name $name))) {
+            Set-Item -Path "Env:$name" -Value $value
+        }
+    }
+}
+
+function Initialize-LocalEnvironment {
+    $defaultSecret = if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name "MYSQL_ROOT_PASSWORD"))) {
+        "Juwangkeji@2025"
+    } else {
+        Get-EnvValue -Name "MYSQL_ROOT_PASSWORD"
+    }
+
+    Set-ProcessEnvDefault -Name "MYSQL_ROOT_PASSWORD" -Value $defaultSecret
+    Set-ProcessEnvDefault -Name "MYSQL_HOST" -Value "192.168.1.173"
+    Set-ProcessEnvDefault -Name "MYSQL_PORT" -Value "3306"
+    Set-ProcessEnvDefault -Name "MYSQL_SSL_PARAMS" -Value "useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true"
+    Set-ProcessEnvDefault -Name "DB_USERNAME" -Value "root"
+    Set-ProcessEnvDefault -Name "DB_PASSWORD" -Value $defaultSecret
+    Set-ProcessEnvDefault -Name "DB_URL" -Value ("jdbc:mysql://{0}:{1}/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&{2}&serverTimezone=Asia/Shanghai" -f (Get-EnvValue -Name "MYSQL_HOST"), (Get-EnvValue -Name "MYSQL_PORT"), (Get-EnvValue -Name "MYSQL_SSL_PARAMS"))
+    Set-ProcessEnvDefault -Name "REDIS_HOST" -Value "192.168.1.173"
+    Set-ProcessEnvDefault -Name "REDIS_PORT" -Value "6379"
+    Set-ProcessEnvDefault -Name "REDIS_PASSWORD" -Value $defaultSecret
+    Set-ProcessEnvDefault -Name "NACOS_SERVER" -Value "192.168.1.173:8848"
+    Set-ProcessEnvDefault -Name "NACOS_NAMESPACE" -Value "0ccb9313-39d8-4a58-9fa5-ce834b77e60d"
+    Set-ProcessEnvDefault -Name "NACOS_USERNAME" -Value "nacos"
+    Set-ProcessEnvDefault -Name "NACOS_PASSWORD" -Value "nacos"
+    Set-ProcessEnvDefault -Name "CLOUDFLOW_ENCRYPT_ENABLED" -Value "false"
+    Set-ProcessEnvDefault -Name "LOG_LEVEL_APP" -Value "INFO"
+    Set-ProcessEnvDefault -Name "LOG_LEVEL_MAPPER" -Value "WARN"
+    Set-ProcessEnvDefault -Name "MYBATIS_LOG_IMPL" -Value "org.apache.ibatis.logging.nologging.NoLoggingImpl"
+
+    $nacosServer = Get-EnvValue -Name "NACOS_SERVER"
+    if (-not [string]::IsNullOrWhiteSpace($nacosServer) -and $nacosServer -match '^https?://') {
+        $normalized = ($nacosServer -replace '^https?://', '').TrimEnd('/')
+        Set-Item -Path "Env:NACOS_SERVER" -Value $normalized
+    }
+}
+
+function Test-TcpEndpoint {
+    param(
+        [string]$HostName,
+        [int]$Port
+    )
+
+    try {
+        $client = New-Object System.Net.Sockets.TcpClient
+        $asyncResult = $client.BeginConnect($HostName, $Port, $null, $null)
+        if (-not $asyncResult.AsyncWaitHandle.WaitOne(2000, $false)) {
+            $client.Close()
+            return $false
+        }
+        $client.EndConnect($asyncResult)
+        $client.Close()
+        return $true
+    } catch {
+        return $false
+    }
+}
+
+function Get-HostPortFromAddress {
+    param(
+        [string]$Address,
+        [int]$DefaultPort
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Address)) {
+        return @{
+            Host = "localhost"
+            Port = $DefaultPort
+        }
+    }
+
+    $normalized = $Address.Trim()
+    if ($normalized -match '^(?<host>[^:\/]+)(:(?<port>\d+))?$') {
+        return @{
+            Host = $matches["host"]
+            Port = if ($matches["port"]) { [int]$matches["port"] } else { $DefaultPort }
+        }
+    }
+
+    return @{
+        Host = "localhost"
+        Port = $DefaultPort
+    }
+}
+
+function Get-HostPortFromJdbcUrl {
+    param([string]$JdbcUrl)
+
+    if (-not [string]::IsNullOrWhiteSpace($JdbcUrl) -and $JdbcUrl -match '^jdbc:mysql://(?<host>[^:/?#]+)(:(?<port>\d+))?/') {
+        return @{
+            Host = $matches["host"]
+            Port = if ($matches["port"]) { [int]$matches["port"] } else { 3306 }
+        }
+    }
+
+    return @{
+        Host = "localhost"
+        Port = 3306
+    }
+}
+
+function Assert-LocalDependencies {
+    $missing = @()
+
+    $mysql = Get-HostPortFromJdbcUrl -JdbcUrl (Get-EnvValue -Name "DB_URL")
+    if (-not (Test-TcpEndpoint -HostName $mysql.Host -Port $mysql.Port)) {
+        $missing += "MySQL=$($mysql.Host):$($mysql.Port)"
+    }
+
+    $redis = Get-HostPortFromAddress -Address ("{0}:{1}" -f (Get-EnvValue -Name "REDIS_HOST"), (Get-EnvValue -Name "REDIS_PORT")) -DefaultPort 6379
+    if (-not (Test-TcpEndpoint -HostName $redis.Host -Port $redis.Port)) {
+        $missing += "Redis=$($redis.Host):$($redis.Port)"
+    }
+
+    $nacos = Get-HostPortFromAddress -Address (Get-EnvValue -Name "NACOS_SERVER") -DefaultPort 8848
+    if (-not (Test-TcpEndpoint -HostName $nacos.Host -Port $nacos.Port)) {
+        $missing += "Nacos-HTTP=$($nacos.Host):$($nacos.Port)"
+    }
+
+    $nacosGrpcPort = $nacos.Port + 1000
+    if (-not (Test-TcpEndpoint -HostName $nacos.Host -Port $nacosGrpcPort)) {
+        $missing += "Nacos-GRPC=$($nacos.Host):$($nacosGrpcPort)"
+    }
+
+    if ($missing.Count -gt 0) {
+        throw ("基础依赖未就绪: {0}" -f ($missing -join ", "))
+    }
 }
 
 function New-RuntimeDirectories {
@@ -171,10 +350,10 @@ function Install-BackendDependencies {
         -WindowStyle Hidden `
         -RedirectStandardOutput $outLog `
         -RedirectStandardError $errLog `
+        -Wait `
         -PassThru
 
-    $process.WaitForExit()
-    if ($process.ExitCode -ne 0) {
+    if (($null -eq $process.ExitCode) -or ($process.ExitCode -ne 0)) {
         Write-Host "backend    编译失败，查看日志：$outLog"
         if (Test-Path $errLog) {
             Write-Host "backend    错误日志：$errLog"
@@ -291,6 +470,9 @@ function Wait-AllServicesReady {
 }
 
 New-RuntimeDirectories
+Import-DotEnvFile
+Initialize-LocalEnvironment
+Assert-LocalDependencies
 
 Write-Host "启动 CloudFlow 前后端..."
 

@@ -4,6 +4,8 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.oa.domain.FrontendErrorLog;
 import com.cloudflow.oa.service.IFrontendErrorLogService;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +25,7 @@ import jakarta.servlet.http.HttpServletRequest;
 @RestController
 @RequestMapping("/error-report")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class ErrorReportController {
 
     private final IFrontendErrorLogService frontendErrorLogService;
@@ -40,6 +43,7 @@ public class ErrorReportController {
      * @return 固定返回成功，避免前端因上报失败产生额外错误
      */
     @PostMapping
+    @SaCheckPermission("workspace:dashboard")
     public R report(@RequestBody FrontendErrorLog errorLog, HttpServletRequest request) {
         try {
             // 获取客户端真实IP（考虑反向代理场景）

@@ -11,6 +11,7 @@ import {
 import { toast } from 'sonner';
 import { BaseDialog, Pagination } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { dutyScheduleApi, DutySchedule } from '../services/api/dutySchedule';
 import {
@@ -128,6 +129,7 @@ const TableStateRow: React.FC<{
 );
 
 export const DutySchedulePage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [list, setList] = useState<DutySchedule[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState<SearchParams>({
@@ -291,7 +293,7 @@ export const DutySchedulePage: React.FC = () => {
                 <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                 刷新
               </Button>
-              <Button size="sm" onClick={handleAdd}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:duty:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增排班
               </Button>
@@ -430,6 +432,7 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => handleCheckIn(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
+                                permissionKey: 'admin:duty:checkin',
                               },
                               {
                                 label: '换班',
@@ -437,6 +440,7 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => openSwapDialog(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
+                                permissionKey: 'admin:duty:swap',
                               },
                               {
                                 label: '签退',
@@ -444,6 +448,7 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => handleCheckOut(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'CHECKED_IN',
+                                permissionKey: 'admin:duty:checkout',
                               },
                             ]}
                           />

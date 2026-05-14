@@ -41,6 +41,7 @@ import {
   ConsumableStockLog,
 } from "@/services/api/consumable";
 import { purchaseRequestApi, supplierApi, Supplier } from "@/services/api/purchase";
+import { useAuth } from "@/context/AuthContext";
 import { getErrorMessage } from "@/utils/errorMessage";
 
 const createDefaultForm = (): Consumable => ({
@@ -53,6 +54,7 @@ const createDefaultForm = (): Consumable => ({
 });
 
 const ConsumablePage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [list, setList] = useState<Consumable[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
@@ -361,7 +363,7 @@ const ConsumablePage: React.FC = () => {
                 <ShoppingCart size={14} className="mr-1.5" />
                 补货建议
               </Button>
-          <Button size="sm" onClick={handleAdd}>
+          <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:consumable:add')}>
             <Plus size={14} className="mr-1.5" />
             新增耗材
               </Button>
@@ -482,12 +484,14 @@ const ConsumablePage: React.FC = () => {
                               icon: <ArrowUpCircle size={14} />,
                               onClick: () => openStockModal(item, "add"),
                               tone: "success",
+                              permissionKey: "admin:consumable:add-stock",
                             },
                             {
                               label: "出库",
                               icon: <ArrowDownCircle size={14} />,
                               onClick: () => openStockModal(item, "reduce"),
                               tone: "warning",
+                              permissionKey: "admin:consumable:reduce-stock",
                             },
                             {
                               label: "流水",
@@ -500,12 +504,14 @@ const ConsumablePage: React.FC = () => {
                               icon: <Edit size={14} />,
                               onClick: () => handleEdit(item),
                               tone: "primary",
+                              permissionKey: "admin:consumable:edit",
                             },
                             {
                               label: "删除",
                               icon: <Trash2 size={14} />,
                               onClick: () => setDeleteTarget(item),
                               tone: "danger",
+                              permissionKey: "admin:consumable:remove",
                             },
                           ]}
                         />
@@ -548,7 +554,7 @@ const ConsumablePage: React.FC = () => {
             <Button variant="outline" onClick={() => setShowForm(false)}>
               取消
             </Button>
-            <Button onClick={() => void handleSave()} disabled={submitting}>
+            <Button onClick={() => void handleSave()} disabled={submitting || (currentItem?.consumableId ? !hasPermission('admin:consumable:edit') : !hasPermission('admin:consumable:add'))}>
               {submitting ? (
                 <Loader2 size={16} className="mr-1.5 animate-spin" />
               ) : null}
@@ -793,7 +799,7 @@ const ConsumablePage: React.FC = () => {
             </Button>
             <Button
               onClick={() => void handleStock()}
-              disabled={submitting || stockQuantity <= 0}
+              disabled={submitting || stockQuantity <= 0 || !hasPermission(stockAction === "add" ? 'admin:consumable:add-stock' : 'admin:consumable:reduce-stock')}
             >
               {submitting ? (
                 <Loader2 size={16} className="mr-1.5 animate-spin" />

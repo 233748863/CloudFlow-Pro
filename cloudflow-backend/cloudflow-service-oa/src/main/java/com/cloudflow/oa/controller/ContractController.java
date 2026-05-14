@@ -1,7 +1,7 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
@@ -20,17 +20,20 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/contract")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class ContractController {
 
     private final IOaContractService contractService;
 
     @GetMapping("/list")
+    @SaCheckPermission("office:contract:list")
     public R<PageResult<OaContract>> list(OaContract query, PageQuery pageQuery) {
         return R.ok(contractService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("office:contract:list")
     public R<OaContract> getInfo(@PathVariable("id") Long id) {
         try {
             return R.ok(contractService.getContractInfo(id));
@@ -41,6 +44,7 @@ public class ContractController {
 
     @SysLog("新增合同")
     @PostMapping
+    @SaCheckPermission("office:contract:add")
     public R<Long> add(@RequestBody OaContract contract) {
         try {
             return R.ok(contractService.createContract(contract));
@@ -51,6 +55,7 @@ public class ContractController {
 
     @SysLog("修改合同")
     @PutMapping
+    @SaCheckPermission("office:contract:edit")
     public R<Void> edit(@RequestBody OaContract contract) {
         try {
             return R.result(contractService.updateContract(contract));
@@ -61,6 +66,7 @@ public class ContractController {
 
     @SysLog("删除合同")
     @DeleteMapping("/{ids}")
+    @SaCheckPermission("office:contract:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         try {
             return R.result(contractService.removeContracts(ids));
@@ -71,6 +77,7 @@ public class ContractController {
 
     @SysLog("提交合同审批")
     @PostMapping("/submit/{id}")
+    @SaCheckPermission("office:contract:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
         try {
             return R.result(contractService.submitContract(id));
@@ -81,6 +88,7 @@ public class ContractController {
 
     @SysLog("取消合同")
     @PutMapping("/cancel/{id}")
+    @SaCheckPermission("office:contract:cancel")
     public R<Void> cancel(@PathVariable("id") Long id) {
         try {
             return R.result(contractService.cancelContract(id));
@@ -91,6 +99,7 @@ public class ContractController {
 
     @SysLog("绑定合同用印")
     @PutMapping("/{id}/link-seal/{sealApplicationId}")
+    @SaCheckPermission("office:contract:link-seal")
     public R<Void> linkSeal(@PathVariable("id") Long id,
                             @PathVariable("sealApplicationId") Long sealApplicationId) {
         try {
@@ -101,6 +110,7 @@ public class ContractController {
     }
 
     @GetMapping("/{id}/timeline")
+    @SaCheckPermission("office:contract:list")
     public R<List<OaTraceEvent>> timeline(@PathVariable("id") Long id) {
         try {
             return R.ok(contractService.listTimeline(id));
@@ -110,6 +120,7 @@ public class ContractController {
     }
 
     @GetMapping("/{id}/risks")
+    @SaCheckPermission("office:contract:list")
     public R<List<OaRiskAlert>> risks(@PathVariable("id") Long id) {
         try {
             return R.ok(contractService.listRisks(id));

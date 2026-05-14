@@ -205,8 +205,8 @@ export default function CrmSalesTargetPage() {
                           align="end"
                           overflowLabel="更多"
                           actions={[
-                            { label: '编辑目标', icon: <Gauge size={14} />, onClick: () => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }, semantic: 'edit', isPrimary: true },
-                            { label: '删除目标', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true },
+                            { label: '编辑目标', icon: <Gauge size={14} />, onClick: () => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:sales-target:edit' },
+                            { label: '删除目标', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:sales-target:remove' },
                           ]}
                         />
                       </td>

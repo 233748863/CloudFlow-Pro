@@ -7,6 +7,8 @@ import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.ISysScheduleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
@@ -14,12 +16,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/schedule")
+@SaCheckLogin
 public class SysScheduleController {
 
     @Autowired
     private ISysScheduleService scheduleService;
 
     @GetMapping("/my-events")
+    @SaCheckPermission("workspace:schedule")
     public R<List<SysScheduleEvent>> getMyEvents(@RequestParam(value = "start", required = false) String start,
                                                @RequestParam(value = "end", required = false) String end) {
         return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), start, end));
@@ -29,6 +33,7 @@ public class SysScheduleController {
      * 获取今日日程
      */
     @GetMapping("/today")
+    @SaCheckPermission("workspace:schedule")
     public R<List<SysScheduleEvent>> getTodaySchedule() {
         String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
         return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), today, today));
@@ -40,6 +45,7 @@ public class SysScheduleController {
      * @param date 查询日期（可选，默认今天）
      */
     @GetMapping("/room/{roomId}")
+    @SaCheckPermission("workspace:schedule")
     public R<List<SysScheduleEvent>> getRoomEvents(@PathVariable("roomId") Long roomId,
                                                    @RequestParam(value = "date", required = false) String date) {
         String queryDate = (date != null && !date.isEmpty()) ? date : LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
@@ -48,6 +54,7 @@ public class SysScheduleController {
 
     @SysLog("新增日程")
     @PostMapping
+    @SaCheckPermission("workspace:schedule")
     public R<Boolean> add(@RequestBody SysScheduleEvent event) {
         event.setCreatorId(UserContext.getUserId());
         return R.ok(scheduleService.createEvent(event));
@@ -55,6 +62,7 @@ public class SysScheduleController {
     
     @SysLog("编辑日程")
     @PutMapping
+    @SaCheckPermission("workspace:schedule")
     public R<Boolean> edit(@RequestBody SysScheduleEvent event) {
         // 权限检查：只有创建者可以编辑日程
         Long currentUserId = UserContext.getUserId();
@@ -70,6 +78,7 @@ public class SysScheduleController {
 
     @SysLog("删除日程")
     @DeleteMapping("/{id}")
+    @SaCheckPermission("workspace:schedule")
     public R<Boolean> remove(@PathVariable("id") Long id) {
         // 权限检查：只有创建者可以删除日程
         Long currentUserId = UserContext.getUserId();
@@ -89,6 +98,7 @@ public class SysScheduleController {
      * @param weekStart 周一日期（YYYY-MM-DD格式）
      */
     @GetMapping("/room/{roomId}/week")
+    @SaCheckPermission("workspace:schedule")
     public R<List<SysScheduleEvent>> getRoomWeekEvents(@PathVariable("roomId") Long roomId,
                                                        @RequestParam("weekStart") String weekStart) {
         return R.ok(scheduleService.getRoomWeekEvents(roomId, weekStart));
@@ -99,6 +109,7 @@ public class SysScheduleController {
      * @param status 状态筛选（可选：upcoming-待开始, past-已结束）
      */
     @GetMapping("/my-bookings")
+    @SaCheckPermission("workspace:schedule")
     public R<List<SysScheduleEvent>> getMyBookings(@RequestParam(value = "status", required = false) String status) {
         return R.ok(scheduleService.getMyBookings(UserContext.getUserId(), status));
     }
@@ -109,6 +120,7 @@ public class SysScheduleController {
      */
     @SysLog("取消预订")
     @PutMapping("/cancel/{id}")
+    @SaCheckPermission("workspace:schedule")
     public R<Boolean> cancelBooking(@PathVariable("id") Long id) {
         return R.ok(scheduleService.cancelBooking(id, UserContext.getUserId()));
     }
@@ -119,6 +131,7 @@ public class SysScheduleController {
      * @param endDate 结束日期（可选）
      */
     @GetMapping("/room-stats")
+    @SaCheckPermission("workspace:schedule")
     public R<List<DynamicMapVO>> getRoomUsageStats(
             @RequestParam(value = "startDate", required = false) String startDate,
             @RequestParam(value = "endDate", required = false) String endDate) {

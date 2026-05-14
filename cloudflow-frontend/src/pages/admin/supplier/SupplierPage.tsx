@@ -3,6 +3,7 @@ import { Edit, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supplierApi, Supplier } from '@/services/api/purchase';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { useAuth } from '@/context/AuthContext';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
@@ -50,6 +51,7 @@ const statusBadge = (status?: string) => {
 };
 
 const SupplierPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -186,7 +188,7 @@ const SupplierPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button size="sm" onClick={openAdd}>
+              <Button size="sm" onClick={openAdd} disabled={!hasPermission('admin:supplier:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增供应商
               </Button>
@@ -229,8 +231,8 @@ const SupplierPage: React.FC = () => {
                       <TableRowActions
                         align="end"
                         actions={[
-                          { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary' },
-                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => setDeleteId(item.supplierId!), tone: 'danger' },
+                          { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', permissionKey: 'admin:supplier:edit' },
+                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => setDeleteId(item.supplierId!), tone: 'danger', permissionKey: 'admin:supplier:remove' },
                         ]}
                       />
                     </td>
@@ -263,7 +265,7 @@ const SupplierPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
-            <Button onClick={() => void handleSave()}>保存</Button>
+            <Button onClick={() => void handleSave()} disabled={currentSupplier ? !hasPermission('admin:supplier:edit') : !hasPermission('admin:supplier:add')}>保存</Button>
           </>
         )}
       >

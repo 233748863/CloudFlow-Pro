@@ -3,8 +3,14 @@ package com.cloudflow.hr.service.impl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.ApprovalResultDTO;
+import com.cloudflow.hr.domain.entity.HrCompChange;
+import com.cloudflow.hr.domain.entity.HrLifecycleApplication;
+import com.cloudflow.hr.domain.entity.HrOffer;
+import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
+import com.cloudflow.hr.domain.entity.HrRecruitmentRequisition;
+import com.cloudflow.hr.domain.entity.HrTimeRequest;
 import com.cloudflow.hr.exception.HrBusinessException;
-import com.cloudflow.hr.service.HrDomainCrudService;
+import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.WorkflowCallbackService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -12,8 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
-import java.util.Map;
-
 /**
  * 工作流审批回调分发服务。
  */
@@ -22,7 +26,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
 
-    private final HrDomainCrudService crudService;
+    private final HrTypedCrudService crudService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -38,9 +42,9 @@ public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
         try {
             CallbackTarget target = resolveTarget(dto.getBusinessType());
             String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
-            crudService.update(target.tableName(), dto.getBusinessId(), Map.of("status", status));
-            log.info("审批回调已写入新HR表，businessType: {}, businessId: {}, table: {}, status: {}",
-                    dto.getBusinessType(), dto.getBusinessId(), target.tableName(), status);
+            crudService.updateProperties(target.entityClass(), dto.getBusinessId(), java.util.Map.of("status", status));
+            log.info("审批回调已写入新HR表，businessType: {}, businessId: {}, entity: {}, status: {}",
+                    dto.getBusinessType(), dto.getBusinessId(), target.entityClass().getSimpleName(), status);
         } catch (Exception e) {
             log.error("处理审批结果失败，businessType: {}, businessId: {}",
                     dto.getBusinessType(), dto.getBusinessId(), e);
@@ -54,13 +58,13 @@ public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
     private CallbackTarget resolveTarget(String businessType) {
         String normalized = normalizeBusinessType(businessType);
         return switch (normalized) {
-            case "RECRUITMENT_REQUEST" -> new CallbackTarget("hr_recruitment_requisition");
-            case "OFFER" -> new CallbackTarget("hr_offer");
+            case "RECRUITMENT_REQUEST" -> new CallbackTarget(HrRecruitmentRequisition.class);
+            case "OFFER" -> new CallbackTarget(HrOffer.class);
             case "ONBOARDING", "PROBATION", "PROBATION_CONFIRMATION", "TRANSFER", "RESIGNATION" ->
-                    new CallbackTarget("hr_lifecycle_application");
-            case "LEAVE", "OVERTIME", "ATTENDANCE_SUPPLEMENT" -> new CallbackTarget("hr_time_request");
-            case "SALARY_ADJUSTMENT" -> new CallbackTarget("hr_comp_change");
-            case "PERFORMANCE_PLAN", "PERFORMANCE_RESULT" -> new CallbackTarget("hr_performance_objective");
+                    new CallbackTarget(HrLifecycleApplication.class);
+            case "LEAVE", "OVERTIME", "ATTENDANCE_SUPPLEMENT" -> new CallbackTarget(HrTimeRequest.class);
+            case "SALARY_ADJUSTMENT" -> new CallbackTarget(HrCompChange.class);
+            case "PERFORMANCE_PLAN", "PERFORMANCE_RESULT" -> new CallbackTarget(HrPerformanceObjective.class);
             default -> throw new HrBusinessException("UNSUPPORTED_BUSINESS_TYPE",
                     "不支持的业务类型：" + businessType);
         };
@@ -112,6 +116,6 @@ public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
         }
     }
 
-    private record CallbackTarget(String tableName) {
+    private record CallbackTarget(Class<?> entityClass) {
     }
 }

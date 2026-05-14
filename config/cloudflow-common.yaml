@@ -30,9 +30,9 @@ spring:
       datasource:
         # ---- 主数据源 ----
         master:
-          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-          username: root
-          password: Juwangkeji@2025
+          url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS:useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true}&serverTimezone=Asia/Shanghai}
+          username: ${DB_USERNAME:root}
+          password: ${DB_PASSWORD}
           driver-class-name: com.mysql.cj.jdbc.Driver
       # HikariCP 连接池全局配置（所有数据源共享）
       hikari:
@@ -47,9 +47,9 @@ spring:
   # Redis 配置
   data:
     redis:
-      host: 192.168.1.173
-      port: 6379
-      password: Juwangkeji@2025
+      host: ${REDIS_HOST:192.168.1.173}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
       database: 0
       timeout: 5000
       lettuce:
@@ -63,21 +63,22 @@ spring:
 # MyBatis Plus 配置
 mybatis-plus:
   configuration:
-    # 生产环境关闭 SQL 日志输出
-    log-impl: org.apache.ibatis.logging.nologging.NoLoggingImpl
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
 
 # 日志配置
 logging:
   level:
     root: INFO
-    com.cloudflow: INFO
-    com.cloudflow.workflow.mapper: WARN
-    com.cloudflow.oa.mapper: WARN
+    com.cloudflow: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.workflow.mapper: ${LOG_LEVEL_MAPPER:WARN}
+    com.cloudflow.oa.mapper: ${LOG_LEVEL_MAPPER:WARN}
 
 # Sa-Token 安全配置（SecurityProperties 使用 cloudflow.security 前缀）
 cloudflow:
   # 文件上传存储根路径
   profile: /data/cloudflow/profile
+  encrypt:
+    enabled: false
 
   # ==================== 多租户配置 ====================
   # 对应 TenantConfigProperties 类

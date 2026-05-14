@@ -1,6 +1,8 @@
 package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.OaTraceEvent;
 import com.cloudflow.oa.domain.dto.AuditEventQueryDTO;
@@ -27,6 +29,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/audit/events")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class AuditEventController {
 
     private static final int EXPORT_LIMIT = 5000;
@@ -34,6 +37,7 @@ public class AuditEventController {
     private final IOaTraceEventService traceEventService;
 
     @GetMapping
+    @SaCheckPermission("system:audit:events")
     public R<Page<TimelineEventDTO>> list(@RequestParam(required = false) String businessType,
                                           @RequestParam(required = false) Long businessId,
                                           @RequestParam(required = false) String eventType,
@@ -50,6 +54,7 @@ public class AuditEventController {
     }
 
     @GetMapping("/export")
+    @SaCheckPermission("system:audit:events")
     public void export(@RequestParam(required = false) String businessType,
                        @RequestParam(required = false) Long businessId,
                        @RequestParam(required = false) String eventType,

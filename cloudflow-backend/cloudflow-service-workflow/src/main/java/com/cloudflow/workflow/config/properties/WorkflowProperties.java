@@ -250,8 +250,12 @@ public class WorkflowProperties {
     public static class Script {
         /** 是否允许进程内执行 Groovy/JavaScript 脚本，默认关闭 */
         private boolean enabled = false;
+        /** 脚本超时（毫秒） */
+        private long timeoutMs = 5000;
 
         public boolean isEnabled() { return enabled; }
         public void setEnabled(boolean enabled) { this.enabled = enabled; }
+        public long getTimeoutMs() { return timeoutMs; }
+        public void setTimeoutMs(long timeoutMs) { this.timeoutMs = timeoutMs; }
     }
 }

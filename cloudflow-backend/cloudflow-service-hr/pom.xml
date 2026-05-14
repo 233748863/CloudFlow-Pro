@@ -63,6 +63,10 @@
         </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-data</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-datasource</artifactId>
         </dependency>
         <dependency>
@@ -76,10 +80,6 @@
         <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-excel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>cn.idev.excel</groupId>
-            <artifactId>fastexcel-core</artifactId>
         </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
@@ -97,6 +97,10 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-sensitive</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-encrypt</artifactId>
+        </dependency>
 
         <!-- HR 模块直接使用的第三方库 -->
         <dependency>
@@ -106,10 +110,6 @@
         <dependency>
             <groupId>org.springframework.data</groupId>
             <artifactId>spring-data-redis</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.redisson</groupId>
-            <artifactId>redisson</artifactId>
         </dependency>
 
         <!-- 监控与运维 -->

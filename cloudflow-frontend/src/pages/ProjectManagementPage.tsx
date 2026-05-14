@@ -8,6 +8,7 @@ import { projectApi, Project, ProjectDependency, ProjectDetail, ProjectMember, P
 import { crmApi, CrmCustomer } from '@/services/api/crm';
 import { contractApi, OaContract } from '@/services/api/contractRisk';
 import { getDeptTree, getUserList, SysDept, SysUser } from '@/services/api/auth';
+import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -271,6 +272,7 @@ const DraggableGanttBar: React.FC<{
 };
 
 export default function ProjectManagementPage() {
+  const { hasPermission } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
@@ -555,7 +557,7 @@ export default function ProjectManagementPage() {
               </div>
               <div className="text-xs text-slate-500">第 {pageNum} / {totalPages} 页，共 {total} 条</div>
             </div>
-            <Button size="sm" onClick={() => { setEditing(null); setForm(emptyForm); setDialogOpen(true); }}>
+            <Button size="sm" onClick={() => { setEditing(null); setForm(emptyForm); setDialogOpen(true); }} disabled={!hasPermission('office:project:add')}>
               <Plus size={14} className="mr-1.5" />新建项目
             </Button>
           </div>
@@ -587,13 +589,13 @@ export default function ProjectManagementPage() {
                       <TableRowActions
                         align="end"
                         overflowLabel="更多"
-                        actions={[
-                          { label: '查看详情', icon: <Eye size={14} />, onClick: async () => { try { setDetail(await projectApi.getDetail(row.projectId!)); } catch (error) { toast.error(getErrorMessage(error, '加载项目详情失败')); } }, semantic: 'view', isPrimary: true },
-                          { label: '编辑项目', icon: <Edit size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true },
-                          { label: '提交立项', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'submit', row }), hidden: row.status !== 'DRAFT' && row.status !== 'REJECTED', semantic: 'submit' },
-                          { label: '基线快照', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ type: 'baseline', row }), hidden: row.status === 'ARCHIVED', semantic: 'reset' },
-                          { label: '归档项目', icon: <Archive size={14} />, onClick: () => setConfirm({ type: 'archive', row }), hidden: !['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || ''), semantic: 'archive', danger: true },
-                          { label: '删除项目', icon: <Trash2 size={14} />, onClick: () => setConfirm({ type: 'delete', row }), semantic: 'delete', danger: true },
+                          actions={[
+                            { label: '查看详情', icon: <Eye size={14} />, onClick: async () => { try { setDetail(await projectApi.getDetail(row.projectId!)); } catch (error) { toast.error(getErrorMessage(error, '加载项目详情失败')); } }, semantic: 'view', isPrimary: true },
+                          { label: '编辑项目', icon: <Edit size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'office:project:edit' },
+                          { label: '提交立项', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'submit', row }), hidden: row.status !== 'DRAFT' && row.status !== 'REJECTED', semantic: 'submit', permissionKey: 'office:project:submit' },
+                          { label: '基线快照', icon: <RefreshCcw size={14} />, onClick: () => setConfirm({ type: 'baseline', row }), hidden: row.status === 'ARCHIVED', semantic: 'reset', permissionKey: 'office:project:baseline' },
+                          { label: '归档项目', icon: <Archive size={14} />, onClick: () => setConfirm({ type: 'archive', row }), hidden: !['APPROVED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'].includes(row.status || ''), semantic: 'archive', danger: true, permissionKey: 'office:project:archive' },
+                          { label: '删除项目', icon: <Trash2 size={14} />, onClick: () => setConfirm({ type: 'delete', row }), semantic: 'delete', danger: true, permissionKey: 'office:project:remove' },
                         ]}
                       />
                     </td>
@@ -785,12 +787,12 @@ export default function ProjectManagementPage() {
                             <div className="text-xs text-slate-500">{item.roleName || item.roleCode || '-'}</div>
                           </div>
                           <TableRowActions actions={[
-                            { label: '编辑成员', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'member', item }), semantic: 'edit', isPrimary: true },
-                            { label: '删除成员', icon: <Trash2 size={14} />, onClick: () => void removeChild('member', item.id!), semantic: 'delete', danger: true },
-                          ]} />
-                        </div>
-                      )) : <div className="text-sm text-slate-500">暂无项目成员</div>}
-                      <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'member' })}><Users size={14} className="mr-1.5" />新增成员</Button>
+                          { label: '编辑成员', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'member', item }), semantic: 'edit', isPrimary: true, permissionKey: 'office:project:edit' },
+                          { label: '删除成员', icon: <Trash2 size={14} />, onClick: () => void removeChild('member', item.id!), semantic: 'delete', danger: true, permissionKey: 'office:project:edit' },
+                        ]} />
+                      </div>
+                    )) : <div className="text-sm text-slate-500">暂无项目成员</div>}
+                      <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'member' })} disabled={!hasPermission('office:project:edit')}><Users size={14} className="mr-1.5" />新增成员</Button>
                     </CardContent>
                   </Card>
                 </div>
@@ -801,7 +803,7 @@ export default function ProjectManagementPage() {
                   <CardHeader className="pb-3"><CardTitle className="text-base">专业计划版甘特图</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Button size="sm" variant="outline" onClick={() => setConfirm({ type: 'baseline', row: detail.project })}><RefreshCcw size={14} className="mr-1.5" />重置基线</Button>
+                      <Button size="sm" variant="outline" onClick={() => setConfirm({ type: 'baseline', row: detail.project })} disabled={!hasPermission('office:project:baseline')}><RefreshCcw size={14} className="mr-1.5" />重置基线</Button>
                       <div className="text-xs text-slate-500">灰条 = 基线排期；彩色条 = 当前排期；拖动彩条可按日改期。</div>
                     </div>
                     {ganttRows.length ? (
@@ -867,12 +869,12 @@ export default function ProjectManagementPage() {
                           <div className="text-xs text-slate-500">计划 {item.plannedDate || '-'} / 基线 {item.baselineDate || '-'} / {item.status || '-'}</div>
                         </div>
                         <TableRowActions actions={[
-                          { label: '编辑里程碑', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'milestone', item }), semantic: 'edit', isPrimary: true },
-                          { label: '删除里程碑', icon: <Trash2 size={14} />, onClick: () => void removeChild('milestone', item.milestoneId!), semantic: 'delete', danger: true },
+                          { label: '编辑里程碑', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'milestone', item }), semantic: 'edit', isPrimary: true, permissionKey: 'office:project:edit' },
+                          { label: '删除里程碑', icon: <Trash2 size={14} />, onClick: () => void removeChild('milestone', item.milestoneId!), semantic: 'delete', danger: true, permissionKey: 'office:project:edit' },
                         ]} />
                       </div>
                     )) : <div className="text-sm text-slate-500">暂无里程碑</div>}
-                    <Button size="sm" onClick={() => openChildDialog({ type: 'milestone' })}><Plus size={14} className="mr-1.5" />新增里程碑</Button>
+                    <Button size="sm" onClick={() => openChildDialog({ type: 'milestone' })} disabled={!hasPermission('office:project:edit')}><Plus size={14} className="mr-1.5" />新增里程碑</Button>
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -888,13 +890,13 @@ export default function ProjectManagementPage() {
                           <div className="text-xs text-slate-500">计划 {item.plannedStartTime ? String(item.plannedStartTime).slice(0, 10) : '-'} ~ {item.plannedEndTime ? String(item.plannedEndTime).slice(0, 10) : '-'} / 基线 {item.baselineStartTime ? String(item.baselineStartTime).slice(0, 10) : '-'} ~ {item.baselineEndTime ? String(item.baselineEndTime).slice(0, 10) : '-'}</div>
                         </div>
                         <TableRowActions actions={[
-                          { label: '编辑 WBS', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'wbs', item }), semantic: 'edit', isPrimary: true },
-                          { label: '删除 WBS', icon: <Trash2 size={14} />, onClick: () => void removeChild('wbs', item.taskId!), semantic: 'delete', danger: true },
+                          { label: '编辑 WBS', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'wbs', item }), semantic: 'edit', isPrimary: true, permissionKey: 'office:project:wbs' },
+                          { label: '删除 WBS', icon: <Trash2 size={14} />, onClick: () => void removeChild('wbs', item.taskId!), semantic: 'delete', danger: true, permissionKey: 'office:project:wbs' },
                         ]} />
                       </div>
                     )) : <div className="text-sm text-slate-500">暂无 WBS 任务</div>}
                     <div className="flex flex-wrap gap-2">
-                      <Button size="sm" onClick={() => openChildDialog({ type: 'wbs' })}><Plus size={14} className="mr-1.5" />新增 WBS</Button>
+                      <Button size="sm" onClick={() => openChildDialog({ type: 'wbs' })} disabled={!hasPermission('office:project:wbs')}><Plus size={14} className="mr-1.5" />新增 WBS</Button>
                       <Button size="sm" variant="outline" onClick={() => {
                         if (!detail?.project.projectId) return;
                         const treePayload = detail.wbsTasks.map((item, index) => ({ taskId: item.taskId, parentId: item.parentId, sortOrder: index + 1 }));
@@ -902,7 +904,7 @@ export default function ProjectManagementPage() {
                           toast.success('WBS 树顺序已重排');
                           await refreshDetail(detail.project.projectId!);
                         }).catch((error) => toast.error(getErrorMessage(error, 'WBS 树保存失败')));
-                      }}><ArrowRightLeft size={14} className="mr-1.5" />保存当前顺序</Button>
+                      }} disabled={!hasPermission('office:project:wbs')}><ArrowRightLeft size={14} className="mr-1.5" />保存当前顺序</Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -929,13 +931,13 @@ export default function ProjectManagementPage() {
                           </div>
                           {item.riskId ? (
                             <TableRowActions actions={[
-                              { label: '编辑风险', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'risk', item }), semantic: 'edit', isPrimary: true },
-                              { label: '删除风险', icon: <Trash2 size={14} />, onClick: () => void removeChild('risk', item.riskId!), semantic: 'delete', danger: true },
+                              { label: '编辑风险', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'risk', item }), semantic: 'edit', isPrimary: true, permissionKey: 'office:project:edit' },
+                              { label: '删除风险', icon: <Trash2 size={14} />, onClick: () => void removeChild('risk', item.riskId!), semantic: 'delete', danger: true, permissionKey: 'office:project:edit' },
                             ]} />
                           ) : null}
                         </div>
                       )) : <div className="text-sm text-slate-500">暂无项目风险</div>}
-                      <Button size="sm" onClick={() => openChildDialog({ type: 'risk' })}><Plus size={14} className="mr-1.5" />新增风险</Button>
+                      <Button size="sm" onClick={() => openChildDialog({ type: 'risk' })} disabled={!hasPermission('office:project:edit')}><Plus size={14} className="mr-1.5" />新增风险</Button>
                     </CardContent>
                   </Card>
 
@@ -949,12 +951,12 @@ export default function ProjectManagementPage() {
                             <div className="text-xs text-slate-500">{item.dependencyType || 'FS'} / 延迟 {item.lagDays || 0} 天</div>
                           </div>
                           <TableRowActions actions={[
-                            { label: '编辑依赖', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'dependency', item }), semantic: 'edit', isPrimary: true },
-                            { label: '删除依赖', icon: <Trash2 size={14} />, onClick: () => void removeChild('dependency', item.dependencyId!), semantic: 'delete', danger: true },
+                            { label: '编辑依赖', icon: <Edit size={14} />, onClick: () => openChildDialog({ type: 'dependency', item }), semantic: 'edit', isPrimary: true, permissionKey: 'office:project:edit' },
+                            { label: '删除依赖', icon: <Trash2 size={14} />, onClick: () => void removeChild('dependency', item.dependencyId!), semantic: 'delete', danger: true, permissionKey: 'office:project:edit' },
                           ]} />
                         </div>
                       )) : <div className="text-sm text-slate-500">暂无项目依赖</div>}
-                      <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'dependency' })}><Link2 size={14} className="mr-1.5" />新增依赖</Button>
+                      <Button size="sm" variant="outline" onClick={() => openChildDialog({ type: 'dependency' })} disabled={!hasPermission('office:project:edit')}><Link2 size={14} className="mr-1.5" />新增依赖</Button>
                     </CardContent>
                   </Card>
                 </div>

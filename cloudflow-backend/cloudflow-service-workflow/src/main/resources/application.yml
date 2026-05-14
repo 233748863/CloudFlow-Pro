@@ -19,19 +19,19 @@ spring:
       - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
     nacos:
-      server-addr: ${NACOS_SERVER:192.168.1.173:8848}
-      username: nacos
-      password: nacos
+      server-addr: ${NACOS_SERVER}
+      username: ${NACOS_USERNAME}
+      password: ${NACOS_PASSWORD}
       config:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
         file-extension: yaml
       discovery:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true}
-    username: ${DB_USERNAME:root}
-    password: ${DB_PASSWORD:Juwangkeji@2025}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     # HikariCP 连接池配置
     hikari:
       pool-name: CloudFlowHikariCP
@@ -47,9 +47,9 @@ spring:
       register-mbeans: true
   data:
     redis:
-      host: ${REDIS_HOST:192.168.1.173}
-      port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:Juwangkeji@2025}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
       database: ${REDIS_DB:0}
       timeout: 5000
       lettuce:
@@ -65,11 +65,12 @@ mybatis-plus:
   type-aliases-package: com.cloudflow.workflow.domain
   configuration:
     map-underscore-to-camel-case: true
-    # 生产环境使用 SLF4J 日志，开发环境可切换为 StdOutImpl
-    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
 
 # Sa-Token 本地后备配置（Nacos cloudflow-common.yaml 不可用时生效）
 cloudflow:
+  encrypt:
+    enabled: false
   security:
     token:
       expiration: 1440
@@ -77,6 +78,7 @@ cloudflow:
   workflow:
     script:
       enabled: false
+      timeout-ms: 5000
 
 sa-token:
   token-name: Authorization
@@ -120,5 +122,5 @@ info:
 logging:
   level:
     root: INFO
-    com.cloudflow: INFO
-    com.cloudflow.workflow.mapper: ${SQL_LOG_LEVEL:WARN}
+    com.cloudflow: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.workflow.mapper: ${LOG_LEVEL_MAPPER:WARN}

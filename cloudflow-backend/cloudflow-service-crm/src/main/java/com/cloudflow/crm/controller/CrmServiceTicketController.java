@@ -7,12 +7,15 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmServiceTicket;
 import com.cloudflow.crm.service.ICrmServiceTicketService;
 import lombok.RequiredArgsConstructor;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/ticket")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class CrmServiceTicketController {
 
@@ -20,11 +23,13 @@ public class CrmServiceTicketController {
     private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
+    @SaCheckPermission("crm:ticket:list")
     public R<PageResult<CrmServiceTicket>> list(CrmServiceTicket query, PageQuery pageQuery) {
         return R.ok(ticketService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("crm:ticket:list")
     public R<CrmServiceTicket> getInfo(@PathVariable("id") Long id) {
         CrmServiceTicket ticket = ticketService.getById(id);
         return ticket == null || !"0".equals(ticket.getDelFlag()) ? R.fail("工单不存在") : R.ok(ticket);
@@ -32,6 +37,7 @@ public class CrmServiceTicketController {
 
     @SysLog("新增CRM工单")
     @PostMapping
+    @SaCheckPermission("crm:ticket:add")
     public R<Void> add(@RequestBody CrmServiceTicket ticket) {
         try {
             return R.result(ticketService.createTicket(ticket));
@@ -42,6 +48,7 @@ public class CrmServiceTicketController {
 
     @SysLog("修改CRM工单")
     @PutMapping
+    @SaCheckPermission("crm:ticket:edit")
     public R<Void> edit(@RequestBody CrmServiceTicket ticket) {
         try {
             return R.result(ticketService.updateTicket(ticket));
@@ -52,6 +59,7 @@ public class CrmServiceTicketController {
 
     @SysLog("解决CRM工单")
     @PostMapping("/{id}/resolve")
+    @SaCheckPermission("crm:ticket:resolve")
     public R<Void> resolve(@PathVariable("id") Long id, @RequestBody(required = false) CrmServiceTicket payload) {
         try {
             return R.result(ticketService.resolveTicket(id, payload != null ? payload.getSolution() : null));
@@ -62,6 +70,7 @@ public class CrmServiceTicketController {
 
     @SysLog("关闭CRM工单")
     @PostMapping("/{id}/close")
+    @SaCheckPermission("crm:ticket:close")
     public R<Void> close(@PathVariable("id") Long id) {
         try {
             return R.result(ticketService.closeTicket(id));
@@ -72,6 +81,7 @@ public class CrmServiceTicketController {
 
     @SysLog("删除CRM工单")
     @DeleteMapping("/{ids}")
+    @SaCheckPermission("crm:ticket:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
             CrmServiceTicket persisted = ticketService.getById(id);

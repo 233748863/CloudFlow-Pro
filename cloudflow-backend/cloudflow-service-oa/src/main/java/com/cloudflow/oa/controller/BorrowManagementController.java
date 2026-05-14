@@ -1,7 +1,7 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.dto.OaBorrowManagementStatsDTO;
 import com.cloudflow.oa.domain.dto.OaBorrowManagementSummaryDTO;
@@ -17,17 +17,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/borrow-management")
 @RequiredArgsConstructor
-@SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+@SaCheckLogin
 public class BorrowManagementController {
 
     private final IOaBorrowManagementService borrowManagementService;
 
     @GetMapping("/summary")
+    @SaCheckPermission("admin:borrow:list")
     public R<OaBorrowManagementSummaryDTO> summary() {
         return R.ok(borrowManagementService.getSummary());
     }
 
     @GetMapping("/stats")
+    @SaCheckPermission("admin:borrow:list")
     public R<OaBorrowManagementStatsDTO> stats() {
         return R.ok(borrowManagementService.getStats());
     }

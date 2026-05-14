@@ -1,6 +1,8 @@
 package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.cloudflow.common.core.domain.R;
@@ -14,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/knowledge")
+@SaCheckLogin
 public class KnowledgeController {
 
     private final IKnowledgeService knowledgeService;
@@ -23,6 +26,7 @@ public class KnowledgeController {
     }
 
     @GetMapping("/my-list")
+    @SaCheckPermission("office:knowledge:list")
     public R<List<KnowledgeDocument>> getMyList(@RequestParam(required = false) String keyword,
                                                 @RequestParam(required = false) String category,
                                                 @RequestParam(required = false) Boolean unreadOnly) {
@@ -30,6 +34,7 @@ public class KnowledgeController {
     }
 
     @GetMapping("/my-submissions")
+    @SaCheckPermission("office:knowledge:list")
     public R<Page<KnowledgeDocument>> getMySubmissions(@RequestParam(required = false) String keyword,
                                                        @RequestParam(required = false) String category,
                                                        @RequestParam(required = false) String status,
@@ -39,7 +44,7 @@ public class KnowledgeController {
     }
 
     @GetMapping("/manage-list")
-    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
+    @SaCheckPermission("office:knowledge:manage")
     public R<Page<KnowledgeDocument>> getManageList(@RequestParam(required = false) String keyword,
                                                     @RequestParam(required = false) String category,
                                                     @RequestParam(required = false) String status,
@@ -49,6 +54,7 @@ public class KnowledgeController {
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("office:knowledge:list")
     public R<KnowledgeDocument> getInfo(@PathVariable("id") Long id) {
         try {
             return R.ok(knowledgeService.getReadableDetail(id));
@@ -59,6 +65,7 @@ public class KnowledgeController {
 
     @SysLog("新增知识库文档")
     @PostMapping
+    @SaCheckPermission("office:knowledge:add")
     public R<Void> add(@RequestBody KnowledgeDocument document) {
         try {
             return knowledgeService.createDraft(document) ? R.ok() : R.fail("创建失败");
@@ -69,6 +76,7 @@ public class KnowledgeController {
 
     @SysLog("修改知识库文档")
     @PutMapping
+    @SaCheckPermission("office:knowledge:edit")
     public R<Void> edit(@RequestBody KnowledgeDocument document) {
         try {
             return knowledgeService.updateDraft(document) ? R.ok() : R.fail("更新失败");
@@ -79,6 +87,7 @@ public class KnowledgeController {
 
     @SysLog("删除知识库文档")
     @DeleteMapping("/{id}")
+    @SaCheckPermission("office:knowledge:remove")
     public R<Void> remove(@PathVariable("id") Long id) {
         try {
             return knowledgeService.removeDocument(id) ? R.ok() : R.fail("删除失败");
@@ -89,6 +98,7 @@ public class KnowledgeController {
 
     @SysLog("提交知识库发布审批")
     @PostMapping("/submit/{id}")
+    @SaCheckPermission("office:knowledge:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
         try {
             return knowledgeService.submit(id) ? R.ok() : R.fail("提交失败");
@@ -99,6 +109,7 @@ public class KnowledgeController {
 
     @SysLog("撤回知识库发布审批")
     @PostMapping("/recall/{id}")
+    @SaCheckPermission("office:knowledge:recall")
     public R<Void> recall(@PathVariable("id") Long id) {
         try {
             return knowledgeService.recall(id) ? R.ok() : R.fail("撤回失败");
@@ -108,6 +119,7 @@ public class KnowledgeController {
     }
 
     @PostMapping("/read/{id}")
+    @SaCheckPermission("office:knowledge:list")
     public R<Boolean> read(@PathVariable("id") Long id) {
         try {
             return R.ok(knowledgeService.read(id));
@@ -117,7 +129,7 @@ public class KnowledgeController {
     }
 
     @GetMapping("/read-stats/{id}")
-    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
+    @SaCheckPermission("office:knowledge:manage")
     public R<DynamicMapVO> getReadStats(@PathVariable("id") Long id) {
         try {
             return R.ok(DynamicMapVO.from(knowledgeService.getReadStats(id)));

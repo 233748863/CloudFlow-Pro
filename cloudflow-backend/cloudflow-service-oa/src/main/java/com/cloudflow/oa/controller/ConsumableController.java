@@ -2,6 +2,8 @@ package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.common.core.context.UserContext;
@@ -11,8 +13,6 @@ import com.cloudflow.oa.domain.dto.ConsumableStockDTO;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.service.IConsumableService;
 import lombok.RequiredArgsConstructor;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,6 +25,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/consumable")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class ConsumableController {
 
     private final IConsumableService consumableService;
@@ -34,6 +35,7 @@ public class ConsumableController {
      * 分页查询耗材列表
      */
     @GetMapping("/list")
+    @SaCheckPermission("admin:consumable:list")
     public R list(SysConsumable query,
                   @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
                   @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
@@ -45,6 +47,7 @@ public class ConsumableController {
      * 获取耗材详情
      */
     @GetMapping("/{id}")
+    @SaCheckPermission("admin:consumable:list")
     public R getInfo(@PathVariable("id") Long id) {
         SysConsumable consumable = consumableService.getById(id);
         if (consumable == null) {
@@ -58,7 +61,7 @@ public class ConsumableController {
      */
     @SysLog("新增耗材")
     @PostMapping
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:consumable:add")
     public R add(@RequestBody SysConsumable consumable) {
         consumable.setConsumableId(null);
         consumable.setQuantity(0);
@@ -75,7 +78,7 @@ public class ConsumableController {
      */
     @SysLog("修改耗材")
     @PutMapping
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:consumable:edit")
     public R edit(@RequestBody SysConsumable consumable) {
         if (consumable.getConsumableId() == null) {
             return R.fail("耗材ID不能为空");
@@ -101,7 +104,7 @@ public class ConsumableController {
      */
     @SysLog("删除耗材")
     @DeleteMapping("/{ids}")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:consumable:remove")
     public R remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
             SysConsumable existing = consumableService.getById(id);
@@ -129,6 +132,7 @@ public class ConsumableController {
      * 获取耗材库存流水。
      */
     @GetMapping("/{id}/logs")
+    @SaCheckPermission("admin:consumable:list")
     public R logs(@PathVariable("id") Long id) {
         LambdaQueryWrapper<SysAssetLog> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysAssetLog::getRefId, id)
@@ -141,6 +145,7 @@ public class ConsumableController {
      * 获取库存不足的耗材列表
      */
     @GetMapping("/low-stock")
+    @SaCheckPermission("admin:consumable:list")
     public R lowStock() {
         return R.ok(consumableService.getLowStockList());
     }
@@ -149,6 +154,7 @@ public class ConsumableController {
      * 获取补货建议。
      */
     @GetMapping("/replenishment-suggestions")
+    @SaCheckPermission("admin:consumable:list")
     public R replenishmentSuggestions() {
         return R.ok(consumableService.getReplenishmentSuggestions());
     }
@@ -158,7 +164,7 @@ public class ConsumableController {
      */
     @SysLog("耗材入库")
     @PostMapping("/{id}/add-stock")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:consumable:add-stock")
     public R addStock(@PathVariable("id") Long id, @RequestBody ConsumableStockDTO dto) {
         Integer quantity = dto.getQuantity();
         if (quantity == null || quantity <= 0) {
@@ -176,7 +182,7 @@ public class ConsumableController {
      */
     @SysLog("耗材出库")
     @PostMapping("/{id}/reduce-stock")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:consumable:reduce-stock")
     public R reduceStock(@PathVariable("id") Long id, @RequestBody ConsumableStockDTO dto) {
         Integer quantity = dto.getQuantity();
         if (quantity == null || quantity <= 0) {

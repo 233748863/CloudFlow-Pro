@@ -15,6 +15,8 @@ public class ScriptExecutionPolicy {
 
     private static final String SCRIPT_DISABLED_MESSAGE =
             "脚本节点进程内执行已禁用，请改用 API 类型或启用隔离脚本执行器";
+    private static final String SCRIPT_TIMEOUT_MESSAGE =
+            "脚本节点执行超时，请缩短脚本逻辑或改用 API 类型";
 
     private final WorkflowProperties workflowProperties;
     private final ObjectMapper objectMapper;
@@ -41,6 +43,10 @@ public class ScriptExecutionPolicy {
         if (isInProcessScriptType(scriptType) && !isInProcessScriptEnabled()) {
             throw new WorkflowException("SCRIPT_DISABLED", SCRIPT_DISABLED_MESSAGE);
         }
+    }
+
+    public WorkflowException buildTimeoutException(Throwable cause) {
+        return new WorkflowException("SCRIPT_TIMEOUT", SCRIPT_TIMEOUT_MESSAGE, cause);
     }
 
     public void assertModelDeployable(String modelJson) {

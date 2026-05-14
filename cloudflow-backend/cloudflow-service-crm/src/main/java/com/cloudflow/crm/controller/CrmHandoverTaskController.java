@@ -4,6 +4,8 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.crm.domain.CrmHandoverTask;
 import com.cloudflow.crm.service.CrmHandoverTaskService;
 import lombok.RequiredArgsConstructor;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -20,17 +22,20 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/handover-task")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class CrmHandoverTaskController {
 
     private final CrmHandoverTaskService handoverTaskService;
 
     @GetMapping("/pending")
+    @SaCheckPermission("crm:handover-task:list")
     public R<List<CrmHandoverTask>> pending(@RequestParam(value = "fromOwnerId", required = false) Long fromOwnerId) {
         return R.ok(handoverTaskService.listPending(fromOwnerId));
     }
 
     @PostMapping("/{id}/reassign")
+    @SaCheckPermission("crm:handover-task:reassign")
     public R<Void> reassign(@PathVariable("id") Long id, @RequestBody Map<String, Object> body) {
         try {
             Long toOwnerId = body.get("toOwnerId") == null ? null : Long.valueOf(String.valueOf(body.get("toOwnerId")));
@@ -44,6 +49,7 @@ public class CrmHandoverTaskController {
     }
 
     @PostMapping("/{id}/close")
+    @SaCheckPermission("crm:handover-task:close")
     public R<Void> close(@PathVariable("id") Long id, @RequestBody(required = false) Map<String, Object> body) {
         String remark = body == null || body.get("remark") == null ? null : String.valueOf(body.get("remark"));
         handoverTaskService.close(id, remark);

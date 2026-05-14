@@ -21,6 +21,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
+import { useAuth } from '@/context/AuthContext';
 import {
   Button,
   DatePicker,
@@ -242,6 +243,7 @@ const WarningTags: React.FC<{ value?: string; compact?: boolean; maxVisible?: nu
 };
 
 const VehicleList: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [vehicles, setVehicles] = useState<SysVehicle[]>([]);
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<VehicleStats | null>(null);
@@ -435,7 +437,7 @@ const VehicleList: React.FC = () => {
                 <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                 刷新
               </Button>
-              <Button size="sm" onClick={handleAdd}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:vehicle:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增车辆
               </Button>
@@ -648,13 +650,14 @@ const VehicleList: React.FC = () => {
                               buttonLayout="compact"
                               actions={[
                                 { label: '详情', icon: <Eye size={14} />, onClick: () => handleViewDetail(vehicle), tone: 'neutral', isPrimary: true },
-                                { label: '编辑', icon: <Edit2 size={14} />, onClick: () => handleEdit(vehicle), tone: 'neutral', menuOnly: true },
+                                { label: '编辑', icon: <Edit2 size={14} />, onClick: () => handleEdit(vehicle), tone: 'neutral', menuOnly: true, permissionKey: 'admin:vehicle:edit' },
                                 {
                                   label: '删除',
                                   icon: <Trash2 size={14} />,
                                   onClick: () => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。'),
                                   tone: 'neutral',
                                   menuOnly: true,
+                                  permissionKey: 'admin:vehicle:remove',
                                 },
                               ]}
                             />

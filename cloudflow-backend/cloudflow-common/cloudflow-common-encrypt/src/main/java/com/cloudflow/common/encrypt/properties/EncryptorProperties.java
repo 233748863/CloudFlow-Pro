@@ -1,5 +1,7 @@
 package com.cloudflow.common.encrypt.properties;
 
+import cn.hutool.core.util.StrUtil;
+import com.cloudflow.common.core.exception.ServiceException;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
@@ -20,7 +22,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class EncryptorProperties {
 
     /** 是否启用加密功能 */
-    private boolean enabled = true;
+    private boolean enabled = false;
 
     /** AES 加密密钥（16/24/32 字节） */
     private String aesKey = "";
@@ -50,5 +52,14 @@ public class EncryptorProperties {
 
     public void setSm4Key(String sm4Key) {
         this.sm4Key = sm4Key;
+    }
+
+    public void validate() {
+        if (!enabled) {
+            return;
+        }
+        if (StrUtil.isBlank(aesKey) && StrUtil.isBlank(sm4Key)) {
+            throw new ServiceException("cloudflow.encrypt 已启用，但未配置 aes-key 或 sm4-key");
+        }
     }
 }

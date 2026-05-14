@@ -12,23 +12,23 @@ spring:
       - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
     nacos:
-      server-addr: ${NACOS_SERVER:192.168.1.173:8848}
-      username: nacos
-      password: nacos
+      server-addr: ${NACOS_SERVER}
+      username: ${NACOS_USERNAME}
+      password: ${NACOS_PASSWORD}
       config:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
         file-extension: yaml
       discovery:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 20MB
   data:
     redis:
-      host: 192.168.1.173
-      port: 6379
-      password: ${REDIS_PASSWORD:}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
       database: 0
 
 # Sa-Token 安全配置（本地后备，Nacos 配置优先）
@@ -76,7 +76,13 @@ mybatis-plus:
   type-aliases-package: com.cloudflow.auth.domain
   configuration:
     map-underscore-to-camel-case: true
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
+
+logging:
+  level:
+    root: INFO
+    com.cloudflow.auth: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.auth.mapper: ${LOG_LEVEL_MAPPER:WARN}
 
 management:
   endpoints:

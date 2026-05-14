@@ -4,6 +4,8 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.crm.domain.CrmApproval;
 import com.cloudflow.crm.service.CrmApprovalService;
 import lombok.RequiredArgsConstructor;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -19,12 +21,14 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/approval")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class CrmApprovalController {
 
     private final CrmApprovalService approvalService;
 
     @PostMapping("/customer-claim")
+    @SaCheckPermission("crm:approval:customer-claim")
     public R<Long> submitCustomerClaim(@RequestBody Map<String, Object> body) {
         try {
             Long customerId = toLong(body.get("customerId"));
@@ -37,6 +41,7 @@ public class CrmApprovalController {
     }
 
     @PostMapping("/customer-level")
+    @SaCheckPermission("crm:approval:customer-level")
     public R<Long> submitCustomerLevelChange(@RequestBody Map<String, Object> body) {
         try {
             Long customerId = toLong(body.get("customerId"));
@@ -50,6 +55,7 @@ public class CrmApprovalController {
     }
 
     @PostMapping("/opportunity-downgrade")
+    @SaCheckPermission("crm:approval:opportunity-downgrade")
     public R<Long> submitOpportunityDowngrade(@RequestBody Map<String, Object> body) {
         try {
             Long opportunityId = toLong(body.get("opportunityId"));
@@ -63,6 +69,7 @@ public class CrmApprovalController {
     }
 
     @PostMapping("/refund")
+    @SaCheckPermission("crm:approval:refund")
     public R<Long> submitRefund(@RequestBody Map<String, Object> body) {
         try {
             Long receivableId = toLong(body.get("receivableId"));
@@ -75,6 +82,7 @@ public class CrmApprovalController {
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("crm:approval:query")
     public R<CrmApproval> getInfo(@PathVariable("id") Long id) {
         return R.ok(approvalService.getById(id));
     }

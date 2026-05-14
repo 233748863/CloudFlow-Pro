@@ -8,6 +8,7 @@ import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks
 import FileUpload from '@/components/FileUpload';
 import { contractApi, OaRiskAlert } from '@/services/api/contractRisk';
 import { borrowManagementApi, BorrowManagementStats, licenseBorrowApi, OaHandoverLog, OaLicenseBorrow, OaReminderLog, OaSealApplication, sealApplicationApi } from '@/services/api/sealLicense';
+import { useAuth } from '@/context/AuthContext';
 import { PageResult } from '@/types';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -96,6 +97,7 @@ const metricValueClassName = 'text-xl leading-6';
 const metricMetaClassName = 'mt-0.5 truncate text-xs';
 
 export const BorrowManagementPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [rows, setRows] = useState<UnifiedBorrow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -352,9 +354,9 @@ export const BorrowManagementPage: React.FC = () => {
                           align="end"
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
-                            { label: '借出', icon: <CheckCircle2 size={14} />, onClick: () => openAction(item, 'borrow'), tone: 'success', hidden: item.status !== 'APPROVED' },
-                            { label: '归还', icon: <RotateCcw size={14} />, onClick: () => openAction(item, 'return'), tone: 'success', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE' },
-                            { label: '催还', icon: <Bell size={14} />, onClick: () => openAction(item, 'remind'), tone: 'warning', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE' },
+                            { label: '借出', icon: <CheckCircle2 size={14} />, onClick: () => openAction(item, 'borrow'), tone: 'success', hidden: item.status !== 'APPROVED', permissionKey: 'admin:borrow:confirm' },
+                            { label: '归还', icon: <RotateCcw size={14} />, onClick: () => openAction(item, 'return'), tone: 'success', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE', permissionKey: 'admin:borrow:return' },
+                            { label: '催还', icon: <Bell size={14} />, onClick: () => openAction(item, 'remind'), tone: 'warning', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE', permissionKey: 'admin:borrow:remind' },
                           ]}
                         />
                       </td>
@@ -378,7 +380,7 @@ export const BorrowManagementPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => setActionTarget(null)}>取消</Button>
-            <Button onClick={() => void submitAction()}>{actionTitle}</Button>
+            <Button onClick={() => void submitAction()} disabled={!hasPermission(actionType === 'borrow' ? 'admin:borrow:confirm' : actionType === 'return' ? 'admin:borrow:return' : 'admin:borrow:remind')}>{actionTitle}</Button>
           </>
         )}
       >

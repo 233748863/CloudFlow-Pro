@@ -23,8 +23,6 @@ import com.cloudflow.oa.service.IVehicleViolationService;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -35,6 +33,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/vehicle")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class VehicleController {
 
@@ -48,30 +47,35 @@ public class VehicleController {
 
     /** 车辆列表（分页） */
     @GetMapping("/list")
+    @SaCheckPermission("admin:vehicle:list")
     public R<PageResult<SysVehicle>> list(SysVehicle vehicle, PageQuery pageQuery) {
         return R.ok(vehicleService.queryPage(vehicle, pageQuery));
     }
 
     /** 可用车辆列表 */
     @GetMapping("/available")
+    @SaCheckPermission("admin:vehicle:list")
     public R<List<SysVehicle>> listAvailable() {
         return R.ok(vehicleService.listAvailable());
     }
 
     /** 车辆详情 */
     @GetMapping("/{id}")
+    @SaCheckPermission("admin:vehicle:list")
     public R<SysVehicle> getInfo(@PathVariable("id") Long id) {
         return R.ok(vehicleService.getById(id));
     }
 
     /** 车辆运营详情 */
     @GetMapping("/{id}/profile")
+    @SaCheckPermission("admin:vehicle:list")
     public R<VehicleProfileVO> getProfile(@PathVariable("id") Long id) {
         return R.ok(vehicleService.getVehicleProfile(id));
     }
 
     /** 车辆排班 */
     @GetMapping("/schedule")
+    @SaCheckPermission("admin:vehicle:list")
     public R<List<VehicleScheduleItemVO>> getSchedule(@RequestParam(value = "vehicleId", required = false) Long vehicleId,
                                                       @RequestParam(value = "startDate", required = false) LocalDateTime startDate,
                                                       @RequestParam(value = "endDate", required = false) LocalDateTime endDate) {
@@ -81,7 +85,7 @@ public class VehicleController {
     /** 新增车辆 - 仅管理员 */
     @SysLog("新增车辆")
     @PostMapping
-    @SaCheckRole("admin")
+    @SaCheckPermission("admin:vehicle:add")
     public R<Void> add(@RequestBody SysVehicle vehicle) {
         return R.result(vehicleService.save(vehicle));
     }
@@ -89,7 +93,7 @@ public class VehicleController {
     /** 编辑车辆 - 仅管理员 */
     @SysLog("编辑车辆")
     @PutMapping
-    @SaCheckRole("admin")
+    @SaCheckPermission("admin:vehicle:edit")
     public R<Void> edit(@RequestBody SysVehicle vehicle) {
         return R.result(vehicleService.updateById(vehicle));
     }
@@ -97,13 +101,14 @@ public class VehicleController {
     /** 删除车辆 - 仅管理员 */
     @SysLog("删除车辆")
     @DeleteMapping("/{ids}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("admin:vehicle:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         return R.result(vehicleService.removeBatchByIds(ids));
     }
 
     /** 车辆统计概览（各状态数量） */
     @GetMapping("/stats")
+    @SaCheckPermission("admin:vehicle:list")
     public R<DynamicMapVO> getVehicleStats() {
         return R.ok(DynamicMapVO.from(vehicleService.getVehicleStats()));
     }
@@ -112,6 +117,7 @@ public class VehicleController {
 
     /** 用车记录列表（分页） */
     @GetMapping("/usage/list")
+    @SaCheckPermission("admin:vehicle:usage")
     public R<PageResult<VehicleUsage>> listUsage(VehicleUsage usage, PageQuery pageQuery) {
         return R.ok(usageService.queryPage(usage, pageQuery));
     }
@@ -119,12 +125,14 @@ public class VehicleController {
     /** 提交用车申请 */
     @SysLog("提交用车申请")
     @PostMapping("/usage")
+    @SaCheckPermission("admin:vehicle:booking")
     public R<Void> submitUsage(@RequestBody VehicleUsage usage) {
         return usageService.submitUsage(usage);
     }
 
     /** 用车记录详情 */
     @GetMapping("/usage/{id}")
+    @SaCheckPermission("admin:vehicle:usage")
     public R<VehicleUsage> getUsageInfo(@PathVariable("id") Long id) {
         return R.ok(usageService.getUsageDetail(id));
     }
@@ -132,7 +140,7 @@ public class VehicleController {
     /** 审批用车申请 - 仅管理员/经理 */
     @SysLog("审批用车申请")
     @PutMapping("/usage/{id}/approve")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:vehicle:approve")
     public R<Void> approveUsage(@PathVariable("id") Long id, @RequestBody VehicleUsageApprovalDTO dto) {
         String remark = dto.getRemark() == null ? "" : dto.getRemark();
         return usageService.approveUsage(id, Boolean.TRUE.equals(dto.getApproved()), remark);
@@ -141,7 +149,7 @@ public class VehicleController {
     /** 派车 */
     @SysLog("派车")
     @PutMapping("/usage/{id}/dispatch")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("admin:vehicle:dispatch")
     public R<Void> dispatchUsage(@PathVariable("id") Long id, @RequestBody VehicleDispatchDTO dto) {
         return usageService.dispatchVehicle(id, dto);
     }
@@ -149,6 +157,7 @@ public class VehicleController {
     /** 归还车辆（完成用车） */
     @SysLog("归还车辆")
     @PutMapping("/usage/{id}/return")
+    @SaCheckPermission("admin:vehicle:return")
     public R<Void> returnVehicle(@PathVariable("id") Long id, @RequestBody VehicleReturnDTO dto) {
         String remark = dto.getRemark() == null ? "" : dto.getRemark();
         return usageService.returnVehicle(id, dto.getEndMileage(), remark, dto.getReturnLocation());
@@ -157,6 +166,7 @@ public class VehicleController {
     /** 取消用车申请 */
     @SysLog("取消用车申请")
     @PutMapping("/usage/{id}/cancel")
+    @SaCheckPermission("admin:vehicle:cancel")
     public R<Void> cancelUsage(@PathVariable("id") Long id) {
         return usageService.cancelUsage(id);
     }
@@ -165,6 +175,7 @@ public class VehicleController {
 
     /** 费用列表（分页） */
     @GetMapping("/expense/list")
+    @SaCheckPermission("admin:vehicle:usage")
     public R<PageResult<VehicleExpense>> listExpense(VehicleExpense expense,
                                                      PageQuery pageQuery,
                                                      @RequestParam(value = "startDate", required = false) String startDate,
@@ -175,12 +186,14 @@ public class VehicleController {
     /** 新增费用 */
     @SysLog("新增车辆费用")
     @PostMapping("/expense")
+    @SaCheckPermission("admin:vehicle:expense:add")
     public R<Void> addExpense(@RequestBody VehicleExpense expense) {
         return R.result(expenseService.save(expense));
     }
 
     /** 费用统计 */
     @GetMapping("/expense/stats")
+    @SaCheckPermission("admin:vehicle:usage")
     public R<DynamicMapVO> getExpenseStats(@RequestParam(value = "startDate", required = false) String startDate,
                                            @RequestParam(value = "endDate", required = false) String endDate) {
         return R.ok(DynamicMapVO.from(expenseService.getExpenseStats(startDate, endDate)));
@@ -188,6 +201,7 @@ public class VehicleController {
 
     /** 维保列表 */
     @GetMapping("/maintenance/list")
+    @SaCheckPermission("admin:vehicle:list")
     public R<PageResult<VehicleMaintenance>> listMaintenance(VehicleMaintenance maintenance, PageQuery pageQuery) {
         return R.ok(maintenanceService.queryPage(maintenance, pageQuery));
     }
@@ -195,12 +209,14 @@ public class VehicleController {
     /** 新增维保记录 */
     @SysLog("新增车辆维保")
     @PostMapping("/maintenance")
+    @SaCheckPermission("admin:vehicle:maintenance:add")
     public R<Void> addMaintenance(@RequestBody VehicleMaintenance maintenance) {
         return R.result(maintenanceService.save(maintenance));
     }
 
     /** 违章列表 */
     @GetMapping("/violation/list")
+    @SaCheckPermission("admin:vehicle:list")
     public R<PageResult<VehicleViolation>> listViolation(VehicleViolation violation, PageQuery pageQuery) {
         return R.ok(violationService.queryPage(violation, pageQuery));
     }
@@ -208,6 +224,7 @@ public class VehicleController {
     /** 新增违章记录 */
     @SysLog("新增车辆违章")
     @PostMapping("/violation")
+    @SaCheckPermission("admin:vehicle:violation:add")
     public R<Void> addViolation(@RequestBody VehicleViolation violation) {
         return R.result(violationService.save(violation));
     }

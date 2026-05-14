@@ -564,33 +564,41 @@ const desktopRoutes = [
           {
             path: "/announcement",
             element: (
-              <Suspense fallback={<Loading />}>
-                <AnnouncementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:announcement"]}>
+                <Suspense fallback={<Loading />}>
+                  <AnnouncementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/announcement",
             element: (
-              <Suspense fallback={<Loading />}>
-                <AnnouncementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:announcement"]}>
+                <Suspense fallback={<Loading />}>
+                  <AnnouncementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/schedule",
             element: (
-              <Suspense fallback={<Loading />}>
-                <SchedulePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workspace:schedule"]}>
+                <Suspense fallback={<Loading />}>
+                  <SchedulePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/meeting-room",
             element: (
-              <Suspense fallback={<Loading />}>
-                <MeetingRoomPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:meeting"]}>
+                <Suspense fallback={<Loading />}>
+                  <MeetingRoomPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
@@ -744,9 +752,11 @@ const desktopRoutes = [
           {
             path: "/admin/asset",
             element: (
-              <Suspense fallback={<Loading />}>
-                <AssetList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:asset:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <AssetList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
@@ -756,217 +766,271 @@ const desktopRoutes = [
           {
             path: "/admin/vehicle/list",
             element: (
-              <Suspense fallback={<Loading />}>
-                <VehicleList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:vehicle:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <VehicleList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/vehicle/booking",
             element: (
-              <Suspense fallback={<Loading />}>
-                <VehicleBooking />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:vehicle:booking"]}>
+                <Suspense fallback={<Loading />}>
+                  <VehicleBooking />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/vehicle/usage",
             element: (
-              <Suspense fallback={<Loading />}>
-                <VehicleUsageList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:vehicle:usage"]}>
+                <Suspense fallback={<Loading />}>
+                  <VehicleUsageList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/expense/claim",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ExpenseClaimPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:expense:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ExpenseClaimPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/payment/request",
             element: (
-              <Suspense fallback={<Loading />}>
-                <PaymentRequestPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:payment:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <PaymentRequestPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/purchase-request",
             element: (
-              <Suspense fallback={<Loading />}>
-                <PurchaseRequestPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:purchase:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <PurchaseRequestPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/seal-application",
             element: (
-              <Suspense fallback={<Loading />}>
-                <SealApplicationPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:seal:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <SealApplicationPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/license-borrow",
             element: (
-              <Suspense fallback={<Loading />}>
-                <LicenseBorrowPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:license:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <LicenseBorrowPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/contracts",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ContractPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:contract:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ContractPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/project",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ProjectManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:project:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ProjectManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/project-wbs",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ProjectManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:project:wbs", "office:project:wbs"]}>
+                <Suspense fallback={<Loading />}>
+                  <ProjectManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/budget",
             element: (
-              <Suspense fallback={<Loading />}>
-                <BudgetManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:budget:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <BudgetManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/invoice",
             element: (
-              <Suspense fallback={<Loading />}>
-                <InvoiceManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:invoice:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <InvoiceManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:dashboard:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/customers",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:customer:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/opportunities",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:opportunity:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/quotes",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:quote:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/receivables",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:receivable:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/renewals",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:renewal:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/tickets",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:ticket:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/leads",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmLeadPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:lead:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmLeadPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/products",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmProductPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:product:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmProductPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/price-books",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmPriceBookPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:price-book:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmPriceBookPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/sales-targets",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmSalesTargetPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:sales-target:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmSalesTargetPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/customer-pool",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmCustomerPoolPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:customer-pool:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmCustomerPoolPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/assignment-rules",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmAssignmentRulePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:assignment-rule:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmAssignmentRulePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/crm/customer/:customerId",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CrmCustomerWorkspacePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["crm:customer:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CrmCustomerWorkspacePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
@@ -1010,89 +1074,111 @@ const desktopRoutes = [
           {
             path: "/office/business-trip",
             element: (
-              <Suspense fallback={<Loading />}>
-                <BusinessTripPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:trip:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <BusinessTripPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/contact",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ContactPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:contact:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ContactPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/office/knowledge",
             element: (
-              <Suspense fallback={<Loading />}>
-                <KnowledgePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["office:knowledge:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <KnowledgePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/visitor",
             element: (
-              <Suspense fallback={<Loading />}>
-                <VisitorPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:visitor:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <VisitorPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/duty-schedule",
             element: (
-              <Suspense fallback={<Loading />}>
-                <DutySchedulePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:duty:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <DutySchedulePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/supplier",
             element: (
-              <Suspense fallback={<Loading />}>
-                <SupplierPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:supplier:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <SupplierPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/consumable",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ConsumablePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:consumable:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ConsumablePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/seal",
             element: (
-              <Suspense fallback={<Loading />}>
-                <SealListPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:seal:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <SealListPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/license",
             element: (
-              <Suspense fallback={<Loading />}>
-                <LicenseListPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:license:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <LicenseListPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/borrow-management",
             element: (
-              <Suspense fallback={<Loading />}>
-                <BorrowManagementPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:borrow:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <BorrowManagementPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/admin/risk-alerts",
             element: (
-              <Suspense fallback={<Loading />}>
-                <RiskAlertPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["admin:risk:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <RiskAlertPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {

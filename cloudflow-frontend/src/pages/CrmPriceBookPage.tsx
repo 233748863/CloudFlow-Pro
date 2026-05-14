@@ -3,6 +3,7 @@ import { BookOpenText, BookPlus, RefreshCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -160,8 +161,8 @@ export default function CrmPriceBookPage() {
                           align="end"
                           overflowLabel="更多"
                           actions={[
-                            { label: '编辑价目表', icon: <BookOpenText size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true },
-                            { label: '删除价目表', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true },
+                            { label: '编辑价目表', icon: <BookOpenText size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:price-book:edit' },
+                            { label: '删除价目表', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:price-book:remove' },
                           ]}
                         />
                       </td>
@@ -205,11 +206,11 @@ export default function CrmPriceBookPage() {
           </div>
           <div>
             <Label>开始日期</Label>
-            <Input type="date" value={form.startDate || ''} onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))} />
+            <DatePicker className="h-11" type="date" value={form.startDate || ''} onChange={(e) => setForm((prev) => ({ ...prev, startDate: e.target.value }))} />
           </div>
           <div>
             <Label>结束日期</Label>
-            <Input type="date" value={form.endDate || ''} onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))} />
+            <DatePicker className="h-11" type="date" value={form.endDate || ''} onChange={(e) => setForm((prev) => ({ ...prev, endDate: e.target.value }))} />
           </div>
           <div>
             <Label>状态</Label>

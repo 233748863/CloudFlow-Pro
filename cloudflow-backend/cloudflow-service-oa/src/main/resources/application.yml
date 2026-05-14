@@ -10,14 +10,14 @@ spring:
       - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
     nacos:
-      server-addr: ${NACOS_SERVER:192.168.1.173:8848}
-      username: nacos
-      password: nacos
+      server-addr: ${NACOS_SERVER}
+      username: ${NACOS_USERNAME}
+      password: ${NACOS_PASSWORD}
       config:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
         file-extension: yaml
       discovery:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
         group: DEFAULT_GROUP
   # 本地数据源配置（Nacos不可用时的后备配置）
   datasource:
@@ -26,16 +26,16 @@ spring:
       strict: false
       datasource:
         master:
-          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
-          username: root
-          password: Juwangkeji@2025
+          url: ${DB_URL}
+          username: ${DB_USERNAME}
+          password: ${DB_PASSWORD}
           driver-class-name: com.mysql.cj.jdbc.Driver
   # 本地Redis配置（Nacos不可用时的后备配置）
   data:
     redis:
-      host: 192.168.1.173
-      port: 6379
-      password: Juwangkeji@2025
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
       database: 0
       timeout: 3000ms
 
@@ -46,7 +46,7 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
 
 # Sa-Token 本地后备配置（Nacos cloudflow-common.yaml 不可用时生效）
 cloudflow:
@@ -71,8 +71,9 @@ sa-token:
 # 日志配置
 logging:
   level:
-    com.cloudflow.oa: INFO
-    com.cloudflow.oa.mapper: DEBUG
+    root: INFO
+    com.cloudflow.oa: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.oa.mapper: ${LOG_LEVEL_MAPPER:WARN}
 
 management:
   endpoints:

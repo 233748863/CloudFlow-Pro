@@ -9,9 +9,9 @@ spring:
       strict: false
       datasource:
         master:
-          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-          username: root
-          password: Juwangkeji@2025
+          url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS:useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true}&serverTimezone=Asia/Shanghai}
+          username: ${DB_USERNAME:root}
+          password: ${DB_PASSWORD}
           driver-class-name: com.mysql.cj.jdbc.Driver
       hikari:
         pool-name: CRMHikariCP
@@ -23,9 +23,9 @@ spring:
 
   data:
     redis:
-      host: 192.168.1.173
-      port: 6379
-      password: Juwangkeji@2025
+      host: ${REDIS_HOST:192.168.1.173}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
       database: 0
       timeout: 3000ms
       lettuce:
@@ -66,5 +66,6 @@ hystrix:
 
 logging:
   level:
-    com.cloudflow.crm: DEBUG
-    com.cloudflow.crm.mapper: DEBUG
+    root: INFO
+    com.cloudflow.crm: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.crm.mapper: ${LOG_LEVEL_MAPPER:WARN}

@@ -189,9 +189,9 @@ export default function CrmLeadPage() {
                           overflowLabel="更多"
                           actions={[
                             { label: '查看客户工作台', icon: <Eye size={14} />, onClick: () => row.convertedCustomerId ? navigate(`/office/crm/customer/${row.convertedCustomerId}`) : toast.error('该线索尚未转客户'), semantic: 'view', hidden: !row.convertedCustomerId },
-                            { label: '编辑线索', icon: <UserRound size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true },
-                            { label: '转为客户', icon: <Target size={14} />, onClick: () => setConfirmConvert(row), hidden: !!row.convertedCustomerId || row.status === 'CONVERTED', semantic: 'submit' },
-                            { label: '删除线索', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true },
+                            { label: '编辑线索', icon: <UserRound size={14} />, onClick: () => { setEditing(row); setForm(row); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:lead:edit' },
+                            { label: '转为客户', icon: <Target size={14} />, onClick: () => setConfirmConvert(row), hidden: !!row.convertedCustomerId || row.status === 'CONVERTED', semantic: 'submit', permissionKey: 'crm:lead:convert' },
+                            { label: '删除线索', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:lead:remove' },
                           ]}
                         />
                       </td>

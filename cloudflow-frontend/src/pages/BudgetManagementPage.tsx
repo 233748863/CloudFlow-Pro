@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { budgetApi, BudgetAdjustment, BudgetExecutionSummary, BudgetLedger, BudgetLine, BudgetPlan, BudgetSubject } from '@/services/api/budget';
 import { projectApi, Project } from '@/services/api/project';
 import { getDeptTree, getUserList, SysDept, SysUser } from '@/services/api/auth';
+import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -113,6 +114,7 @@ const flattenDeptOptions = (items: SysDept[] = [], prefix = ''): Array<{ label: 
   });
 
 export default function BudgetManagementPage() {
+  const { hasPermission } = useAuth();
   const [plans, setPlans] = useState<BudgetPlan[]>([]);
   const [subjects, setSubjects] = useState<BudgetSubject[]>([]);
   const [adjustments, setAdjustments] = useState<BudgetAdjustment[]>([]);
@@ -310,13 +312,13 @@ export default function BudgetManagementPage() {
                 </div>
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'subject' })}>
+                <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'subject' })} disabled={!hasPermission('office:budget:subject')}>
                   <Plus size={14} className="mr-1.5" />新增科目
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'adjustment' })}>
+                <Button size="sm" variant="outline" onClick={() => void openDialog({ type: 'adjustment' })} disabled={!hasPermission('office:budget:adjustment')}>
                   <Plus size={14} className="mr-1.5" />新增调整
                 </Button>
-                <Button size="sm" onClick={() => void openDialog({ type: 'plan' })}>
+                <Button size="sm" onClick={() => void openDialog({ type: 'plan' })} disabled={!hasPermission('office:budget:add')}>
                   <Plus size={14} className="mr-1.5" />新增预算
                 </Button>
               </div>
@@ -351,8 +353,8 @@ export default function BudgetManagementPage() {
                           overflowLabel="更多"
                           actions={[
                             { label: '查看预算详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'plan-detail', item }), semantic: 'view', isPrimary: true },
-                            { label: '编辑预算', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'plan', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'edit', isPrimary: true },
-                            { label: '提交预算', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'plan-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit' },
+                            { label: '编辑预算', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'plan', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'edit', isPrimary: true, permissionKey: 'office:budget:edit' },
+                            { label: '提交预算', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'plan-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit', permissionKey: 'office:budget:submit' },
                           ]}
                         />
                       </td>
@@ -384,7 +386,7 @@ export default function BudgetManagementPage() {
                         <TableRowActions
                           align="end"
                           actions={[
-                            { label: '编辑科目', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'subject', item }), semantic: 'edit', isPrimary: true },
+                            { label: '编辑科目', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'subject', item }), semantic: 'edit', isPrimary: true, permissionKey: 'office:budget:subject' },
                           ]}
                         />
                       </td>
@@ -416,7 +418,7 @@ export default function BudgetManagementPage() {
                           overflowLabel="更多"
                           actions={[
                             { label: '查看调整详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'adjustment-detail', item }), semantic: 'view', isPrimary: true },
-                            { label: '提交调整', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'adjustment-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit' },
+                            { label: '提交调整', icon: <Send size={14} />, onClick: () => setConfirm({ type: 'adjustment-submit', item }), hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED', semantic: 'submit', permissionKey: 'office:budget:adjustment' },
                           ]}
                         />
                       </td>

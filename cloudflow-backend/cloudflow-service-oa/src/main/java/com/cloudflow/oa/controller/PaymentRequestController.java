@@ -10,6 +10,8 @@ import com.cloudflow.oa.domain.export.PaymentRequestExportVo;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IPaymentRequestService;
 import jakarta.servlet.http.HttpServletResponse;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +25,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/payment/request")
+@SaCheckLogin
 public class PaymentRequestController {
 
     @Autowired
@@ -32,6 +35,7 @@ public class PaymentRequestController {
      * 分页查询付款申请列表
      */
     @GetMapping("/list")
+    @SaCheckPermission("office:payment:list")
     public R<Page<BizPaymentRequest>> list(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
@@ -46,6 +50,7 @@ public class PaymentRequestController {
      */
     @SysLog("导出付款申请")
     @GetMapping("/export")
+    @SaCheckPermission("office:payment:list")
     public void export(@RequestParam(required = false) String status,
                        @RequestParam(required = false) String paymentType,
                        @RequestParam(required = false) Long userId,
@@ -61,6 +66,7 @@ public class PaymentRequestController {
      * 查询付款申请详情
      */
     @GetMapping("/{id}")
+    @SaCheckPermission("office:payment:list")
     public R<BizPaymentRequest> getInfo(@PathVariable Long id) {
         return R.ok(paymentRequestService.getById(id));
     }
@@ -70,6 +76,7 @@ public class PaymentRequestController {
      */
     @SysLog("新增付款申请")
     @PostMapping
+    @SaCheckPermission("office:payment:add")
     public R<Void> add(@RequestBody BizPaymentRequest payment) {
         payment.setUserId(UserContext.getUserId());
         payment.setUserName(UserContext.getUserName());
@@ -93,6 +100,7 @@ public class PaymentRequestController {
      */
     @SysLog("修改付款申请")
     @PutMapping
+    @SaCheckPermission("office:payment:edit")
     public R<Void> edit(@RequestBody BizPaymentRequest payment) {
         try {
             return paymentRequestService.updatePayment(payment) ? R.ok() : R.fail("更新失败");
@@ -106,6 +114,7 @@ public class PaymentRequestController {
      */
     @SysLog("删除付款申请")
     @DeleteMapping("/{ids}")
+    @SaCheckPermission("office:payment:remove")
     public R<Void> remove(@PathVariable Long[] ids) {
         for (Long id : ids) {
             BizPaymentRequest payment = new BizPaymentRequest();
@@ -121,6 +130,7 @@ public class PaymentRequestController {
      */
     @SysLog("提交付款申请")
     @PostMapping("/submit/{id}")
+    @SaCheckPermission("office:payment:submit")
     public R<Void> submit(@PathVariable Long id) {
         try {
             return paymentRequestService.submitPayment(id) ? R.ok() : R.fail("提交失败");
@@ -134,7 +144,7 @@ public class PaymentRequestController {
      */
     @SysLog("确认付款")
     @PostMapping("/{id}/pay")
-    @SaCheckRole(value = {"admin", "finance"}, mode = SaMode.OR)
+    @SaCheckPermission("office:payment:pay")
     public R<Void> confirmPaid(@PathVariable Long id) {
         try {
             return paymentRequestService.confirmPaid(id) ? R.ok() : R.fail("确认付款失败");
@@ -147,6 +157,7 @@ public class PaymentRequestController {
      * 按部门统计月度付款费用
      */
     @GetMapping("/stats/dept")
+    @SaCheckPermission("office:payment:list")
     public R<List<DynamicMapVO>> getMonthlyPaymentByDept(@RequestParam String month) {
         return R.ok(paymentRequestService.getMonthlyPaymentByDept(month).stream().map(DynamicMapVO::from).toList());
     }

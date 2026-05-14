@@ -1,5 +1,7 @@
 package com.cloudflow.oa.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.dto.TimelineDiffDTO;
 import com.cloudflow.oa.domain.dto.TimelineEventDTO;
@@ -19,11 +21,13 @@ import java.util.List;
 @RestController
 @RequestMapping("/timeline")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class TimelineController {
 
     private final IOaTraceEventService traceEventService;
 
     @GetMapping
+    @SaCheckPermission("system:audit:events")
     public R<List<TimelineEventDTO>> list(@RequestParam(required = false) String businessType,
                                           @RequestParam(required = false) Long businessId,
                                           @RequestParam(required = false) String relatedType,
@@ -37,6 +41,7 @@ public class TimelineController {
     }
 
     @GetMapping("/{id}/diff")
+    @SaCheckPermission("system:audit:events")
     public R<TimelineDiffDTO> diff(@PathVariable Long id) {
         TimelineDiffDTO diff = traceEventService.diff(id);
         return diff == null ? R.fail("时间线事件不存在") : R.ok(diff);

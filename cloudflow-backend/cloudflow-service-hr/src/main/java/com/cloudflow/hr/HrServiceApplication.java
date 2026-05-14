@@ -1,5 +1,6 @@
 package com.cloudflow.hr;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -15,6 +16,7 @@ import org.springframework.cloud.openfeign.EnableFeignClients;
 @SpringBootApplication(scanBasePackages = "com.cloudflow", exclude = DataSourceAutoConfiguration.class)
 @EnableDiscoveryClient
 @EnableFeignClients(basePackages = "com.cloudflow.hr.client")
+@MapperScan("com.cloudflow.hr.mapper")
 public class HrServiceApplication {
 
     public static void main(String[] args) {

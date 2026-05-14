@@ -6,6 +6,8 @@ import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.ContactMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,6 +27,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @RestController
 @RequestMapping("/contact")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class ContactController {
 
@@ -37,6 +40,7 @@ public class ContactController {
      * 返回统一脱敏后的联系信息。
      */
     @GetMapping("/list")
+    @SaCheckPermission("office:contact:list")
     public R<DynamicMapVO> list(@RequestParam(value = "keyword", required = false) String keyword,
                                 @RequestParam(value = "deptId", required = false) Long deptId,
                                 @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
@@ -68,6 +72,7 @@ public class ContactController {
      * 查询部门树（通讯录左侧部门导航用）。
      */
     @GetMapping("/dept/tree")
+    @SaCheckPermission("office:contact:list")
     public R<List<DynamicMapVO>> deptTree() {
         List<DynamicMapVO> depts = contactMapper.selectDeptTree()
             .stream()
@@ -81,6 +86,7 @@ public class ContactController {
      * 查询用户详情（通讯录详情卡片）。
      */
     @GetMapping("/user/{userId}")
+    @SaCheckPermission("office:contact:list")
     public R<DynamicMapVO> getUserDetail(@PathVariable("userId") Long userId) {
         Map<String, Object> user = contactMapper.selectUserDetail(userId);
         if (user == null || user.isEmpty()) {

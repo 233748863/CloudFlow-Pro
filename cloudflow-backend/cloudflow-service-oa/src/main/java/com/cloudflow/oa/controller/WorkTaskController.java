@@ -7,6 +7,8 @@ import com.cloudflow.oa.domain.WorkTask;
 import com.cloudflow.oa.domain.dto.WorkTaskStatusDTO;
 import com.cloudflow.oa.service.IWorkTaskService;
 import org.springframework.beans.factory.annotation.Autowired;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -17,6 +19,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/work-task")
+@SaCheckLogin
 public class WorkTaskController {
 
     @Autowired
@@ -26,6 +29,7 @@ public class WorkTaskController {
      * 获取我的任务列表
      */
     @GetMapping("/list")
+    @SaCheckPermission("process:start")
     public R<List<WorkTask>> list(@RequestParam(value = "status", required = false) String status) {
         Long userId = UserContext.getUserId();
         return R.ok(workTaskService.getMyTasks(userId, status));
@@ -35,6 +39,7 @@ public class WorkTaskController {
      * 获取任务详情
      */
     @GetMapping("/{taskId}")
+    @SaCheckPermission("process:start")
     public R<WorkTask> getInfo(@PathVariable("taskId") Long taskId) {
         return R.ok(workTaskService.getById(taskId));
     }
@@ -44,6 +49,7 @@ public class WorkTaskController {
      */
     @SysLog("创建协作任务")
     @PostMapping
+    @SaCheckPermission("process:start")
     public R<Boolean> add(@RequestBody WorkTask workTask) {
         workTask.setOwnerId(UserContext.getUserId());
         workTask.setDeptId(UserContext.getDeptId()); // 设置部门ID用于数据权限
@@ -64,6 +70,7 @@ public class WorkTaskController {
      */
     @SysLog("修改协作任务")
     @PutMapping
+    @SaCheckPermission("process:start")
     public R<Boolean> edit(@RequestBody WorkTask workTask) {
         workTask.setUpdateBy(String.valueOf(UserContext.getUserId()));
         workTask.setUpdateTime(LocalDateTime.now());
@@ -75,6 +82,7 @@ public class WorkTaskController {
      */
     @SysLog("修改任务状态")
     @PutMapping("/status")
+    @SaCheckPermission("process:start")
     public R<Boolean> updateStatus(@RequestBody WorkTaskStatusDTO dto) {
         return R.ok(workTaskService.updateStatus(dto.getTaskId(), dto.getStatus()));
     }
@@ -84,6 +92,7 @@ public class WorkTaskController {
      */
     @SysLog("删除协作任务")
     @DeleteMapping("/{taskId}")
+    @SaCheckPermission("process:start")
     public R<Boolean> remove(@PathVariable("taskId") Long taskId) {
         return R.ok(workTaskService.removeById(taskId));
     }

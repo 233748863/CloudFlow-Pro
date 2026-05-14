@@ -78,10 +78,6 @@
             <artifactId>cloudflow-common-excel</artifactId>
         </dependency>
         <dependency>
-            <groupId>cn.idev.excel</groupId>
-            <artifactId>fastexcel-core</artifactId>
-        </dependency>
-        <dependency>
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-oss</artifactId>
         </dependency>

@@ -14,6 +14,7 @@ import {
 import { toast } from 'sonner';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { useAuth } from '@/context/AuthContext';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { visitorApi, Visitor } from '../services/api/visitor';
 import {
@@ -106,6 +107,7 @@ const getStatusTone = (status: string) => {
 };
 
 export const VisitorPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [list, setList] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -304,7 +306,7 @@ export const VisitorPage: React.FC = () => {
                 <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                 刷新
               </Button>
-              <Button size="sm" onClick={handleAdd}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:visitor:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增预约
               </Button>
@@ -469,6 +471,7 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => handleConfirm(item.visitorId!),
                                   tone: 'neutral',
                                   hidden: item.status !== 'PENDING',
+                                  permissionKey: 'admin:visitor:confirm',
                                 },
                                 {
                                   label: '签到',
@@ -476,6 +479,7 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => handleCheckIn(item.visitorId!),
                                   tone: 'neutral',
                                   hidden: item.status !== 'CONFIRMED',
+                                  permissionKey: 'admin:visitor:checkin',
                                 },
                                 {
                                   label: '签退',
@@ -483,6 +487,7 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => handleCheckOut(item.visitorId!),
                                   tone: 'neutral',
                                   hidden: item.status !== 'ARRIVED',
+                                  permissionKey: 'admin:visitor:checkout',
                                 },
                                 {
                                   label: '取消',
@@ -490,6 +495,7 @@ export const VisitorPage: React.FC = () => {
                                   onClick: () => setCancelTarget(item),
                                   tone: 'neutral',
                                   hidden: item.status !== 'PENDING' && item.status !== 'CONFIRMED',
+                                  permissionKey: 'admin:visitor:cancel',
                                 },
                               ]}
                             />

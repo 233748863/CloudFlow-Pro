@@ -9,35 +9,42 @@ import com.cloudflow.crm.domain.dto.CrmOpportunityStageUpdateDTO;
 import com.cloudflow.crm.domain.vo.CrmOpportunityBoardColumnVO;
 import com.cloudflow.crm.service.ICrmOpportunityService;
 import lombok.RequiredArgsConstructor;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/opportunity")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class CrmOpportunityController {
 
     private final ICrmOpportunityService opportunityService;
 
     @GetMapping("/list")
+    @SaCheckPermission("crm:opportunity:list")
     public R<PageResult<CrmOpportunity>> list(CrmOpportunity query, PageQuery pageQuery) {
         return R.ok(opportunityService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("crm:opportunity:list")
     public R<CrmOpportunity> getInfo(@PathVariable("id") Long id) {
         CrmOpportunity opportunity = opportunityService.getById(id);
         return opportunity == null || !"0".equals(opportunity.getDelFlag()) ? R.fail("商机不存在") : R.ok(opportunity);
     }
 
     @GetMapping("/board")
+    @SaCheckPermission("crm:opportunity:list")
     public R<List<CrmOpportunityBoardColumnVO>> board() {
         return R.ok(opportunityService.getBoard());
     }
 
     @SysLog("新增CRM商机")
     @PostMapping
+    @SaCheckPermission("crm:opportunity:add")
     public R<Void> add(@RequestBody CrmOpportunity opportunity) {
         try {
             return R.result(opportunityService.createOpportunity(opportunity));
@@ -48,6 +55,7 @@ public class CrmOpportunityController {
 
     @SysLog("修改CRM商机")
     @PutMapping
+    @SaCheckPermission("crm:opportunity:edit")
     public R<Void> edit(@RequestBody CrmOpportunity opportunity) {
         try {
             return R.result(opportunityService.updateOpportunity(opportunity));
@@ -58,6 +66,7 @@ public class CrmOpportunityController {
 
     @SysLog("CRM商机赢单")
     @PostMapping("/{id}/win")
+    @SaCheckPermission("crm:opportunity:win")
     public R<Void> win(@PathVariable("id") Long id) {
         try {
             return R.result(opportunityService.winOpportunity(id));
@@ -68,6 +77,7 @@ public class CrmOpportunityController {
 
     @SysLog("CRM商机输单")
     @PostMapping("/{id}/lose")
+    @SaCheckPermission("crm:opportunity:lose")
     public R<Void> lose(@PathVariable("id") Long id, @RequestBody(required = false) CrmOpportunity payload) {
         try {
             return R.result(opportunityService.loseOpportunity(id, payload != null ? payload.getLostReason() : null));
@@ -78,6 +88,7 @@ public class CrmOpportunityController {
 
     @SysLog("更新CRM商机阶段")
     @PutMapping("/stage")
+    @SaCheckPermission("crm:opportunity:edit")
     public R<Void> updateStage(@RequestBody CrmOpportunityStageUpdateDTO request) {
         try {
             return R.result(opportunityService.updateStage(request.getOpportunityId(), request.getStage(), request.getLostReason()));
@@ -88,6 +99,7 @@ public class CrmOpportunityController {
 
     @SysLog("CRM商机生成项目草稿")
     @PostMapping("/{id}/project-draft")
+    @SaCheckPermission("crm:project:draft")
     public R<Long> createProjectDraft(@PathVariable("id") Long id) {
         try {
             return R.ok(opportunityService.createProjectDraft(id));
@@ -98,6 +110,7 @@ public class CrmOpportunityController {
 
     @SysLog("删除CRM商机")
     @DeleteMapping("/{ids}")
+    @SaCheckPermission("crm:opportunity:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
             CrmOpportunity opportunity = new CrmOpportunity();

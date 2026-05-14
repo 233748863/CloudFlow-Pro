@@ -3,6 +3,7 @@ import { ListOrdered, RefreshCcw, Settings2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
+  DatePicker,
   Input,
   Label,
   Select,
@@ -180,8 +181,8 @@ export default function CrmAssignmentRulePage() {
                           align="end"
                           overflowLabel="更多"
                           actions={[
-                            { label: '编辑规则', icon: <Settings2 size={14} />, onClick: () => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }, semantic: 'edit', isPrimary: true },
-                            { label: '删除规则', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true },
+                            { label: '编辑规则', icon: <Settings2 size={14} />, onClick: () => { setEditing(row); setForm({ ...row }); setDialogOpen(true); }, semantic: 'edit', isPrimary: true, permissionKey: 'crm:assignment-rule:edit' },
+                            { label: '删除规则', icon: <Trash2 size={14} />, onClick: () => setConfirmDelete(row), semantic: 'delete', danger: true, permissionKey: 'crm:assignment-rule:remove' },
                           ]}
                         />
                       </td>
@@ -258,11 +259,11 @@ export default function CrmAssignmentRulePage() {
           </div>
           <div>
             <Label>生效开始</Label>
-            <Input type="date" value={form.effectiveStart || ''} onChange={(e) => setForm((prev) => ({ ...prev, effectiveStart: e.target.value }))} />
+            <DatePicker className="h-11" type="date" value={form.effectiveStart || ''} onChange={(e) => setForm((prev) => ({ ...prev, effectiveStart: e.target.value }))} />
           </div>
           <div>
             <Label>生效结束</Label>
-            <Input type="date" value={form.effectiveEnd || ''} onChange={(e) => setForm((prev) => ({ ...prev, effectiveEnd: e.target.value }))} />
+            <DatePicker className="h-11" type="date" value={form.effectiveEnd || ''} onChange={(e) => setForm((prev) => ({ ...prev, effectiveEnd: e.target.value }))} />
           </div>
           <div>
             <Label>状态</Label>

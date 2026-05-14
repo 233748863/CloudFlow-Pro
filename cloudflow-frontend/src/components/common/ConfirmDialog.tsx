@@ -5,9 +5,11 @@ import { Button } from './button';
 interface ConfirmDialogProps {
   open: boolean;
   title: string;
-  message: string;
+  message?: string;
+  description?: string;
   confirmText?: string;
   cancelText?: string;
+  tone?: 'default' | 'danger';
   danger?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
@@ -18,32 +20,41 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   open,
   title,
   message,
+  description,
   confirmText = '确定',
   cancelText = '取消',
+  tone = 'default',
   danger = false,
   onConfirm,
   onCancel,
   children,
-}) => (
-  <BaseDialog
-    open={open}
-    title={title}
-    onClose={onCancel}
-    width="narrow"
-    footer={(
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={onCancel}>
-          {cancelText}
-        </Button>
-        <Button onClick={onConfirm} variant={danger ? 'destructive' : 'default'}>
-          {confirmText}
-        </Button>
+}) => {
+  const content = message ?? description ?? '';
+  const destructive = danger || tone === 'danger';
+
+  return (
+    <BaseDialog
+      open={open}
+      title={title}
+      onClose={onCancel}
+      width="narrow"
+      footer={(
+        <div className="flex justify-end gap-3">
+          <Button variant="outline" onClick={onCancel}>
+            {cancelText}
+          </Button>
+          <Button onClick={onConfirm} variant={destructive ? 'destructive' : 'default'}>
+            {confirmText}
+          </Button>
+        </div>
+      )}
+    >
+      <div className="space-y-4">
+        {content ? (
+          <p className="whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">{content}</p>
+        ) : null}
+        {children}
       </div>
-    )}
-  >
-    <div className="space-y-4">
-      <p className="whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">{message}</p>
-      {children}
-    </div>
-  </BaseDialog>
-);
+    </BaseDialog>
+  );
+};

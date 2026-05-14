@@ -1,5 +1,17 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.hr.domain.dto.HrPerformanceObjectiveTreePayload;
+import com.cloudflow.hr.domain.dto.HrPerformanceResultUpdatePayload;
+import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
+import com.cloudflow.hr.domain.dto.HrPerformanceSplitPayload;
+import com.cloudflow.hr.domain.entity.HrCompChange;
+import com.cloudflow.hr.domain.entity.HrEmployeeComp;
+import com.cloudflow.hr.domain.entity.HrPerformanceSalaryAdjustment;
+import com.cloudflow.hr.mapper.HrCompChangeMapper;
+import com.cloudflow.hr.mapper.HrEmployeeCompMapper;
+import com.cloudflow.hr.mapper.HrPerformanceSalaryAdjustmentMapper;
 import com.cloudflow.hr.service.HrPerformanceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -38,6 +50,9 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
 
     private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final HrEmployeeCompMapper employeeCompMapper;
+    private final HrCompChangeMapper compChangeMapper;
+    private final HrPerformanceSalaryAdjustmentMapper performanceSalaryAdjustmentMapper;
 
     @Override
     public Map<String, Object> listObjectives(Map<String, Object> query) {
@@ -91,13 +106,16 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         if (objective.isEmpty()) {
             return Map.of();
         }
-        List<Map<String, Object>> salaryAdjustments = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_performance_salary_adjustment WHERE tenant_id = ? AND objective_id = ? ORDER BY id DESC",
-                TENANT_ID, id
-        );
+        List<Map<String, Object>> salaryAdjustments = performanceSalaryAdjustmentMapper.selectList(
+                        new QueryWrapper<HrPerformanceSalaryAdjustment>()
+                                .eq("objective_id", id)
+                                .orderByDesc("id"))
+                .stream()
+                .map(this::toMap)
+                .toList();
 
         Map<String, Object> result = new LinkedHashMap<>(objective);
-        result.put("salaryAdjustments", salaryAdjustments.stream().map(this::toCamelRow).toList());
+        result.put("salaryAdjustments", salaryAdjustments);
         return result;
     }
 
@@ -138,20 +156,21 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createObjective(Map<String, Object> payload) {
-        List<Map<String, Object>> categoryDefinitions = asMapList(payload.get("categoryDefinitions"));
-        List<Map<String, Object>> metrics = asMapList(payload.get("metrics"));
-        List<Map<String, Object>> departmentAssignments = asMapList(payload.get("departmentAssignments"));
+    public Long createObjective(HrPerformanceObjectiveTreePayload payload) {
+        Map<String, Object> payloadMap = objectMapper.convertValue(payload, MAP_TYPE);
+        List<Map<String, Object>> categoryDefinitions = asMapList(payloadMap.get("categoryDefinitions"));
+        List<Map<String, Object>> metrics = asMapList(payloadMap.get("metrics"));
+        List<Map<String, Object>> departmentAssignments = asMapList(payloadMap.get("departmentAssignments"));
 
         Map<String, Object> metricConfig = new LinkedHashMap<>();
-        metricConfig.put("totalTargetAmount", toDecimal(payload.get("totalTargetAmount")));
-        metricConfig.put("scoreCap", toDecimal(payload.get("scoreCap"), BigDecimal.valueOf(120)));
-        metricConfig.put("categoryCodes", normalizeStringList(payload.get("categoryCodes")));
+        metricConfig.put("totalTargetAmount", toDecimal(payloadMap.get("totalTargetAmount")));
+        metricConfig.put("scoreCap", toDecimal(payloadMap.get("scoreCap"), BigDecimal.valueOf(120)));
+        metricConfig.put("categoryCodes", normalizeStringList(payloadMap.get("categoryCodes")));
         metricConfig.put("categoryDefinitions", categoryDefinitions);
         metricConfig.put("metrics", metrics);
         metricConfig.put("assignmentMeta", new LinkedHashMap<>());
 
-        String objectiveNo = text(payload.get("objectiveNo"));
+        String objectiveNo = text(payloadMap.get("objectiveNo"));
         if (!StringUtils.hasText(objectiveNo)) {
             objectiveNo = "HRPF" + System.currentTimeMillis();
         }
@@ -160,10 +179,10 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
                 "INSERT INTO hr_performance_objective (tenant_id, objective_no, cycle_name, cycle_start_date, cycle_end_date, objective_name, owner_employee_id, metric_config, status, create_by, update_by, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
                 TENANT_ID,
                 objectiveNo,
-                requireText(payload.get("cycleName"), "cycleName"),
-                toSqlDate(requireText(payload.get("cycleStartDate"), "cycleStartDate")),
-                toSqlDate(requireText(payload.get("cycleEndDate"), "cycleEndDate")),
-                requireText(payload.get("objectiveName"), "objectiveName"),
+                requireText(payloadMap.get("cycleName"), "cycleName"),
+                toSqlDate(requireText(payloadMap.get("cycleStartDate"), "cycleStartDate")),
+                toSqlDate(requireText(payloadMap.get("cycleEndDate"), "cycleEndDate")),
+                requireText(payloadMap.get("objectiveName"), "objectiveName"),
                 resolveOwnerEmployeeId(departmentAssignments),
                 writeJson(metricConfig),
                 "DRAFT",
@@ -237,18 +256,25 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
                 "UPDATE hr_performance_objective SET metric_config = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
                 writeJson(metricConfig), objectiveId, TENANT_ID
         );
+        writeAuditLog("hr_performance_objective", objectiveId, "CREATE", Map.of(), loadObjective(objectiveId));
         return objectiveId;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void saveAssignmentChildren(Long parentId, Map<String, Object> payload) {
+    public void saveAssignmentChildren(Long parentId, HrPerformanceSplitPayload payload) {
         Map<String, Object> parent = getAssignment(parentId);
         if (parent.isEmpty()) {
             throw new IllegalArgumentException("绩效分解节点不存在");
         }
         Long objectiveId = toLong(parent.get("objectiveId"));
-        List<Map<String, Object>> children = asMapList(payload.get("children"));
+        List<Map<String, Object>> beforeAssignments = loadAssignmentsByParent(parentId);
+        List<Map<String, Object>> children = payload == null || payload.getChildren() == null
+                ? List.of()
+                : payload.getChildren().stream()
+                .map(item -> objectMapper.convertValue(item, MAP_TYPE))
+                .map(this::mutableMap)
+                .toList();
         Map<String, Object> objective = loadObjective(objectiveId);
         Map<String, Object> metricConfig = parseJsonObject(objective.get("metricConfig"));
         Map<String, Object> assignmentMeta = mutableMap(parseJsonObject(metricConfig.get("assignmentMeta")));
@@ -315,17 +341,19 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
                 "UPDATE hr_performance_objective SET metric_config = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
                 writeJson(metricConfig), objectiveId, TENANT_ID
         );
+        writeAuditLog("hr_performance_assignment", parentId, "UPSERT_CHILDREN", Map.of("children", beforeAssignments), Map.of("children", loadAssignmentsByParent(parentId)));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateResult(Map<String, Object> payload) {
-        Long assignmentId = toLong(payload.get("assignmentId"));
-        BigDecimal actualAmount = toDecimal(payload.get("actualAmount"));
+    public void updateResult(HrPerformanceResultUpdatePayload payload) {
+        Long assignmentId = payload == null ? null : payload.getAssignmentId();
+        BigDecimal actualAmount = payload == null ? BigDecimal.ZERO : payload.getActualAmount();
         Map<String, Object> assignment = getAssignment(assignmentId);
         if (assignment.isEmpty()) {
             throw new IllegalArgumentException("绩效分解节点不存在");
         }
+        Map<String, Object> before = new LinkedHashMap<>(assignment);
         jdbcTemplate.update(
                 "UPDATE hr_performance_assignment SET actual_value = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
                 actualAmount, assignmentId, TENANT_ID
@@ -343,63 +371,71 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
                 "UPDATE hr_performance_objective SET metric_config = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
                 writeJson(metricConfig), objectiveId, TENANT_ID
         );
+        writeAuditLog("hr_performance_assignment", assignmentId, "UPDATE_RESULT", before, getAssignment(assignmentId));
     }
 
     @Override
     public void submitPlan(Long objectiveId) {
+        Map<String, Object> before = loadObjective(objectiveId);
         jdbcTemplate.update(
                 "UPDATE hr_performance_objective SET status = 'PLAN_APPROVING', update_time = NOW() WHERE id = ? AND tenant_id = ?",
                 objectiveId, TENANT_ID
         );
+        writeAuditLog("hr_performance_objective", objectiveId, "SUBMIT_PLAN", before, loadObjective(objectiveId));
     }
 
     @Override
     public void submitResult(Long objectiveId) {
+        Map<String, Object> before = loadObjective(objectiveId);
         jdbcTemplate.update(
                 "UPDATE hr_performance_objective SET status = 'RESULT_APPROVING', update_time = NOW() WHERE id = ? AND tenant_id = ?",
                 objectiveId, TENANT_ID
         );
+        writeAuditLog("hr_performance_objective", objectiveId, "SUBMIT_RESULT", before, loadObjective(objectiveId));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createSalaryAdjustment(Long objectiveId, Map<String, Object> payload) {
-        Long employeeId = toLong(payload.get("employeeId"));
+    public Long createSalaryAdjustment(Long objectiveId, HrPerformanceSalaryAdjustmentRequest payload) {
+        Long employeeId = payload == null ? null : payload.getEmployeeId();
         if (employeeId == null) {
             throw new IllegalArgumentException("employeeId不能为空");
         }
-        BigDecimal afterTotal = toDecimal(payload.get("afterTotal"));
+        BigDecimal afterTotal = payload.getAfterTotal() == null ? BigDecimal.ZERO : payload.getAfterTotal();
         BigDecimal beforeTotal = queryEmployeeSalary(employeeId);
         BigDecimal adjustmentAmount = afterTotal.subtract(beforeTotal);
-        String reason = defaultText(payload.get("adjustmentReason"), "绩效结果调薪");
-        Date effectiveDate = toSqlDate(defaultText(payload.get("effectiveDate"), LocalDate.now().toString()));
+        String reason = defaultText(payload.getAdjustmentReason(), "绩效结果调薪");
+        Date effectiveDate = toSqlDate(defaultText(payload.getEffectiveDate(), LocalDate.now().toString()));
 
-        Long compChangeId = insertAndReturnId(
-                "INSERT INTO hr_comp_change (tenant_id, change_no, employee_id, change_type, before_total, after_total, change_amount, effective_date, reason, status, create_by, update_by, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
-                TENANT_ID,
-                "HRCG" + System.currentTimeMillis(),
-                employeeId,
-                "PERFORMANCE",
-                beforeTotal,
-                afterTotal,
-                adjustmentAmount,
-                effectiveDate,
-                reason,
-                "DRAFT",
-                "admin",
-                "admin"
-        );
+        HrCompChange compChange = new HrCompChange();
+        compChange.setTenantId(TENANT_ID);
+        compChange.setChangeNo("HRCG" + System.currentTimeMillis());
+        compChange.setEmployeeId(employeeId);
+        compChange.setChangeType("PERFORMANCE");
+        compChange.setBeforeTotal(beforeTotal);
+        compChange.setAfterTotal(afterTotal);
+        compChange.setChangeAmount(adjustmentAmount);
+        compChange.setEffectiveDate(effectiveDate.toLocalDate());
+        compChange.setReason(reason);
+        compChange.setStatus("DRAFT");
+        compChange.setCreateBy("admin");
+        compChange.setUpdateBy("admin");
+        compChange.setDeleted(0);
+        compChangeMapper.insert(compChange);
 
-        return insertAndReturnId(
-                "INSERT INTO hr_performance_salary_adjustment (tenant_id, objective_id, employee_id, comp_change_id, adjustment_amount, reason, status) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                TENANT_ID,
-                objectiveId,
-                employeeId,
-                compChangeId,
-                adjustmentAmount,
-                reason,
-                "DRAFT"
-        );
+        HrPerformanceSalaryAdjustment adjustment = new HrPerformanceSalaryAdjustment();
+        adjustment.setTenantId(TENANT_ID);
+        adjustment.setObjectiveId(objectiveId);
+        adjustment.setEmployeeId(employeeId);
+        adjustment.setCompChangeId(compChange.getId());
+        adjustment.setAdjustmentAmount(adjustmentAmount);
+        adjustment.setReason(reason);
+        adjustment.setStatus("DRAFT");
+        performanceSalaryAdjustmentMapper.insert(adjustment);
+
+        Long adjustmentId = adjustment.getId();
+        writeAuditLog("hr_performance_salary_adjustment", adjustmentId, "CREATE", Map.of(), toMap(adjustment));
+        return adjustmentId;
     }
 
     private Map<String, Object> normalizeObjectiveRow(Map<String, Object> row) {
@@ -604,13 +640,33 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         return rows.isEmpty() ? Map.of() : toCamelRow(rows.get(0));
     }
 
+    private List<Map<String, Object>> loadAssignmentsByParent(Long parentId) {
+        return jdbcTemplate.queryForList(
+                        "SELECT * FROM hr_performance_assignment WHERE tenant_id = ? AND parent_id = ? ORDER BY id ASC",
+                        TENANT_ID, parentId)
+                .stream()
+                .map(this::toCamelRow)
+                .toList();
+    }
+
+    private Map<String, Object> loadSalaryAdjustment(Long id) {
+        HrPerformanceSalaryAdjustment adjustment = performanceSalaryAdjustmentMapper.selectById(id);
+        return adjustment == null ? Map.of() : toMap(adjustment);
+    }
+
     private BigDecimal queryEmployeeSalary(Long employeeId) {
-        List<BigDecimal> rows = jdbcTemplate.queryForList(
-                "SELECT total_salary FROM hr_employee_comp WHERE tenant_id = ? AND employee_id = ? AND deleted = 0 ORDER BY effective_date DESC, id DESC LIMIT 1",
-                BigDecimal.class,
-                TENANT_ID, employeeId
+        List<HrEmployeeComp> rows = employeeCompMapper.selectList(
+                new QueryWrapper<HrEmployeeComp>()
+                        .eq("employee_id", employeeId)
+                        .eq("deleted", 0)
+                        .orderByDesc("effective_date")
+                        .orderByDesc("id")
+                        .last("LIMIT 1")
         );
-        return rows.isEmpty() ? BigDecimal.ZERO : rows.get(0);
+        if (rows.isEmpty() || rows.get(0).getTotalSalary() == null) {
+            return BigDecimal.ZERO;
+        }
+        return rows.get(0).getTotalSalary();
     }
 
     private Long insertAndReturnId(String sql, Object... values) {
@@ -634,6 +690,27 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         });
     }
 
+    private void writeAuditLog(String tableName,
+                               Long businessId,
+                               String operationType,
+                               Map<String, Object> before,
+                               Map<String, Object> after) {
+        try {
+            jdbcTemplate.update(
+                    "INSERT INTO hr_audit_log (tenant_id, business_domain, business_id, operation_type, operator_id, operator_name, before_data, after_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                    TENANT_ID,
+                    tableName,
+                    businessId,
+                    operationType,
+                    UserContext.getUserId(),
+                    UserContext.getUserName(),
+                    writeJson(before == null ? Map.of() : before),
+                    writeJson(after == null ? Map.of() : after)
+            );
+        } catch (Exception ignored) {
+        }
+    }
+
     private Object[] appendArgs(List<Object> args, Object... extra) {
         List<Object> values = new ArrayList<>(args);
         values.addAll(List.of(extra));
@@ -646,6 +723,10 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             result.put(toCamel(entry.getKey()), entry.getValue());
         }
         return result;
+    }
+
+    private Map<String, Object> toMap(Object value) {
+        return objectMapper.convertValue(value, MAP_TYPE);
     }
 
     private String toCamel(String key) {

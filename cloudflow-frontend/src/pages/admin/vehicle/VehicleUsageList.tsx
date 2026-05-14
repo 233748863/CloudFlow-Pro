@@ -584,11 +584,11 @@ const VehicleUsageList: React.FC = () => {
                       align="end"
                       actions={[
                         { label: '详情', icon: <Eye size={14} />, onClick: () => handleViewDetail(usage), tone: 'neutral' },
-                        { label: '审批', icon: <CheckCircle size={14} />, onClick: () => handleOpenApprove(usage), hidden: usage.status !== '0', tone: 'neutral' },
-                        { label: '派车', icon: <UserCog size={14} />, onClick: () => handleOpenDispatch(usage), hidden: usage.status !== '1', tone: 'neutral' },
-                        { label: '归还', icon: <Send size={14} />, onClick: () => handleOpenReturn(usage), hidden: usage.status !== '3', tone: 'neutral' },
-                        { label: '录费', icon: <DollarSign size={14} />, onClick: () => handleOpenExpense(usage), hidden: !['3', '4'].includes(usage.status || ''), tone: 'neutral' },
-                        { label: '取消', icon: <Ban size={14} />, onClick: () => openCancelConfirm(usage), hidden: usage.status !== '0', tone: 'neutral' },
+                        { label: '审批', icon: <CheckCircle size={14} />, onClick: () => handleOpenApprove(usage), hidden: usage.status !== '0', tone: 'neutral', permissionKey: 'admin:vehicle:approve' },
+                        { label: '派车', icon: <UserCog size={14} />, onClick: () => handleOpenDispatch(usage), hidden: usage.status !== '1', tone: 'neutral', permissionKey: 'admin:vehicle:dispatch' },
+                        { label: '归还', icon: <Send size={14} />, onClick: () => handleOpenReturn(usage), hidden: usage.status !== '3', tone: 'neutral', permissionKey: 'admin:vehicle:return' },
+                        { label: '录费', icon: <DollarSign size={14} />, onClick: () => handleOpenExpense(usage), hidden: !['3', '4'].includes(usage.status || ''), tone: 'neutral', permissionKey: 'admin:vehicle:expense:add' },
+                        { label: '取消', icon: <Ban size={14} />, onClick: () => openCancelConfirm(usage), hidden: usage.status !== '0', tone: 'neutral', permissionKey: 'admin:vehicle:cancel' },
                       ]}
                     />
                   </TableCell>

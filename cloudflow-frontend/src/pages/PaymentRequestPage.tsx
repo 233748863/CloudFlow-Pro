@@ -13,6 +13,7 @@ import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
+import { useAuth } from '@/context/AuthContext';
 import {
   Button,
   DatePicker,
@@ -150,6 +151,7 @@ const getAttachmentList = (attachmentUrl?: string) =>
   attachmentUrl?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
 
 export const PaymentRequestPage: React.FC = () => {
+  const { hasPermission } = useAuth();
   const [payments, setPayments] = useState<PaymentRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchParams, setSearchParams] = useState({
@@ -494,7 +496,7 @@ export const PaymentRequestPage: React.FC = () => {
                 <Download size={14} className="mr-1.5" />
                 导出结果
               </Button>
-              <Button size="sm" onClick={handleAdd}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('office:payment:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新建申请
               </Button>
@@ -584,6 +586,7 @@ export const PaymentRequestPage: React.FC = () => {
                                 onClick: () => void handleEdit(item.id!),
                                 tone: 'primary',
                                 hidden: item.status !== 'DRAFT',
+                                permissionKey: 'office:payment:edit',
                               },
                               {
                                 label: '提交',
@@ -591,6 +594,7 @@ export const PaymentRequestPage: React.FC = () => {
                                 onClick: () => openSubmitConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'DRAFT',
+                                permissionKey: 'office:payment:submit',
                               },
                               {
                                 label: '付款',
@@ -598,6 +602,7 @@ export const PaymentRequestPage: React.FC = () => {
                                 onClick: () => openPayConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'APPROVED',
+                                permissionKey: 'office:payment:pay',
                               },
                               {
                                 label: '删除',
@@ -605,6 +610,7 @@ export const PaymentRequestPage: React.FC = () => {
                                 onClick: () => openDeleteConfirm(item.id!),
                                 tone: 'danger',
                                 hidden: item.status !== 'DRAFT',
+                                permissionKey: 'office:payment:remove',
                               },
                             ]}
                           />
@@ -642,7 +648,7 @@ export const PaymentRequestPage: React.FC = () => {
             <Button variant="outline" onClick={closeFormDialog}>
               取消
             </Button>
-            <Button onClick={() => void handleSave()}>
+            <Button onClick={() => void handleSave()} disabled={!hasPermission(currentPayment ? 'office:payment:edit' : 'office:payment:add')}>
               保存
             </Button>
           </>

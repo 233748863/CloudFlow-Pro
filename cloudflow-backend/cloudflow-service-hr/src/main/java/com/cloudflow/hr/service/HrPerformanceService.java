@@ -1,5 +1,10 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.hr.domain.dto.HrPerformanceObjectiveTreePayload;
+import com.cloudflow.hr.domain.dto.HrPerformanceResultUpdatePayload;
+import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
+import com.cloudflow.hr.domain.dto.HrPerformanceSplitPayload;
+
 import java.util.Map;
 
 public interface HrPerformanceService {
@@ -10,15 +15,15 @@ public interface HrPerformanceService {
 
     Map<String, Object> getOverview();
 
-    Long createObjective(Map<String, Object> payload);
+    Long createObjective(HrPerformanceObjectiveTreePayload payload);
 
-    void saveAssignmentChildren(Long parentId, Map<String, Object> payload);
+    void saveAssignmentChildren(Long parentId, HrPerformanceSplitPayload payload);
 
-    void updateResult(Map<String, Object> payload);
+    void updateResult(HrPerformanceResultUpdatePayload payload);
 
     void submitPlan(Long objectiveId);
 
     void submitResult(Long objectiveId);
 
-    Long createSalaryAdjustment(Long objectiveId, Map<String, Object> payload);
+    Long createSalaryAdjustment(Long objectiveId, HrPerformanceSalaryAdjustmentRequest payload);
 }

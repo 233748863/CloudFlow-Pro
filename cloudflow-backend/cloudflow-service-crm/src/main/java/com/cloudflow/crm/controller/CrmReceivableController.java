@@ -8,12 +8,15 @@ import com.cloudflow.crm.domain.CrmReceivable;
 import com.cloudflow.crm.domain.vo.CrmReceivableAgingBucketVO;
 import com.cloudflow.crm.service.ICrmReceivableService;
 import lombok.RequiredArgsConstructor;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/receivable")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class CrmReceivableController {
 
@@ -21,23 +24,27 @@ public class CrmReceivableController {
     private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
+    @SaCheckPermission("crm:receivable:list")
     public R<PageResult<CrmReceivable>> list(CrmReceivable query, PageQuery pageQuery) {
         return R.ok(receivableService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("crm:receivable:list")
     public R<CrmReceivable> getInfo(@PathVariable("id") Long id) {
         CrmReceivable receivable = receivableService.getById(id);
         return receivable == null || !"0".equals(receivable.getDelFlag()) ? R.fail("回款计划不存在") : R.ok(receivable);
     }
 
     @GetMapping("/aging")
+    @SaCheckPermission("crm:receivable:list")
     public R<List<CrmReceivableAgingBucketVO>> aging() {
         return R.ok(receivableService.getAgingBuckets());
     }
 
     @SysLog("新增CRM回款计划")
     @PostMapping
+    @SaCheckPermission("crm:receivable:add")
     public R<Void> add(@RequestBody CrmReceivable receivable) {
         try {
             return R.result(receivableService.createReceivable(receivable));
@@ -48,6 +55,7 @@ public class CrmReceivableController {
 
     @SysLog("修改CRM回款计划")
     @PutMapping
+    @SaCheckPermission("crm:receivable:edit")
     public R<Void> edit(@RequestBody CrmReceivable receivable) {
         try {
             return R.result(receivableService.updateReceivable(receivable));
@@ -58,6 +66,7 @@ public class CrmReceivableController {
 
     @SysLog("确认CRM回款")
     @PostMapping("/{id}/confirm")
+    @SaCheckPermission("crm:receivable:confirm")
     public R<Void> confirm(@PathVariable("id") Long id) {
         try {
             return R.result(receivableService.confirmReceipt(id));
@@ -68,6 +77,7 @@ public class CrmReceivableController {
 
     @SysLog("绑定CRM回款发票")
     @PostMapping("/{id}/bind-invoice/{invoiceId}")
+    @SaCheckPermission("crm:receivable:bind-invoice")
     public R<Void> bindInvoice(@PathVariable("id") Long id, @PathVariable("invoiceId") Long invoiceId) {
         try {
             return R.result(receivableService.bindInvoice(id, invoiceId));
@@ -78,6 +88,7 @@ public class CrmReceivableController {
 
     @SysLog("删除CRM回款计划")
     @DeleteMapping("/{ids}")
+    @SaCheckPermission("crm:receivable:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
             CrmReceivable persisted = receivableService.getById(id);

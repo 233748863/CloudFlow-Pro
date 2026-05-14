@@ -15,6 +15,7 @@ interface AuthContextType {
   refreshUser: () => Promise<User | null>;
   clearForcePasswordChange: () => void;
   switchTenant: (tenantId: number) => Promise<void>;
+  hasPermission: (permission: string | string[], requireAll?: boolean) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -41,6 +42,16 @@ const buildAuthUser = (userInfo: UserInfo): User => ({
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const hasPermission = (permission: string | string[], requireAll = false) => {
+    const permissionList = Array.isArray(permission) ? permission : [permission];
+    const userPermissions = user?.permissions || [];
+    const check = (item: string) =>
+      userPermissions.includes(item)
+      || userPermissions.includes('*:*:*')
+      || userPermissions.includes('*');
+    return requireAll ? permissionList.every(check) : permissionList.some(check);
+  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -139,7 +150,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, clearForcePasswordChange, switchTenant }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, refreshUser, clearForcePasswordChange, switchTenant, hasPermission }}>
       {children}
       <ForcePasswordChangeDialog
         open={Boolean(user?.forcePasswordChange)}

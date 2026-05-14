@@ -177,8 +177,8 @@ export default function CrmCustomerPoolPage() {
                           align="end"
                           overflowLabel="更多"
                           actions={[
-                            { label: '抢单', icon: <HandCoins size={14} />, onClick: () => void handleClaim(row), semantic: 'confirm', isPrimary: true },
-                            { label: '指派负责人', icon: <Gavel size={14} />, onClick: () => { setAssignDialog(row); setAssignForm({ ownerId: '', ownerName: '', reason: '' }); } },
+                            { label: '抢单', icon: <HandCoins size={14} />, onClick: () => void handleClaim(row), semantic: 'confirm', isPrimary: true, permissionKey: 'crm:customer-pool:claim' },
+                            { label: '指派负责人', icon: <Gavel size={14} />, onClick: () => { setAssignDialog(row); setAssignForm({ ownerId: '', ownerName: '', reason: '' }); }, permissionKey: 'crm:customer-pool:assign' },
                             { label: '查看日志', icon: <History size={14} />, onClick: () => void openLogs(row) },
                           ]}
                         />

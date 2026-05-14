@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MoreHorizontal } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { cn } from '@/utils/cn';
 import { Button } from './button';
 
@@ -21,6 +22,7 @@ export type TableRowActionTone =
 export type ActionSemanticKey =
   | 'view'
   | 'edit'
+  | 'confirm'
   | 'submit'
   | 'process'
   | 'bind'
@@ -82,6 +84,7 @@ export interface TableRowActionsProps {
 const DEFAULT_ACTION_PRESETS: Record<ActionSemanticKey, ActionPreset> = {
   view: { semantic: 'view', label: '查看详情', priority: 'primary', tone: 'neutral' },
   edit: { semantic: 'edit', label: '编辑', priority: 'primary', tone: 'primary' },
+  confirm: { semantic: 'confirm', label: '确认', priority: 'secondary', tone: 'success' },
   submit: { semantic: 'submit', label: '提交', priority: 'secondary', tone: 'success' },
   process: { semantic: 'process', label: '处理', priority: 'primary', tone: 'primary' },
   bind: { semantic: 'bind', label: '绑定', priority: 'secondary', tone: 'info' },
@@ -456,7 +459,16 @@ export function TableRowActions({
   compactAt,
   buttonLayout = 'stacked',
 }: TableRowActionsProps) {
-  const visibleActions = actions.filter((action) => !action.hidden);
+  const { user } = useAuth();
+  const userPermissions = user?.permissions || [];
+  const hasPermission = (permission?: string) => {
+    if (!permission) {
+      return true;
+    }
+    return userPermissions.includes(permission) || userPermissions.includes('*:*:*') || userPermissions.includes('*');
+  };
+
+  const visibleActions = actions.filter((action) => !action.hidden && hasPermission(action.permissionKey));
 
   if (!visibleActions.length) {
     return <span className="text-sm text-slate-300">{emptyText}</span>;

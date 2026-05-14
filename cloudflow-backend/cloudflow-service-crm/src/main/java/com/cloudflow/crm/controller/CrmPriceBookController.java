@@ -7,23 +7,28 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmPriceBook;
 import com.cloudflow.crm.service.ICrmPriceBookService;
 import lombok.RequiredArgsConstructor;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
 @RestController
 @RequestMapping("/price-book")
+@SaCheckLogin
 @RequiredArgsConstructor
 public class CrmPriceBookController {
 
     private final ICrmPriceBookService priceBookService;
 
     @GetMapping("/list")
+    @SaCheckPermission("crm:price-book:list")
     public R<PageResult<CrmPriceBook>> list(CrmPriceBook query, PageQuery pageQuery) {
         return R.ok(priceBookService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("crm:price-book:list")
     public R<CrmPriceBook> getInfo(@PathVariable("id") Long id) {
         CrmPriceBook priceBook = priceBookService.getById(id);
         return priceBook == null || !"0".equals(priceBook.getDelFlag()) ? R.fail("价目表不存在") : R.ok(priceBook);
@@ -31,6 +36,7 @@ public class CrmPriceBookController {
 
     @SysLog("新增CRM价目表")
     @PostMapping
+    @SaCheckPermission("crm:price-book:add")
     public R<Void> add(@RequestBody CrmPriceBook priceBook) {
         try {
             return R.result(priceBookService.createPriceBook(priceBook));
@@ -41,6 +47,7 @@ public class CrmPriceBookController {
 
     @SysLog("修改CRM价目表")
     @PutMapping
+    @SaCheckPermission("crm:price-book:edit")
     public R<Void> edit(@RequestBody CrmPriceBook priceBook) {
         try {
             return R.result(priceBookService.updatePriceBook(priceBook));
@@ -51,6 +58,7 @@ public class CrmPriceBookController {
 
     @SysLog("删除CRM价目表")
     @DeleteMapping("/{ids}")
+    @SaCheckPermission("crm:price-book:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
             CrmPriceBook priceBook = new CrmPriceBook();

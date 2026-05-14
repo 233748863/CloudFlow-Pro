@@ -18,23 +18,23 @@ spring:
       - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
     nacos:
-      server-addr: ${NACOS_SERVER:192.168.1.173:8848}
-      username: nacos
-      password: nacos
+      server-addr: ${NACOS_SERVER}
+      username: ${NACOS_USERNAME}
+      password: ${NACOS_PASSWORD}
       config:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
         file-extension: yaml
         refresh-enabled: true
       discovery:
-        namespace: ${NACOS_NAMESPACE:0ccb9313-39d8-4a58-9fa5-ce834b77e60d}
+        namespace: ${NACOS_NAMESPACE}
         enabled: true
         register-enabled: true
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8mb4&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: ${DB_PASSWORD:root}
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -46,9 +46,9 @@ spring:
       connection-test-query: SELECT 1
   data:
     redis:
-      host: 192.168.1.173
-      port: 6379
-      password: ${REDIS_PASSWORD:}
+      host: ${REDIS_HOST}
+      port: ${REDIS_PORT}
+      password: ${REDIS_PASSWORD}
       database: 0
       timeout: 10s
       lettuce:
@@ -76,7 +76,7 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
 
 sa-token:
   token-name: Authorization
@@ -152,9 +152,9 @@ info:
 logging:
   level:
     root: INFO
-    com.cloudflow.hr: DEBUG
-    com.cloudflow.hr.mapper: DEBUG
-    com.baomidou.mybatisplus: DEBUG
+    com.cloudflow.hr: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.hr.mapper: ${LOG_LEVEL_MAPPER:WARN}
+    com.baomidou.mybatisplus: ${LOG_LEVEL_MAPPER:WARN}
   pattern:
     console: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
     file: '%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{50} - %msg%n'
@@ -164,6 +164,10 @@ logging:
     max-history: 30
 
 cloudflow:
+  encrypt:
+    enabled: ${CLOUDFLOW_ENCRYPT_ENABLED:false}
+    aes-key: ${CLOUDFLOW_ENCRYPT_AES_KEY:}
+    sm4-key: ${CLOUDFLOW_ENCRYPT_SM4_KEY:}
   tenant:
     enabled: true
     column: tenant_id

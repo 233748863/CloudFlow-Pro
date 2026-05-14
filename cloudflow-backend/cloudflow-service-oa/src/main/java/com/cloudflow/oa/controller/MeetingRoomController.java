@@ -14,38 +14,41 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/meeting-room")
+@SaCheckLogin
 public class MeetingRoomController {
 
     @Autowired
     private IMeetingRoomService meetingRoomService;
 
     @GetMapping("/list")
+    @SaCheckPermission("office:meeting")
     public R<List<MeetingRoom>> list() {
         return R.ok(meetingRoomService.list());
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("office:meeting")
     public R<MeetingRoom> getById(@PathVariable("id") Long id) {
         return R.ok(meetingRoomService.getById(id));
     }
 
     @SysLog("新增会议室")
     @PostMapping
-    @SaCheckRole("admin")
+    @SaCheckPermission("admin:meeting-room:add")
     public R<Boolean> add(@RequestBody MeetingRoom meetingRoom) {
         return R.ok(meetingRoomService.save(meetingRoom));
     }
 
     @SysLog("编辑会议室")
     @PutMapping
-    @SaCheckRole("admin")
+    @SaCheckPermission("admin:meeting-room:edit")
     public R<Boolean> edit(@RequestBody MeetingRoom meetingRoom) {
         return R.ok(meetingRoomService.updateById(meetingRoom));
     }
 
     @SysLog("删除会议室")
     @DeleteMapping("/{id}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("admin:meeting-room:remove")
     public R<Boolean> remove(@PathVariable("id") Long id) {
         return R.ok(meetingRoomService.removeById(id));
     }

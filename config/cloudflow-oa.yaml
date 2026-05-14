@@ -14,28 +14,28 @@ spring:
       datasource:
         # ---- 主数据源（OA 业务库） ----
         master:
-          url: jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-          username: root
-          password: Juwangkeji@2025
+          url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS:useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true}&serverTimezone=Asia/Shanghai}
+          username: ${DB_USERNAME:root}
+          password: ${DB_PASSWORD}
           driver-class-name: com.mysql.cj.jdbc.Driver
         # ---- 报表/只读数据源（示例，按需修改连接信息） ----
         # report:
-        #   url: jdbc:mysql://192.168.1.173:3306/cloud_flow_report?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-        #   username: root
-        #   password: Juwangkeji@2025
+        #   url: jdbc:mysql://192.168.1.173:3306/cloud_flow_report?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+        #   username: ${DB_USERNAME:root}
+        #   password: ${DB_PASSWORD}
         #   driver-class-name: com.mysql.cj.jdbc.Driver
         # ---- 第三方/外部数据源（示例，按需修改连接信息） ----
         # thirdparty:
-        #   url: jdbc:mysql://192.168.1.200:3306/third_party_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-        #   username: root
+        #   url: jdbc:mysql://192.168.1.200:3306/third_party_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+        #   username: ${DB_USERNAME:root}
         #   password: your_password
         #   driver-class-name: com.mysql.cj.jdbc.Driver
 
   data:
     redis:
-      host: 192.168.1.173
-      port: 6379
-      password: Juwangkeji@2025
+      host: ${REDIS_HOST:192.168.1.173}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD}
       database: 0
       timeout: 3000ms
       lettuce:
@@ -102,3 +102,9 @@ hystrix:
         isolation:
           thread:
             timeoutInMilliseconds: 10000
+
+logging:
+  level:
+    root: INFO
+    com.cloudflow.oa: ${LOG_LEVEL_APP:INFO}
+    com.cloudflow.oa.mapper: ${LOG_LEVEL_MAPPER:WARN}

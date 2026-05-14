@@ -1,8 +1,10 @@
 package com.cloudflow.workflow.service;
 
+import com.cloudflow.workflow.config.GroovySandboxConfig;
+import com.cloudflow.workflow.exception.WorkflowException;
 import groovy.lang.Binding;
 import groovy.lang.GroovyShell;
-import com.cloudflow.workflow.exception.WorkflowException;
+import org.codehaus.groovy.control.CompilerConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -19,9 +21,11 @@ public class ScriptExecutionService {
     private static final Logger log = LoggerFactory.getLogger(ScriptExecutionService.class);
 
     private final ScriptExecutionPolicy scriptExecutionPolicy;
+    private final GroovySandboxConfig groovySandboxConfig;
 
-    public ScriptExecutionService(ScriptExecutionPolicy scriptExecutionPolicy) {
+    public ScriptExecutionService(ScriptExecutionPolicy scriptExecutionPolicy, GroovySandboxConfig groovySandboxConfig) {
         this.scriptExecutionPolicy = scriptExecutionPolicy;
+        this.groovySandboxConfig = groovySandboxConfig;
     }
     
     /**
@@ -42,8 +46,8 @@ public class ScriptExecutionService {
                 variables.forEach(binding::setVariable);
             }
             
-            // 创建 Groovy Shell
-            GroovyShell shell = new GroovyShell(binding);
+            CompilerConfiguration configuration = groovySandboxConfig.buildCompilerConfiguration();
+            GroovyShell shell = new GroovyShell(binding, configuration);
             
             // 执行脚本
             Object result = shell.evaluate(scriptContent);
@@ -54,8 +58,13 @@ public class ScriptExecutionService {
         } catch (WorkflowException e) {
             throw e;
         } catch (Exception e) {
+            if (e instanceof java.util.concurrent.TimeoutException
+                    || e.getCause() instanceof java.util.concurrent.TimeoutException) {
+                log.warn("[executeGroovyScript] Groovy 脚本执行超时: {}", e.getMessage(), e);
+                throw scriptExecutionPolicy.buildTimeoutException(e);
+            }
             log.error("[executeGroovyScript] Groovy 脚本执行失败: {}", e.getMessage(), e);
-            throw new RuntimeException("Groovy 脚本执行失败: " + e.getMessage(), e);
+            throw new WorkflowException("SCRIPT_EXECUTION_FAILED", "Groovy 脚本执行失败: " + e.getMessage(), e);
         }
     }
     
@@ -78,7 +87,7 @@ public class ScriptExecutionService {
             throw e;
         } catch (Exception e) {
             log.error("[executeJavaScript] JavaScript 执行失败: {}", e.getMessage(), e);
-            throw new RuntimeException("JavaScript 执行失败: " + e.getMessage(), e);
+            throw new WorkflowException("SCRIPT_EXECUTION_FAILED", "JavaScript 执行失败: " + e.getMessage(), e);
         }
     }
 }

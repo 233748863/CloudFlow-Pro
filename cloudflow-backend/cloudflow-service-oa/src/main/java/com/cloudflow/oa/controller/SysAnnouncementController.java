@@ -16,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/announcement")
+@SaCheckLogin
 public class SysAnnouncementController {
 
     @Autowired
@@ -25,6 +26,7 @@ public class SysAnnouncementController {
      * 获取我的公告列表
      */
     @GetMapping("/my-list")
+    @SaCheckPermission("office:announcement")
     public R<List<SysAnnouncement>> getMyList() {
         return R.ok(announcementService.getMyAnnouncements(UserContext.getUserId()));
     }
@@ -33,6 +35,7 @@ public class SysAnnouncementController {
      * 标记已读
      */
     @PostMapping("/read/{id}")
+    @SaCheckPermission("office:announcement")
     public R<Boolean> read(@PathVariable("id") Long id) {
         return R.ok(announcementService.readAnnouncement(id, UserContext.getUserId()));
     }
@@ -42,7 +45,7 @@ public class SysAnnouncementController {
      */
     @SysLog("发布公告")
     @PostMapping("/publish")
-    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
+    @SaCheckPermission("oa:announcement:publish")
     public R<Boolean> publish(@RequestBody SysAnnouncement announcement) {
         announcement.setSenderId(UserContext.getUserId());
         announcement.setCreateBy(String.valueOf(UserContext.getUserId()));
@@ -53,7 +56,7 @@ public class SysAnnouncementController {
      * 获取管理列表（分页）- 仅管理员/HR
      */
     @GetMapping("/manage-list")
-    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
+    @SaCheckPermission("oa:announcement:manage")
     public R<DynamicMapVO> getManageList(
             @RequestParam(required = false) String title,
             @RequestParam(required = false) String type,
@@ -68,7 +71,7 @@ public class SysAnnouncementController {
      */
     @SysLog("编辑公告")
     @PutMapping
-    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
+    @SaCheckPermission("oa:announcement:edit")
     public R<Boolean> update(@RequestBody SysAnnouncement announcement) {
         return R.ok(announcementService.updateAnnouncement(announcement));
     }
@@ -78,7 +81,7 @@ public class SysAnnouncementController {
      */
     @SysLog("删除公告")
     @DeleteMapping("/{id}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("oa:announcement:remove")
     public R<Boolean> delete(@PathVariable("id") Long id) {
         return R.ok(announcementService.removeById(id));
     }
@@ -88,7 +91,7 @@ public class SysAnnouncementController {
      */
     @SysLog("撤销公告")
     @PostMapping("/revoke/{id}")
-    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
+    @SaCheckPermission("oa:announcement:revoke")
     public R<Boolean> revoke(@PathVariable("id") Long id) {
         return R.ok(announcementService.revokeAnnouncement(id));
     }
@@ -98,7 +101,7 @@ public class SysAnnouncementController {
      */
     @SysLog("切换公告置顶")
     @PostMapping("/toggle-top/{id}")
-    @SaCheckRole(value = {"admin", "hr"}, mode = SaMode.OR)
+    @SaCheckPermission("oa:announcement:edit")
     public R<Boolean> toggleTop(@PathVariable("id") Long id) {
         return R.ok(announcementService.toggleTop(id));
     }
@@ -107,6 +110,7 @@ public class SysAnnouncementController {
      * 获取阅读统计
      */
     @GetMapping("/read-stats/{id}")
+    @SaCheckPermission("oa:announcement:manage")
     public R<DynamicMapVO> getReadStats(@PathVariable("id") Long id) {
         return R.ok(DynamicMapVO.from(announcementService.getReadStats(id)));
     }

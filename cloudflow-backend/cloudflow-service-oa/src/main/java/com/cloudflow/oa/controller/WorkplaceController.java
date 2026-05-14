@@ -6,6 +6,8 @@ import com.cloudflow.oa.domain.dto.WorkplaceSummaryDTO;
 import com.cloudflow.oa.domain.dto.RecentTaskDTO;
 import com.cloudflow.oa.service.IWorkplaceService;
 import org.springframework.beans.factory.annotation.Autowired;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,6 +18,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/workplace")
+@SaCheckLogin
 public class WorkplaceController {
 
     @Autowired
@@ -26,6 +29,7 @@ public class WorkplaceController {
      * 聚合数据：待办任务数量、今日日程数量、未读消息数量
      */
     @GetMapping("/summary")
+    @SaCheckPermission("workspace:dashboard")
     public R<WorkplaceSummaryDTO> getSummary() {
         Long userId = UserContext.getUserId();
         return R.ok(workplaceService.getWorkplaceSummary(userId));
@@ -36,6 +40,7 @@ public class WorkplaceController {
      * 返回用户最近操作的任务列表
      */
     @GetMapping("/recent-tasks")
+    @SaCheckPermission("workspace:dashboard")
     public R<List<RecentTaskDTO>> getRecentTasks(@RequestParam(value = "limit", defaultValue = "10") Integer limit) {
         Long userId = UserContext.getUserId();
         return R.ok(workplaceService.getRecentTasks(userId, limit));
@@ -45,6 +50,7 @@ public class WorkplaceController {
      * 获取工作台最近动态。
      */
     @GetMapping("/timeline")
+    @SaCheckPermission("workspace:dashboard")
     public R<List<WorkplaceSummaryDTO.ActivityItem>> getTimeline(@RequestParam(value = "limit", defaultValue = "20") Integer limit) {
         Long userId = UserContext.getUserId();
         return R.ok(workplaceService.getTimeline(userId, limit));

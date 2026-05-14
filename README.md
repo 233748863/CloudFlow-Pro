@@ -256,7 +256,7 @@ docker compose up -d
 docker compose ps
 ```
 
-当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端；首次启动会导入 `01` 至 `04` 号结构脚本，并执行关键表校验。
+当前 Compose 文件已编排 MySQL、Redis、Nacos、网关、认证、工作流、OA、CRM、HR、Prometheus、Grafana、前端；首次启动会导入 `01` 至 `04` 号结构脚本，并执行关键表校验。容器部署的变量注入链为 `.env -> docker compose environment -> Spring/Nacos 占位符`，应用容器统一从 `DB_USERNAME`、`DB_PASSWORD`、`REDIS_PASSWORD`、`NACOS_PASSWORD` 读取真实值。
 
 Docker 访问入口：
 
@@ -276,6 +276,13 @@ sh ./scripts/start.sh
 
 ```bash
 sh ./scripts/clean-logs.sh
+```
+
+裸机 / systemd 部署可直接使用 [deploy/cloudflow.env.example](/C:/Users/Administrator/Desktop/CloudFlow%20Pro/deploy/cloudflow.env.example) 作为环境文件模板；部署时把变量写到 `/etc/cloudflow/cloudflow.env`，再由 `EnvironmentFile` 或 `source` 注入后执行 `java -jar`。
+
+```ini
+EnvironmentFile=/etc/cloudflow/cloudflow.env
+ExecStart=/usr/bin/java -jar /opt/cloudflow/cloudflow-auth.jar
 ```
 
 ## 🔧 开发命令
