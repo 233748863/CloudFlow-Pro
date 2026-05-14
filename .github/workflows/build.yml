@@ -26,10 +26,15 @@ jobs:
 
     - name: Scan hard-coded secrets
       run: |
-        BAD_DB_SECRET="Juwangkeji@""2025"
-        BAD_MYSQL_DEFAULT="cloudflow_""2026"
-        BAD_REDIS_DEFAULT="cloudflow_redis_""2026"
-        BAD_NACOS_TOKEN="SecretKey""0123456789"
+        set -euo pipefail
+        BAD_DB_SECRET="$(printf '%s%s' 'Juwangkeji@' '2025')"
+        BAD_MYSQL_DEFAULT="$(printf '%s%s' 'cloudflow_' '2026')"
+        BAD_REDIS_DEFAULT="$(printf '%s%s' 'cloudflow_redis_' '2026')"
+        BAD_NACOS_TOKEN="$(printf '%s%s' 'SecretKey' '0123456789')"
+        printf '::add-mask::%s\n' "$BAD_DB_SECRET"
+        printf '::add-mask::%s\n' "$BAD_MYSQL_DEFAULT"
+        printf '::add-mask::%s\n' "$BAD_REDIS_DEFAULT"
+        printf '::add-mask::%s\n' "$BAD_NACOS_TOKEN"
         if git grep -n -E "${BAD_DB_SECRET}|${BAD_MYSQL_DEFAULT}|${BAD_REDIS_DEFAULT}|${BAD_NACOS_TOKEN}|\$\{[^}]*:[^}]*[Pp][Aa][Ss][Ss][Ww][Oo][Rr][Dd][^}]*\}" -- . ':(exclude)后端审计报告.md' ':(exclude)P0修复方案.md' ':(exclude)Docker部署配置审查报告.md'; then
           echo "Hard-coded secrets or password fallbacks detected"
           exit 1
