@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
-import com.cloudflow.auth.annotation.HasPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.ResetPasswordDTO;
 import com.cloudflow.auth.service.ISysUserService;
@@ -15,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/system/user")
+@SaCheckLogin
 public class SysUserController {
 
     @Autowired
@@ -24,7 +26,7 @@ public class SysUserController {
      * 获取用户列表
      */
     @GetMapping("/list")
-    @HasPermission("system:user:list")
+    @SaCheckPermission("system:user:list")
     public R<List<SysUser>> list(SysUser user) {
         List<SysUser> list = userService.selectUserList(user);
         return R.ok(list);
@@ -34,7 +36,7 @@ public class SysUserController {
      * 获取用户详情
      */
     @GetMapping("/{userId}")
-    @HasPermission("system:user:query")
+    @SaCheckPermission("system:user:query")
     public R<SysUser> getInfo(@PathVariable("userId") Long userId) {
         return R.ok(userService.selectUserById(userId));
     }
@@ -43,7 +45,7 @@ public class SysUserController {
      * 新增用户
      */
     @PostMapping
-    @HasPermission("system:user:add")
+    @SaCheckPermission("system:user:add")
     public R<?> add(@RequestBody SysUser user) {
         try {
             user.setPwdResetRequired("1");
@@ -57,7 +59,7 @@ public class SysUserController {
      * 修改用户
      */
     @PutMapping
-    @HasPermission("system:user:edit")
+    @SaCheckPermission("system:user:edit")
     public R<?> edit(@RequestBody SysUser user) {
         return R.ok(userService.updateUser(user));
     }
@@ -66,7 +68,7 @@ public class SysUserController {
      * 管理员重置用户密码
      */
     @PutMapping("/{userId}/password")
-    @HasPermission("system:user:edit")
+    @SaCheckPermission("system:user:edit")
     public R<?> resetPassword(@PathVariable("userId") Long userId, @RequestBody ResetPasswordDTO dto) {
         String password = dto.getPassword() == null ? "" : dto.getPassword().trim();
         if (!StringUtils.hasText(password)) {
@@ -79,24 +81,24 @@ public class SysUserController {
      * 删除用户
      */
     @DeleteMapping("/{userIds}")
-    @HasPermission("system:user:remove")
+    @SaCheckPermission("system:user:remove")
     public R<?> remove(@PathVariable("userIds") Long[] userIds) {
         return R.ok(userService.deleteUserByIds(userIds));
     }
 
     /**
      * 批量查询用户信息
-     * 
+     *
      * @param userIds 用户ID列表
      * @return 用户信息列表
      */
     @PostMapping("/batch")
-    @HasPermission("system:user:query")
+    @SaCheckPermission("system:user:query")
     public R<List<SysUser>> batchGetUsers(@RequestBody List<Long> userIds) {
         if (CollectionUtils.isEmpty(userIds)) {
             return R.ok(Collections.emptyList());
         }
-        
+
         List<SysUser> users = userService.selectUserByIds(userIds);
         return R.ok(users);
     }

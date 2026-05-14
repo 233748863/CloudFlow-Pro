@@ -1,6 +1,6 @@
 package com.cloudflow.workflow.service;
 
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.exception.RateLimitException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

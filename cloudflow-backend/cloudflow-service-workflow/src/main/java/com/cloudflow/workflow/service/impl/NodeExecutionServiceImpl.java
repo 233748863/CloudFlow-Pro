@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import java.time.LocalDateTime;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;

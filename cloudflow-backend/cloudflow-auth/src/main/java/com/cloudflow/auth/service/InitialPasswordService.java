@@ -1,7 +1,7 @@
 package com.cloudflow.auth.service;
 
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.utils.SysConfigHelper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.common.tenant.TenantBroker;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;

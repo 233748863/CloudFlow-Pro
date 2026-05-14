@@ -3,6 +3,9 @@ package com.cloudflow.crm.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.cloudflow.common.encrypt.annotation.EncryptField;
+import com.cloudflow.common.sensitive.annotation.Sensitive;
+import com.cloudflow.common.sensitive.enums.SensitiveType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -21,8 +24,12 @@ public class CrmContact implements Serializable {
     private Long customerId;
     private String contactName;
     private String gender;
+    @EncryptField
+    @Sensitive(type = SensitiveType.PHONE)
     private String mobile;
     private String phone;
+    @EncryptField
+    @Sensitive(type = SensitiveType.EMAIL)
     private String email;
     private String position;
     private String department;

@@ -7,7 +7,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
-import com.cloudflow.common.core.utils.SysConfigHelper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.OaSealExpiryReminderLog;

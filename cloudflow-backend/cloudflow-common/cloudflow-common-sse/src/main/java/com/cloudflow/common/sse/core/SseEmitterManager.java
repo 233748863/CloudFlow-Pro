@@ -1,7 +1,7 @@
 package com.cloudflow.common.sse.core;
 
 import cn.hutool.core.collection.CollUtil;
-import com.cloudflow.common.core.utils.SysConfigHelper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;

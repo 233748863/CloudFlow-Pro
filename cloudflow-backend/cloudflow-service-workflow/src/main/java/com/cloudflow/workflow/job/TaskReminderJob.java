@@ -1,7 +1,8 @@
 package com.cloudflow.workflow.job;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
@@ -63,6 +64,7 @@ public class TaskReminderJob {
      * 每 30 秒扫描一次到期提醒
      * 使用分布式锁防止多实例重复执行
      */
+    @DistributedJob(name = "task-reminder-job", lockTime = 25)
     @Scheduled(fixedRate = 30000)
     public void scanTaskReminders() {
         String lockKey = "lock:scheduled:scanTaskReminders";

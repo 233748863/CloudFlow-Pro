@@ -75,6 +75,14 @@
         </dependency>
         <dependency>
             <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-encrypt</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-sensitive</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-excel</artifactId>
         </dependency>
         <dependency>

@@ -1,7 +1,8 @@
 package com.cloudflow.workflow.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.workflow.domain.WfTransactionMessage;
 import com.cloudflow.workflow.mapper.WfTransactionMessageMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -205,6 +206,7 @@ public class TransactionConsistencyService {
      * 每 60 秒执行一次
      * 使用分布式锁防止多实例重复执行
      */
+    @DistributedJob(name = "transaction-retry-job", lockTime = 55)
     @Scheduled(fixedDelay = 60000)
     public void retryPendingMessages() {
         String lockKey = "lock:scheduled:retryPendingMessages";
@@ -449,6 +451,7 @@ public class TransactionConsistencyService {
      * 每天凌晨2点执行
      * 使用分布式锁防止多实例重复执行
      */
+    @DistributedJob(name = "transaction-cleanup-job", lockTime = 120)
     @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupSuccessMessages() {
         String lockKey = "lock:scheduled:cleanupSuccessMessages";

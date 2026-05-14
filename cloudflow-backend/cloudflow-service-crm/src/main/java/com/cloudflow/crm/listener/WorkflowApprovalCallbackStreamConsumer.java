@@ -1,6 +1,6 @@
 package com.cloudflow.crm.listener;
 
-import com.cloudflow.common.core.utils.RedisStreamUtil;
+import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.crm.domain.dto.ApprovalResultDTO;
 import com.cloudflow.crm.service.WorkflowCallbackService;

@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.Duration;
 import java.time.format.DateTimeFormatter;
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfTask;

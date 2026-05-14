@@ -49,7 +49,7 @@ public class CloudFlowLogProperties {
      * 不存在时为 null，使用 yml 默认值。
      */
     @Autowired(required = false)
-    private com.cloudflow.common.core.utils.SysConfigHelper sysConfigHelper;
+    private com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
 
     /**
      * 应用启动后从 sys_config 表加载日志配置，覆盖 yml 默认值

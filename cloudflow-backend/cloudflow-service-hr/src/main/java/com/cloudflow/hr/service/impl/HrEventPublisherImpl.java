@@ -1,7 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.utils.RedisStreamUtil;
+import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.hr.config.HrEventStreamConstants;
 import com.cloudflow.hr.service.HrEventPublisher;
 import lombok.RequiredArgsConstructor;

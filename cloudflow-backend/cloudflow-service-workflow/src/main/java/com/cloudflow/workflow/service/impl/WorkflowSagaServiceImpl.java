@@ -3,7 +3,7 @@ package com.cloudflow.workflow.service.impl;
 import com.cloudflow.workflow.service.IWorkflowSagaService;
 
 import java.time.LocalDateTime;
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.WfTaskHistory;

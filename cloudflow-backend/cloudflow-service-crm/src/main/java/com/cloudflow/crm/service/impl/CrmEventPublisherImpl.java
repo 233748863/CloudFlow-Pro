@@ -1,7 +1,7 @@
 package com.cloudflow.crm.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.utils.RedisStreamUtil;
+import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.service.CrmEventPublisher;
 import lombok.RequiredArgsConstructor;

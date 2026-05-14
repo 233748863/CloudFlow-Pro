@@ -1,6 +1,6 @@
 package com.cloudflow.workflow.listener;
 
-import com.cloudflow.common.core.utils.RedisStreamUtil;
+import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
 import com.cloudflow.workflow.service.IWfTaskService;
 import org.slf4j.Logger;

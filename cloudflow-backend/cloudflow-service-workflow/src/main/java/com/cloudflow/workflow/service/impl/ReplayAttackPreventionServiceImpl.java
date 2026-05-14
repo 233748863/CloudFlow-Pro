@@ -2,7 +2,7 @@ package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.workflow.service.IReplayAttackPreventionService;
 
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

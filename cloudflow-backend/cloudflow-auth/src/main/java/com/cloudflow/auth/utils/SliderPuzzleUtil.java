@@ -1,6 +1,6 @@
 package com.cloudflow.auth.utils;
 
-import com.cloudflow.common.core.utils.SysConfigHelper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;

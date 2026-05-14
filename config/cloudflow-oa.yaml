@@ -91,17 +91,6 @@ feign:
       default:
         connect-timeout: 5000
         read-timeout: 10000
-  hystrix:
-    enabled: true
-
-# Hystrix配置
-hystrix:
-  command:
-    default:
-      execution:
-        isolation:
-          thread:
-            timeoutInMilliseconds: 10000
 
 logging:
   level:

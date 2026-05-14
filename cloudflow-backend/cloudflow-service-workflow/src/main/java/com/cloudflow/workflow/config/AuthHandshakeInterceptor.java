@@ -1,6 +1,6 @@
 package com.cloudflow.workflow.config;
 
-import com.cloudflow.common.core.utils.TokenService;
+import com.cloudflow.common.security.core.TokenService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;

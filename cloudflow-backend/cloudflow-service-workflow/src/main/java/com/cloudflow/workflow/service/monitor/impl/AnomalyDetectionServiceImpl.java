@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service.monitor.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
@@ -83,6 +84,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     }
 
     @Override
+    @DistributedJob(name = "workflow-anomaly-deadlock-job", lockTime = 600)
     @Scheduled(cron = "0 */10 * * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectDeadlock() {
@@ -173,6 +175,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     }
 
     @Override
+    @DistributedJob(name = "workflow-anomaly-data-check-job", lockTime = 600)
     @Scheduled(cron = "0 0 */6 * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectDataInconsistency() {

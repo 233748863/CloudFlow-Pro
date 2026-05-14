@@ -194,6 +194,12 @@ cloudflow:
     prefix: hr
     domain:
   profile: /data/cloudflow/hr/profile
+  business-rule:
+    fallback-policy:
+      hr.leave.quota.limit: PASS
+      oa.expense.amount.limit: WARN
+      oa.contract.risk.threshold: DENY
+      default: WARN
   hr:
     sync:
       full-sync-on-startup: true

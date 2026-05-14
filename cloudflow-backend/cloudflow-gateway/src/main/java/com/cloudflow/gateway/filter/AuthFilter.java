@@ -1,6 +1,6 @@
 package com.cloudflow.gateway.filter;
 
-import com.cloudflow.common.core.utils.TokenService;
+import com.cloudflow.common.security.core.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;

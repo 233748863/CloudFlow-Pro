@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller.system;
 
-import com.cloudflow.auth.annotation.HasPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.dto.OnlineUserDTO;
 import com.cloudflow.auth.domain.dto.OnlineUserQuery;
 import com.cloudflow.auth.service.OnlineUserService;
@@ -23,6 +24,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/system/online")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class SysOnlineUserController {
 
     private final OnlineUserService onlineUserService;
@@ -31,7 +33,7 @@ public class SysOnlineUserController {
      * 分页查询在线用户。
      */
     @GetMapping("/page")
-    @HasPermission("system:online:list")
+    @SaCheckPermission("system:online:list")
     public R<PageResult<OnlineUserDTO>> page(OnlineUserQuery query, PageQuery pageQuery) {
         return R.ok(onlineUserService.selectOnlineUserPage(query, pageQuery));
     }
@@ -40,7 +42,7 @@ public class SysOnlineUserController {
      * 批量强制下线。
      */
     @DeleteMapping
-    @HasPermission("system:online:forceLogout")
+    @SaCheckPermission("system:online:forceLogout")
     public R<String> forceLogout(@RequestBody List<String> tokens) {
         if (CollectionUtils.isEmpty(tokens)) {
             return R.fail("请选择要下线的在线用户");

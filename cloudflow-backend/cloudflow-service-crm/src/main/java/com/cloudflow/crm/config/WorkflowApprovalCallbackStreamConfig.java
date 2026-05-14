@@ -1,6 +1,6 @@
 package com.cloudflow.crm.config;
 
-import com.cloudflow.common.core.utils.RedisStreamUtil;
+import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.crm.listener.WorkflowApprovalCallbackStreamConsumer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

@@ -1,7 +1,7 @@
 package com.cloudflow.common.security.service;
 
 import cn.dev33.satoken.stp.StpInterface;
-import com.cloudflow.common.core.utils.TokenService;
+import com.cloudflow.common.security.core.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;

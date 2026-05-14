@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
-import com.cloudflow.auth.annotation.HasPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.domain.dto.RoleOptionDTO;
 import com.cloudflow.auth.service.ISysRoleService;
@@ -12,13 +13,14 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/system/role")
+@SaCheckLogin
 public class SysRoleController {
 
     @Autowired
     private ISysRoleService roleService;
 
     @GetMapping("/list")
-    @HasPermission("system:role:list")
+    @SaCheckPermission("system:role:list")
     public R<List<SysRole>> list(SysRole role) {
         return R.ok(roleService.selectRoleList(role));
     }
@@ -29,25 +31,25 @@ public class SysRoleController {
     }
 
     @GetMapping("/{roleId}")
-    @HasPermission("system:role:query")
+    @SaCheckPermission("system:role:query")
     public R<SysRole> getInfo(@PathVariable("roleId") Long roleId) {
         return R.ok(roleService.selectRoleById(roleId));
     }
 
     @PostMapping
-    @HasPermission("system:role:add")
+    @SaCheckPermission("system:role:add")
     public R<?> add(@RequestBody SysRole role) {
         return R.ok(roleService.insertRole(role));
     }
 
     @PutMapping
-    @HasPermission("system:role:edit")
+    @SaCheckPermission("system:role:edit")
     public R<?> edit(@RequestBody SysRole role) {
         return R.ok(roleService.updateRole(role));
     }
 
     @DeleteMapping("/{roleIds}")
-    @HasPermission("system:role:remove")
+    @SaCheckPermission("system:role:remove")
     public R<?> remove(@PathVariable("roleIds") Long[] roleIds) {
         return R.ok(roleService.deleteRoleByIds(roleIds));
     }

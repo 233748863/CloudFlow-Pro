@@ -23,7 +23,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.IpUtils;
-import com.cloudflow.common.core.utils.TokenService;
+import com.cloudflow.common.security.core.TokenService;
 import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
 import com.cloudflow.common.ratelimiter.enums.LimitType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -99,7 +99,7 @@ public class AuthController {
         String username = trimValue(form.getUsername());
 
         // 先校验滑块验证码，避免未通过人机校验时继续执行登录流程。
-        if (!captchaService.validatePassToken(form.getCaptchaToken())) {
+        if (!captchaService.validatePassToken(form.getCaptchaToken(), getClientIp(request))) {
             loginLogService.recordLoginFailure(
                 username,
                 tenantConfigProperties.getDefaultTenantId(),
@@ -249,8 +249,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public R<?> register(@RequestBody @Validated RegisterBody registerBody) {
-        if (!captchaService.validatePassToken(registerBody.getCaptchaToken())) {
+    public R<?> register(@RequestBody @Validated RegisterBody registerBody, HttpServletRequest request) {
+        if (!captchaService.validatePassToken(registerBody.getCaptchaToken(), getClientIp(request))) {
             return R.fail("验证码失效或错误，请重新验证");
         }
 

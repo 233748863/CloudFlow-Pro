@@ -3,6 +3,9 @@ package com.cloudflow.crm.domain;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.cloudflow.common.encrypt.annotation.EncryptField;
+import com.cloudflow.common.sensitive.annotation.Sensitive;
+import com.cloudflow.common.sensitive.enums.SensitiveType;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
@@ -29,11 +32,16 @@ public class CrmCustomer implements Serializable {
     private Long deptId;
     private String deptName;
     private String phone;
+    @EncryptField
+    @Sensitive(type = SensitiveType.EMAIL)
     private String email;
     private String website;
     private String province;
     private String city;
+    @Sensitive(type = SensitiveType.ADDRESS)
     private String address;
+    @EncryptField
+    @Sensitive(type = SensitiveType.DEFAULT)
     private String creditCode;
     private String healthLevel;
     private String healthReason;

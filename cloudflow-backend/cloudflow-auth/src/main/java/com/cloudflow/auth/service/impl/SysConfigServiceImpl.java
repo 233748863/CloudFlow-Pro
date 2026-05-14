@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.auth.domain.SysConfig;
 import com.cloudflow.auth.mapper.SysConfigMapper;
 import com.cloudflow.auth.service.ISysConfigService;
-import com.cloudflow.common.core.utils.SysConfigHelper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,7 @@
 package com.cloudflow.workflow.config;
 
 import com.cloudflow.common.config.ContextTaskDecorator;
-import com.cloudflow.common.core.utils.SysConfigHelper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.aop.interceptor.AsyncUncaughtExceptionHandler;

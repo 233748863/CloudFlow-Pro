@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
-import com.cloudflow.auth.annotation.HasPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysMenu;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.common.core.domain.R;
@@ -8,12 +9,11 @@ import com.cloudflow.common.core.utils.SecurityUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/system/menu")
+@SaCheckLogin
 public class SysMenuController {
 
     @Autowired
@@ -23,7 +23,7 @@ public class SysMenuController {
      * 获取菜单列表
      */
     @GetMapping("/list")
-    @HasPermission("system:menu:list")
+    @SaCheckPermission("system:menu:list")
     public R<List<SysMenu>> list(SysMenu menu) {
         Long userId = SecurityUtils.getUserId();
         List<SysMenu> menus = menuService.selectMenuList(menu, userId != null ? userId : 1L);
@@ -34,7 +34,7 @@ public class SysMenuController {
      * 获取菜单详情
      */
     @GetMapping("/{menuId}")
-    @HasPermission("system:menu:query")
+    @SaCheckPermission("system:menu:query")
     public R<SysMenu> getInfo(@PathVariable("menuId") Long menuId) {
         return R.ok(menuService.selectMenuById(menuId));
     }
@@ -53,7 +53,7 @@ public class SysMenuController {
      * 新增菜单
      */
     @PostMapping
-    @HasPermission("system:menu:add")
+    @SaCheckPermission("system:menu:add")
     public R<?> add(@RequestBody SysMenu menu) {
         return R.ok(menuService.insertMenu(menu));
     }
@@ -62,7 +62,7 @@ public class SysMenuController {
      * 修改菜单
      */
     @PutMapping
-    @HasPermission("system:menu:edit")
+    @SaCheckPermission("system:menu:edit")
     public R<?> edit(@RequestBody SysMenu menu) {
         return R.ok(menuService.updateMenu(menu));
     }
@@ -71,7 +71,7 @@ public class SysMenuController {
      * 删除菜单
      */
     @DeleteMapping("/{menuId}")
-    @HasPermission("system:menu:remove")
+    @SaCheckPermission("system:menu:remove")
     public R<?> remove(@PathVariable("menuId") Long menuId) {
         return R.ok(menuService.deleteMenuById(menuId));
     }

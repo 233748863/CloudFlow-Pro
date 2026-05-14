@@ -6,7 +6,7 @@ import com.cloudflow.auth.service.OnlineUserService;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.SecurityUtils;
-import com.cloudflow.common.core.utils.TokenService;
+import com.cloudflow.common.security.core.TokenService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;

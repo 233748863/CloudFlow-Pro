@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service.monitor.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
@@ -51,6 +52,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
      * 定时检测超时任务，每 5 分钟执行一次。
      */
     @Override
+    @DistributedJob(name = "workflow-timeout-task-check-job", lockTime = 300)
     @Scheduled(cron = "0 */5 * * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectTimeoutTasks() {
@@ -107,6 +109,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
      * 定时检测超时流程，每 5 分钟执行一次。
      */
     @Override
+    @DistributedJob(name = "workflow-timeout-process-check-job", lockTime = 300)
     @Scheduled(cron = "0 */5 * * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectTimeoutProcesses() {

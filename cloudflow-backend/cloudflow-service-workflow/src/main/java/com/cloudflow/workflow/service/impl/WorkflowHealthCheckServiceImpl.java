@@ -3,7 +3,7 @@ package com.cloudflow.workflow.service.impl;
 import com.cloudflow.workflow.service.IWorkflowHealthCheckService;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;

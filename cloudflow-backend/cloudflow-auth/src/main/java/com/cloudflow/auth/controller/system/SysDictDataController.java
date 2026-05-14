@@ -1,7 +1,8 @@
 package com.cloudflow.auth.controller.system;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.auth.annotation.HasPermission;
 import com.cloudflow.auth.domain.SysDictData;
 import com.cloudflow.auth.mapper.SysDictDataMapper;
 import com.cloudflow.auth.service.ISysDictTypeService;
@@ -19,6 +20,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/system/dict/data")
+@SaCheckLogin
 public class SysDictDataController {
 
     @Autowired
@@ -35,7 +37,7 @@ public class SysDictDataController {
 
     /** 查询字典数据列表（管理页面用，包含停用的） */
     @GetMapping("/list")
-    @HasPermission("system:dict:list")
+    @SaCheckPermission("system:dict:list")
     public R<List<SysDictData>> list(@RequestParam(required = false) String dictType) {
         LambdaQueryWrapper<SysDictData> wrapper = new LambdaQueryWrapper<>();
         if (dictType != null && !dictType.isEmpty()) {
@@ -47,14 +49,14 @@ public class SysDictDataController {
 
     /** 查询字典数据详情 */
     @GetMapping("/{dictCode}")
-    @HasPermission("system:dict:query")
+    @SaCheckPermission("system:dict:query")
     public R<SysDictData> getInfo(@PathVariable("dictCode") Long dictCode) {
         return R.ok(dictDataMapper.selectById(dictCode));
     }
 
     /** 新增字典数据 */
     @PostMapping
-    @HasPermission("system:dict:add")
+    @SaCheckPermission("system:dict:add")
     public R<?> add(@RequestBody SysDictData dictData) {
         dictDataMapper.insert(dictData);
         return R.ok();
@@ -62,7 +64,7 @@ public class SysDictDataController {
 
     /** 修改字典数据 */
     @PutMapping
-    @HasPermission("system:dict:edit")
+    @SaCheckPermission("system:dict:edit")
     public R<?> edit(@RequestBody SysDictData dictData) {
         dictDataMapper.updateById(dictData);
         return R.ok();
@@ -70,7 +72,7 @@ public class SysDictDataController {
 
     /** 删除字典数据 */
     @DeleteMapping("/{dictCodes}")
-    @HasPermission("system:dict:remove")
+    @SaCheckPermission("system:dict:remove")
     public R<?> remove(@PathVariable("dictCodes") Long[] dictCodes) {
         dictDataMapper.deleteBatchIds(Arrays.asList(dictCodes));
         return R.ok();

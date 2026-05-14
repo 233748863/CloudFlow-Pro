@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller.system;
 
-import com.cloudflow.auth.annotation.HasPermission;
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDictType;
 import com.cloudflow.auth.service.ISysDictTypeService;
 import com.cloudflow.common.core.domain.R;
@@ -16,6 +17,7 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/system/dict/type")
+@SaCheckLogin
 public class SysDictTypeController {
 
     @Autowired
@@ -23,21 +25,21 @@ public class SysDictTypeController {
 
     /** 查询字典类型列表 */
     @GetMapping("/list")
-    @HasPermission("system:dict:list")
+    @SaCheckPermission("system:dict:list")
     public R<List<SysDictType>> list() {
         return R.ok(dictTypeService.selectDictTypeAll());
     }
 
     /** 查询字典类型详情 */
     @GetMapping("/{dictId}")
-    @HasPermission("system:dict:query")
+    @SaCheckPermission("system:dict:query")
     public R<SysDictType> getInfo(@PathVariable("dictId") Long dictId) {
         return R.ok(dictTypeService.getById(dictId));
     }
 
     /** 新增字典类型 */
     @PostMapping
-    @HasPermission("system:dict:add")
+    @SaCheckPermission("system:dict:add")
     public R<?> add(@RequestBody SysDictType dictType) {
         if (!dictTypeService.checkDictTypeUnique(dictType)) {
             return R.fail("字典类型'" + dictType.getDictType() + "'已存在");
@@ -47,7 +49,7 @@ public class SysDictTypeController {
 
     /** 修改字典类型 */
     @PutMapping
-    @HasPermission("system:dict:edit")
+    @SaCheckPermission("system:dict:edit")
     public R<?> edit(@RequestBody SysDictType dictType) {
         if (!dictTypeService.checkDictTypeUnique(dictType)) {
             return R.fail("字典类型'" + dictType.getDictType() + "'已存在");
@@ -57,7 +59,7 @@ public class SysDictTypeController {
 
     /** 删除字典类型 */
     @DeleteMapping("/{dictIds}")
-    @HasPermission("system:dict:remove")
+    @SaCheckPermission("system:dict:remove")
     public R<?> remove(@PathVariable("dictIds") Long[] dictIds) {
         dictTypeService.deleteDictTypeByIds(dictIds);
         return R.ok();

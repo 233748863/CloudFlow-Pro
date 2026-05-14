@@ -2,7 +2,8 @@ package com.cloudflow.workflow.job;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.core.utils.RedisCache;
+import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
@@ -79,6 +80,7 @@ public class TaskTimeoutJob {
      * 每分钟扫描一次超时任务
      * 使用分布式锁防止多实例重复执行
      */
+    @DistributedJob(name = "task-timeout-scan-job", lockTime = 55)
     @Scheduled(fixedRate = 60000)
     public void scanTimeoutTasks() {
         String lockKey = "lock:scheduled:scanTimeoutTasks";
@@ -305,6 +307,7 @@ public class TaskTimeoutJob {
      * 防止 Redis 内存泄漏
      * 使用分布式锁防止多实例重复执行
      */
+    @DistributedJob(name = "task-timeout-cleanup-job", lockTime = 120)
     @Scheduled(cron = "0 0 2 * * ?")
     public void cleanupExpiredKeys() {
         String lockKey = "lock:scheduled:cleanupExpiredKeys";

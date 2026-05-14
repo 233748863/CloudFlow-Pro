@@ -1,6 +1,6 @@
 package com.cloudflow.crm.listener;
 
-import com.cloudflow.common.core.utils.RedisStreamUtil;
+import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.crm.config.HrEventStreamConstants;
 import com.cloudflow.crm.service.CrmHandoverTaskService;
 import lombok.RequiredArgsConstructor;

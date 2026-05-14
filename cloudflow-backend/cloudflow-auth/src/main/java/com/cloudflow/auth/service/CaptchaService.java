@@ -3,7 +3,7 @@ package com.cloudflow.auth.service;
 import com.cloudflow.auth.config.properties.CaptchaProperties;
 import com.cloudflow.auth.utils.SliderPuzzleUtil;
 import com.cloudflow.common.core.utils.IdUtils;
-import com.cloudflow.common.core.utils.SysConfigHelper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
@@ -55,24 +55,21 @@ public class CaptchaService {
     private static final String CAPTCHA_KEY = "CAPTCHA:CODE:";
     private static final String PASS_TOKEN_KEY = "CAPTCHA:PASS:";
     private static final String LIMIT_KEY = "CAPTCHA:LIMIT:";
+    private static final String PASS_TOKEN_VALUE_SEPARATOR = "|";
 
     public Map<String, Object> generateCaptcha(String ip) {
-        // Check Rate Limit
         String limitKey = LIMIT_KEY + ip;
         String countStr = redisTemplate.opsForValue().get(limitKey);
         int count = countStr == null ? 0 : Integer.parseInt(countStr);
         if (count >= getDailyLimit()) {
             throw new RuntimeException("今日验证次数已达上限");
         }
-        
-        // Generate
+
         SliderPuzzleUtil.CaptchaData data = SliderPuzzleUtil.createCaptcha();
         String uuid = IdUtils.simpleUUID();
-        
-        // Store X in Redis
+
         redisTemplate.opsForValue().set(CAPTCHA_KEY + uuid, String.valueOf(data.getX()), getTtl(), TimeUnit.SECONDS);
-        
-        // Return to frontend
+
         Map<String, Object> result = new HashMap<>();
         result.put("uuid", uuid);
         result.put("bgImage", data.getBgImage());
@@ -86,38 +83,50 @@ public class CaptchaService {
     public String verifyCaptcha(String uuid, int x, String ip) {
         String key = CAPTCHA_KEY + uuid;
         String storedX = redisTemplate.opsForValue().get(key);
-        
+
         if (storedX == null) {
             throw new RuntimeException("验证码已过期");
         }
-        
-        redisTemplate.delete(key); // Verify once only
-        
+
+        redisTemplate.delete(key);
+
         int targetX = Integer.parseInt(storedX);
         if (Math.abs(x - targetX) <= getTolerance()) {
-            // 验证成功，生成通过Token
             String passToken = IdUtils.simpleUUID();
-            redisTemplate.opsForValue().set(PASS_TOKEN_KEY + passToken, "VALID", getPassTokenTtl(), TimeUnit.SECONDS);
-            
-            // Increment Limit
+            redisTemplate.opsForValue().set(
+                PASS_TOKEN_KEY + passToken,
+                buildPassTokenValue(ip),
+                getPassTokenTtl(),
+                TimeUnit.SECONDS
+            );
+
             String limitKey = LIMIT_KEY + ip;
             redisTemplate.opsForValue().increment(limitKey);
             redisTemplate.expire(limitKey, 24, TimeUnit.HOURS);
-            
+
             return passToken;
-        } else {
-            throw new RuntimeException("验证失败");
         }
+        throw new RuntimeException("验证失败");
     }
-    
-    public boolean validatePassToken(String passToken) {
-        if (passToken == null || passToken.isEmpty()) return false;
-        String key = PASS_TOKEN_KEY + passToken;
-        Boolean exists = redisTemplate.hasKey(key);
-        if (Boolean.TRUE.equals(exists)) {
-            redisTemplate.delete(key); // One-time use
-            return true;
+
+    public boolean validatePassToken(String passToken, String ip) {
+        if (passToken == null || passToken.isEmpty() || ip == null || ip.isEmpty()) {
+            return false;
         }
-        return false;
+        String key = PASS_TOKEN_KEY + passToken;
+        String value = redisTemplate.opsForValue().get(key);
+        if (value == null) {
+            return false;
+        }
+        String expected = buildPassTokenValue(ip);
+        if (!expected.equals(value)) {
+            return false;
+        }
+        redisTemplate.delete(key);
+        return true;
+    }
+
+    private String buildPassTokenValue(String ip) {
+        return "VALID" + PASS_TOKEN_VALUE_SEPARATOR + ip;
     }
 }

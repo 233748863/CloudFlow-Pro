@@ -160,17 +160,6 @@ feign:
       cloudflow-workflow:
         connect-timeout: 5000
         read-timeout: 15000
-  hystrix:
-    enabled: true
-
-# Hystrix配置
-hystrix:
-  command:
-    default:
-      execution:
-        isolation:
-          thread:
-            timeoutInMilliseconds: 10000
 
 # 日志配置
 logging:

@@ -1,9 +1,10 @@
-package com.cloudflow.common.core.utils;
+package com.cloudflow.common.security.core;
 
 import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.dev33.satoken.stp.parameter.SaLoginParameter;
 import com.cloudflow.common.config.properties.SecurityProperties;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
