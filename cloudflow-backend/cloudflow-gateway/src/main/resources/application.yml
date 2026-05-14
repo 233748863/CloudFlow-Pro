@@ -5,24 +5,26 @@ spring:
   application:
     name: cloudflow-gateway
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:dev}
   config:
     import:
-      - optional:nacos:cloudflow-gateway.yaml
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml?refresh=true
+      - optional:nacos:cloudflow-common-${spring.profiles.active}.yaml?refresh=true
+      - optional:nacos:${spring.application.name}.yaml?refresh=true
       - optional:nacos:cloudflow-common.yaml?refresh=true
       - optional:file:./config/cloudflow-gateway.yaml
       - optional:file:../config/cloudflow-gateway.yaml
       - optional:file:../../config/cloudflow-gateway.yaml
   cloud:
     nacos:
-      server-addr: ${NACOS_SERVER}
-      username: ${NACOS_USERNAME}
-      password: ${NACOS_PASSWORD}
+      server-addr: ${NACOS_SERVER:127.0.0.1:8848}
+      username: ${NACOS_USERNAME:}
+      password: ${NACOS_PASSWORD:}
       config:
-        namespace: ${NACOS_NAMESPACE}
+        namespace: ${NACOS_NAMESPACE:cloudflow-${spring.profiles.active}}
         file-extension: yaml
       discovery:
-        namespace: ${NACOS_NAMESPACE}
+        namespace: ${NACOS_NAMESPACE:cloudflow-${spring.profiles.active}}
     gateway:
       lazy-routes-initialization: true
       routes:

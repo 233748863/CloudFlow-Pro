@@ -24,6 +24,6 @@ EXPOSE 9003
 # JVM 优化参数
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:MaxRAMPercentage=70.0", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]

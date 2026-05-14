@@ -11,6 +11,8 @@ public interface ICrmQuoteService extends IService<CrmQuote> {
 
     CrmQuote getQuoteDetail(Long quoteId);
 
+    CrmQuote getAccessibleQuote(Long quoteId);
+
     boolean createQuote(CrmQuote quote);
 
     boolean updateQuote(CrmQuote quote);

@@ -196,14 +196,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     }
 
     private CrmCustomer requireCustomer(Long customerId) {
-        if (customerId == null) {
-            throw new IllegalArgumentException("客户ID不能为空");
-        }
-        CrmCustomer customer = customerMapper.selectById(customerId);
-        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDelFlag())) {
-            throw new IllegalArgumentException("客户不存在");
-        }
-        return customer;
+        return customerService.getAccessibleCustomer(customerId);
     }
 
     private List<CrmHealthReasonItemVO> buildHealthReasons(Long customerId, CrmCustomer customer) {
@@ -216,7 +209,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 reasons.add(buildReason("RENEWAL", "RENEWAL_WINDOW",
                         days <= 30 ? "30天内续约到期" : "90天内续约到期",
                         days <= 30 ? CrmConstants.HealthLevel.RED : CrmConstants.HealthLevel.YELLOW,
-                        "/office/crm/customer/" + customerId + "?tab=renewal"));
+                        "/office/crm/customer/" + customerId + "#renewal"));
             }
         }
         int overdueDays = CrmHealthCalculator.resolveMaxOverdueDays(receivableMapper, customerId, today);
@@ -224,18 +217,18 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
             reasons.add(buildReason("RECEIVABLE", "RECEIVABLE_OVERDUE",
                     overdueDays > 30 ? "回款逾期超过30天" : "回款逾期未超过30天",
                     overdueDays > 30 ? CrmConstants.HealthLevel.RED : CrmConstants.HealthLevel.YELLOW,
-                    "/office/crm/customer/" + customerId + "?tab=cashflow"));
+                    "/office/crm/customer/" + customerId + "#cashflow"));
         }
         if (CrmHealthCalculator.hasHighSeverityOpenTicket(serviceTicketMapper, customerId)) {
             reasons.add(buildReason("TICKET", "HIGH_SEVERITY_OPEN", "存在高严重度未关闭工单",
                     CrmConstants.HealthLevel.RED,
-                    "/office/crm/customer/" + customerId + "?tab=ticket"));
+                    "/office/crm/customer/" + customerId + "#ticket"));
         }
         if (customer.getLastFollowUpTime() == null
                 || ChronoUnit.DAYS.between(customer.getLastFollowUpTime().toLocalDate(), today) >= 30) {
             reasons.add(buildReason("FOLLOW_UP", "STALE_FOLLOW_UP", "30天未跟进",
                     CrmConstants.HealthLevel.YELLOW,
-                    "/office/crm/customer/" + customerId + "?tab=follow-up"));
+                    "/office/crm/customer/" + customerId + "#follow-up"));
         }
         if (reasons.isEmpty()) {
             reasons.add(buildReason("HEALTH", "NORMAL", "状态正常",

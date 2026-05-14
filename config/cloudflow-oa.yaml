@@ -53,21 +53,21 @@ cloudflow:
       default-expire-days: 30
       max-attachment-size: 10
       allow-anonymous-read: false
-    
+
     # 资产配置
     asset:
       enable-qr-code: true
       qr-code-prefix: "ASSET-"
       qr-code-size: 200
       depreciation-method: "STRAIGHT_LINE"
-    
+
     # 车辆配置
     vehicle:
       max-booking-days: 7
       advance-booking-hours: 2
       allow-concurrent-booking: false
       fuel-price-update-cron: "0 0 2 * * ?"
-    
+
     # 考勤配置
     attendance:
       work-start-time: "09:00"
@@ -76,7 +76,19 @@ cloudflow:
       early-leave-threshold-minutes: 15
       overtime-threshold-minutes: 30
       check-in-radius-meters: 500
-    
+
+    # 错误上报配置
+    error-report:
+      enabled: true
+      allow-anonymous-path: "/dashboard"
+      ip-limit-count: 20
+      ip-limit-window-seconds: 60
+
+    # 离线同步配置
+    sync:
+      conflict-strategy: "LAST_WRITE_WINS"
+      time-tolerance-seconds: 5
+
     # 会议室配置
     meeting-room:
       max-booking-hours: 4

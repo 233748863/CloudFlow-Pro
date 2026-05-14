@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmOpportunityMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmOpportunity">
+        SELECT t.opportunity_id,
+               t.tenant_id,
+               t.customer_id,
+               t.customer_name,
+               t.opportunity_name,
+               t.stage,
+               t.source,
+               t.expected_amount,
+               t.win_rate,
+               t.expected_sign_date,
+               t.owner_id,
+               t.owner_name,
+               t.dept_id,
+               t.dept_name,
+               t.contact_id,
+               t.contact_name,
+               t.latest_follow_up_time,
+               t.stage_changed_time,
+               t.lost_reason,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_opportunity t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.del_flag = '0'
+        <if test="query != null and query.customerId != null">
+            AND t.customer_id = #{query.customerId}
+        </if>
+        <if test="query != null and query.opportunityName != null and query.opportunityName != ''">
+            AND t.opportunity_name LIKE CONCAT('%', #{query.opportunityName}, '%')
+        </if>
+        <if test="query != null and query.stage != null and query.stage != ''">
+            AND t.stage = #{query.stage}
+        </if>
+        <if test="query != null and query.ownerId != null">
+            AND t.owner_id = #{query.ownerId}
+        </if>
+        ORDER BY t.update_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmOpportunity">
+        SELECT t.opportunity_id,
+               t.tenant_id,
+               t.customer_id,
+               t.customer_name,
+               t.opportunity_name,
+               t.stage,
+               t.source,
+               t.expected_amount,
+               t.win_rate,
+               t.expected_sign_date,
+               t.owner_id,
+               t.owner_name,
+               t.dept_id,
+               t.dept_name,
+               t.contact_id,
+               t.contact_name,
+               t.latest_follow_up_time,
+               t.stage_changed_time,
+               t.lost_reason,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_opportunity t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.opportunity_id = #{opportunityId}
+          AND t.del_flag = '0'
+    </select>
+</mapper>

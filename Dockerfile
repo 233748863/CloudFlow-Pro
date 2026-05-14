@@ -38,6 +38,6 @@ COPY --from=builder --chown=appuser:appuser /app/${MODULE_NAME}/target/*.jar app
 # JVM 优化参数
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=75.0", \
+  "-XX:MaxRAMPercentage=70.0", \
   "-Djava.security.egd=file:/dev/./urandom", \
   "-jar", "app.jar"]

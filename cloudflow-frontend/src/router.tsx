@@ -342,6 +342,14 @@ const Loading = () => (
   </div>
 );
 
+const crmManagementRouteElement = (permissions: string[]) => (
+  <PermissionRouteGuard permissions={permissions}>
+    <Suspense fallback={<Loading />}>
+      <CrmManagementPage />
+    </Suspense>
+  </PermissionRouteGuard>
+);
+
 interface RouteStatusPageProps {
   code: string;
   title: string;
@@ -523,14 +531,6 @@ const desktopRoutes = [
         children: [
           {
             path: "/",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <Dashboard />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/dashboard", // Alias
             element: (
               <Suspense fallback={<Loading />}>
                 <Dashboard />
@@ -895,73 +895,31 @@ const desktopRoutes = [
           },
           {
             path: "/office/crm",
-            element: (
-              <PermissionRouteGuard permissions={["crm:dashboard:view"]}>
-                <Suspense fallback={<Loading />}>
-                  <CrmManagementPage />
-                </Suspense>
-              </PermissionRouteGuard>
-            ),
+            element: crmManagementRouteElement(["crm:dashboard:view", "crm:customer:list", "crm:opportunity:list", "crm:quote:list", "crm:receivable:list", "crm:renewal:list", "crm:ticket:list"]),
           },
           {
             path: "/office/crm/customers",
-            element: (
-              <PermissionRouteGuard permissions={["crm:customer:list"]}>
-                <Suspense fallback={<Loading />}>
-                  <CrmManagementPage />
-                </Suspense>
-              </PermissionRouteGuard>
-            ),
+            element: crmManagementRouteElement(["crm:dashboard:view", "crm:customer:list", "crm:opportunity:list", "crm:quote:list", "crm:receivable:list", "crm:renewal:list", "crm:ticket:list"]),
           },
           {
             path: "/office/crm/opportunities",
-            element: (
-              <PermissionRouteGuard permissions={["crm:opportunity:list"]}>
-                <Suspense fallback={<Loading />}>
-                  <CrmManagementPage />
-                </Suspense>
-              </PermissionRouteGuard>
-            ),
+            element: crmManagementRouteElement(["crm:dashboard:view", "crm:customer:list", "crm:opportunity:list", "crm:quote:list", "crm:receivable:list", "crm:renewal:list", "crm:ticket:list"]),
           },
           {
             path: "/office/crm/quotes",
-            element: (
-              <PermissionRouteGuard permissions={["crm:quote:list"]}>
-                <Suspense fallback={<Loading />}>
-                  <CrmManagementPage />
-                </Suspense>
-              </PermissionRouteGuard>
-            ),
+            element: crmManagementRouteElement(["crm:dashboard:view", "crm:customer:list", "crm:opportunity:list", "crm:quote:list", "crm:receivable:list", "crm:renewal:list", "crm:ticket:list"]),
           },
           {
             path: "/office/crm/receivables",
-            element: (
-              <PermissionRouteGuard permissions={["crm:receivable:list"]}>
-                <Suspense fallback={<Loading />}>
-                  <CrmManagementPage />
-                </Suspense>
-              </PermissionRouteGuard>
-            ),
+            element: crmManagementRouteElement(["crm:dashboard:view", "crm:customer:list", "crm:opportunity:list", "crm:quote:list", "crm:receivable:list", "crm:renewal:list", "crm:ticket:list"]),
           },
           {
             path: "/office/crm/renewals",
-            element: (
-              <PermissionRouteGuard permissions={["crm:renewal:list"]}>
-                <Suspense fallback={<Loading />}>
-                  <CrmManagementPage />
-                </Suspense>
-              </PermissionRouteGuard>
-            ),
+            element: crmManagementRouteElement(["crm:dashboard:view", "crm:customer:list", "crm:opportunity:list", "crm:quote:list", "crm:receivable:list", "crm:renewal:list", "crm:ticket:list"]),
           },
           {
             path: "/office/crm/tickets",
-            element: (
-              <PermissionRouteGuard permissions={["crm:ticket:list"]}>
-                <Suspense fallback={<Loading />}>
-                  <CrmManagementPage />
-                </Suspense>
-              </PermissionRouteGuard>
-            ),
+            element: crmManagementRouteElement(["crm:dashboard:view", "crm:customer:list", "crm:opportunity:list", "crm:quote:list", "crm:receivable:list", "crm:renewal:list", "crm:ticket:list"]),
           },
           {
             path: "/office/crm/leads",
@@ -1384,14 +1342,6 @@ const mobileRoutes = [
         children: [
           {
             path: "/",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <MobileDashboard />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/dashboard",
             element: (
               <Suspense fallback={<Loading />}>
                 <MobileDashboard />

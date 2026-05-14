@@ -189,7 +189,7 @@ export const MobileMeetingRoom: React.FC = () => {
         description: `会议室预订：${bookingForm.roomName}，参会人数：${bookingForm.attendees}`,
       } as any);
       toast.success('预订成功！');
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       toast.error(err.message || '预订失败');
     } finally {

@@ -1,10 +1,10 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -28,19 +28,19 @@ import java.util.Map;
 public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, CrmRenewal>
         implements ICrmRenewalService {
 
+    private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
+    private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
+
     private final RemoteWorkflowService remoteWorkflowService;
     private final ICrmCustomerService customerService;
     private final RemoteOaService remoteOaService;
 
     @Override
     public PageResult<CrmRenewal> queryPage(CrmRenewal query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmRenewal> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmRenewal::getDelFlag, "0").orderByDesc(CrmRenewal::getUpdateTime);
-        eqIfPresent(wrapper, CrmRenewal::getCustomerId, query.getCustomerId());
-        eqIfPresent(wrapper, CrmRenewal::getContractId, query.getContractId());
-        likeIfPresent(wrapper, CrmRenewal::getRenewalName, query.getRenewalName());
-        eqIfPresent(wrapper, CrmRenewal::getStatus, query.getStatus());
-        PageResult<CrmRenewal> result = pageResult(pageQuery, wrapper);
+        PageResult<CrmRenewal> result = PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(),
+                query,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
         if (result.getRows() != null) {
             result.getRows().forEach(CrmRenewalRiskEvaluator::enrich);
         }
@@ -49,9 +49,21 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
 
     @Override
     public CrmRenewal getRenewalInfo(Long renewalId) {
-        CrmRenewal renewal = getById(renewalId);
-        if (renewal != null) {
-            CrmRenewalRiskEvaluator.enrich(renewal);
+        CrmRenewal renewal = getAccessibleRenewal(renewalId);
+        CrmRenewalRiskEvaluator.enrich(renewal);
+        return renewal;
+    }
+
+    @Override
+    public CrmRenewal getAccessibleRenewal(Long renewalId) {
+        if (renewalId == null) {
+            throw new IllegalArgumentException("续约ID不能为空");
+        }
+        CrmRenewal renewal = baseMapper.selectByIdWithDataScope(
+                renewalId,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        if (renewal == null) {
+            throw new IllegalArgumentException("续约记录不存在");
         }
         return renewal;
     }
@@ -84,7 +96,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         }
         fillBindingSnapshot(renewal);
         validate(renewal);
-        CrmRenewal persisted = requireById(renewal.getRenewalId(), "续约记录不存在");
+        CrmRenewal persisted = getAccessibleRenewal(renewal.getRenewalId());
         renewal.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(renewal.getRenewalNo())) {
             renewal.setRenewalNo(persisted.getRenewalNo());
@@ -107,10 +119,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
 
     @Override
     public boolean submitRenewal(Long renewalId) {
-        CrmRenewal renewal = requireById(renewalId, "续约记录不存在");
-        if (!"0".equals(renewal.getDelFlag())) {
-            throw new IllegalArgumentException("续约记录不存在");
-        }
+        CrmRenewal renewal = getAccessibleRenewal(renewalId);
         if (!CrmConstants.RenewalStatus.PLANNED.equals(renewal.getStatus())
                 && !CrmConstants.RenewalStatus.NEGOTIATING.equals(renewal.getStatus())) {
             throw new IllegalArgumentException("只有计划中或洽谈中续约可以提交审批");
@@ -195,10 +204,8 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
             }
         }
         if (renewal.getCustomerId() != null && !StringUtils.hasText(renewal.getCustomerName())) {
-            CrmCustomer customer = customerService.getById(renewal.getCustomerId());
-            if (customer != null && "0".equals(customer.getDelFlag())) {
-                renewal.setCustomerName(customer.getCustomerName());
-            }
+            CrmCustomer customer = customerService.getAccessibleCustomer(renewal.getCustomerId());
+            renewal.setCustomerName(customer.getCustomerName());
         }
     }
 

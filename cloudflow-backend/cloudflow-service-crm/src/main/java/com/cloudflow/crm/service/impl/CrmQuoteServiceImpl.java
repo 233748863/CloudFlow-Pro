@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -35,6 +36,9 @@ import java.util.Map;
 public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQuote>
         implements ICrmQuoteService {
 
+    private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
+    private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
+
     private final RemoteWorkflowService remoteWorkflowService;
     private final ICrmCustomerService customerService;
     private final RemoteOaService remoteOaService;
@@ -43,22 +47,30 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
 
     @Override
     public PageResult<CrmQuote> queryPage(CrmQuote query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmQuote> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmQuote::getDelFlag, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmQuote::getUpdateTime);
-        eqIfPresent(wrapper, CrmQuote::getCustomerId, query.getCustomerId());
-        eqIfPresent(wrapper, CrmQuote::getOpportunityId, query.getOpportunityId());
-        likeIfPresent(wrapper, CrmQuote::getQuoteName, query.getQuoteName());
-        eqIfPresent(wrapper, CrmQuote::getStatus, query.getStatus());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(),
+                query,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
     }
 
     @Override
     public CrmQuote getQuoteDetail(Long quoteId) {
-        CrmQuote quote = requireById(quoteId, "报价不存在");
-        if (!CrmConstants.DelFlag.NORMAL.equals(quote.getDelFlag())) {
+        CrmQuote quote = getAccessibleQuote(quoteId);
+        quote.setQuoteLines(listQuoteLines(quoteId));
+        return quote;
+    }
+
+    @Override
+    public CrmQuote getAccessibleQuote(Long quoteId) {
+        if (quoteId == null) {
+            throw new IllegalArgumentException("报价ID不能为空");
+        }
+        CrmQuote quote = baseMapper.selectByIdWithDataScope(
+                quoteId,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        if (quote == null) {
             throw new IllegalArgumentException("报价不存在");
         }
-        quote.setQuoteLines(listQuoteLines(quoteId));
         return quote;
     }
 
@@ -93,7 +105,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         }
         fillCustomerSnapshot(quote);
         prepareQuoteForSave(quote);
-        CrmQuote persisted = requireById(quote.getQuoteId(), "报价不存在");
+        CrmQuote persisted = getAccessibleQuote(quote.getQuoteId());
         quote.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(quote.getQuoteNo())) {
             quote.setQuoteNo(persisted.getQuoteNo());
@@ -117,10 +129,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
 
     @Override
     public boolean submitQuote(Long quoteId) {
-        CrmQuote quote = requireById(quoteId, "报价不存在");
-        if (!CrmConstants.DelFlag.NORMAL.equals(quote.getDelFlag())) {
-            throw new IllegalArgumentException("报价不存在");
-        }
+        CrmQuote quote = getAccessibleQuote(quoteId);
         if (!CrmConstants.QuoteStatus.DRAFT.equals(quote.getStatus())
                 && !CrmConstants.QuoteStatus.REJECTED.equals(quote.getStatus())) {
             throw new IllegalArgumentException("只有草稿或已驳回报价可以提交审批");
@@ -161,7 +170,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
 
     @Override
     public boolean sendQuote(Long quoteId) {
-        CrmQuote quote = requireById(quoteId, "报价不存在");
+        CrmQuote quote = getAccessibleQuote(quoteId);
         if (!CrmConstants.QuoteStatus.APPROVED.equals(quote.getStatus())
                 && !CrmConstants.QuoteStatus.REJECTED.equals(quote.getStatus())
                 && !CrmConstants.QuoteStatus.DRAFT.equals(quote.getStatus())) {
@@ -179,7 +188,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
 
     @Override
     public boolean acceptQuote(Long quoteId) {
-        CrmQuote quote = requireById(quoteId, "报价不存在");
+        CrmQuote quote = getAccessibleQuote(quoteId);
         if (!CrmConstants.QuoteStatus.APPROVED.equals(quote.getStatus())
                 && !CrmConstants.QuoteStatus.SENT.equals(quote.getStatus())) {
             throw new IllegalArgumentException("当前报价状态不允许接受");
@@ -199,7 +208,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
 
     @Override
     public Long createContractDraft(Long quoteId) {
-        CrmQuote quote = requireById(quoteId, "报价不存在");
+        CrmQuote quote = getAccessibleQuote(quoteId);
         if (quote.getContractId() != null) {
             return quote.getContractId();
         }
@@ -240,7 +249,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
 
     @Override
     public boolean expireQuote(Long quoteId) {
-        CrmQuote quote = requireById(quoteId, "报价不存在");
+        CrmQuote quote = getAccessibleQuote(quoteId);
         if (CrmConstants.QuoteStatus.ACCEPTED.equals(quote.getStatus())) {
             throw new IllegalArgumentException("已接受报价不能设为过期");
         }
@@ -425,10 +434,8 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (quote == null || quote.getCustomerId() == null) {
             return;
         }
-        CrmCustomer customer = customerService.getById(quote.getCustomerId());
-        if (customer != null && CrmConstants.DelFlag.NORMAL.equals(customer.getDelFlag())) {
-            quote.setCustomerName(customer.getCustomerName());
-        }
+        CrmCustomer customer = customerService.getAccessibleCustomer(quote.getCustomerId());
+        quote.setCustomerName(customer.getCustomerName());
     }
 
     private String extractInstanceId(Object data) {

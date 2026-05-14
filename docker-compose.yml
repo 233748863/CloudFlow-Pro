@@ -164,11 +164,11 @@ services:
     container_name: cloudflow-gateway
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      NACOS_SERVER: ${NACOS_SERVER}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE}
-      NACOS_USERNAME: ${NACOS_USERNAME}
-      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: ${NACOS_SERVER:-nacos:8848}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-cloudflow-${SPRING_PROFILES_ACTIVE:-prod}}
+      NACOS_USERNAME: ${NACOS_USERNAME:-}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-}
       DB_USERNAME: ${MYSQL_APP_USERNAME}
       DB_PASSWORD: ${MYSQL_APP_PASSWORD}
       REDIS_HOST: redis
@@ -223,11 +223,11 @@ services:
     container_name: cloudflow-auth
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      NACOS_SERVER: ${NACOS_SERVER}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE}
-      NACOS_USERNAME: ${NACOS_USERNAME}
-      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: ${NACOS_SERVER:-nacos:8848}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-cloudflow-${SPRING_PROFILES_ACTIVE:-prod}}
+      NACOS_USERNAME: ${NACOS_USERNAME:-}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS}&serverTimezone=GMT%2B8
       DB_USERNAME: ${MYSQL_APP_USERNAME}
       DB_PASSWORD: ${MYSQL_APP_PASSWORD}
@@ -280,11 +280,11 @@ services:
     container_name: cloudflow-workflow
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      NACOS_SERVER: ${NACOS_SERVER}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE}
-      NACOS_USERNAME: ${NACOS_USERNAME}
-      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: ${NACOS_SERVER:-nacos:8848}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-cloudflow-${SPRING_PROFILES_ACTIVE:-prod}}
+      NACOS_USERNAME: ${NACOS_USERNAME:-}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS}&serverTimezone=GMT%2B8
       DB_USERNAME: ${MYSQL_APP_USERNAME}
       DB_PASSWORD: ${MYSQL_APP_PASSWORD}
@@ -294,7 +294,7 @@ services:
       LOG_LEVEL_APP: ${LOG_LEVEL_APP}
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
-      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
     volumes:
       # 日志目录映射
       - workflow_logs:/app/logs
@@ -325,11 +325,11 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
           cpus: '1.0'
           memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
   # OA 服务（端口 9003）
   oa:
@@ -339,11 +339,11 @@ services:
     container_name: cloudflow-oa
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      NACOS_SERVER: ${NACOS_SERVER}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE}
-      NACOS_USERNAME: ${NACOS_USERNAME}
-      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: ${NACOS_SERVER:-nacos:8848}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-cloudflow-${SPRING_PROFILES_ACTIVE:-prod}}
+      NACOS_USERNAME: ${NACOS_USERNAME:-}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS}&serverTimezone=GMT%2B8
       DB_USERNAME: ${MYSQL_APP_USERNAME}
       DB_PASSWORD: ${MYSQL_APP_PASSWORD}
@@ -398,11 +398,11 @@ services:
     container_name: cloudflow-crm
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      NACOS_SERVER: ${NACOS_SERVER}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE}
-      NACOS_USERNAME: ${NACOS_USERNAME}
-      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: ${NACOS_SERVER:-nacos:8848}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-cloudflow-${SPRING_PROFILES_ACTIVE:-prod}}
+      NACOS_USERNAME: ${NACOS_USERNAME:-}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS}&serverTimezone=GMT%2B8
       DB_USERNAME: ${MYSQL_APP_USERNAME}
       DB_PASSWORD: ${MYSQL_APP_PASSWORD}
@@ -454,11 +454,11 @@ services:
     container_name: cloudflow-hr
     restart: unless-stopped
     environment:
-      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE}
-      NACOS_SERVER: ${NACOS_SERVER}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE}
-      NACOS_USERNAME: ${NACOS_USERNAME}
-      NACOS_PASSWORD: ${NACOS_PASSWORD}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      NACOS_SERVER: ${NACOS_SERVER:-nacos:8848}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-cloudflow-${SPRING_PROFILES_ACTIVE:-prod}}
+      NACOS_USERNAME: ${NACOS_USERNAME:-}
+      NACOS_PASSWORD: ${NACOS_PASSWORD:-}
       DB_URL: jdbc:mysql://mysql:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS}&serverTimezone=GMT%2B8
       DB_USERNAME: ${MYSQL_APP_USERNAME}
       DB_PASSWORD: ${MYSQL_APP_PASSWORD}
@@ -468,7 +468,7 @@ services:
       LOG_LEVEL_APP: ${LOG_LEVEL_APP}
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
-      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
+      JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
     volumes:
       - hr_logs:/app/logs
       - ./config/cloudflow-service-hr.yaml:/app/config/cloudflow-service-hr.yaml:ro
@@ -495,11 +495,11 @@ services:
     deploy:
       resources:
         limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
           cpus: '0.5'
           memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   # ============================================================
   # 监控层 (Monitoring Layer)

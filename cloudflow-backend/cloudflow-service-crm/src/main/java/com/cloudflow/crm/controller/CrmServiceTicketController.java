@@ -31,8 +31,11 @@ public class CrmServiceTicketController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:ticket:list")
     public R<CrmServiceTicket> getInfo(@PathVariable("id") Long id) {
-        CrmServiceTicket ticket = ticketService.getById(id);
-        return ticket == null || !"0".equals(ticket.getDelFlag()) ? R.fail("工单不存在") : R.ok(ticket);
+        try {
+            return R.ok(ticketService.getAccessibleTicket(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @SysLog("新增CRM工单")
@@ -84,14 +87,17 @@ public class CrmServiceTicketController {
     @SaCheckPermission("crm:ticket:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
-            CrmServiceTicket persisted = ticketService.getById(id);
+            CrmServiceTicket persisted;
+            try {
+                persisted = ticketService.getAccessibleTicket(id);
+            } catch (IllegalArgumentException e) {
+                return R.fail(e.getMessage());
+            }
             CrmServiceTicket ticket = new CrmServiceTicket();
             ticket.setTicketId(id);
             ticket.setDelFlag("1");
             ticketService.updateById(ticket);
-            if (persisted != null) {
-                customerService.refreshHealth(persisted.getCustomerId());
-            }
+            customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();
     }

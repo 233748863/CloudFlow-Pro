@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmServiceTicketMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmServiceTicket">
+        SELECT t.ticket_id,
+               t.tenant_id,
+               t.customer_id,
+               t.customer_name,
+               t.ticket_no,
+               t.ticket_title,
+               t.severity,
+               t.issue_type,
+               t.owner_id,
+               t.owner_name,
+               t.opened_time,
+               t.resolved_time,
+               t.due_time,
+               t.description,
+               t.solution,
+               t.attachment_url,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_service_ticket t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.del_flag = '0'
+        <if test="query != null and query.customerId != null">
+            AND t.customer_id = #{query.customerId}
+        </if>
+        <if test="query != null and query.ticketTitle != null and query.ticketTitle != ''">
+            AND t.ticket_title LIKE CONCAT('%', #{query.ticketTitle}, '%')
+        </if>
+        <if test="query != null and query.severity != null and query.severity != ''">
+            AND t.severity = #{query.severity}
+        </if>
+        <if test="query != null and query.status != null and query.status != ''">
+            AND t.status = #{query.status}
+        </if>
+        ORDER BY t.update_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmServiceTicket">
+        SELECT t.ticket_id,
+               t.tenant_id,
+               t.customer_id,
+               t.customer_name,
+               t.ticket_no,
+               t.ticket_title,
+               t.severity,
+               t.issue_type,
+               t.owner_id,
+               t.owner_name,
+               t.opened_time,
+               t.resolved_time,
+               t.due_time,
+               t.description,
+               t.solution,
+               t.attachment_url,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_service_ticket t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.ticket_id = #{ticketId}
+          AND t.del_flag = '0'
+    </select>
+</mapper>

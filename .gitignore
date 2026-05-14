@@ -57,3 +57,6 @@ vite-*.err.log
 
 #codex
 .codex-*
+
+# Claude temporary worktrees
+.claude/worktrees/

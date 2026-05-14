@@ -16,7 +16,7 @@ public class SyncUploadDTO implements Serializable {
     private String deviceId;
 
     /** 上传时间戳 */
-    private String timestamp;
+    private Long timestamp;
 
     /** 待同步的操作列表 */
     private List<SyncAction> data;
@@ -38,6 +38,6 @@ public class SyncUploadDTO implements Serializable {
         private Object payload;
 
         /** 本地时间戳 */
-        private String localTimestamp;
+        private Long localTimestamp;
     }
 }

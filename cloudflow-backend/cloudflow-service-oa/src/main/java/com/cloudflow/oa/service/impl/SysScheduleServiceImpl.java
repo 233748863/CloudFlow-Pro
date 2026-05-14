@@ -5,6 +5,7 @@ import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.mapper.SysScheduleEventMapper;
 import com.cloudflow.oa.service.ISysScheduleService;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import java.time.Instant;
@@ -21,10 +22,13 @@ import java.util.List;
 @Service
 public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, SysScheduleEvent> implements ISysScheduleService {
 
+    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
+
     private static final DateTimeFormatter DTF = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
     private static final DateTimeFormatter DATE_ONLY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
 
     @Override
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#event.creatorId", condition = "#event != null && #event.creatorId != null")
     public boolean createEvent(SysScheduleEvent event) {
         // 1. 如果关联了会议室，进行冲突检测
         if (event.getRoomId() != null) {
@@ -118,6 +122,7 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
     }
 
     @Override
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
     public boolean cancelBooking(Long eventId, Long userId) {
         SysScheduleEvent event = getById(eventId);
         if (event == null) {

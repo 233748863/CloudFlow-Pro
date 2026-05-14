@@ -31,8 +31,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:list")
     public R<CrmQuote> getInfo(@PathVariable("id") Long id) {
         try {
-            CrmQuote quote = quoteService.getQuoteDetail(id);
-            return quote == null || !"0".equals(quote.getDelFlag()) ? R.fail("报价不存在") : R.ok(quote);
+            return R.ok(quoteService.getQuoteDetail(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -120,6 +119,11 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
+            try {
+                quoteService.getAccessibleQuote(id);
+            } catch (IllegalArgumentException e) {
+                return R.fail(e.getMessage());
+            }
             CrmQuote quote = new CrmQuote();
             quote.setQuoteId(id);
             quote.setDelFlag("1");

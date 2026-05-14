@@ -2,9 +2,11 @@ package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmFollowUp;
@@ -51,15 +53,25 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
 
     @Override
     public PageResult<CrmCustomer> queryPage(CrmCustomer query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmCustomer> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
-                .orderByDesc(CrmCustomer::getUpdateTime);
-        likeIfPresent(wrapper, CrmCustomer::getCustomerName, query.getCustomerName());
-        likeIfPresent(wrapper, CrmCustomer::getCustomerCode, query.getCustomerCode());
-        likeIfPresent(wrapper, CrmCustomer::getCustomerTags, query.getCustomerTags());
-        eqIfPresent(wrapper, CrmCustomer::getHealthLevel, query.getHealthLevel());
-        eqIfPresent(wrapper, CrmCustomer::getStatus, query.getStatus());
-        return pageResult(pageQuery, wrapper);
+        Page<CrmCustomer> page = baseMapper.selectPageByDataScope(
+                pageQuery.build(),
+                query,
+                DataScopeUtils.listScope("dept_id", "owner_id"));
+        return PageResult.build(page);
+    }
+
+    @Override
+    public CrmCustomer getAccessibleCustomer(Long customerId) {
+        if (customerId == null) {
+            throw new IllegalArgumentException("客户ID不能为空");
+        }
+        CrmCustomer customer = baseMapper.selectByIdWithDataScope(
+                customerId,
+                DataScopeUtils.listScope("dept_id", "owner_id"));
+        if (customer == null) {
+            throw new IllegalArgumentException("客户不存在");
+        }
+        return customer;
     }
 
     @Override

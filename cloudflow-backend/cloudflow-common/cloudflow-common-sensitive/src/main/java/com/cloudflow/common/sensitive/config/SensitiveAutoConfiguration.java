@@ -21,7 +21,7 @@ public class SensitiveAutoConfiguration {
         return builder -> {
             SimpleModule module = new SimpleModule("cloudflow-sensitive-module");
             module.setSerializerModifier(new SensitiveBeanSerializerModifier());
-            builder.modules(module);
+            builder.modulesToInstall(modules -> modules.add(module));
         };
     }
 }

@@ -239,13 +239,6 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
     }
 
     private CrmCustomer requireCustomer(Long customerId) {
-        if (customerId == null) {
-            throw new IllegalArgumentException("客户ID不能为空");
-        }
-        CrmCustomer customer = customerMapper.selectById(customerId);
-        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDelFlag())) {
-            throw new IllegalArgumentException("客户不存在");
-        }
-        return customer;
+        return customerService.getAccessibleCustomer(customerId);
     }
 }

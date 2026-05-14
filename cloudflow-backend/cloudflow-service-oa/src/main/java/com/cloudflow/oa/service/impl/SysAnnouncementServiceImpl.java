@@ -12,6 +12,7 @@ import com.cloudflow.oa.mapper.SysAnnouncementMapper;
 import com.cloudflow.oa.mapper.SysAnnouncementReadMapper;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -19,6 +20,8 @@ import java.util.*;
 
 @Service
 public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMapper, SysAnnouncement> implements ISysAnnouncementService {
+
+    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
 
     @Autowired
     private SysAnnouncementReadMapper readMapper;
@@ -39,6 +42,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
 
     @Override
     @Transactional
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
     public boolean readAnnouncement(Long announcementId, Long userId) {
         // Check if already read
         // Add unique index constraint check or select first
@@ -56,6 +60,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     }
 
     @Override
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     public boolean publish(SysAnnouncement announcement) {
         announcement.setStatus("1"); // Published
         announcement.setPublishTime(LocalDateTime.now());
@@ -94,6 +99,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     
     @Override
     @Transactional
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     public boolean updateAnnouncement(SysAnnouncement announcement) {
         announcement.setUpdateTime(LocalDateTime.now());
         return updateById(announcement);
@@ -101,6 +107,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     
     @Override
     @Transactional
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     public boolean revokeAnnouncement(Long announcementId) {
         SysAnnouncement announcement = getById(announcementId);
         if (announcement != null && "1".equals(announcement.getStatus())) {
@@ -113,6 +120,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     
     @Override
     @Transactional
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, allEntries = true)
     public boolean toggleTop(Long announcementId) {
         SysAnnouncement announcement = getById(announcementId);
         if (announcement != null) {

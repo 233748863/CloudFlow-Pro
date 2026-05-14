@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmQuoteMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmQuote">
+        SELECT t.quote_id,
+               t.tenant_id,
+               t.instance_id,
+               t.quote_no,
+               t.customer_id,
+               t.customer_name,
+               t.opportunity_id,
+               t.opportunity_name,
+               t.quote_name,
+               t.total_amount,
+               t.tax_amount,
+               t.currency,
+               t.valid_until,
+               t.owner_id,
+               t.owner_name,
+               t.contract_id,
+               t.contract_no,
+               t.attachment_url,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_quote t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.del_flag = '0'
+        <if test="query != null and query.customerId != null">
+            AND t.customer_id = #{query.customerId}
+        </if>
+        <if test="query != null and query.opportunityId != null">
+            AND t.opportunity_id = #{query.opportunityId}
+        </if>
+        <if test="query != null and query.quoteName != null and query.quoteName != ''">
+            AND t.quote_name LIKE CONCAT('%', #{query.quoteName}, '%')
+        </if>
+        <if test="query != null and query.status != null and query.status != ''">
+            AND t.status = #{query.status}
+        </if>
+        ORDER BY t.update_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmQuote">
+        SELECT t.quote_id,
+               t.tenant_id,
+               t.instance_id,
+               t.quote_no,
+               t.customer_id,
+               t.customer_name,
+               t.opportunity_id,
+               t.opportunity_name,
+               t.quote_name,
+               t.total_amount,
+               t.tax_amount,
+               t.currency,
+               t.valid_until,
+               t.owner_id,
+               t.owner_name,
+               t.contract_id,
+               t.contract_no,
+               t.attachment_url,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_quote t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.quote_id = #{quoteId}
+          AND t.del_flag = '0'
+    </select>
+</mapper>

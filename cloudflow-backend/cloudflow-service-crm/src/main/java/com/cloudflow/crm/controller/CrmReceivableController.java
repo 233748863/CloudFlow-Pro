@@ -32,8 +32,11 @@ public class CrmReceivableController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:receivable:list")
     public R<CrmReceivable> getInfo(@PathVariable("id") Long id) {
-        CrmReceivable receivable = receivableService.getById(id);
-        return receivable == null || !"0".equals(receivable.getDelFlag()) ? R.fail("回款计划不存在") : R.ok(receivable);
+        try {
+            return R.ok(receivableService.getAccessibleReceivable(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @GetMapping("/aging")
@@ -91,14 +94,17 @@ public class CrmReceivableController {
     @SaCheckPermission("crm:receivable:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
-            CrmReceivable persisted = receivableService.getById(id);
+            CrmReceivable persisted;
+            try {
+                persisted = receivableService.getAccessibleReceivable(id);
+            } catch (IllegalArgumentException e) {
+                return R.fail(e.getMessage());
+            }
             CrmReceivable receivable = new CrmReceivable();
             receivable.setReceivableId(id);
             receivable.setDelFlag("1");
             receivableService.updateById(receivable);
-            if (persisted != null) {
-                customerService.refreshHealth(persisted.getCustomerId());
-            }
+            customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();
     }

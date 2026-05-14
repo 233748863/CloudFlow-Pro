@@ -31,8 +31,11 @@ public class CrmFollowUpController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:follow-up:list")
     public R<CrmFollowUp> getInfo(@PathVariable("id") Long id) {
-        CrmFollowUp followUp = followUpService.getById(id);
-        return followUp == null || !"0".equals(followUp.getDelFlag()) ? R.fail("跟进记录不存在") : R.ok(followUp);
+        try {
+            return R.ok(followUpService.getAccessibleFollowUp(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @SysLog("新增CRM跟进")
@@ -62,14 +65,17 @@ public class CrmFollowUpController {
     @SaCheckPermission("crm:follow-up:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
-            CrmFollowUp persisted = followUpService.getById(id);
+            CrmFollowUp persisted;
+            try {
+                persisted = followUpService.getAccessibleFollowUp(id);
+            } catch (IllegalArgumentException e) {
+                return R.fail(e.getMessage());
+            }
             CrmFollowUp followUp = new CrmFollowUp();
             followUp.setFollowUpId(id);
             followUp.setDelFlag("1");
             followUpService.updateById(followUp);
-            if (persisted != null) {
-                customerService.refreshHealth(persisted.getCustomerId());
-            }
+            customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();
     }

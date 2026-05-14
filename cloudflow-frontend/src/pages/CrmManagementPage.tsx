@@ -33,6 +33,26 @@ type ConfirmState =
   | { action: 'submitQuote' | 'sendQuote' | 'acceptQuote' | 'expireQuote' | 'winOpportunity' | 'loseOpportunity' | 'confirmReceivable' | 'resolveTicket' | 'closeTicket'; item: any }
   | null;
 
+const crmTabPathMap: Record<CrmTab, string> = {
+  dashboard: '/office/crm',
+  customer: '/office/crm/customers',
+  opportunity: '/office/crm/opportunities',
+  quote: '/office/crm/quotes',
+  receivable: '/office/crm/receivables',
+  renewal: '/office/crm/renewals',
+  ticket: '/office/crm/tickets',
+};
+
+const crmPathTabMap: Record<string, CrmTab> = {
+  '/office/crm': 'dashboard',
+  '/office/crm/customers': 'customer',
+  '/office/crm/opportunities': 'opportunity',
+  '/office/crm/quotes': 'quote',
+  '/office/crm/receivables': 'receivable',
+  '/office/crm/renewals': 'renewal',
+  '/office/crm/tickets': 'ticket',
+};
+
 const tabPermissionMap: Record<CrmTab, string> = {
   dashboard: 'crm:dashboard:view',
   customer: 'crm:customer:list',
@@ -144,7 +164,7 @@ const DashboardMetricTile = ({
   hint?: string;
   valueClassName?: string;
 }) => (
-  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
     <div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${valueClassName}`}>{value}</div>
     {hint ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
@@ -160,7 +180,7 @@ const DashboardFocusItem = ({
   title: string;
   meta?: string;
 }) => (
-  <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
+  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
     <div className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{title}</div>
     {meta ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{meta}</div> : null}
@@ -285,6 +305,10 @@ export default function CrmManagementPage() {
     [productRefs],
   );
 
+  const navigateToTab = (nextTab: CrmTab) => {
+    navigate(crmTabPathMap[nextTab]);
+  };
+
   const load = async () => {
     try {
       const [c, cRef, ct, fu, o, oRef, q, r, n, t, contractResult, dashboardResult, boardResult, productResult] = await Promise.all([
@@ -327,27 +351,21 @@ export default function CrmManagementPage() {
   }, [keyword]);
 
   useEffect(() => {
-    const pathTabMap: Record<string, CrmTab> = {
-      '/office/crm/customers': 'customer',
-      '/office/crm/opportunities': 'opportunity',
-      '/office/crm/quotes': 'quote',
-      '/office/crm/receivables': 'receivable',
-      '/office/crm/renewals': 'renewal',
-      '/office/crm/tickets': 'ticket',
-    };
-    const pathTab = pathTabMap[location.pathname];
+    const fallbackTab = availableTabs[0] || 'dashboard';
+    const pathTab = crmPathTabMap[location.pathname];
     if (pathTab && hasPermission(tabPermissionMap[pathTab])) {
       setTab(pathTab);
       return;
     }
-    const search = new URLSearchParams(location.search);
-    const nextTab = search.get('tab') as CrmTab | null;
-    if (nextTab && ['customer', 'opportunity', 'quote', 'receivable', 'renewal', 'ticket'].includes(nextTab) && hasPermission(tabPermissionMap[nextTab])) {
-      setTab(nextTab);
+
+    if (pathTab && crmTabPathMap[fallbackTab] !== location.pathname) {
+      navigate(crmTabPathMap[fallbackTab], { replace: true });
+      setTab(fallbackTab);
       return;
     }
-    setTab(availableTabs[0] || 'dashboard');
-  }, [location.pathname, location.search, userPermissions.join(',')]);
+
+    setTab(fallbackTab);
+  }, [location.pathname, userPermissions.join(',')]);
 
   useEffect(() => {
     if (!availableTabs.includes(tab)) {
@@ -835,19 +853,17 @@ export default function CrmManagementPage() {
     }
 
     return (
-      <Card>
-        <CardHeader className="pb-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <CardTitle className="text-base">{currentViewLabel}总览</CardTitle>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</div>
-            </div>
-            <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-              {badgeText}
-            </div>
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-white">{currentViewLabel}总览</h2>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</div>
           </div>
-        </CardHeader>
-        <CardContent className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+            {badgeText}
+          </div>
+        </div>
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
           <div className="grid gap-3 sm:grid-cols-2">
             {metrics.map((item) => (
               <DashboardMetricTile
@@ -869,8 +885,8 @@ export default function CrmManagementPage() {
               />
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
     );
   };
 
@@ -1580,12 +1596,12 @@ export default function CrmManagementPage() {
     <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
         <div className="flex flex-wrap items-center gap-2">
           <div className="text-sm font-medium text-slate-700 dark:text-slate-200">快捷入口</div>
-        {hasPermission('crm:customer:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customers')}>客户管理</Button> : null}
-        {hasPermission('crm:opportunity:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/opportunities')}>商机看板</Button> : null}
-        {hasPermission('crm:quote:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/quotes')}>报价管理</Button> : null}
-        {hasPermission('crm:receivable:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/receivables')}>回款台账</Button> : null}
-        {hasPermission('crm:renewal:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/renewals')}>续约管理</Button> : null}
-        {hasPermission('crm:ticket:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/tickets')}>服务工单</Button> : null}
+        {hasPermission('crm:customer:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('customer')}>客户管理</Button> : null}
+        {hasPermission('crm:opportunity:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('opportunity')}>商机看板</Button> : null}
+        {hasPermission('crm:quote:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('quote')}>报价管理</Button> : null}
+        {hasPermission('crm:receivable:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('receivable')}>回款台账</Button> : null}
+        {hasPermission('crm:renewal:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('renewal')}>续约管理</Button> : null}
+        {hasPermission('crm:ticket:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('ticket')}>服务工单</Button> : null}
         {hasPermission('crm:lead:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/leads')}>线索池</Button> : null}
         {hasPermission('crm:product:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/products')}>产品库</Button> : null}
         {hasPermission('crm:price-book:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/price-books')}>价目表</Button> : null}

@@ -19,6 +19,7 @@ import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaContractConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -39,16 +40,18 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 public class WorkplaceServiceImpl implements IWorkplaceService {
-    
+
+    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
+
     @Autowired
     private RemoteWorkflowService remoteWorkflowService;
-    
+
     @Autowired
     private ISysScheduleService scheduleService;
-    
+
     @Autowired
     private ISysNoticeService noticeService;
-    
+
     @Autowired
     private ISysAnnouncementService announcementService;
 
@@ -60,8 +63,9 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
 
     @Autowired
     private RemoteCrmWorkplaceService remoteCrmWorkplaceService;
-    
+
     @Override
+    @Cacheable(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
     public WorkplaceSummaryDTO getWorkplaceSummary(Long userId) {
         WorkplaceSummaryDTO summary = new WorkplaceSummaryDTO();
         Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth = new HashMap<>();

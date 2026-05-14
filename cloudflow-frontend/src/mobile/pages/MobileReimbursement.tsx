@@ -172,7 +172,7 @@ export const MobileReimbursement: React.FC = () => {
       }
 
       toast.success('报销申请已提交，等待审批');
-      navigate('/dashboard');
+      navigate('/');
     } catch (err: any) {
       toast.error(err.message || '提交失败，请稍后重试');
     } finally {

@@ -38,8 +38,11 @@ public class CrmCustomerController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:customer:list")
     public R<CrmCustomer> getInfo(@PathVariable("id") Long id) {
-        CrmCustomer customer = customerService.getById(id);
-        return customer == null || !"0".equals(customer.getDelFlag()) ? R.fail("客户不存在") : R.ok(customer);
+        try {
+            return R.ok(customerService.getAccessibleCustomer(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @GetMapping("/{id}/workspace")

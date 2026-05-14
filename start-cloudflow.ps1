@@ -110,35 +110,21 @@ function Import-DotEnvFile {
 }
 
 function Initialize-LocalEnvironment {
-    Set-ProcessEnvDefault -Name "MYSQL_HOST" -Value "192.168.1.173"
-    Set-ProcessEnvDefault -Name "MYSQL_PORT" -Value "3306"
     Set-ProcessEnvDefault -Name "MYSQL_SSL_PARAMS" -Value "useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true"
-    if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name "DB_USERNAME"))) {
-        $dbUsernameCandidate = Get-EnvValue -Name "MYSQL_APP_USERNAME"
-        if ([string]::IsNullOrWhiteSpace($dbUsernameCandidate)) {
-            $dbUsernameCandidate = "root"
-        }
-        Set-Item -Path "Env:DB_USERNAME" -Value $dbUsernameCandidate
-    }
+    Set-ProcessEnvDefault -Name "MYSQL_ROOT_PASSWORD" -Value "Juwangkeji@2025"
+    Set-ProcessEnvDefault -Name "REDIS_PASSWORD" -Value "Juwangkeji@2025"
     if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name "DB_PASSWORD"))) {
-        $dbPasswordCandidate = Get-EnvValue -Name "MYSQL_APP_PASSWORD"
+        $dbPasswordCandidate = Get-EnvValue -Name "MYSQL_ROOT_PASSWORD"
         if ([string]::IsNullOrWhiteSpace($dbPasswordCandidate)) {
-            $dbPasswordCandidate = Get-EnvValue -Name "MYSQL_ROOT_PASSWORD"
+            $dbPasswordCandidate = Get-EnvValue -Name "MYSQL_APP_PASSWORD"
         }
         if ([string]::IsNullOrWhiteSpace($dbPasswordCandidate)) {
-            throw "缺少 DB_PASSWORD。请在 .env 或环境变量中提供 DB_PASSWORD、MYSQL_APP_PASSWORD 或 MYSQL_ROOT_PASSWORD。"
+            throw "缺少 DB_PASSWORD。请在 .env 或环境变量中提供 DB_PASSWORD、MYSQL_ROOT_PASSWORD 或 MYSQL_APP_PASSWORD。"
         }
         Set-Item -Path "Env:DB_PASSWORD" -Value $dbPasswordCandidate
     }
-    Set-ProcessEnvDefault -Name "DB_URL" -Value ("jdbc:mysql://{0}:{1}/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&{2}&serverTimezone=Asia/Shanghai" -f (Get-EnvValue -Name "MYSQL_HOST"), (Get-EnvValue -Name "MYSQL_PORT"), (Get-EnvValue -Name "MYSQL_SSL_PARAMS"))
-    Set-ProcessEnvDefault -Name "REDIS_HOST" -Value "192.168.1.173"
-    Set-ProcessEnvDefault -Name "REDIS_PORT" -Value "6379"
     if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name "REDIS_PASSWORD"))) {
-        $redisPasswordCandidate = Get-EnvValue -Name "MYSQL_ROOT_PASSWORD"
-        if ([string]::IsNullOrWhiteSpace($redisPasswordCandidate)) {
-            throw "缺少 REDIS_PASSWORD。请在 .env 或环境变量中提供 REDIS_PASSWORD。"
-        }
-        Set-Item -Path "Env:REDIS_PASSWORD" -Value $redisPasswordCandidate
+        throw "缺少 REDIS_PASSWORD。请在 .env 或环境变量中提供 REDIS_PASSWORD。"
     }
     Set-ProcessEnvDefault -Name "NACOS_SERVER" -Value "192.168.1.173:8848"
     Set-ProcessEnvDefault -Name "NACOS_NAMESPACE" -Value "0ccb9313-39d8-4a58-9fa5-ce834b77e60d"
@@ -222,16 +208,6 @@ function Get-HostPortFromJdbcUrl {
 
 function Assert-LocalDependencies {
     $missing = @()
-
-    $mysql = Get-HostPortFromJdbcUrl -JdbcUrl (Get-EnvValue -Name "DB_URL")
-    if (-not (Test-TcpEndpoint -HostName $mysql.Host -Port $mysql.Port)) {
-        $missing += "MySQL=$($mysql.Host):$($mysql.Port)"
-    }
-
-    $redis = Get-HostPortFromAddress -Address ("{0}:{1}" -f (Get-EnvValue -Name "REDIS_HOST"), (Get-EnvValue -Name "REDIS_PORT")) -DefaultPort 6379
-    if (-not (Test-TcpEndpoint -HostName $redis.Host -Port $redis.Port)) {
-        $missing += "Redis=$($redis.Host):$($redis.Port)"
-    }
 
     $nacos = Get-HostPortFromAddress -Address (Get-EnvValue -Name "NACOS_SERVER") -DefaultPort 8848
     if (-not (Test-TcpEndpoint -HostName $nacos.Host -Port $nacos.Port)) {

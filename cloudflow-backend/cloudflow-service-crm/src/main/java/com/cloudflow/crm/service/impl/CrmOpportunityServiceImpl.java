@@ -6,6 +6,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -38,6 +39,9 @@ import java.util.Map;
 public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityMapper, CrmOpportunity>
         implements ICrmOpportunityService {
 
+    private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
+    private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
+
     private final ICrmCustomerService customerService;
     private final CrmQuoteMapper quoteMapper;
     private final RemoteOaService remoteOaService;
@@ -45,13 +49,24 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     public PageResult<CrmOpportunity> queryPage(CrmOpportunity query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmOpportunity> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmOpportunity::getDelFlag, "0").orderByDesc(CrmOpportunity::getUpdateTime);
-        eqIfPresent(wrapper, CrmOpportunity::getCustomerId, query.getCustomerId());
-        likeIfPresent(wrapper, CrmOpportunity::getOpportunityName, query.getOpportunityName());
-        eqIfPresent(wrapper, CrmOpportunity::getStage, query.getStage());
-        eqIfPresent(wrapper, CrmOpportunity::getOwnerId, query.getOwnerId());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(),
+                query,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
+    }
+
+    @Override
+    public CrmOpportunity getAccessibleOpportunity(Long opportunityId) {
+        if (opportunityId == null) {
+            throw new IllegalArgumentException("商机ID不能为空");
+        }
+        CrmOpportunity opportunity = baseMapper.selectByIdWithDataScope(
+                opportunityId,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        if (opportunity == null) {
+            throw new IllegalArgumentException("商机不存在");
+        }
+        return opportunity;
     }
 
     @Override
@@ -75,7 +90,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         }
         fillCustomerSnapshot(opportunity);
         validate(opportunity);
-        CrmOpportunity persisted = requireById(opportunity.getOpportunityId(), "商机不存在");
+        CrmOpportunity persisted = getAccessibleOpportunity(opportunity.getOpportunityId());
         opportunity.setTenantId(persisted.getTenantId());
         opportunity.setOwnerId(opportunity.getOwnerId() == null ? persisted.getOwnerId() : opportunity.getOwnerId());
         opportunity.setOwnerName(StringUtils.hasText(opportunity.getOwnerName()) ? opportunity.getOwnerName() : persisted.getOwnerName());
@@ -86,7 +101,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     public boolean winOpportunity(Long opportunityId) {
-        CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
+        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
         opportunity.setStage(CrmConstants.OpportunityStage.WON);
         opportunity.setStatus(CrmConstants.OpportunityStatus.CLOSED);
         opportunity.setStageChangedTime(now());
@@ -184,7 +199,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     public boolean loseOpportunity(Long opportunityId, String lostReason) {
-        CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
+        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
         opportunity.setStage(CrmConstants.OpportunityStage.LOST);
         opportunity.setStatus(CrmConstants.OpportunityStatus.CLOSED);
         opportunity.setLostReason(StringUtils.hasText(lostReason) ? lostReason : opportunity.getLostReason());
@@ -199,7 +214,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     public Long createProjectDraft(Long opportunityId) {
-        CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
+        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
         RemoteOaService.ProjectDraftRequest request = new RemoteOaService.ProjectDraftRequest();
         request.setProjectName(opportunity.getOpportunityName());
         request.setProjectType("DELIVERY");
@@ -230,10 +245,10 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     @Override
     public List<CrmOpportunityBoardColumnVO> getBoard() {
-        List<CrmOpportunity> opportunities = list(new LambdaQueryWrapper<CrmOpportunity>()
-                .eq(CrmOpportunity::getDelFlag, "0")
-                .orderByDesc(CrmOpportunity::getExpectedAmount)
-                .orderByDesc(CrmOpportunity::getUpdateTime));
+        List<CrmOpportunity> opportunities = baseMapper.selectPageByDataScope(
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, Long.MAX_VALUE),
+                new CrmOpportunity(),
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)).getRecords();
         Map<String, CrmOpportunityBoardColumnVO> columns = new LinkedHashMap<>();
         for (String stage : List.of("LEAD", "QUALIFIED", "PROPOSAL", "NEGOTIATION", "WON", "LOST")) {
             CrmOpportunityBoardColumnVO column = new CrmOpportunityBoardColumnVO();
@@ -287,7 +302,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         if ("WON".equalsIgnoreCase(stage)) {
             return winOpportunity(opportunityId);
         }
-        CrmOpportunity opportunity = requireById(opportunityId, "商机不存在");
+        CrmOpportunity opportunity = getAccessibleOpportunity(opportunityId);
         opportunity.setStage(stage);
         opportunity.setStatus(CrmConstants.OpportunityStatus.OPEN);
         opportunity.setStageChangedTime(now());
@@ -327,9 +342,11 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         if (opportunity == null || opportunity.getCustomerId() == null) {
             return;
         }
-        CrmCustomer customer = customerService.getById(opportunity.getCustomerId());
-        if (customer != null && "0".equals(customer.getDelFlag())) {
-            opportunity.setCustomerName(customer.getCustomerName());
+        CrmCustomer customer = customerService.getAccessibleCustomer(opportunity.getCustomerId());
+        opportunity.setCustomerName(customer.getCustomerName());
+        if (opportunity.getDeptId() == null) {
+            opportunity.setDeptId(customer.getDeptId());
+            opportunity.setDeptName(customer.getDeptName());
         }
     }
 

@@ -342,8 +342,8 @@ export default function CrmCustomerWorkspacePage() {
                     className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
                     onClick={() => {
                       const target = item.linkTarget || '';
-                      if (target.includes('?tab=')) {
-                        const nextTab = target.split('?tab=').pop();
+                      if (target.includes('#')) {
+                        const nextTab = target.split('#').pop();
                         if (nextTab === 'cashflow') setTab('cashflow');
                         if (nextTab === 'ticket') setTab('ticket');
                         if (nextTab === 'renewal') setTab('renewal');
@@ -392,7 +392,7 @@ export default function CrmCustomerWorkspacePage() {
                     key={item.id}
                     type="button"
                     className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
-                    onClick={() => navigate(item.path || '/dashboard')}
+                    onClick={() => navigate(item.path || '/')}
                   >
                     <span>{item.title || '-'}</span>
                     <span className="text-xs text-slate-500">{item.sourceLabel || item.module || '-'}</span>
@@ -407,7 +407,7 @@ export default function CrmCustomerWorkspacePage() {
                     key={item.id}
                     type="button"
                     className="flex w-full items-center justify-between rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-left text-sm transition hover:border-slate-300 dark:border-slate-800 dark:bg-slate-900"
-                    onClick={() => navigate(item.path || '/dashboard')}
+                    onClick={() => navigate(item.path || '/')}
                   >
                     <span>{item.title || '-'}</span>
                     <span className="text-xs text-slate-500">{item.level || '-'}</span>

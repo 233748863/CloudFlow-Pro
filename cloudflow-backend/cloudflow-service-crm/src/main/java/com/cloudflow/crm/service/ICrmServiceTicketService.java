@@ -9,6 +9,8 @@ public interface ICrmServiceTicketService extends IService<CrmServiceTicket> {
 
     PageResult<CrmServiceTicket> queryPage(CrmServiceTicket query, PageQuery pageQuery);
 
+    CrmServiceTicket getAccessibleTicket(Long ticketId);
+
     boolean createTicket(CrmServiceTicket ticket);
 
     boolean updateTicket(CrmServiceTicket ticket);

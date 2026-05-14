@@ -194,7 +194,7 @@ export const MobileLeaveApplication: React.FC = () => {
       }
       await leaveApplicationApi.submit(leaveId);
       toast.success('请假申请已提交，等待审批');
-      navigate('/dashboard');
+      navigate('/');
     } catch (error) {
       toast.error(error instanceof Error ? error.message : '提交失败，请稍后重试');
     } finally {

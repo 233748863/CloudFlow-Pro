@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmRenewalMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmRenewal">
+        SELECT t.renewal_id,
+               t.tenant_id,
+               t.instance_id,
+               t.renewal_no,
+               t.customer_id,
+               t.customer_name,
+               t.contract_id,
+               t.contract_no,
+               t.renewal_name,
+               t.renewal_amount,
+               t.expected_sign_date,
+               t.current_expire_date,
+               t.next_expire_date,
+               t.owner_id,
+               t.owner_name,
+               t.summary,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_renewal t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.del_flag = '0'
+        <if test="query != null and query.customerId != null">
+            AND t.customer_id = #{query.customerId}
+        </if>
+        <if test="query != null and query.contractId != null">
+            AND t.contract_id = #{query.contractId}
+        </if>
+        <if test="query != null and query.renewalName != null and query.renewalName != ''">
+            AND t.renewal_name LIKE CONCAT('%', #{query.renewalName}, '%')
+        </if>
+        <if test="query != null and query.status != null and query.status != ''">
+            AND t.status = #{query.status}
+        </if>
+        ORDER BY t.update_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmRenewal">
+        SELECT t.renewal_id,
+               t.tenant_id,
+               t.instance_id,
+               t.renewal_no,
+               t.customer_id,
+               t.customer_name,
+               t.contract_id,
+               t.contract_no,
+               t.renewal_name,
+               t.renewal_amount,
+               t.expected_sign_date,
+               t.current_expire_date,
+               t.next_expire_date,
+               t.owner_id,
+               t.owner_name,
+               t.summary,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_renewal t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.renewal_id = #{renewalId}
+          AND t.del_flag = '0'
+    </select>
+</mapper>

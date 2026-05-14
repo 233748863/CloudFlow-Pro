@@ -9,6 +9,8 @@ public interface ICrmFollowUpService extends IService<CrmFollowUp> {
 
     PageResult<CrmFollowUp> queryPage(CrmFollowUp query, PageQuery pageQuery);
 
+    CrmFollowUp getAccessibleFollowUp(Long followUpId);
+
     boolean createFollowUp(CrmFollowUp followUp);
 
     boolean updateFollowUp(CrmFollowUp followUp);

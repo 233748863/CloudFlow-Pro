@@ -1,23 +1,26 @@
 package com.cloudflow.oa.controller;
 
-import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.core.utils.IpUtils;
-import com.cloudflow.oa.domain.FrontendErrorLog;
-import com.cloudflow.oa.service.IFrontendErrorLogService;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.utils.IpUtils;
+import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
+import com.cloudflow.common.ratelimiter.enums.LimitType;
+import com.cloudflow.oa.config.properties.OaProperties;
+import com.cloudflow.oa.domain.FrontendErrorLog;
+import com.cloudflow.oa.service.IFrontendErrorLogService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 /**
  * 前端错误上报 Controller
- * 
+ *
  * 接收前端 errorReporter 服务上报的错误信息，持久化到数据库。
  * 前端请求路径：/oa/error-report → 网关 StripPrefix=1 → /error-report
  */
@@ -29,10 +32,11 @@ import jakarta.servlet.http.HttpServletRequest;
 public class ErrorReportController {
 
     private final IFrontendErrorLogService frontendErrorLogService;
+    private final OaProperties oaProperties;
 
     /**
      * 接收前端错误上报
-     * 
+     *
      * 该接口设计为"尽量不失败"：
      * - 即使请求体部分字段缺失也能接收
      * - 异步写入数据库，快速返回响应
@@ -44,16 +48,27 @@ public class ErrorReportController {
      */
     @PostMapping
     @SaCheckPermission("workspace:dashboard")
+    @RateLimiter(
+            key = "error-report",
+            count = 20,
+            time = 60,
+            limitType = LimitType.IP,
+            message = "错误上报过于频繁，请稍后再试"
+    )
     public R report(@RequestBody FrontendErrorLog errorLog, HttpServletRequest request) {
         try {
-            // 获取客户端真实IP（考虑反向代理场景）
+            if (!Boolean.TRUE.equals(oaProperties.getErrorReport().getEnabled())) {
+                return R.ok();
+            }
+            if (!isAllowed(errorLog)) {
+                log.warn("拒绝前端错误上报，url={}，context={}，message={}", errorLog == null ? null : errorLog.getUrl(), errorLog == null ? null : errorLog.getContext(), errorLog == null ? null : errorLog.getMessage());
+                return R.ok();
+            }
             String clientIp = getClientIp(request);
             frontendErrorLogService.reportError(errorLog, clientIp);
         } catch (Exception e) {
-            // 上报接口不应因任何异常返回错误，仅记录日志
             log.error("处理前端错误上报时发生异常: {}", e.getMessage(), e);
         }
-        // 始终返回成功，避免前端上报失败引发连锁错误
         return R.ok();
     }
 
@@ -63,5 +78,16 @@ public class ErrorReportController {
      */
     private String getClientIp(HttpServletRequest request) {
         return IpUtils.getIpAddr(request);
+    }
+
+    private boolean isAllowed(FrontendErrorLog errorLog) {
+        if (errorLog == null || !StringUtils.hasText(errorLog.getMessage())) {
+            return false;
+        }
+        String allowAnonymousPath = oaProperties.getErrorReport().getAllowAnonymousPath();
+        if (!StringUtils.hasText(allowAnonymousPath)) {
+            return true;
+        }
+        return StringUtils.hasText(errorLog.getUrl()) && errorLog.getUrl().contains(allowAnonymousPath);
     }
 }

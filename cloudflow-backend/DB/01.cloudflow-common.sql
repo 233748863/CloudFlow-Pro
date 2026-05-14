@@ -6,7 +6,7 @@
 -- =========================================================
 
 -- 创建数据库
-CREATE DATABASE IF NOT EXISTS cloud_flow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS cloud_flow_db CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 USE cloud_flow_db;
 
 SET NAMES utf8mb4;

@@ -55,7 +55,7 @@ export const MainLayout = () => {
     apiMenus
       .filter((menu) => menu.menuType === 'M' && menu.visible === '0')
       .map((group) => ({
-        id: group.path,
+        id: String(group.menuId),
         label: group.menuName,
         icon: getIcon(group.icon),
         children:
@@ -65,7 +65,7 @@ export const MainLayout = () => {
               const rawPath = child.path || '';
               const [purePath, inlineQuery] = rawPath.split('?');
               return {
-                id: rawPath,
+                id: String(child.menuId),
                 label: child.menuName,
                 icon: getIcon(child.icon),
                 path: purePath || rawPath,
@@ -74,8 +74,41 @@ export const MainLayout = () => {
             }) || [],
       }));
 
-  const buildRouteKey = (path?: string, query?: string) =>
-    path ? `${path}${query ? `?${query}` : ''}` : '';
+  const buildRouteKey = (path?: string, query?: string) => {
+    if (!path) {
+      return '';
+    }
+    const normalizedQuery = query?.replace(/^\?/, '');
+    return `${path}${normalizedQuery ? `?${normalizedQuery}` : ''}`;
+  };
+
+  const matchesMenuRoute = (path?: string, query?: string) => {
+    if (!path) {
+      return false;
+    }
+
+    const currentKey = `${location.pathname}${location.search}`;
+    const targetKey = buildRouteKey(path, query);
+    const isCrmCustomerWorkspaceRoute = location.pathname.startsWith('/office/crm/customer/');
+
+    if (path === '/') {
+      return currentKey === '/';
+    }
+
+    if (isCrmCustomerWorkspaceRoute && path === '/office/crm/customers') {
+      return true;
+    }
+
+    if (query) {
+      return currentKey === targetKey;
+    }
+
+    if (path === '/office/crm') {
+      return currentKey === '/office/crm';
+    }
+
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
+  };
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -113,20 +146,7 @@ export const MainLayout = () => {
 
     setExpandedGroups((prev) => {
       for (const group of menuTree) {
-        const match = group.children?.find((child) => {
-          const childKey = buildRouteKey(child.path, child.query);
-          const currentKey = `${location.pathname}${location.search}`;
-          if (child.path === '/') {
-            return currentKey === '/';
-          }
-          if (!child.path) {
-            return false;
-          }
-          if (child.query) {
-            return currentKey === childKey;
-          }
-          return location.pathname === child.path || location.pathname.startsWith(`${child.path}/`);
-        });
+        const match = group.children?.find((child) => matchesMenuRoute(child.path, child.query));
 
         if (match && !prev.includes(group.id)) {
           return [...prev, group.id];
@@ -135,7 +155,7 @@ export const MainLayout = () => {
 
       return prev;
     });
-  }, [location.pathname, menuTree, sidebarCollapsed]);
+  }, [location.pathname, location.search, menuTree, sidebarCollapsed]);
 
   useLayoutEffect(() => {
     if (!mainScrollRef.current) {
@@ -176,34 +196,6 @@ export const MainLayout = () => {
     [menuTree],
   );
 
-  const matchesMenuRoute = (path?: string, query?: string) => {
-    if (!path) {
-      return false;
-    }
-
-    const currentKey = `${location.pathname}${location.search}`;
-    const targetKey = buildRouteKey(path, query);
-    const isCrmCustomerWorkspaceRoute = location.pathname.startsWith('/office/crm/customer/');
-
-    if (path === '/') {
-      return currentKey === '/';
-    }
-
-    if (isCrmCustomerWorkspaceRoute && path === '/office/crm/customers') {
-      return true;
-    }
-
-    if (query) {
-      return currentKey === targetKey;
-    }
-
-    if (path === '/office/crm') {
-      return location.pathname === '/office/crm';
-    }
-
-    return location.pathname === path || location.pathname.startsWith(`${path}/`);
-  };
-
   const isActive = (path?: string, query?: string) => matchesMenuRoute(path, query);
 
   const activeLabel = useMemo(() => {
@@ -235,7 +227,7 @@ export const MainLayout = () => {
       group: '工作台',
       item: '仪表盘',
     };
-  }, [location.pathname, menuTree]);
+  }, [location.pathname, location.search, menuTree]);
 
   const toggleGroup = (groupId: string) => {
     setExpandedGroups((prev) =>

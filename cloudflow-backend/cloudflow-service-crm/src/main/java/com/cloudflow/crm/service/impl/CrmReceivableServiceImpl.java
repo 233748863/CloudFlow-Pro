@@ -1,10 +1,10 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
-import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmReceivable;
@@ -31,18 +31,32 @@ import java.util.Map;
 public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMapper, CrmReceivable>
         implements ICrmReceivableService {
 
+    private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
+    private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
+
     private final ICrmCustomerService customerService;
     private final RemoteOaService remoteOaService;
 
     @Override
     public PageResult<CrmReceivable> queryPage(CrmReceivable query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmReceivable> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmReceivable::getDelFlag, "0").orderByDesc(CrmReceivable::getUpdateTime);
-        eqIfPresent(wrapper, CrmReceivable::getCustomerId, query.getCustomerId());
-        eqIfPresent(wrapper, CrmReceivable::getContractId, query.getContractId());
-        likeIfPresent(wrapper, CrmReceivable::getReceivableName, query.getReceivableName());
-        eqIfPresent(wrapper, CrmReceivable::getStatus, query.getStatus());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(),
+                query,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
+    }
+
+    @Override
+    public CrmReceivable getAccessibleReceivable(Long receivableId) {
+        if (receivableId == null) {
+            throw new IllegalArgumentException("回款ID不能为空");
+        }
+        CrmReceivable receivable = baseMapper.selectByIdWithDataScope(
+                receivableId,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        if (receivable == null) {
+            throw new IllegalArgumentException("回款计划不存在");
+        }
+        return receivable;
     }
 
     @Override
@@ -73,7 +87,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         }
         fillBindingSnapshot(receivable);
         validate(receivable);
-        CrmReceivable persisted = requireById(receivable.getReceivableId(), "回款计划不存在");
+        CrmReceivable persisted = getAccessibleReceivable(receivable.getReceivableId());
         receivable.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(receivable.getReceivableNo())) {
             receivable.setReceivableNo(persisted.getReceivableNo());
@@ -95,7 +109,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     @Override
     public boolean confirmReceipt(Long receivableId) {
-        CrmReceivable receivable = requireById(receivableId, "回款计划不存在");
+        CrmReceivable receivable = getAccessibleReceivable(receivableId);
         receivable.setReceivedAmount(receivable.getPlannedAmount());
         receivable.setOutstandingAmount(BigDecimal.ZERO);
         receivable.setReceivedDate(receivable.getReceivedDate() == null ? java.time.LocalDate.now() : receivable.getReceivedDate());
@@ -111,7 +125,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     @Override
     public boolean bindInvoice(Long receivableId, Long invoiceId) {
-        CrmReceivable receivable = requireById(receivableId, "回款计划不存在");
+        CrmReceivable receivable = getAccessibleReceivable(receivableId);
         RemoteOaService.InvoiceBindRequest request = new RemoteOaService.InvoiceBindRequest();
         request.setReceivableId(receivableId);
         request.setCustomerId(receivable.getCustomerId());
@@ -127,10 +141,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     @Override
     public boolean syncInvoiceStatus(Long receivableId, ReceivableInvoiceSyncDTO syncDTO) {
-        CrmReceivable receivable = requireById(receivableId, "回款计划不存在");
-        if (!"0".equals(receivable.getDelFlag())) {
-            throw new IllegalArgumentException("回款计划不存在");
-        }
+        CrmReceivable receivable = getAccessibleReceivable(receivableId);
 
         String invoiceStatus = normalizeInvoiceStatus(syncDTO == null ? null : syncDTO.getInvoiceStatus());
         receivable.setInvoiceStatus(invoiceStatus);
@@ -151,7 +162,8 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         } else if ("WRITEOFF_PARTIAL".equals(invoiceStatus)) {
             BigDecimal receivedAmount = currentReceived.max(plannedAmount.min(syncedWriteoffAmount));
             applyReceivableAmounts(receivable, receivedAmount, syncDate);
-        } else {            applyReceivableAmounts(receivable, currentReceived, receivable.getReceivedDate());
+        } else {
+            applyReceivableAmounts(receivable, currentReceived, receivable.getReceivedDate());
         }
 
         receivable.setUpdateBy("oa-invoice-sync");
@@ -173,9 +185,10 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         buckets.put("DUE_90_PLUS", createBucket("DUE_90_PLUS", "逾期90天以上"));
 
         LocalDate today = LocalDate.now();
-        List<CrmReceivable> receivables = list(new LambdaQueryWrapper<CrmReceivable>()
-                .eq(CrmReceivable::getDelFlag, "0")
-                .orderByAsc(CrmReceivable::getDueDate));
+        List<CrmReceivable> receivables = baseMapper.selectPageByDataScope(
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(1, Long.MAX_VALUE),
+                new CrmReceivable(),
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)).getRecords();
         Map<String, java.util.Set<Long>> customerCounter = new LinkedHashMap<>();
         for (String key : buckets.keySet()) {
             customerCounter.put(key, new java.util.HashSet<>());
@@ -319,10 +332,8 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
             }
         }
         if (receivable.getCustomerId() != null && !StringUtils.hasText(receivable.getCustomerName())) {
-            CrmCustomer customer = customerService.getById(receivable.getCustomerId());
-            if (customer != null && "0".equals(customer.getDelFlag())) {
-                receivable.setCustomerName(customer.getCustomerName());
-            }
+            CrmCustomer customer = customerService.getAccessibleCustomer(receivable.getCustomerId());
+            receivable.setCustomerName(customer.getCustomerName());
         }
     }
 }

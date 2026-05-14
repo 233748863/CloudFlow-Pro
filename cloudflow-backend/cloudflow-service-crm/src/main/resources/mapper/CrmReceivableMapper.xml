@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmReceivableMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmReceivable">
+        SELECT t.receivable_id,
+               t.tenant_id,
+               t.customer_id,
+               t.customer_name,
+               t.contract_id,
+               t.contract_no,
+               t.receivable_no,
+               t.receivable_name,
+               t.planned_amount,
+               t.received_amount,
+               t.outstanding_amount,
+               t.due_date,
+               t.received_date,
+               t.invoice_status,
+               t.invoice_id,
+               t.owner_id,
+               t.owner_name,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_receivable t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.del_flag = '0'
+        <if test="query != null and query.customerId != null">
+            AND t.customer_id = #{query.customerId}
+        </if>
+        <if test="query != null and query.contractId != null">
+            AND t.contract_id = #{query.contractId}
+        </if>
+        <if test="query != null and query.receivableName != null and query.receivableName != ''">
+            AND t.receivable_name LIKE CONCAT('%', #{query.receivableName}, '%')
+        </if>
+        <if test="query != null and query.status != null and query.status != ''">
+            AND t.status = #{query.status}
+        </if>
+        ORDER BY t.update_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmReceivable">
+        SELECT t.receivable_id,
+               t.tenant_id,
+               t.customer_id,
+               t.customer_name,
+               t.contract_id,
+               t.contract_no,
+               t.receivable_no,
+               t.receivable_name,
+               t.planned_amount,
+               t.received_amount,
+               t.outstanding_amount,
+               t.due_date,
+               t.received_date,
+               t.invoice_status,
+               t.invoice_id,
+               t.owner_id,
+               t.owner_name,
+               t.remark,
+               t.status,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_receivable t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.receivable_id = #{receivableId}
+          AND t.del_flag = '0'
+    </select>
+</mapper>

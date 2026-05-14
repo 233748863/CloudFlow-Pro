@@ -12,8 +12,8 @@ public class SyncDownloadDTO implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    /** 同步时间戳 */
-    private String syncTime;
+    /** 同步时间戳（毫秒） */
+    private Long syncTime;
 
     /** 任务数据 */
     private List<TaskData> tasks;

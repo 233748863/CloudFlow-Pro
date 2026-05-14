@@ -623,7 +623,7 @@ export const Dashboard = () => {
         description: item.description,
         status: item.status,
         sourceLabel: item.sourceLabel || item.module || item.type,
-        onClick: () => navigate(item.path || '/dashboard'),
+        onClick: () => navigate(item.path || '/'),
       })),
     [navigate, workplacePanels.todos],
   );
@@ -636,7 +636,7 @@ export const Dashboard = () => {
         description: item.description,
         level: item.level,
         sourceLabel: item.sourceLabel || item.module || item.businessType,
-        onClick: () => navigate(item.path || '/dashboard'),
+        onClick: () => navigate(item.path || '/'),
       })),
     [navigate, workplacePanels.risks],
   );

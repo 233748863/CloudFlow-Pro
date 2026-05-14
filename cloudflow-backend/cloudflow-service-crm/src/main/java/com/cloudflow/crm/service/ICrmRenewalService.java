@@ -11,6 +11,8 @@ public interface ICrmRenewalService extends IService<CrmRenewal> {
 
     CrmRenewal getRenewalInfo(Long renewalId);
 
+    CrmRenewal getAccessibleRenewal(Long renewalId);
+
     boolean createRenewal(CrmRenewal renewal);
 
     boolean updateRenewal(CrmRenewal renewal);

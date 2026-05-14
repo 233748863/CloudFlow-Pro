@@ -32,8 +32,11 @@ public class CrmOpportunityController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:opportunity:list")
     public R<CrmOpportunity> getInfo(@PathVariable("id") Long id) {
-        CrmOpportunity opportunity = opportunityService.getById(id);
-        return opportunity == null || !"0".equals(opportunity.getDelFlag()) ? R.fail("商机不存在") : R.ok(opportunity);
+        try {
+            return R.ok(opportunityService.getAccessibleOpportunity(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @GetMapping("/board")
@@ -113,6 +116,11 @@ public class CrmOpportunityController {
     @SaCheckPermission("crm:opportunity:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
+            try {
+                opportunityService.getAccessibleOpportunity(id);
+            } catch (IllegalArgumentException e) {
+                return R.fail(e.getMessage());
+            }
             CrmOpportunity opportunity = new CrmOpportunity();
             opportunity.setOpportunityId(id);
             opportunity.setDelFlag("1");

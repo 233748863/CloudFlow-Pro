@@ -8,9 +8,10 @@ import com.cloudflow.oa.service.IFrontendErrorLogService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonFormat;
+import java.util.Map;
 
 /**
  * 前端错误日志 Service 实现
@@ -23,11 +24,10 @@ public class FrontendErrorLogServiceImpl extends ServiceImpl<FrontendErrorLogMap
 
     @Override
     public void reportError(FrontendErrorLog errorLog, String clientIp) {
-        // 补充服务端信息
+        sanitize(errorLog);
         errorLog.setClientIp(clientIp);
         errorLog.setCreateTime(LocalDateTime.now());
 
-        // 尝试从上下文获取当前用户和租户信息（前端上报时可能未登录，所以用 try-catch 保护）
         try {
             Long userId = UserContext.getUserId();
             String userName = UserContext.getUserName();
@@ -42,21 +42,12 @@ public class FrontendErrorLogServiceImpl extends ServiceImpl<FrontendErrorLogMap
                 errorLog.setTenantId(tenantId);
             }
         } catch (Exception e) {
-            // 获取用户上下文失败不影响错误日志记录
             log.debug("获取用户上下文失败，跳过用户信息填充: {}", e.getMessage());
         }
 
-        // 解析前端传来的 timestamp 作为客户端时间
-        // 前端传的是 ISO 格式字符串，已由 Jackson 自动反序列化到 clientTime 字段
-
-        // 异步保存到数据库
         asyncSave(errorLog);
     }
 
-    /**
-     * 异步保存错误日志，避免阻塞前端上报请求
-     * 保存失败仅记录日志，不抛出异常
-     */
     @Async
     public void asyncSave(FrontendErrorLog errorLog) {
         try {
@@ -64,9 +55,78 @@ public class FrontendErrorLogServiceImpl extends ServiceImpl<FrontendErrorLogMap
             log.info("前端错误日志已记录: level={}, message={}, url={}",
                     errorLog.getLevel(), errorLog.getMessage(), errorLog.getUrl());
         } catch (Exception e) {
-            // 数据库写入失败时降级为日志输出，确保不丢失错误信息
             log.error("前端错误日志写入数据库失败，降级为日志输出。原始错误: level={}, message={}, url={}, stack={}",
                     errorLog.getLevel(), errorLog.getMessage(), errorLog.getUrl(), errorLog.getStack(), e);
         }
+    }
+
+    private void sanitize(FrontendErrorLog errorLog) {
+        if (errorLog == null) {
+            throw new IllegalArgumentException("错误上报内容不能为空");
+        }
+        errorLog.setMessage(limit(errorLog.getMessage(), 1000));
+        errorLog.setStack(limit(errorLog.getStack(), 8000));
+        errorLog.setComponentStack(limit(errorLog.getComponentStack(), 4000));
+        errorLog.setContext(limit(errorLog.getContext(), 500));
+        errorLog.setUrl(limit(errorLog.getUrl(), 1000));
+        errorLog.setUserAgent(limit(errorLog.getUserAgent(), 1000));
+        errorLog.setLevel(normalizeLevel(errorLog.getLevel()));
+        errorLog.setTags(limitMap(errorLog.getTags(), 20, 100));
+        errorLog.setExtra(limitObjectMap(errorLog.getExtra(), 20, 500));
+    }
+
+    private String limit(String value, int maxLength) {
+        if (!StringUtils.hasText(value)) {
+            return value;
+        }
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
+    }
+
+    private String normalizeLevel(String level) {
+        if (!StringUtils.hasText(level)) {
+            return "error";
+        }
+        String normalized = level.trim().toLowerCase();
+        return switch (normalized) {
+            case "info", "warning", "error" -> normalized;
+            default -> "error";
+        };
+    }
+
+    private Map<String, String> limitMap(Map<String, String> source, int maxEntries, int maxValueLength) {
+        if (source == null || source.isEmpty()) {
+            return source;
+        }
+        java.util.Map<String, String> limited = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : source.entrySet()) {
+            if (limited.size() >= maxEntries) {
+                break;
+            }
+            String key = limit(entry.getKey(), 100);
+            if (!StringUtils.hasText(key)) {
+                continue;
+            }
+            limited.put(key, limit(entry.getValue(), maxValueLength));
+        }
+        return limited;
+    }
+
+    private Map<String, Object> limitObjectMap(Map<String, Object> source, int maxEntries, int maxValueLength) {
+        if (source == null || source.isEmpty()) {
+            return source;
+        }
+        java.util.Map<String, Object> limited = new java.util.LinkedHashMap<>();
+        for (Map.Entry<String, Object> entry : source.entrySet()) {
+            if (limited.size() >= maxEntries) {
+                break;
+            }
+            String key = limit(entry.getKey(), 100);
+            if (!StringUtils.hasText(key)) {
+                continue;
+            }
+            Object value = entry.getValue();
+            limited.put(key, value instanceof String ? limit((String) value, maxValueLength) : value);
+        }
+        return limited;
     }
 }

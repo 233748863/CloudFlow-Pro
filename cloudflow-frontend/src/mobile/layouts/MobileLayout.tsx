@@ -7,7 +7,7 @@ export const MobileLayout: React.FC = () => {
   const location = useLocation();
 
   const tabs = [
-    { id: '/dashboard', label: '首页', icon: Home },
+    { id: '/', label: '首页', icon: Home },
     { id: '/workplace', label: '工作台', icon: PlayCircle },
     { id: '/announcement', label: '消息', icon: MessageSquare },
     { id: '/profile', label: '我的', icon: User },

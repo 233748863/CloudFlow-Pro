@@ -13,6 +13,8 @@ public interface ICrmReceivableService extends IService<CrmReceivable> {
 
     PageResult<CrmReceivable> queryPage(CrmReceivable query, PageQuery pageQuery);
 
+    CrmReceivable getAccessibleReceivable(Long receivableId);
+
     boolean createReceivable(CrmReceivable receivable);
 
     boolean updateReceivable(CrmReceivable receivable);

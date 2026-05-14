@@ -89,7 +89,7 @@ export const MobileVehicleBooking: React.FC = () => {
         passengers: formData.passengers.trim(),
       });
       toast.success('申请提交成功！');
-      navigate('/dashboard');
+      navigate('/');
     } catch (error: any) {
       toast.error(error.message || '提交失败，请稍后重试');
     } finally {

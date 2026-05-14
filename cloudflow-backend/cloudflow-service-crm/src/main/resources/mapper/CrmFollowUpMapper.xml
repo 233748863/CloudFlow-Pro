@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmFollowUpMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmFollowUp">
+        SELECT t.follow_up_id,
+               t.tenant_id,
+               t.customer_id,
+               t.opportunity_id,
+               t.follow_up_type,
+               t.follow_up_time,
+               t.next_follow_up_time,
+               t.content,
+               t.result_summary,
+               t.attachment_url,
+               t.owner_id,
+               t.owner_name,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_follow_up t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.del_flag = '0'
+        <if test="query != null and query.customerId != null">
+            AND t.customer_id = #{query.customerId}
+        </if>
+        <if test="query != null and query.opportunityId != null">
+            AND t.opportunity_id = #{query.opportunityId}
+        </if>
+        <if test="query != null and query.ownerId != null">
+            AND t.owner_id = #{query.ownerId}
+        </if>
+        ORDER BY t.follow_up_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmFollowUp">
+        SELECT t.follow_up_id,
+               t.tenant_id,
+               t.customer_id,
+               t.opportunity_id,
+               t.follow_up_type,
+               t.follow_up_time,
+               t.next_follow_up_time,
+               t.content,
+               t.result_summary,
+               t.attachment_url,
+               t.owner_id,
+               t.owner_name,
+               t.del_flag,
+               t.create_by,
+               t.create_time,
+               t.update_by,
+               t.update_time,
+               c.dept_id AS scope_dept_id,
+               c.owner_id AS scope_owner_id
+        FROM oa_crm_follow_up t
+                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        WHERE t.follow_up_id = #{followUpId}
+          AND t.del_flag = '0'
+    </select>
+</mapper>

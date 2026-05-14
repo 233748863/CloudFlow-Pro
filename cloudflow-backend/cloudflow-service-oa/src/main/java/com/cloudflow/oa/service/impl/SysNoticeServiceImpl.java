@@ -10,6 +10,7 @@ import com.cloudflow.oa.domain.SysNotice;
 import com.cloudflow.oa.mapper.SysNoticeMapper;
 import com.cloudflow.oa.service.ISysNoticeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -21,6 +22,8 @@ import java.util.Map;
 @Service
 public class SysNoticeServiceImpl implements ISysNoticeService {
 
+    private static final String WORKPLACE_SUMMARY_CACHE = "oa_workplace_summary#120s";
+
     @Autowired
     private SysNoticeMapper noticeMapper;
 
@@ -28,6 +31,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
     private NotificationWebSocketHandler webSocketHandler;
 
     @Override
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#recipientId", condition = "#recipientId != null")
     @Async
     public void sendNotice(Long recipientId, String title, String content, String type, Long senderId, String senderName) {
         if (recipientId == null) return;
@@ -65,6 +69,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
     }
 
     @Override
+    @CacheEvict(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "T(com.cloudflow.common.core.context.UserContext).getUserId()")
     public void readNotice(Long noticeId) {
         SysNotice notice = new SysNotice();
         notice.setNoticeId(noticeId);

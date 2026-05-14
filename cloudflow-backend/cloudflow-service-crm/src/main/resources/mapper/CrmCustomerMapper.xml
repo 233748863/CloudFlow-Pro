@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.crm.mapper.CrmCustomerMapper">
+
+    <select id="selectPageByDataScope" resultType="com.cloudflow.crm.domain.CrmCustomer">
+        SELECT customer_id,
+               tenant_id,
+               customer_code,
+               customer_name,
+               customer_type,
+               industry,
+               level_code,
+               source,
+               customer_tags,
+               owner_id,
+               owner_name,
+               dept_id,
+               dept_name,
+               phone,
+               email,
+               website,
+               province,
+               city,
+               address,
+               credit_code,
+               health_level,
+               health_reason,
+               last_follow_up_time,
+               next_follow_up_time,
+               pool_flag,
+               pooled_time,
+               original_owner_id,
+               original_owner_name,
+               remark,
+               status,
+               del_flag,
+               create_by,
+               create_time,
+               update_by,
+               update_time
+        FROM oa_crm_customer
+        WHERE del_flag = '0'
+        <if test="query != null and query.customerName != null and query.customerName != ''">
+            AND customer_name LIKE CONCAT('%', #{query.customerName}, '%')
+        </if>
+        <if test="query != null and query.customerCode != null and query.customerCode != ''">
+            AND customer_code LIKE CONCAT('%', #{query.customerCode}, '%')
+        </if>
+        <if test="query != null and query.customerTags != null and query.customerTags != ''">
+            AND customer_tags LIKE CONCAT('%', #{query.customerTags}, '%')
+        </if>
+        <if test="query != null and query.healthLevel != null and query.healthLevel != ''">
+            AND health_level = #{query.healthLevel}
+        </if>
+        <if test="query != null and query.status != null and query.status != ''">
+            AND status = #{query.status}
+        </if>
+        ORDER BY update_time DESC
+    </select>
+
+    <select id="selectByIdWithDataScope" resultType="com.cloudflow.crm.domain.CrmCustomer">
+        SELECT customer_id,
+               tenant_id,
+               customer_code,
+               customer_name,
+               customer_type,
+               industry,
+               level_code,
+               source,
+               customer_tags,
+               owner_id,
+               owner_name,
+               dept_id,
+               dept_name,
+               phone,
+               email,
+               website,
+               province,
+               city,
+               address,
+               credit_code,
+               health_level,
+               health_reason,
+               last_follow_up_time,
+               next_follow_up_time,
+               pool_flag,
+               pooled_time,
+               original_owner_id,
+               original_owner_name,
+               remark,
+               status,
+               del_flag,
+               create_by,
+               create_time,
+               update_by,
+               update_time
+        FROM oa_crm_customer
+        WHERE customer_id = #{customerId}
+          AND del_flag = '0'
+    </select>
+</mapper>

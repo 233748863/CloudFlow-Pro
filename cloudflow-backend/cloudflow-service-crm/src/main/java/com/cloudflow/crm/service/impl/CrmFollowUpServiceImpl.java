@@ -1,9 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.domain.CrmFollowUp;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.mapper.CrmFollowUpMapper;
@@ -19,17 +19,32 @@ import org.springframework.util.StringUtils;
 public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper, CrmFollowUp>
         implements ICrmFollowUpService {
 
+    private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
+    private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
+
     private final ICrmCustomerService customerService;
     private final CrmOpportunityMapper opportunityMapper;
 
     @Override
     public PageResult<CrmFollowUp> queryPage(CrmFollowUp query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmFollowUp> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmFollowUp::getDelFlag, "0").orderByDesc(CrmFollowUp::getFollowUpTime);
-        eqIfPresent(wrapper, CrmFollowUp::getCustomerId, query.getCustomerId());
-        eqIfPresent(wrapper, CrmFollowUp::getOpportunityId, query.getOpportunityId());
-        eqIfPresent(wrapper, CrmFollowUp::getOwnerId, query.getOwnerId());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(),
+                query,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
+    }
+
+    @Override
+    public CrmFollowUp getAccessibleFollowUp(Long followUpId) {
+        if (followUpId == null) {
+            throw new IllegalArgumentException("跟进ID不能为空");
+        }
+        CrmFollowUp followUp = baseMapper.selectByIdWithDataScope(
+                followUpId,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        if (followUp == null) {
+            throw new IllegalArgumentException("跟进记录不存在");
+        }
+        return followUp;
     }
 
     @Override
@@ -56,7 +71,7 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
             throw new IllegalArgumentException("跟进ID不能为空");
         }
         validate(followUp);
-        CrmFollowUp persisted = requireById(followUp.getFollowUpId(), "跟进记录不存在");
+        CrmFollowUp persisted = getAccessibleFollowUp(followUp.getFollowUpId());
         followUp.setTenantId(persisted.getTenantId());
         followUp.setUpdateBy(currentUserName());
         followUp.setUpdateTime(now());
@@ -87,8 +102,10 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
         if (followUp == null || followUp.getOpportunityId() == null || followUp.getFollowUpTime() == null) {
             return;
         }
-        CrmOpportunity opportunity = opportunityMapper.selectById(followUp.getOpportunityId());
-        if (opportunity == null || !"0".equals(opportunity.getDelFlag())) {
+        CrmOpportunity opportunity = opportunityMapper.selectByIdWithDataScope(
+                followUp.getOpportunityId(),
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        if (opportunity == null) {
             return;
         }
         LambdaUpdateWrapper<CrmOpportunity> wrapper = new LambdaUpdateWrapper<>();

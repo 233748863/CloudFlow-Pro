@@ -12,6 +12,8 @@ public interface ICrmOpportunityService extends IService<CrmOpportunity> {
 
     PageResult<CrmOpportunity> queryPage(CrmOpportunity query, PageQuery pageQuery);
 
+    CrmOpportunity getAccessibleOpportunity(Long opportunityId);
+
     boolean createOpportunity(CrmOpportunity opportunity);
 
     boolean updateOpportunity(CrmOpportunity opportunity);

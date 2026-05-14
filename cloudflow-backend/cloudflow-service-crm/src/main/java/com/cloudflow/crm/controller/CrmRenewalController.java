@@ -31,8 +31,11 @@ public class CrmRenewalController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:renewal:list")
     public R<CrmRenewal> getInfo(@PathVariable("id") Long id) {
-        CrmRenewal renewal = renewalService.getRenewalInfo(id);
-        return renewal == null || !"0".equals(renewal.getDelFlag()) ? R.fail("续约记录不存在") : R.ok(renewal);
+        try {
+            return R.ok(renewalService.getRenewalInfo(id));
+        } catch (IllegalArgumentException e) {
+            return R.fail(e.getMessage());
+        }
     }
 
     @SysLog("新增CRM续约")
@@ -73,14 +76,17 @@ public class CrmRenewalController {
     @SaCheckPermission("crm:renewal:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
-            CrmRenewal persisted = renewalService.getById(id);
+            CrmRenewal persisted;
+            try {
+                persisted = renewalService.getAccessibleRenewal(id);
+            } catch (IllegalArgumentException e) {
+                return R.fail(e.getMessage());
+            }
             CrmRenewal renewal = new CrmRenewal();
             renewal.setRenewalId(id);
             renewal.setDelFlag("1");
             renewalService.updateById(renewal);
-            if (persisted != null) {
-                customerService.refreshHealth(persisted.getCustomerId());
-            }
+            customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();
     }

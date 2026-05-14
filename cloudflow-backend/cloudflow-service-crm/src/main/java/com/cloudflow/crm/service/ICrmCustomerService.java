@@ -15,6 +15,8 @@ public interface ICrmCustomerService extends IService<CrmCustomer> {
 
     PageResult<CrmCustomer> queryPage(CrmCustomer query, PageQuery pageQuery);
 
+    CrmCustomer getAccessibleCustomer(Long customerId);
+
     boolean createCustomer(CrmCustomer customer);
 
     boolean updateCustomer(CrmCustomer customer);

@@ -1,9 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
-import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmServiceTicket;
 import com.cloudflow.crm.mapper.CrmServiceTicketMapper;
@@ -18,17 +18,31 @@ import org.springframework.util.StringUtils;
 public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTicketMapper, CrmServiceTicket>
         implements ICrmServiceTicketService {
 
+    private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
+    private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
+
     private final ICrmCustomerService customerService;
 
     @Override
     public PageResult<CrmServiceTicket> queryPage(CrmServiceTicket query, PageQuery pageQuery) {
-        LambdaQueryWrapper<CrmServiceTicket> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmServiceTicket::getDelFlag, "0").orderByDesc(CrmServiceTicket::getUpdateTime);
-        eqIfPresent(wrapper, CrmServiceTicket::getCustomerId, query.getCustomerId());
-        likeIfPresent(wrapper, CrmServiceTicket::getTicketTitle, query.getTicketTitle());
-        eqIfPresent(wrapper, CrmServiceTicket::getSeverity, query.getSeverity());
-        eqIfPresent(wrapper, CrmServiceTicket::getStatus, query.getStatus());
-        return pageResult(pageQuery, wrapper);
+        return PageResult.build(baseMapper.selectPageByDataScope(
+                pageQuery.build(),
+                query,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
+    }
+
+    @Override
+    public CrmServiceTicket getAccessibleTicket(Long ticketId) {
+        if (ticketId == null) {
+            throw new IllegalArgumentException("工单ID不能为空");
+        }
+        CrmServiceTicket ticket = baseMapper.selectByIdWithDataScope(
+                ticketId,
+                DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN));
+        if (ticket == null) {
+            throw new IllegalArgumentException("工单不存在");
+        }
+        return ticket;
     }
 
     @Override
@@ -62,7 +76,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         }
         fillCustomerSnapshot(ticket);
         validate(ticket);
-        CrmServiceTicket persisted = requireById(ticket.getTicketId(), "工单不存在");
+        CrmServiceTicket persisted = getAccessibleTicket(ticket.getTicketId());
         ticket.setTenantId(persisted.getTenantId());
         if (!StringUtils.hasText(ticket.getTicketNo())) {
             ticket.setTicketNo(persisted.getTicketNo());
@@ -84,7 +98,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
 
     @Override
     public boolean resolveTicket(Long ticketId, String solution) {
-        CrmServiceTicket ticket = requireById(ticketId, "工单不存在");
+        CrmServiceTicket ticket = getAccessibleTicket(ticketId);
         ticket.setStatus("RESOLVED");
         ticket.setResolvedTime(now());
         ticket.setSolution(StringUtils.hasText(solution) ? solution : ticket.getSolution());
@@ -99,7 +113,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
 
     @Override
     public boolean closeTicket(Long ticketId) {
-        CrmServiceTicket ticket = requireById(ticketId, "工单不存在");
+        CrmServiceTicket ticket = getAccessibleTicket(ticketId);
         ticket.setStatus("CLOSED");
         ticket.setResolvedTime(ticket.getResolvedTime() == null ? now() : ticket.getResolvedTime());
         ticket.setUpdateBy(currentUserName());
@@ -136,9 +150,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         if (ticket == null || ticket.getCustomerId() == null) {
             return;
         }
-        CrmCustomer customer = customerService.getById(ticket.getCustomerId());
-        if (customer != null && "0".equals(customer.getDelFlag())) {
-            ticket.setCustomerName(customer.getCustomerName());
-        }
+        CrmCustomer customer = customerService.getAccessibleCustomer(ticket.getCustomerId());
+        ticket.setCustomerName(customer.getCustomerName());
     }
 }

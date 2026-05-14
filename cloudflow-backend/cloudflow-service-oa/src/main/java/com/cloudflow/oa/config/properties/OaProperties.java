@@ -34,6 +34,12 @@ public class OaProperties {
     /** 会议室配置 */
     private MeetingRoomConfig meetingRoom = new MeetingRoomConfig();
 
+    /** 错误上报配置 */
+    private ErrorReportConfig errorReport = new ErrorReportConfig();
+
+    /** 离线同步配置 */
+    private SyncConfig sync = new SyncConfig();
+
     @PostConstruct
     public void loadFromSysConfig() {
         announcement.setDefaultExpireDays(
@@ -69,6 +75,20 @@ public class OaProperties {
                 sysConfigHelper.getTenantInt("sys.meetingRoom.advanceBookingHours", meetingRoom.getAdvanceBookingHours()));
         meetingRoom.setAllowConcurrentBooking(
                 sysConfigHelper.getTenantBoolean("sys.meetingRoom.allowConcurrentBooking", meetingRoom.getAllowConcurrentBooking()));
+
+        errorReport.setEnabled(
+                sysConfigHelper.getTenantBoolean("sys.errorReport.enabled", errorReport.getEnabled()));
+        errorReport.setAllowAnonymousPath(
+                sysConfigHelper.getTenantValue("sys.errorReport.allowAnonymousPath", errorReport.getAllowAnonymousPath()));
+        errorReport.setIpLimitCount(
+                sysConfigHelper.getTenantInt("sys.errorReport.ipLimitCount", errorReport.getIpLimitCount()));
+        errorReport.setIpLimitWindowSeconds(
+                sysConfigHelper.getTenantInt("sys.errorReport.ipLimitWindowSeconds", errorReport.getIpLimitWindowSeconds()));
+
+        sync.setConflictStrategy(
+                sysConfigHelper.getTenantValue("sys.sync.conflictStrategy", sync.getConflictStrategy()));
+        sync.setTimeToleranceSeconds(
+                sysConfigHelper.getTenantInt("sys.sync.timeToleranceSeconds", sync.getTimeToleranceSeconds()));
     }
 
     @Data
@@ -114,6 +134,21 @@ public class OaProperties {
     }
 
     @Data
+    public static class ErrorReportConfig {
+        /** 是否启用前端错误上报 */
+        private Boolean enabled = true;
+
+        /** 允许上报的前端路径前缀 */
+        private String allowAnonymousPath = "/dashboard";
+
+        /** IP 限流窗口内最大请求数 */
+        private Integer ipLimitCount = 20;
+
+        /** IP 限流窗口时长，单位秒 */
+        private Integer ipLimitWindowSeconds = 60;
+    }
+
+    @Data
     public static class MeetingRoomConfig {
         /** 最大预约小时数 */
         private Integer maxBookingHours = 4;
@@ -126,5 +161,14 @@ public class OaProperties {
 
         /** 自动释放分钟数 */
         private Integer autoReleaseMinutes = 15;
+    }
+
+    @Data
+    public static class SyncConfig {
+        /** 冲突策略 */
+        private String conflictStrategy = "LAST_WRITE_WINS";
+
+        /** 时间容差，单位秒 */
+        private Integer timeToleranceSeconds = 5;
     }
 }
