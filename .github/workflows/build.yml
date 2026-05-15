@@ -55,7 +55,9 @@ jobs:
         npm run build
 
     - name: Enable Corepack
-      run: corepack enable
+      run: |
+        corepack enable
+        corepack prepare pnpm@9.15.4 --activate
 
     - name: Build Vue Frontend
       run: |
