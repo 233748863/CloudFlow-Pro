@@ -13,8 +13,7 @@
     "baseUrl": ".",
     "types": [
       "node",
-      "vite/client",
-      "@playwright/test"
+      "vite/client"
     ],
     "moduleResolution": "bundler",
     "isolatedModules": true,
