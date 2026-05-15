@@ -111,8 +111,6 @@ function Import-DotEnvFile {
 
 function Initialize-LocalEnvironment {
     Set-ProcessEnvDefault -Name "MYSQL_SSL_PARAMS" -Value "useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true"
-    Set-ProcessEnvDefault -Name "MYSQL_ROOT_PASSWORD" -Value "Juwangkeji@2025"
-    Set-ProcessEnvDefault -Name "REDIS_PASSWORD" -Value "Juwangkeji@2025"
     if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name "DB_PASSWORD"))) {
         $dbPasswordCandidate = Get-EnvValue -Name "MYSQL_ROOT_PASSWORD"
         if ([string]::IsNullOrWhiteSpace($dbPasswordCandidate)) {
