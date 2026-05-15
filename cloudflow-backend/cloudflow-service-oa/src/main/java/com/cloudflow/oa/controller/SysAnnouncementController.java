@@ -7,7 +7,6 @@ import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
@@ -16,7 +15,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/announcement")
-@SaCheckLogin
 public class SysAnnouncementController {
 
     @Autowired
@@ -26,7 +24,7 @@ public class SysAnnouncementController {
      * 获取我的公告列表
      */
     @GetMapping("/my-list")
-    @SaCheckPermission("office:announcement")
+    @SaCheckPermission("oa:announcement:list")
     public R<List<SysAnnouncement>> getMyList() {
         return R.ok(announcementService.getMyAnnouncements(UserContext.getUserId()));
     }
@@ -35,7 +33,7 @@ public class SysAnnouncementController {
      * 标记已读
      */
     @PostMapping("/read/{id}")
-    @SaCheckPermission("office:announcement")
+    @SaCheckPermission("oa:announcement:list")
     public R<Boolean> read(@PathVariable("id") Long id) {
         return R.ok(announcementService.readAnnouncement(id, UserContext.getUserId()));
     }
@@ -115,3 +113,4 @@ public class SysAnnouncementController {
         return R.ok(DynamicMapVO.from(announcementService.getReadStats(id)));
     }
 }
+

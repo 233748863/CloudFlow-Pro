@@ -65,6 +65,8 @@ export const useAuthStore = defineStore('auth', {
     },
     hasPermission(permission: string) {
       return this.permissions.includes(permission)
+        || this.permissions.includes('*:*:*')
+        || this.permissions.includes('*')
     },
     async switchTenant(tenantId: number) {
       const response = await switchTenantApi(tenantId)

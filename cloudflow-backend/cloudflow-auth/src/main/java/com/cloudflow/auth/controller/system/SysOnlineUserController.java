@@ -1,6 +1,5 @@
 package com.cloudflow.auth.controller.system;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.dto.OnlineUserDTO;
 import com.cloudflow.auth.domain.dto.OnlineUserQuery;
@@ -24,7 +23,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/system/online")
 @RequiredArgsConstructor
-@SaCheckLogin
 public class SysOnlineUserController {
 
     private final OnlineUserService onlineUserService;

@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.common.core.domain.R;
@@ -23,6 +24,7 @@ public class SysDeptController {
      * 获取部门树
      */
     @GetMapping("/tree")
+    @SaCheckPermission("system:dept:list")
     public R<List<SysDept>> getDeptTree() {
         List<SysDept> depts = sysDeptMapper.selectList(new LambdaQueryWrapper<SysDept>()
                 .orderByAsc(SysDept::getOrderNum));
@@ -91,6 +93,7 @@ public class SysDeptController {
      * 获取部门详情
      */
     @GetMapping("/{deptId}")
+    @SaCheckPermission("system:dept:query")
     public R<SysDept> getById(@PathVariable Long deptId) {
         return R.ok(sysDeptMapper.selectById(deptId));
     }
@@ -99,6 +102,7 @@ public class SysDeptController {
      * 新增部门
      */
     @PostMapping
+    @SaCheckPermission("system:dept:add")
     public R<Boolean> add(@RequestBody SysDept dept) {
         // 设置ancestors
         if (dept.getParentId() != null && dept.getParentId() > 0) {
@@ -120,6 +124,7 @@ public class SysDeptController {
      * 修改部门
      */
     @PutMapping
+    @SaCheckPermission("system:dept:edit")
     public R<Boolean> edit(@RequestBody SysDept dept) {
         // 更新ancestors
         if (dept.getParentId() != null && dept.getParentId() > 0) {
@@ -137,6 +142,7 @@ public class SysDeptController {
      * 删除部门
      */
     @DeleteMapping("/{deptId}")
+    @SaCheckPermission("system:dept:remove")
     public R<Boolean> remove(@PathVariable Long deptId) {
         // 检查是否有子部门
         Long childCount = sysDeptMapper.selectCount(new LambdaQueryWrapper<SysDept>()

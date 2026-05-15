@@ -1,6 +1,8 @@
 package com.cloudflow.common.sse.controller;
 
+import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.sse.core.SseEmitterManager;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -19,6 +21,7 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RestController
 @RequestMapping("/sse")
 @RequiredArgsConstructor
+@SaCheckLogin
 public class SseController {
 
     private final SseEmitterManager sseEmitterManager;
@@ -26,21 +29,27 @@ public class SseController {
     /**
      * 建立 SSE 连接
      *
-     * @param userId 用户 ID
      * @return SseEmitter 实例
      */
     @GetMapping("/connect")
-    public SseEmitter connect(@RequestParam Long userId) {
+    public SseEmitter connect() {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new IllegalStateException("SSE 连接失败");
+        }
         return sseEmitterManager.connect(userId);
     }
 
     /**
      * 断开 SSE 连接
      *
-     * @param userId 用户 ID
      */
     @GetMapping("/disconnect")
-    public void disconnect(@RequestParam Long userId) {
+    public void disconnect() {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            return;
+        }
         sseEmitterManager.disconnect(userId);
     }
 }

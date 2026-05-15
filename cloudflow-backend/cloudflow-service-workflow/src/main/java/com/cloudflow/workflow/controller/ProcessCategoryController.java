@@ -4,10 +4,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessCategory;
 import com.cloudflow.workflow.service.IProcessCategoryService;
 import lombok.RequiredArgsConstructor;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,25 +23,28 @@ public class ProcessCategoryController {
 
     /** 查询分类树形列表（仅正常状态） */
     @GetMapping("/tree")
+    @SaCheckPermission("workflow:category:list")
     public R<List<WfProcessCategory>> tree() {
         return R.ok(categoryService.listCategoryTree());
     }
 
     /** 查询所有分类（平铺，含停用） */
     @GetMapping("/list")
+    @SaCheckPermission("workflow:category:list")
     public R<List<WfProcessCategory>> list() {
         return R.ok(categoryService.listAll());
     }
 
     /** 查询分类详情 */
     @GetMapping("/{categoryId}")
+    @SaCheckPermission("workflow:category:list")
     public R<WfProcessCategory> getInfo(@PathVariable Long categoryId) {
         return R.ok(categoryService.getById(categoryId));
     }
 
     /** 新增分类 */
     @PostMapping
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:category:manage")
     public R<Void> add(@RequestBody WfProcessCategory category) {
         categoryService.add(category);
         return R.ok();
@@ -52,7 +52,7 @@ public class ProcessCategoryController {
 
     /** 修改分类 */
     @PutMapping
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:category:manage")
     public R<Void> edit(@RequestBody WfProcessCategory category) {
         categoryService.update(category);
         return R.ok();
@@ -60,7 +60,7 @@ public class ProcessCategoryController {
 
     /** 删除分类 */
     @DeleteMapping("/{categoryId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:category:manage")
     public R<Void> remove(@PathVariable Long categoryId) {
         categoryService.delete(categoryId);
         return R.ok();

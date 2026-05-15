@@ -1,6 +1,5 @@
 package com.cloudflow.auth.controller.system;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysDictData;
@@ -20,7 +19,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/system/dict/data")
-@SaCheckLogin
 public class SysDictDataController {
 
     @Autowired
@@ -31,6 +29,7 @@ public class SysDictDataController {
 
     /** 根据字典类型查询字典数据列表 */
     @GetMapping("/type/{dictType}")
+    @SaCheckPermission("system:dict:list")
     public R<List<SysDictData>> dictType(@PathVariable("dictType") String dictType) {
         return R.ok(dictTypeService.selectDictDataByType(dictType));
     }

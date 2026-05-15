@@ -1,6 +1,5 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaMode;
 import com.cloudflow.common.core.domain.PageQuery;
@@ -28,7 +27,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/license")
 @RequiredArgsConstructor
-@SaCheckLogin
 public class LicenseController {
 
     private final IOaLicenseService licenseService;
@@ -36,26 +34,26 @@ public class LicenseController {
     private final IOaLicenseRenewalService renewalService;
 
     @GetMapping("/list")
-    @SaCheckPermission("admin:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<PageResult<OaLicense>> list(OaLicense query, PageQuery pageQuery) {
         return R.ok(licenseService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/available")
-    @SaCheckPermission(value = {"admin:license:list", "office:license:list"}, mode = SaMode.OR)
+    @SaCheckPermission(value = {"oa:license:list", "oa:license:list"}, mode = SaMode.OR)
     public R<List<OaLicense>> listAvailable() {
         return R.ok(licenseService.listAvailable());
     }
 
     @GetMapping("/expiring")
-    @SaCheckPermission("admin:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<PageResult<OaLicense>> listExpiring(@RequestParam(value = "days", required = false) Integer days,
                                                  PageQuery pageQuery) {
         return R.ok(licenseService.queryExpiringPage(days, pageQuery));
     }
 
     @GetMapping("/{id}")
-    @SaCheckPermission("admin:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<OaLicense> getInfo(@PathVariable("id") Long id) {
         try {
             return R.ok(licenseService.getLicenseInfo(id));
@@ -66,7 +64,7 @@ public class LicenseController {
 
     @SysLog("新增证照")
     @PostMapping
-    @SaCheckPermission("admin:license:add")
+    @SaCheckPermission("oa:license:add")
     public R<Void> add(@RequestBody OaLicense license) {
         try {
             return R.result(licenseService.createLicense(license));
@@ -77,7 +75,7 @@ public class LicenseController {
 
     @SysLog("修改证照")
     @PutMapping
-    @SaCheckPermission("admin:license:edit")
+    @SaCheckPermission("oa:license:edit")
     public R<Void> edit(@RequestBody OaLicense license) {
         try {
             return R.result(licenseService.updateLicense(license));
@@ -88,7 +86,7 @@ public class LicenseController {
 
     @SysLog("删除证照")
     @DeleteMapping("/{ids}")
-    @SaCheckPermission("admin:license:remove")
+    @SaCheckPermission("oa:license:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         try {
             return R.result(licenseService.removeLicenses(ids));
@@ -98,14 +96,14 @@ public class LicenseController {
     }
 
     @GetMapping("/{id}/expiry-reminder-logs")
-    @SaCheckPermission("admin:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<List<OaLicenseExpiryReminderLog>> listExpiryReminderLogs(@PathVariable("id") Long id) {
         return R.ok(licenseService.listExpiryReminderLogs(id));
     }
 
     @SysLog("证照到期提醒")
     @PostMapping("/{id}/expiry-remind")
-    @SaCheckPermission("admin:license:remind")
+    @SaCheckPermission("oa:license:remind")
     public R<Void> remindExpiry(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
             return R.result(licenseService.remindExpiry(id, dto == null ? null : dto.getRemark()));
@@ -115,19 +113,19 @@ public class LicenseController {
     }
 
     @GetMapping("/borrow/list")
-    @SaCheckPermission("office:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<PageResult<OaLicenseBorrow>> listBorrows(OaLicenseBorrow query, PageQuery pageQuery) {
         return R.ok(borrowService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/borrow/overdue")
-    @SaCheckPermission("office:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<PageResult<OaLicenseBorrow>> listOverdue(PageQuery pageQuery) {
         return R.ok(borrowService.queryOverduePage(pageQuery));
     }
 
     @GetMapping("/borrow/{id}")
-    @SaCheckPermission("office:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<OaLicenseBorrow> getBorrow(@PathVariable("id") Long id) {
         try {
             return R.ok(borrowService.getBorrowInfo(id));
@@ -137,20 +135,20 @@ public class LicenseController {
     }
 
     @GetMapping("/borrow/{id}/handover-logs")
-    @SaCheckPermission("office:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<List<OaLicenseHandoverLog>> listHandoverLogs(@PathVariable("id") Long id) {
         return R.ok(borrowService.listHandoverLogs(id));
     }
 
     @GetMapping("/borrow/{id}/reminder-logs")
-    @SaCheckPermission("office:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<List<OaBorrowReminderLog>> listReminderLogs(@PathVariable("id") Long id) {
         return R.ok(borrowService.listReminderLogs(id));
     }
 
     @SysLog("新增证照借用申请")
     @PostMapping("/borrow")
-    @SaCheckPermission("office:license:add")
+    @SaCheckPermission("oa:license:add")
     public R<Void> addBorrow(@RequestBody OaLicenseBorrow borrow) {
         try {
             return R.result(borrowService.createBorrow(borrow));
@@ -161,7 +159,7 @@ public class LicenseController {
 
     @SysLog("修改证照借用申请")
     @PutMapping("/borrow")
-    @SaCheckPermission("office:license:edit")
+    @SaCheckPermission("oa:license:edit")
     public R<Void> editBorrow(@RequestBody OaLicenseBorrow borrow) {
         try {
             return R.result(borrowService.updateBorrow(borrow));
@@ -172,7 +170,7 @@ public class LicenseController {
 
     @SysLog("删除证照借用申请")
     @DeleteMapping("/borrow/{ids}")
-    @SaCheckPermission("office:license:remove")
+    @SaCheckPermission("oa:license:remove")
     public R<Void> removeBorrows(@PathVariable("ids") List<Long> ids) {
         try {
             return R.result(borrowService.removeBorrows(ids));
@@ -183,7 +181,7 @@ public class LicenseController {
 
     @SysLog("提交证照借用申请")
     @PostMapping("/borrow/submit/{id}")
-    @SaCheckPermission("office:license:submit")
+    @SaCheckPermission("oa:license:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
         try {
             return R.result(borrowService.submitBorrow(id));
@@ -194,7 +192,7 @@ public class LicenseController {
 
     @SysLog("取消证照借用申请")
     @PutMapping("/borrow/cancel/{id}")
-    @SaCheckPermission("office:license:cancel")
+    @SaCheckPermission("oa:license:cancel")
     public R<Void> cancel(@PathVariable("id") Long id) {
         try {
             return R.result(borrowService.cancelBorrow(id));
@@ -205,7 +203,7 @@ public class LicenseController {
 
     @SysLog("确认借出证照")
     @PutMapping("/borrow/{id}/borrow")
-    @SaCheckPermission("admin:borrow:confirm")
+    @SaCheckPermission("oa:borrow:confirm")
     public R<Void> confirmBorrow(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
             return R.result(borrowService.confirmBorrow(id,
@@ -218,7 +216,7 @@ public class LicenseController {
 
     @SysLog("确认归还证照")
     @PutMapping("/borrow/{id}/return")
-    @SaCheckPermission("admin:borrow:return")
+    @SaCheckPermission("oa:borrow:return")
     public R<Void> confirmReturn(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
             return R.result(borrowService.confirmReturn(id,
@@ -231,7 +229,7 @@ public class LicenseController {
 
     @SysLog("催还证照")
     @PostMapping("/borrow/{id}/remind")
-    @SaCheckPermission("admin:borrow:remind")
+    @SaCheckPermission("oa:borrow:remind")
     public R<Void> remind(@PathVariable("id") Long id, @RequestBody(required = false) OaBorrowActionDTO dto) {
         try {
             return R.result(borrowService.remind(id, dto == null ? null : dto.getRemark()));
@@ -241,13 +239,13 @@ public class LicenseController {
     }
 
     @GetMapping("/renewal/list")
-    @SaCheckPermission("admin:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<PageResult<OaLicenseRenewal>> listRenewals(OaLicenseRenewal query, PageQuery pageQuery) {
         return R.ok(renewalService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/renewal/{id}")
-    @SaCheckPermission("admin:license:list")
+    @SaCheckPermission("oa:license:list")
     public R<OaLicenseRenewal> getRenewal(@PathVariable("id") Long id) {
         try {
             return R.ok(renewalService.getRenewalInfo(id));
@@ -258,7 +256,7 @@ public class LicenseController {
 
     @SysLog("新增证照续期申请")
     @PostMapping("/renewal")
-    @SaCheckPermission("admin:license-renewal:add")
+    @SaCheckPermission("oa:license-renewal:add")
     public R<Void> addRenewal(@RequestBody OaLicenseRenewal renewal) {
         try {
             return R.result(renewalService.createRenewal(renewal));
@@ -269,7 +267,7 @@ public class LicenseController {
 
     @SysLog("修改证照续期申请")
     @PutMapping("/renewal")
-    @SaCheckPermission("admin:license-renewal:edit")
+    @SaCheckPermission("oa:license-renewal:edit")
     public R<Void> editRenewal(@RequestBody OaLicenseRenewal renewal) {
         try {
             return R.result(renewalService.updateRenewal(renewal));
@@ -280,7 +278,7 @@ public class LicenseController {
 
     @SysLog("删除证照续期申请")
     @DeleteMapping("/renewal/{ids}")
-    @SaCheckPermission("admin:license-renewal:remove")
+    @SaCheckPermission("oa:license-renewal:remove")
     public R<Void> removeRenewals(@PathVariable("ids") List<Long> ids) {
         try {
             return R.result(renewalService.removeRenewals(ids));
@@ -291,7 +289,7 @@ public class LicenseController {
 
     @SysLog("提交证照续期申请")
     @PostMapping("/renewal/submit/{id}")
-    @SaCheckPermission("admin:license-renewal:submit")
+    @SaCheckPermission("oa:license-renewal:submit")
     public R<Void> submitRenewal(@PathVariable("id") Long id) {
         try {
             return R.result(renewalService.submitRenewal(id));
@@ -302,7 +300,7 @@ public class LicenseController {
 
     @SysLog("取消证照续期申请")
     @PutMapping("/renewal/cancel/{id}")
-    @SaCheckPermission("admin:license-renewal:cancel")
+    @SaCheckPermission("oa:license-renewal:cancel")
     public R<Void> cancelRenewal(@PathVariable("id") Long id) {
         try {
             return R.result(renewalService.cancelRenewal(id));
@@ -311,3 +309,5 @@ public class LicenseController {
         }
     }
 }
+
+

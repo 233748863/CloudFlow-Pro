@@ -24,10 +24,7 @@ import com.cloudflow.workflow.service.IWfTaskService;
 import com.cloudflow.workflow.service.WorkflowStatisticsService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 
 @RestController
 public class WorkflowController {
@@ -55,7 +52,7 @@ public class WorkflowController {
      * 所有已认证用户均可发起流程
      */
     @PostMapping("/start")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:process:start")
     public R<?> startProcess(@RequestBody ProcessStartReq req) {
         return instanceService.startProcess(req.getProcessDefKey(), req.getBusinessKey(), req.getVariables());
     }
@@ -65,7 +62,7 @@ public class WorkflowController {
      * 所有已认证用户均可处理分配给自己的任务
      */
     @PostMapping("/complete")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:complete")
     public R<?> completeTask(@RequestBody TaskCompleteReq req) {
         return taskService.completeTask(req.getTaskId(), req.getAction(), req.getComment(), req.getVariables(), req.getDelegateUserId());
     }
@@ -74,7 +71,7 @@ public class WorkflowController {
      * 查询我的待办
      */
     @GetMapping("/todo")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:todo")
     public R<PageResult<WfTask>> getTodoTasks(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
         return R.ok(taskService.getTodoTasks(userId, pageQuery));
@@ -84,7 +81,7 @@ public class WorkflowController {
      * 查询我的已办
      */
     @GetMapping("/done")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:done")
     public R<PageResult<WfTask>> getDoneTasks(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
         return R.ok(taskService.getDoneTasks(userId, pageQuery));
@@ -94,7 +91,7 @@ public class WorkflowController {
      * 查询我的申请
      */
     @GetMapping("/my-instances")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:process:mine")
     public R<PageResult<WfProcessInstance>> getMyInstances(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
         return R.ok(instanceService.getMyInstances(userId, pageQuery));
@@ -104,7 +101,7 @@ public class WorkflowController {
      * 查询实例详情
      */
     @GetMapping("/instance/{instanceId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:process:view")
     public R<WfProcessInstance> getProcessInstance(@PathVariable("instanceId") String instanceId) {
         return R.ok(instanceService.getProcessInstance(instanceId));
     }
@@ -113,7 +110,7 @@ public class WorkflowController {
      * 查询流程追踪
      */
     @GetMapping("/instance/{instanceId}/trace")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:process:view")
     public R<DynamicMapVO> getProcessTrace(@PathVariable("instanceId") String instanceId) {
         return R.ok(DynamicMapVO.from(instanceService.getProcessTrace(instanceId)));
     }
@@ -122,7 +119,7 @@ public class WorkflowController {
      * 查询流程定义列表
      */
     @GetMapping("/definitions")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:definition:list")
     public R<PageResult<WfProcessDefinition>> listProcessDefinitions(@ModelAttribute PageQuery pageQuery) {
         return R.ok(definitionService.listProcessDefinitions(pageQuery));
     }
@@ -131,7 +128,7 @@ public class WorkflowController {
      * 查询表单定义
      */
     @GetMapping("/form/{formId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:form:view")
     public R<WfFormDefinition> getFormDefinition(@PathVariable("formId") String formId) {
         return R.ok(formService.getFormDefinition(formId));
     }
@@ -140,7 +137,7 @@ public class WorkflowController {
      * 查询所有表单
      */
     @GetMapping("/forms")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:form:list")
     public R<PageResult<WfFormDefinition>> listFormDefinitions(@ModelAttribute PageQuery pageQuery) {
         return R.ok(formService.listFormDefinitions(pageQuery));
     }
@@ -150,7 +147,7 @@ public class WorkflowController {
      * 仅管理员可操作
      */
     @PostMapping("/definition/save")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:definition:add")
     public R<?> saveProcessDefinition(@RequestBody WfProcessDefinition definition) {
         return definitionService.saveProcessDefinition(definition);
     }
@@ -160,7 +157,7 @@ public class WorkflowController {
      * 仅管理员可操作
      */
     @PostMapping("/definition/deploy/{definitionId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:definition:deploy")
     public R<?> deployProcessDefinition(@PathVariable("definitionId") String definitionId) {
         return definitionService.deployProcessDefinition(definitionId);
     }
@@ -170,7 +167,7 @@ public class WorkflowController {
      * 仅管理员可操作
      */
     @PostMapping("/form/save")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:form:add")
     public R<?> saveFormDefinition(@RequestBody WfFormDefinition definition) {
         return formService.saveFormDefinition(definition);
     }
@@ -179,7 +176,7 @@ public class WorkflowController {
      * 任务已读
      */
     @PostMapping("/task/read/{taskId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:read")
     public R<?> readTask(@PathVariable("taskId") String taskId) {
         taskService.readTask(taskId, UserContext.getUserId());
         return R.ok();
@@ -189,7 +186,7 @@ public class WorkflowController {
      * 催办任务
      */
     @PostMapping("/task/urge")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:urge")
     public R<?> urgeTask(@RequestBody UrgeTaskRequest dto) {
         return taskService.urgeTask(dto.getTaskId(), dto.getReason());
     }
@@ -199,7 +196,7 @@ public class WorkflowController {
      * 返回待办任务数量、已办任务数量、发起的流程数量
      */
     @GetMapping("/tasks/count")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:count")
     public R<DynamicMapVO> getTasksCount() {
         Long userId = UserContext.getUserId();
         return R.ok(DynamicMapVO.from(taskStatisticsService.getTasksCount(userId)));
@@ -210,7 +207,7 @@ public class WorkflowController {
      * 用于工作流监控大屏，仅管理员和经理可查看
      */
     @GetMapping("/statistics/metrics")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:task:statistics")
     public R<DynamicMapVO> getStatisticsMetrics() {
         return R.ok(DynamicMapVO.from(statisticsService.getMetrics()));
     }
@@ -220,7 +217,7 @@ public class WorkflowController {
      * 用于工作流监控大屏，仅管理员和经理可查看
      */
     @GetMapping("/statistics/analysis")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:task:statistics")
     public R<DynamicMapVO> getStatisticsAnalysis() {
         return R.ok(DynamicMapVO.from(statisticsService.getStatisticsAnalysis()));
     }
@@ -231,7 +228,7 @@ public class WorkflowController {
      * 仅管理员可操作
      */
     @DeleteMapping("/definition/{definitionId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:definition:remove")
     public R<?> deleteProcessDefinition(@PathVariable("definitionId") String definitionId) {
         return definitionService.deleteProcessDefinition(definitionId);
     }
@@ -241,7 +238,7 @@ public class WorkflowController {
      * 包括按时间段、状态、流程类型、处理人的统计，以及平均处理时长和完成率
      */
     @GetMapping("/tasks/statistics")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:task:statistics")
     public R<DynamicMapVO> getTaskStatistics(
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String startTime,
@@ -260,7 +257,7 @@ public class WorkflowController {
      * 按流程类型、状态、优先级、处理人等维度分组
      */
     @GetMapping("/tasks/groups")
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:task:groups")
     public R<DynamicMapVO> getTaskGroups(@RequestParam(required = false) Long userId) {
         return R.ok(DynamicMapVO.from(taskStatisticsService.getTaskGroups(userId)));
     }
@@ -270,7 +267,7 @@ public class WorkflowController {
      * 发起人可以在流程未结束前撤回自己发起的流程
      */
     @PostMapping("/recall")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:process:recall")
     public R<?> recallProcess(@RequestBody InstanceIdRequest dto) {
         String instanceId = dto.getInstanceId();
         if (instanceId == null || instanceId.isBlank()) {
@@ -283,7 +280,7 @@ public class WorkflowController {
      * 驳回任务到指定节点
      */
     @PostMapping("/reject")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:reject")
     public R<?> rejectTask(@RequestBody ProcessRejectRequest dto) {
         String taskId = dto.getTaskId();
         String targetNodeKey = dto.getTargetNodeKey();
@@ -299,7 +296,7 @@ public class WorkflowController {
      * 仅管理员可操作
      */
     @PostMapping("/pause")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:process:pause")
     public R<?> pauseProcess(@RequestBody InstanceIdRequest dto) {
         String instanceId = dto.getInstanceId();
         if (instanceId == null || instanceId.isBlank()) {
@@ -313,7 +310,7 @@ public class WorkflowController {
      * 仅管理员可操作
      */
     @PostMapping("/resume")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:process:resume")
     public R<?> resumeProcess(@RequestBody InstanceIdRequest dto) {
         String instanceId = dto.getInstanceId();
         if (instanceId == null || instanceId.isBlank()) {
@@ -326,7 +323,7 @@ public class WorkflowController {
      * 查询流程定义详情
      */
     @GetMapping("/definition/{definitionId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:definition:view")
     public R<WfProcessDefinition> getProcessDefinition(@PathVariable("definitionId") String definitionId) {
         return R.ok(definitionService.getProcessDefinition(definitionId));
     }
@@ -344,7 +341,7 @@ public class WorkflowController {
      * @return 加签结果
      */
     @PostMapping("/task/add-signature")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:add-sign")
     public R<?> addSignature(@RequestBody SignatureChangeRequest dto) {
         String taskId = dto.getTaskId();
         java.util.List<Long> userIds = dto.getUserIds();
@@ -374,7 +371,7 @@ public class WorkflowController {
      * @return 减签结果
      */
     @PostMapping("/task/reduction-signature")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:reduce-sign")
     public R<?> reductionSignature(@RequestBody SignatureChangeRequest dto) {
         String taskId = dto.getTaskId();
         java.util.List<Long> userIds = dto.getUserIds();
@@ -406,7 +403,7 @@ public class WorkflowController {
      * @return 终止结果
      */
     @PostMapping("/instance/terminate")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:process:terminate")
     public R<?> terminateProcess(@RequestBody TerminateProcessRequest dto) {
         String instanceId = dto.getInstanceId();
         String reason = dto.getReason();

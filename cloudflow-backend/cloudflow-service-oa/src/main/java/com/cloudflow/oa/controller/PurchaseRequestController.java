@@ -1,6 +1,5 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
@@ -20,14 +19,13 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/purchase/request")
-@SaCheckLogin
 @RequiredArgsConstructor
 public class PurchaseRequestController {
 
     private final IPurchaseRequestService purchaseRequestService;
 
     @GetMapping("/list")
-    @SaCheckPermission("office:purchase:list")
+    @SaCheckPermission("oa:purchase:list")
     public R<Page<BizPurchaseRequest>> list(@RequestParam(defaultValue = "1") Integer pageNum,
                                             @RequestParam(defaultValue = "10") Integer pageSize,
                                             @RequestParam(required = false) String status,
@@ -37,7 +35,7 @@ public class PurchaseRequestController {
     }
 
     @GetMapping("/{id}")
-    @SaCheckPermission("office:purchase:list")
+    @SaCheckPermission("oa:purchase:list")
     public R<BizPurchaseRequest> getInfo(@PathVariable Long id) {
         BizPurchaseRequest purchase = purchaseRequestService.getRequestWithItems(id);
         if (purchase == null || !"0".equals(purchase.getDelFlag())) {
@@ -48,7 +46,7 @@ public class PurchaseRequestController {
 
     @SysLog("新增采购申请")
     @PostMapping
-    @SaCheckPermission("office:purchase:add")
+    @SaCheckPermission("oa:purchase:add")
     public R<Void> add(@RequestBody BizPurchaseRequest purchase) {
         try {
             return purchaseRequestService.createPurchase(purchase) ? R.ok() : R.fail("创建失败");
@@ -59,7 +57,7 @@ public class PurchaseRequestController {
 
     @SysLog("补货建议生成采购草稿")
     @PostMapping("/from-suggestion")
-    @SaCheckPermission("office:purchase:add")
+    @SaCheckPermission("oa:purchase:add")
     public R<BizPurchaseRequest> fromSuggestion(@RequestBody PurchaseFromSuggestionDTO dto) {
         try {
             return R.ok(purchaseRequestService.createFromSuggestion(dto));
@@ -70,7 +68,7 @@ public class PurchaseRequestController {
 
     @SysLog("修改采购申请")
     @PutMapping
-    @SaCheckPermission("office:purchase:edit")
+    @SaCheckPermission("oa:purchase:edit")
     public R<Void> edit(@RequestBody BizPurchaseRequest purchase) {
         try {
             return purchaseRequestService.updatePurchase(purchase) ? R.ok() : R.fail("更新失败");
@@ -81,7 +79,7 @@ public class PurchaseRequestController {
 
     @SysLog("删除采购申请")
     @DeleteMapping("/{ids}")
-    @SaCheckPermission("office:purchase:remove")
+    @SaCheckPermission("oa:purchase:remove")
     public R<Void> remove(@PathVariable Long[] ids) {
         for (Long id : ids) {
             BizPurchaseRequest purchase = new BizPurchaseRequest();
@@ -94,7 +92,7 @@ public class PurchaseRequestController {
 
     @SysLog("提交采购申请")
     @PostMapping("/submit/{id}")
-    @SaCheckPermission("office:purchase:submit")
+    @SaCheckPermission("oa:purchase:submit")
     public R<Void> submit(@PathVariable Long id) {
         try {
             return purchaseRequestService.submitPurchase(id) ? R.ok() : R.fail("提交失败");
@@ -105,7 +103,7 @@ public class PurchaseRequestController {
 
     @SysLog("采购分批入库")
     @PostMapping("/{id}/receipt")
-    @SaCheckPermission("office:purchase:receipt")
+    @SaCheckPermission("oa:purchase:receipt")
     public R<Void> receipt(@PathVariable Long id, @RequestBody PurchaseReceiptDTO receipt) {
         try {
             return purchaseRequestService.receivePurchase(id, receipt) ? R.ok() : R.fail("入库失败");
@@ -116,7 +114,7 @@ public class PurchaseRequestController {
 
     @SysLog("采购生成付款申请")
     @PostMapping("/{id}/create-payment")
-    @SaCheckPermission("office:purchase:create-payment")
+    @SaCheckPermission("oa:purchase:create-payment")
     public R<BizPaymentRequest> createPayment(@PathVariable Long id) {
         try {
             return R.ok(purchaseRequestService.createPaymentRequest(id));
@@ -125,3 +123,4 @@ public class PurchaseRequestController {
         }
     }
 }
+

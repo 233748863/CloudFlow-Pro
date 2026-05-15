@@ -2,6 +2,7 @@ package com.cloudflow.auth.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.auth.domain.SysPost;
 import com.cloudflow.auth.service.ISysPostService;
@@ -35,6 +36,7 @@ public class SysPostController {
      * @param pageSize 每页条数
      */
     @GetMapping("/list")
+    @SaCheckPermission("system:post:list")
     public R<Page<SysPost>> list(
             @RequestParam(required = false) String postCode,
             @RequestParam(required = false) String postName,
@@ -54,6 +56,7 @@ public class SysPostController {
      * 根据 ID 获取岗位详情
      */
     @GetMapping("/{postId}")
+    @SaCheckPermission("system:post:query")
     public R<SysPost> getInfo(@PathVariable Long postId) {
         return R.ok(postService.getById(postId));
     }
@@ -62,6 +65,7 @@ public class SysPostController {
      * 新增岗位
      */
     @PostMapping
+    @SaCheckPermission("system:post:add")
     public R<Void> add(@RequestBody SysPost post) {
         if (!postService.checkPostCodeUnique(post)) {
             return R.fail("新增岗位'" + post.getPostName() + "'失败，岗位编码已存在");
@@ -75,6 +79,7 @@ public class SysPostController {
      * 修改岗位
      */
     @PutMapping
+    @SaCheckPermission("system:post:edit")
     public R<Void> edit(@RequestBody SysPost post) {
         if (!postService.checkPostCodeUnique(post)) {
             return R.fail("修改岗位'" + post.getPostName() + "'失败，岗位编码已存在");
@@ -88,6 +93,7 @@ public class SysPostController {
      * 删除岗位（支持批量）
      */
     @DeleteMapping("/{postIds}")
+    @SaCheckPermission("system:post:remove")
     public R<Void> remove(@PathVariable Long[] postIds) {
         postService.removeByIds(Arrays.asList(postIds));
         return R.ok();
@@ -97,6 +103,7 @@ public class SysPostController {
      * 获取岗位选择列表（下拉框用，仅返回正常状态的岗位）
      */
     @GetMapping("/optionselect")
+    @SaCheckPermission("system:post:list")
     public R<List<SysPost>> optionselect() {
         LambdaQueryWrapper<SysPost> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysPost::getStatus, "0")

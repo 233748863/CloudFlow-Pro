@@ -10,10 +10,7 @@ import com.cloudflow.workflow.service.IWorkflowP4Service;
 import com.cloudflow.workflow.service.IWfInstanceService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
 import org.springframework.beans.factory.annotation.Autowired;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -40,7 +37,7 @@ public class WorkflowEnhanceController {
      * 支持三种模式：BEFORE(前加签)、AFTER(后加签)、PARALLEL(并行加签)
      */
     @PostMapping("/task/addSign")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:add-sign")
     public R<?> addSign(@RequestBody AddSignReq req) {
         return p4Service.addSign(req.getTaskId(), req.getUserIds(), req.getUserNames(),
                 req.getSignType(), req.getReason());
@@ -51,7 +48,7 @@ public class WorkflowEnhanceController {
      * 移除已加签但尚未处理的审批人
      */
     @PostMapping("/task/removeSign")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:reduce-sign")
     public R<?> removeSign(@RequestBody RemoveSignReq req) {
         return p4Service.removeSign(req.getTaskId(), req.getUserIds(), req.getReason());
     }
@@ -64,7 +61,7 @@ public class WorkflowEnhanceController {
      * DELEGATE模式：委派审批，处理后自动回到委派人
      */
     @PostMapping("/task/delegate")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:task:complete")
     public R<?> delegateTask(@RequestBody DelegateTaskReq req) {
         String mode = req.getMode();
         if (mode == null || mode.isBlank()) {
@@ -89,7 +86,7 @@ public class WorkflowEnhanceController {
      * 返回节点列表（含坐标、状态）和连线列表，供前端流程图组件渲染
      */
     @GetMapping("/flowchart/{instanceId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:process:view")
     public R<?> getFlowchartData(@PathVariable("instanceId") String instanceId) {
         return R.ok(instanceService.getFlowchartData(instanceId));
     }
@@ -99,7 +96,7 @@ public class WorkflowEnhanceController {
      * 仅返回定义级别的节点和连线，不含运行时状态
      */
     @GetMapping("/flowchart/definition/{definitionId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:definition:view")
     public R<?> getDefinitionFlowchart(@PathVariable("definitionId") String definitionId) {
         return R.ok(definitionService.getFlowchartStructure(definitionId));
     }
@@ -111,7 +108,7 @@ public class WorkflowEnhanceController {
      * 管理员可作废任何运行中的流程，作废后流程终止且不可恢复
      */
     @PostMapping("/instance/invalidate")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:process:terminate")
     public R<?> invalidateProcess(@RequestBody ProcessInvalidateRequest dto) {
         String instanceId = dto.getInstanceId();
         String reason = dto.getReason();

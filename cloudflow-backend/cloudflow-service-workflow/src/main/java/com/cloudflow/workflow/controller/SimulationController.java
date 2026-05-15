@@ -6,7 +6,7 @@ import com.cloudflow.workflow.domain.dto.SimulationResult;
 import com.cloudflow.workflow.service.ISimulationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 
 import java.util.Map;
 
@@ -18,13 +18,13 @@ public class SimulationController {
     private ISimulationService simulationService;
 
     @PostMapping("/run")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:definition:view")
     public R<SimulationResult> simulate(@RequestBody SimulationRequest request) {
         return R.ok(simulationService.simulateProcess(request));
     }
 
     @PostMapping("/validate")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:definition:view")
     public R<SimulationResult> validate(@RequestBody Map<String, String> body) {
         String definitionId = body.get("definitionId");
         if (definitionId == null || definitionId.isBlank()) {

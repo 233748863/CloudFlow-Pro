@@ -1,6 +1,6 @@
 package com.cloudflow.hr.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrCandidatePayload;
@@ -28,25 +28,27 @@ import java.util.Map;
 @RestController
 @RequestMapping("/recruitment")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrRecruitmentRequisitionController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
 
     @GetMapping("/requisitions")
+    @SaCheckPermission("hr:recruitment:list")
     public R<?> listRequisitions(@RequestParam Map<String, Object> query) {
         return R.ok(recruitmentService.pageRequisitions(query));
     }
 
     @SysLog("新增HR招聘需求")
     @PostMapping("/requisitions")
+    @SaCheckPermission("hr:recruitment:add")
     public R<Long> createRequisition(@RequestBody HrRecruitmentRequisitionPayload payload) {
         return R.ok(crudService.create(HrRecruitmentRequisition.class, payload));
     }
 
     @SysLog("修改HR招聘需求")
     @PutMapping("/requisitions/{id}")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> updateRequisition(@PathVariable Long id, @RequestBody HrRecruitmentRequisitionPayload payload) {
         crudService.update(HrRecruitmentRequisition.class, id, payload);
         return R.ok();
@@ -54,6 +56,7 @@ class HrRecruitmentRequisitionController {
 
     @SysLog("变更HR招聘需求状态")
     @PostMapping("/requisitions/{id}/{action}")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> changeRequisitionStatus(@PathVariable Long id, @PathVariable String action) {
         recruitmentService.changeRequisitionStatus(id, action);
         return R.ok();
@@ -63,25 +66,27 @@ class HrRecruitmentRequisitionController {
 @RestController
 @RequestMapping("/recruitment")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrCandidateController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
 
     @GetMapping("/candidates")
+    @SaCheckPermission("hr:recruitment:list")
     public R<?> listCandidates(@RequestParam Map<String, Object> query) {
         return R.ok(recruitmentService.pageCandidates(query));
     }
 
     @SysLog("新增HR候选人")
     @PostMapping("/candidates")
+    @SaCheckPermission("hr:recruitment:add")
     public R<Long> createCandidate(@RequestBody HrCandidatePayload payload) {
         return R.ok(crudService.create(HrCandidate.class, payload));
     }
 
     @SysLog("修改HR候选人")
     @PutMapping("/candidates/{id}")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> updateCandidate(@PathVariable Long id, @RequestBody HrCandidatePayload payload) {
         crudService.update(HrCandidate.class, id, payload);
         return R.ok();
@@ -89,6 +94,7 @@ class HrCandidateController {
 
     @SysLog("更新HR候选人状态")
     @PutMapping("/candidates/{id}/status")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> updateCandidateStatus(@PathVariable Long id,
                                          @RequestParam String status,
                                          @RequestParam(required = false) String rejectReason) {
@@ -100,25 +106,27 @@ class HrCandidateController {
 @RestController
 @RequestMapping("/recruitment")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrInterviewController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
 
     @GetMapping("/interviews")
+    @SaCheckPermission("hr:recruitment:list")
     public R<?> listInterviews(@RequestParam Map<String, Object> query) {
         return R.ok(recruitmentService.listInterviews(query));
     }
 
     @SysLog("新增HR面试")
     @PostMapping("/interviews")
+    @SaCheckPermission("hr:recruitment:add")
     public R<Long> createInterview(@RequestBody HrInterviewPayload payload) {
         return R.ok(crudService.create(HrInterview.class, payload));
     }
 
     @SysLog("修改HR面试")
     @PutMapping("/interviews/{id}")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> updateInterview(@PathVariable Long id, @RequestBody HrInterviewPayload payload) {
         crudService.update(HrInterview.class, id, payload);
         return R.ok();
@@ -126,6 +134,7 @@ class HrInterviewController {
 
     @SysLog("变更HR面试状态")
     @PostMapping("/interviews/{id}/{action}")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> changeInterviewStatus(@PathVariable Long id, @PathVariable String action) {
         crudService.changeStatus(HrInterview.class, id, action);
         return R.ok();
@@ -135,25 +144,27 @@ class HrInterviewController {
 @RestController
 @RequestMapping("/recruitment")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrOfferController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
 
     @GetMapping("/offers")
+    @SaCheckPermission("hr:recruitment:list")
     public R<?> listOffers(@RequestParam Map<String, Object> query) {
         return R.ok(recruitmentService.listOffers(query));
     }
 
     @SysLog("新增HR Offer")
     @PostMapping("/offers")
+    @SaCheckPermission("hr:recruitment:add")
     public R<Long> createOffer(@RequestBody HrOfferPayload payload) {
         return R.ok(crudService.create(HrOffer.class, payload));
     }
 
     @SysLog("修改HR Offer")
     @PutMapping("/offers/{id}")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> updateOffer(@PathVariable Long id, @RequestBody HrOfferPayload payload) {
         crudService.update(HrOffer.class, id, payload);
         return R.ok();
@@ -161,12 +172,14 @@ class HrOfferController {
 
     @SysLog("Offer转入入职")
     @PostMapping("/offers/{id}/convert-to-onboarding")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Long> convertOfferToOnboarding(@PathVariable Long id) {
         return R.ok(recruitmentService.convertOfferToOnboarding(id));
     }
 
     @SysLog("变更HR Offer状态")
     @PostMapping("/offers/{id}/{action}")
+    @SaCheckPermission("hr:recruitment:edit")
     public R<Void> changeOfferStatus(@PathVariable Long id, @PathVariable String action) {
         crudService.changeStatus(HrOffer.class, id, action);
         return R.ok();

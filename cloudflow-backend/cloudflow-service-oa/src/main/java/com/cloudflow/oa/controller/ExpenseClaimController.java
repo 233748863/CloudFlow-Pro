@@ -9,7 +9,6 @@ import com.cloudflow.oa.domain.dto.VehicleExpenseConvertDTO;
 import com.cloudflow.oa.domain.export.ExpenseClaimExportVo;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IExpenseClaimService;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
@@ -24,7 +23,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/expense/claim")
-@SaCheckLogin
 public class ExpenseClaimController {
 
     @Autowired
@@ -34,7 +32,7 @@ public class ExpenseClaimController {
      * 分页查询报销申请列表
      */
     @GetMapping("/list")
-    @SaCheckPermission("office:expense:list")
+    @SaCheckPermission("oa:expense:list")
     public R<Page<BizExpenseClaim>> list(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
@@ -49,7 +47,7 @@ public class ExpenseClaimController {
      */
     @SysLog("导出报销申请")
     @GetMapping("/export")
-    @SaCheckPermission("office:expense:list")
+    @SaCheckPermission("oa:expense:list")
     public void export(@RequestParam(required = false) String status,
                        @RequestParam(required = false) String category,
                        @RequestParam(required = false) Long userId,
@@ -65,7 +63,7 @@ public class ExpenseClaimController {
      * 查询报销申请详情（含明细）
      */
     @GetMapping("/{id}")
-    @SaCheckPermission("office:expense:list")
+    @SaCheckPermission("oa:expense:list")
     public R<BizExpenseClaim> getInfo(@PathVariable Long id) {
         return R.ok(expenseClaimService.getClaimWithItems(id));
     }
@@ -75,7 +73,7 @@ public class ExpenseClaimController {
      */
     @SysLog("新增报销申请")
     @PostMapping
-    @SaCheckPermission("office:expense:add")
+    @SaCheckPermission("oa:expense:add")
     public R<Void> add(@RequestBody BizExpenseClaim claim) {
         try {
             return expenseClaimService.createClaim(claim) ? R.ok() : R.fail("创建失败");
@@ -89,7 +87,7 @@ public class ExpenseClaimController {
      */
     @SysLog("修改报销申请")
     @PutMapping
-    @SaCheckPermission("office:expense:edit")
+    @SaCheckPermission("oa:expense:edit")
     public R<Void> edit(@RequestBody BizExpenseClaim claim) {
         try {
             return expenseClaimService.updateClaim(claim) ? R.ok() : R.fail("更新失败");
@@ -103,7 +101,7 @@ public class ExpenseClaimController {
      */
     @SysLog("删除报销申请")
     @DeleteMapping("/{ids}")
-    @SaCheckPermission("office:expense:remove")
+    @SaCheckPermission("oa:expense:remove")
     public R<Void> remove(@PathVariable Long[] ids) {
         for (Long id : ids) {
             BizExpenseClaim claim = new BizExpenseClaim();
@@ -119,7 +117,7 @@ public class ExpenseClaimController {
      */
     @SysLog("提交报销申请")
     @PostMapping("/submit/{id}")
-    @SaCheckPermission("office:expense:submit")
+    @SaCheckPermission("oa:expense:submit")
     public R<Void> submit(@PathVariable Long id) {
         try {
             return expenseClaimService.submitClaim(id) ? R.ok() : R.fail("提交失败");
@@ -130,7 +128,7 @@ public class ExpenseClaimController {
 
     @SysLog("确认报销打款")
     @PostMapping("/{id}/pay")
-    @SaCheckPermission("office:expense:pay")
+    @SaCheckPermission("oa:expense:pay")
     public R<Void> confirmPaid(@PathVariable Long id) {
         try {
             return expenseClaimService.confirmPaid(id) ? R.ok() : R.fail("确认打款失败");
@@ -144,7 +142,7 @@ public class ExpenseClaimController {
      */
     @SysLog("车辆费用转报销单")
     @PostMapping("/convert")
-    @SaCheckPermission("office:expense:add")
+    @SaCheckPermission("oa:expense:add")
     public R<Void> convertVehicleExpense(@RequestBody VehicleExpenseConvertDTO dto) {
         return expenseClaimService.convertVehicleExpenseToClaim(dto.getVehicleExpenseIds(), dto.getUserId())
                 ? R.ok() : R.fail("转换失败");
@@ -154,7 +152,7 @@ public class ExpenseClaimController {
      * 按部门统计月度报销费用
      */
     @GetMapping("/stats/dept")
-    @SaCheckPermission("office:expense:list")
+    @SaCheckPermission("oa:expense:list")
     public R<List<DynamicMapVO>> getMonthlyExpenseByDept(@RequestParam String month) {
         return R.ok(expenseClaimService.getMonthlyExpenseByDept(month).stream().map(DynamicMapVO::from).toList());
     }
@@ -163,8 +161,9 @@ public class ExpenseClaimController {
      * 按类别统计月度报销费用
      */
     @GetMapping("/stats/category")
-    @SaCheckPermission("office:expense:list")
+    @SaCheckPermission("oa:expense:list")
     public R<List<DynamicMapVO>> getMonthlyExpenseByCategory(@RequestParam String month) {
         return R.ok(expenseClaimService.getMonthlyExpenseByCategory(month).stream().map(DynamicMapVO::from).toList());
     }
 }
+

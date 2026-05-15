@@ -46,8 +46,8 @@ public class SecurityWebMvcConfig implements WebMvcConfigurer {
             "/v3/api-docs/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
-            "/ws/**",
-            "/error-report"
+            "/health",
+            "/ws/**"
     };
 
     @Autowired

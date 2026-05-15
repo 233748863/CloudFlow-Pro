@@ -14,10 +14,7 @@ import com.cloudflow.workflow.service.ITemplateCategoryService;
 import com.cloudflow.workflow.service.ITemplateService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,7 +35,7 @@ public class TemplateController {
     private ITemplateCategoryService categoryService;
 
     @GetMapping
-    @SaCheckLogin
+    @SaCheckPermission("workflow:template:list")
     public R<Page<TemplateDTO>> listTemplates(
             @RequestParam(required = false) String categoryId,
             @RequestParam(required = false) String tags,
@@ -60,7 +57,7 @@ public class TemplateController {
     }
 
     @GetMapping("/tags")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:template:list")
     public R<List<String>> listRecommendedTags(@RequestParam(defaultValue = "12") int limit) {
         try {
             return R.ok(templateService.listRecommendedTags(limit));
@@ -71,7 +68,7 @@ public class TemplateController {
     }
 
     @GetMapping("/{id}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:template:view")
     public R<TemplateDTO> getTemplate(@PathVariable String id) {
         try {
             TemplateDTO template = templateService.getTemplateById(id);
@@ -83,7 +80,7 @@ public class TemplateController {
     }
 
     @PostMapping
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:template:add")
     public R<TemplateDTO> createTemplate(@RequestBody CreateTemplateRequest request) {
         try {
             TemplateDTO template = templateService.createTemplate(request);
@@ -95,7 +92,7 @@ public class TemplateController {
     }
 
     @PutMapping("/{id}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:template:add")
     public R<TemplateDTO> updateTemplate(
             @PathVariable String id,
             @RequestBody UpdateTemplateRequest request) {
@@ -109,7 +106,7 @@ public class TemplateController {
     }
 
     @DeleteMapping("/{id}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:template:add")
     public R<Void> deleteTemplate(@PathVariable String id) {
         try {
             templateService.deleteTemplate(id);
@@ -121,7 +118,7 @@ public class TemplateController {
     }
 
     @PostMapping("/{id}/create-workflow")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:template:view")
     public R<WfProcessDefinition> createWorkflowFromTemplate(
             @PathVariable String id,
             @RequestBody CreateFromTemplateRequest request) {
@@ -135,7 +132,7 @@ public class TemplateController {
     }
 
     @GetMapping("/categories")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:template:list")
     public R<List<CategoryTreeNode>> getCategories() {
         try {
             List<CategoryTreeNode> categories = categoryService.listCategoryTree();
@@ -147,7 +144,7 @@ public class TemplateController {
     }
 
     @GetMapping("/categories/{id}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:template:add")
     public R<TemplateCategory> getCategory(@PathVariable String id) {
         try {
             TemplateCategory category = categoryService.getById(id);
@@ -159,7 +156,7 @@ public class TemplateController {
     }
 
     @PostMapping("/categories")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:template:add")
     public R<TemplateCategory> createCategory(@RequestBody TemplateCategoryRequest request) {
         try {
             TemplateCategory category = fillCategoryFromRequest(new TemplateCategory(), request);
@@ -172,7 +169,7 @@ public class TemplateController {
     }
 
     @PutMapping("/categories/{id}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:template:add")
     public R<TemplateCategory> updateCategory(
             @PathVariable String id,
             @RequestBody TemplateCategoryRequest request) {
@@ -189,7 +186,7 @@ public class TemplateController {
     }
 
     @DeleteMapping("/categories/{id}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:template:add")
     public R<Void> deleteCategory(@PathVariable String id) {
         try {
             categoryService.delete(id);

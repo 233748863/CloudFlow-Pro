@@ -25,6 +25,23 @@ const menuLoading = ref(true)
 const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1')
 const mobileSidebarOpen = ref(false)
 
+const canAccessFallbackRoute = (permissions?: string[], roles?: string[]) => {
+  const permissionList = permissions || []
+  if (permissionList.length > 0 && !permissionList.some((permission) => auth.hasPermission(permission))) {
+    return false
+  }
+
+  const roleList = roles || []
+  if (roleList.length > 0) {
+    const currentRole = String(auth.user?.role || '').toUpperCase()
+    if (!roleList.some((role) => currentRole === String(role).toUpperCase())) {
+      return false
+    }
+  }
+
+  return true
+}
+
 const convertApiMenusToMenuTree = (apiMenus: ApiMenuItem[]): MenuTreeItem[] =>
   apiMenus
     .filter((menu) => menu.menuType === 'M' && menu.visible === '0')
@@ -47,6 +64,7 @@ const buildFallbackMenu = (): MenuTreeItem[] => {
   const groups = new Map<string, MenuTreeItem>()
   desktopRouteCatalog
     .filter((item) => item.path !== '/' && !item.path.includes(':pathMatch'))
+    .filter((item) => canAccessFallbackRoute(item.permissions, item.roles))
     .forEach((item) => {
       if (!groups.has(item.group)) {
         groups.set(item.group, {

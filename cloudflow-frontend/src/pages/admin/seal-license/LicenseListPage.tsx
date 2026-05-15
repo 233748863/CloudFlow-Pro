@@ -385,7 +385,7 @@ export const LicenseListPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button size="sm" onClick={openCreate} disabled={!hasPermission('admin:license:add')}>
+              <Button size="sm" onClick={openCreate} disabled={!hasPermission('oa:license:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增证照
               </Button>
@@ -436,10 +436,10 @@ export const LicenseListPage: React.FC = () => {
                           align="end"
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => setDetailLicense(item), tone: 'neutral' },
-                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: isBorrowLocked(item), permissionKey: 'admin:license:edit' },
-                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !canRemindExpiry(item), permissionKey: 'admin:license:remind' },
-                            { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' || isBorrowLocked(item), permissionKey: 'admin:license-renewal:add' },
-                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => item.licenseId && setDeleteId(item.licenseId), tone: 'danger', hidden: isBorrowLocked(item), permissionKey: 'admin:license:remove' },
+                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: isBorrowLocked(item), permissionKey: 'oa:license:edit' },
+                            { label: '到期提醒', icon: <Bell size={14} />, onClick: () => void remindExpiry(item), tone: 'warning', hidden: !canRemindExpiry(item), permissionKey: 'oa:license:remind' },
+                            { label: '续期', icon: <FileClock size={14} />, onClick: () => void openRenewalDialog(item), tone: 'success', hidden: item.status === 'DISABLED' || isBorrowLocked(item), permissionKey: 'oa:license-renewal:add' },
+                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => item.licenseId && setDeleteId(item.licenseId), tone: 'danger', hidden: isBorrowLocked(item), permissionKey: 'oa:license:remove' },
                           ]}
                         />
                       </td>
@@ -465,7 +465,7 @@ export const LicenseListPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>取消</Button>
-            <Button onClick={() => void save()} disabled={form.licenseId ? !hasPermission('admin:license:edit') : !hasPermission('admin:license:add')}>保存</Button>
+            <Button onClick={() => void save()} disabled={form.licenseId ? !hasPermission('oa:license:edit') : !hasPermission('oa:license:add')}>保存</Button>
           </>
         )}
       >
@@ -622,7 +622,7 @@ export const LicenseListPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => { setRenewalDialogOpen(false); setRenewalLicense(null); setRenewalRows([]); }}>关闭</Button>
-            <Button onClick={() => void saveRenewal()} disabled={!hasPermission(renewalForm.id ? 'admin:license-renewal:edit' : 'admin:license-renewal:add')}>保存续期草稿</Button>
+            <Button onClick={() => void saveRenewal()} disabled={!hasPermission(renewalForm.id ? 'oa:license-renewal:edit' : 'oa:license-renewal:add')}>保存续期草稿</Button>
           </>
         )}
       >
@@ -650,10 +650,10 @@ export const LicenseListPage: React.FC = () => {
                       <TableRowActions
                         align="end"
                         actions={[
-                          { label: '编辑', icon: <Edit size={14} />, onClick: () => setRenewalForm({ ...item }), tone: 'primary', hidden: item.status !== 'DRAFT', permissionKey: 'admin:license-renewal:edit' },
-                          { label: '提交', icon: <Send size={14} />, onClick: () => void submitRenewal(item.id), tone: 'success', hidden: item.status !== 'DRAFT', permissionKey: 'admin:license-renewal:submit' },
-                          { label: '取消', icon: <XCircle size={14} />, onClick: () => void cancelRenewal(item.id), tone: 'warning', hidden: item.status !== 'PENDING', permissionKey: 'admin:license-renewal:cancel' },
-                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => void removeRenewal(item.id), tone: 'danger', hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' && item.status !== 'CANCELLED', permissionKey: 'admin:license-renewal:remove' },
+                          { label: '编辑', icon: <Edit size={14} />, onClick: () => setRenewalForm({ ...item }), tone: 'primary', hidden: item.status !== 'DRAFT', permissionKey: 'oa:license-renewal:edit' },
+                          { label: '提交', icon: <Send size={14} />, onClick: () => void submitRenewal(item.id), tone: 'success', hidden: item.status !== 'DRAFT', permissionKey: 'oa:license-renewal:submit' },
+                          { label: '取消', icon: <XCircle size={14} />, onClick: () => void cancelRenewal(item.id), tone: 'warning', hidden: item.status !== 'PENDING', permissionKey: 'oa:license-renewal:cancel' },
+                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => void removeRenewal(item.id), tone: 'danger', hidden: item.status !== 'DRAFT' && item.status !== 'REJECTED' && item.status !== 'CANCELLED', permissionKey: 'oa:license-renewal:remove' },
                         ]}
                       />
                     </div>
@@ -673,4 +673,5 @@ export const LicenseListPage: React.FC = () => {
 };
 
 export default LicenseListPage;
+
 

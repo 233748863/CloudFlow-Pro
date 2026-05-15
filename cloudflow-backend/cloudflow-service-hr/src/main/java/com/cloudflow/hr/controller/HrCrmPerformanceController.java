@@ -1,6 +1,6 @@
 package com.cloudflow.hr.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.hr.client.CrmPerformanceClient;
 import com.cloudflow.hr.client.vo.CrmPerformanceSummaryVO;
@@ -21,12 +21,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/performance/crm")
 @RequiredArgsConstructor
-@SaCheckLogin
 public class HrCrmPerformanceController {
 
     private final CrmPerformanceClient crmPerformanceClient;
 
     @GetMapping("/owners")
+    @SaCheckPermission("hr:performance:view")
     public R<List<CrmPerformanceSummaryVO>> summarizeByOwner(
             @RequestParam(value = "ownerIds", required = false) List<Long> ownerIds,
             @RequestParam(value = "startDate", required = false) String startDate,
@@ -35,6 +35,7 @@ public class HrCrmPerformanceController {
     }
 
     @GetMapping("/depts")
+    @SaCheckPermission("hr:performance:view")
     public R<List<CrmPerformanceSummaryVO>> summarizeByDept(
             @RequestParam(value = "deptIds", required = false) List<Long> deptIds,
             @RequestParam(value = "startDate", required = false) String startDate,
@@ -43,6 +44,7 @@ public class HrCrmPerformanceController {
     }
 
     @GetMapping("/top-owners")
+    @SaCheckPermission("hr:performance:view")
     public R<List<CrmPerformanceSummaryVO>> topOwners(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
             @RequestParam(value = "startDate", required = false) String startDate,
@@ -51,6 +53,7 @@ public class HrCrmPerformanceController {
     }
 
     @GetMapping("/top-depts")
+    @SaCheckPermission("hr:performance:view")
     public R<List<CrmPerformanceSummaryVO>> topDepartments(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
             @RequestParam(value = "startDate", required = false) String startDate,

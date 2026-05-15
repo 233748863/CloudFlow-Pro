@@ -194,7 +194,7 @@ const TaskCompactWorkCard = ({
 };
 
 export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
 
   const [centerMode, setCenterMode] = useState<ApprovalCenterMode>(type);
   const [tasks, setTasks] = useState<UnifiedTask[]>([]);
@@ -232,6 +232,8 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const canListWorkTasks = hasPermission('oa:work-task:list');
+  const canUpdateWorkTaskStatus = hasPermission('oa:work-task:status');
 
   useEffect(() => {
     setCenterMode(type);
@@ -312,7 +314,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
           const [todoRes, workRes] = await Promise.all([
             getTodoTasks(Object.keys(todoParams).length > 0 ? todoParams : undefined),
-            getWorkTasks(),
+            canListWorkTasks ? getWorkTasks() : Promise.resolve([]),
           ]);
 
           let todoList: any[] = [];
@@ -374,6 +376,7 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
       centerMode,
       type,
       user,
+      canListWorkTasks,
     ],
   );
 
@@ -572,6 +575,11 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
     if (task.type !== 'WORK') {
       toast.info('流程任务请点击进入详情进行处理');
+      return;
+    }
+
+    if (!canUpdateWorkTaskStatus) {
+      toast.error('当前账号没有协作任务状态修改权限');
       return;
     }
 

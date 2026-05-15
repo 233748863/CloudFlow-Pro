@@ -478,7 +478,7 @@ const TableStateRow = ({
 );
 
 export const SchedulePage = () => {
-  const { user } = useAuth();
+  const { user, hasPermission } = useAuth();
   const calendarRef = useRef<FullCalendar | null>(null);
   const currentViewRange = useRef<{ start: Date; end: Date } | null>(null);
 
@@ -497,6 +497,8 @@ export const SchedulePage = () => {
   const [form, setForm] = useState<Partial<SysScheduleEvent>>(createDefaultForm());
   const [tableFilters, setTableFilters] = useState<ScheduleTableFilters>(DEFAULT_TABLE_FILTERS);
   const [tablePageNum, setTablePageNum] = useState(1);
+  const canCreateSchedule = hasPermission('oa:schedule:add');
+  const canDeleteSchedule = hasPermission('oa:schedule:remove');
 
   const getRoomName = (roomId?: string, rooms: MeetingRoom[] = meetingRooms) => {
     if (!roomId) return null;
@@ -571,6 +573,10 @@ export const SchedulePage = () => {
   }, []);
 
   const openCreateDrawer = (range?: { start: Date; end: Date; allDay?: boolean } | null) => {
+    if (!canCreateSchedule) {
+      toast.error('当前账号没有新建日程权限');
+      return;
+    }
     setSelectedEvent(null);
     setSelectedDate(range ? { start: range.start, end: range.end, allDay: Boolean(range.allDay) } : null);
     setForm(createDefaultForm(range));
@@ -712,6 +718,10 @@ export const SchedulePage = () => {
   };
   const handleDeleteSelectedEvent = async () => {
     if (!selectedEvent) return;
+    if (!canDeleteSchedule) {
+      toast.error('当前账号没有删除日程权限');
+      return;
+    }
     setIsDeleting(true);
     try {
       await deleteEvent(selectedEvent.id);
@@ -727,6 +737,10 @@ export const SchedulePage = () => {
   };
 
   const handleDeleteFromTable = async (event: ScheduleCalendarEvent) => {
+    if (!canDeleteSchedule) {
+      toast.error('当前账号没有删除日程权限');
+      return;
+    }
     if (!window.confirm(`确认删除“${event.extendedProps.originalTitle}”吗？删除后不可恢复。`)) {
       return;
     }
@@ -912,7 +926,7 @@ export const SchedulePage = () => {
               <Button variant="outline" size="sm" onClick={() => calendarRef.current?.getApi().today()}>
                 今天
               </Button>
-              <Button size="sm" onClick={() => openCreateDrawer()}>
+              <Button size="sm" onClick={() => openCreateDrawer()} disabled={!canCreateSchedule}>
                 <Plus size={14} className="mr-1.5" />
                 新建日程
               </Button>
@@ -1235,7 +1249,7 @@ export const SchedulePage = () => {
                                 className="gap-1"
                                 actions={[
                                   { label: '详情', icon: <Eye size={14} />, onClick: () => openEventDetail(event), tone: 'neutral' },
-                                  { label: '删除', icon: <Trash2 size={14} />, onClick: () => void handleDeleteFromTable(event), disabled: isDeleting, tone: 'danger' },
+                                  { label: '删除', icon: <Trash2 size={14} />, onClick: () => void handleDeleteFromTable(event), disabled: isDeleting || !canDeleteSchedule, tone: 'danger' },
                                 ]}
                               />
                             </TableCell>
@@ -1277,7 +1291,7 @@ export const SchedulePage = () => {
             <Button variant="outline" onClick={closeCreateDrawer}>
               取消
             </Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
+            <Button onClick={handleSubmit} disabled={isSubmitting || !canCreateSchedule}>
               {isSubmitting ? '正在创建...' : '创建日程'}
             </Button>
           </div>
@@ -1470,7 +1484,7 @@ export const SchedulePage = () => {
             <Button variant="outline" onClick={() => setSelectedEvent(null)}>
               关闭
             </Button>
-            <Button variant="destructive" onClick={handleDeleteSelectedEvent} disabled={isDeleting || !selectedEvent}>
+            <Button variant="destructive" onClick={handleDeleteSelectedEvent} disabled={isDeleting || !selectedEvent || !canDeleteSchedule}>
               <Trash2 size={16} className="mr-2" />
               {isDeleting ? '正在删除...' : '删除日程'}
             </Button>

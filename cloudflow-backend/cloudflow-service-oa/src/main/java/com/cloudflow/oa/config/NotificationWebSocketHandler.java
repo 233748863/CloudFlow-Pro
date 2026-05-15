@@ -1,6 +1,8 @@
 package com.cloudflow.oa.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.common.security.core.TokenService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -18,14 +20,16 @@ import java.util.concurrent.CopyOnWriteArraySet;
  * 通知 WebSocket 处理器
  * 实现基于原生 WebSocket 的实时消息推送
  * 
- * 前端连接方式：ws://host:port/ws/notification?userId=xxx
+ * 前端连接方式：ws://host:port/ws/notification?token=xxx
  * 连接建立后，服务端可通过 sendMessage / broadcastMessage 向指定用户推送消息
  */
 @Slf4j
 @Component
+@RequiredArgsConstructor
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final TokenService tokenService;
 
     /**
      * 存储用户ID → WebSocket会话集合的映射
@@ -40,13 +44,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     /**
      * 连接建立时调用
-     * 从 URL 参数中提取 userId 并注册会话
+     * 从 URL 参数中提取 token 并注册会话
      */
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        Long userId = extractUserId(session);
+        Long userId = resolveSessionUserId(session);
         if (userId == null) {
-            log.warn("WebSocket连接缺少userId参数，关闭连接: {}", session.getId());
+            log.warn("WebSocket连接缺少有效用户信息，关闭连接: {}", session.getId());
             session.close(CloseStatus.BAD_DATA);
             return;
         }
@@ -215,23 +219,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         }
     }
 
-    /**
-     * 从 WebSocket 连接 URL 参数中提取 userId
-     * 连接格式：ws://host:port/ws/notification?userId=123
-     */
-    private Long extractUserId(WebSocketSession session) {
-        try {
-            String query = session.getUri() != null ? session.getUri().getQuery() : null;
-            if (query != null) {
-                for (String param : query.split("&")) {
-                    String[] kv = param.split("=", 2);
-                    if (kv.length == 2 && "userId".equals(kv[0])) {
-                        return Long.parseLong(kv[1]);
-                    }
-                }
-            }
-        } catch (NumberFormatException e) {
-            log.warn("解析WebSocket userId参数失败: {}", session.getUri());
+    private Long resolveSessionUserId(WebSocketSession session) {
+        Object value = session.getAttributes().get("userId");
+        if (value instanceof Long longValue) {
+            return longValue;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
         }
         return null;
     }

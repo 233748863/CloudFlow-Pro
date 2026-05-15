@@ -532,39 +532,47 @@ const desktopRoutes = [
           {
             path: "/",
             element: (
-              <Suspense fallback={<Loading />}>
-                <Dashboard />
-              </Suspense>
+              <PermissionRouteGuard permissions={["oa:workplace:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <Dashboard />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workplace",
             element: (
-              <Suspense fallback={<Loading />}>
-                <Workplace />
-              </Suspense>
+              <PermissionRouteGuard permissions={["oa:workplace:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <Workplace />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/profile",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ProfilePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:user:profile:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <ProfilePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/tasks",
             element: (
-              <Suspense fallback={<Loading />}>
-                <TaskListPage type="pending" />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:task:todo"]}>
+                <Suspense fallback={<Loading />}>
+                  <TaskListPage type="pending" />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/announcement",
             element: (
-              <PermissionRouteGuard permissions={["office:announcement"]}>
+              <PermissionRouteGuard permissions={["oa:announcement:list"]}>
                 <Suspense fallback={<Loading />}>
                   <AnnouncementPage />
                 </Suspense>
@@ -574,7 +582,7 @@ const desktopRoutes = [
           {
             path: "/office/announcement",
             element: (
-              <PermissionRouteGuard permissions={["office:announcement"]}>
+              <PermissionRouteGuard permissions={["oa:announcement:list"]}>
                 <Suspense fallback={<Loading />}>
                   <AnnouncementPage />
                 </Suspense>
@@ -584,7 +592,7 @@ const desktopRoutes = [
           {
             path: "/schedule",
             element: (
-              <PermissionRouteGuard permissions={["workspace:schedule"]}>
+              <PermissionRouteGuard permissions={["oa:schedule:list"]}>
                 <Suspense fallback={<Loading />}>
                   <SchedulePage />
                 </Suspense>
@@ -594,7 +602,7 @@ const desktopRoutes = [
           {
             path: "/meeting-room",
             element: (
-              <PermissionRouteGuard permissions={["office:meeting"]}>
+              <PermissionRouteGuard permissions={["oa:meeting-room:list"]}>
                 <Suspense fallback={<Loading />}>
                   <MeetingRoomPage />
                 </Suspense>
@@ -604,113 +612,131 @@ const desktopRoutes = [
           {
             path: "/my-apps",
             element: (
-              <Suspense fallback={<Loading />}>
-                <TaskListPage type="applications" />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:process:mine"]}>
+                <Suspense fallback={<Loading />}>
+                  <TaskListPage type="applications" />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/my-copies",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CopyListPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:copy:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CopyListPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow",
             element: (
-              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+              <PermissionRouteGuard permissions={["workflow:process:start"]}>
                 <Suspense fallback={<Loading />}>
                   <WorkflowCreate />
                 </Suspense>
-              </RoleGuard>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/create",
             element: (
-              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+              <PermissionRouteGuard permissions={["workflow:process:start"]}>
                 <Suspense fallback={<Loading />}>
                   <WorkflowCreate />
                 </Suspense>
-              </RoleGuard>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/design",
             element: (
-              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+              <PermissionRouteGuard permissions={["workflow:definition:list"]}>
                 <Suspense fallback={<Loading />}>
                   <WorkflowDesign />
                 </Suspense>
-              </RoleGuard>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/monitor",
             element: (
-              <Suspense fallback={<Loading />}>
-                <WorkflowMonitor />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:monitor:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <WorkflowMonitor />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/deploy",
             element: (
-              <Suspense fallback={<Loading />}>
-                <DeployManagement />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:deploy:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <DeployManagement />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/alerts",
             element: (
-              <Suspense fallback={<Loading />}>
-                <AlertList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:alert:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <AlertList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/performance",
             element: (
-              <Suspense fallback={<Loading />}>
-                <PerformanceStats />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:performance:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <PerformanceStats />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/forms",
             element: (
-              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+              <PermissionRouteGuard permissions={["workflow:form:list"]}>
                 <Suspense fallback={<Loading />}>
                   <FormDesign />
                 </Suspense>
-              </RoleGuard>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/users",
             element: (
-              <Suspense fallback={<Loading />}>
-                <OrgStructurePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:dept:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <OrgStructurePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/code",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CodeGeneration />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:code:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CodeGeneration />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/users",
             element: (
-              <Suspense fallback={<Loading />}>
-                <UserList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:user:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <UserList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
@@ -726,25 +752,31 @@ const desktopRoutes = [
           {
             path: "/system/menus",
             element: (
-              <Suspense fallback={<Loading />}>
-                <MenuList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:menu:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <MenuList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/files",
             element: (
-              <Suspense fallback={<Loading />}>
-                <FileList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:file:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <FileList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/tenant",
             element: (
-              <Suspense fallback={<Loading />}>
-                <TenantList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:tenant:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <TenantList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
 
@@ -752,7 +784,7 @@ const desktopRoutes = [
           {
             path: "/admin/asset",
             element: (
-              <PermissionRouteGuard permissions={["admin:asset:list"]}>
+              <PermissionRouteGuard permissions={["oa:asset:list"]}>
                 <Suspense fallback={<Loading />}>
                   <AssetList />
                 </Suspense>
@@ -766,7 +798,7 @@ const desktopRoutes = [
           {
             path: "/admin/vehicle/list",
             element: (
-              <PermissionRouteGuard permissions={["admin:vehicle:list"]}>
+              <PermissionRouteGuard permissions={["oa:vehicle:list"]}>
                 <Suspense fallback={<Loading />}>
                   <VehicleList />
                 </Suspense>
@@ -776,7 +808,7 @@ const desktopRoutes = [
           {
             path: "/admin/vehicle/booking",
             element: (
-              <PermissionRouteGuard permissions={["admin:vehicle:booking"]}>
+              <PermissionRouteGuard permissions={["oa:vehicle:booking"]}>
                 <Suspense fallback={<Loading />}>
                   <VehicleBooking />
                 </Suspense>
@@ -786,7 +818,7 @@ const desktopRoutes = [
           {
             path: "/admin/vehicle/usage",
             element: (
-              <PermissionRouteGuard permissions={["admin:vehicle:usage"]}>
+              <PermissionRouteGuard permissions={["oa:vehicle:usage"]}>
                 <Suspense fallback={<Loading />}>
                   <VehicleUsageList />
                 </Suspense>
@@ -796,7 +828,7 @@ const desktopRoutes = [
           {
             path: "/expense/claim",
             element: (
-              <PermissionRouteGuard permissions={["office:expense:list"]}>
+              <PermissionRouteGuard permissions={["oa:expense:list"]}>
                 <Suspense fallback={<Loading />}>
                   <ExpenseClaimPage />
                 </Suspense>
@@ -806,7 +838,7 @@ const desktopRoutes = [
           {
             path: "/payment/request",
             element: (
-              <PermissionRouteGuard permissions={["office:payment:list"]}>
+              <PermissionRouteGuard permissions={["oa:payment:list"]}>
                 <Suspense fallback={<Loading />}>
                   <PaymentRequestPage />
                 </Suspense>
@@ -816,7 +848,7 @@ const desktopRoutes = [
           {
             path: "/office/purchase-request",
             element: (
-              <PermissionRouteGuard permissions={["office:purchase:list"]}>
+              <PermissionRouteGuard permissions={["oa:purchase:list"]}>
                 <Suspense fallback={<Loading />}>
                   <PurchaseRequestPage />
                 </Suspense>
@@ -826,7 +858,7 @@ const desktopRoutes = [
           {
             path: "/office/seal-application",
             element: (
-              <PermissionRouteGuard permissions={["office:seal:list"]}>
+              <PermissionRouteGuard permissions={["oa:seal:list"]}>
                 <Suspense fallback={<Loading />}>
                   <SealApplicationPage />
                 </Suspense>
@@ -836,7 +868,7 @@ const desktopRoutes = [
           {
             path: "/office/license-borrow",
             element: (
-              <PermissionRouteGuard permissions={["office:license:list"]}>
+              <PermissionRouteGuard permissions={["oa:license:list"]}>
                 <Suspense fallback={<Loading />}>
                   <LicenseBorrowPage />
                 </Suspense>
@@ -846,7 +878,7 @@ const desktopRoutes = [
           {
             path: "/office/contracts",
             element: (
-              <PermissionRouteGuard permissions={["office:contract:list"]}>
+              <PermissionRouteGuard permissions={["oa:contract:list"]}>
                 <Suspense fallback={<Loading />}>
                   <ContractPage />
                 </Suspense>
@@ -856,7 +888,7 @@ const desktopRoutes = [
           {
             path: "/office/project",
             element: (
-              <PermissionRouteGuard permissions={["office:project:list"]}>
+              <PermissionRouteGuard permissions={["oa:project:list"]}>
                 <Suspense fallback={<Loading />}>
                   <ProjectManagementPage />
                 </Suspense>
@@ -866,7 +898,7 @@ const desktopRoutes = [
           {
             path: "/admin/project-wbs",
             element: (
-              <PermissionRouteGuard permissions={["admin:project:wbs", "office:project:wbs"]}>
+              <PermissionRouteGuard permissions={["oa:project:wbs", "oa:project:wbs"]}>
                 <Suspense fallback={<Loading />}>
                   <ProjectManagementPage />
                 </Suspense>
@@ -876,7 +908,7 @@ const desktopRoutes = [
           {
             path: "/office/budget",
             element: (
-              <PermissionRouteGuard permissions={["office:budget:list"]}>
+              <PermissionRouteGuard permissions={["oa:budget:list"]}>
                 <Suspense fallback={<Loading />}>
                   <BudgetManagementPage />
                 </Suspense>
@@ -886,7 +918,7 @@ const desktopRoutes = [
           {
             path: "/office/invoice",
             element: (
-              <PermissionRouteGuard permissions={["office:invoice:list"]}>
+              <PermissionRouteGuard permissions={["oa:invoice:list"]}>
                 <Suspense fallback={<Loading />}>
                   <InvoiceManagementPage />
                 </Suspense>
@@ -994,33 +1026,41 @@ const desktopRoutes = [
           {
             path: "/system/log",
             element: (
-              <Suspense fallback={<Loading />}>
-                <OperationLogPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:log:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <OperationLogPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/audit-log",
             element: (
-              <Suspense fallback={<Loading />}>
-                <AuditLogPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:audit:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <AuditLogPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/login-log",
             element: (
-              <Suspense fallback={<Loading />}>
-                <LoginLogPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:login-log:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <LoginLogPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/online",
             element: (
-              <Suspense fallback={<Loading />}>
-                <OnlineUserPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:online:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <OnlineUserPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           // === HR 假勤与 OA 扩展模块路由 ===
@@ -1032,7 +1072,7 @@ const desktopRoutes = [
           {
             path: "/office/business-trip",
             element: (
-              <PermissionRouteGuard permissions={["office:trip:list"]}>
+              <PermissionRouteGuard permissions={["oa:trip:list"]}>
                 <Suspense fallback={<Loading />}>
                   <BusinessTripPage />
                 </Suspense>
@@ -1042,7 +1082,7 @@ const desktopRoutes = [
           {
             path: "/office/contact",
             element: (
-              <PermissionRouteGuard permissions={["office:contact:list"]}>
+              <PermissionRouteGuard permissions={["oa:contact:list"]}>
                 <Suspense fallback={<Loading />}>
                   <ContactPage />
                 </Suspense>
@@ -1052,7 +1092,7 @@ const desktopRoutes = [
           {
             path: "/office/knowledge",
             element: (
-              <PermissionRouteGuard permissions={["office:knowledge:list"]}>
+              <PermissionRouteGuard permissions={["oa:knowledge:list"]}>
                 <Suspense fallback={<Loading />}>
                   <KnowledgePage />
                 </Suspense>
@@ -1062,7 +1102,7 @@ const desktopRoutes = [
           {
             path: "/admin/visitor",
             element: (
-              <PermissionRouteGuard permissions={["admin:visitor:list"]}>
+              <PermissionRouteGuard permissions={["oa:visitor:list"]}>
                 <Suspense fallback={<Loading />}>
                   <VisitorPage />
                 </Suspense>
@@ -1072,7 +1112,7 @@ const desktopRoutes = [
           {
             path: "/admin/duty-schedule",
             element: (
-              <PermissionRouteGuard permissions={["admin:duty:list"]}>
+              <PermissionRouteGuard permissions={["oa:duty:list"]}>
                 <Suspense fallback={<Loading />}>
                   <DutySchedulePage />
                 </Suspense>
@@ -1082,7 +1122,7 @@ const desktopRoutes = [
           {
             path: "/admin/supplier",
             element: (
-              <PermissionRouteGuard permissions={["admin:supplier:list"]}>
+              <PermissionRouteGuard permissions={["oa:supplier:list"]}>
                 <Suspense fallback={<Loading />}>
                   <SupplierPage />
                 </Suspense>
@@ -1092,7 +1132,7 @@ const desktopRoutes = [
           {
             path: "/admin/consumable",
             element: (
-              <PermissionRouteGuard permissions={["admin:consumable:list"]}>
+              <PermissionRouteGuard permissions={["oa:consumable:list"]}>
                 <Suspense fallback={<Loading />}>
                   <ConsumablePage />
                 </Suspense>
@@ -1102,7 +1142,7 @@ const desktopRoutes = [
           {
             path: "/admin/seal",
             element: (
-              <PermissionRouteGuard permissions={["admin:seal:list"]}>
+              <PermissionRouteGuard permissions={["oa:seal:list"]}>
                 <Suspense fallback={<Loading />}>
                   <SealListPage />
                 </Suspense>
@@ -1112,7 +1152,7 @@ const desktopRoutes = [
           {
             path: "/admin/license",
             element: (
-              <PermissionRouteGuard permissions={["admin:license:list"]}>
+              <PermissionRouteGuard permissions={["oa:license:list"]}>
                 <Suspense fallback={<Loading />}>
                   <LicenseListPage />
                 </Suspense>
@@ -1122,7 +1162,7 @@ const desktopRoutes = [
           {
             path: "/admin/borrow-management",
             element: (
-              <PermissionRouteGuard permissions={["admin:borrow:list"]}>
+              <PermissionRouteGuard permissions={["oa:borrow:list"]}>
                 <Suspense fallback={<Loading />}>
                   <BorrowManagementPage />
                 </Suspense>
@@ -1132,7 +1172,7 @@ const desktopRoutes = [
           {
             path: "/admin/risk-alerts",
             element: (
-              <PermissionRouteGuard permissions={["admin:risk:list"]}>
+              <PermissionRouteGuard permissions={["oa:risk:list"]}>
                 <Suspense fallback={<Loading />}>
                   <RiskAlertPage />
                 </Suspense>
@@ -1142,67 +1182,81 @@ const desktopRoutes = [
           {
             path: "/system/dict",
             element: (
-              <Suspense fallback={<Loading />}>
-                <DictPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:dict:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <DictPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/category",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ProcessCategoryPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:category:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ProcessCategoryPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/management",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ProcessManagement />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:definition:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ProcessManagement />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/import",
             element: (
-              <Suspense fallback={<Loading />}>
-                <WorkflowImport />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:import:manage"]}>
+                <Suspense fallback={<Loading />}>
+                  <WorkflowImport />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/workflow/archived",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ArchivedWorkflows />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/workflow/versions/:workflowId",
-            element: (
-              <Suspense fallback={<Loading />}>
-                <VersionHistoryPage />
-              </Suspense>
-            ),
-          },
-          {
-            path: "/templates/manage",
-            element: (
-              <RoleGuard allowedRoles={["ADMIN", "admin"]}>
+              <RoleGuard allowedRoles={["ADMIN"]}>
                 <Suspense fallback={<Loading />}>
-                  <TemplateManagement />
+                  <ArchivedWorkflows />
                 </Suspense>
               </RoleGuard>
             ),
           },
           {
+            path: "/workflow/versions/:workflowId",
+            element: (
+              <PermissionRouteGuard permissions={["workflow:definition:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <VersionHistoryPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/templates/manage",
+            element: (
+              <PermissionRouteGuard permissions={["workflow:template:add"]}>
+                <Suspense fallback={<Loading />}>
+                  <TemplateManagement />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
             path: "/templates",
             element: (
-              <Suspense fallback={<Loading />}>
-                <TemplateLibrary />
-              </Suspense>
+              <PermissionRouteGuard permissions={["workflow:template:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <TemplateLibrary />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
@@ -1212,106 +1266,132 @@ const desktopRoutes = [
           {
             path: "/hr/dashboard",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrDashboardPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:dashboard:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrDashboardPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/hr/employees",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrEmployeePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:employees:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEmployeePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/hr/recruitment",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrRecruitmentPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:recruitment:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrRecruitmentPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/hr/organization",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrOrganizationPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:organization:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrOrganizationPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/hr/lifecycle",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrLifecyclePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:lifecycle:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrLifecyclePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/hr/attendance",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrAttendancePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:attendance:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrAttendancePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/hr/compensation",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrCompensationPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:compensation:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrCompensationPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/hr/performance",
             element: (
-              <Suspense fallback={<Loading />}>
-                <HrPerformancePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["hr:performance:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrPerformancePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           // === 新增系统管理路由 ===
           {
             path: "/system/post",
             element: (
-              <Suspense fallback={<Loading />}>
-                <PostList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:post:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <PostList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/config",
             element: (
-              <Suspense fallback={<Loading />}>
-                <ConfigList />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:config:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ConfigList />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/rules",
             element: (
-              <Suspense fallback={<Loading />}>
-                <BusinessRulePage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:rule:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <BusinessRulePage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/audit-events",
             element: (
-              <Suspense fallback={<Loading />}>
-                <AuditEventPage />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:audit:events"]}>
+                <Suspense fallback={<Loading />}>
+                  <AuditEventPage />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           {
             path: "/system/cache",
             element: (
-              <Suspense fallback={<Loading />}>
-                <CacheMonitor />
-              </Suspense>
+              <PermissionRouteGuard permissions={["system:cache:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <CacheMonitor />
+                </Suspense>
+              </PermissionRouteGuard>
             ),
           },
           // 统一兜底，避免 React Router 默认 404 错误页直接暴露给用户。
@@ -1436,3 +1516,6 @@ logger.log("Device Detection:", isMobile ? "Mobile" : "Desktop");
 export const router = createBrowserRouter(
   isMobile ? mobileRoutes : desktopRoutes,
 );
+
+
+

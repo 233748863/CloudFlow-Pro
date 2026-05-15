@@ -354,9 +354,9 @@ export const BorrowManagementPage: React.FC = () => {
                           align="end"
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
-                            { label: '借出', icon: <CheckCircle2 size={14} />, onClick: () => openAction(item, 'borrow'), tone: 'success', hidden: item.status !== 'APPROVED', permissionKey: 'admin:borrow:confirm' },
-                            { label: '归还', icon: <RotateCcw size={14} />, onClick: () => openAction(item, 'return'), tone: 'success', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE', permissionKey: 'admin:borrow:return' },
-                            { label: '催还', icon: <Bell size={14} />, onClick: () => openAction(item, 'remind'), tone: 'warning', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE', permissionKey: 'admin:borrow:remind' },
+                            { label: '借出', icon: <CheckCircle2 size={14} />, onClick: () => openAction(item, 'borrow'), tone: 'success', hidden: item.status !== 'APPROVED', permissionKey: 'oa:borrow:confirm' },
+                            { label: '归还', icon: <RotateCcw size={14} />, onClick: () => openAction(item, 'return'), tone: 'success', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE', permissionKey: 'oa:borrow:return' },
+                            { label: '催还', icon: <Bell size={14} />, onClick: () => openAction(item, 'remind'), tone: 'warning', hidden: item.status !== 'BORROWED' && item.status !== 'OVERDUE', permissionKey: 'oa:borrow:remind' },
                           ]}
                         />
                       </td>
@@ -380,7 +380,7 @@ export const BorrowManagementPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => setActionTarget(null)}>取消</Button>
-            <Button onClick={() => void submitAction()} disabled={!hasPermission(actionType === 'borrow' ? 'admin:borrow:confirm' : actionType === 'return' ? 'admin:borrow:return' : 'admin:borrow:remind')}>{actionTitle}</Button>
+            <Button onClick={() => void submitAction()} disabled={!hasPermission(actionType === 'borrow' ? 'oa:borrow:confirm' : actionType === 'return' ? 'oa:borrow:return' : 'oa:borrow:remind')}>{actionTitle}</Button>
           </>
         )}
       >
@@ -474,4 +474,5 @@ export const BorrowManagementPage: React.FC = () => {
 };
 
 export default BorrowManagementPage;
+
 

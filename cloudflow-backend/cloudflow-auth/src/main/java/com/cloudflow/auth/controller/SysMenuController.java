@@ -1,6 +1,5 @@
 package com.cloudflow.auth.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysMenu;
 import com.cloudflow.auth.service.ISysMenuService;
@@ -13,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/system/menu")
-@SaCheckLogin
 public class SysMenuController {
 
     @Autowired
@@ -43,6 +41,7 @@ public class SysMenuController {
      * 获取菜单树（用于角色分配）
      */
     @GetMapping("/treeselect")
+    @SaCheckPermission("system:menu:list")
     public R<List<SysMenu>> treeselect(SysMenu menu) {
         Long userId = SecurityUtils.getUserId();
         List<SysMenu> menus = menuService.selectMenuList(menu, userId != null ? userId : 1L);

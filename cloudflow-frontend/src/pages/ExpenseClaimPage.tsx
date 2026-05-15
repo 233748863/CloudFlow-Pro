@@ -561,7 +561,7 @@ export const ExpenseClaimPage: React.FC = () => {
                 <Download size={14} className="mr-1.5" />
                 导出结果
               </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('office:expense:add')}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:expense:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新建申请
               </Button>
@@ -646,7 +646,7 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => void handleEdit(item.id!),
                                 tone: 'primary',
                                 hidden: item.status !== 'DRAFT',
-                                permissionKey: 'office:expense:edit',
+                                permissionKey: 'oa:expense:edit',
                               },
                               {
                                 label: '提交',
@@ -654,7 +654,7 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => openSubmitConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'DRAFT',
-                                permissionKey: 'office:expense:submit',
+                                permissionKey: 'oa:expense:submit',
                               },
                               {
                                 label: '打款',
@@ -662,7 +662,7 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => openPayConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'APPROVED',
-                                permissionKey: 'office:expense:pay',
+                                permissionKey: 'oa:expense:pay',
                               },
                               {
                                 label: '删除',
@@ -670,7 +670,7 @@ export const ExpenseClaimPage: React.FC = () => {
                                 onClick: () => openDeleteConfirm(item.id!),
                                 tone: 'danger',
                                 hidden: item.status !== 'DRAFT',
-                                permissionKey: 'office:expense:remove',
+                                permissionKey: 'oa:expense:remove',
                               },
                             ]}
                           />
@@ -708,7 +708,7 @@ export const ExpenseClaimPage: React.FC = () => {
             <Button variant="outline" onClick={closeFormDialog}>
               取消
             </Button>
-            <Button onClick={() => void handleSave()} disabled={!hasPermission(currentClaim ? 'office:expense:edit' : 'office:expense:add')}>
+            <Button onClick={() => void handleSave()} disabled={!hasPermission(currentClaim ? 'oa:expense:edit' : 'oa:expense:add')}>
               保存
             </Button>
           </>
@@ -1042,4 +1042,5 @@ export const ExpenseClaimPage: React.FC = () => {
 };
 
 export default ExpenseClaimPage;
+
 

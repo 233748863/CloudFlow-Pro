@@ -1,6 +1,5 @@
 package com.cloudflow.auth.controller.system;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysDictType;
 import com.cloudflow.auth.service.ISysDictTypeService;
@@ -17,7 +16,6 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/system/dict/type")
-@SaCheckLogin
 public class SysDictTypeController {
 
     @Autowired
@@ -67,6 +65,7 @@ public class SysDictTypeController {
 
     /** 获取字典选择框列表（不需要权限，供下拉框使用） */
     @GetMapping("/optionselect")
+    @SaCheckPermission("system:dict:list")
     public R<List<SysDictType>> optionselect() {
         return R.ok(dictTypeService.selectDictTypeAll());
     }

@@ -9,10 +9,7 @@ import com.cloudflow.workflow.service.IDeployEnhancementService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.beans.factory.annotation.Autowired;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -33,7 +30,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "检查当前是否在发布窗口内")
     @GetMapping("/window/check")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<DynamicMapVO> checkDeployWindow() {
         R<java.util.Map<String, Object>> result = deployEnhancementService.checkDeployWindow();
         return toDynamicMapResult(result);
@@ -41,35 +38,35 @@ public class DeployEnhancementController {
 
     @Operation(summary = "获取所有发布窗口配置")
     @GetMapping("/window/list")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:list")
     public R<List<WfDeployWindow>> listDeployWindows() {
         return deployEnhancementService.listDeployWindows();
     }
 
     @Operation(summary = "创建发布窗口配置")
     @PostMapping("/window/save")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> saveDeployWindow(@RequestBody DeployWindowDTO dto) {
         return deployEnhancementService.saveDeployWindow(dto);
     }
 
     @Operation(summary = "更新发布窗口配置")
     @PutMapping("/window/update")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> updateDeployWindow(@RequestBody DeployWindowDTO dto) {
         return deployEnhancementService.updateDeployWindow(dto);
     }
 
     @Operation(summary = "删除发布窗口配置")
     @DeleteMapping("/window/delete/{windowId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> deleteDeployWindow(@PathVariable("windowId") Long windowId) {
         return deployEnhancementService.deleteDeployWindow(windowId);
     }
 
     @Operation(summary = "启用/禁用发布窗口")
     @PutMapping("/window/toggle/{windowId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> toggleDeployWindow(@PathVariable("windowId") Long windowId, @RequestParam("enabled") Boolean enabled) {
         return deployEnhancementService.toggleDeployWindow(windowId, enabled);
     }
@@ -78,7 +75,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "发送发布通知")
     @PostMapping("/notification/send/{deployId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> sendDeployNotification(@PathVariable("deployId") Long deployId,
                                        @RequestBody List<NotificationConfigDTO> configs) {
         return deployEnhancementService.sendDeployNotification(deployId, configs);
@@ -86,14 +83,14 @@ public class DeployEnhancementController {
 
     @Operation(summary = "查询发布通知记录")
     @GetMapping("/notification/list/{deployId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<List<WfDeployNotification>> listDeployNotifications(@PathVariable("deployId") Long deployId) {
         return deployEnhancementService.listDeployNotifications(deployId);
     }
 
     @Operation(summary = "重发失败的通知")
     @PostMapping("/notification/resend/{deployId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> resendFailedNotifications(@PathVariable("deployId") Long deployId) {
         return deployEnhancementService.resendFailedNotifications(deployId);
     }
@@ -102,28 +99,28 @@ public class DeployEnhancementController {
 
     @Operation(summary = "执行版本回滚")
     @PostMapping("/rollback")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> rollbackDeploy(@RequestBody RollbackRequestDTO dto) {
         return deployEnhancementService.rollbackDeploy(dto);
     }
 
     @Operation(summary = "获取可回滚的版本列表")
     @GetMapping("/rollback/versions/{processDefId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<List<WfProcessVersionSnapshot>> listRollbackVersions(@PathVariable("processDefId") String processDefId) {
         return deployEnhancementService.listRollbackVersions(processDefId);
     }
 
     @Operation(summary = "查询回滚历史")
     @GetMapping("/rollback/history/{processDefId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<List<WfDeployRollbackHistory>> listRollbackHistory(@PathVariable("processDefId") String processDefId) {
         return deployEnhancementService.listRollbackHistory(processDefId);
     }
 
     @Operation(summary = "获取版本快照详情")
     @GetMapping("/snapshot/{processDefId}/{version}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<WfProcessVersionSnapshot> getVersionSnapshot(@PathVariable("processDefId") String processDefId,
                                                           @PathVariable("version") Integer version) {
         return deployEnhancementService.getVersionSnapshot(processDefId, version);
@@ -131,7 +128,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "发布影响分析")
     @GetMapping("/impact/analyze/{processDefId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<ImpactAnalysisDTO> analyzeDeployImpact(@PathVariable("processDefId") String processDefId) {
         return deployEnhancementService.analyzeDeployImpact(processDefId);
     }
@@ -140,7 +137,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "提交发布审批")
     @PostMapping("/approval/submit/{definitionId}")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> submitDeployApproval(@PathVariable("definitionId") String definitionId,
                                      @RequestBody DeployApprovalDTO dto) {
         return deployEnhancementService.submitDeployApproval(definitionId, dto);
@@ -148,7 +145,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "审批发布请求")
     @PostMapping("/approval/approve/{approvalId}/{stepId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:approve")
     public R<?> approveDeployRequest(@PathVariable("approvalId") Long approvalId,
                                      @PathVariable("stepId") Long stepId,
                                      @RequestParam("action") String action,
@@ -158,7 +155,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "查询待审批的发布请求")
     @GetMapping("/approval/pending")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:approve")
     public R<List<WfDeployApproval>> listPendingApprovals() {
         Long userId = UserContext.getUserId();
         return deployEnhancementService.listPendingApprovals(userId);
@@ -166,7 +163,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "查询审批详情")
     @GetMapping("/approval/detail/{approvalId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<DynamicMapVO> getApprovalDetail(@PathVariable("approvalId") Long approvalId) {
         R<java.util.Map<String, Object>> result = deployEnhancementService.getApprovalDetail(approvalId);
         return toDynamicMapResult(result);
@@ -174,14 +171,14 @@ public class DeployEnhancementController {
 
     @Operation(summary = "取消发布审批")
     @PostMapping("/approval/cancel/{approvalId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:manage")
     public R<?> cancelDeployApproval(@PathVariable("approvalId") Long approvalId) {
         return deployEnhancementService.cancelDeployApproval(approvalId);
     }
 
     @Operation(summary = "查询我提交的审批")
     @GetMapping("/approval/my-submitted")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<List<WfDeployApproval>> listMySubmittedApprovals() {
         Long userId = UserContext.getUserId();
         return deployEnhancementService.listMySubmittedApprovals(userId);
@@ -189,7 +186,7 @@ public class DeployEnhancementController {
 
     @Operation(summary = "获取发布统计信息")
     @GetMapping("/statistics/{processDefId}")
-    @SaCheckLogin
+    @SaCheckPermission("workflow:deploy:list")
     public R<DynamicMapVO> getDeployStatistics(@PathVariable("processDefId") String processDefId) {
         R<java.util.Map<String, Object>> result = deployEnhancementService.getDeployStatistics(processDefId);
         return toDynamicMapResult(result);

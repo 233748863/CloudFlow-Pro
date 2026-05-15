@@ -8,10 +8,7 @@ import com.cloudflow.workflow.mapper.TimeoutAlertMapper;
 import com.cloudflow.workflow.service.monitor.IAnomalyDetectionService;
 import com.cloudflow.workflow.service.monitor.ITimeoutDetectionService;
 import lombok.RequiredArgsConstructor;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -35,7 +32,7 @@ public class AlertController {
     /**
      * 查询未解决的超时告警
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/timeout/unresolved")
     public R<List<TimeoutAlert>> getUnresolvedTimeoutAlerts() {
         List<TimeoutAlert> alerts = timeoutAlertMapper.selectUnresolved(
@@ -47,7 +44,7 @@ public class AlertController {
     /**
      * 按级别查询超时告警
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/timeout/byLevel")
     public R<List<TimeoutAlert>> getTimeoutAlertsByLevel(@RequestParam String level) {
         List<TimeoutAlert> alerts = timeoutAlertMapper.selectByLevel(
@@ -60,7 +57,7 @@ public class AlertController {
     /**
      * 按处理人查询超时告警
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/timeout/byAssignee")
     public R<List<TimeoutAlert>> getTimeoutAlertsByAssignee(@RequestParam Long assigneeId) {
         List<TimeoutAlert> alerts = timeoutAlertMapper.selectByAssignee(
@@ -73,7 +70,7 @@ public class AlertController {
     /**
      * 解决超时告警
      */
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:alert:resolve")
     @PutMapping("/timeout/{alertId}/resolve")
     public R<Void> resolveTimeoutAlert(
             @PathVariable Long alertId,
@@ -86,7 +83,7 @@ public class AlertController {
     /**
      * 升级超时告警
      */
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:alert:handle")
     @PutMapping("/timeout/{alertId}/escalate")
     public R<Void> escalateTimeoutAlert(@PathVariable Long alertId) {
         timeoutDetectionService.escalateTimeoutAlert(alertId);
@@ -96,7 +93,7 @@ public class AlertController {
     /**
      * 查询未解决的异常告警
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/anomaly/unresolved")
     public R<List<AnomalyAlert>> getUnresolvedAnomalyAlerts() {
         List<AnomalyAlert> alerts = anomalyAlertMapper.selectUnresolved(
@@ -108,7 +105,7 @@ public class AlertController {
     /**
      * 按类型查询异常告警
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/anomaly/byType")
     public R<List<AnomalyAlert>> getAnomalyAlertsByType(@RequestParam String type) {
         List<AnomalyAlert> alerts = anomalyAlertMapper.selectByType(
@@ -121,7 +118,7 @@ public class AlertController {
     /**
      * 按严重程度查询异常告警
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/anomaly/bySeverity")
     public R<List<AnomalyAlert>> getAnomalyAlertsBySeverity(@RequestParam String severity) {
         List<AnomalyAlert> alerts = anomalyAlertMapper.selectBySeverity(
@@ -134,7 +131,7 @@ public class AlertController {
     /**
      * 按流程定义Key查询异常告警
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/anomaly/byProcessDefKey")
     public R<List<AnomalyAlert>> getAnomalyAlertsByProcessDefKey(@RequestParam String processDefKey) {
         List<AnomalyAlert> alerts = anomalyAlertMapper.selectByProcessDefKey(
@@ -147,7 +144,7 @@ public class AlertController {
     /**
      * 查询异常类型统计
      */
-    @SaCheckRole(value = {"admin", "manager"}, mode = SaMode.OR)
+    @SaCheckPermission("workflow:alert:list")
     @GetMapping("/anomaly/statistics")
     public R<List<AnomalyAlert>> getAnomalyTypeStatistics(
             @RequestParam @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime startDate,
@@ -163,7 +160,7 @@ public class AlertController {
     /**
      * 解决异常告警
      */
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:alert:resolve")
     @PutMapping("/anomaly/{alertId}/resolve")
     public R<Void> resolveAnomalyAlert(
             @PathVariable Long alertId,

@@ -34,9 +34,8 @@ const normalizeCategoryToken = (value: string): string =>
   value.trim().toLowerCase().replace(/[\s_-]+/g, '');
 
 const WORKFLOW_CATEGORY_ALIAS_MAP: Record<string, WorkflowCategoryValue> = {
-  office: 'office',
   oa: 'office',
-  admin: 'office',
+  office: 'office',
   administration: 'office',
   行政: 'office',
   办公: 'office',
@@ -131,3 +130,5 @@ export const getWorkflowCategoryLabel = (rawCategory: unknown): string => {
 
   return WORKFLOW_CATEGORY_LABELS[normalized as WorkflowCategoryValue] || String(rawCategory).trim();
 };
+
+

@@ -1,7 +1,6 @@
 package com.cloudflow.oa.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.OaTraceEvent;
@@ -29,7 +28,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/audit/events")
 @RequiredArgsConstructor
-@SaCheckLogin
 public class AuditEventController {
 
     private static final int EXPORT_LIMIT = 5000;

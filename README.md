@@ -137,7 +137,7 @@ CloudFlow Pro/
 | `03.cloudflow-hr.sql` | HR 组织、人事、考勤、薪酬、绩效、招聘、审计 | 37 |
 | `04.cloudflow-oa.sql` | OA、行政、资产、车辆、费用、合同、印章、证照、访客、知识库 | 53 |
 | `05.cloudflow-crm.sql` | CRM 微服务结构表：客户、联系人、商机、报价、回款、续约、工单 | 17 |
-| `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板和演示业务数据（含原 07 绩效复杂场景演示） | 0 |
+| `06.cloudflow-business-seed.sql` | 初始化菜单、账号、流程模板、权限统一收口与演示业务数据 | 0 |
 | `99.cloudflow-clear-all.sql` | 清理业务数据 | 0 |
 
 执行 `06.cloudflow-business-seed.sql` 后可使用以下账号登录，密码均为 `123456`：`admin`、`li`、`wang`、`zhao`、`zhang`。
@@ -164,6 +164,7 @@ Get-Content .\cloudflow-backend\DB\01.cloudflow-common.sql | mysql -u root -p cl
 Get-Content .\cloudflow-backend\DB\02.cloudflow-workflow.sql | mysql -u root -p cloud_flow_db
 Get-Content .\cloudflow-backend\DB\03.cloudflow-hr.sql | mysql -u root -p cloud_flow_db
 Get-Content .\cloudflow-backend\DB\04.cloudflow-oa.sql | mysql -u root -p cloud_flow_db
+Get-Content .\cloudflow-backend\DB\05.cloudflow-crm.sql | mysql -u root -p cloud_flow_db
 Get-Content .\cloudflow-backend\DB\06.cloudflow-business-seed.sql | mysql -u root -p cloud_flow_db
 ```
 
@@ -175,6 +176,7 @@ mysql -u root -p cloud_flow_db < cloudflow-backend/DB/01.cloudflow-common.sql
 mysql -u root -p cloud_flow_db < cloudflow-backend/DB/02.cloudflow-workflow.sql
 mysql -u root -p cloud_flow_db < cloudflow-backend/DB/03.cloudflow-hr.sql
 mysql -u root -p cloud_flow_db < cloudflow-backend/DB/04.cloudflow-oa.sql
+mysql -u root -p cloud_flow_db < cloudflow-backend/DB/05.cloudflow-crm.sql
 mysql -u root -p cloud_flow_db < cloudflow-backend/DB/06.cloudflow-business-seed.sql
 ```
 
@@ -212,6 +214,7 @@ pwsh -NoProfile -ExecutionPolicy Bypass -File .\start-cloudflow.ps1
 ```
 
 脚本会编译并安装后端内部依赖，启动网关、认证、工作流、OA、CRM、HR 和前端；运行日志写入 `.cloudflow-runtime/logs/`。
+根级 `start-cloudflow.ps1` 仍只启动 React 开发端；Vue 前端通过 `pnpm typecheck` 与 `pnpm build` 纳入 CI 和发布验收。
 
 ### 🌐 6. 访问入口
 

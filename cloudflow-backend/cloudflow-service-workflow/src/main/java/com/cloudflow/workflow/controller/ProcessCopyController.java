@@ -8,10 +8,7 @@ import com.cloudflow.workflow.domain.WfProcessCopy;
 import com.cloudflow.workflow.domain.dto.BatchCopyReadRequest;
 import com.cloudflow.workflow.service.IProcessCopyService;
 import lombok.RequiredArgsConstructor;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -21,7 +18,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/copy")
 @RequiredArgsConstructor
-@SaCheckLogin
 public class ProcessCopyController {
 
     private final IProcessCopyService processCopyService;
@@ -31,6 +27,7 @@ public class ProcessCopyController {
      * 支持筛选参数：keyword（标题搜索）、isRead（0-未读/1-已读）、processDefKey（流程类型）
      */
     @GetMapping("/list")
+    @SaCheckPermission("workflow:copy:list")
     public R<PageResult<WfProcessCopy>> getMyCopyList(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
         return R.ok(processCopyService.getMyCopyList(userId, pageQuery));
@@ -40,6 +37,7 @@ public class ProcessCopyController {
      * 获取未读抄送数量
      */
     @GetMapping("/unread-count")
+    @SaCheckPermission("workflow:copy:list")
     public R<Integer> getUnreadCount() {
         Long userId = UserContext.getUserId();
         return R.ok(processCopyService.getUnreadCount(userId));
@@ -49,6 +47,7 @@ public class ProcessCopyController {
      * 标记单条抄送记录为已读
      */
     @PostMapping("/read/{copyId}")
+    @SaCheckPermission("workflow:copy:read")
     public R<?> markAsRead(@PathVariable("copyId") Long copyId) {
         Long userId = UserContext.getUserId();
         processCopyService.markAsRead(copyId, userId);
@@ -59,6 +58,7 @@ public class ProcessCopyController {
      * 批量标记为已读
      */
     @PostMapping("/batch-read")
+    @SaCheckPermission("workflow:copy:read")
     public R<?> batchMarkAsRead(@RequestBody BatchCopyReadRequest dto) {
         Long userId = UserContext.getUserId();
         processCopyService.batchMarkAsRead(dto.getCopyIds(), userId);

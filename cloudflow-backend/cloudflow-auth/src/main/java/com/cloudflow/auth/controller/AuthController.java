@@ -24,6 +24,7 @@ import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.common.security.core.TokenService;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
 import com.cloudflow.common.ratelimiter.enums.LimitType;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -313,6 +314,7 @@ public class AuthController {
     }
 
     @GetMapping("/info")
+    @SaCheckPermission("system:auth:info")
     public R<DynamicMapVO> info(HttpServletRequest request) {
         Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
@@ -376,6 +378,7 @@ public class AuthController {
     }
 
     @PutMapping("/profile")
+    @SaCheckPermission("system:user:profile:edit")
     public R<?> updateProfile(@RequestBody ProfileUpdateDTO dto, HttpServletRequest request) {
         Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
@@ -411,6 +414,7 @@ public class AuthController {
     }
 
     @PutMapping("/profile/password")
+    @SaCheckPermission("system:user:profile:password")
     public R<?> changeProfilePassword(@RequestBody ChangePasswordDTO dto, HttpServletRequest request) {
         Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
@@ -455,6 +459,7 @@ public class AuthController {
      * 获取路由信息（菜单树）- 通过 Spring Cache 自动缓存
      */
     @GetMapping("/getRouters")
+    @SaCheckPermission("system:auth:router")
     public R<?> getRouters(HttpServletRequest request) {
         Map<String, Object> userMap = resolveLoginUser(request);
         if (userMap == null) {
@@ -477,6 +482,7 @@ public class AuthController {
      * 清除 Token 和用户相关的所有缓存
      */
     @PostMapping("/logout")
+    @SaCheckPermission("system:auth:logout")
     public R<?> logout(HttpServletRequest request, HttpServletResponse response) {
         String rawToken = resolveRawToken(request);
 
@@ -689,6 +695,7 @@ public class AuthController {
      * 允许超级管理员切换到指定租户，以便查看和管理该租户的数据
      */
     @PostMapping("/switchTenant")
+    @SaCheckPermission("system:tenant:switch")
     public R<DynamicMapVO> switchTenant(@RequestBody SwitchTenantDTO dto, HttpServletRequest request, HttpServletResponse response) {
         String rawToken = resolveRawToken(request);
         Map<String, Object> userMap = tokenService.verifyToken(rawToken);

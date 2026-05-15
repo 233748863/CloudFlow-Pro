@@ -533,7 +533,7 @@ export const BusinessTripPage: React.FC = () => {
                 <Download size={14} className="mr-1.5" />
                 导出结果
               </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('office:trip:add')}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:trip:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新建申请
               </Button>
@@ -612,7 +612,7 @@ export const BusinessTripPage: React.FC = () => {
                                 onClick: () => void handleEdit(item.id!),
                                 tone: 'primary',
                                 hidden: item.status !== 'DRAFT',
-                                permissionKey: 'office:trip:edit',
+                                permissionKey: 'oa:trip:edit',
                               },
                               {
                                 label: '提交',
@@ -620,7 +620,7 @@ export const BusinessTripPage: React.FC = () => {
                                 onClick: () => openSubmitConfirm(item.id!),
                                 tone: 'success',
                                 hidden: item.status !== 'DRAFT',
-                                permissionKey: 'office:trip:submit',
+                                permissionKey: 'oa:trip:submit',
                               },
                               {
                                 label: '删除',
@@ -628,7 +628,7 @@ export const BusinessTripPage: React.FC = () => {
                                 onClick: () => openDeleteConfirm(item.id!),
                                 tone: 'danger',
                                 hidden: item.status !== 'DRAFT',
-                                permissionKey: 'office:trip:remove',
+                                permissionKey: 'oa:trip:remove',
                               },
                               {
                                 label: '取消申请',
@@ -636,7 +636,7 @@ export const BusinessTripPage: React.FC = () => {
                                 onClick: () => openCancelConfirm(item.id!),
                                 tone: 'warning',
                                 hidden: item.status !== 'PENDING',
-                                permissionKey: 'office:trip:cancel',
+                                permissionKey: 'oa:trip:cancel',
                               },
                             ]}
                           />
@@ -676,7 +676,7 @@ export const BusinessTripPage: React.FC = () => {
             <Button variant="outline" onClick={closeDialog}>
               取消
             </Button>
-            <Button onClick={() => void handleSave()} disabled={!hasPermission(current ? 'office:trip:edit' : 'office:trip:add')}>
+            <Button onClick={() => void handleSave()} disabled={!hasPermission(current ? 'oa:trip:edit' : 'oa:trip:add')}>
               保存
             </Button>
           </>
@@ -931,7 +931,7 @@ export const BusinessTripPage: React.FC = () => {
         footer={(
           <>
             {detailTrip?.status === 'PENDING' ? (
-              <Button variant="outline" onClick={() => detailTrip.id && openCancelConfirm(detailTrip.id)} disabled={!hasPermission('office:trip:cancel')}>
+              <Button variant="outline" onClick={() => detailTrip.id && openCancelConfirm(detailTrip.id)} disabled={!hasPermission('oa:trip:cancel')}>
                 取消申请
               </Button>
             ) : null}
@@ -1030,4 +1030,5 @@ export const BusinessTripPage: React.FC = () => {
 };
 
 export default BusinessTripPage;
+
 

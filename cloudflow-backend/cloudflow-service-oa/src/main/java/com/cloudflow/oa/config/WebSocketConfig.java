@@ -14,15 +14,19 @@ import org.springframework.web.socket.config.annotation.WebSocketHandlerRegistry
 public class WebSocketConfig implements WebSocketConfigurer {
 
     private final NotificationWebSocketHandler notificationWebSocketHandler;
+    private final NotificationAuthHandshakeInterceptor notificationAuthHandshakeInterceptor;
 
-    public WebSocketConfig(NotificationWebSocketHandler notificationWebSocketHandler) {
+    public WebSocketConfig(NotificationWebSocketHandler notificationWebSocketHandler,
+                           NotificationAuthHandshakeInterceptor notificationAuthHandshakeInterceptor) {
         this.notificationWebSocketHandler = notificationWebSocketHandler;
+        this.notificationAuthHandshakeInterceptor = notificationAuthHandshakeInterceptor;
     }
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         // 注册通知推送端点，允许跨域
         registry.addHandler(notificationWebSocketHandler, "/ws/notification")
+                .addInterceptors(notificationAuthHandshakeInterceptor)
                 .setAllowedOrigins("*");
     }
 }

@@ -270,7 +270,7 @@ export const SealApplicationPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button size="sm" onClick={openCreate} disabled={!hasPermission('office:seal:add')}>
+              <Button size="sm" onClick={openCreate} disabled={!hasPermission('oa:seal:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新建申请
               </Button>
@@ -326,10 +326,10 @@ export const SealApplicationPage: React.FC = () => {
                           align="end"
                           actions={[
                             { label: '详情', icon: <Eye size={14} />, onClick: () => void openDetail(item), tone: 'neutral' },
-                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: item.status !== 'DRAFT', permissionKey: 'office:seal:edit' },
-                            { label: '提交', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.id!, title: '提交用印申请', message: '提交后将进入用印审批流程。', confirmText: '提交' }), tone: 'success', hidden: item.status !== 'DRAFT', permissionKey: 'office:seal:submit' },
-                            { label: '取消', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.id!, title: '取消用印申请', message: '取消后该申请不再继续审批。', confirmText: '取消' }), tone: 'warning', hidden: item.status !== 'PENDING', permissionKey: 'office:seal:cancel' },
-                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.id!, title: '删除用印申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true }), tone: 'danger', hidden: item.status !== 'DRAFT', permissionKey: 'office:seal:remove' },
+                            { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', hidden: item.status !== 'DRAFT', permissionKey: 'oa:seal:edit' },
+                            { label: '提交', icon: <Send size={14} />, onClick: () => setConfirmState({ type: 'submit', id: item.id!, title: '提交用印申请', message: '提交后将进入用印审批流程。', confirmText: '提交' }), tone: 'success', hidden: item.status !== 'DRAFT', permissionKey: 'oa:seal:submit' },
+                            { label: '取消', icon: <XCircle size={14} />, onClick: () => setConfirmState({ type: 'cancel', id: item.id!, title: '取消用印申请', message: '取消后该申请不再继续审批。', confirmText: '取消' }), tone: 'warning', hidden: item.status !== 'PENDING', permissionKey: 'oa:seal:cancel' },
+                            { label: '删除', icon: <Trash2 size={14} />, onClick: () => setConfirmState({ type: 'delete', id: item.id!, title: '删除用印申请', message: '删除后当前草稿不可恢复。', confirmText: '删除', danger: true }), tone: 'danger', hidden: item.status !== 'DRAFT', permissionKey: 'oa:seal:remove' },
                           ]}
                         />
                       </td>
@@ -363,7 +363,7 @@ export const SealApplicationPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={closeDialog}>取消</Button>
-            <Button onClick={() => void saveForm()} disabled={saving || !hasPermission(form.id ? 'office:seal:edit' : 'office:seal:add')}>保存</Button>
+            <Button onClick={() => void saveForm()} disabled={saving || !hasPermission(form.id ? 'oa:seal:edit' : 'oa:seal:add')}>保存</Button>
           </>
         )}
       >
@@ -508,4 +508,5 @@ export const SealApplicationPage: React.FC = () => {
 };
 
 export default SealApplicationPage;
+
 

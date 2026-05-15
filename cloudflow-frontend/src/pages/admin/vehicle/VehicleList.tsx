@@ -437,7 +437,7 @@ const VehicleList: React.FC = () => {
                 <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                 刷新
               </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:vehicle:add')}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:vehicle:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增车辆
               </Button>
@@ -650,14 +650,14 @@ const VehicleList: React.FC = () => {
                               buttonLayout="compact"
                               actions={[
                                 { label: '详情', icon: <Eye size={14} />, onClick: () => handleViewDetail(vehicle), tone: 'neutral', isPrimary: true },
-                                { label: '编辑', icon: <Edit2 size={14} />, onClick: () => handleEdit(vehicle), tone: 'neutral', menuOnly: true, permissionKey: 'admin:vehicle:edit' },
+                                { label: '编辑', icon: <Edit2 size={14} />, onClick: () => handleEdit(vehicle), tone: 'neutral', menuOnly: true, permissionKey: 'oa:vehicle:edit' },
                                 {
                                   label: '删除',
                                   icon: <Trash2 size={14} />,
                                   onClick: () => openDeleteConfirm([vehicle.vehicleId!], '确认删除该车辆？删除后不可恢复。'),
                                   tone: 'neutral',
                                   menuOnly: true,
-                                  permissionKey: 'admin:vehicle:remove',
+                                  permissionKey: 'oa:vehicle:remove',
                                 },
                               ]}
                             />
@@ -934,3 +934,4 @@ const VehicleList: React.FC = () => {
 };
 
 export default VehicleList;
+

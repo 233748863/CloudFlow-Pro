@@ -141,7 +141,8 @@ const buildChildRoutes = (catalog: CloudFlowRouteMeta[]): RouteRecordRaw[] =>
           title: item.title,
           source: item.source,
           requiresAuth: true,
-          permissions: item.permissions || []
+          permissions: item.permissions || [],
+          roles: item.roles || []
         }
       }
     }
@@ -153,7 +154,8 @@ const buildChildRoutes = (catalog: CloudFlowRouteMeta[]): RouteRecordRaw[] =>
         title: item.title,
         source: item.source,
         requiresAuth: true,
-        permissions: item.permissions || []
+        permissions: item.permissions || [],
+        roles: item.roles || []
       }
     }
   })
@@ -275,6 +277,17 @@ router.beforeEach(async (to) => {
     return {
       path: '/403',
       query: { redirect: to.fullPath }
+    }
+  }
+
+  const roles = (to.meta.roles || []) as string[]
+  if (roles.length > 0) {
+    const currentRole = String(auth.user?.role || '').toUpperCase()
+    if (!roles.some((role) => currentRole === String(role).toUpperCase())) {
+      return {
+        path: '/403',
+        query: { redirect: to.fullPath }
+      }
     }
   }
 

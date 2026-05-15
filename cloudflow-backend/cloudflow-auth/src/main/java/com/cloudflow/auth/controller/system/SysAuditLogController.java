@@ -3,6 +3,7 @@ package com.cloudflow.auth.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.audit.domain.SysAuditLogEntity;
 import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
 import com.cloudflow.common.core.domain.R;
@@ -43,6 +44,7 @@ public class SysAuditLogController {
      * @param endTime    结束时间（yyyy-MM-dd）
      */
     @GetMapping("/page")
+    @SaCheckPermission("system:audit:list")
     public R page(
             @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
             @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
@@ -87,6 +89,7 @@ public class SysAuditLogController {
      * 获取审计日志详情
      */
     @GetMapping("/{id}")
+    @SaCheckPermission("system:audit:list")
     public R getById(@PathVariable("id") Long id) {
         SysAuditLogEntity log = sysAuditLogMapper.selectById(id);
         if (log == null) {
@@ -101,6 +104,7 @@ public class SysAuditLogController {
      * @param ids 审计日志ID列表
      */
     @DeleteMapping
+    @SaCheckPermission("system:audit:remove")
     public R delete(@RequestBody List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return R.fail("请选择要删除的审计日志");

@@ -2,7 +2,7 @@
 -- CloudFlow Pro - 统一种子数据脚本
 -- 依赖：01.cloudflow-common.sql、02.cloudflow-workflow.sql、
 --       03.cloudflow-hr.sql、04.cloudflow-oa.sql、05.cloudflow-crm.sql 已先执行
--- 说明：原 01~04、07 与 CRM 初始化/演示数据已统一汇总到本文件
+-- 说明：原 01~04 的初始化、权限统一收口与 CRM 初始化/演示数据已统一汇总到本文件
 -- 导入顺序：全量初始化时最后执行；如已清库，可在 05 后直接执行本文件
 -- =========================================================
 
@@ -54,7 +54,8 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 500 AND 586
    OR menu_id BETWEEN 600 AND 635
    OR menu_id BETWEEN 700 AND 739
-   OR menu_id BETWEEN 800 AND 884;
+   OR menu_id BETWEEN 800 AND 884
+   OR menu_id BETWEEN 900 AND 1012;
 
 DELETE FROM cloud_flow_db.sys_business_rule_hit_record
 WHERE tenant_id = 100000
@@ -617,27 +618,27 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(8,   '客户经营',   0, 8, 'crm',   
 -- ═══════════════════════════════════════════════════
 
 -- 工作台 (parent_id=1)
-INSERT INTO cloud_flow_db.sys_menu VALUES(100, '仪表盘',     1, 1, '/',                    'pages/Dashboard',              NULL, 0, 0, 'C', '0', '0', 'workspace:dashboard',       'LayoutDashboard', 'admin', NOW(), '', null, '仪表盘');
+INSERT INTO cloud_flow_db.sys_menu VALUES(100, '仪表盘',     1, 1, '/',                    'pages/Dashboard',              NULL, 0, 0, 'C', '0', '0', 'oa:workplace:view',       'LayoutDashboard', 'admin', NOW(), '', null, '仪表盘');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(101, '我的日程',   1, 2, '/schedule',            'pages/SchedulePage',           NULL, 0, 0, 'C', '0', '0', 'workspace:schedule',        'Calendar',        'admin', NOW(), '', null, '我的日程');
+INSERT INTO cloud_flow_db.sys_menu VALUES(101, '我的日程',   1, 2, '/schedule',            'pages/SchedulePage',           NULL, 0, 0, 'C', '0', '0', 'oa:schedule:list',        'Calendar',        'admin', NOW(), '', null, '我的日程');
 
 -- 办公协同 (parent_id=2)
-INSERT INTO cloud_flow_db.sys_menu VALUES(200, '会议室',     2, 1, '/meeting-room',        'pages/MeetingRoomPage',        NULL, 0, 0, 'C', '0', '0', 'office:meeting',            'Monitor',         'admin', NOW(), '', null, '会议室管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(200, '会议室',     2, 1, '/meeting-room',        'pages/MeetingRoomPage',        NULL, 0, 0, 'C', '0', '0', 'oa:meeting-room:list',  'Monitor',         'admin', NOW(), '', null, '会议室管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(201, '公告中心',   2, 2, '/announcement',        'pages/AnnouncementPage',       NULL, 0, 0, 'C', '0', '0', 'office:announcement',       'Megaphone',       'admin', NOW(), '', null, '公告中心');
+INSERT INTO cloud_flow_db.sys_menu VALUES(201, '公告中心',   2, 2, '/announcement',        'pages/AnnouncementPage',       NULL, 0, 0, 'C', '0', '0', 'oa:announcement:list', 'Megaphone',       'admin', NOW(), '', null, '公告中心');
 
 
 -- 流程中心 (parent_id=3)
-INSERT INTO cloud_flow_db.sys_menu VALUES(300, '发起流程',   3, 1, '/workplace',           'pages/Workplace',              NULL, 0, 0, 'C', '0', '0', 'process:start',             'PlayCircle',      'admin', NOW(), '', null, '发起流程');
+INSERT INTO cloud_flow_db.sys_menu VALUES(300, '发起流程',   3, 1, '/workplace',           'pages/Workplace',              NULL, 0, 0, 'C', '0', '0', 'workflow:process:start',             'PlayCircle',      'admin', NOW(), '', null, '发起流程');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(301, '我的申请',   3, 2, '/my-apps',             'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'process:myapps',            'FileText',        'admin', NOW(), '', null, '我的申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(301, '我的申请',   3, 2, '/my-apps',             'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'workflow:process:mine',            'FileText',        'admin', NOW(), '', null, '我的申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(302, '审批待办',   3, 3, '/tasks',               'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'process:tasks',             'CheckCircle2',    'admin', NOW(), '', null, '审批待办');
+INSERT INTO cloud_flow_db.sys_menu VALUES(302, '审批待办',   3, 3, '/tasks',               'pages/TaskListPage',           NULL, 0, 0, 'C', '0', '0', 'workflow:task:todo',             'CheckCircle2',    'admin', NOW(), '', null, '审批待办');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(303, '抄送我的',   3, 4, '/my-copies',           'pages/CopyListPage',           NULL, 0, 0, 'C', '0', '0', 'process:copy:list',         'MailOpen',        'admin', NOW(), '', null, '抄送我的');
+INSERT INTO cloud_flow_db.sys_menu VALUES(303, '抄送我的',   3, 4, '/my-copies',           'pages/CopyListPage',           NULL, 0, 0, 'C', '0', '0', 'workflow:copy:list',         'MailOpen',        'admin', NOW(), '', null, '抄送我的');
 
 -- 流程管理 (parent_id=4)
-INSERT INTO cloud_flow_db.sys_menu VALUES(400, '流程设计',   4, 1, '/workflow',            'pages/WorkflowDesign',         NULL, 0, 0, 'C', '0', '0', 'workflow:model:list',        'GitMerge',        'admin', NOW(), '', null, '流程设计');
+INSERT INTO cloud_flow_db.sys_menu VALUES(400, '流程设计',   4, 1, '/workflow',            'pages/WorkflowDesign',         NULL, 0, 0, 'C', '0', '0', 'workflow:definition:list',   'GitMerge',        'admin', NOW(), '', null, '流程设计');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(401, '流程监控',   4, 2, '/workflow/monitor',    'pages/WorkflowMonitor',        NULL, 0, 0, 'C', '0', '0', 'workflow:monitor:list',      'Monitor',         'admin', NOW(), '', null, '流程监控');
 
@@ -645,18 +646,18 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(402, '发布管理',   4, 3, '/workflo
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(403, '表单设计',   4, 4, '/forms',              'pages/FormDesign',             NULL, 0, 0, 'C', '0', '0', 'workflow:form:list',         'FormInput',       'admin', NOW(), '', null, '表单设计');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(404, '批量编辑',   4, 5, '/workflow/management', 'pages/admin/ProcessManagement', NULL, 0, 0, 'C', '0', '0', 'workflow:process:manage',    'Settings',        'admin', NOW(), '', null, '流程批量管理（分类、标签）');
+INSERT INTO cloud_flow_db.sys_menu VALUES(404, '批量编辑',   4, 5, '/workflow/management', 'pages/admin/ProcessManagement', NULL, 0, 0, 'C', '0', '0', 'workflow:definition:list',   'Settings',        'admin', NOW(), '', null, '流程批量管理（分类、标签）');
 
 -- 行政管理 (parent_id=5)
-INSERT INTO cloud_flow_db.sys_menu VALUES(500, '组织架构',   5, 1, '/users',              'pages/OrgStructurePage',       NULL, 0, 0, 'C', '0', '0', 'admin:org:list',             'Users',           'admin', NOW(), '', null, '组织架构');
+INSERT INTO cloud_flow_db.sys_menu VALUES(500, '组织架构',   5, 1, '/users',              'pages/OrgStructurePage',       NULL, 0, 0, 'C', '0', '0', 'system:dept:list',       'Users',           'admin', NOW(), '', null, '组织架构');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(501, '资产管理',   5, 2, '/admin/asset',        'pages/admin/asset/AssetList',  NULL, 0, 0, 'C', '0', '0', 'admin:asset:list',           'Package',         'admin', NOW(), '', null, '资产管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(501, '资产管理',   5, 2, '/admin/asset',        'pages/admin/asset/AssetList',  NULL, 0, 0, 'C', '0', '0', 'oa:asset:list',           'Package',         'admin', NOW(), '', null, '资产管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(502, '车辆管理',   5, 3, '/admin/vehicle/list', 'pages/admin/vehicle/VehicleList', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:list',      'Car',             'admin', NOW(), '', null, '车辆管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(502, '车辆管理',   5, 3, '/admin/vehicle/list', 'pages/admin/vehicle/VehicleList', NULL, 0, 0, 'C', '0', '0', 'oa:vehicle:list',      'Car',             'admin', NOW(), '', null, '车辆管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(503, '用车申请',   5, 4, '/admin/vehicle/booking', 'pages/admin/vehicle/VehicleBooking', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:booking', 'Car',          'admin', NOW(), '', null, '用车申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(503, '用车申请',   5, 4, '/admin/vehicle/booking', 'pages/admin/vehicle/VehicleBooking', NULL, 0, 0, 'C', '0', '0', 'oa:vehicle:booking', 'Car',          'admin', NOW(), '', null, '用车申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(504, '用车记录',   5, 5, '/admin/vehicle/usage', 'pages/admin/vehicle/VehicleUsageList', NULL, 0, 0, 'C', '0', '0', 'admin:vehicle:usage',   'Car',             'admin', NOW(), '', null, '用车记录');
+INSERT INTO cloud_flow_db.sys_menu VALUES(504, '用车记录',   5, 5, '/admin/vehicle/usage', 'pages/admin/vehicle/VehicleUsageList', NULL, 0, 0, 'C', '0', '0', 'oa:vehicle:usage',   'Car',             'admin', NOW(), '', null, '用车记录');
 
 
 -- 系统管理 (parent_id=6)
@@ -698,7 +699,7 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(613, '模板库',     3, 5, '/template
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(614, '流程导入',   4, 7, '/workflow/import',    'pages/admin/WorkflowImport',   NULL, 0, 0, 'C', '0', '0', 'workflow:import:manage',  'Upload',          'admin', NOW(), '', null, '流程导入');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(615, '归档管理',   4, 8, '/workflow/archived',  'pages/admin/ArchivedWorkflows', NULL, 0, 0, 'C', '0', '0', 'workflow:archive:manage', 'Archive',         'admin', NOW(), '', null, '归档流程管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(615, '归档管理',   4, 8, '/workflow/archived',  'pages/admin/ArchivedWorkflows', NULL, 0, 0, 'C', '0', '0', NULL,                      'Archive',         'admin', NOW(), '', null, '归档流程管理');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(616, '登录日志',   6, 13, '/system/login-log',   'pages/system/LoginLogPage',     NULL, 0, 0, 'C', '0', '0', 'system:login-log:list',    'LogIn',           'admin', NOW(), '', null, '登录日志');
 
@@ -732,176 +733,176 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(635, '审计台账',   6, 16, '/system
 -- 办公协同(parent_id=2)扩展菜单：出差申请、通讯录
 
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(205, '出差申请',   2, 6, '/office/business-trip',     'pages/BusinessTripPage',       NULL, 0, 0, 'C', '0', '0', 'office:trip:list',          'Plane',           'admin', NOW(), '', null, '出差申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(205, '出差申请',   2, 6, '/office/business-trip',     'pages/BusinessTripPage',       NULL, 0, 0, 'C', '0', '0', 'oa:trip:list',          'Plane',           'admin', NOW(), '', null, '出差申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(206, '通讯录',     2, 7, '/office/contact',           'pages/ContactPage',            NULL, 0, 0, 'C', '0', '0', 'office:contact:list',       'BookUser',        'admin', NOW(), '', null, '企业通讯录');
+INSERT INTO cloud_flow_db.sys_menu VALUES(206, '通讯录',     2, 7, '/office/contact',           'pages/ContactPage',            NULL, 0, 0, 'C', '0', '0', 'oa:contact:list',       'BookUser',        'admin', NOW(), '', null, '企业通讯录');
 
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(208, '报销申请',   2, 8, '/expense/claim',            'pages/ExpenseClaimPage',       NULL, 0, 0, 'C', '0', '0', 'office:expense:list',       'Receipt',         'admin', NOW(), '', null, '报销申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(208, '报销申请',   2, 8, '/expense/claim',            'pages/ExpenseClaimPage',       NULL, 0, 0, 'C', '0', '0', 'oa:expense:list',       'Receipt',         'admin', NOW(), '', null, '报销申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(209, '付款申请',   2, 9, '/payment/request',          'pages/PaymentRequestPage',     NULL, 0, 0, 'C', '0', '0', 'office:payment:list',       'WalletCards',     'admin', NOW(), '', null, '付款申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(209, '付款申请',   2, 9, '/payment/request',          'pages/PaymentRequestPage',     NULL, 0, 0, 'C', '0', '0', 'oa:payment:list',       'WalletCards',     'admin', NOW(), '', null, '付款申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(210, '知识库',     2, 10, '/office/knowledge',        'pages/KnowledgePage',          NULL, 0, 0, 'C', '0', '0', 'office:knowledge:list',     'BookOpen',        'admin', NOW(), '', null, '制度文档知识库');
+INSERT INTO cloud_flow_db.sys_menu VALUES(210, '知识库',     2, 10, '/office/knowledge',        'pages/KnowledgePage',          NULL, 0, 0, 'C', '0', '0', 'oa:knowledge:list',     'BookOpen',        'admin', NOW(), '', null, '制度文档知识库');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(211, '采购申请',   2, 11, '/office/purchase-request', 'pages/PurchaseRequestPage',   NULL, 0, 0, 'C', '0', '0', 'office:purchase:list',      'ShoppingCart',    'admin', NOW(), '', null, '行政采购申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(211, '采购申请',   2, 11, '/office/purchase-request', 'pages/PurchaseRequestPage',   NULL, 0, 0, 'C', '0', '0', 'oa:purchase:list',      'ShoppingCart',    'admin', NOW(), '', null, '行政采购申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(212, '用印申请',   2, 12, '/office/seal-application', 'pages/SealApplicationPage',   NULL, 0, 0, 'C', '0', '0', 'office:seal:list',          'Stamp',           'admin', NOW(), '', null, '用印申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(212, '用印申请',   2, 12, '/office/seal-application', 'pages/SealApplicationPage',   NULL, 0, 0, 'C', '0', '0', 'oa:seal:list',          'Stamp',           'admin', NOW(), '', null, '用印申请');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(213, '证照借用',   2, 13, '/office/license-borrow',   'pages/LicenseBorrowPage',     NULL, 0, 0, 'C', '0', '0', 'office:license:list',       'BadgeCheck',      'admin', NOW(), '', null, '证照借用申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(214, '项目管理',   2, 14, '/office/project',          'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'office:project:list',       'FolderKanban',    'admin', NOW(), '', null, '项目立项、里程碑与甘特图');
-INSERT INTO cloud_flow_db.sys_menu VALUES(215, '预算管理',   2, 15, '/office/budget',           'pages/BudgetManagementPage',  NULL, 0, 0, 'C', '0', '0', 'office:budget:list',        'Banknote',        'admin', NOW(), '', null, '部门与项目预算管理');
-INSERT INTO cloud_flow_db.sys_menu VALUES(216, '发票管理',   2, 16, '/office/invoice',          'pages/InvoiceManagementPage', NULL, 0, 0, 'C', '0', '0', 'office:invoice:list',       'Receipt',         'admin', NOW(), '', null, '发票录入、外链与核销');
+INSERT INTO cloud_flow_db.sys_menu VALUES(213, '证照借用',   2, 13, '/office/license-borrow',   'pages/LicenseBorrowPage',     NULL, 0, 0, 'C', '0', '0', 'oa:license:list',       'BadgeCheck',      'admin', NOW(), '', null, '证照借用申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(214, '项目管理',   2, 14, '/office/project',          'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:project:list',       'FolderKanban',    'admin', NOW(), '', null, '项目立项、里程碑与甘特图');
+INSERT INTO cloud_flow_db.sys_menu VALUES(215, '预算管理',   2, 15, '/office/budget',           'pages/BudgetManagementPage',  NULL, 0, 0, 'C', '0', '0', 'oa:budget:list',        'Banknote',        'admin', NOW(), '', null, '部门与项目预算管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(216, '发票管理',   2, 16, '/office/invoice',          'pages/InvoiceManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:invoice:list',       'Receipt',         'admin', NOW(), '', null, '发票录入、外链与核销');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(217, '合同台账',   2, 17, '/office/contracts',        'pages/ContractPage',          NULL, 0, 0, 'C', '0', '0', 'office:contract:list',      'FileSignature',   'admin', NOW(), '', null, '合同审批、用印与归档台账');
-INSERT INTO cloud_flow_db.sys_menu VALUES(218, '会议室新增',   200, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:meeting-room:add', '#', 'admin', NOW(), '', NULL, '新增会议室');
-INSERT INTO cloud_flow_db.sys_menu VALUES(219, '会议室编辑',   200, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:meeting-room:edit', '#', 'admin', NOW(), '', NULL, '编辑会议室');
-INSERT INTO cloud_flow_db.sys_menu VALUES(220, '会议室删除',   200, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:meeting-room:remove', '#', 'admin', NOW(), '', NULL, '删除会议室');
+INSERT INTO cloud_flow_db.sys_menu VALUES(217, '合同台账',   2, 17, '/office/contracts',        'pages/ContractPage',          NULL, 0, 0, 'C', '0', '0', 'oa:contract:list',      'FileSignature',   'admin', NOW(), '', null, '合同审批、用印与归档台账');
+INSERT INTO cloud_flow_db.sys_menu VALUES(218, '会议室新增',   200, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:meeting-room:add', '#', 'admin', NOW(), '', NULL, '新增会议室');
+INSERT INTO cloud_flow_db.sys_menu VALUES(219, '会议室编辑',   200, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:meeting-room:edit', '#', 'admin', NOW(), '', NULL, '编辑会议室');
+INSERT INTO cloud_flow_db.sys_menu VALUES(220, '会议室删除',   200, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:meeting-room:remove', '#', 'admin', NOW(), '', NULL, '删除会议室');
 INSERT INTO cloud_flow_db.sys_menu VALUES(221, '公告发布',     201, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:announcement:publish', '#', 'admin', NOW(), '', NULL, '发布公告');
 INSERT INTO cloud_flow_db.sys_menu VALUES(222, '公告管理',     201, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:announcement:manage', '#', 'admin', NOW(), '', NULL, '查看公告管理台账');
 INSERT INTO cloud_flow_db.sys_menu VALUES(223, '公告编辑',     201, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:announcement:edit', '#', 'admin', NOW(), '', NULL, '编辑公告');
 INSERT INTO cloud_flow_db.sys_menu VALUES(224, '公告删除',     201, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:announcement:remove', '#', 'admin', NOW(), '', NULL, '删除公告');
 INSERT INTO cloud_flow_db.sys_menu VALUES(225, '公告撤销',     201, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:announcement:revoke', '#', 'admin', NOW(), '', NULL, '撤销公告');
-INSERT INTO cloud_flow_db.sys_menu VALUES(226, '出差新增',     205, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:trip:add', '#', 'admin', NOW(), '', NULL, '新增出差申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(227, '出差编辑',     205, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:trip:edit', '#', 'admin', NOW(), '', NULL, '编辑出差申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(228, '出差删除',     205, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:trip:remove', '#', 'admin', NOW(), '', NULL, '删除出差申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(229, '出差提交',     205, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:trip:submit', '#', 'admin', NOW(), '', NULL, '提交出差申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(230, '出差取消',     205, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:trip:cancel', '#', 'admin', NOW(), '', NULL, '取消出差申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(231, '报销新增',     208, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:expense:add', '#', 'admin', NOW(), '', NULL, '新增报销申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(232, '报销编辑',     208, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:expense:edit', '#', 'admin', NOW(), '', NULL, '编辑报销申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(233, '报销删除',     208, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:expense:remove', '#', 'admin', NOW(), '', NULL, '删除报销申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(234, '报销提交',     208, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:expense:submit', '#', 'admin', NOW(), '', NULL, '提交报销申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(235, '报销打款',     208, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:expense:pay', '#', 'admin', NOW(), '', NULL, '确认报销打款');
-INSERT INTO cloud_flow_db.sys_menu VALUES(236, '付款新增',     209, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:payment:add', '#', 'admin', NOW(), '', NULL, '新增付款申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(237, '付款编辑',     209, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:payment:edit', '#', 'admin', NOW(), '', NULL, '编辑付款申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(238, '付款删除',     209, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:payment:remove', '#', 'admin', NOW(), '', NULL, '删除付款申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(239, '付款提交',     209, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:payment:submit', '#', 'admin', NOW(), '', NULL, '提交付款申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(240, '付款确认',     209, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:payment:pay', '#', 'admin', NOW(), '', NULL, '确认付款');
-INSERT INTO cloud_flow_db.sys_menu VALUES(241, '知识库新增',   210, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:knowledge:add', '#', 'admin', NOW(), '', NULL, '新增知识库文档');
-INSERT INTO cloud_flow_db.sys_menu VALUES(242, '知识库编辑',   210, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:knowledge:edit', '#', 'admin', NOW(), '', NULL, '编辑知识库文档');
-INSERT INTO cloud_flow_db.sys_menu VALUES(243, '知识库删除',   210, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:knowledge:remove', '#', 'admin', NOW(), '', NULL, '删除知识库文档');
-INSERT INTO cloud_flow_db.sys_menu VALUES(244, '知识库提交',   210, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:knowledge:submit', '#', 'admin', NOW(), '', NULL, '提交知识库发布审批');
-INSERT INTO cloud_flow_db.sys_menu VALUES(245, '知识库撤回',   210, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:knowledge:recall', '#', 'admin', NOW(), '', NULL, '撤回知识库发布审批');
-INSERT INTO cloud_flow_db.sys_menu VALUES(246, '知识库管理',   210, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:knowledge:manage', '#', 'admin', NOW(), '', NULL, '知识库管理台账');
-INSERT INTO cloud_flow_db.sys_menu VALUES(247, '采购新增',     211, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:purchase:add', '#', 'admin', NOW(), '', NULL, '新增采购申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(248, '采购编辑',     211, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:purchase:edit', '#', 'admin', NOW(), '', NULL, '编辑采购申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(249, '采购删除',     211, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:purchase:remove', '#', 'admin', NOW(), '', NULL, '删除采购申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(250, '采购提交',     211, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:purchase:submit', '#', 'admin', NOW(), '', NULL, '提交采购申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(251, '采购入库',     211, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:purchase:receipt', '#', 'admin', NOW(), '', NULL, '采购分批入库');
-INSERT INTO cloud_flow_db.sys_menu VALUES(252, '采购生成付款', 211, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:purchase:create-payment', '#', 'admin', NOW(), '', NULL, '采购生成付款申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(253, '项目新增',     214, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:project:add', '#', 'admin', NOW(), '', NULL, '新增项目');
-INSERT INTO cloud_flow_db.sys_menu VALUES(254, '项目编辑',     214, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:project:edit', '#', 'admin', NOW(), '', NULL, '编辑项目');
-INSERT INTO cloud_flow_db.sys_menu VALUES(255, '项目删除',     214, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:project:remove', '#', 'admin', NOW(), '', NULL, '删除项目');
-INSERT INTO cloud_flow_db.sys_menu VALUES(256, '项目提交',     214, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:project:submit', '#', 'admin', NOW(), '', NULL, '提交项目立项');
-INSERT INTO cloud_flow_db.sys_menu VALUES(257, '项目归档',     214, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:project:archive', '#', 'admin', NOW(), '', NULL, '归档项目');
-INSERT INTO cloud_flow_db.sys_menu VALUES(258, '项目基线',     214, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:project:baseline', '#', 'admin', NOW(), '', NULL, '项目基线快照');
-INSERT INTO cloud_flow_db.sys_menu VALUES(259, '项目WBS维护',  214, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:project:wbs', '#', 'admin', NOW(), '', NULL, '维护项目WBS和依赖');
-INSERT INTO cloud_flow_db.sys_menu VALUES(260, '预算新增',     215, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:budget:add', '#', 'admin', NOW(), '', NULL, '新增预算');
-INSERT INTO cloud_flow_db.sys_menu VALUES(261, '预算编辑',     215, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:budget:edit', '#', 'admin', NOW(), '', NULL, '编辑预算');
-INSERT INTO cloud_flow_db.sys_menu VALUES(262, '预算提交',     215, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:budget:submit', '#', 'admin', NOW(), '', NULL, '提交预算');
-INSERT INTO cloud_flow_db.sys_menu VALUES(263, '预算科目',     215, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:budget:subject', '#', 'admin', NOW(), '', NULL, '维护预算科目');
-INSERT INTO cloud_flow_db.sys_menu VALUES(264, '预算调整',     215, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:budget:adjustment', '#', 'admin', NOW(), '', NULL, '维护预算调整');
-INSERT INTO cloud_flow_db.sys_menu VALUES(265, '发票新增',     216, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:invoice:add', '#', 'admin', NOW(), '', NULL, '新增发票');
-INSERT INTO cloud_flow_db.sys_menu VALUES(266, '发票编辑',     216, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:invoice:edit', '#', 'admin', NOW(), '', NULL, '编辑发票');
-INSERT INTO cloud_flow_db.sys_menu VALUES(267, '发票删除',     216, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:invoice:remove', '#', 'admin', NOW(), '', NULL, '删除发票');
-INSERT INTO cloud_flow_db.sys_menu VALUES(268, '发票绑定',     216, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:invoice:bind', '#', 'admin', NOW(), '', NULL, '绑定发票业务单据');
-INSERT INTO cloud_flow_db.sys_menu VALUES(269, '发票核销',     216, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:invoice:writeoff', '#', 'admin', NOW(), '', NULL, '核销发票');
-INSERT INTO cloud_flow_db.sys_menu VALUES(270, '发票作废',     216, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:invoice:void', '#', 'admin', NOW(), '', NULL, '作废发票');
-INSERT INTO cloud_flow_db.sys_menu VALUES(271, '合同新增',     217, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:contract:add', '#', 'admin', NOW(), '', NULL, '新增合同');
-INSERT INTO cloud_flow_db.sys_menu VALUES(272, '合同编辑',     217, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:contract:edit', '#', 'admin', NOW(), '', NULL, '编辑合同');
-INSERT INTO cloud_flow_db.sys_menu VALUES(273, '合同删除',     217, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:contract:remove', '#', 'admin', NOW(), '', NULL, '删除合同');
-INSERT INTO cloud_flow_db.sys_menu VALUES(274, '合同提交',     217, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:contract:submit', '#', 'admin', NOW(), '', NULL, '提交合同审批');
-INSERT INTO cloud_flow_db.sys_menu VALUES(275, '合同取消',     217, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:contract:cancel', '#', 'admin', NOW(), '', NULL, '取消合同');
-INSERT INTO cloud_flow_db.sys_menu VALUES(276, '合同绑定用印', 217, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:contract:link-seal', '#', 'admin', NOW(), '', NULL, '绑定合同用印');
+INSERT INTO cloud_flow_db.sys_menu VALUES(226, '出差新增',     205, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:trip:add', '#', 'admin', NOW(), '', NULL, '新增出差申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(227, '出差编辑',     205, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:trip:edit', '#', 'admin', NOW(), '', NULL, '编辑出差申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(228, '出差删除',     205, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:trip:remove', '#', 'admin', NOW(), '', NULL, '删除出差申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(229, '出差提交',     205, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:trip:submit', '#', 'admin', NOW(), '', NULL, '提交出差申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(230, '出差取消',     205, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:trip:cancel', '#', 'admin', NOW(), '', NULL, '取消出差申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(231, '报销新增',     208, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:expense:add', '#', 'admin', NOW(), '', NULL, '新增报销申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(232, '报销编辑',     208, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:expense:edit', '#', 'admin', NOW(), '', NULL, '编辑报销申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(233, '报销删除',     208, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:expense:remove', '#', 'admin', NOW(), '', NULL, '删除报销申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(234, '报销提交',     208, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:expense:submit', '#', 'admin', NOW(), '', NULL, '提交报销申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(235, '报销打款',     208, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:expense:pay', '#', 'admin', NOW(), '', NULL, '确认报销打款');
+INSERT INTO cloud_flow_db.sys_menu VALUES(236, '付款新增',     209, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:payment:add', '#', 'admin', NOW(), '', NULL, '新增付款申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(237, '付款编辑',     209, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:payment:edit', '#', 'admin', NOW(), '', NULL, '编辑付款申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(238, '付款删除',     209, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:payment:remove', '#', 'admin', NOW(), '', NULL, '删除付款申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(239, '付款提交',     209, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:payment:submit', '#', 'admin', NOW(), '', NULL, '提交付款申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(240, '付款确认',     209, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:payment:pay', '#', 'admin', NOW(), '', NULL, '确认付款');
+INSERT INTO cloud_flow_db.sys_menu VALUES(241, '知识库新增',   210, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:knowledge:add', '#', 'admin', NOW(), '', NULL, '新增知识库文档');
+INSERT INTO cloud_flow_db.sys_menu VALUES(242, '知识库编辑',   210, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:knowledge:edit', '#', 'admin', NOW(), '', NULL, '编辑知识库文档');
+INSERT INTO cloud_flow_db.sys_menu VALUES(243, '知识库删除',   210, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:knowledge:remove', '#', 'admin', NOW(), '', NULL, '删除知识库文档');
+INSERT INTO cloud_flow_db.sys_menu VALUES(244, '知识库提交',   210, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:knowledge:submit', '#', 'admin', NOW(), '', NULL, '提交知识库发布审批');
+INSERT INTO cloud_flow_db.sys_menu VALUES(245, '知识库撤回',   210, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:knowledge:recall', '#', 'admin', NOW(), '', NULL, '撤回知识库发布审批');
+INSERT INTO cloud_flow_db.sys_menu VALUES(246, '知识库管理',   210, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:knowledge:manage', '#', 'admin', NOW(), '', NULL, '知识库管理台账');
+INSERT INTO cloud_flow_db.sys_menu VALUES(247, '采购新增',     211, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:purchase:add', '#', 'admin', NOW(), '', NULL, '新增采购申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(248, '采购编辑',     211, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:purchase:edit', '#', 'admin', NOW(), '', NULL, '编辑采购申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(249, '采购删除',     211, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:purchase:remove', '#', 'admin', NOW(), '', NULL, '删除采购申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(250, '采购提交',     211, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:purchase:submit', '#', 'admin', NOW(), '', NULL, '提交采购申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(251, '采购入库',     211, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:purchase:receipt', '#', 'admin', NOW(), '', NULL, '采购分批入库');
+INSERT INTO cloud_flow_db.sys_menu VALUES(252, '采购生成付款', 211, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:purchase:create-payment', '#', 'admin', NOW(), '', NULL, '采购生成付款申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(253, '项目新增',     214, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:project:add', '#', 'admin', NOW(), '', NULL, '新增项目');
+INSERT INTO cloud_flow_db.sys_menu VALUES(254, '项目编辑',     214, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:project:edit', '#', 'admin', NOW(), '', NULL, '编辑项目');
+INSERT INTO cloud_flow_db.sys_menu VALUES(255, '项目删除',     214, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:project:remove', '#', 'admin', NOW(), '', NULL, '删除项目');
+INSERT INTO cloud_flow_db.sys_menu VALUES(256, '项目提交',     214, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:project:submit', '#', 'admin', NOW(), '', NULL, '提交项目立项');
+INSERT INTO cloud_flow_db.sys_menu VALUES(257, '项目归档',     214, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:project:archive', '#', 'admin', NOW(), '', NULL, '归档项目');
+INSERT INTO cloud_flow_db.sys_menu VALUES(258, '项目基线',     214, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:project:baseline', '#', 'admin', NOW(), '', NULL, '项目基线快照');
+INSERT INTO cloud_flow_db.sys_menu VALUES(259, '项目WBS维护',  214, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:project:wbs', '#', 'admin', NOW(), '', NULL, '维护项目WBS和依赖');
+INSERT INTO cloud_flow_db.sys_menu VALUES(260, '预算新增',     215, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:budget:add', '#', 'admin', NOW(), '', NULL, '新增预算');
+INSERT INTO cloud_flow_db.sys_menu VALUES(261, '预算编辑',     215, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:budget:edit', '#', 'admin', NOW(), '', NULL, '编辑预算');
+INSERT INTO cloud_flow_db.sys_menu VALUES(262, '预算提交',     215, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:budget:submit', '#', 'admin', NOW(), '', NULL, '提交预算');
+INSERT INTO cloud_flow_db.sys_menu VALUES(263, '预算科目',     215, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:budget:subject', '#', 'admin', NOW(), '', NULL, '维护预算科目');
+INSERT INTO cloud_flow_db.sys_menu VALUES(264, '预算调整',     215, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:budget:adjustment', '#', 'admin', NOW(), '', NULL, '维护预算调整');
+INSERT INTO cloud_flow_db.sys_menu VALUES(265, '发票新增',     216, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:invoice:add', '#', 'admin', NOW(), '', NULL, '新增发票');
+INSERT INTO cloud_flow_db.sys_menu VALUES(266, '发票编辑',     216, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:invoice:edit', '#', 'admin', NOW(), '', NULL, '编辑发票');
+INSERT INTO cloud_flow_db.sys_menu VALUES(267, '发票删除',     216, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:invoice:remove', '#', 'admin', NOW(), '', NULL, '删除发票');
+INSERT INTO cloud_flow_db.sys_menu VALUES(268, '发票绑定',     216, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:invoice:bind', '#', 'admin', NOW(), '', NULL, '绑定发票业务单据');
+INSERT INTO cloud_flow_db.sys_menu VALUES(269, '发票核销',     216, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:invoice:writeoff', '#', 'admin', NOW(), '', NULL, '核销发票');
+INSERT INTO cloud_flow_db.sys_menu VALUES(270, '发票作废',     216, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:invoice:void', '#', 'admin', NOW(), '', NULL, '作废发票');
+INSERT INTO cloud_flow_db.sys_menu VALUES(271, '合同新增',     217, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:contract:add', '#', 'admin', NOW(), '', NULL, '新增合同');
+INSERT INTO cloud_flow_db.sys_menu VALUES(272, '合同编辑',     217, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:contract:edit', '#', 'admin', NOW(), '', NULL, '编辑合同');
+INSERT INTO cloud_flow_db.sys_menu VALUES(273, '合同删除',     217, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:contract:remove', '#', 'admin', NOW(), '', NULL, '删除合同');
+INSERT INTO cloud_flow_db.sys_menu VALUES(274, '合同提交',     217, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:contract:submit', '#', 'admin', NOW(), '', NULL, '提交合同审批');
+INSERT INTO cloud_flow_db.sys_menu VALUES(275, '合同取消',     217, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:contract:cancel', '#', 'admin', NOW(), '', NULL, '取消合同');
+INSERT INTO cloud_flow_db.sys_menu VALUES(276, '合同绑定用印', 217, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:contract:link-seal', '#', 'admin', NOW(), '', NULL, '绑定合同用印');
 
 -- 行政管理(parent_id=5)扩展菜单：访客管理、值班排班、供应商、耗材
-INSERT INTO cloud_flow_db.sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'admin:visitor:list',        'UserCheck',       'admin', NOW(), '', null, '访客预约管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(506, '访客管理',   5, 7, '/admin/visitor',            'pages/VisitorPage',            NULL, 0, 0, 'C', '0', '0', 'oa:visitor:list',        'UserCheck',       'admin', NOW(), '', null, '访客预约管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(507, '值班排班',   5, 8, '/admin/duty-schedule',      'pages/DutySchedulePage',       NULL, 0, 0, 'C', '0', '0', 'admin:duty:list',           'CalendarClock',   'admin', NOW(), '', null, '值班排班管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(507, '值班排班',   5, 8, '/admin/duty-schedule',      'pages/DutySchedulePage',       NULL, 0, 0, 'C', '0', '0', 'oa:duty:list',           'CalendarClock',   'admin', NOW(), '', null, '值班排班管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(508, '供应商管理', 5, 9, '/admin/supplier',           'pages/admin/supplier/SupplierPage', NULL, 0, 0, 'C', '0', '0', 'admin:supplier:list', 'Handshake',       'admin', NOW(), '', null, '行政采购供应商管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(508, '供应商管理', 5, 9, '/admin/supplier',           'pages/admin/supplier/SupplierPage', NULL, 0, 0, 'C', '0', '0', 'oa:supplier:list', 'Handshake',       'admin', NOW(), '', null, '行政采购供应商管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(509, '耗材管理',   5, 10, '/admin/consumable',         'pages/admin/consumable/ConsumablePage', NULL, 0, 0, 'C', '0', '0', 'admin:consumable:list', 'Package',       'admin', NOW(), '', null, '行政采购耗材目录与库存管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(509, '耗材管理',   5, 10, '/admin/consumable',         'pages/admin/consumable/ConsumablePage', NULL, 0, 0, 'C', '0', '0', 'oa:consumable:list', 'Package',       'admin', NOW(), '', null, '行政采购耗材目录与库存管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(510, '印章台账',   5, 11, '/admin/seal',               'pages/admin/seal-license/SealListPage', NULL, 0, 0, 'C', '0', '0', 'admin:seal:list',       'Stamp',           'admin', NOW(), '', null, '印章台账管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(510, '印章台账',   5, 11, '/admin/seal',               'pages/admin/seal-license/SealListPage', NULL, 0, 0, 'C', '0', '0', 'oa:seal:list',       'Stamp',           'admin', NOW(), '', null, '印章台账管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(511, '证照台账',   5, 12, '/admin/license',            'pages/admin/seal-license/LicenseListPage', NULL, 0, 0, 'C', '0', '0', 'admin:license:list', 'BadgeCheck',      'admin', NOW(), '', null, '证照台账管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(511, '证照台账',   5, 12, '/admin/license',            'pages/admin/seal-license/LicenseListPage', NULL, 0, 0, 'C', '0', '0', 'oa:license:list', 'BadgeCheck',      'admin', NOW(), '', null, '证照台账管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(512, '借还管理',   5, 13, '/admin/borrow-management',  'pages/admin/seal-license/BorrowManagementPage', NULL, 0, 0, 'C', '0', '0', 'admin:borrow:list', 'RotateCcw',     'admin', NOW(), '', null, '用印证照借还管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(512, '借还管理',   5, 13, '/admin/borrow-management',  'pages/admin/seal-license/BorrowManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:borrow:list', 'RotateCcw',     'admin', NOW(), '', null, '用印证照借还管理');
 
-INSERT INTO cloud_flow_db.sys_menu VALUES(513, '风险中心',   5, 14, '/admin/risk-alerts',        'pages/admin/RiskAlertPage',    NULL, 0, 0, 'C', '0', '0', 'admin:risk:list',          'ShieldAlert',     'admin', NOW(), '', null, '合同、审批与用印风险中心');
-INSERT INTO cloud_flow_db.sys_menu VALUES(514, '项目WBS',    5, 15, '/admin/project-wbs',       'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'admin:project:wbs',         'GitBranch',       'admin', NOW(), '', null, '项目WBS任务管理');
-INSERT INTO cloud_flow_db.sys_menu VALUES(515, '资产新增',   501, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:asset:add', '#', 'admin', NOW(), '', NULL, '新增资产');
-INSERT INTO cloud_flow_db.sys_menu VALUES(516, '资产编辑',   501, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:asset:edit', '#', 'admin', NOW(), '', NULL, '编辑资产');
-INSERT INTO cloud_flow_db.sys_menu VALUES(517, '资产删除',   501, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:asset:remove', '#', 'admin', NOW(), '', NULL, '删除资产');
-INSERT INTO cloud_flow_db.sys_menu VALUES(518, '资产领用',   501, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:asset:borrow', '#', 'admin', NOW(), '', NULL, '资产领用');
-INSERT INTO cloud_flow_db.sys_menu VALUES(519, '资产归还',   501, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:asset:return', '#', 'admin', NOW(), '', NULL, '资产归还');
-INSERT INTO cloud_flow_db.sys_menu VALUES(520, '资产送修',   501, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:asset:repair', '#', 'admin', NOW(), '', NULL, '资产送修');
-INSERT INTO cloud_flow_db.sys_menu VALUES(521, '资产报废',   501, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:asset:scrap', '#', 'admin', NOW(), '', NULL, '资产报废');
-INSERT INTO cloud_flow_db.sys_menu VALUES(522, '车辆新增',   502, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:add', '#', 'admin', NOW(), '', NULL, '新增车辆');
-INSERT INTO cloud_flow_db.sys_menu VALUES(523, '车辆编辑',   502, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:edit', '#', 'admin', NOW(), '', NULL, '编辑车辆');
-INSERT INTO cloud_flow_db.sys_menu VALUES(524, '车辆删除',   502, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:remove', '#', 'admin', NOW(), '', NULL, '删除车辆');
-INSERT INTO cloud_flow_db.sys_menu VALUES(525, '用车审批',   504, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:approve', '#', 'admin', NOW(), '', NULL, '审批用车申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(526, '用车派车',   504, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:dispatch', '#', 'admin', NOW(), '', NULL, '派车');
-INSERT INTO cloud_flow_db.sys_menu VALUES(527, '用车归还',   504, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:return', '#', 'admin', NOW(), '', NULL, '归还车辆');
-INSERT INTO cloud_flow_db.sys_menu VALUES(528, '用车取消',   504, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:cancel', '#', 'admin', NOW(), '', NULL, '取消用车申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(529, '车辆费用新增', 504, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:expense:add', '#', 'admin', NOW(), '', NULL, '新增车辆费用');
-INSERT INTO cloud_flow_db.sys_menu VALUES(530, '车辆维保新增', 502, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:maintenance:add', '#', 'admin', NOW(), '', NULL, '新增车辆维保');
-INSERT INTO cloud_flow_db.sys_menu VALUES(531, '车辆违章新增', 502, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:vehicle:violation:add', '#', 'admin', NOW(), '', NULL, '新增车辆违章');
-INSERT INTO cloud_flow_db.sys_menu VALUES(532, '访客新增',   506, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:visitor:add', '#', 'admin', NOW(), '', NULL, '新增访客预约');
-INSERT INTO cloud_flow_db.sys_menu VALUES(533, '访客编辑',   506, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:visitor:edit', '#', 'admin', NOW(), '', NULL, '编辑访客预约');
-INSERT INTO cloud_flow_db.sys_menu VALUES(534, '访客删除',   506, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:visitor:remove', '#', 'admin', NOW(), '', NULL, '删除访客预约');
-INSERT INTO cloud_flow_db.sys_menu VALUES(535, '访客确认',   506, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:visitor:confirm', '#', 'admin', NOW(), '', NULL, '确认访客预约');
-INSERT INTO cloud_flow_db.sys_menu VALUES(536, '访客签到',   506, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:visitor:checkin', '#', 'admin', NOW(), '', NULL, '访客签到');
-INSERT INTO cloud_flow_db.sys_menu VALUES(537, '访客签退',   506, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:visitor:checkout', '#', 'admin', NOW(), '', NULL, '访客签退');
-INSERT INTO cloud_flow_db.sys_menu VALUES(538, '访客取消',   506, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:visitor:cancel', '#', 'admin', NOW(), '', NULL, '取消访客预约');
-INSERT INTO cloud_flow_db.sys_menu VALUES(539, '值班新增',   507, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:duty:add', '#', 'admin', NOW(), '', NULL, '新增值班排班');
-INSERT INTO cloud_flow_db.sys_menu VALUES(540, '值班编辑',   507, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:duty:edit', '#', 'admin', NOW(), '', NULL, '编辑值班排班');
-INSERT INTO cloud_flow_db.sys_menu VALUES(541, '值班删除',   507, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:duty:remove', '#', 'admin', NOW(), '', NULL, '删除值班排班');
-INSERT INTO cloud_flow_db.sys_menu VALUES(542, '值班签到',   507, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:duty:checkin', '#', 'admin', NOW(), '', NULL, '值班签到');
-INSERT INTO cloud_flow_db.sys_menu VALUES(543, '值班签退',   507, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:duty:checkout', '#', 'admin', NOW(), '', NULL, '值班签退');
-INSERT INTO cloud_flow_db.sys_menu VALUES(544, '值班换班',   507, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:duty:swap', '#', 'admin', NOW(), '', NULL, '值班换班');
-INSERT INTO cloud_flow_db.sys_menu VALUES(545, '供应商新增', 508, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:supplier:add', '#', 'admin', NOW(), '', NULL, '新增供应商');
-INSERT INTO cloud_flow_db.sys_menu VALUES(546, '供应商编辑', 508, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:supplier:edit', '#', 'admin', NOW(), '', NULL, '编辑供应商');
-INSERT INTO cloud_flow_db.sys_menu VALUES(547, '供应商删除', 508, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:supplier:remove', '#', 'admin', NOW(), '', NULL, '删除供应商');
-INSERT INTO cloud_flow_db.sys_menu VALUES(548, '耗材新增',   509, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:consumable:add', '#', 'admin', NOW(), '', NULL, '新增耗材');
-INSERT INTO cloud_flow_db.sys_menu VALUES(549, '耗材编辑',   509, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:consumable:edit', '#', 'admin', NOW(), '', NULL, '编辑耗材');
-INSERT INTO cloud_flow_db.sys_menu VALUES(550, '耗材删除',   509, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:consumable:remove', '#', 'admin', NOW(), '', NULL, '删除耗材');
-INSERT INTO cloud_flow_db.sys_menu VALUES(551, '耗材入库',   509, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:consumable:add-stock', '#', 'admin', NOW(), '', NULL, '耗材入库');
-INSERT INTO cloud_flow_db.sys_menu VALUES(552, '耗材出库',   509, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:consumable:reduce-stock', '#', 'admin', NOW(), '', NULL, '耗材出库');
-INSERT INTO cloud_flow_db.sys_menu VALUES(553, '印章新增',   510, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal:add', '#', 'admin', NOW(), '', NULL, '新增印章');
-INSERT INTO cloud_flow_db.sys_menu VALUES(554, '印章编辑',   510, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal:edit', '#', 'admin', NOW(), '', NULL, '编辑印章');
-INSERT INTO cloud_flow_db.sys_menu VALUES(555, '印章删除',   510, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal:remove', '#', 'admin', NOW(), '', NULL, '删除印章');
-INSERT INTO cloud_flow_db.sys_menu VALUES(556, '印章提醒',   510, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal:remind', '#', 'admin', NOW(), '', NULL, '印章到期提醒');
-INSERT INTO cloud_flow_db.sys_menu VALUES(557, '证照新增',   511, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license:add', '#', 'admin', NOW(), '', NULL, '新增证照');
-INSERT INTO cloud_flow_db.sys_menu VALUES(558, '证照编辑',   511, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license:edit', '#', 'admin', NOW(), '', NULL, '编辑证照');
-INSERT INTO cloud_flow_db.sys_menu VALUES(559, '证照删除',   511, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license:remove', '#', 'admin', NOW(), '', NULL, '删除证照');
-INSERT INTO cloud_flow_db.sys_menu VALUES(560, '证照提醒',   511, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license:remind', '#', 'admin', NOW(), '', NULL, '证照到期提醒');
-INSERT INTO cloud_flow_db.sys_menu VALUES(561, '借还借出',   512, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:borrow:confirm', '#', 'admin', NOW(), '', NULL, '确认借出');
-INSERT INTO cloud_flow_db.sys_menu VALUES(562, '借还归还',   512, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:borrow:return', '#', 'admin', NOW(), '', NULL, '确认归还');
-INSERT INTO cloud_flow_db.sys_menu VALUES(563, '借还催还',   512, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:borrow:remind', '#', 'admin', NOW(), '', NULL, '催还');
-INSERT INTO cloud_flow_db.sys_menu VALUES(564, '风险新增',   513, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:risk:add', '#', 'admin', NOW(), '', NULL, '人工标记风险');
-INSERT INTO cloud_flow_db.sys_menu VALUES(565, '风险处理',   513, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:risk:status', '#', 'admin', NOW(), '', NULL, '更新风险状态');
-INSERT INTO cloud_flow_db.sys_menu VALUES(566, '风险指派',   513, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:risk:assign', '#', 'admin', NOW(), '', NULL, '指派风险');
-INSERT INTO cloud_flow_db.sys_menu VALUES(567, '印章续期新增', 510, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal-renewal:add', '#', 'admin', NOW(), '', NULL, '新增印章续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(568, '印章续期编辑', 510, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal-renewal:edit', '#', 'admin', NOW(), '', NULL, '编辑印章续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(569, '印章续期删除', 510, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal-renewal:remove', '#', 'admin', NOW(), '', NULL, '删除印章续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(570, '印章续期提交', 510, 8, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal-renewal:submit', '#', 'admin', NOW(), '', NULL, '提交印章续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(571, '印章续期取消', 510, 9, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:seal-renewal:cancel', '#', 'admin', NOW(), '', NULL, '取消印章续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(572, '证照续期新增', 511, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license-renewal:add', '#', 'admin', NOW(), '', NULL, '新增证照续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(573, '证照续期编辑', 511, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license-renewal:edit', '#', 'admin', NOW(), '', NULL, '编辑证照续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(574, '证照续期删除', 511, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license-renewal:remove', '#', 'admin', NOW(), '', NULL, '删除证照续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(575, '证照续期提交', 511, 8, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license-renewal:submit', '#', 'admin', NOW(), '', NULL, '提交证照续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(576, '证照续期取消', 511, 9, '', NULL, NULL, 0, 0, 'F', '0', '0', 'admin:license-renewal:cancel', '#', 'admin', NOW(), '', NULL, '取消证照续期申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(577, '用印新增',   212, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:seal:add', '#', 'admin', NOW(), '', NULL, '新增用印申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(578, '用印编辑',   212, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:seal:edit', '#', 'admin', NOW(), '', NULL, '编辑用印申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(579, '用印删除',   212, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:seal:remove', '#', 'admin', NOW(), '', NULL, '删除用印申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(580, '用印提交',   212, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:seal:submit', '#', 'admin', NOW(), '', NULL, '提交用印申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(581, '用印取消',   212, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:seal:cancel', '#', 'admin', NOW(), '', NULL, '取消用印申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(582, '证照借用新增', 213, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:license:add', '#', 'admin', NOW(), '', NULL, '新增证照借用申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(583, '证照借用编辑', 213, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:license:edit', '#', 'admin', NOW(), '', NULL, '编辑证照借用申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(584, '证照借用删除', 213, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:license:remove', '#', 'admin', NOW(), '', NULL, '删除证照借用申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(585, '证照借用提交', 213, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:license:submit', '#', 'admin', NOW(), '', NULL, '提交证照借用申请');
-INSERT INTO cloud_flow_db.sys_menu VALUES(586, '证照借用取消', 213, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'office:license:cancel', '#', 'admin', NOW(), '', NULL, '取消证照借用申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(513, '风险中心',   5, 14, '/admin/risk-alerts',        'pages/admin/RiskAlertPage',    NULL, 0, 0, 'C', '0', '0', 'oa:risk:list',          'ShieldAlert',     'admin', NOW(), '', null, '合同、审批与用印风险中心');
+INSERT INTO cloud_flow_db.sys_menu VALUES(514, '项目WBS',    5, 15, '/admin/project-wbs',       'pages/ProjectManagementPage', NULL, 0, 0, 'C', '0', '0', 'oa:project:wbs',         'GitBranch',       'admin', NOW(), '', null, '项目WBS任务管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(515, '资产新增',   501, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:asset:add', '#', 'admin', NOW(), '', NULL, '新增资产');
+INSERT INTO cloud_flow_db.sys_menu VALUES(516, '资产编辑',   501, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:asset:edit', '#', 'admin', NOW(), '', NULL, '编辑资产');
+INSERT INTO cloud_flow_db.sys_menu VALUES(517, '资产删除',   501, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:asset:remove', '#', 'admin', NOW(), '', NULL, '删除资产');
+INSERT INTO cloud_flow_db.sys_menu VALUES(518, '资产领用',   501, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:asset:borrow', '#', 'admin', NOW(), '', NULL, '资产领用');
+INSERT INTO cloud_flow_db.sys_menu VALUES(519, '资产归还',   501, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:asset:return', '#', 'admin', NOW(), '', NULL, '资产归还');
+INSERT INTO cloud_flow_db.sys_menu VALUES(520, '资产送修',   501, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:asset:repair', '#', 'admin', NOW(), '', NULL, '资产送修');
+INSERT INTO cloud_flow_db.sys_menu VALUES(521, '资产报废',   501, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:asset:scrap', '#', 'admin', NOW(), '', NULL, '资产报废');
+INSERT INTO cloud_flow_db.sys_menu VALUES(522, '车辆新增',   502, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:add', '#', 'admin', NOW(), '', NULL, '新增车辆');
+INSERT INTO cloud_flow_db.sys_menu VALUES(523, '车辆编辑',   502, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:edit', '#', 'admin', NOW(), '', NULL, '编辑车辆');
+INSERT INTO cloud_flow_db.sys_menu VALUES(524, '车辆删除',   502, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:remove', '#', 'admin', NOW(), '', NULL, '删除车辆');
+INSERT INTO cloud_flow_db.sys_menu VALUES(525, '用车审批',   504, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:approve', '#', 'admin', NOW(), '', NULL, '审批用车申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(526, '用车派车',   504, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:dispatch', '#', 'admin', NOW(), '', NULL, '派车');
+INSERT INTO cloud_flow_db.sys_menu VALUES(527, '用车归还',   504, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:return', '#', 'admin', NOW(), '', NULL, '归还车辆');
+INSERT INTO cloud_flow_db.sys_menu VALUES(528, '用车取消',   504, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:cancel', '#', 'admin', NOW(), '', NULL, '取消用车申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(529, '车辆费用新增', 504, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:expense:add', '#', 'admin', NOW(), '', NULL, '新增车辆费用');
+INSERT INTO cloud_flow_db.sys_menu VALUES(530, '车辆维保新增', 502, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:maintenance:add', '#', 'admin', NOW(), '', NULL, '新增车辆维保');
+INSERT INTO cloud_flow_db.sys_menu VALUES(531, '车辆违章新增', 502, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:vehicle:violation:add', '#', 'admin', NOW(), '', NULL, '新增车辆违章');
+INSERT INTO cloud_flow_db.sys_menu VALUES(532, '访客新增',   506, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:visitor:add', '#', 'admin', NOW(), '', NULL, '新增访客预约');
+INSERT INTO cloud_flow_db.sys_menu VALUES(533, '访客编辑',   506, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:visitor:edit', '#', 'admin', NOW(), '', NULL, '编辑访客预约');
+INSERT INTO cloud_flow_db.sys_menu VALUES(534, '访客删除',   506, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:visitor:remove', '#', 'admin', NOW(), '', NULL, '删除访客预约');
+INSERT INTO cloud_flow_db.sys_menu VALUES(535, '访客确认',   506, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:visitor:confirm', '#', 'admin', NOW(), '', NULL, '确认访客预约');
+INSERT INTO cloud_flow_db.sys_menu VALUES(536, '访客签到',   506, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:visitor:checkin', '#', 'admin', NOW(), '', NULL, '访客签到');
+INSERT INTO cloud_flow_db.sys_menu VALUES(537, '访客签退',   506, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:visitor:checkout', '#', 'admin', NOW(), '', NULL, '访客签退');
+INSERT INTO cloud_flow_db.sys_menu VALUES(538, '访客取消',   506, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:visitor:cancel', '#', 'admin', NOW(), '', NULL, '取消访客预约');
+INSERT INTO cloud_flow_db.sys_menu VALUES(539, '值班新增',   507, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:duty:add', '#', 'admin', NOW(), '', NULL, '新增值班排班');
+INSERT INTO cloud_flow_db.sys_menu VALUES(540, '值班编辑',   507, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:duty:edit', '#', 'admin', NOW(), '', NULL, '编辑值班排班');
+INSERT INTO cloud_flow_db.sys_menu VALUES(541, '值班删除',   507, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:duty:remove', '#', 'admin', NOW(), '', NULL, '删除值班排班');
+INSERT INTO cloud_flow_db.sys_menu VALUES(542, '值班签到',   507, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:duty:checkin', '#', 'admin', NOW(), '', NULL, '值班签到');
+INSERT INTO cloud_flow_db.sys_menu VALUES(543, '值班签退',   507, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:duty:checkout', '#', 'admin', NOW(), '', NULL, '值班签退');
+INSERT INTO cloud_flow_db.sys_menu VALUES(544, '值班换班',   507, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:duty:swap', '#', 'admin', NOW(), '', NULL, '值班换班');
+INSERT INTO cloud_flow_db.sys_menu VALUES(545, '供应商新增', 508, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:supplier:add', '#', 'admin', NOW(), '', NULL, '新增供应商');
+INSERT INTO cloud_flow_db.sys_menu VALUES(546, '供应商编辑', 508, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:supplier:edit', '#', 'admin', NOW(), '', NULL, '编辑供应商');
+INSERT INTO cloud_flow_db.sys_menu VALUES(547, '供应商删除', 508, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:supplier:remove', '#', 'admin', NOW(), '', NULL, '删除供应商');
+INSERT INTO cloud_flow_db.sys_menu VALUES(548, '耗材新增',   509, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:consumable:add', '#', 'admin', NOW(), '', NULL, '新增耗材');
+INSERT INTO cloud_flow_db.sys_menu VALUES(549, '耗材编辑',   509, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:consumable:edit', '#', 'admin', NOW(), '', NULL, '编辑耗材');
+INSERT INTO cloud_flow_db.sys_menu VALUES(550, '耗材删除',   509, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:consumable:remove', '#', 'admin', NOW(), '', NULL, '删除耗材');
+INSERT INTO cloud_flow_db.sys_menu VALUES(551, '耗材入库',   509, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:consumable:add-stock', '#', 'admin', NOW(), '', NULL, '耗材入库');
+INSERT INTO cloud_flow_db.sys_menu VALUES(552, '耗材出库',   509, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:consumable:reduce-stock', '#', 'admin', NOW(), '', NULL, '耗材出库');
+INSERT INTO cloud_flow_db.sys_menu VALUES(553, '印章新增',   510, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:add', '#', 'admin', NOW(), '', NULL, '新增印章');
+INSERT INTO cloud_flow_db.sys_menu VALUES(554, '印章编辑',   510, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:edit', '#', 'admin', NOW(), '', NULL, '编辑印章');
+INSERT INTO cloud_flow_db.sys_menu VALUES(555, '印章删除',   510, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:remove', '#', 'admin', NOW(), '', NULL, '删除印章');
+INSERT INTO cloud_flow_db.sys_menu VALUES(556, '印章提醒',   510, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:remind', '#', 'admin', NOW(), '', NULL, '印章到期提醒');
+INSERT INTO cloud_flow_db.sys_menu VALUES(557, '证照新增',   511, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:add', '#', 'admin', NOW(), '', NULL, '新增证照');
+INSERT INTO cloud_flow_db.sys_menu VALUES(558, '证照编辑',   511, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:edit', '#', 'admin', NOW(), '', NULL, '编辑证照');
+INSERT INTO cloud_flow_db.sys_menu VALUES(559, '证照删除',   511, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:remove', '#', 'admin', NOW(), '', NULL, '删除证照');
+INSERT INTO cloud_flow_db.sys_menu VALUES(560, '证照提醒',   511, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:remind', '#', 'admin', NOW(), '', NULL, '证照到期提醒');
+INSERT INTO cloud_flow_db.sys_menu VALUES(561, '借还借出',   512, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:borrow:confirm', '#', 'admin', NOW(), '', NULL, '确认借出');
+INSERT INTO cloud_flow_db.sys_menu VALUES(562, '借还归还',   512, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:borrow:return', '#', 'admin', NOW(), '', NULL, '确认归还');
+INSERT INTO cloud_flow_db.sys_menu VALUES(563, '借还催还',   512, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:borrow:remind', '#', 'admin', NOW(), '', NULL, '催还');
+INSERT INTO cloud_flow_db.sys_menu VALUES(564, '风险新增',   513, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:risk:add', '#', 'admin', NOW(), '', NULL, '人工标记风险');
+INSERT INTO cloud_flow_db.sys_menu VALUES(565, '风险处理',   513, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:risk:status', '#', 'admin', NOW(), '', NULL, '更新风险状态');
+INSERT INTO cloud_flow_db.sys_menu VALUES(566, '风险指派',   513, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:risk:assign', '#', 'admin', NOW(), '', NULL, '指派风险');
+INSERT INTO cloud_flow_db.sys_menu VALUES(567, '印章续期新增', 510, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal-renewal:add', '#', 'admin', NOW(), '', NULL, '新增印章续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(568, '印章续期编辑', 510, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal-renewal:edit', '#', 'admin', NOW(), '', NULL, '编辑印章续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(569, '印章续期删除', 510, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal-renewal:remove', '#', 'admin', NOW(), '', NULL, '删除印章续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(570, '印章续期提交', 510, 8, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal-renewal:submit', '#', 'admin', NOW(), '', NULL, '提交印章续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(571, '印章续期取消', 510, 9, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal-renewal:cancel', '#', 'admin', NOW(), '', NULL, '取消印章续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(572, '证照续期新增', 511, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license-renewal:add', '#', 'admin', NOW(), '', NULL, '新增证照续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(573, '证照续期编辑', 511, 6, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license-renewal:edit', '#', 'admin', NOW(), '', NULL, '编辑证照续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(574, '证照续期删除', 511, 7, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license-renewal:remove', '#', 'admin', NOW(), '', NULL, '删除证照续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(575, '证照续期提交', 511, 8, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license-renewal:submit', '#', 'admin', NOW(), '', NULL, '提交证照续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(576, '证照续期取消', 511, 9, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license-renewal:cancel', '#', 'admin', NOW(), '', NULL, '取消证照续期申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(577, '用印新增',   212, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:add', '#', 'admin', NOW(), '', NULL, '新增用印申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(578, '用印编辑',   212, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:edit', '#', 'admin', NOW(), '', NULL, '编辑用印申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(579, '用印删除',   212, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:remove', '#', 'admin', NOW(), '', NULL, '删除用印申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(580, '用印提交',   212, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:submit', '#', 'admin', NOW(), '', NULL, '提交用印申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(581, '用印取消',   212, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:seal:cancel', '#', 'admin', NOW(), '', NULL, '取消用印申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(582, '证照借用新增', 213, 1, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:add', '#', 'admin', NOW(), '', NULL, '新增证照借用申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(583, '证照借用编辑', 213, 2, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:edit', '#', 'admin', NOW(), '', NULL, '编辑证照借用申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(584, '证照借用删除', 213, 3, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:remove', '#', 'admin', NOW(), '', NULL, '删除证照借用申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(585, '证照借用提交', 213, 4, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:submit', '#', 'admin', NOW(), '', NULL, '提交证照借用申请');
+INSERT INTO cloud_flow_db.sys_menu VALUES(586, '证照借用取消', 213, 5, '', NULL, NULL, 0, 0, 'F', '0', '0', 'oa:license:cancel', '#', 'admin', NOW(), '', NULL, '取消证照借用申请');
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(800, '客户管理',   8, 1, '/office/crm/customers',        'pages/CrmManagementPage',        NULL,              0, 0, 'C', '0', '0', 'crm:customer:list',         'Building2',       'admin', NOW(), '', null, '客户主数据与健康度');
 INSERT INTO cloud_flow_db.sys_menu VALUES(801, '商机管理',   8, 2, '/office/crm/opportunities',    'pages/CrmManagementPage',        NULL,              0, 0, 'C', '0', '0', 'crm:opportunity:list',      'Target',          'admin', NOW(), '', null, 'CRM商机推进');
@@ -1097,8 +1098,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 612, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 614, 100000);
 
 -- 流程导入
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 615, 100000);
-
 -- 归档管理
 -- 行政管理子菜单
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(2, 500, 100000);
@@ -1276,8 +1275,6 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 612, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 614, 100000);
 
 -- 流程导入
-INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 615, 100000);
-
 -- 归档管理
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 500, 100000);
 
@@ -1346,6 +1343,126 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(724, '员工异动',   7, 5, '/hr/life
 INSERT INTO cloud_flow_db.sys_menu VALUES(725, '考勤休假',   7, 6, '/hr/attendance',         'pages/hr/HrAttendancePage',  NULL, 0, 0, 'C', '0', '0', 'hr:attendance:list',      'CalendarClock',   'admin', NOW(), '', NULL, '班次、规则、排班、打卡、休假');
 INSERT INTO cloud_flow_db.sys_menu VALUES(726, '薪酬福利',   7, 7, '/hr/compensation',       'pages/hr/HrCompensationPage',NULL, 0, 0, 'C', '0', '0', 'hr:compensation:list',    'Landmark',        'admin', NOW(), '', NULL, '薪资、社保、公积金与个税');
 INSERT INTO cloud_flow_db.sys_menu VALUES(727, '绩效管理',   7, 8, '/hr/performance',        'pages/hr/HrPerformancePage', NULL, 0, 0, 'C', '0', '0', 'hr:performance:list',     'Target',          'admin', NOW(), '', NULL, '绩效目标、结果与调薪');
+
+-- 权限统一收口功能节点（原 07 迁移并入种子）
+INSERT INTO cloud_flow_db.sys_menu VALUES
+(900,  '认证信息',       6,   90, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:auth:info',              '#', 'admin', NOW(), '', NULL, '认证信息读取权限'),
+(901,  '退出登录',       6,   91, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:auth:logout',            '#', 'admin', NOW(), '', NULL, '退出登录权限'),
+(902,  '路由加载',       6,   92, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:auth:router',            '#', 'admin', NOW(), '', NULL, '路由加载权限'),
+(903,  '租户切换',       6,   93, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:tenant:switch',          '#', 'admin', NOW(), '', NULL, '租户切换权限'),
+(904,  '个人资料查看',   6,   94, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:user:profile:view',      '#', 'admin', NOW(), '', NULL, '个人资料查看权限'),
+(905,  '个人资料修改',   6,   95, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:user:profile:edit',      '#', 'admin', NOW(), '', NULL, '个人资料修改权限'),
+(906,  '个人密码修改',   6,   96, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:user:profile:password',  '#', 'admin', NOW(), '', NULL, '个人密码修改权限'),
+
+(907,  '消息列表',       100,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:notice:list',                '#', 'admin', NOW(), '', NULL, '消息列表权限'),
+(908,  '消息已读',       100,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:notice:read',                '#', 'admin', NOW(), '', NULL, '消息已读权限'),
+(909,  '消息删除',       100,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:notice:remove',              '#', 'admin', NOW(), '', NULL, '消息删除权限'),
+(910,  '错误上报',       100,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:error-report:create',        '#', 'admin', NOW(), '', NULL, '前端错误上报权限'),
+(911,  '同步设备注册',   100,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:sync:register',              '#', 'admin', NOW(), '', NULL, '同步设备注册权限'),
+(912,  '同步上传',       100,  6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:sync:upload',                '#', 'admin', NOW(), '', NULL, '同步上传权限'),
+(913,  '同步下载',       100,  7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:sync:download',              '#', 'admin', NOW(), '', NULL, '同步下载权限'),
+(914,  '同步冲突处理',   100,  8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:sync:resolve',               '#', 'admin', NOW(), '', NULL, '同步冲突处理权限'),
+(915,  '日程新增',       101,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:schedule:add',               '#', 'admin', NOW(), '', NULL, '日程新增权限'),
+(916,  '日程编辑',       101,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:schedule:edit',              '#', 'admin', NOW(), '', NULL, '日程编辑权限'),
+(917,  '日程删除',       101,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:schedule:remove',            '#', 'admin', NOW(), '', NULL, '日程删除权限'),
+(918,  '日程取消',       101,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:schedule:cancel',            '#', 'admin', NOW(), '', NULL, '日程取消权限'),
+(919,  '协作任务列表',   300,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:work-task:list',             '#', 'admin', NOW(), '', NULL, '协作任务列表权限'),
+(920,  '协作任务详情',   300,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:work-task:view',             '#', 'admin', NOW(), '', NULL, '协作任务详情权限'),
+(921,  '协作任务新增',   300,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:work-task:add',              '#', 'admin', NOW(), '', NULL, '协作任务新增权限'),
+(922,  '协作任务编辑',   300,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:work-task:edit',             '#', 'admin', NOW(), '', NULL, '协作任务编辑权限'),
+(923,  '协作任务状态',   300,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:work-task:status',           '#', 'admin', NOW(), '', NULL, '协作任务状态权限'),
+(924,  '协作任务删除',   300,  6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'oa:work-task:remove',           '#', 'admin', NOW(), '', NULL, '协作任务删除权限'),
+
+(925,  '员工查看',       721,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:employees:view',             '#', 'admin', NOW(), '', NULL, '员工查看权限'),
+(926,  '员工新增',       721,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:employees:add',              '#', 'admin', NOW(), '', NULL, '员工新增权限'),
+(927,  '员工编辑',       721,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:employees:edit',             '#', 'admin', NOW(), '', NULL, '员工编辑权限'),
+(928,  '员工删除',       721,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:employees:remove',           '#', 'admin', NOW(), '', NULL, '员工删除权限'),
+(929,  '组织查看',       722,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:organization:view',          '#', 'admin', NOW(), '', NULL, '组织查看权限'),
+(930,  '组织新增',       722,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:organization:add',           '#', 'admin', NOW(), '', NULL, '组织新增权限'),
+(931,  '组织编辑',       722,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:organization:edit',          '#', 'admin', NOW(), '', NULL, '组织编辑权限'),
+(932,  '组织删除',       722,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:organization:remove',        '#', 'admin', NOW(), '', NULL, '组织删除权限'),
+(933,  '招聘新增',       723,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:recruitment:add',            '#', 'admin', NOW(), '', NULL, '招聘新增权限'),
+(934,  '招聘编辑',       723,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:recruitment:edit',           '#', 'admin', NOW(), '', NULL, '招聘编辑权限'),
+(935,  '异动查看',       724,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:lifecycle:view',             '#', 'admin', NOW(), '', NULL, '异动查看权限'),
+(936,  '异动新增',       724,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:lifecycle:add',              '#', 'admin', NOW(), '', NULL, '异动新增权限'),
+(937,  '异动编辑',       724,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:lifecycle:edit',             '#', 'admin', NOW(), '', NULL, '异动编辑权限'),
+(938,  '考勤新增',       725,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:attendance:add',             '#', 'admin', NOW(), '', NULL, '考勤新增权限'),
+(939,  '考勤编辑',       725,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:attendance:edit',            '#', 'admin', NOW(), '', NULL, '考勤编辑权限'),
+(940,  '考勤删除',       725,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:attendance:remove',          '#', 'admin', NOW(), '', NULL, '考勤删除权限'),
+(941,  '薪酬新增',       726,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:compensation:add',           '#', 'admin', NOW(), '', NULL, '薪酬新增权限'),
+(942,  '薪酬编辑',       726,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:compensation:edit',          '#', 'admin', NOW(), '', NULL, '薪酬编辑权限'),
+(943,  '薪酬删除',       726,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:compensation:remove',        '#', 'admin', NOW(), '', NULL, '薪酬删除权限'),
+(944,  '绩效查看',       727,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:performance:view',           '#', 'admin', NOW(), '', NULL, '绩效查看权限'),
+(945,  '绩效新增',       727,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:performance:add',            '#', 'admin', NOW(), '', NULL, '绩效新增权限'),
+(946,  '绩效编辑',       727,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:performance:edit',           '#', 'admin', NOW(), '', NULL, '绩效编辑权限'),
+
+(947,  '用户查询',       600,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:user:query',             '#', 'admin', NOW(), '', NULL, '用户查询权限'),
+(948,  '用户新增',       600,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:user:add',               '#', 'admin', NOW(), '', NULL, '用户新增权限'),
+(949,  '用户编辑',       600,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:user:edit',              '#', 'admin', NOW(), '', NULL, '用户编辑权限'),
+(950,  '用户删除',       600,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:user:remove',            '#', 'admin', NOW(), '', NULL, '用户删除权限'),
+(951,  '菜单查询',       602,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:menu:query',             '#', 'admin', NOW(), '', NULL, '菜单查询权限'),
+(952,  '菜单新增',       602,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:menu:add',               '#', 'admin', NOW(), '', NULL, '菜单新增权限'),
+(953,  '菜单编辑',       602,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:menu:edit',              '#', 'admin', NOW(), '', NULL, '菜单编辑权限'),
+(954,  '菜单删除',       602,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:menu:remove',            '#', 'admin', NOW(), '', NULL, '菜单删除权限'),
+(955,  '文件上传',       603,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:file:upload',            '#', 'admin', NOW(), '', NULL, '文件上传权限'),
+(956,  '文件编辑',       603,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:file:edit',              '#', 'admin', NOW(), '', NULL, '文件编辑权限'),
+(957,  '文件删除',       603,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:file:remove',            '#', 'admin', NOW(), '', NULL, '文件删除权限'),
+(958,  '租户查询',       605,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:tenant:query',           '#', 'admin', NOW(), '', NULL, '租户查询权限'),
+(959,  '租户新增',       605,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:tenant:add',             '#', 'admin', NOW(), '', NULL, '租户新增权限'),
+(960,  '租户编辑',       605,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:tenant:edit',            '#', 'admin', NOW(), '', NULL, '租户编辑权限'),
+(961,  '租户删除',       605,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:tenant:remove',          '#', 'admin', NOW(), '', NULL, '租户删除权限'),
+(962,  '岗位查询',       608,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:post:query',             '#', 'admin', NOW(), '', NULL, '岗位查询权限'),
+(963,  '岗位新增',       608,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:post:add',               '#', 'admin', NOW(), '', NULL, '岗位新增权限'),
+(964,  '岗位编辑',       608,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:post:edit',              '#', 'admin', NOW(), '', NULL, '岗位编辑权限'),
+(965,  '岗位删除',       608,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:post:remove',            '#', 'admin', NOW(), '', NULL, '岗位删除权限'),
+(966,  '参数查询',       609,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:config:query',           '#', 'admin', NOW(), '', NULL, '参数查询权限'),
+(967,  '参数新增',       609,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:config:add',             '#', 'admin', NOW(), '', NULL, '参数新增权限'),
+(968,  '参数编辑',       609,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:config:edit',            '#', 'admin', NOW(), '', NULL, '参数编辑权限'),
+(969,  '参数删除',       609,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:config:remove',          '#', 'admin', NOW(), '', NULL, '参数删除权限'),
+(970,  '字典查询',       611,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:query',             '#', 'admin', NOW(), '', NULL, '字典查询权限'),
+(971,  '字典新增',       611,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:add',               '#', 'admin', NOW(), '', NULL, '字典新增权限'),
+(972,  '字典编辑',       611,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:edit',              '#', 'admin', NOW(), '', NULL, '字典编辑权限'),
+(973,  '字典删除',       611,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dict:remove',            '#', 'admin', NOW(), '', NULL, '字典删除权限'),
+(974,  '缓存清理',       610,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:cache:remove',           '#', 'admin', NOW(), '', NULL, '缓存清理权限'),
+(975,  '日志删除',       606,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:log:remove',             '#', 'admin', NOW(), '', NULL, '日志删除权限'),
+(976,  '审计删除',       607,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:audit:remove',           '#', 'admin', NOW(), '', NULL, '审计删除权限'),
+(977,  '登录日志删除',   616,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:login-log:remove',       '#', 'admin', NOW(), '', NULL, '登录日志删除权限'),
+(978,  '部门查询',       500,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dept:query',             '#', 'admin', NOW(), '', NULL, '部门查询权限'),
+(979,  '部门新增',       500,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dept:add',               '#', 'admin', NOW(), '', NULL, '部门新增权限'),
+(980,  '部门编辑',       500,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dept:edit',              '#', 'admin', NOW(), '', NULL, '部门编辑权限'),
+(981,  '部门删除',       500,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'system:dept:remove',            '#', 'admin', NOW(), '', NULL, '部门删除权限'),
+
+(982,  '抄送已读',       303,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:copy:read',            '#', 'admin', NOW(), '', NULL, '抄送已读权限'),
+(983,  '流程详情查看',   400,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:definition:view',      '#', 'admin', NOW(), '', NULL, '流程详情查看权限'),
+(984,  '流程定义新增',   400,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:definition:add',       '#', 'admin', NOW(), '', NULL, '流程定义新增权限'),
+(985,  '流程定义部署',   400,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:definition:deploy',    '#', 'admin', NOW(), '', NULL, '流程定义部署权限'),
+(986,  '流程定义删除',   400,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:definition:remove',    '#', 'admin', NOW(), '', NULL, '流程定义删除权限'),
+(987,  '表单详情查看',   403,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:form:view',            '#', 'admin', NOW(), '', NULL, '表单详情查看权限'),
+(988,  '表单新增',       403,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:form:add',             '#', 'admin', NOW(), '', NULL, '表单新增权限'),
+(989,  '流程分类管理',   612,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:category:manage',      '#', 'admin', NOW(), '', NULL, '流程分类管理权限'),
+(990,  '模板查看',       613,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:template:view',        '#', 'admin', NOW(), '', NULL, '模板查看权限'),
+(991,  '模板管理',       613,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:template:add',         '#', 'admin', NOW(), '', NULL, '模板管理权限'),
+(992,  '部署管理动作',   402,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:deploy:manage',        '#', 'admin', NOW(), '', NULL, '部署管理动作权限'),
+(993,  '部署审批动作',   402,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:deploy:approve',       '#', 'admin', NOW(), '', NULL, '部署审批动作权限'),
+(994,  '告警处理',       700,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:alert:handle',         '#', 'admin', NOW(), '', NULL, '告警处理权限'),
+(995,  '告警解决',       700,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:alert:resolve',        '#', 'admin', NOW(), '', NULL, '告警解决权限'),
+(996,  '流程实例查看',   300,  7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:process:view',         '#', 'admin', NOW(), '', NULL, '流程实例查看权限'),
+(997,  '流程撤回',       301,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:process:recall',       '#', 'admin', NOW(), '', NULL, '流程撤回权限'),
+(998,  '流程暂停',       400,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:process:pause',        '#', 'admin', NOW(), '', NULL, '流程暂停权限'),
+(999,  '流程恢复',       400,  6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:process:resume',       '#', 'admin', NOW(), '', NULL, '流程恢复权限'),
+(1000, '流程终止',       400,  7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:process:terminate',    '#', 'admin', NOW(), '', NULL, '流程终止权限'),
+(1001, '已办列表',       302,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:done',            '#', 'admin', NOW(), '', NULL, '已办列表权限'),
+(1002, '任务完成',       302,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:complete',        '#', 'admin', NOW(), '', NULL, '任务完成权限'),
+(1003, '任务已读',       302,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:read',            '#', 'admin', NOW(), '', NULL, '任务已读权限'),
+(1004, '任务催办',       302,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:urge',            '#', 'admin', NOW(), '', NULL, '任务催办权限'),
+(1005, '任务数量',       100,  9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:count',           '#', 'admin', NOW(), '', NULL, '任务数量权限'),
+(1006, '任务加签',       302,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:add-sign',        '#', 'admin', NOW(), '', NULL, '任务加签权限'),
+(1007, '任务减签',       302,  6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:reduce-sign',     '#', 'admin', NOW(), '', NULL, '任务减签权限'),
+(1008, '任务驳回',       302,  7, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:reject',          '#', 'admin', NOW(), '', NULL, '任务驳回权限'),
+(1009, '任务统计',       100, 10, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:statistics',      '#', 'admin', NOW(), '', NULL, '任务统计权限'),
+(1010, '任务分组',       100, 11, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:groups',          '#', 'admin', NOW(), '', NULL, '任务分组权限'),
+(1011, '流程审计查看',   400,  8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:list',           '#', 'admin', NOW(), '', NULL, '流程审计查看权限'),
+(1012, '流程审计删除',   400,  9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:remove',         '#', 'admin', NOW(), '', NULL, '流程审计删除权限');
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 7, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 720, 100000);
@@ -1778,6 +1895,201 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(7, 576, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 4, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 401, 100000);
+
+-- 权限统一收口角色授权扩散（原 07 迁移并入种子）
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 900, tenant_id FROM cloud_flow_db.sys_role
+UNION ALL SELECT role_id, 901, tenant_id FROM cloud_flow_db.sys_role
+UNION ALL SELECT role_id, 902, tenant_id FROM cloud_flow_db.sys_role
+UNION ALL SELECT role_id, 903, tenant_id FROM cloud_flow_db.sys_role
+UNION ALL SELECT role_id, 904, tenant_id FROM cloud_flow_db.sys_role
+UNION ALL SELECT role_id, 905, tenant_id FROM cloud_flow_db.sys_role
+UNION ALL SELECT role_id, 906, tenant_id FROM cloud_flow_db.sys_role;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 100 AND child.menu_id IN (907, 908, 909, 910, 911, 912, 913, 914, 1005, 1009, 1010)
+WHERE rm.menu_id = 100;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 101 AND child.menu_id IN (915, 916, 917, 918)
+WHERE rm.menu_id = 101;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 300 AND child.menu_id IN (919, 920, 921, 922, 923, 924, 996)
+WHERE rm.menu_id = 300;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 997, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 301;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 302 AND child.menu_id IN (1001, 1002, 1003, 1004, 1006, 1007, 1008)
+WHERE rm.menu_id = 302;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 982, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 303;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 400 AND child.menu_id IN (983, 984, 985, 986, 998, 999, 1000, 1011, 1012)
+WHERE rm.menu_id = 400;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 402 AND child.menu_id IN (992, 993)
+WHERE rm.menu_id = 402;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 403 AND child.menu_id IN (987, 988)
+WHERE rm.menu_id = 403;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 612 AND child.menu_id IN (989)
+WHERE rm.menu_id = 612;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 990, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 613;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT role_id, 991, tenant_id
+FROM cloud_flow_db.sys_role
+WHERE role_key = 'admin';
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 700 AND child.menu_id IN (994, 995)
+WHERE rm.menu_id = 700;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 500 AND child.menu_id IN (978, 979, 980, 981)
+WHERE rm.menu_id = 500;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 600 AND child.menu_id IN (947, 948, 949, 950)
+WHERE rm.menu_id = 600;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 602 AND child.menu_id IN (951, 952, 953, 954)
+WHERE rm.menu_id = 602;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 603 AND child.menu_id IN (955, 956, 957)
+WHERE rm.menu_id = 603;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 605 AND child.menu_id IN (958, 959, 960, 961)
+WHERE rm.menu_id = 605;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 608 AND child.menu_id IN (962, 963, 964, 965)
+WHERE rm.menu_id = 608;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 609 AND child.menu_id IN (966, 967, 968, 969)
+WHERE rm.menu_id = 609;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 610 AND child.menu_id IN (974)
+WHERE rm.menu_id = 610;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 611 AND child.menu_id IN (970, 971, 972, 973)
+WHERE rm.menu_id = 611;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 975, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 606;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 976, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 607;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 977, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 616;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 721 AND child.menu_id IN (925, 926, 927, 928)
+WHERE rm.menu_id = 721;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 722 AND child.menu_id IN (929, 930, 931, 932)
+WHERE rm.menu_id = 722;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 723 AND child.menu_id IN (933, 934)
+WHERE rm.menu_id = 723;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 724 AND child.menu_id IN (935, 936, 937)
+WHERE rm.menu_id = 724;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 725 AND child.menu_id IN (938, 939, 940)
+WHERE rm.menu_id = 725;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 726 AND child.menu_id IN (941, 942, 943)
+WHERE rm.menu_id = 726;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, child.menu_id, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+JOIN cloud_flow_db.sys_menu child ON child.parent_id = 727 AND child.menu_id IN (944, 945, 946)
+WHERE rm.menu_id = 727;
 
 -- 10. 初始化字典类型数据
 INSERT INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
@@ -9095,3 +9407,6 @@ INSERT INTO cloud_flow_db.hr_performance_salary_adjustment (id, tenant_id, objec
 (9301, 100000, 9003, 1003, 8301, 1500, 'Q1研发效能归档后触发绩效调薪建议', 'APPROVED'),
 (9302, 100000, 9003, 1005, 8302, 1000, 'Q1交付支撑表现稳定，触发绩效调薪建议', 'APPROVED'),
 (9303, 100000, 9010, 1008, 8303, 1800, '跨部门经营指标阶段达成，生成绩效调薪申请', 'DRAFT');
+
+
+

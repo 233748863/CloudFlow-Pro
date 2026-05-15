@@ -1,6 +1,7 @@
 package com.cloudflow.auth.controller;
 
 import com.cloudflow.auth.domain.vo.DynamicMapVO;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.connection.DataType;
@@ -34,6 +35,7 @@ public class CacheMonitorController {
      * 包含：服务器信息、Key 数量、命令统计、Key 分组统计
      */
     @GetMapping("/info")
+    @SaCheckPermission("system:cache:list")
     public R<DynamicMapVO> getInfo() {
         // 获取 Redis 服务器信息
         Properties info = (Properties) redisTemplate.execute(
@@ -100,6 +102,7 @@ public class CacheMonitorController {
      * @param pattern 匹配模式，默认 *（全部）
      */
     @GetMapping("/keys")
+    @SaCheckPermission("system:cache:list")
     public R<Set<String>> getKeys(@RequestParam(defaultValue = "*") String pattern) {
         Set<String> keys = redisTemplate.keys(pattern);
         return R.ok(keys != null ? keys : Collections.emptySet());
@@ -111,6 +114,7 @@ public class CacheMonitorController {
      * @param key Redis key 名称（Base64 编码，避免路径特殊字符问题）
      */
     @GetMapping("/value")
+    @SaCheckPermission("system:cache:list")
     public R<DynamicMapVO> getKeyValue(@RequestParam String key) {
         if (key == null || key.isEmpty()) {
             return R.fail("Key 不能为空");
@@ -171,6 +175,7 @@ public class CacheMonitorController {
      * @param key 要删除的 key 名称
      */
     @DeleteMapping("/key")
+    @SaCheckPermission("system:cache:remove")
     public R<Boolean> deleteKey(@RequestParam String key) {
         if (key == null || key.isEmpty()) {
             return R.fail("Key 不能为空");
@@ -185,6 +190,7 @@ public class CacheMonitorController {
      * @param prefix key 前缀（会自动追加 * 通配符）
      */
     @DeleteMapping("/prefix")
+    @SaCheckPermission("system:cache:remove")
     public R<Long> deleteByPrefix(@RequestParam String prefix) {
         if (prefix == null || prefix.isEmpty()) {
             return R.fail("前缀不能为空");

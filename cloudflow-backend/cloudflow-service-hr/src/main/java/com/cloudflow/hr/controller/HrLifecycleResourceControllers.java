@@ -1,6 +1,6 @@
 package com.cloudflow.hr.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrLifecycleApplicationPayload;
@@ -22,24 +22,26 @@ import java.util.Map;
 @RestController
 @RequestMapping("/lifecycle")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrLifecycleApplicationController {
 
     private final HrLifecycleService lifecycleService;
 
     @GetMapping("/applications")
+    @SaCheckPermission("hr:lifecycle:list")
     public R<?> listLifecycleApplications(@RequestParam Map<String, Object> query) {
         return R.ok(lifecycleService.listApplications(query));
     }
 
     @SysLog("新增HR生命周期申请")
     @PostMapping("/applications")
+    @SaCheckPermission("hr:lifecycle:add")
     public R<Long> createLifecycleApplication(@RequestBody HrLifecycleApplicationPayload payload) {
         return R.ok(lifecycleService.createApplication(payload));
     }
 
     @SysLog("修改HR生命周期申请")
     @PutMapping("/applications/{id}")
+    @SaCheckPermission("hr:lifecycle:edit")
     public R<Void> updateLifecycleApplication(@PathVariable Long id, @RequestBody HrLifecycleApplicationPayload payload) {
         lifecycleService.updateApplication(id, payload);
         return R.ok();
@@ -47,6 +49,7 @@ class HrLifecycleApplicationController {
 
     @SysLog("变更HR生命周期申请状态")
     @PostMapping("/applications/{id}/{action}")
+    @SaCheckPermission("hr:lifecycle:edit")
     public R<Void> changeLifecycleStatus(@PathVariable Long id,
                                          @PathVariable String action,
                                          @RequestBody(required = false) HrLifecycleStatusChangePayload payload) {
@@ -55,11 +58,13 @@ class HrLifecycleApplicationController {
     }
 
     @GetMapping("/applications/{id}/details")
+    @SaCheckPermission("hr:lifecycle:view")
     public R<?> listLifecycleDetails(@PathVariable Long id) {
         return R.ok(lifecycleService.listDetails(id));
     }
 
     @GetMapping("/applications/{id}/tasks")
+    @SaCheckPermission("hr:lifecycle:view")
     public R<?> listLifecycleTasks(@PathVariable Long id) {
         return R.ok(lifecycleService.listTasks(id));
     }
@@ -68,13 +73,13 @@ class HrLifecycleApplicationController {
 @RestController
 @RequestMapping("/lifecycle")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrLifecycleTaskController {
 
     private final HrLifecycleService lifecycleService;
 
     @SysLog("完成HR生命周期任务")
     @PostMapping("/tasks/{id}/complete")
+    @SaCheckPermission("hr:lifecycle:edit")
     public R<Void> completeLifecycleTask(@PathVariable Long id, @RequestBody(required = false) HrLifecycleTaskPayload payload) {
         lifecycleService.completeTask(id, payload);
         return R.ok();

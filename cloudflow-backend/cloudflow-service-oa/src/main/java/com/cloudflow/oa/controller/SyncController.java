@@ -1,6 +1,5 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.dto.SyncDeviceRegisterDTO;
@@ -18,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 @RestController
 @RequestMapping("/sync")
-@SaCheckLogin
 public class SyncController {
 
     @Autowired
@@ -31,7 +29,7 @@ public class SyncController {
      * @return 处理结果
      */
     @PostMapping("/register-device")
-    @SaCheckPermission("workspace:dashboard")
+    @SaCheckPermission("oa:sync:register")
     public R<Void> registerDevice(@RequestBody SyncDeviceRegisterDTO registerDTO) {
         try {
             syncService.registerDevice(registerDTO);
@@ -49,7 +47,7 @@ public class SyncController {
      * @return 同步结果
      */
     @PostMapping("/upload")
-    @SaCheckPermission("workspace:dashboard")
+    @SaCheckPermission("oa:sync:upload")
     public R<SyncResultDTO> uploadOfflineData(@RequestBody SyncUploadDTO uploadDTO) {
         log.info("接收离线数据上传请求，设备ID: {}, 操作数量: {}",
                 uploadDTO == null ? null : uploadDTO.getDeviceId(),
@@ -74,7 +72,7 @@ public class SyncController {
      * @return 增量数据
      */
     @GetMapping("/download")
-    @SaCheckPermission("workspace:dashboard")
+    @SaCheckPermission("oa:sync:download")
     public R<SyncDownloadDTO> downloadIncrementalData(
             @RequestParam("lastSyncTime") Long lastSyncTime,
             @RequestParam("deviceId") String deviceId) {
@@ -100,7 +98,7 @@ public class SyncController {
      * @return 处理结果
      */
     @PostMapping("/resolve-conflicts")
-    @SaCheckPermission("workspace:dashboard")
+    @SaCheckPermission("oa:sync:resolve")
     public R<Void> resolveConflicts(@RequestBody SyncResultDTO.ConflictDetail[] conflicts) {
         log.info("接收冲突解决请求，冲突数量: {}", conflicts != null ? conflicts.length : 0);
 
@@ -114,3 +112,4 @@ public class SyncController {
         }
     }
 }
+

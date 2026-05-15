@@ -18,10 +18,7 @@ import com.cloudflow.workflow.service.IVersionComparisonService;
 import com.cloudflow.workflow.service.IVersionService;
 import com.cloudflow.workflow.service.WorkflowPermissionService;
 import lombok.extern.slf4j.Slf4j;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -45,7 +42,6 @@ import java.util.Objects;
 @Slf4j
 @RestController
 @RequestMapping("/versions")
-@SaCheckLogin
 public class VersionController {
 
     @Autowired
@@ -64,6 +60,7 @@ public class VersionController {
     private WorkflowPermissionService permissionService;
 
     @GetMapping("/workflow/{workflowId}")
+    @SaCheckPermission("workflow:definition:view")
     public R<List<VersionDTO>> getVersionHistory(@PathVariable String workflowId) {
         log.info("查询流程版本历史, workflowId={}", workflowId);
 
@@ -73,6 +70,7 @@ public class VersionController {
     }
 
     @GetMapping("/{versionId}")
+    @SaCheckPermission("workflow:definition:view")
     public R<VersionDetailDTO> getVersionDetail(@PathVariable String versionId) {
         log.info("查询版本详情, versionId={}", versionId);
 
@@ -87,6 +85,7 @@ public class VersionController {
     }
 
     @GetMapping("/compare")
+    @SaCheckPermission("workflow:definition:view")
     public R<VersionComparisonDTO> compareVersions(
             @RequestParam String fromVersionId,
             @RequestParam String toVersionId) {
@@ -110,6 +109,7 @@ public class VersionController {
     }
 
     @PostMapping("/rollback")
+    @SaCheckPermission("workflow:deploy:manage")
     public ResponseEntity<Serializable> rollbackToVersion(@RequestBody RollbackVersionRequest request) {
         log.info("回滚流程版本, workflowId={}, targetVersionId={}",
             request.getWorkflowId(), request.getTargetVersionId());
@@ -153,6 +153,7 @@ public class VersionController {
     }
 
     @GetMapping("/check-running/{workflowId}")
+    @SaCheckPermission("workflow:definition:view")
     public R<DynamicMapVO> checkRunningInstances(@PathVariable String workflowId) {
         log.info("检查流程运行实例, workflowId={}", workflowId);
 

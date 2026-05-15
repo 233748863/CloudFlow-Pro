@@ -598,7 +598,7 @@ const AssetList: React.FC = () => {
                 <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                 刷新
               </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:asset:add')}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:asset:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增资产
               </Button>
@@ -741,7 +741,7 @@ const AssetList: React.FC = () => {
                                 icon: <Edit size={14} />,
                                 onClick: () => handleEdit(asset),
                                 tone: 'neutral',
-                                permissionKey: 'admin:asset:edit',
+                                permissionKey: 'oa:asset:edit',
                               },
                               {
                                 label: '领用',
@@ -749,7 +749,7 @@ const AssetList: React.FC = () => {
                                 onClick: () => openBorrowDialog(asset),
                                 tone: 'neutral',
                                 hidden: asset.status !== '1',
-                                permissionKey: 'admin:asset:borrow',
+                                permissionKey: 'oa:asset:borrow',
                               },
                               {
                                 label: '归还',
@@ -757,7 +757,7 @@ const AssetList: React.FC = () => {
                                 onClick: () => openReturnConfirm(asset),
                                 tone: 'neutral',
                                 hidden: asset.status !== '2',
-                                permissionKey: 'admin:asset:return',
+                                permissionKey: 'oa:asset:return',
                               },
                             ]}
                           />
@@ -1152,4 +1152,5 @@ const AssetList: React.FC = () => {
 };
 
 export default AssetList;
+
 

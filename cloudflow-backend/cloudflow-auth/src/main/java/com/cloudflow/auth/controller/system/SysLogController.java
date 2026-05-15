@@ -3,6 +3,7 @@ package com.cloudflow.auth.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.vo.DynamicMapVO;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.domain.SysLogEntity;
@@ -45,6 +46,7 @@ public class SysLogController {
      * @param endTime   结束时间（yyyy-MM-dd）
      */
     @GetMapping("/page")
+    @SaCheckPermission("system:log:list")
     public R page(
             @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
             @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
@@ -89,6 +91,7 @@ public class SysLogController {
      * 获取操作日志详情
      */
     @GetMapping("/{id}")
+    @SaCheckPermission("system:log:list")
     public R getById(@PathVariable("id") Long id) {
         SysLogEntity log = sysLogMapper.selectById(id);
         if (log == null) {
@@ -103,6 +106,7 @@ public class SysLogController {
      * @param ids 日志ID列表
      */
     @DeleteMapping
+    @SaCheckPermission("system:log:remove")
     public R delete(@RequestBody List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return R.fail("请选择要删除的日志");
@@ -118,6 +122,7 @@ public class SysLogController {
      * </p>
      */
     @GetMapping("/trend")
+    @SaCheckPermission("system:log:list")
     public R<List<DynamicMapVO>> trend() {
         // 查询最近30天的日志
         LocalDateTime startTime = LocalDate.now().minusDays(30).atStartOfDay();

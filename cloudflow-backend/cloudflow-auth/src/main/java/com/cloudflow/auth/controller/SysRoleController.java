@@ -1,6 +1,5 @@
 package com.cloudflow.auth.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysRole;
 import com.cloudflow.auth.domain.dto.RoleOptionDTO;
@@ -13,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/system/role")
-@SaCheckLogin
 public class SysRoleController {
 
     @Autowired
@@ -26,6 +24,7 @@ public class SysRoleController {
     }
 
     @GetMapping("/optionselect")
+    @SaCheckPermission("system:role:list")
     public R<List<RoleOptionDTO>> optionselect() {
         return R.ok(roleService.selectRoleOptions());
     }

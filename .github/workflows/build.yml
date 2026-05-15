@@ -53,6 +53,16 @@ jobs:
         npm ci
         npm run type-check
         npm run build
+
+    - name: Enable Corepack
+      run: corepack enable
+
+    - name: Build Vue Frontend
+      run: |
+        cd cloudflow-frontend-vue
+        pnpm install --frozen-lockfile
+        pnpm typecheck
+        pnpm build
         
     - name: Build Docker Image
       run: |

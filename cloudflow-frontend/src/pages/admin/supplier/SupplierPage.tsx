@@ -188,7 +188,7 @@ const SupplierPage: React.FC = () => {
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>
-              <Button size="sm" onClick={openAdd} disabled={!hasPermission('admin:supplier:add')}>
+              <Button size="sm" onClick={openAdd} disabled={!hasPermission('oa:supplier:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增供应商
               </Button>
@@ -231,8 +231,8 @@ const SupplierPage: React.FC = () => {
                       <TableRowActions
                         align="end"
                         actions={[
-                          { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', permissionKey: 'admin:supplier:edit' },
-                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => setDeleteId(item.supplierId!), tone: 'danger', permissionKey: 'admin:supplier:remove' },
+                          { label: '编辑', icon: <Edit size={14} />, onClick: () => openEdit(item), tone: 'primary', permissionKey: 'oa:supplier:edit' },
+                          { label: '删除', icon: <Trash2 size={14} />, onClick: () => setDeleteId(item.supplierId!), tone: 'danger', permissionKey: 'oa:supplier:remove' },
                         ]}
                       />
                     </td>
@@ -265,7 +265,7 @@ const SupplierPage: React.FC = () => {
         footer={(
           <>
             <Button variant="outline" onClick={() => setShowDialog(false)}>取消</Button>
-            <Button onClick={() => void handleSave()} disabled={currentSupplier ? !hasPermission('admin:supplier:edit') : !hasPermission('admin:supplier:add')}>保存</Button>
+            <Button onClick={() => void handleSave()} disabled={currentSupplier ? !hasPermission('oa:supplier:edit') : !hasPermission('oa:supplier:add')}>保存</Button>
           </>
         )}
       >
@@ -317,4 +317,5 @@ const SupplierPage: React.FC = () => {
 };
 
 export default SupplierPage;
+
 

@@ -293,7 +293,7 @@ export const DutySchedulePage: React.FC = () => {
                 <RotateCcw size={14} className={loading ? 'mr-1.5 animate-spin' : 'mr-1.5'} />
                 刷新
               </Button>
-              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('admin:duty:add')}>
+              <Button size="sm" onClick={handleAdd} disabled={!hasPermission('oa:duty:add')}>
                 <Plus size={14} className="mr-1.5" />
                 新增排班
               </Button>
@@ -432,7 +432,7 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => handleCheckIn(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
-                                permissionKey: 'admin:duty:checkin',
+                                permissionKey: 'oa:duty:checkin',
                               },
                               {
                                 label: '换班',
@@ -440,7 +440,7 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => openSwapDialog(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'SCHEDULED',
-                                permissionKey: 'admin:duty:swap',
+                                permissionKey: 'oa:duty:swap',
                               },
                               {
                                 label: '签退',
@@ -448,7 +448,7 @@ export const DutySchedulePage: React.FC = () => {
                                 onClick: () => handleCheckOut(item.scheduleId!),
                                 tone: 'neutral',
                                 hidden: item.status !== 'CHECKED_IN',
-                                permissionKey: 'admin:duty:checkout',
+                                permissionKey: 'oa:duty:checkout',
                               },
                             ]}
                           />
@@ -702,4 +702,5 @@ export const DutySchedulePage: React.FC = () => {
 };
 
 export default DutySchedulePage;
+
 

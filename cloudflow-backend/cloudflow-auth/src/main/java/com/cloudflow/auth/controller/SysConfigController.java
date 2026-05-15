@@ -2,6 +2,7 @@ package com.cloudflow.auth.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.auth.domain.SysConfig;
 import com.cloudflow.auth.service.ISysConfigService;
@@ -28,6 +29,7 @@ public class SysConfigController {
      * 分页查询参数配置列表
      */
     @GetMapping("/list")
+    @SaCheckPermission("system:config:list")
     public R<Page<SysConfig>> list(
             @RequestParam(required = false) String configName,
             @RequestParam(required = false) String configKey,
@@ -47,6 +49,7 @@ public class SysConfigController {
      * 根据 ID 获取参数配置详情
      */
     @GetMapping("/{configId}")
+    @SaCheckPermission("system:config:query")
     public R<SysConfig> getInfo(@PathVariable Long configId) {
         return R.ok(configService.getById(configId));
     }
@@ -55,6 +58,7 @@ public class SysConfigController {
      * 根据参数键名查询参数值
      */
     @GetMapping("/configKey/{configKey}")
+    @SaCheckPermission("system:config:query")
     public R<String> getConfigKey(@PathVariable String configKey) {
         return R.ok(configService.selectConfigByKey(configKey));
     }
@@ -63,6 +67,7 @@ public class SysConfigController {
      * 新增参数配置
      */
     @PostMapping
+    @SaCheckPermission("system:config:add")
     public R<Void> add(@RequestBody SysConfig config) {
         if (!configService.checkConfigKeyUnique(config)) {
             return R.fail("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
@@ -76,6 +81,7 @@ public class SysConfigController {
      * 修改参数配置
      */
     @PutMapping
+    @SaCheckPermission("system:config:edit")
     public R<Void> edit(@RequestBody SysConfig config) {
         if (!configService.checkConfigKeyUnique(config)) {
             return R.fail("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
@@ -90,6 +96,7 @@ public class SysConfigController {
      * 系统内置参数（configType=Y）不允许删除
      */
     @DeleteMapping("/{configIds}")
+    @SaCheckPermission("system:config:remove")
     public R<Void> remove(@PathVariable Long[] configIds) {
         for (Long configId : configIds) {
             SysConfig config = configService.getById(configId);

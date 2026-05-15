@@ -25,6 +25,12 @@
             <artifactId>cloudflow-common-redis</artifactId>
         </dependency>
 
+        <!-- CloudFlow 安全模块（Sa-Token 登录校验） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-security</artifactId>
+        </dependency>
+
         <!-- Spring Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

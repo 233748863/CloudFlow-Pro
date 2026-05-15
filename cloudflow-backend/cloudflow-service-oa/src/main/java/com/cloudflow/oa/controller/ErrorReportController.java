@@ -1,6 +1,5 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.utils.IpUtils;
@@ -28,7 +27,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/error-report")
 @RequiredArgsConstructor
-@SaCheckLogin
 public class ErrorReportController {
 
     private final IFrontendErrorLogService frontendErrorLogService;
@@ -47,7 +45,7 @@ public class ErrorReportController {
      * @return 固定返回成功，避免前端因上报失败产生额外错误
      */
     @PostMapping
-    @SaCheckPermission("workspace:dashboard")
+    @SaCheckPermission("oa:error-report:create")
     @RateLimiter(
             key = "error-report",
             count = 20,
@@ -91,3 +89,4 @@ public class ErrorReportController {
         return StringUtils.hasText(errorLog.getUrl()) && errorLog.getUrl().contains(allowAnonymousPath);
     }
 }
+

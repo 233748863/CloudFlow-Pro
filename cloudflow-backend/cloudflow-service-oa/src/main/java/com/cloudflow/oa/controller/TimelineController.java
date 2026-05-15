@@ -1,6 +1,5 @@
 package com.cloudflow.oa.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.oa.domain.dto.TimelineDiffDTO;
@@ -21,7 +20,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/timeline")
 @RequiredArgsConstructor
-@SaCheckLogin
 public class TimelineController {
 
     private final IOaTraceEventService traceEventService;

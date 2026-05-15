@@ -204,7 +204,7 @@ const normalizeRoleListResponse = (response: unknown): SysRole[] => {
 
 const KnowledgePage: React.FC = () => {
   const { user, hasPermission } = useAuth();
-  const canManage = hasPermission('office:knowledge:manage');
+  const canManage = hasPermission('oa:knowledge:manage');
 
   const [viewMode, setViewMode] = useState<ViewMode>('library');
   const [library, setLibrary] = useState<KnowledgeDocument[]>([]);
@@ -569,7 +569,7 @@ const KnowledgePage: React.FC = () => {
           <RefreshCw size={14} className={`mr-1.5 ${loading ? 'animate-spin' : ''}`} />
           刷新
         </Button>
-        <Button size="sm" onClick={openCreate} disabled={!hasPermission('office:knowledge:add')}>
+        <Button size="sm" onClick={openCreate} disabled={!hasPermission('oa:knowledge:add')}>
           <Plus size={14} className="mr-1.5" />
           新建文档
         </Button>
@@ -652,7 +652,7 @@ const KnowledgePage: React.FC = () => {
                     icon: <Pencil size={14} />,
                     onClick: () => openEdit(item),
                     tone: 'primary',
-                    permissionKey: 'office:knowledge:edit',
+                    permissionKey: 'oa:knowledge:edit',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || (item.status !== 'DRAFT' && item.status !== 'REJECTED'),
                   },
                   {
@@ -660,7 +660,7 @@ const KnowledgePage: React.FC = () => {
                     icon: <Send size={14} />,
                     onClick: () => openSubmitConfirm(item),
                     tone: 'success',
-                    permissionKey: 'office:knowledge:submit',
+                    permissionKey: 'oa:knowledge:submit',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || (item.status !== 'DRAFT' && item.status !== 'REJECTED'),
                   },
                   {
@@ -668,7 +668,7 @@ const KnowledgePage: React.FC = () => {
                     icon: <RotateCcw size={14} />,
                     onClick: () => openRecallConfirm(item),
                     tone: 'warning',
-                    permissionKey: 'office:knowledge:recall',
+                    permissionKey: 'oa:knowledge:recall',
                     hidden: viewMode !== 'mine' || item.status !== 'PENDING',
                   },
                   {
@@ -676,7 +676,7 @@ const KnowledgePage: React.FC = () => {
                     icon: <Shield size={14} />,
                     onClick: () => void openReadStats(item),
                     tone: 'info',
-                    permissionKey: 'office:knowledge:manage',
+                    permissionKey: 'oa:knowledge:manage',
                     hidden: viewMode !== 'manage',
                   },
                   {
@@ -684,7 +684,7 @@ const KnowledgePage: React.FC = () => {
                     icon: <Trash2 size={14} />,
                     onClick: () => openDeleteConfirm(item),
                     tone: 'danger',
-                    permissionKey: 'office:knowledge:remove',
+                    permissionKey: 'oa:knowledge:remove',
                     hidden: !(viewMode === 'mine' || viewMode === 'manage') || item.status === 'PENDING',
                   },
                 ]}
@@ -904,4 +904,5 @@ const KnowledgePage: React.FC = () => {
 };
 
 export default KnowledgePage;
+
 

@@ -1,6 +1,6 @@
 package com.cloudflow.hr.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrBenefitSchemePayload;
@@ -38,24 +38,26 @@ import java.util.Map;
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrCompComponentController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/components")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listComponents(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrCompComponent.class, query));
     }
 
     @SysLog("新增HR薪酬项")
     @PostMapping("/components")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createComponent(@RequestBody HrCompComponentPayload payload) {
         return R.ok(crudService.create(HrCompComponent.class, payload));
     }
 
     @SysLog("修改HR薪酬项")
     @PutMapping("/components/{id}")
+    @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateComponent(@PathVariable Long id, @RequestBody HrCompComponentPayload payload) {
         crudService.update(HrCompComponent.class, id, payload);
         return R.ok();
@@ -63,6 +65,7 @@ class HrCompComponentController {
 
     @SysLog("删除HR薪酬项")
     @DeleteMapping("/components/{id}")
+    @SaCheckPermission("hr:compensation:remove")
     public R<Void> deleteComponent(@PathVariable Long id) {
         crudService.delete(HrCompComponent.class, id);
         return R.ok();
@@ -72,24 +75,26 @@ class HrCompComponentController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrCompStructureController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/structures")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listStructures(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrCompStructure.class, query));
     }
 
     @SysLog("新增HR薪酬结构")
     @PostMapping("/structures")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createStructure(@RequestBody HrCompStructurePayload payload) {
         return R.ok(crudService.create(HrCompStructure.class, payload));
     }
 
     @SysLog("修改HR薪酬结构")
     @PutMapping("/structures/{id}")
+    @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateStructure(@PathVariable Long id, @RequestBody HrCompStructurePayload payload) {
         crudService.update(HrCompStructure.class, id, payload);
         return R.ok();
@@ -97,6 +102,7 @@ class HrCompStructureController {
 
     @SysLog("删除HR薪酬结构")
     @DeleteMapping("/structures/{id}")
+    @SaCheckPermission("hr:compensation:remove")
     public R<Void> deleteStructure(@PathVariable Long id) {
         crudService.delete(HrCompStructure.class, id);
         return R.ok();
@@ -106,24 +112,26 @@ class HrCompStructureController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrCompGradeController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/grades")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listGrades(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrCompGrade.class, query));
     }
 
     @SysLog("新增HR薪级")
     @PostMapping("/grades")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createGrade(@RequestBody HrCompGradePayload payload) {
         return R.ok(crudService.create(HrCompGrade.class, payload));
     }
 
     @SysLog("删除HR薪级")
     @DeleteMapping("/grades/{id}")
+    @SaCheckPermission("hr:compensation:remove")
     public R<Void> deleteGrade(@PathVariable Long id) {
         crudService.delete(HrCompGrade.class, id);
         return R.ok();
@@ -133,24 +141,26 @@ class HrCompGradeController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrEmployeeCompController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/employee-compensations")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listEmployeeComps(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrEmployeeComp.class, query));
     }
 
     @SysLog("新增HR员工薪酬")
     @PostMapping("/employee-compensations")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createEmployeeComp(@RequestBody HrEmployeeCompPayload payload) {
         return R.ok(crudService.create(HrEmployeeComp.class, payload));
     }
 
     @SysLog("修改HR员工薪酬")
     @PutMapping("/employee-compensations/{id}")
+    @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateEmployeeComp(@PathVariable Long id, @RequestBody HrEmployeeCompPayload payload) {
         crudService.update(HrEmployeeComp.class, id, payload);
         return R.ok();
@@ -160,24 +170,26 @@ class HrEmployeeCompController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrCompChangeController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/changes")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listCompChanges(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.page(HrCompChange.class, query));
     }
 
     @SysLog("新增HR调薪变更")
     @PostMapping("/changes")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createCompChange(@RequestBody HrCompChangePayload payload) {
         return R.ok(crudService.create(HrCompChange.class, payload));
     }
 
     @SysLog("变更HR调薪状态")
     @PostMapping("/changes/{id}/{action}")
+    @SaCheckPermission("hr:compensation:edit")
     public R<Void> changeCompChangeStatus(@PathVariable Long id, @PathVariable String action) {
         crudService.changeStatus(HrCompChange.class, id, action);
         return R.ok();
@@ -187,24 +199,26 @@ class HrCompChangeController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrBenefitSchemeController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/benefits")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listBenefits(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrBenefitScheme.class, query));
     }
 
     @SysLog("新增HR福利方案")
     @PostMapping("/benefits")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createBenefit(@RequestBody HrBenefitSchemePayload payload) {
         return R.ok(crudService.create(HrBenefitScheme.class, payload));
     }
 
     @SysLog("修改HR福利方案")
     @PutMapping("/benefits/{id}")
+    @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateBenefit(@PathVariable Long id, @RequestBody HrBenefitSchemePayload payload) {
         crudService.update(HrBenefitScheme.class, id, payload);
         return R.ok();
@@ -214,18 +228,19 @@ class HrBenefitSchemeController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrEmployeeBenefitController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/employee-benefits")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listEmployeeBenefits(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrEmployeeBenefit.class, query));
     }
 
     @SysLog("新增HR员工福利")
     @PostMapping("/employee-benefits")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createEmployeeBenefit(@RequestBody HrEmployeeBenefitPayload payload) {
         return R.ok(crudService.create(HrEmployeeBenefit.class, payload));
     }
@@ -234,24 +249,26 @@ class HrEmployeeBenefitController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrTaxProfileController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/tax-profiles")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listTaxProfiles(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrTaxProfile.class, query));
     }
 
     @SysLog("新增HR个税档案")
     @PostMapping("/tax-profiles")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createTaxProfile(@RequestBody HrTaxProfilePayload payload) {
         return R.ok(crudService.create(HrTaxProfile.class, payload));
     }
 
     @SysLog("修改HR个税档案")
     @PutMapping("/tax-profiles/{id}")
+    @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateTaxProfile(@PathVariable Long id, @RequestBody HrTaxProfilePayload payload) {
         crudService.update(HrTaxProfile.class, id, payload);
         return R.ok();
@@ -261,24 +278,26 @@ class HrTaxProfileController {
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
-@SaCheckLogin
 class HrTaxDeductionController {
 
     private final HrTypedCrudService crudService;
 
     @GetMapping("/tax-deductions")
+    @SaCheckPermission("hr:compensation:list")
     public R<?> listTaxDeductions(@RequestParam Map<String, Object> query) {
         return R.ok(crudService.list(HrTaxDeduction.class, query));
     }
 
     @SysLog("新增HR个税扣除")
     @PostMapping("/tax-deductions")
+    @SaCheckPermission("hr:compensation:add")
     public R<Long> createTaxDeduction(@RequestBody HrTaxDeductionPayload payload) {
         return R.ok(crudService.create(HrTaxDeduction.class, payload));
     }
 
     @SysLog("修改HR个税扣除")
     @PutMapping("/tax-deductions/{id}")
+    @SaCheckPermission("hr:compensation:edit")
     public R<Void> updateTaxDeduction(@PathVariable Long id, @RequestBody HrTaxDeductionPayload payload) {
         crudService.update(HrTaxDeduction.class, id, payload);
         return R.ok();
@@ -286,6 +305,7 @@ class HrTaxDeductionController {
 
     @SysLog("删除HR个税扣除")
     @DeleteMapping("/tax-deductions/{id}")
+    @SaCheckPermission("hr:compensation:remove")
     public R<Void> deleteTaxDeduction(@PathVariable Long id) {
         crudService.delete(HrTaxDeduction.class, id);
         return R.ok();

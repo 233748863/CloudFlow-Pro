@@ -1,6 +1,5 @@
 package com.cloudflow.auth.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.domain.dto.ResetPasswordDTO;
@@ -16,7 +15,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/system/user")
-@SaCheckLogin
 public class SysUserController {
 
     @Autowired

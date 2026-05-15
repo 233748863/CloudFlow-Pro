@@ -4,6 +4,7 @@ import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
 import com.cloudflow.auth.service.ISysFileService;
 import com.cloudflow.auth.service.SysTenantService;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
@@ -24,6 +25,7 @@ public class SysFileController {
     private final SysTenantService tenantService;
 
     @PostMapping("/upload")
+    @SaCheckPermission("system:file:upload")
     public R<SysFile> upload(@RequestParam("file") MultipartFile file) {
         try {
             return R.ok(sysFileService.uploadFile(file));
@@ -33,11 +35,13 @@ public class SysFileController {
     }
 
     @GetMapping("/list")
+    @SaCheckPermission("system:file:list")
     public R<PageResult<SysFile>> list(SysFile sysFile, PageQuery pageQuery) {
         return R.ok(sysFileService.selectFileList(sysFile, pageQuery));
     }
 
     @GetMapping("/storage/summary")
+    @SaCheckPermission("system:file:list")
     public R<TenantStorageSummaryDTO> getStorageSummary() {
         Long tenantId = UserContext.getTenantId();
         if (tenantId == null) {
@@ -47,6 +51,7 @@ public class SysFileController {
     }
 
     @PostMapping("/storage/refresh")
+    @SaCheckPermission("system:file:edit")
     public R<TenantStorageSummaryDTO> refreshStorageSummary() {
         Long tenantId = UserContext.getTenantId();
         if (tenantId == null) {
@@ -56,6 +61,7 @@ public class SysFileController {
     }
 
     @DeleteMapping("/{fileIds}")
+    @SaCheckPermission("system:file:remove")
     public R<?> remove(@PathVariable("fileIds") Long[] fileIds) {
         sysFileService.deleteFileByIds(fileIds);
         return R.ok();

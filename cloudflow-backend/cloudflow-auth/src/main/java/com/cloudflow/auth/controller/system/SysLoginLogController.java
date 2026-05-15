@@ -3,6 +3,7 @@ package com.cloudflow.auth.controller.system;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.vo.DynamicMapVO;
 import com.cloudflow.auth.service.LoginLogService;
 import com.cloudflow.common.core.domain.R;
@@ -36,6 +37,7 @@ public class SysLoginLogController {
     private final LoginLogService loginLogService;
 
     @GetMapping("/page")
+    @SaCheckPermission("system:login-log:list")
     public R page(
         @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
         @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize,
@@ -70,6 +72,7 @@ public class SysLoginLogController {
     }
 
     @GetMapping("/{id}")
+    @SaCheckPermission("system:login-log:list")
     public R getById(@PathVariable("id") Long id) {
         SysLogEntity log = sysLogMapper.selectById(id);
         if (!loginLogService.isLoginLog(log)) {
@@ -79,6 +82,7 @@ public class SysLoginLogController {
     }
 
     @DeleteMapping
+    @SaCheckPermission("system:login-log:remove")
     public R delete(@RequestBody List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return R.fail("请选择要删除的登录日志");
@@ -91,6 +95,7 @@ public class SysLoginLogController {
     }
 
     @GetMapping("/trend")
+    @SaCheckPermission("system:login-log:list")
     public R<List<DynamicMapVO>> trend() {
         LocalDateTime startTime = LocalDate.now().minusDays(30).atStartOfDay();
         LambdaQueryWrapper<SysLogEntity> wrapper = new LambdaQueryWrapper<>();

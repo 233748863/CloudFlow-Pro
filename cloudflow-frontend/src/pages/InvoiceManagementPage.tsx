@@ -304,7 +304,7 @@ export default function InvoiceManagementPage() {
                   发票管理 = 发票录入 + 业务绑定 + 核销 + 作废 + 外链跳转 + 核销历史。
                 </div>
               </div>
-              <Button size="sm" onClick={() => void openDialog({ type: 'invoice' })} disabled={!hasPermission('office:invoice:add')}>
+              <Button size="sm" onClick={() => void openDialog({ type: 'invoice' })} disabled={!hasPermission('oa:invoice:add')}>
                 <Plus size={14} className="mr-1.5" />新增发票
               </Button>
             </div>
@@ -353,10 +353,10 @@ export default function InvoiceManagementPage() {
                         overflowLabel="更多"
                         actions={[
                           { label: '查看详情', icon: <Eye size={14} />, onClick: () => void openDialog({ type: 'detail', item }), semantic: 'view', isPrimary: true },
-                          { label: '编辑发票', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'invoice', item }), semantic: 'edit', isPrimary: true, permissionKey: 'office:invoice:edit' },
-                          { label: '绑定业务', icon: <Send size={14} />, onClick: () => void openDialog({ type: 'bind', item }), hidden: item.status === 'VOID', semantic: 'bind', permissionKey: 'office:invoice:bind' },
-                          { label: '核销发票', icon: <Receipt size={14} />, onClick: () => void openDialog({ type: 'writeoff', item }), hidden: item.status === 'VOID', semantic: 'writeoff', permissionKey: 'office:invoice:writeoff' },
-                          { label: '作废发票', icon: <RotateCcw size={14} />, onClick: () => setVoidTarget(item), hidden: item.status === 'VOID', semantic: 'void', danger: true, permissionKey: 'office:invoice:void' },
+                          { label: '编辑发票', icon: <Edit size={14} />, onClick: () => void openDialog({ type: 'invoice', item }), semantic: 'edit', isPrimary: true, permissionKey: 'oa:invoice:edit' },
+                          { label: '绑定业务', icon: <Send size={14} />, onClick: () => void openDialog({ type: 'bind', item }), hidden: item.status === 'VOID', semantic: 'bind', permissionKey: 'oa:invoice:bind' },
+                          { label: '核销发票', icon: <Receipt size={14} />, onClick: () => void openDialog({ type: 'writeoff', item }), hidden: item.status === 'VOID', semantic: 'writeoff', permissionKey: 'oa:invoice:writeoff' },
+                          { label: '作废发票', icon: <RotateCcw size={14} />, onClick: () => setVoidTarget(item), hidden: item.status === 'VOID', semantic: 'void', danger: true, permissionKey: 'oa:invoice:void' },
                           {
                             label: '打开外链',
                             icon: <ExternalLink size={14} />,
@@ -754,3 +754,4 @@ export default function InvoiceManagementPage() {
     </div>
   );
 }
+
