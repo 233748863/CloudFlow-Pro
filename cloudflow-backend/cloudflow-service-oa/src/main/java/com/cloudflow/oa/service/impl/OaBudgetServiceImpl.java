@@ -418,6 +418,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
             budget.setActualAmount(defaultDecimal(latest.getActualAmount()));
             budget.setAvailableAmount(defaultDecimal(latest.getAvailableAmount()));
         }
+        budget.setThresholdStatus(resolveBudgetThresholdStatus(budget));
     }
 
     private void refreshBudgetComputedAmounts(Long budgetId) {
@@ -579,6 +580,22 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
             return "WARN";
         }
         return "NORMAL";
+    }
+
+    private String resolveBudgetThresholdStatus(OaBudgetPlan budget) {
+        if (budget == null) {
+            return "NORMAL";
+        }
+        BigDecimal warn = resolveThresholdRule(RULE_WARN, new BigDecimal("0.80"));
+        BigDecimal alert = resolveThresholdRule(RULE_ALERT, new BigDecimal("0.90"));
+        BigDecimal block = resolveThresholdRule(RULE_BLOCK, BigDecimal.ONE);
+        BigDecimal total = defaultDecimal(budget.getTotalAmount());
+        BigDecimal reserved = defaultDecimal(budget.getReservedAmount());
+        BigDecimal actual = defaultDecimal(budget.getActualAmount());
+        BigDecimal ratio = total.compareTo(BigDecimal.ZERO) > 0
+                ? actual.add(reserved).divide(total, 4, RoundingMode.HALF_UP)
+                : BigDecimal.ZERO;
+        return resolveThresholdStatus(ratio, warn, alert, block);
     }
 
     private void startBudgetWorkflow(String processDefKey, String businessKey, String businessType,

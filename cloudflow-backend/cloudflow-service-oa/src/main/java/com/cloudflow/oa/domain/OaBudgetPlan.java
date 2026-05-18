@@ -51,4 +51,7 @@ public class OaBudgetPlan implements Serializable {
 
     @TableField(exist = false)
     private List<OaBudgetLine> lines;
+
+    @TableField(exist = false)
+    private String thresholdStatus;
 }

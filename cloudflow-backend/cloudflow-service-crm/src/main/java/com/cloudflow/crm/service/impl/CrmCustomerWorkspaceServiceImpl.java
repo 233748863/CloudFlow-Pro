@@ -476,28 +476,25 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     private List<CrmWorkspaceTodoItemVO> buildCrossModuleTodos(CrmCustomerWorkspaceVO workspace) {
         List<CrmWorkspaceTodoItemVO> todos = new ArrayList<>();
         workspace.getQuotes().stream()
-                .filter(item -> List.of(
-                        CrmConstants.QuoteStatus.PENDING,
-                        CrmConstants.QuoteStatus.APPROVED,
-                        CrmConstants.QuoteStatus.SENT).contains(item.getStatus()))
+                .filter(item -> isQuoteTodoStatus(item.getStatus()))
                 .limit(3)
                 .forEach(item -> todos.add(todo("quote-" + item.getQuoteId(), "CRM", "CRM 报价",
                         item.getQuoteName(), "报价待继续推进", item.getStatus(),
                         "/office/crm/quotes", item.getQuoteId(), "CRM_QUOTE")));
         workspace.getContracts().stream()
-                .filter(item -> List.of("DRAFT", "PENDING", "APPROVED", "ACTIVE", "SEALING").contains(item.getStatus()))
+                .filter(item -> isContractTodoStatus(item.getStatus()))
                 .limit(3)
                 .forEach(item -> todos.add(todo("contract-" + item.getContractId(), "OA", "OA 合同",
                         item.getContractName(), "合同链路待继续推进", item.getStatus(),
                         "/office/contracts", item.getContractId(), "CONTRACT")));
         workspace.getProjects().stream()
-                .filter(item -> List.of("DRAFT", "PENDING", "APPROVED").contains(item.getStatus()))
+                .filter(item -> isProjectTodoStatus(item.getStatus()))
                 .limit(3)
                 .forEach(item -> todos.add(todo("project-" + item.getProjectId(), "OA", "OA 项目",
                         item.getProjectName(), "项目草稿或立项待处理", item.getStatus(),
                         "/office/project", item.getProjectId(), "PROJECT")));
         workspace.getBudgets().stream()
-                .filter(item -> List.of("DRAFT", "PENDING", "APPROVED").contains(item.getStatus()))
+                .filter(item -> isBudgetTodoStatus(item.getStatus()))
                 .limit(3)
                 .forEach(item -> todos.add(todo("budget-" + item.getBudgetId(), "OA", "OA 预算",
                         item.getBudgetName(), "预算草稿或审批待处理", item.getStatus(),
@@ -520,26 +517,19 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                         customer.getHealthReason(), item.getLevel(), "OPEN",
                         "/office/crm/customer/" + customer.getCustomerId(), customer.getCustomerId(), "CRM_CUSTOMER")));
         workspace.getBudgets().stream()
-                .filter(item -> List.of(
-                        CrmConstants.BudgetThreshold.WARN,
-                        CrmConstants.BudgetThreshold.ALERT,
-                        CrmConstants.BudgetThreshold.BLOCK).contains(item.getThresholdStatus()))
+                .filter(item -> isBudgetThresholdRisk(item.getThresholdStatus()))
                 .forEach(item -> risks.add(risk("budget-" + item.getBudgetId(), "OA", "预算阈值",
                         item.getBudgetName(), "预算执行已进入阈值区间",
                         item.getThresholdStatus(), item.getStatus(),
                         "/office/budget", item.getBudgetId(), "BUDGET")));
         workspace.getInvoices().stream()
-                .filter(item -> List.of(CrmConstants.InvoiceStatus.WRITEOFF_PARTIAL, CrmConstants.InvoiceStatus.VOID)
-                        .contains(item.getStatus()))
+                .filter(item -> isInvoiceRiskStatus(item.getStatus()))
                 .forEach(item -> risks.add(risk("invoice-" + item.getInvoiceId(), "OA", "发票异常",
                         item.getInvoiceNo(), "发票部分核销或已作废",
                         item.getStatus(), item.getStatus(),
                         "/office/invoice", item.getInvoiceId(), "INVOICE")));
         workspace.getProjects().stream()
-                .filter(item -> List.of(
-                        CrmConstants.RiskLevel.HIGH,
-                        CrmConstants.RiskLevel.RED,
-                        CrmConstants.RiskLevel.MEDIUM).contains(item.getRiskLevel()))
+                .filter(item -> isProjectRiskLevel(item.getRiskLevel()))
                 .forEach(item -> risks.add(risk("project-" + item.getProjectId(), "OA", "项目风险",
                         item.getProjectName(), "项目风险等级已抬高",
                         item.getRiskLevel(), item.getStatus(),
@@ -579,10 +569,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     private List<RemoteBudgetLinkVO> loadBudgetAlerts() {
         List<RemoteBudgetLinkVO> alerts = new ArrayList<>();
         topActiveCustomers().forEach(customer -> getWorkspace(customer.getCustomerId()).getBudgets().stream()
-                .filter(item -> List.of(
-                        CrmConstants.BudgetThreshold.WARN,
-                        CrmConstants.BudgetThreshold.ALERT,
-                        CrmConstants.BudgetThreshold.BLOCK).contains(item.getThresholdStatus()))
+                .filter(item -> isBudgetThresholdRisk(item.getThresholdStatus()))
                 .forEach(alerts::add));
         return alerts.stream().limit(8).toList();
     }
@@ -590,10 +577,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     private List<RemoteInvoiceLinkVO> loadInvoiceExceptions() {
         List<RemoteInvoiceLinkVO> invoices = new ArrayList<>();
         topActiveCustomers().forEach(customer -> getWorkspace(customer.getCustomerId()).getInvoices().stream()
-                .filter(item -> List.of(
-                        CrmConstants.InvoiceStatus.BOUND,
-                        CrmConstants.InvoiceStatus.WRITEOFF_PARTIAL,
-                        CrmConstants.InvoiceStatus.VOID).contains(item.getStatus()))
+                .filter(item -> isInvoiceExceptionStatus(item.getStatus()))
                 .forEach(invoices::add));
         return invoices.stream().limit(8).toList();
     }
@@ -694,5 +678,54 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         item.setBusinessId(businessId);
         item.setBusinessType(businessType);
         return item;
+    }
+
+    private boolean isBudgetThresholdRisk(String thresholdStatus) {
+        return CrmConstants.BudgetThreshold.WARN.equals(thresholdStatus)
+                || CrmConstants.BudgetThreshold.ALERT.equals(thresholdStatus)
+                || CrmConstants.BudgetThreshold.BLOCK.equals(thresholdStatus);
+    }
+
+    private boolean isQuoteTodoStatus(String status) {
+        return CrmConstants.QuoteStatus.PENDING.equals(status)
+                || CrmConstants.QuoteStatus.APPROVED.equals(status)
+                || CrmConstants.QuoteStatus.SENT.equals(status);
+    }
+
+    private boolean isContractTodoStatus(String status) {
+        return "DRAFT".equals(status)
+                || "PENDING".equals(status)
+                || "APPROVED".equals(status)
+                || "ACTIVE".equals(status)
+                || "SEALING".equals(status);
+    }
+
+    private boolean isProjectTodoStatus(String status) {
+        return "DRAFT".equals(status)
+                || "PENDING".equals(status)
+                || "APPROVED".equals(status);
+    }
+
+    private boolean isBudgetTodoStatus(String status) {
+        return "DRAFT".equals(status)
+                || "PENDING".equals(status)
+                || "APPROVED".equals(status);
+    }
+
+    private boolean isInvoiceRiskStatus(String status) {
+        return CrmConstants.InvoiceStatus.WRITEOFF_PARTIAL.equals(status)
+                || CrmConstants.InvoiceStatus.VOID.equals(status);
+    }
+
+    private boolean isProjectRiskLevel(String riskLevel) {
+        return CrmConstants.RiskLevel.HIGH.equals(riskLevel)
+                || CrmConstants.RiskLevel.RED.equals(riskLevel)
+                || CrmConstants.RiskLevel.MEDIUM.equals(riskLevel);
+    }
+
+    private boolean isInvoiceExceptionStatus(String status) {
+        return CrmConstants.InvoiceStatus.BOUND.equals(status)
+                || CrmConstants.InvoiceStatus.WRITEOFF_PARTIAL.equals(status)
+                || CrmConstants.InvoiceStatus.VOID.equals(status);
     }
 }

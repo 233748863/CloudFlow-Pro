@@ -489,6 +489,28 @@ DELETE FROM cloud_flow_db.crm_service_ticket
 WHERE ticket_id BETWEEN 8801 AND 8899
    OR ticket_no IN ('GD202605080001', 'GD202605080002');
 
+DELETE FROM cloud_flow_db.crm_customer_pool_log
+WHERE log_id BETWEEN 8901 AND 8919;
+
+DELETE FROM cloud_flow_db.crm_assignment_rule
+WHERE rule_id BETWEEN 8901 AND 8919;
+
+DELETE FROM cloud_flow_db.crm_sales_target
+WHERE sales_target_id BETWEEN 8901 AND 8919
+   OR target_no IN ('MB202605080001', 'MB202605080002', 'MB202605080003', 'MB202605080004');
+
+DELETE FROM cloud_flow_db.crm_price_book
+WHERE price_book_id BETWEEN 8901 AND 8919
+   OR price_book_no IN ('JM202605080001', 'JM202605080002', 'JM202605080003');
+
+DELETE FROM cloud_flow_db.crm_product
+WHERE product_id BETWEEN 8901 AND 8919
+   OR product_no IN ('CP202605080001', 'CP202605080002', 'CP202605080003', 'CP202605080004');
+
+DELETE FROM cloud_flow_db.crm_lead
+WHERE lead_id BETWEEN 8901 AND 8919
+   OR lead_no IN ('XS202605080001', 'XS202605080002', 'XS202605080003', 'XS202605080004');
+
 DELETE FROM cloud_flow_db.crm_customer
 WHERE customer_id BETWEEN 8801 AND 8899
    OR customer_code IN ('CRM-CUST-001', 'CRM-CUST-002', 'CRM-CUST-003');
@@ -8207,6 +8229,98 @@ INSERT INTO cloud_flow_db.wf_notice (
 (9061, 100000, '预算阈值提醒', '1', '苏州联拓制造上线项目预算已接近 90% 告警阈值，请在 OA 预算页查看台账并处理预算调整。', 11, 11, '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 1 DAY), 'V4-预算超阈值'),
 (9062, 100000, '发票异常提醒', '1', '景曜科技首期回款对应销项发票仍为部分核销状态，请在 OA 发票页继续处理核销并同步客户健康度。', 12, 12, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 HOUR), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 HOUR), 'V4-发票部分核销'),
 (9063, 100000, '项目草稿待完善', '1', '景曜科技续约交付项目已回链 CRM 来源，请补齐成员、WBS 和预算上下文后继续提审。', 12, 17, '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 8 HOUR), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 8 HOUR), 'V4-项目草稿待完善');
+
+INSERT INTO cloud_flow_db.crm_lead (
+  lead_id, tenant_id, lead_no, lead_name, company_name, contact_name, mobile, phone, email, source, industry, status,
+  owner_id, owner_name, dept_id, dept_name, next_follow_up_time, last_follow_up_time, converted_customer_id, converted_time,
+  remark, deleted, create_by, create_time, update_by, update_time
+) VALUES
+(8901, 100000, 'XS202605080001', '景曜科技 AI 续费扩容线索', '景曜科技有限公司', '韩总监', '13900031001', '021-68008901', 'han.director@jygsoft.com', 'REFERRAL', '企业软件', 'FOLLOWING',
+ 12, '郑雅宁', 111, '客户成功部', DATE_ADD(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY), NULL, NULL,
+ '老客户续费扩容，已进入初步方案沟通。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 9 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8902, 100000, 'XS202605080002', '联拓制造 MES 升级线索', '苏州联拓制造有限公司', '邵经理', '13900031002', '0512-68008902', 'shao.manager@liantuo.com', 'EVENT', '智能制造', 'NEW',
+ 18, '彭骁', 117, '华东销售组', DATE_ADD(NOW(), INTERVAL 5 DAY), NULL, NULL, NULL,
+ '展会留资，客户对生产协同与追溯改造感兴趣。', '0', 'peng_sales', DATE_SUB(NOW(), INTERVAL 6 DAY), 'peng_sales', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8903, 100000, 'XS202605080003', '启衡软件预算协同线索', '启衡软件有限公司', '罗总', '13900031003', '0571-68008903', 'luo.ceo@qiheng.com', 'CHANNEL', 'SaaS 服务', 'QUALIFIED',
+ 13, '何嘉树', 112, '销售部', DATE_ADD(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, NULL,
+ '已确认预算协同改造诉求，准备转商机深挖。', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 8 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8904, 100000, 'XS202605080004', '云境零售私域运营线索', '杭州云境零售有限公司', '孙总监', '13900031004', '0571-68008904', 'sun.ops@yunjing.com', 'ADS', '零售连锁', 'NEW',
+ 15, '孙产品', 116, '产品运营组', DATE_ADD(NOW(), INTERVAL 7 DAY), NULL, NULL, NULL,
+ '官网留资，咨询会员运营与门店协同。', '0', 'sun_pm', DATE_SUB(NOW(), INTERVAL 3 DAY), 'sun_pm', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.crm_product (
+  product_id, tenant_id, product_no, product_name, category, spec, unit, standard_price, currency, status,
+  owner_id, owner_name, remark, deleted, create_by, create_time, update_by, update_time
+) VALUES
+(8901, 100000, 'CP202605080001', 'CloudFlow CRM 专业版', 'CRM', 'Professional / SaaS', '年', 69800.00, 'CNY', 'ACTIVE',
+ 15, '孙产品', '适用于中大型销售团队的客户经营与流程协同。', '0', 'sun_pm', DATE_SUB(NOW(), INTERVAL 30 DAY), 'sun_pm', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8902, 100000, 'CP202605080002', 'CloudFlow 交付协同包', 'DELIVERY', 'Delivery Suite', '年', 42800.00, 'CNY', 'ACTIVE',
+ 11, '吴思远', '覆盖项目交付、回款和工单联动。', '0', 'wu_delivery', DATE_SUB(NOW(), INTERVAL 28 DAY), 'wu_delivery', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8903, 100000, 'CP202605080003', 'CloudFlow OA 预算协同模块', 'OA', 'Budget Collaboration', '年', 36800.00, 'CNY', 'ACTIVE',
+ 3, '王财务', '适用于预算台账、阈值预警与执行联动。', '0', 'wang', DATE_SUB(NOW(), INTERVAL 26 DAY), 'wang', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8904, 100000, 'CP202605080004', 'CloudFlow 门店零售连接器', 'INTEGRATION', 'Retail Connector', '套', 15800.00, 'CNY', 'INACTIVE',
+ 15, '孙产品', '用于演示停用产品在产品库中的展示状态。', '0', 'sun_pm', DATE_SUB(NOW(), INTERVAL 20 DAY), 'sun_pm', DATE_SUB(NOW(), INTERVAL 5 DAY));
+
+INSERT INTO cloud_flow_db.crm_price_book (
+  price_book_id, tenant_id, price_book_no, price_book_name, currency, start_date, end_date, status,
+  owner_id, owner_name, remark, deleted, create_by, create_time, update_by, update_time
+) VALUES
+(8901, 100000, 'JM202605080001', '2026 标准订阅价目表', 'CNY', DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 335 DAY), 'ACTIVE',
+ 15, '孙产品', '标准对外报价，覆盖 CRM/OA/交付协同模块。', '0', 'sun_pm', DATE_SUB(NOW(), INTERVAL 24 DAY), 'sun_pm', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8902, 100000, 'JM202605080002', '制造行业专项价目表', 'CNY', DATE_SUB(CURDATE(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 180 DAY), 'ACTIVE',
+ 18, '彭骁', '针对制造业客户的项目包与集成优惠。', '0', 'peng_sales', DATE_SUB(NOW(), INTERVAL 18 DAY), 'peng_sales', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8903, 100000, 'JM202605080003', '2025 续约历史价目表', 'CNY', DATE_SUB(CURDATE(), INTERVAL 400 DAY), DATE_SUB(CURDATE(), INTERVAL 30 DAY), 'INACTIVE',
+ 12, '郑雅宁', '历史续约价，保留给续费比对场景。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 40 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 DAY));
+
+INSERT INTO cloud_flow_db.crm_sales_target (
+  sales_target_id, tenant_id, target_no, target_name, dimension_type, period_type, target_year, target_period,
+  dept_id, dept_name, owner_id, owner_name, target_amount, status, remark, deleted, create_by, create_time, update_by, update_time
+) VALUES
+(8901, 100000, 'MB202605080001', '2026年销售部年度签约目标', 'DEPT', 'YEAR', 2026, NULL,
+ 112, '销售部', NULL, NULL, 3600000.00, 'ACTIVE', '年度部门签约与回款总目标。', '0', 'admin', DATE_SUB(NOW(), INTERVAL 22 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8902, 100000, 'MB202605080002', '2026年5月何嘉树回款目标', 'OWNER', 'MONTH', 2026, 5,
+ NULL, NULL, 13, '何嘉树', 420000.00, 'ACTIVE', '启衡软件与渠道客户回款目标。', '0', 'he_sales', DATE_SUB(NOW(), INTERVAL 12 DAY), 'he_sales', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8903, 100000, 'MB202605080003', '2026年Q2华东销售组回款目标', 'DEPT', 'QUARTER', 2026, 2,
+ 117, '华东销售组', NULL, NULL, 980000.00, 'ACTIVE', '联拓制造、制造业客户二季度重点回款目标。', '0', 'peng_sales', DATE_SUB(NOW(), INTERVAL 14 DAY), 'peng_sales', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8904, 100000, 'MB202605080004', '2026年5月郑雅宁续约目标', 'OWNER', 'MONTH', 2026, 5,
+ NULL, NULL, 12, '郑雅宁', 368000.00, 'ACTIVE', '重点续约客户签约与回款双目标。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 10 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.crm_customer (
+  customer_id, tenant_id, customer_code, customer_name, customer_type, industry, level_code, source, customer_tags,
+  owner_id, owner_name, dept_id, dept_name, phone, email, website, province, city, address, credit_code,
+  health_level, health_reason, last_follow_up_time, next_follow_up_time, pool_flag, pooled_time, original_owner_id, original_owner_name,
+  remark, status, deleted, create_by, create_time, update_by, update_time
+) VALUES
+(8904, 100000, 'CRM-CUST-004', '华星零售集团', 'ENTERPRISE', '零售连锁', 'NORMAL', 'EVENT', '零售,公海,待认领',
+ NULL, NULL, NULL, NULL, '13800020004', 'it@huaxingretail.com', 'https://www.huaxingretail.example.com', '浙江', '杭州', '西湖区文三路 89 号', '91330100HXLSCUST004',
+ 'GREEN', '状态正常', DATE_SUB(NOW(), INTERVAL 46 DAY), NULL, '1', DATE_SUB(NOW(), INTERVAL 7 DAY), 13, '何嘉树',
+ '长时间未跟进后自动回收到公海，适合演示抢单与指派。', 'ACTIVE', '0', 'system', DATE_SUB(NOW(), INTERVAL 45 DAY), 'system', DATE_SUB(NOW(), INTERVAL 7 DAY)),
+(8905, 100000, 'CRM-CUST-005', '澜川教育科技', 'ENTERPRISE', '教育科技', 'VIP', 'CHANNEL', '教育,公海,高价值',
+ NULL, NULL, NULL, NULL, '13800020005', 'cto@lanchuanedu.com', 'https://www.lanchuanedu.example.com', '江苏', '南京', '建邺区江东中路 118 号', '91320100LCJYCUST005',
+ 'YELLOW', '90天内续约到期', DATE_SUB(NOW(), INTERVAL 32 DAY), NULL, '1', DATE_SUB(NOW(), INTERVAL 3 DAY), 12, '郑雅宁',
+ '高价值客户被释放到公海，用于演示 VIP 客户抢单与分配。', 'ACTIVE', '0', 'system', DATE_SUB(NOW(), INTERVAL 60 DAY), 'system', DATE_SUB(NOW(), INTERVAL 3 DAY));
+
+INSERT INTO cloud_flow_db.crm_customer_pool_log (
+  log_id, tenant_id, customer_id, customer_name, action_type, from_owner_id, from_owner_name, to_owner_id, to_owner_name,
+  rule_id, reason, deleted, create_by, create_time, update_by, update_time
+) VALUES
+(8901, 100000, 8904, '华星零售集团', 'AUTO_RELEASE', 13, '何嘉树', NULL, NULL,
+ 8901, '客户超过 45 天未跟进，触发自动回收规则。', '0', 'system', DATE_SUB(NOW(), INTERVAL 7 DAY), 'system', DATE_SUB(NOW(), INTERVAL 7 DAY)),
+(8902, 100000, 8905, '澜川教育科技', 'RELEASE', 12, '郑雅宁', NULL, NULL,
+ NULL, '负责人主动释放到公海，便于重新分配给教育行业小组。', '0', 'zheng_cs', DATE_SUB(NOW(), INTERVAL 3 DAY), 'zheng_cs', DATE_SUB(NOW(), INTERVAL 3 DAY)),
+(8903, 100000, 8905, '澜川教育科技', 'ASSIGN', NULL, NULL, 18, '彭骁',
+ 8903, '根据行业分配策略建议指派给华东销售组跟进。', '0', 'system', DATE_SUB(NOW(), INTERVAL 1 DAY), 'system', DATE_SUB(NOW(), INTERVAL 1 DAY));
+
+INSERT INTO cloud_flow_db.crm_assignment_rule (
+  rule_id, tenant_id, rule_name, rule_type, priority, status, inactive_days, max_per_owner, dept_id, dept_name,
+  customer_level, customer_tags, effective_start, effective_end, remark, deleted, create_by, create_time, update_by, update_time
+) VALUES
+(8901, 100000, '标准客户 45 天未跟进自动回收', 'AUTO_RELEASE', 10, 'ACTIVE', 45, NULL, NULL, NULL,
+ 'NORMAL', NULL, DATE_SUB(CURDATE(), INTERVAL 30 DAY), DATE_ADD(CURDATE(), INTERVAL 365 DAY), '适用于普通等级客户，超 45 天未跟进自动释放到公海。', '0', 'admin', DATE_SUB(NOW(), INTERVAL 20 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 2 DAY)),
+(8902, 100000, 'VIP客户 2 单抢单上限', 'CLAIM_LIMIT', 20, 'ACTIVE', NULL, 2, NULL, NULL,
+ 'VIP', '教育,零售', DATE_SUB(CURDATE(), INTERVAL 15 DAY), DATE_ADD(CURDATE(), INTERVAL 365 DAY), '限制高价值客户单人持有数量，避免集中积压。', '0', 'admin', DATE_SUB(NOW(), INTERVAL 15 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(8903, 100000, '华东销售组制造与教育客户分配', 'ASSIGN', 30, 'ACTIVE', NULL, NULL, 117, '华东销售组',
+ NULL, '制造业,教育', DATE_SUB(CURDATE(), INTERVAL 10 DAY), DATE_ADD(CURDATE(), INTERVAL 365 DAY), '制造业与教育行业新入池客户优先推荐给华东销售组。', '0', 'admin', DATE_SUB(NOW(), INTERVAL 10 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY));
 
 -- =========================================================
 -- 九、组织扩充后的运营轨迹数据：操作日志、前端异常、HR审计、催办效果
