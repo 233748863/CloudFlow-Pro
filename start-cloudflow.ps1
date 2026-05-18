@@ -9,6 +9,7 @@ $BackendRoot = Join-Path $Root "cloudflow-backend"
 $FrontendRoot = Join-Path $Root "cloudflow-frontend"
 $RuntimeRoot = Join-Path $Root ".cloudflow-runtime"
 $LogRoot = Join-Path $RuntimeRoot "logs"
+$LocalDefaultSharedPassword = "Juwangkeji@2025"
 
 $BackendServices = @(
     @{
@@ -66,13 +67,78 @@ function Get-EnvValue {
     return $item.Value
 }
 
+function Test-EnvDefined {
+    param([string]$Name)
+
+    return $null -ne (Get-Item -Path "Env:$Name" -ErrorAction SilentlyContinue)
+}
+
+function Test-TemplatePlaceholderValue {
+    param([AllowNull()][string]$Value)
+
+    if ($null -eq $Value) {
+        return $false
+    }
+
+    return $Value.Trim() -match '^(REPLACE_WITH_|CHANGE_ME(_TO)?_)'
+}
+
+function Test-StaleLocalValue {
+    param(
+        [string]$Name,
+        [AllowNull()][string]$Value
+    )
+
+    if ($null -eq $Value) {
+        return $false
+    }
+
+    switch ($Name) {
+        "DB_URL" {
+            return $Value -match 'characterEncoding=utf8mb4'
+        }
+        "DB_PASSWORD" {
+            return $Value -in @("cloudflow_2026", "cloudflow_redis_2026")
+        }
+        "MYSQL_ROOT_PASSWORD" {
+            return $Value -eq "cloudflow_2026"
+        }
+        "MYSQL_APP_PASSWORD" {
+            return $Value -eq "cloudflow_2026"
+        }
+        "REDIS_PASSWORD" {
+            return $Value -eq "cloudflow_redis_2026"
+        }
+        default {
+            return $false
+        }
+    }
+}
+
+function Get-ConfiguredEnvValue {
+    param([string]$Name)
+
+    if (-not (Test-EnvDefined -Name $Name)) {
+        return $null
+    }
+
+    $value = Get-EnvValue -Name $Name
+    if ([string]::IsNullOrWhiteSpace($value) -or
+        (Test-TemplatePlaceholderValue -Value $value) -or
+        (Test-StaleLocalValue -Name $Name -Value $value)) {
+        return $null
+    }
+
+    return $value
+}
+
 function Set-ProcessEnvDefault {
     param(
         [string]$Name,
         [string]$Value
     )
 
-    if (-not [string]::IsNullOrWhiteSpace((Get-EnvValue -Name $Name))) {
+    if ($null -ne (Get-ConfiguredEnvValue -Name $Name)) {
         return
     }
 
@@ -80,50 +146,86 @@ function Set-ProcessEnvDefault {
 }
 
 function Import-DotEnvFile {
-    $envFile = Join-Path $Root ".env"
-    if (-not (Test-Path $envFile)) {
-        return
-    }
+    $envFiles = @(
+        (Join-Path $Root ".env.local"),
+        (Join-Path $Root ".env"),
+        (Join-Path $Root "deploy\cloudflow.env.local"),
+        (Join-Path $Root "deploy\cloudflow.env")
+    )
 
-    foreach ($line in Get-Content -Path $envFile) {
-        $trimmed = $line.Trim()
-        if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+    foreach ($envFile in $envFiles) {
+        if (-not (Test-Path $envFile)) {
             continue
         }
 
-        $parts = $trimmed -split '=', 2
-        if ($parts.Count -ne 2) {
-            continue
-        }
+        foreach ($line in Get-Content -Path $envFile) {
+            $trimmed = $line.Trim()
+            if ([string]::IsNullOrWhiteSpace($trimmed) -or $trimmed.StartsWith("#")) {
+                continue
+            }
 
-        $name = $parts[0].Trim()
-        $value = $parts[1].Trim()
+            $parts = $trimmed -split '=', 2
+            if ($parts.Count -ne 2) {
+                continue
+            }
 
-        if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
-            $value = $value.Substring(1, $value.Length - 2)
-        }
+            $name = $parts[0].Trim()
+            $value = $parts[1].Trim()
 
-        if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name $name))) {
-            Set-Item -Path "Env:$name" -Value $value
+            if (($value.StartsWith('"') -and $value.EndsWith('"')) -or ($value.StartsWith("'") -and $value.EndsWith("'"))) {
+                $value = $value.Substring(1, $value.Length - 2)
+            }
+
+            if (Test-TemplatePlaceholderValue -Value $value) {
+                continue
+            }
+
+            Set-ProcessEnvDefault -Name $name -Value $value
         }
     }
 }
 
 function Initialize-LocalEnvironment {
     Set-ProcessEnvDefault -Name "MYSQL_SSL_PARAMS" -Value "useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true"
-    if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name "DB_PASSWORD"))) {
-        $dbPasswordCandidate = Get-EnvValue -Name "MYSQL_ROOT_PASSWORD"
-        if ([string]::IsNullOrWhiteSpace($dbPasswordCandidate)) {
-            $dbPasswordCandidate = Get-EnvValue -Name "MYSQL_APP_PASSWORD"
+    Set-ProcessEnvDefault -Name "DB_URL" -Value ("jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&connectionCollation=utf8mb4_0900_ai_ci&zeroDateTimeBehavior=convertToNull&{0}&serverTimezone=Asia/Shanghai" -f (Get-EnvValue -Name "MYSQL_SSL_PARAMS"))
+    Set-ProcessEnvDefault -Name "DB_USERNAME" -Value "root"
+    Set-ProcessEnvDefault -Name "MYSQL_ROOT_PASSWORD" -Value $LocalDefaultSharedPassword
+    Set-ProcessEnvDefault -Name "MYSQL_APP_PASSWORD" -Value $LocalDefaultSharedPassword
+    Set-ProcessEnvDefault -Name "REDIS_HOST" -Value "192.168.1.173"
+    Set-ProcessEnvDefault -Name "REDIS_PORT" -Value "6379"
+    Set-ProcessEnvDefault -Name "REDIS_PASSWORD" -Value $LocalDefaultSharedPassword
+
+    if ($null -eq (Get-ConfiguredEnvValue -Name "DB_PASSWORD")) {
+        $dbPasswordCandidate = $null
+        $dbUsername = Get-ConfiguredEnvValue -Name "DB_USERNAME"
+        $mysqlAppUsername = Get-ConfiguredEnvValue -Name "MYSQL_APP_USERNAME"
+
+        if (-not [string]::IsNullOrWhiteSpace($dbUsername) -and
+            -not [string]::IsNullOrWhiteSpace($mysqlAppUsername) -and
+            $dbUsername -eq $mysqlAppUsername) {
+            $dbPasswordCandidate = Get-ConfiguredEnvValue -Name "MYSQL_APP_PASSWORD"
         }
-        if ([string]::IsNullOrWhiteSpace($dbPasswordCandidate)) {
-            throw "缺少 DB_PASSWORD。请在 .env 或环境变量中提供 DB_PASSWORD、MYSQL_ROOT_PASSWORD 或 MYSQL_APP_PASSWORD。"
+
+        if ($null -eq $dbPasswordCandidate) {
+            $dbPasswordCandidate = Get-ConfiguredEnvValue -Name "MYSQL_ROOT_PASSWORD"
         }
+
+        if ($null -eq $dbPasswordCandidate) {
+            $dbPasswordCandidate = Get-ConfiguredEnvValue -Name "MYSQL_APP_PASSWORD"
+            if ($null -ne $dbPasswordCandidate -and
+                $null -eq (Get-ConfiguredEnvValue -Name "DB_USERNAME") -and
+                -not [string]::IsNullOrWhiteSpace($mysqlAppUsername)) {
+                Set-Item -Path "Env:DB_USERNAME" -Value $mysqlAppUsername
+            }
+        }
+
+        if ($null -eq $dbPasswordCandidate) {
+            $dbPasswordCandidate = $LocalDefaultSharedPassword
+        }
+
         Set-Item -Path "Env:DB_PASSWORD" -Value $dbPasswordCandidate
     }
-    if ([string]::IsNullOrWhiteSpace((Get-EnvValue -Name "REDIS_PASSWORD"))) {
-        throw "缺少 REDIS_PASSWORD。请在 .env 或环境变量中提供 REDIS_PASSWORD。"
-    }
+
     Set-ProcessEnvDefault -Name "NACOS_SERVER" -Value "192.168.1.173:8848"
     Set-ProcessEnvDefault -Name "NACOS_NAMESPACE" -Value "0ccb9313-39d8-4a58-9fa5-ce834b77e60d"
     Set-ProcessEnvDefault -Name "NACOS_USERNAME" -Value "nacos"
@@ -350,6 +452,42 @@ function Install-BackendDependencies {
     }
 }
 
+function Sync-NacosConfiguration {
+    $pythonCommand = Get-Command python -ErrorAction SilentlyContinue
+    if ($null -eq $pythonCommand) {
+        $pythonCommand = Get-Command py -ErrorAction SilentlyContinue
+    }
+
+    if ($null -eq $pythonCommand) {
+        Write-Host "nacos      跳过配置同步，未找到 python/py"
+        return
+    }
+
+    $stamp = Get-Date -Format "yyyyMMdd-HHmmss"
+    $outLog = Join-Path $LogRoot "nacos-sync-$stamp.out.log"
+    $errLog = Join-Path $LogRoot "nacos-sync-$stamp.err.log"
+    $arguments = if ($pythonCommand.Name -eq "py.exe" -or $pythonCommand.Name -eq "py") {
+        @("-3", ".\push_nacos_config.py")
+    } else {
+        @(".\push_nacos_config.py")
+    }
+
+    Write-Host "nacos      同步本地 config 到 Nacos..."
+    $process = Start-Process `
+        -FilePath $pythonCommand.Source `
+        -ArgumentList $arguments `
+        -WorkingDirectory $Root `
+        -WindowStyle Hidden `
+        -RedirectStandardOutput $outLog `
+        -RedirectStandardError $errLog `
+        -Wait `
+        -PassThru
+
+    if (($null -eq $process.ExitCode) -or ($process.ExitCode -ne 0)) {
+        Write-Host "nacos      配置同步失败，继续启动。日志：$outLog"
+    }
+}
+
 function Start-BackendService {
     param([object]$Service)
 
@@ -472,6 +610,7 @@ Stop-PortListeners -Service $FrontendService
 Start-Sleep -Seconds 2
 
 Install-BackendDependencies
+Sync-NacosConfiguration
 
 foreach ($service in $BackendServices) {
     Start-BackendService -Service $service
