@@ -1,9 +1,13 @@
 package com.cloudflow.common.idempotent.aspectj;
 
-import cn.hutool.core.util.ObjectUtil;
 import cn.hutool.crypto.SecureUtil;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
@@ -13,8 +17,20 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.lang.reflect.Array;
 import java.time.Duration;
+import java.time.temporal.Temporal;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
+import java.util.UUID;
 
 /**
  * 防重复提交 AOP 切面
@@ -36,9 +52,13 @@ public class RepeatSubmitAspect {
     private static final String REPEAT_SUBMIT_KEY = "cloudflow:repeat_submit:";
 
     private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
-    public RepeatSubmitAspect(StringRedisTemplate redisTemplate) {
+    public RepeatSubmitAspect(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper.copy();
+        this.objectMapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
+        this.objectMapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
     }
 
     /**
@@ -49,22 +69,17 @@ public class RepeatSubmitAspect {
      */
     @Before("@annotation(repeatSubmit)")
     public void doBefore(JoinPoint joinPoint, RepeatSubmit repeatSubmit) {
-        // 计算间隔时间（统一转为毫秒）
         long intervalMillis = repeatSubmit.timeUnit().toMillis(repeatSubmit.interval());
         if (intervalMillis < 1000) {
-            // 最小间隔 1 秒，防止配置错误
             intervalMillis = 1000;
         }
 
-        // 构建唯一 Key
         String key = buildKey(joinPoint);
 
-        // 尝试在 Redis 中设置标记（SET NX + EX 原子操作）
         Boolean success = redisTemplate.opsForValue()
                 .setIfAbsent(key, "1", Duration.ofMillis(intervalMillis));
 
         if (Boolean.FALSE.equals(success)) {
-            // Key 已存在，说明在间隔时间内重复提交
             log.warn("[RepeatSubmit] 检测到重复提交, key={}", key);
             throw new RepeatSubmitException(repeatSubmit.message());
         }
@@ -77,7 +92,6 @@ public class RepeatSubmitAspect {
      * 格式: cloudflow:repeat_submit:{userId}:{uri}:{paramsMd5}
      */
     private String buildKey(JoinPoint joinPoint) {
-        // 获取当前请求
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         if (attributes == null) {
             throw new RepeatSubmitException("无法获取请求上下文");
@@ -86,25 +100,98 @@ public class RepeatSubmitAspect {
 
         Long currentUserId = UserContext.getUserId();
         String userId = currentUserId != null ? String.valueOf(currentUserId) : "anonymous";
-
-        // 请求 URI
         String uri = request.getRequestURI();
-
-        // 请求参数摘要（使用方法参数的 hashCode 生成 MD5）
-        String paramsDigest = "";
-        Object[] args = joinPoint.getArgs();
-        if (args != null && args.length > 0) {
-            StringBuilder sb = new StringBuilder();
-            for (Object arg : args) {
-                if (arg != null && !(arg instanceof HttpServletRequest)
-                        && !(arg instanceof jakarta.servlet.http.HttpServletResponse)) {
-                    sb.append(arg.hashCode());
-                }
-            }
-            paramsDigest = SecureUtil.md5(sb.toString());
-        }
+        String paramsDigest = buildParamsDigest(joinPoint.getArgs());
 
         return REPEAT_SUBMIT_KEY + userId + ":" + uri + ":" + paramsDigest;
+    }
+
+    private String buildParamsDigest(Object[] args) {
+        if (args == null || args.length == 0) {
+            return "";
+        }
+
+        List<Object> normalizedArgs = new ArrayList<>();
+        for (Object arg : args) {
+            if (isIgnoredArgument(arg)) {
+                continue;
+            }
+            normalizedArgs.add(normalizeValue(arg));
+        }
+
+        if (normalizedArgs.isEmpty()) {
+            return "";
+        }
+
+        try {
+            return SecureUtil.md5(objectMapper.writeValueAsString(normalizedArgs));
+        } catch (Exception e) {
+            throw new RepeatSubmitException("生成防重参数摘要失败");
+        }
+    }
+
+    private Object normalizeValue(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (isSimpleValue(value)) {
+            return value;
+        }
+        if (value instanceof Map<?, ?> map) {
+            TreeMap<String, Object> normalizedMap = new TreeMap<>();
+            for (Map.Entry<?, ?> entry : map.entrySet()) {
+                if (entry.getKey() == null || isIgnoredArgument(entry.getValue())) {
+                    continue;
+                }
+                normalizedMap.put(String.valueOf(entry.getKey()), normalizeValue(entry.getValue()));
+            }
+            return normalizedMap;
+        }
+        if (value instanceof Collection<?> collection) {
+            List<Object> normalizedList = new ArrayList<>();
+            for (Object item : collection) {
+                if (isIgnoredArgument(item)) {
+                    continue;
+                }
+                normalizedList.add(normalizeValue(item));
+            }
+            return normalizedList;
+        }
+        if (value.getClass().isArray()) {
+            List<Object> normalizedArray = new ArrayList<>();
+            int length = Array.getLength(value);
+            for (int i = 0; i < length; i++) {
+                Object item = Array.get(value, i);
+                if (isIgnoredArgument(item)) {
+                    continue;
+                }
+                normalizedArray.add(normalizeValue(item));
+            }
+            return normalizedArray;
+        }
+        return normalizeValue(objectMapper.convertValue(value, Object.class));
+    }
+
+    private boolean isIgnoredArgument(Object arg) {
+        if (arg == null) {
+            return false;
+        }
+        return arg instanceof ServletRequest
+                || arg instanceof ServletResponse
+                || arg instanceof MultipartFile
+                || arg instanceof InputStream
+                || arg instanceof OutputStream;
+    }
+
+    private boolean isSimpleValue(Object value) {
+        return value instanceof CharSequence
+                || value instanceof Number
+                || value instanceof Boolean
+                || value instanceof Character
+                || value instanceof Enum<?>
+                || value instanceof UUID
+                || value instanceof Date
+                || value instanceof Temporal;
     }
 
     /**

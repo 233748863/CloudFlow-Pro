@@ -21,7 +21,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - gateway:9000
+          - gateway:9100
         labels:
           service: gateway
 
@@ -30,7 +30,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - auth:9001
+          - auth:9101
         labels:
           service: auth
 
@@ -39,7 +39,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - workflow:9002
+          - workflow:9102
         labels:
           service: workflow
 
@@ -48,7 +48,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - oa:9003
+          - oa:9103
         labels:
           service: oa
 
@@ -57,7 +57,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - crm:9004
+          - crm:9104
         labels:
           service: crm
 
@@ -66,6 +66,6 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
-          - hr:9005
+          - hr:9105
         labels:
           service: hr

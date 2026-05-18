@@ -7,18 +7,19 @@ WORKDIR /app
 COPY cloudflow-backend/ .
 RUN mvn clean package -DskipTests -pl cloudflow-service-crm -am
 
+FROM eclipse-temurin:17-jre-alpine as layer
+WORKDIR /tmp
+COPY --from=builder /app/cloudflow-service-crm/target/*.jar app.jar
+RUN java -Djarmode=layertools -jar app.jar extract
+
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
-
 RUN addgroup -S appuser && adduser -S appuser -G appuser
 USER appuser
-
-COPY --from=builder --chown=appuser:appuser /app/cloudflow-service-crm/target/*.jar app.jar
-
+COPY --from=layer --chown=appuser:appuser /tmp/dependencies/ ./
+COPY --from=layer --chown=appuser:appuser /tmp/spring-boot-loader/ ./
+COPY --from=layer --chown=appuser:appuser /tmp/snapshot-dependencies/ ./
+COPY --from=layer --chown=appuser:appuser /tmp/application/ ./
 EXPOSE 9004
-
-ENTRYPOINT ["java", \
-  "-XX:+UseContainerSupport", \
-  "-XX:MaxRAMPercentage=70.0", \
-  "-Djava.security.egd=file:/dev/./urandom", \
-  "-jar", "app.jar"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 CMD wget -q --spider http://localhost:9104/actuator/health || exit 1
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70.0", "-Djava.security.egd=file:/dev/./urandom", "org.springframework.boot.loader.launch.JarLauncher"]

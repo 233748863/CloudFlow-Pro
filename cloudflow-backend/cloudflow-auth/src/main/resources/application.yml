@@ -87,6 +87,8 @@ logging:
     com.cloudflow.auth.mapper: ${LOG_LEVEL_MAPPER:WARN}
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9101}
   endpoints:
     web:
       exposure:

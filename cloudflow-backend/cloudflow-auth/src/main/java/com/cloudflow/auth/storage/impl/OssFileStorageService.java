@@ -6,13 +6,13 @@ import com.cloudflow.auth.config.properties.FileStorageProperties;
 import com.cloudflow.auth.enums.FileStorageType;
 import com.cloudflow.auth.storage.FileStorageService;
 import com.cloudflow.auth.storage.model.StoredFileInfo;
+import com.cloudflow.common.core.utils.file.FileUploadUtils;
 import com.cloudflow.common.oss.core.OssClient;
 import com.cloudflow.common.oss.entity.UploadResult;
 import com.cloudflow.common.oss.enums.AccessPolicyType;
 import com.cloudflow.common.oss.factory.OssFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.time.Duration;
 
@@ -34,10 +34,10 @@ public class OssFileStorageService implements FileStorageService {
     }
 
     @Override
-    public StoredFileInfo store(MultipartFile file) throws Exception {
+    public StoredFileInfo store(FileUploadUtils.ValidatedFile file) throws Exception {
         OssClient client = getClient();
-        String suffix = resolveSuffix(file);
-        UploadResult uploadResult = client.uploadSuffix(file.getInputStream(), suffix, file.getSize(), file.getContentType());
+        String suffix = "." + file.extension();
+        UploadResult uploadResult = client.uploadSuffix(file.file().getInputStream(), suffix, file.file().getSize(), file.contentType());
         return StoredFileInfo.builder()
             .filePath(uploadResult.getFilename())
             .persistedUrl(uploadResult.getUrl())
@@ -62,7 +62,6 @@ public class OssFileStorageService implements FileStorageService {
             int expireMinutes = fileStorageProperties.getPresignedExpireMinutes() == null
                 ? 30
                 : Math.max(fileStorageProperties.getPresignedExpireMinutes(), 1);
-            // 私有读场景生成带时效的预签名 URL，避免直接暴露对象地址。
             return client.getPresignedUrl(filePath, Duration.ofMinutes(expireMinutes));
         }
         return client.getUrl() + "/" + filePath;
@@ -90,13 +89,5 @@ public class OssFileStorageService implements FileStorageService {
             authOssProperties.getRegion())) {
             throw new IllegalStateException("OSS 存储配置不完整，请检查 endpoint/accessKey/secretKey/bucketName/region");
         }
-    }
-
-    private String resolveSuffix(MultipartFile file) {
-        String originalFilename = file.getOriginalFilename();
-        if (StrUtil.isBlank(originalFilename) || !originalFilename.contains(".")) {
-            return ".bin";
-        }
-        return originalFilename.substring(originalFilename.lastIndexOf('.'));
     }
 }

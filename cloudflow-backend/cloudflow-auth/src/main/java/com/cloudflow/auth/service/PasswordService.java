@@ -2,9 +2,17 @@ package com.cloudflow.auth.service;
 
 import cn.hutool.crypto.SecureUtil;
 import cn.hutool.crypto.digest.BCrypt;
+import com.cloudflow.auth.domain.SysUser;
+import com.cloudflow.auth.mapper.SysUserMapper;
+import com.cloudflow.common.audit.domain.SysAuditLogEntity;
+import com.cloudflow.common.audit.mapper.SysAuditLogMapper;
+import com.cloudflow.common.tenant.TenantConfigProperties;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
 import java.util.Locale;
 import java.util.regex.Pattern;
 
@@ -13,9 +21,14 @@ import java.util.regex.Pattern;
  * 统一处理前端明文密码、历史前端 SHA-256 口令，以及历史直接 BCrypt(明文) 账号兼容。
  */
 @Service
+@RequiredArgsConstructor
 public class PasswordService {
 
     private static final Pattern SHA256_HEX_PATTERN = Pattern.compile("^[a-f0-9]{64}$");
+
+    private final SysUserMapper sysUserMapper;
+    private final SysAuditLogMapper sysAuditLogMapper;
+    private final TenantConfigProperties tenantConfigProperties;
 
     public String normalizeIncomingPassword(String password) {
         if (!StringUtils.hasText(password)) {
@@ -48,6 +61,28 @@ public class PasswordService {
         }
 
         return PasswordMatchResult.notMatched();
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void upgradeLegacyPasswordIfNeeded(SysUser user, PasswordMatchResult passwordMatchResult, String rawPassword) {
+        if (user == null || passwordMatchResult == null || !passwordMatchResult.legacyPlaintextMatch()) {
+            return;
+        }
+
+        SysUser passwordUpgrade = new SysUser();
+        passwordUpgrade.setUserId(user.getUserId());
+        passwordUpgrade.setPassword(encodePassword(rawPassword));
+        sysUserMapper.updateById(passwordUpgrade);
+
+        SysAuditLogEntity auditLog = new SysAuditLogEntity();
+        auditLog.setTenantId(user.getTenantId() != null ? user.getTenantId() : tenantConfigProperties.getDefaultTenantId());
+        auditLog.setAuditName("PASSWORD_UPGRADE");
+        auditLog.setAuditField("password_hash_scheme");
+        auditLog.setBeforeVal("bcrypt(raw)");
+        auditLog.setAfterVal("bcrypt(sha256(raw))");
+        auditLog.setCreateBy(StringUtils.hasText(user.getUserName()) ? user.getUserName() : "system");
+        auditLog.setCreateTime(LocalDateTime.now());
+        sysAuditLogMapper.insert(auditLog);
     }
 
     public boolean isSha256Hex(String value) {

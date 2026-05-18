@@ -1,6 +1,7 @@
 package com.cloudflow.common.idempotent.config;
 
 import com.cloudflow.common.idempotent.aspectj.RepeatSubmitAspect;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -16,7 +17,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 public class IdempotentAutoConfiguration {
 
     @Bean
-    public RepeatSubmitAspect repeatSubmitAspect(StringRedisTemplate redisTemplate) {
-        return new RepeatSubmitAspect(redisTemplate);
+    public RepeatSubmitAspect repeatSubmitAspect(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
+        return new RepeatSubmitAspect(redisTemplate, objectMapper);
     }
 }

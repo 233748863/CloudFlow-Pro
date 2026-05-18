@@ -27,6 +27,7 @@ CREATE TABLE sys_tenant (
   contact_name      VARCHAR(50)     DEFAULT NULL COMMENT '联系人',
   contact_phone     VARCHAR(20)     DEFAULT NULL COMMENT '联系电话',
   contact_email     VARCHAR(50)     DEFAULT NULL COMMENT '联系邮箱',
+  allowed_email_domains VARCHAR(500) DEFAULT NULL COMMENT '允许注册的邮箱域名白名单，多个值使用逗号分隔',
   domain            VARCHAR(100)    DEFAULT NULL COMMENT '域名(可选)',
   status            CHAR(1)         DEFAULT '0' COMMENT '状态（0正常 1停用）',
   expire_time       DATETIME        DEFAULT NULL COMMENT '过期时间',

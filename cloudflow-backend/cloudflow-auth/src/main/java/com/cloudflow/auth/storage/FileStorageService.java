@@ -2,7 +2,7 @@ package com.cloudflow.auth.storage;
 
 import com.cloudflow.auth.enums.FileStorageType;
 import com.cloudflow.auth.storage.model.StoredFileInfo;
-import org.springframework.web.multipart.MultipartFile;
+import com.cloudflow.common.core.utils.file.FileUploadUtils;
 
 /**
  * 文件存储服务接口。
@@ -22,7 +22,7 @@ public interface FileStorageService {
     /**
      * 存储上传文件。
      */
-    StoredFileInfo store(MultipartFile file) throws Exception;
+    StoredFileInfo store(FileUploadUtils.ValidatedFile file) throws Exception;
 
     /**
      * 删除已存储文件。

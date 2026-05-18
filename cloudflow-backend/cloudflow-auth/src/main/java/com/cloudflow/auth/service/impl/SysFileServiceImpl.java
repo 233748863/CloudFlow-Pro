@@ -4,6 +4,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.auth.config.properties.FileUploadProperties;
 import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.enums.FileStorageType;
 import com.cloudflow.auth.mapper.SysFileMapper;
@@ -16,7 +17,6 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.file.FileUploadUtils;
-import com.cloudflow.common.core.utils.file.MimeTypeUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -33,14 +33,18 @@ public class SysFileServiceImpl implements ISysFileService {
     private final SysFileMapper sysFileMapper;
     private final SysTenantService sysTenantService;
     private final FileStorageRegistry storageRegistry;
+    private final FileUploadProperties fileUploadProperties;
 
     @Override
     public SysFile uploadFile(MultipartFile file) {
         try {
-            FileUploadUtils.assertAllowed(file, MimeTypeUtils.DEFAULT_ALLOWED_EXTENSION);
+            FileUploadUtils.ValidatedFile validatedFile = FileUploadUtils.validate(
+                file,
+                fileUploadProperties.getResolvedMaxSize(),
+                fileUploadProperties.getAllowedExtensionArray()
+            );
 
-            String originalFilename = file.getOriginalFilename();
-            long size = file.getSize();
+            long size = validatedFile.file().getSize();
             Long tenantId = UserContext.getTenantId();
 
             if (tenantId != null && !sysTenantService.hasAvailableStorage(tenantId, size)) {
@@ -48,18 +52,17 @@ public class SysFileServiceImpl implements ISysFileService {
                 throw new RuntimeException("租户可用存储空间不足，无法上传当前文件");
             }
 
-            // 根据当前配置自动选择本地存储或 OSS 存储实现。
             FileStorageService storageService = storageRegistry.getCurrentService();
-            StoredFileInfo storedFileInfo = storageService.store(file);
+            StoredFileInfo storedFileInfo = storageService.store(validatedFile);
 
             SysFile sysFile = new SysFile();
             sysFile.setTenantId(tenantId);
-            sysFile.setFileName(originalFilename);
+            sysFile.setFileName(validatedFile.originalFileName());
             sysFile.setFilePath(storedFileInfo.getFilePath());
             sysFile.setUrl(storedFileInfo.getPersistedUrl());
             sysFile.setStorageType(storageService.getStorageType().name());
             sysFile.setFileSize(size);
-            sysFile.setFileType(FileUtil.extName(originalFilename));
+            sysFile.setFileType(validatedFile.extension());
             sysFile.setCreateTime(LocalDateTime.now());
             sysFile.setCreateBy(UserContext.getUserName());
             sysFile.setDelFlag("0");
@@ -70,9 +73,9 @@ public class SysFileServiceImpl implements ISysFileService {
                 sysTenantService.refreshTenantStorageSummary(tenantId);
             }
 
-            // 补齐可访问地址，前端统一读取 url 字段。
             fillAccessibleUrl(sysFile);
-            log.info("文件上传成功: {}, 大小: {}字节, 租户ID: {}, 存储类型: {}", originalFilename, size, tenantId, sysFile.getStorageType());
+            log.info("文件上传成功: {}, 大小: {}字节, 租户ID: {}, 存储类型: {}",
+                validatedFile.originalFileName(), size, tenantId, sysFile.getStorageType());
             return sysFile;
         } catch (RuntimeException e) {
             throw e;
@@ -111,7 +114,6 @@ public class SysFileServiceImpl implements ISysFileService {
 
             FileStorageType storageType = storageRegistry.resolveType(existingFile.getStorageType());
             FileStorageService storageService = storageRegistry.getService(storageType);
-            // 同步删除底层存储文件，避免数据库删除后遗留脏文件。
             storageService.delete(existingFile.getFilePath());
 
             SysFile updateFile = new SysFile();

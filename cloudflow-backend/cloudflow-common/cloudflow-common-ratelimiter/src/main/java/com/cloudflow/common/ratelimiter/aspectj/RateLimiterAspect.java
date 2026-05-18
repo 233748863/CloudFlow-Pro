@@ -1,6 +1,7 @@
 package com.cloudflow.common.ratelimiter.aspectj;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
 import com.cloudflow.common.ratelimiter.enums.LimitType;
 import jakarta.servlet.http.HttpServletRequest;
@@ -100,18 +101,7 @@ public class RateLimiterAspect {
             ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
-                String ip = request.getHeader("X-Forwarded-For");
-                if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
-                    ip = request.getHeader("X-Real-IP");
-                }
-                if (!StringUtils.hasText(ip) || "unknown".equalsIgnoreCase(ip)) {
-                    ip = request.getRemoteAddr();
-                }
-                // 多级代理取第一个
-                if (ip != null && ip.contains(",")) {
-                    ip = ip.split(",")[0].trim();
-                }
-                return ip != null ? ip : "unknown";
+                return IpUtils.getIpAddr(request);
             }
         } catch (Exception e) {
             log.warn("[RateLimiter] 获取IP失败: {}", e.getMessage());

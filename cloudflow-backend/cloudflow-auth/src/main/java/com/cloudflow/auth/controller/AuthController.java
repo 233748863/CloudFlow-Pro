@@ -266,6 +266,11 @@ public class AuthController {
             return R.fail(tenantError);
         }
 
+        String emailDomainError = validateEmailDomainAllowed(tenant, registerBody.getEmail());
+        if (emailDomainError != null) {
+            return R.fail(emailDomainError);
+        }
+
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(SysUser::getUserName, username);
         queryWrapper.eq(SysUser::getTenantId, tenant.getTenantId());
@@ -628,6 +633,39 @@ public class AuthController {
         }
         if (checkUserLimit && tenantService.isUserLimitReached(tenant.getTenantId())) {
             return "租户用户数量已达上限";
+        }
+        return null;
+    }
+
+    private String validateEmailDomainAllowed(SysTenant tenant, String email) {
+        if (tenant == null) {
+            return null;
+        }
+        String allowedDomainsConfig = tenant.getAllowedEmailDomains();
+        if (!StringUtils.hasText(allowedDomainsConfig)) {
+            return null;
+        }
+        if (!StringUtils.hasText(email)) {
+            return "当前租户限制注册邮箱域名，邮箱不能为空";
+        }
+        int atIndex = email.lastIndexOf('@');
+        if (atIndex < 0 || atIndex == email.length() - 1) {
+            return "邮箱格式不正确";
+        }
+        String domain = email.substring(atIndex + 1).trim().toLowerCase(Locale.ROOT);
+        if (domain.isEmpty()) {
+            return "邮箱格式不正确";
+        }
+        Set<String> allowedDomains = Arrays.stream(allowedDomainsConfig.split(","))
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .map(value -> value.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+        if (allowedDomains.isEmpty()) {
+            return null;
+        }
+        if (!allowedDomains.contains(domain)) {
+            return "当前租户不允许使用该邮箱域名注册";
         }
         return null;
     }

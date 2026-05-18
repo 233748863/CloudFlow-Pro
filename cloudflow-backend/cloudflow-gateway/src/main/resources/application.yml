@@ -35,12 +35,72 @@ spring:
           filters:
             - StripPrefix=1
 
+        - id: auth-login
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/auth/login
+          filters:
+            - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                key-resolver: "#{@ipKeyResolver}"
+
+        - id: auth-register
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/auth/register
+          filters:
+            - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 2
+                redis-rate-limiter.burstCapacity: 5
+                key-resolver: "#{@ipKeyResolver}"
+
+        - id: auth-captcha-slider
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/auth/captcha/slider
+          filters:
+            - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@ipKeyResolver}"
+
+        - id: auth-captcha-check
+          uri: lb://cloudflow-auth
+          predicates:
+            - Path=/auth/captcha/check
+          filters:
+            - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@ipKeyResolver}"
+
         - id: cloudflow-workflow
           uri: lb://cloudflow-service-workflow
           predicates:
             - Path=/workflow/**
           filters:
             - StripPrefix=1
+
+        - id: workflow-start
+          uri: lb://cloudflow-service-workflow
+          predicates:
+            - Path=/workflow/start
+          filters:
+            - StripPrefix=1
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 50
+                key-resolver: "#{@userKeyResolver}"
 
         - id: cloudflow-oa
           uri: lb://cloudflow-oa
@@ -112,6 +172,8 @@ sa-token:
   is-log: false
 
 management:
+  server:
+    port: ${MANAGEMENT_SERVER_PORT:9100}
   endpoints:
     web:
       exposure:

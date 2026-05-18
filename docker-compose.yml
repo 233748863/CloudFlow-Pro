@@ -179,6 +179,7 @@ services:
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
       # CORS 白名单：逗号分隔的允许 Origin 列表；默认覆盖 Docker 前端 Nginx（https+http）和 Vite 开发端口
       CLOUDFLOW_CORS_ALLOWED_ORIGINS: ${CLOUDFLOW_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,https://localhost,http://localhost}
+      MANAGEMENT_SERVER_PORT: 9100
       # JVM 参数
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     ports:
@@ -194,7 +195,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9100/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -237,6 +238,7 @@ services:
       LOG_LEVEL_APP: ${LOG_LEVEL_APP}
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
+      MANAGEMENT_SERVER_PORT: 9101
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     volumes:
       # 日志目录映射
@@ -251,7 +253,7 @@ services:
       nacos:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9001/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9101/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -294,6 +296,7 @@ services:
       LOG_LEVEL_APP: ${LOG_LEVEL_APP}
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
+      MANAGEMENT_SERVER_PORT: 9102
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
     volumes:
       # 日志目录映射
@@ -310,7 +313,7 @@ services:
       nacos:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9002/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9102/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -353,6 +356,7 @@ services:
       LOG_LEVEL_APP: ${LOG_LEVEL_APP}
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
+      MANAGEMENT_SERVER_PORT: 9103
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     volumes:
       # 日志目录映射
@@ -369,7 +373,7 @@ services:
       nacos:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9003/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9103/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -412,6 +416,7 @@ services:
       LOG_LEVEL_APP: ${LOG_LEVEL_APP}
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
+      MANAGEMENT_SERVER_PORT: 9104
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     volumes:
       - crm_logs:/app/logs
@@ -425,7 +430,7 @@ services:
       nacos:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9004/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9104/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -468,6 +473,7 @@ services:
       LOG_LEVEL_APP: ${LOG_LEVEL_APP}
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
+      MANAGEMENT_SERVER_PORT: 9105
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
     volumes:
       - hr_logs:/app/logs
@@ -480,7 +486,7 @@ services:
       nacos:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9005/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:9105/actuator/health"]
       interval: 30s
       timeout: 10s
       retries: 5

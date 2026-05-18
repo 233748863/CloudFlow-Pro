@@ -8,7 +8,6 @@ import com.cloudflow.auth.storage.model.StoredFileInfo;
 import com.cloudflow.common.config.CloudFlowConfig;
 import com.cloudflow.common.core.utils.file.FileUploadUtils;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 
@@ -26,7 +25,7 @@ public class LocalFileStorageService implements FileStorageService {
     }
 
     @Override
-    public StoredFileInfo store(MultipartFile file) throws Exception {
+    public StoredFileInfo store(FileUploadUtils.ValidatedFile file) throws Exception {
         String relativePath = FileUploadUtils.upload(CloudFlowConfig.getUploadPath(), file);
         return StoredFileInfo.builder()
             .filePath(relativePath)
