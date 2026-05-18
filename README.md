@@ -182,7 +182,7 @@ mysql -u root -p cloud_flow_db < cloudflow-backend/DB/06.cloudflow-business-seed
 
 ### 📤 3. 推送 Nacos 配置
 
-`config/` 下当前有 7 个标准 Data ID：`cloudflow-common.yaml`、`cloudflow-gateway.yaml`、`cloudflow-auth.yaml`、`cloudflow-service-workflow.yaml`、`cloudflow-oa.yaml`、`cloudflow-service-crm.yaml`、`cloudflow-service-hr.yaml`。这些配置文件带有当前开发环境默认地址，首次运行前应把 MySQL、Redis、Nacos 地址和密码改成自己的环境值。
+`config/` 下当前有 7 个标准 Data ID：`cloudflow-common.yaml`、`cloudflow-gateway.yaml`、`cloudflow-auth.yaml`、`cloudflow-service-workflow.yaml`、`cloudflow-service-oa.yaml`、`cloudflow-service-crm.yaml`、`cloudflow-service-hr.yaml`。这些配置文件带有当前开发环境默认地址，首次运行前应把 MySQL、Redis、Nacos 地址和密码改成自己的环境值。
 
 ```powershell
 python -m pip install requests

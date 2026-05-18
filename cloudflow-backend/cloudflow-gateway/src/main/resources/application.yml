@@ -102,8 +102,8 @@ spring:
                 redis-rate-limiter.burstCapacity: 50
                 key-resolver: "#{@userKeyResolver}"
 
-        - id: cloudflow-oa
-          uri: lb://cloudflow-oa
+        - id: cloudflow-service-oa
+          uri: lb://cloudflow-service-oa
           predicates:
             - Path=/oa/**
           filters:

@@ -9,7 +9,7 @@
 - cloudflow-service-workflow.yaml
 - cloudflow-service-crm.yaml
 - cloudflow-service-hr.yaml
-- cloudflow-oa.yaml
+- cloudflow-service-oa.yaml
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ DEFAULT_CONFIG_FILES = [
     "cloudflow-service-workflow.yaml",
     "cloudflow-service-crm.yaml",
     "cloudflow-service-hr.yaml",
-    "cloudflow-oa.yaml",
+    "cloudflow-service-oa.yaml",
 ]
 
 

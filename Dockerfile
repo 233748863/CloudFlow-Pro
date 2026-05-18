@@ -7,7 +7,7 @@
 #   docker build --build-arg MODULE_NAME=cloudflow-gateway -t cloudflow-gateway .
 #   docker build --build-arg MODULE_NAME=cloudflow-auth -t cloudflow-auth .
 #   docker build --build-arg MODULE_NAME=cloudflow-service-workflow -t cloudflow-workflow .
-#   docker build --build-arg MODULE_NAME=cloudflow-service-oa -t cloudflow-oa .
+#   docker build --build-arg MODULE_NAME=cloudflow-service-oa -t cloudflow-service-oa .
 #
 # 注意: 生产部署请使用 docker compose，参见 docker-compose.yml
 # ============================================================

@@ -3,7 +3,7 @@ server:
 
 spring:
   application:
-    name: cloudflow-oa
+    name: cloudflow-service-oa
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
   config:

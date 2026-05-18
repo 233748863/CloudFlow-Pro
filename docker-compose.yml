@@ -339,7 +339,7 @@ services:
     build:
       context: .
       dockerfile: docker/oa/Dockerfile
-    container_name: cloudflow-oa
+    container_name: cloudflow-service-oa
     restart: unless-stopped
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
@@ -364,7 +364,7 @@ services:
       # 文件上传目录（与 workflow 共享，OA 审批附件等）
       - upload_data:/data/cloudflow/uploads
       # 外部配置文件
-      - ./config/cloudflow-oa.yaml:/app/config/cloudflow-oa.yaml:ro
+      - ./config/cloudflow-service-oa.yaml:/app/config/cloudflow-service-oa.yaml:ro
     depends_on:
       mysql:
         condition: service_healthy

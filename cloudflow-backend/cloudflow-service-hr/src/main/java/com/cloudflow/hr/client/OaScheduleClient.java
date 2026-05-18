@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RequestBody;
  * OA日程服务Feign客户端
  */
 @FeignClient(
-        name = "cloudflow-oa",
+        name = "cloudflow-service-oa",
         contextId = "hrOaScheduleClient",
         fallback = OaScheduleClientFallback.class
 )

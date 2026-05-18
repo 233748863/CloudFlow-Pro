@@ -44,7 +44,7 @@ scrape_configs:
           service: workflow
 
   # 采集 OA 服务指标，用于观察日常业务模块运行情况。
-  - job_name: cloudflow-oa
+  - job_name: cloudflow-service-oa
     metrics_path: /actuator/prometheus
     static_configs:
       - targets:
