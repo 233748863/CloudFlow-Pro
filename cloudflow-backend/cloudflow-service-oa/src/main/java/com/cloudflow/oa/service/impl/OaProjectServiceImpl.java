@@ -9,7 +9,8 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaBudgetPlan;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaInvoice;
@@ -166,11 +167,12 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             variables.put("budgetAmount", project.getBudgetAmount());
             variables.put("customerName", project.getCustomerName());
             variables.put("ownerName", project.getOwnerName());
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PROJECT,
+                    OaBusinessTypes.PROJECT,
                     projectId,
-                    project.getProjectNo()
+                    project.getProjectNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
             var result = remoteWorkflowService.startProcess(dto);

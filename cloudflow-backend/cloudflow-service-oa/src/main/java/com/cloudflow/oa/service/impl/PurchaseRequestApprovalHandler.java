@@ -1,11 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,7 @@ public class PurchaseRequestApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST;
+        return OaBusinessTypes.PURCHASE_REQUEST;
     }
 
     @Override
@@ -45,7 +46,7 @@ public class PurchaseRequestApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(BizPurchaseRequest::getId, dto.getBusinessId())
                 .set(BizPurchaseRequest::getInstanceId, dto.getProcessInstanceId())
                 .set(BizPurchaseRequest::getStatus, status)
-                .set(BizPurchaseRequest::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(BizPurchaseRequest::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
 
         int updated = purchaseRequestMapper.update(null, wrapper);

@@ -2,7 +2,8 @@ package com.cloudflow.crm.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmApproval;
 import com.cloudflow.crm.domain.CrmCustomer;
@@ -54,7 +55,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
         payload.put("currentOwnerName", customer.getOwnerName());
         payload.put("action", normalized);
         CrmApproval approval = insertApproval(
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_CUSTOMER_CLAIM,
+                CrmBusinessTypes.CRM_CUSTOMER_CLAIM,
                 normalized,
                 "CRM_CUSTOMER",
                 customerId,
@@ -79,7 +80,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
         payload.put("targetLevel", targetLevel);
         payload.put("action", normalized);
         CrmApproval approval = insertApproval(
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_CUSTOMER_LEVEL,
+                CrmBusinessTypes.CRM_CUSTOMER_LEVEL,
                 normalized,
                 "CRM_CUSTOMER",
                 customerId,
@@ -105,7 +106,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
         payload.put("lostReason", lostReason);
         payload.put("action", normalized);
         CrmApproval approval = insertApproval(
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_OPPORTUNITY_DOWNGRADE,
+                CrmBusinessTypes.CRM_OPPORTUNITY_DOWNGRADE,
                 normalized,
                 "CRM_OPPORTUNITY",
                 opportunityId,
@@ -141,7 +142,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
         payload.put("refundAmount", refundAmount);
         payload.put("originalReceivedAmount", receivable.getReceivedAmount());
         CrmApproval approval = insertApproval(
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_REFUND,
+                CrmBusinessTypes.CRM_REFUND,
                 "REFUND",
                 "CRM_RECEIVABLE",
                 receivableId,
@@ -198,8 +199,9 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
         variables.put("businessRefId", approval.getBusinessRefId());
         variables.put("businessRefName", approval.getBusinessRefName());
         variables.put("actionType", approval.getActionType());
-        WorkflowCallbackStreamConstants.applyCallbackMetadata(
-                variables, approval.getBusinessType(), approval.getApprovalId(), approval.getApprovalNo());
+        WorkflowCallbackConstants.applyCallbackMetadata(
+                variables, approval.getBusinessType(), approval.getApprovalId(), approval.getApprovalNo(),
+                "workflow:stream:approval-callback:crm");
         dto.setVariables(variables);
         try {
             R<?> result = remoteWorkflowService.startProcess(dto);
@@ -226,10 +228,10 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
 
     private String nextApprovalNo(String businessType) {
         String prefix = switch (businessType) {
-            case WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_CUSTOMER_CLAIM -> "CLM";
-            case WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_CUSTOMER_LEVEL -> "LVL";
-            case WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_OPPORTUNITY_DOWNGRADE -> "OPD";
-            case WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_REFUND -> "RFD";
+            case CrmBusinessTypes.CRM_CUSTOMER_CLAIM -> "CLM";
+            case CrmBusinessTypes.CRM_CUSTOMER_LEVEL -> "LVL";
+            case CrmBusinessTypes.CRM_OPPORTUNITY_DOWNGRADE -> "OPD";
+            case CrmBusinessTypes.CRM_REFUND -> "RFD";
             default -> "CRA";
         };
         return Localize.nextNo(prefix);

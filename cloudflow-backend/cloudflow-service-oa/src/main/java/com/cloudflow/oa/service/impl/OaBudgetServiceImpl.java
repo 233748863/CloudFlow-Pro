@@ -8,7 +8,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaBudgetAdjustment;
 import com.cloudflow.oa.domain.OaBudgetLedger;
 import com.cloudflow.oa.domain.OaBudgetLine;
@@ -229,7 +230,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         budget.setUpdateBy(resolveUserName());
         budget.setUpdateTime(LocalDateTime.now());
         startBudgetWorkflow("budget_plan_approval", "BUDGET_PLAN:" + budgetId,
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_BUDGET_PLAN, budgetId, budget.getBudgetNo(),
+                OaBusinessTypes.BUDGET_PLAN, budgetId, budget.getBudgetNo(),
                 Map.of(
                         "budgetId", budgetId,
                         "budgetNo", budget.getBudgetNo(),
@@ -587,7 +588,8 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
             dto.setProcessDefKey(processDefKey);
             dto.setBusinessKey(businessKey);
             Map<String, Object> payload = new HashMap<>(variables);
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(payload, businessType, businessId, businessNo);
+            WorkflowCallbackConstants.applyCallbackMetadata(payload, businessType, businessId, businessNo,
+                    "workflow:stream:approval-callback:oa");
             dto.setVariables(payload);
             R<?> result = remoteWorkflowService.startProcess(dto);
             if (result != null && result.isSuccess() && result.getData() instanceof Map<?, ?> resultMap) {
@@ -616,11 +618,12 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
             variables.put("changeAmount", adjustment.getChangeAmount());
             variables.put("subjectCode", adjustment.getSubjectCode());
             variables.put("subjectName", adjustment.getSubjectName());
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_BUDGET_ADJUSTMENT,
+                    OaBusinessTypes.BUDGET_ADJUSTMENT,
                     adjustment.getAdjustmentId(),
-                    adjustment.getAdjustmentNo()
+                    adjustment.getAdjustmentNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             dto.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(dto);

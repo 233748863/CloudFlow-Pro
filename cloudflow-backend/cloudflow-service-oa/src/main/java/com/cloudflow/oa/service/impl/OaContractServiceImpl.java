@@ -8,7 +8,8 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaSealApplication;
@@ -168,11 +169,12 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             req.setProcessDefKey("biz_contract");
             req.setBusinessKey("CONTRACT:" + contract.getContractId());
             Map<String, Object> variables = buildWorkflowVariables(contract);
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_CONTRACT,
+                    OaBusinessTypes.CONTRACT,
                     contract.getContractId(),
-                    contract.getContractNo()
+                    contract.getContractNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);

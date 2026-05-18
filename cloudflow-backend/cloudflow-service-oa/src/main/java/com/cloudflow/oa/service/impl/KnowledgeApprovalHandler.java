@@ -1,11 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.KnowledgeDocument;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class KnowledgeApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_KNOWLEDGE_DOCUMENT;
+        return OaBusinessTypes.KNOWLEDGE_DOCUMENT;
     }
 
     @Override
@@ -31,7 +32,7 @@ public class KnowledgeApprovalHandler implements ApprovalResultHandler {
                 .set(KnowledgeDocument::getInstanceId, dto.getProcessInstanceId())
                 .set(KnowledgeDocument::getStatus, "PUBLISHED")
                 .set(KnowledgeDocument::getPublishTime, LocalDateTime.now())
-                .set(KnowledgeDocument::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(KnowledgeDocument::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
         updateStatus(dto, wrapper, "PUBLISHED");
     }
@@ -42,7 +43,7 @@ public class KnowledgeApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(KnowledgeDocument::getDocumentId, dto.getBusinessId())
                 .set(KnowledgeDocument::getInstanceId, dto.getProcessInstanceId())
                 .set(KnowledgeDocument::getStatus, "REJECTED")
-                .set(KnowledgeDocument::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(KnowledgeDocument::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
         updateStatus(dto, wrapper, "REJECTED");
     }

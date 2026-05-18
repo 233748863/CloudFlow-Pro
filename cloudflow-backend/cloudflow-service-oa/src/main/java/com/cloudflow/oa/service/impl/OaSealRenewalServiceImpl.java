@@ -7,7 +7,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaSeal;
 import com.cloudflow.oa.domain.OaSealRenewal;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
@@ -175,11 +176,12 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
             variables.put("userId", renewal.getApplicantId());
             variables.put("userName", renewal.getApplicantName());
             variables.put("deptName", renewal.getDeptName());
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_SEAL_RENEWAL,
+                    OaBusinessTypes.SEAL_RENEWAL,
                     renewal.getId(),
-                    renewal.getRenewalNo()
+                    renewal.getRenewalNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);
@@ -220,7 +222,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
         LocalDateTime now = LocalDateTime.now();
         renewal.setInstanceId(processInstanceId);
         renewal.setStatus(OaBorrowConstants.STATUS_APPROVED);
-        renewal.setUpdateBy(WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
+        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         renewal.setUpdateTime(now);
         updateById(renewal);
 
@@ -230,7 +232,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
         if (StringUtils.hasText(renewal.getAttachmentUrl())) {
             seal.setAttachmentUrl(renewal.getAttachmentUrl());
         }
-        seal.setUpdateBy(WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
+        seal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         seal.setUpdateTime(now);
         sealMapper.updateById(seal);
     }
@@ -241,7 +243,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
         OaSealRenewal renewal = requireRenewal(id);
         renewal.setInstanceId(processInstanceId);
         renewal.setStatus(OaBorrowConstants.STATUS_REJECTED);
-        renewal.setUpdateBy(WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
+        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         renewal.setUpdateTime(LocalDateTime.now());
         updateById(renewal);
     }

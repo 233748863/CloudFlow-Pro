@@ -1,11 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizExpenseClaim;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import com.cloudflow.oa.service.IExpenseClaimService;
 import com.cloudflow.oa.service.IOaBudgetService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM;
+        return OaBusinessTypes.EXPENSE_CLAIM;
     }
 
     @Override
@@ -47,7 +48,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(BizExpenseClaim::getId, dto.getBusinessId())
                 .set(BizExpenseClaim::getInstanceId, dto.getProcessInstanceId())
                 .set(BizExpenseClaim::getStatus, status)
-                .set(BizExpenseClaim::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(BizExpenseClaim::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BizExpenseClaim::getUpdateTime, LocalDateTime.now());
 
         int updated = expenseClaimMapper.update(null, wrapper);
@@ -65,7 +66,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
         }
         if (claim.getItems() == null || claim.getItems().isEmpty()) {
             budgetService.releaseBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
                     claim.getDeptId(),
@@ -80,7 +81,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
             return;
         }
         claim.getItems().forEach(item -> budgetService.releaseBudget(
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                OaBusinessTypes.EXPENSE_CLAIM,
                 claim.getId(),
                 claim.getClaimNo(),
                 claim.getDeptId(),

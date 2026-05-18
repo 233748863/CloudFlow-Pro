@@ -1,14 +1,15 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmApproval;
 import com.cloudflow.crm.domain.CrmOpportunity;
-import com.cloudflow.crm.domain.dto.ApprovalResultDTO;
 import com.cloudflow.crm.mapper.CrmApprovalMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
-import com.cloudflow.crm.service.ApprovalResultHandler;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +38,7 @@ public class CrmOpportunityDowngradeApprovalHandler extends AbstractCrmApprovalH
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_OPPORTUNITY_DOWNGRADE;
+        return CrmBusinessTypes.CRM_OPPORTUNITY_DOWNGRADE;
     }
 
     @Override
@@ -61,7 +62,7 @@ public class CrmOpportunityDowngradeApprovalHandler extends AbstractCrmApprovalH
                 .eq(CrmOpportunity::getOpportunityId, opportunityId)
                 .set(CrmOpportunity::getStage, targetStage.isEmpty() ? CrmConstants.OpportunityStage.LOST : targetStage)
                 .set(CrmOpportunity::getStageChangedTime, LocalDateTime.now())
-                .set(CrmOpportunity::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(CrmOpportunity::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(CrmOpportunity::getUpdateTime, LocalDateTime.now());
         if ("CLOSE".equalsIgnoreCase(action)) {
             wrapper.set(CrmOpportunity::getStatus, CrmConstants.OpportunityStatus.CLOSED);

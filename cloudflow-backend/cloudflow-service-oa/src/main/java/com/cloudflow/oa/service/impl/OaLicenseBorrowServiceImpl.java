@@ -8,7 +8,8 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseBorrow;
@@ -192,11 +193,12 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             variables.put("userName", borrow.getUserName());
             variables.put("deptName", borrow.getDeptName());
             variables.put("expectedReturnTime", formatDateTime(borrow.getExpectedReturnTime()));
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_LICENSE_BORROW,
+                    OaBusinessTypes.LICENSE_BORROW,
                     borrow.getId(),
-                    borrow.getBorrowNo()
+                    borrow.getBorrowNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);

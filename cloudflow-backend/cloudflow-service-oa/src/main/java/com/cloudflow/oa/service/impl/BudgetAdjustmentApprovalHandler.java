@@ -1,13 +1,14 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaBudgetAdjustment;
 import com.cloudflow.oa.domain.OaBudgetLine;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.OaBudgetAdjustmentMapper;
 import com.cloudflow.oa.mapper.OaBudgetLineMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ public class BudgetAdjustmentApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_BUDGET_ADJUSTMENT;
+        return OaBusinessTypes.BUDGET_ADJUSTMENT;
     }
 
     @Override
@@ -44,7 +45,7 @@ public class BudgetAdjustmentApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(OaBudgetAdjustment::getAdjustmentId, dto.getBusinessId())
                 .set(OaBudgetAdjustment::getInstanceId, dto.getProcessInstanceId())
                 .set(OaBudgetAdjustment::getStatus, status)
-                .set(OaBudgetAdjustment::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(OaBudgetAdjustment::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(OaBudgetAdjustment::getUpdateTime, LocalDateTime.now());
         int updated = budgetAdjustmentMapper.update(null, wrapper);
         if (updated <= 0) {

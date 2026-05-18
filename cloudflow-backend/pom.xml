@@ -188,6 +188,11 @@
                 <artifactId>cloudflow-common-seata</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-workflow-callback</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- ==================== 第三方依赖版本管理 ==================== -->
             <!-- Hutool 工具集 -->

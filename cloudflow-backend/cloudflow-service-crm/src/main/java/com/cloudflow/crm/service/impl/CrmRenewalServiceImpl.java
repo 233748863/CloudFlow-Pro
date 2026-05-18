@@ -5,7 +5,8 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmRenewal;
@@ -140,11 +141,12 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         variables.put("customerName", renewal.getCustomerName());
         variables.put("renewalAmount", renewal.getRenewalAmount());
         variables.put("currentExpireDate", renewal.getCurrentExpireDate());
-        WorkflowCallbackStreamConstants.applyCallbackMetadata(
+        WorkflowCallbackConstants.applyCallbackMetadata(
                 variables,
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_RENEWAL,
+                CrmBusinessTypes.CRM_RENEWAL,
                 renewalId,
-                renewal.getRenewalNo()
+                renewal.getRenewalNo(),
+                "workflow:stream:approval-callback:crm"
         );
         dto.setVariables(variables);
 

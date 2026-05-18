@@ -9,7 +9,8 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaSeal;
@@ -211,11 +212,12 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             variables.put("expectedReturnTime", formatDateTime(application.getExpectedReturnTime()));
             variables.put("contractId", application.getContractId());
             variables.put("contractNo", application.getContractNo());
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_SEAL_APPLICATION,
+                    OaBusinessTypes.SEAL_APPLICATION,
                     application.getId(),
-                    application.getApplicationNo()
+                    application.getApplicationNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);

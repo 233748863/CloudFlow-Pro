@@ -2,7 +2,9 @@ package com.cloudflow.hr.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
-import com.cloudflow.hr.domain.dto.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
 import com.cloudflow.hr.domain.entity.HrCompChange;
 import com.cloudflow.hr.domain.entity.HrLifecycleApplication;
 import com.cloudflow.hr.domain.entity.HrOffer;
@@ -11,20 +13,24 @@ import com.cloudflow.hr.domain.entity.HrRecruitmentRequisition;
 import com.cloudflow.hr.domain.entity.HrTimeRequest;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.service.HrTypedCrudService;
-import com.cloudflow.hr.service.WorkflowCallbackService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+
 /**
- * 工作流审批回调分发服务。
+ * HR 工作流审批回调实现。
+ *
+ * <p>注册为公共 {@link WorkflowCallbackService} 的实现，会替换公共模块的默认 Dispatcher
+ * （得益于 {@code @ConditionalOnMissingBean}）。HR 业务不使用 {@code ApprovalResultHandler}
+ * 策略模式，而是按 businessType 直接路由到 {@link HrTypedCrudService} 做状态回写。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
+public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
 
     private final HrTypedCrudService crudService;
 
@@ -43,7 +49,7 @@ public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
             CallbackTarget target = resolveTarget(dto.getBusinessType());
             String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
             crudService.updateProperties(target.entityClass(), dto.getBusinessId(), java.util.Map.of("status", status));
-            log.info("审批回调已写入新HR表，businessType: {}, businessId: {}, entity: {}, status: {}",
+            log.info("审批回调已写入 HR 表，businessType: {}, businessId: {}, entity: {}, status: {}",
                     dto.getBusinessType(), dto.getBusinessId(), target.entityClass().getSimpleName(), status);
         } catch (Exception e) {
             log.error("处理审批结果失败，businessType: {}, businessId: {}",
@@ -71,7 +77,7 @@ public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
     }
 
     private String resolveStatus(String businessType, String approvalResult) {
-        if ("REJECTED".equals(approvalResult)) {
+        if (WorkflowCallbackConstants.RESULT_REJECTED.equals(approvalResult)) {
             return "REJECTED";
         }
         String normalized = normalizeBusinessType(businessType);
@@ -110,7 +116,8 @@ public class WorkflowCallbackServiceImpl implements WorkflowCallbackService {
         if (dto.getApprovalResult() == null || dto.getApprovalResult().isEmpty()) {
             throw new HrBusinessException("INVALID_PARAMETER", "审批结果不能为空");
         }
-        if (!"APPROVED".equals(dto.getApprovalResult()) && !"REJECTED".equals(dto.getApprovalResult())) {
+        if (!WorkflowCallbackConstants.RESULT_APPROVED.equals(dto.getApprovalResult())
+                && !WorkflowCallbackConstants.RESULT_REJECTED.equals(dto.getApprovalResult())) {
             throw new HrBusinessException("INVALID_PARAMETER",
                     "审批结果只能是 APPROVED 或 REJECTED，当前值：" + dto.getApprovalResult());
         }

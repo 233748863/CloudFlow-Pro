@@ -7,7 +7,8 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
 import com.cloudflow.oa.domain.VehicleExpense;
@@ -190,11 +191,12 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             variables.put("description", claim.getDescription());
             variables.put("deptName", claim.getDeptName());
             // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
-                    claim.getClaimNo()
+                    claim.getClaimNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
             
@@ -434,7 +436,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         List<BizExpenseItem> items = claim.getItems();
         if (items == null || items.isEmpty()) {
             budgetService.reserveBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
                     claim.getDeptId(),
@@ -450,7 +452,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
         for (BizExpenseItem item : items) {
             budgetService.reserveBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
                     claim.getDeptId(),
@@ -473,7 +475,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         List<BizExpenseItem> items = detail == null ? null : detail.getItems();
         if (items == null || items.isEmpty()) {
             budgetService.writeoffBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
                     claim.getDeptId(),
@@ -489,7 +491,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
         for (BizExpenseItem item : items) {
             budgetService.writeoffBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_EXPENSE_CLAIM,
+                    OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
                     claim.getDeptId(),

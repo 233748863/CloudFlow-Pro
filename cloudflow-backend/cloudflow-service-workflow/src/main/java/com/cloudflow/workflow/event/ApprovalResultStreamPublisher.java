@@ -1,7 +1,7 @@
 package com.cloudflow.workflow.event;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
-import com.cloudflow.workflow.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -58,7 +58,7 @@ public class ApprovalResultStreamPublisher {
 
         String streamKey = asText(variables.get("callbackStreamKey"));
         if (!StringUtils.hasText(streamKey)) {
-            streamKey = WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_STREAM_KEY;
+            streamKey = WorkflowCallbackConstants.DEFAULT_APPROVAL_CALLBACK_STREAM_KEY;
         }
 
         Map<String, Object> body = new HashMap<>();

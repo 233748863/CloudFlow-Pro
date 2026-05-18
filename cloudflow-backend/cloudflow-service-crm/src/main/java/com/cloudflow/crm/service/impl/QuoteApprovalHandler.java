@@ -1,11 +1,12 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.domain.CrmQuote;
-import com.cloudflow.crm.domain.dto.ApprovalResultDTO;
 import com.cloudflow.crm.mapper.CrmQuoteMapper;
-import com.cloudflow.crm.service.ApprovalResultHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class QuoteApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_QUOTE;
+        return CrmBusinessTypes.CRM_QUOTE;
     }
 
     @Override
@@ -39,7 +40,7 @@ public class QuoteApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(CrmQuote::getQuoteId, dto.getBusinessId())
                 .set(CrmQuote::getInstanceId, dto.getProcessInstanceId())
                 .set(CrmQuote::getStatus, status)
-                .set(CrmQuote::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(CrmQuote::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(CrmQuote::getUpdateTime, LocalDateTime.now());
         int updated = quoteMapper.update(null, wrapper);
         if (updated <= 0) {

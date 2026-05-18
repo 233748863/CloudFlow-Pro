@@ -1,15 +1,16 @@
 package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
 import com.cloudflow.crm.config.CrmEventStreamConstants;
-import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmApproval;
 import com.cloudflow.crm.domain.CrmCustomer;
-import com.cloudflow.crm.domain.dto.ApprovalResultDTO;
 import com.cloudflow.crm.mapper.CrmApprovalMapper;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
-import com.cloudflow.crm.service.ApprovalResultHandler;
 import com.cloudflow.crm.service.CrmEventPublisher;
 import com.cloudflow.crm.service.ICrmCustomerService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -43,7 +44,7 @@ public class CrmCustomerClaimApprovalHandler extends AbstractCrmApprovalHandler 
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_CUSTOMER_CLAIM;
+        return CrmBusinessTypes.CRM_CUSTOMER_CLAIM;
     }
 
     @Override
@@ -63,7 +64,7 @@ public class CrmCustomerClaimApprovalHandler extends AbstractCrmApprovalHandler 
         }
         LambdaUpdateWrapper<CrmCustomer> wrapper = new LambdaUpdateWrapper<CrmCustomer>()
                 .eq(CrmCustomer::getCustomerId, customerId)
-                .set(CrmCustomer::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(CrmCustomer::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(CrmCustomer::getUpdateTime, LocalDateTime.now());
         if ("CLAIM".equalsIgnoreCase(action)) {
             wrapper.set(CrmCustomer::getOwnerId, approval.getApplicantId())

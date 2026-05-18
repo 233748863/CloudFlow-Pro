@@ -1,11 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BusinessTrip;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class BusinessTripApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_BUSINESS_TRIP;
+        return OaBusinessTypes.BUSINESS_TRIP;
     }
 
     @Override
@@ -42,7 +43,7 @@ public class BusinessTripApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(BusinessTrip::getId, dto.getBusinessId())
                 .set(BusinessTrip::getInstanceId, dto.getProcessInstanceId())
                 .set(BusinessTrip::getStatus, status)
-                .set(BusinessTrip::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(BusinessTrip::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BusinessTrip::getUpdateTime, LocalDateTime.now());
 
         int updated = businessTripMapper.update(null, wrapper);

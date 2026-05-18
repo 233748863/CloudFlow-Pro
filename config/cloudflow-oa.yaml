@@ -96,6 +96,12 @@ cloudflow:
       allow-concurrent-booking: false
       auto-release-minutes: 15
 
+  workflow:
+    callback:
+      stream-key: workflow:stream:approval-callback:oa
+      group: group:oa:workflow-callback
+      consumer-prefix: oa-callback
+
 # Feign配置
 feign:
   client:

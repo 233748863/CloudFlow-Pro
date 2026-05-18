@@ -6,7 +6,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.SysVehicle;
 import com.cloudflow.oa.domain.VehicleUsage;
@@ -68,11 +69,12 @@ public class VehicleUsageServiceImpl extends ServiceImpl<VehicleUsageMapper, Veh
         Map<String, Object> variables = new HashMap<>();
         variables.put("initiator", usage.getApplicantId());
         variables.put("vehicleInfo", usage.getReason());
-        WorkflowCallbackStreamConstants.applyCallbackMetadata(
+        WorkflowCallbackConstants.applyCallbackMetadata(
                 variables,
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_VEHICLE_APPROVAL,
+                OaBusinessTypes.VEHICLE_APPROVAL,
                 usage.getUsageId(),
-                String.valueOf(usage.getUsageId())
+                String.valueOf(usage.getUsageId()),
+                "workflow:stream:approval-callback:oa"
         );
 
         R<?> wfResult = workflowService.startProcess("vehicle_approval", usage.getUsageId().toString(), variables);

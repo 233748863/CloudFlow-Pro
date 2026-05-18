@@ -7,7 +7,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaLicense;
 import com.cloudflow.oa.domain.OaLicenseRenewal;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
@@ -175,11 +176,12 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
             variables.put("userId", renewal.getApplicantId());
             variables.put("userName", renewal.getApplicantName());
             variables.put("deptName", renewal.getDeptName());
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_LICENSE_RENEWAL,
+                    OaBusinessTypes.LICENSE_RENEWAL,
                     renewal.getId(),
-                    renewal.getRenewalNo()
+                    renewal.getRenewalNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
             R<?> result = remoteWorkflowService.startProcess(req);
@@ -220,7 +222,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         LocalDateTime now = LocalDateTime.now();
         renewal.setInstanceId(processInstanceId);
         renewal.setStatus(OaBorrowConstants.STATUS_APPROVED);
-        renewal.setUpdateBy(WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
+        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         renewal.setUpdateTime(now);
         updateById(renewal);
 
@@ -230,7 +232,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         if (StringUtils.hasText(renewal.getAttachmentUrl())) {
             license.setAttachmentUrl(renewal.getAttachmentUrl());
         }
-        license.setUpdateBy(WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
+        license.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         license.setUpdateTime(now);
         licenseMapper.updateById(license);
     }
@@ -241,7 +243,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         OaLicenseRenewal renewal = requireRenewal(id);
         renewal.setInstanceId(processInstanceId);
         renewal.setStatus(OaBorrowConstants.STATUS_REJECTED);
-        renewal.setUpdateBy(WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
+        renewal.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         renewal.setUpdateTime(LocalDateTime.now());
         updateById(renewal);
     }

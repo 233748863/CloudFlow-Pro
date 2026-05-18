@@ -8,7 +8,8 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseItem;
 import com.cloudflow.oa.domain.BizPurchaseReceipt;
@@ -171,11 +172,12 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             variables.put("deptName", purchase.getDeptName());
             variables.put("reason", purchase.getReason());
             variables.put("itemSummary", buildItemSummary(purchase.getItems()));
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
-                    purchase.getPurchaseNo()
+                    purchase.getPurchaseNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
 
@@ -359,7 +361,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         wrapper.eq(BizPurchaseRequest::getPaymentRequestId, paymentRequestId)
                 .eq(BizPurchaseRequest::getDeleted, "0")
                 .set(BizPurchaseRequest::getPaymentStatus, paymentStatus)
-                .set(BizPurchaseRequest::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(BizPurchaseRequest::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
         update(wrapper);
     }
@@ -543,7 +545,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private void reserveBudget(BizPurchaseRequest purchase) {
         if (purchase.getItems() == null || purchase.getItems().isEmpty()) {
             budgetService.reserveBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),
                     purchase.getDeptId(),
@@ -559,7 +561,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         }
         for (BizPurchaseItem item : purchase.getItems()) {
             budgetService.reserveBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),
                     purchase.getDeptId(),
@@ -577,7 +579,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private void releaseBudget(BizPurchaseRequest purchase) {
         if (purchase.getItems() == null || purchase.getItems().isEmpty()) {
             budgetService.releaseBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),
                     purchase.getDeptId(),
@@ -593,7 +595,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         }
         for (BizPurchaseItem item : purchase.getItems()) {
             budgetService.releaseBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PURCHASE_REQUEST,
+                    OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),
                     purchase.getDeptId(),

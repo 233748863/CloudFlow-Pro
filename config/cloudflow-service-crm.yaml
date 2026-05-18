@@ -46,6 +46,11 @@ cloudflow:
       renewal-yellow-days: 90
       inactive-yellow-days: 30
       overdue-red-days: 30
+  workflow:
+    callback:
+      stream-key: workflow:stream:approval-callback:crm
+      group: group:crm:workflow-callback
+      consumer-prefix: crm-callback
 
 feign:
   client:

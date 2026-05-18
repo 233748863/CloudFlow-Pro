@@ -7,7 +7,8 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
@@ -128,11 +129,12 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
             variables.put("reason", payment.getReason());
             variables.put("deptName", payment.getDeptName());
             // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                    OaBusinessTypes.PAYMENT_REQUEST,
                     payment.getId(),
-                    payment.getPaymentNo()
+                    payment.getPaymentNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
             
@@ -173,7 +175,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         if (updated) {
             updatePurchasePaymentStatus(id, "PAID");
             budgetService.writeoffBudget(
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                    OaBusinessTypes.PAYMENT_REQUEST,
                     payment.getId(),
                     payment.getPaymentNo(),
                     payment.getDeptId(),
@@ -240,7 +242,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
 
     private void reserveBudget(BizPaymentRequest payment) {
         budgetService.reserveBudget(
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                OaBusinessTypes.PAYMENT_REQUEST,
                 payment.getId(),
                 payment.getPaymentNo(),
                 payment.getDeptId(),

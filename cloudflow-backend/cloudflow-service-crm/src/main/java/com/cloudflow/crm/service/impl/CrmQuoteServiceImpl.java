@@ -6,7 +6,8 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.crm.constant.CrmBusinessTypes;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmProduct;
@@ -149,11 +150,12 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         variables.put("customerId", quote.getCustomerId());
         variables.put("customerName", quote.getCustomerName());
         variables.put("totalAmount", quote.getTotalAmount());
-        WorkflowCallbackStreamConstants.applyCallbackMetadata(
+        WorkflowCallbackConstants.applyCallbackMetadata(
                 variables,
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_CRM_QUOTE,
+                CrmBusinessTypes.CRM_QUOTE,
                 quoteId,
-                quote.getQuoteNo()
+                quote.getQuoteNo(),
+                "workflow:stream:approval-callback:crm"
         );
         dto.setVariables(variables);
 

@@ -1,8 +1,9 @@
 package com.cloudflow.crm.service.impl;
 
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmApproval;
-import com.cloudflow.crm.domain.dto.ApprovalResultDTO;
 import com.cloudflow.crm.mapper.CrmApprovalMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,8 +14,6 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
-
-import com.cloudflow.crm.config.WorkflowCallbackStreamConstants;
 
 /**
  * CRM 通用审批 handler 的公共工具：加载审批流水 / 回写状态 / 反序列化 payload。
@@ -38,7 +37,7 @@ abstract class AbstractCrmApprovalHandler {
         approval.setStatus(approved ? "APPROVED" : "REJECTED");
         approval.setInstanceId(dto.getProcessInstanceId());
         approval.setApprovalComment(dto.getApprovalComment());
-        approval.setUpdateBy(WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY);
+        approval.setUpdateBy(WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
         approval.setUpdateTime(LocalDateTime.now());
         approvalMapper.updateById(approval);
     }

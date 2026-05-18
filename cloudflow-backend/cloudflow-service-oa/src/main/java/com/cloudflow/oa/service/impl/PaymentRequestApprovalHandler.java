@@ -1,11 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPaymentRequest;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IPurchaseRequestService;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +29,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST;
+        return OaBusinessTypes.PAYMENT_REQUEST;
     }
 
     @Override
@@ -47,7 +48,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(BizPaymentRequest::getId, dto.getBusinessId())
                 .set(BizPaymentRequest::getInstanceId, dto.getProcessInstanceId())
                 .set(BizPaymentRequest::getStatus, status)
-                .set(BizPaymentRequest::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(BizPaymentRequest::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(BizPaymentRequest::getUpdateTime, LocalDateTime.now());
 
         int updated = paymentRequestMapper.update(null, wrapper);
@@ -65,7 +66,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
             return;
         }
         budgetService.releaseBudget(
-                WorkflowCallbackStreamConstants.BUSINESS_TYPE_PAYMENT_REQUEST,
+                OaBusinessTypes.PAYMENT_REQUEST,
                 payment.getId(),
                 payment.getPaymentNo(),
                 payment.getDeptId(),

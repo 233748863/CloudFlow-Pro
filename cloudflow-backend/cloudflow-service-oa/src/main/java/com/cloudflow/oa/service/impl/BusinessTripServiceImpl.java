@@ -7,7 +7,8 @@ import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BusinessTrip;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
@@ -107,11 +108,12 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             variables.put("reason", trip.getReason());
             variables.put("deptName", trip.getDeptName());
             // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_BUSINESS_TRIP,
+                    OaBusinessTypes.BUSINESS_TRIP,
                     trip.getId(),
-                    trip.getTripNo()
+                    trip.getTripNo(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
 

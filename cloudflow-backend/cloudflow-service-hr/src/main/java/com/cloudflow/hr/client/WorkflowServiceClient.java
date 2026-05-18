@@ -6,7 +6,6 @@ import com.cloudflow.hr.client.dto.WorkflowInvalidateRequest;
 import com.cloudflow.hr.client.dto.WorkflowStartRequest;
 import com.cloudflow.hr.client.fallback.WorkflowServiceFallback;
 import com.cloudflow.hr.client.vo.ProcessInstanceVO;
-import com.cloudflow.hr.config.WorkflowCallbackStreamConstants;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -51,7 +50,7 @@ public interface WorkflowServiceClient {
         variables.put("businessId", dto.getBusinessId());
         variables.put("businessNo", dto.getBusinessNo());
         variables.put("startUserId", dto.getStartUserId());
-        variables.put("callbackStreamKey", WorkflowCallbackStreamConstants.APPROVAL_CALLBACK_STREAM_KEY);
+        variables.put("callbackStreamKey", "workflow:stream:approval-callback:hr");
 
         WorkflowStartRequest request = new WorkflowStartRequest();
         request.setProcessDefKey(dto.getProcessDefinitionKey());

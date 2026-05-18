@@ -53,6 +53,9 @@ cloudflow:
     script:
       enabled: false
       timeout-ms: 5000
+    # workflow 服务只发布回调事件，不消费；公共自动装配在本服务关闭。
+    callback:
+      enabled: false
 
 # 工作流引擎配置
 workflow:

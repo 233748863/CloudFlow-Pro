@@ -123,6 +123,12 @@ cloudflow:
         salary-adjustment: salary_adjustment_approval
         transfer: transfer_approval
 
+  workflow:
+    callback:
+      stream-key: workflow:stream:approval-callback:hr
+      group: group:hr:workflow-callback
+      consumer-prefix: hr-callback
+
 # Feign配置
 feign:
   client:

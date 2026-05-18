@@ -1,8 +1,8 @@
 package com.cloudflow.oa.service.impl;
 
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
-import com.cloudflow.oa.service.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.service.IOaSealRenewalService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,7 +18,7 @@ public class SealRenewalApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_SEAL_RENEWAL;
+        return OaBusinessTypes.SEAL_RENEWAL;
     }
 
     @Override

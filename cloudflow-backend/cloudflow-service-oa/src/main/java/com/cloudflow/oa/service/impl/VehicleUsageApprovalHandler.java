@@ -1,11 +1,12 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.VehicleUsage;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.VehicleUsageMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,7 @@ public class VehicleUsageApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_VEHICLE_APPROVAL;
+        return OaBusinessTypes.VEHICLE_APPROVAL;
     }
 
     @Override
@@ -42,7 +43,7 @@ public class VehicleUsageApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(VehicleUsage::getUsageId, dto.getBusinessId())
                 .set(VehicleUsage::getProcessInstanceId, dto.getProcessInstanceId())
                 .set(VehicleUsage::getStatus, status)
-                .set(VehicleUsage::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(VehicleUsage::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(VehicleUsage::getUpdateTime, LocalDateTime.now());
 
         int updated = vehicleUsageMapper.update(null, wrapper);

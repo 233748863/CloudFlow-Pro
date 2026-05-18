@@ -83,6 +83,10 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-datasource</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-workflow-callback</artifactId>
+        </dependency>
 
         <!-- 工作流模块直接使用的第三方库 -->
         <dependency>

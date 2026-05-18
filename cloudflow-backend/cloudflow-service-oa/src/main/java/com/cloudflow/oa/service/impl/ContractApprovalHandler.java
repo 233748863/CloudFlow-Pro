@@ -2,12 +2,13 @@ package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.redis.core.RedisStreamUtil;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
 import com.cloudflow.oa.config.CrmEventStreamConstants;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaContract;
-import com.cloudflow.oa.domain.dto.ApprovalResultDTO;
 import com.cloudflow.oa.mapper.OaContractMapper;
-import com.cloudflow.oa.service.ApprovalResultHandler;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.util.OaContractConstants;
 import lombok.RequiredArgsConstructor;
@@ -33,7 +34,7 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public String getSupportedBusinessType() {
-        return WorkflowCallbackStreamConstants.BUSINESS_TYPE_CONTRACT;
+        return OaBusinessTypes.CONTRACT;
     }
 
     @Override
@@ -57,7 +58,7 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
         wrapper.eq(OaContract::getContractId, dto.getBusinessId())
                 .set(OaContract::getInstanceId, dto.getProcessInstanceId())
                 .set(OaContract::getStatus, status)
-                .set(OaContract::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
+                .set(OaContract::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(OaContract::getUpdateTime, LocalDateTime.now());
         int updated = contractMapper.update(null, wrapper);
         if (updated <= 0) {

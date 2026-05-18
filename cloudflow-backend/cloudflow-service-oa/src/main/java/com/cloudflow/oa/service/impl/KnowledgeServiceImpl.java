@@ -6,7 +6,8 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.oa.config.WorkflowCallbackStreamConstants;
+import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.KnowledgeDocument;
 import com.cloudflow.oa.domain.KnowledgeRead;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
@@ -193,11 +194,12 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
             variables.put("submitterId", document.getSubmitterId());
             variables.put("submitterName", document.getSubmitterName());
             variables.put("deptName", document.getDeptName());
-            WorkflowCallbackStreamConstants.applyCallbackMetadata(
+            WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
-                    WorkflowCallbackStreamConstants.BUSINESS_TYPE_KNOWLEDGE_DOCUMENT,
+                    OaBusinessTypes.KNOWLEDGE_DOCUMENT,
                     document.getDocumentId(),
-                    document.getTitle()
+                    document.getTitle(),
+                    "workflow:stream:approval-callback:oa"
             );
             req.setVariables(variables);
 
