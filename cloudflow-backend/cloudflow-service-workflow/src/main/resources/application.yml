@@ -68,6 +68,11 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: ${MYBATIS_LOG_IMPL:org.apache.ibatis.logging.nologging.NoLoggingImpl}
+  global-config:
+    db-config:
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
 
 # Sa-Token 本地后备配置（Nacos cloudflow-common.yaml 不可用时生效）
 cloudflow:

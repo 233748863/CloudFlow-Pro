@@ -31,7 +31,7 @@ public class CrmProductController {
     @SaCheckPermission("crm:product:list")
     public R<CrmProduct> getInfo(@PathVariable("id") Long id) {
         CrmProduct product = productService.getById(id);
-        return product == null || !"0".equals(product.getDelFlag()) ? R.fail("产品不存在") : R.ok(product);
+        return product == null || !Integer.valueOf(0).equals(product.getDeleted()) ? R.fail("产品不存在") : R.ok(product);
     }
 
     @SysLog("新增CRM产品")
@@ -63,7 +63,7 @@ public class CrmProductController {
         for (Long id : ids) {
             CrmProduct product = new CrmProduct();
             product.setProductId(id);
-            product.setDelFlag("1");
+            product.setDeleted(1);
             productService.updateById(product);
         }
         return R.ok();

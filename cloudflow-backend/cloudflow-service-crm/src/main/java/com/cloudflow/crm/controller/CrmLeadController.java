@@ -32,7 +32,7 @@ public class CrmLeadController {
     @SaCheckPermission("crm:lead:list")
     public R<CrmLead> getInfo(@PathVariable("id") Long id) {
         CrmLead lead = leadService.getById(id);
-        return lead == null || !"0".equals(lead.getDelFlag()) ? R.fail("线索不存在") : R.ok(lead);
+        return lead == null || !Integer.valueOf(0).equals(lead.getDeleted()) ? R.fail("线索不存在") : R.ok(lead);
     }
 
     @SysLog("新增CRM线索")
@@ -75,7 +75,7 @@ public class CrmLeadController {
         for (Long id : ids) {
             CrmLead lead = new CrmLead();
             lead.setLeadId(id);
-            lead.setDelFlag("1");
+            lead.setDeleted(1);
             leadService.updateById(lead);
         }
         return R.ok();

@@ -23,7 +23,7 @@
                     AND document_name LIKE CONCAT('%', #{query.documentName}, '%')
                 </if>
             </if>
-            AND del_flag = '0'
+            AND deleted = '0'
         </where>
         ORDER BY create_time DESC
     </select>

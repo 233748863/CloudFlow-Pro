@@ -40,7 +40,7 @@ public class OaWorkflowEventListener {
         register("expense_claim", "biz_expense_claim", "id", "instance_id", "EXPENSE_CLAIM:", "APPROVED", "REJECTED", "CANCELLED");
         register("payment_request", "biz_payment_request", "id", "instance_id", "PAYMENT_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
         register("purchase_request", "biz_purchase_request", "id", "instance_id", "PURCHASE_REQUEST:", "APPROVED", "REJECTED", "CANCELLED");
-        register("vehicle_approval", "sys_vehicle_usage", "usage_id", "process_instance_id", null, "1", "2", "5");
+        register("vehicle_approval", "oa_vehicle_usage", "usage_id", "process_instance_id", null, "1", "2", "5");
     }
 
     @EventListener

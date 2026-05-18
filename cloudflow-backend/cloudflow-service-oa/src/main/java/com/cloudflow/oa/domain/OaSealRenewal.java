@@ -47,7 +47,7 @@ public class OaSealRenewal implements Serializable {
     private String renewalReason;
     private String attachmentUrl;
     private String status;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

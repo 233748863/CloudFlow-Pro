@@ -11,7 +11,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_quote_line")
+@TableName("crm_quote_line")
 public class CrmQuoteLine implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -33,7 +33,7 @@ public class CrmQuoteLine implements Serializable {
     private BigDecimal lineAmount;
     private BigDecimal taxAmount;
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

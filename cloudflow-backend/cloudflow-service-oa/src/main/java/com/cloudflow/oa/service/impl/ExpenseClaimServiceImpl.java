@@ -222,7 +222,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Transactional(rollbackFor = Exception.class)
     public boolean confirmPaid(Long id) {
         BizExpenseClaim claim = getById(id);
-        if (claim == null || !"0".equals(claim.getDelFlag())) {
+        if (claim == null || !Integer.valueOf(0).equals(claim.getDeleted())) {
             throw new IllegalArgumentException("报销申请不存在");
         }
         if (!"APPROVED".equals(claim.getStatus())) {

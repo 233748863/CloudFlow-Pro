@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-@TableName("oa_crm_quote")
+@TableName("crm_quote")
 public class CrmQuote implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -42,7 +42,7 @@ public class CrmQuote implements Serializable {
     @TableField(exist = false)
     private List<CrmQuoteLine> quoteLines;
     private String status;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

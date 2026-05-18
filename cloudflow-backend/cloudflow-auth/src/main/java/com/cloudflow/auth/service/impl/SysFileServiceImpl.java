@@ -65,7 +65,7 @@ public class SysFileServiceImpl implements ISysFileService {
             sysFile.setFileType(validatedFile.extension());
             sysFile.setCreateTime(LocalDateTime.now());
             sysFile.setCreateBy(UserContext.getUserName());
-            sysFile.setDelFlag("0");
+            sysFile.setDeleted(0);
 
             sysFileMapper.insert(sysFile);
 
@@ -96,7 +96,7 @@ public class SysFileServiceImpl implements ISysFileService {
             wrapper.eq(SysFile::getFileType, sysFile.getFileType());
         }
 
-        wrapper.eq(SysFile::getDelFlag, "0");
+        wrapper.eq(SysFile::getDeleted, "0");
         wrapper.orderByDesc(SysFile::getCreateTime);
 
         Page<SysFile> result = sysFileMapper.selectPage(page, wrapper);
@@ -108,7 +108,7 @@ public class SysFileServiceImpl implements ISysFileService {
     public void deleteFileByIds(Long[] fileIds) {
         for (Long id : fileIds) {
             SysFile existingFile = sysFileMapper.selectById(id);
-            if (existingFile == null || !"0".equals(existingFile.getDelFlag())) {
+            if (existingFile == null || !Integer.valueOf(0).equals(existingFile.getDeleted())) {
                 continue;
             }
 
@@ -118,7 +118,7 @@ public class SysFileServiceImpl implements ISysFileService {
 
             SysFile updateFile = new SysFile();
             updateFile.setFileId(id);
-            updateFile.setDelFlag("2");
+            updateFile.setDeleted(1);
             sysFileMapper.updateById(updateFile);
 
             if (existingFile.getTenantId() != null) {

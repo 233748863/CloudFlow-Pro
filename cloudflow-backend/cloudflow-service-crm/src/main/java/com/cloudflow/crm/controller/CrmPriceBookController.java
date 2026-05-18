@@ -31,7 +31,7 @@ public class CrmPriceBookController {
     @SaCheckPermission("crm:price-book:list")
     public R<CrmPriceBook> getInfo(@PathVariable("id") Long id) {
         CrmPriceBook priceBook = priceBookService.getById(id);
-        return priceBook == null || !"0".equals(priceBook.getDelFlag()) ? R.fail("价目表不存在") : R.ok(priceBook);
+        return priceBook == null || !Integer.valueOf(0).equals(priceBook.getDeleted()) ? R.fail("价目表不存在") : R.ok(priceBook);
     }
 
     @SysLog("新增CRM价目表")
@@ -63,7 +63,7 @@ public class CrmPriceBookController {
         for (Long id : ids) {
             CrmPriceBook priceBook = new CrmPriceBook();
             priceBook.setPriceBookId(id);
-            priceBook.setDelFlag("1");
+            priceBook.setDeleted(1);
             priceBookService.updateById(priceBook);
         }
         return R.ok();

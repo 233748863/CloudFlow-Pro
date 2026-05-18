@@ -95,7 +95,7 @@ public class CrmServiceTicketController {
             }
             CrmServiceTicket ticket = new CrmServiceTicket();
             ticket.setTicketId(id);
-            ticket.setDelFlag("1");
+            ticket.setDeleted(1);
             ticketService.updateById(ticket);
             customerService.refreshHealth(persisted.getCustomerId());
         }

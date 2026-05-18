@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * 车辆费用记录实体
  */
 @Data
-@TableName("sys_vehicle_expense")
+@TableName("oa_vehicle_expense")
 public class VehicleExpense {
 
     @TableId(type = IdType.AUTO)

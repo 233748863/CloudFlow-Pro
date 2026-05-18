@@ -74,7 +74,7 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
     private List<OaSealApplication> sealApplications(String status, int limit) {
         return sealApplicationMapper.selectList(new LambdaQueryWrapper<OaSealApplication>()
                         .eq(OaSealApplication::getStatus, status)
-                        .eq(OaSealApplication::getDelFlag, "0")
+                        .eq(OaSealApplication::getDeleted, "0")
                         .orderByAsc(OaSealApplication::getExpectedReturnTime)
                         .last("LIMIT " + limit));
     }
@@ -82,7 +82,7 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
     private List<OaLicenseBorrow> licenseBorrows(String status, int limit) {
         return licenseBorrowMapper.selectList(new LambdaQueryWrapper<OaLicenseBorrow>()
                         .eq(OaLicenseBorrow::getStatus, status)
-                        .eq(OaLicenseBorrow::getDelFlag, "0")
+                        .eq(OaLicenseBorrow::getDeleted, "0")
                         .orderByAsc(OaLicenseBorrow::getExpectedReturnTime)
                         .last("LIMIT " + limit));
     }
@@ -90,7 +90,7 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
     private List<OaLicense> expiringLicenses(int days, int limit) {
         LocalDate today = LocalDate.now();
         return licenseMapper.selectList(new LambdaQueryWrapper<OaLicense>()
-                .eq(OaLicense::getDelFlag, "0")
+                .eq(OaLicense::getDeleted, "0")
                 .ne(OaLicense::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                 .isNotNull(OaLicense::getExpireDate)
                 .between(OaLicense::getExpireDate, today, today.plusDays(days))
@@ -101,21 +101,21 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
     private long countApplications(String status) {
         Long count = sealApplicationMapper.selectCount(new LambdaQueryWrapper<OaSealApplication>()
                 .eq(OaSealApplication::getStatus, status)
-                .eq(OaSealApplication::getDelFlag, "0"));
+                .eq(OaSealApplication::getDeleted, "0"));
         return count == null ? 0 : count;
     }
 
     private long countBorrows(String status) {
         Long count = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
                 .eq(OaLicenseBorrow::getStatus, status)
-                .eq(OaLicenseBorrow::getDelFlag, "0"));
+                .eq(OaLicenseBorrow::getDeleted, "0"));
         return count == null ? 0 : count;
     }
 
     private long countExpiringLicenses(int days) {
         LocalDate today = LocalDate.now();
         Long count = licenseMapper.selectCount(new LambdaQueryWrapper<OaLicense>()
-                .eq(OaLicense::getDelFlag, "0")
+                .eq(OaLicense::getDeleted, "0")
                 .ne(OaLicense::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                 .isNotNull(OaLicense::getExpireDate)
                 .between(OaLicense::getExpireDate, today, today.plusDays(days)));
@@ -147,7 +147,7 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
 
     private long countSealCreatedBetween(LocalDateTime start, LocalDateTime end) {
         Long count = sealApplicationMapper.selectCount(new LambdaQueryWrapper<OaSealApplication>()
-                .eq(OaSealApplication::getDelFlag, "0")
+                .eq(OaSealApplication::getDeleted, "0")
                 .ge(OaSealApplication::getCreateTime, start)
                 .lt(OaSealApplication::getCreateTime, end));
         return count == null ? 0 : count;
@@ -155,7 +155,7 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
 
     private long countLicenseCreatedBetween(LocalDateTime start, LocalDateTime end) {
         Long count = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
-                .eq(OaLicenseBorrow::getDelFlag, "0")
+                .eq(OaLicenseBorrow::getDeleted, "0")
                 .ge(OaLicenseBorrow::getCreateTime, start)
                 .lt(OaLicenseBorrow::getCreateTime, end));
         return count == null ? 0 : count;
@@ -164,13 +164,13 @@ public class OaBorrowManagementServiceImpl implements IOaBorrowManagementService
     private List<OaBorrowManagementStatsDTO.ResourceUsageItem> buildResourceUsage() {
         Map<String, OaBorrowManagementStatsDTO.ResourceUsageItem> usage = new LinkedHashMap<>();
         List<OaSealApplication> sealList = sealApplicationMapper.selectList(new LambdaQueryWrapper<OaSealApplication>()
-                .eq(OaSealApplication::getDelFlag, "0")
+                .eq(OaSealApplication::getDeleted, "0")
                 .in(OaSealApplication::getStatus, OaBorrowConstants.STATUS_BORROWED, OaBorrowConstants.STATUS_RETURNED, OaBorrowConstants.STATUS_OVERDUE));
         for (OaSealApplication item : sealList) {
             mergeUsage(usage, OaBorrowConstants.BUSINESS_TYPE_SEAL, item.getSealId(), item.getSealName());
         }
         List<OaLicenseBorrow> licenseList = licenseBorrowMapper.selectList(new LambdaQueryWrapper<OaLicenseBorrow>()
-                .eq(OaLicenseBorrow::getDelFlag, "0")
+                .eq(OaLicenseBorrow::getDeleted, "0")
                 .in(OaLicenseBorrow::getStatus, OaBorrowConstants.STATUS_BORROWED, OaBorrowConstants.STATUS_RETURNED, OaBorrowConstants.STATUS_OVERDUE));
         for (OaLicenseBorrow item : licenseList) {
             mergeUsage(usage, OaBorrowConstants.BUSINESS_TYPE_LICENSE, item.getLicenseId(), item.getLicenseName());

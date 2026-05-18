@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_customer_pool_log")
+@TableName("crm_customer_pool_log")
 public class CrmCustomerPoolLog implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -26,7 +26,7 @@ public class CrmCustomerPoolLog implements Serializable {
     private String toOwnerName;
     private Long ruleId;
     private String reason;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

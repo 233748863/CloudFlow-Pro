@@ -40,7 +40,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
     @Override
     public PageResult<CrmCustomer> queryPool(CrmCustomer query, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmCustomer> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
+        wrapper.eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmCustomer::getPoolFlag, CrmConstants.CustomerPoolFlag.IN_POOL)
                 .orderByDesc(CrmCustomer::getPooledTime);
         if (StringUtils.hasText(query.getCustomerName())) {
@@ -155,7 +155,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
     @Override
     public PageResult<CrmCustomerPoolLog> listLogs(Long customerId, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmCustomerPoolLog> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmCustomerPoolLog::getDelFlag, CrmConstants.DelFlag.NORMAL)
+        wrapper.eq(CrmCustomerPoolLog::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmCustomerPoolLog::getCreateTime);
         if (customerId != null) {
             wrapper.eq(CrmCustomerPoolLog::getCustomerId, customerId);
@@ -165,7 +165,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
 
     private void enforceClaimLimit(Long userId, CrmCustomer customer) {
         List<CrmAssignmentRule> rules = assignmentRuleMapper.selectList(new LambdaQueryWrapper<CrmAssignmentRule>()
-                .eq(CrmAssignmentRule::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmAssignmentRule::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmAssignmentRule::getStatus, CrmConstants.AssignmentRuleStatus.ACTIVE)
                 .eq(CrmAssignmentRule::getRuleType, CrmConstants.AssignmentRuleType.CLAIM_LIMIT)
                 .orderByAsc(CrmAssignmentRule::getPriority));
@@ -174,7 +174,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
                 continue;
             }
             Long owned = customerMapper.selectCount(new LambdaQueryWrapper<CrmCustomer>()
-                    .eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                    .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                     .eq(CrmCustomer::getPoolFlag, CrmConstants.CustomerPoolFlag.OUT_OF_POOL)
                     .eq(CrmCustomer::getOwnerId, userId));
             if (owned != null && owned.intValue() >= rule.getMaxPerOwner()) {
@@ -185,7 +185,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
 
     private List<CrmAssignmentRule> loadAutoReleaseRules() {
         List<CrmAssignmentRule> rules = assignmentRuleMapper.selectList(new LambdaQueryWrapper<CrmAssignmentRule>()
-                .eq(CrmAssignmentRule::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmAssignmentRule::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmAssignmentRule::getStatus, CrmConstants.AssignmentRuleStatus.ACTIVE)
                 .eq(CrmAssignmentRule::getRuleType, CrmConstants.AssignmentRuleType.AUTO_RELEASE)
                 .orderByAsc(CrmAssignmentRule::getPriority));
@@ -198,7 +198,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
         }
         LocalDateTime threshold = LocalDateTime.now().minusDays(rule.getInactiveDays());
         LambdaQueryWrapper<CrmCustomer> selector = new LambdaQueryWrapper<CrmCustomer>()
-                .eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmCustomer::getPoolFlag, CrmConstants.CustomerPoolFlag.OUT_OF_POOL)
                 .isNotNull(CrmCustomer::getOwnerId)
                 .and(w -> w.lt(CrmCustomer::getLastFollowUpTime, threshold).or().isNull(CrmCustomer::getLastFollowUpTime));
@@ -261,7 +261,7 @@ public class CrmCustomerPoolServiceImpl implements ICrmCustomerPoolService {
             throw new IllegalArgumentException("客户ID不能为空");
         }
         CrmCustomer customer = customerMapper.selectById(customerId);
-        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDelFlag())) {
+        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDeleted())) {
             throw new IllegalArgumentException("客户不存在");
         }
         return customer;

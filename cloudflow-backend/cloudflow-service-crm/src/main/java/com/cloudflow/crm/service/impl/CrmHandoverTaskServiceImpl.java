@@ -46,7 +46,7 @@ public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
         List<CrmHandoverTask> pending = new ArrayList<>();
 
         List<CrmCustomer> customers = customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
-                .eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmCustomer::getOwnerId, fromOwnerUserId));
         for (CrmCustomer customer : customers) {
             pending.add(buildTask("CRM_CUSTOMER", customer.getCustomerId(), customer.getCustomerName(),
@@ -54,7 +54,7 @@ public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
         }
 
         List<CrmOpportunity> opportunities = opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
-                .eq(CrmOpportunity::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmOpportunity::getOwnerId, fromOwnerUserId)
                 .notIn(CrmOpportunity::getStage,
                         CrmConstants.OpportunityStage.WON,
@@ -80,7 +80,7 @@ public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
     @Override
     public List<CrmHandoverTask> listPending(Long fromOwnerId) {
         LambdaQueryWrapper<CrmHandoverTask> wrapper = new LambdaQueryWrapper<CrmHandoverTask>()
-                .eq(CrmHandoverTask::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmHandoverTask::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmHandoverTask::getStatus, "PENDING")
                 .orderByDesc(CrmHandoverTask::getCreateTime);
         if (fromOwnerId != null) {
@@ -96,7 +96,7 @@ public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
             throw new IllegalArgumentException("交接任务ID与新负责人不能为空");
         }
         CrmHandoverTask task = handoverTaskMapper.selectById(handoverId);
-        if (task == null || !CrmConstants.DelFlag.NORMAL.equals(task.getDelFlag())) {
+        if (task == null || !CrmConstants.DelFlag.NORMAL.equals(task.getDeleted())) {
             throw new IllegalArgumentException("交接任务不存在");
         }
         if (!"PENDING".equals(task.getStatus())) {
@@ -138,7 +138,7 @@ public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
     @Transactional(rollbackFor = Exception.class)
     public int close(Long handoverId, String remark) {
         CrmHandoverTask task = handoverTaskMapper.selectById(handoverId);
-        if (task == null || !CrmConstants.DelFlag.NORMAL.equals(task.getDelFlag())) {
+        if (task == null || !CrmConstants.DelFlag.NORMAL.equals(task.getDeleted())) {
             throw new IllegalArgumentException("交接任务不存在");
         }
         task.setStatus("CLOSED");
@@ -156,7 +156,7 @@ public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
                 .eq(CrmHandoverTask::getBusinessId, businessId)
                 .eq(CrmHandoverTask::getFromOwnerId, fromOwnerId)
                 .eq(CrmHandoverTask::getStatus, "PENDING")
-                .eq(CrmHandoverTask::getDelFlag, CrmConstants.DelFlag.NORMAL)) > 0;
+                .eq(CrmHandoverTask::getDeleted, CrmConstants.DelFlag.NORMAL)) > 0;
     }
 
     private CrmHandoverTask buildTask(String businessType, Long businessId, String businessName,
@@ -172,7 +172,7 @@ public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
         task.setStatus("PENDING");
         task.setTriggerSource("EMPLOYEE_LEFT");
         task.setTriggerEventId(eventId);
-        task.setDelFlag(CrmConstants.DelFlag.NORMAL);
+        task.setDeleted(CrmConstants.DelFlag.NORMAL);
         task.setCreateBy("hr-employee-left");
         task.setUpdateBy("hr-employee-left");
         return task;

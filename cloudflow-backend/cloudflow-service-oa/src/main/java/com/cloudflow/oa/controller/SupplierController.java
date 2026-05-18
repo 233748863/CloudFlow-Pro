@@ -33,7 +33,7 @@ public class SupplierController {
     @SaCheckPermission("oa:supplier:list")
     public R<SysSupplier> getInfo(@PathVariable Long id) {
         SysSupplier supplier = supplierService.getById(id);
-        if (supplier == null || !"0".equals(supplier.getDelFlag())) {
+        if (supplier == null || !Integer.valueOf(0).equals(supplier.getDeleted())) {
             return R.fail("供应商不存在");
         }
         return R.ok(supplier);
@@ -68,7 +68,7 @@ public class SupplierController {
         for (Long id : ids) {
             SysSupplier supplier = new SysSupplier();
             supplier.setSupplierId(id);
-            supplier.setDelFlag("1");
+            supplier.setDeleted(1);
             supplierService.updateById(supplier);
         }
         return R.ok();

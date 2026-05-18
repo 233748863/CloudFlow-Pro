@@ -44,7 +44,7 @@ public class OaSeal implements Serializable {
     private LocalDateTime borrowDueTime;
 
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

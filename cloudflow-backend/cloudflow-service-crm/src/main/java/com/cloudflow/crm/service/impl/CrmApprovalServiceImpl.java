@@ -123,7 +123,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
             throw new IllegalArgumentException("回款ID不能为空");
         }
         CrmReceivable receivable = receivableMapper.selectById(receivableId);
-        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDelFlag())) {
+        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDeleted())) {
             throw new IllegalArgumentException("回款计划不存在");
         }
         if (refundAmount == null || refundAmount.signum() <= 0) {
@@ -178,7 +178,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
         approval.setDeptName(UserContext.getDeptName());
         approval.setStatus(CrmConstants.QuoteStatus.PENDING);
         approval.setRemark(remark);
-        approval.setDelFlag(CrmConstants.DelFlag.NORMAL);
+        approval.setDeleted(CrmConstants.DelFlag.NORMAL);
         approval.setCreateBy(resolveUserName());
         approval.setCreateTime(LocalDateTime.now());
         approval.setUpdateBy(resolveUserName());
@@ -240,7 +240,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
             throw new IllegalArgumentException("客户ID不能为空");
         }
         CrmCustomer customer = customerMapper.selectById(customerId);
-        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDelFlag())) {
+        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDeleted())) {
             throw new IllegalArgumentException("客户不存在");
         }
         return customer;
@@ -251,7 +251,7 @@ public class CrmApprovalServiceImpl implements CrmApprovalService {
             throw new IllegalArgumentException("商机ID不能为空");
         }
         CrmOpportunity opportunity = opportunityMapper.selectById(opportunityId);
-        if (opportunity == null || !CrmConstants.DelFlag.NORMAL.equals(opportunity.getDelFlag())) {
+        if (opportunity == null || !CrmConstants.DelFlag.NORMAL.equals(opportunity.getDeleted())) {
             throw new IllegalArgumentException("商机不存在");
         }
         return opportunity;

@@ -31,7 +31,7 @@ public class CrmAssignmentRuleController {
     @SaCheckPermission("crm:assignment-rule:list")
     public R<CrmAssignmentRule> getInfo(@PathVariable("id") Long id) {
         CrmAssignmentRule rule = assignmentRuleService.getById(id);
-        return rule == null || !"0".equals(rule.getDelFlag()) ? R.fail("分配规则不存在") : R.ok(rule);
+        return rule == null || !Integer.valueOf(0).equals(rule.getDeleted()) ? R.fail("分配规则不存在") : R.ok(rule);
     }
 
     @SysLog("新增客户分配规则")
@@ -63,7 +63,7 @@ public class CrmAssignmentRuleController {
         for (Long id : ids) {
             CrmAssignmentRule rule = new CrmAssignmentRule();
             rule.setRuleId(id);
-            rule.setDelFlag("1");
+            rule.setDeleted(1);
             assignmentRuleService.updateById(rule);
         }
         return R.ok();

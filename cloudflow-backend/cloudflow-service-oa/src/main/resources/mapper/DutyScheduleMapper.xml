@@ -4,7 +4,7 @@
 
     <select id="selectPageByDataScope" resultType="com.cloudflow.oa.domain.DutySchedule">
         SELECT *
-        FROM sys_duty_schedule
+        FROM oa_duty_schedule
         <where>
             <if test="query != null">
                 <if test="query.userId != null">
@@ -23,7 +23,7 @@
                     AND duty_date = #{query.dutyDate}
                 </if>
             </if>
-            AND (del_flag IS NULL OR del_flag != '2')
+            AND (deleted IS NULL OR deleted != '2')
         </where>
         ORDER BY duty_date DESC
     </select>

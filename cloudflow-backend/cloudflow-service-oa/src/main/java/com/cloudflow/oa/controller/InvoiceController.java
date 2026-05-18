@@ -31,7 +31,7 @@ public class InvoiceController {
     @SaCheckPermission("oa:invoice:list")
     public R<OaInvoice> getInfo(@PathVariable("id") Long id) {
         OaInvoice invoice = invoiceService.getById(id);
-        return invoice == null || !"0".equals(invoice.getDelFlag()) ? R.fail("发票不存在") : R.ok(invoice);
+        return invoice == null || !Integer.valueOf(0).equals(invoice.getDeleted()) ? R.fail("发票不存在") : R.ok(invoice);
     }
 
     @GetMapping("/{id}/writeoff/list")
@@ -107,7 +107,7 @@ public class InvoiceController {
         for (Long id : ids) {
             OaInvoice invoice = new OaInvoice();
             invoice.setInvoiceId(id);
-            invoice.setDelFlag("1");
+            invoice.setDeleted(1);
             invoiceService.updateById(invoice);
         }
         return R.ok();

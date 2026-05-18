@@ -99,7 +99,7 @@ public class CrmPerformanceQueryServiceImpl implements CrmPerformanceQueryServic
 
         // 客户维度：确定维度名称 + 客户数
         List<CrmCustomer> customers = customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
-                .eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL));
+                .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL));
         for (CrmCustomer customer : customers) {
             Long key = cusKey.apply(customer);
             if (!keep(key, filterIds)) {
@@ -111,7 +111,7 @@ public class CrmPerformanceQueryServiceImpl implements CrmPerformanceQueryServic
 
         // 商机：赢单数 + 赢单金额 + 合同金额（以 quote/contract 建模需要联 quoteMapper，暂以赢单金额近似）
         List<CrmOpportunity> opportunities = opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
-                .eq(CrmOpportunity::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmOpportunity::getStage, CrmConstants.OpportunityStage.WON));
         for (CrmOpportunity opportunity : opportunities) {
             if (!withinRange(firstNonNull(opportunity.getStageChangedTime(), opportunity.getUpdateTime(), opportunity.getCreateTime()), start, end)) {
@@ -130,7 +130,7 @@ public class CrmPerformanceQueryServiceImpl implements CrmPerformanceQueryServic
 
         // 回款：已到账金额 / 未到账金额
         List<CrmReceivable> receivables = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
-                .eq(CrmReceivable::getDelFlag, CrmConstants.DelFlag.NORMAL));
+                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL));
         // dept 维度要借助 customer 回表
         Map<Long, Long> customerToDept = new LinkedHashMap<>();
         if (DIM_DEPT.equals(dimension)) {
@@ -163,7 +163,7 @@ public class CrmPerformanceQueryServiceImpl implements CrmPerformanceQueryServic
 
         // 跟进
         List<CrmFollowUp> followUps = followUpMapper.selectList(new LambdaQueryWrapper<CrmFollowUp>()
-                .eq(CrmFollowUp::getDelFlag, CrmConstants.DelFlag.NORMAL));
+                .eq(CrmFollowUp::getDeleted, CrmConstants.DelFlag.NORMAL));
         for (CrmFollowUp followUp : followUps) {
             if (!withinRange(firstNonNull(followUp.getFollowUpTime(), followUp.getCreateTime()), start, end)) {
                 continue;

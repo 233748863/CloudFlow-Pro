@@ -38,7 +38,7 @@ public class PurchaseRequestController {
     @SaCheckPermission("oa:purchase:list")
     public R<BizPurchaseRequest> getInfo(@PathVariable Long id) {
         BizPurchaseRequest purchase = purchaseRequestService.getRequestWithItems(id);
-        if (purchase == null || !"0".equals(purchase.getDelFlag())) {
+        if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
             return R.fail("采购申请不存在");
         }
         return R.ok(purchase);
@@ -84,7 +84,7 @@ public class PurchaseRequestController {
         for (Long id : ids) {
             BizPurchaseRequest purchase = new BizPurchaseRequest();
             purchase.setId(id);
-            purchase.setDelFlag("1");
+            purchase.setDeleted(1);
             purchaseRequestService.updateById(purchase);
         }
         return R.ok();

@@ -171,7 +171,7 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
             QueryWrapper<SysUser> wrapper = new QueryWrapper<>();
             wrapper.select("tenant_id", "COUNT(*) AS user_count")
                 .in("tenant_id", normalizedTenantIds)
-                .eq("del_flag", "0")
+                .eq("deleted", 0)
                 .groupBy("tenant_id");
 
             Map<Long, Long> activeUserCountMap = new HashMap<>();
@@ -196,7 +196,7 @@ public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant
             QueryWrapper<SysFile> wrapper = new QueryWrapper<>();
             wrapper.select("tenant_id", "SUM(file_size) AS total_bytes")
                 .in("tenant_id", normalizedTenantIds)
-                .eq("del_flag", "0")
+                .eq("deleted", 0)
                 .groupBy("tenant_id");
 
             Map<Long, Long> usedBytesMap = new HashMap<>();

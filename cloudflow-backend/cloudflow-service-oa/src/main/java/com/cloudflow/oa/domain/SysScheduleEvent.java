@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * 日程事件实体
  */
 @Data
-@TableName("sys_schedule_event")
+@TableName("oa_schedule_event")
 public class SysScheduleEvent {
     
     @TableId(type = IdType.AUTO)
@@ -51,7 +51,7 @@ public class SysScheduleEvent {
     private LocalDateTime updateTime;
     
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
     
     /** 租户ID */
     private Long tenantId;

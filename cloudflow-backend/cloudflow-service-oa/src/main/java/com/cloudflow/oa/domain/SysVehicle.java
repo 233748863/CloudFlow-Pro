@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * 车辆信息实体
  */
 @Data
-@TableName("sys_vehicle")
+@TableName("oa_vehicle")
 public class SysVehicle {
 
     @TableId(type = IdType.AUTO)
@@ -55,7 +55,7 @@ public class SysVehicle {
     private String remark;
 
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
 
     private String createBy;
 

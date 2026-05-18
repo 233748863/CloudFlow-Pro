@@ -29,7 +29,7 @@
                     AND counterparty_name LIKE CONCAT('%', #{query.counterpartyName}, '%')
                 </if>
             </if>
-            AND del_flag = '0'
+            AND deleted = '0'
         </where>
         ORDER BY create_time DESC
     </select>

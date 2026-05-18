@@ -34,7 +34,7 @@ public class CrmSalesTargetServiceImpl extends CrmServiceSupport<CrmSalesTargetM
     @Override
     public PageResult<CrmSalesTarget> queryPage(CrmSalesTarget query, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmSalesTarget> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmSalesTarget::getDelFlag, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmSalesTarget::getUpdateTime);
+        wrapper.eq(CrmSalesTarget::getDeleted, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmSalesTarget::getUpdateTime);
         likeIfPresent(wrapper, CrmSalesTarget::getTargetName, query.getTargetName());
         likeIfPresent(wrapper, CrmSalesTarget::getTargetNo, query.getTargetNo());
         eqIfPresent(wrapper, CrmSalesTarget::getDimensionType, query.getDimensionType());

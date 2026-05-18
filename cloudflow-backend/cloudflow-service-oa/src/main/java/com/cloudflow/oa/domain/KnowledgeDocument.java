@@ -56,7 +56,7 @@ public class KnowledgeDocument implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime publishTime;
 
-    private String delFlag;
+    private Integer deleted;
 
     private String createBy;
 

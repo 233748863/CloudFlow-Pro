@@ -22,16 +22,16 @@
                t.solution,
                t.attachment_url,
                t.status,
-               t.del_flag,
+               t.deleted,
                t.create_by,
                t.create_time,
                t.update_by,
                t.update_time,
                c.dept_id AS scope_dept_id,
                c.owner_id AS scope_owner_id
-        FROM oa_crm_service_ticket t
-                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
-        WHERE t.del_flag = '0'
+        FROM crm_service_ticket t
+                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
+        WHERE t.deleted = '0'
         <if test="query != null and query.customerId != null">
             AND t.customer_id = #{query.customerId}
         </if>
@@ -65,16 +65,16 @@
                t.solution,
                t.attachment_url,
                t.status,
-               t.del_flag,
+               t.deleted,
                t.create_by,
                t.create_time,
                t.update_by,
                t.update_time,
                c.dept_id AS scope_dept_id,
                c.owner_id AS scope_owner_id
-        FROM oa_crm_service_ticket t
-                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        FROM crm_service_ticket t
+                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
         WHERE t.ticket_id = #{ticketId}
-          AND t.del_flag = '0'
+          AND t.deleted = '0'
     </select>
 </mapper>

@@ -75,7 +75,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     @Override
     public PageResult<OaProject> queryPage(OaProject query, PageQuery pageQuery) {
         LambdaQueryWrapper<OaProject> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaProject::getDelFlag, "0").orderByDesc(OaProject::getUpdateTime);
+        wrapper.eq(OaProject::getDeleted, "0").orderByDesc(OaProject::getUpdateTime);
         if (StringUtils.hasText(query.getProjectName())) {
             wrapper.like(OaProject::getProjectName, query.getProjectName());
         }
@@ -113,7 +113,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         project.setCreateTime(now);
         project.setUpdateBy(UserContext.getUserName());
         project.setUpdateTime(now);
-        project.setDelFlag("0");
+        project.setDeleted(0);
         boolean saved = save(project);
         if (!saved || project.getProjectId() == null) {
             throw new IllegalArgumentException("项目创建失败");
@@ -214,7 +214,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         requireProject(projectId);
         return projectMemberMapper.selectList(new LambdaQueryWrapper<OaProjectMember>()
                 .eq(OaProjectMember::getProjectId, projectId)
-                .eq(OaProjectMember::getDelFlag, "0")
+                .eq(OaProjectMember::getDeleted, "0")
                 .orderByAsc(OaProjectMember::getJoinDate)
                 .orderByAsc(OaProjectMember::getId));
     }
@@ -224,7 +224,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         requireProject(projectId);
         return projectMilestoneMapper.selectList(new LambdaQueryWrapper<OaProjectMilestone>()
                 .eq(OaProjectMilestone::getProjectId, projectId)
-                .eq(OaProjectMilestone::getDelFlag, "0")
+                .eq(OaProjectMilestone::getDeleted, "0")
                 .orderByAsc(OaProjectMilestone::getSortOrder)
                 .orderByAsc(OaProjectMilestone::getPlannedDate)
                 .orderByAsc(OaProjectMilestone::getMilestoneId));
@@ -241,7 +241,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         requireProject(projectId);
         return projectDependencyMapper.selectList(new LambdaQueryWrapper<OaProjectDependency>()
                 .eq(OaProjectDependency::getProjectId, projectId)
-                .eq(OaProjectDependency::getDelFlag, "0")
+                .eq(OaProjectDependency::getDeleted, "0")
                 .orderByAsc(OaProjectDependency::getDependencyId));
     }
 
@@ -250,7 +250,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         requireProject(projectId);
         List<OaProjectRisk> risks = new ArrayList<>(projectRiskMapper.selectList(new LambdaQueryWrapper<OaProjectRisk>()
                 .eq(OaProjectRisk::getProjectId, projectId)
-                .eq(OaProjectRisk::getDelFlag, "0")
+                .eq(OaProjectRisk::getDeleted, "0")
                 .orderByDesc(OaProjectRisk::getCreateTime)
                 .orderByDesc(OaProjectRisk::getRiskId)));
         appendMilestoneOverdueRisks(projectId, risks);
@@ -283,7 +283,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         member.setRoleCode(StringUtils.hasText(member.getRoleCode()) ? member.getRoleCode() : "MEMBER");
         member.setRoleName(StringUtils.hasText(member.getRoleName()) ? member.getRoleName() : "项目成员");
         member.setBillableFlag(member.getBillableFlag() == null ? 1 : member.getBillableFlag());
-        member.setDelFlag("0");
+        member.setDeleted(0);
         member.setCreateBy(resolveUserName());
         member.setCreateTime(now);
         member.setUpdateBy(resolveUserName());
@@ -309,7 +309,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         }
         LambdaUpdateWrapper<OaProjectMember> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(OaProjectMember::getId, ids)
-                .set(OaProjectMember::getDelFlag, "1")
+                .set(OaProjectMember::getDeleted, "1")
                 .set(OaProjectMember::getUpdateBy, resolveUserName())
                 .set(OaProjectMember::getUpdateTime, LocalDateTime.now());
         return projectMemberMapper.update(null, wrapper) > 0;
@@ -332,7 +332,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         milestone.setBaselineDate(milestone.getBaselineDate() == null ? milestone.getPlannedDate() : milestone.getBaselineDate());
         milestone.setSortOrder(milestone.getSortOrder() == null ? nextMilestoneSortOrder(milestone.getProjectId()) : milestone.getSortOrder());
         milestone.setStatus(StringUtils.hasText(milestone.getStatus()) ? milestone.getStatus() : "PLANNED");
-        milestone.setDelFlag("0");
+        milestone.setDeleted(0);
         milestone.setCreateBy(resolveUserName());
         milestone.setCreateTime(now);
         milestone.setUpdateBy(resolveUserName());
@@ -363,7 +363,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         List<OaProjectMilestone> milestones = projectMilestoneMapper.selectBatchIds(ids);
         LambdaUpdateWrapper<OaProjectMilestone> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(OaProjectMilestone::getMilestoneId, ids)
-                .set(OaProjectMilestone::getDelFlag, "1")
+                .set(OaProjectMilestone::getDeleted, "1")
                 .set(OaProjectMilestone::getUpdateBy, resolveUserName())
                 .set(OaProjectMilestone::getUpdateTime, LocalDateTime.now());
         boolean updated = projectMilestoneMapper.update(null, wrapper) > 0;
@@ -388,7 +388,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         risk.setOwnerId(risk.getOwnerId() == null ? UserContext.getUserId() : risk.getOwnerId());
         risk.setOwnerName(StringUtils.hasText(risk.getOwnerName()) ? risk.getOwnerName() : resolveUserName());
         risk.setTriggerSource(StringUtils.hasText(risk.getTriggerSource()) ? risk.getTriggerSource() : "MANUAL");
-        risk.setDelFlag("0");
+        risk.setDeleted(0);
         risk.setCreateBy(resolveUserName());
         risk.setCreateTime(now);
         risk.setUpdateBy(resolveUserName());
@@ -423,7 +423,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         List<OaProjectRisk> risks = projectRiskMapper.selectBatchIds(ids);
         LambdaUpdateWrapper<OaProjectRisk> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(OaProjectRisk::getRiskId, ids)
-                .set(OaProjectRisk::getDelFlag, "1")
+                .set(OaProjectRisk::getDeleted, "1")
                 .set(OaProjectRisk::getUpdateBy, resolveUserName())
                 .set(OaProjectRisk::getUpdateTime, LocalDateTime.now());
         boolean updated = projectRiskMapper.update(null, wrapper) > 0;
@@ -457,7 +457,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         task.setCreateTime(now);
         task.setUpdateBy(resolveUserName());
         task.setUpdateTime(now);
-        task.setDelFlag("0");
+        task.setDeleted(0);
         return workTaskService.save(task);
     }
 
@@ -483,7 +483,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                 continue;
             }
             WorkTask task = workTaskService.getById(node.getTaskId());
-            if (task == null || !Objects.equals(task.getProjectId(), projectId) || !"0".equals(task.getDelFlag())) {
+            if (task == null || !Objects.equals(task.getProjectId(), projectId) || !Integer.valueOf(0).equals(task.getDeleted())) {
                 throw new IllegalArgumentException("WBS任务不存在或不属于当前项目");
             }
         }
@@ -502,7 +502,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         dependency.setTenantId(resolveTenantId());
         dependency.setDependencyType(StringUtils.hasText(dependency.getDependencyType()) ? dependency.getDependencyType() : "FS");
         dependency.setLagDays(dependency.getLagDays() == null ? 0 : dependency.getLagDays());
-        dependency.setDelFlag("0");
+        dependency.setDeleted(0);
         dependency.setCreateBy(resolveUserName());
         dependency.setCreateTime(now);
         dependency.setUpdateBy(resolveUserName());
@@ -528,7 +528,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         }
         LambdaUpdateWrapper<OaProjectDependency> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(OaProjectDependency::getDependencyId, ids)
-                .set(OaProjectDependency::getDelFlag, "1")
+                .set(OaProjectDependency::getDeleted, "1")
                 .set(OaProjectDependency::getUpdateBy, resolveUserName())
                 .set(OaProjectDependency::getUpdateTime, LocalDateTime.now());
         return projectDependencyMapper.update(null, wrapper) > 0;
@@ -601,7 +601,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             return null;
         }
         return getOne(new LambdaQueryWrapper<OaProject>()
-                .eq(OaProject::getDelFlag, "0")
+                .eq(OaProject::getDeleted, "0")
                 .eq(OaProject::getSourceType, project.getSourceType())
                 .eq(OaProject::getSourceId, project.getSourceId())
                 .last("limit 1"), false);
@@ -609,7 +609,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
 
     private OaProject requireProject(Long projectId) {
         OaProject project = getById(projectId);
-        if (project == null || !"0".equals(project.getDelFlag())) {
+        if (project == null || !Integer.valueOf(0).equals(project.getDeleted())) {
             throw new IllegalArgumentException("项目不存在");
         }
         return project;
@@ -661,7 +661,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private String resolveProjectRiskLevel(Long projectId) {
         List<OaProjectRisk> manualRisks = projectRiskMapper.selectList(new LambdaQueryWrapper<OaProjectRisk>()
                 .eq(OaProjectRisk::getProjectId, projectId)
-                .eq(OaProjectRisk::getDelFlag, "0")
+                .eq(OaProjectRisk::getDeleted, "0")
                 .ne(OaProjectRisk::getStatus, "CLOSED"));
         String level = "LOW";
         for (OaProjectRisk risk : manualRisks) {
@@ -722,7 +722,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private BigDecimal sumExpenseAmount(Long projectId) {
         return expenseClaimMapper.selectList(new LambdaQueryWrapper<BizExpenseClaim>()
                         .eq(BizExpenseClaim::getProjectId, projectId)
-                        .eq(BizExpenseClaim::getDelFlag, "0")
+                        .eq(BizExpenseClaim::getDeleted, "0")
                         .in(BizExpenseClaim::getStatus, "PENDING", "APPROVED", "PAID"))
                 .stream()
                 .map(BizExpenseClaim::getTotalAmount)
@@ -733,7 +733,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private BigDecimal sumPurchaseAmount(Long projectId) {
         return purchaseRequestMapper.selectList(new LambdaQueryWrapper<BizPurchaseRequest>()
                         .eq(BizPurchaseRequest::getProjectId, projectId)
-                        .eq(BizPurchaseRequest::getDelFlag, "0")
+                        .eq(BizPurchaseRequest::getDeleted, "0")
                         .in(BizPurchaseRequest::getStatus, "PENDING", "APPROVED"))
                 .stream()
                 .map(BizPurchaseRequest::getTotalAmount)
@@ -744,7 +744,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
     private BigDecimal sumPaymentAmount(Long projectId) {
         return paymentRequestMapper.selectList(new LambdaQueryWrapper<BizPaymentRequest>()
                         .eq(BizPaymentRequest::getProjectId, projectId)
-                        .eq(BizPaymentRequest::getDelFlag, "0")
+                        .eq(BizPaymentRequest::getDeleted, "0")
                         .in(BizPaymentRequest::getStatus, "PENDING", "APPROVED", "PAID"))
                 .stream()
                 .map(BizPaymentRequest::getAmount)
@@ -813,7 +813,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
                     .eq(OaProjectDependency::getPredecessorId, dependency.getPredecessorId())
                     .eq(OaProjectDependency::getSuccessorType, dependency.getSuccessorType())
                     .eq(OaProjectDependency::getSuccessorId, dependency.getSuccessorId())
-                    .eq(OaProjectDependency::getDelFlag, "0"));
+                    .eq(OaProjectDependency::getDeleted, "0"));
             if (count != null && count > 0) {
                 throw new IllegalArgumentException("项目依赖已存在");
             }
@@ -854,7 +854,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         summary.setPaymentAmount(costSummary.getPaymentAmount());
 
         List<OaBudgetPlan> budgets = budgetPlanMapper.selectList(new LambdaQueryWrapper<OaBudgetPlan>()
-                .eq(OaBudgetPlan::getDelFlag, "0")
+                .eq(OaBudgetPlan::getDeleted, "0")
                 .eq(OaBudgetPlan::getProjectId, project.getProjectId())
                 .orderByDesc(OaBudgetPlan::getUpdateTime));
         if (budgets.isEmpty()) {
@@ -865,7 +865,7 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
         }
 
         List<OaInvoice> invoices = invoiceMapper.selectList(new LambdaQueryWrapper<OaInvoice>()
-                .eq(OaInvoice::getDelFlag, "0")
+                .eq(OaInvoice::getDeleted, "0")
                 .and(wrapper -> {
                     if (project.getContractId() != null) {
                         wrapper.eq(OaInvoice::getContractId, project.getContractId());

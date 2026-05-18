@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * 固定资产
  */
 @Data
-@TableName("sys_asset")
+@TableName("oa_asset")
 public class SysAsset {
     
     @TableId(type = IdType.AUTO)

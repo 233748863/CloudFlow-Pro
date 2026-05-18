@@ -73,7 +73,7 @@ public class CrmFollowUpController {
             }
             CrmFollowUp followUp = new CrmFollowUp();
             followUp.setFollowUpId(id);
-            followUp.setDelFlag("1");
+            followUp.setDeleted(1);
             followUpService.updateById(followUp);
             customerService.refreshHealth(persisted.getCustomerId());
         }

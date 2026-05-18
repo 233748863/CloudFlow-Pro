@@ -20,7 +20,7 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
 
     /**
      * 插入时自动填充
-     * 填充字段：createBy、createTime、updateBy、updateTime、delFlag
+     * 填充字段：createBy、createTime、updateBy、updateTime、deleted
      */
     @Override
     public void insertFill(MetaObject metaObject) {
@@ -41,8 +41,8 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
         // 填充修改时间（插入时也填充，保持一致性）
         this.strictInsertFill(metaObject, "updateTime", LocalDateTime.class, LocalDateTime.now());
         
-        // 填充删除标记（默认为0，表示未删除）
-        this.strictInsertFill(metaObject, "delFlag", String.class, "0");
+        // 填充逻辑删除标志（默认为0，表示未删除）
+        this.strictInsertFill(metaObject, "deleted", Integer.class, 0);
     }
 
     /**

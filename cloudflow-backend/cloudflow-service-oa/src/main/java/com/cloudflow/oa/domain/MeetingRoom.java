@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * 会议室实体
  */
 @Data
-@TableName("sys_meeting_room")
+@TableName("oa_meeting_room")
 public class MeetingRoom {
     
     @TableId(type = IdType.AUTO)
@@ -45,7 +45,7 @@ public class MeetingRoom {
     private LocalDateTime updateTime;
     
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
     
     /** 租户ID */
     private Long tenantId;

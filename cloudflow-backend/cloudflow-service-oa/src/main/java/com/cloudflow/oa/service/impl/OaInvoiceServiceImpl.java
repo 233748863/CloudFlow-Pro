@@ -41,7 +41,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     @Override
     public PageResult<OaInvoice> queryPage(OaInvoice query, PageQuery pageQuery) {
         LambdaQueryWrapper<OaInvoice> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaInvoice::getDelFlag, "0").orderByDesc(OaInvoice::getUpdateTime);
+        wrapper.eq(OaInvoice::getDeleted, "0").orderByDesc(OaInvoice::getUpdateTime);
         if (StringUtils.hasText(query.getInvoiceDirection())) {
             wrapper.eq(OaInvoice::getInvoiceDirection, query.getInvoiceDirection());
         }
@@ -69,7 +69,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
         LocalDateTime now = LocalDateTime.now();
         invoice.setTenantId(resolveTenantId());
         invoice.setStatus(StringUtils.hasText(invoice.getStatus()) ? invoice.getStatus() : "REGISTERED");
-        invoice.setDelFlag("0");
+        invoice.setDeleted(0);
         invoice.setCreateBy(resolveUserName());
         invoice.setCreateTime(now);
         invoice.setUpdateBy(resolveUserName());
@@ -193,7 +193,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
 
     private OaInvoice requireInvoice(Long invoiceId) {
         OaInvoice invoice = getById(invoiceId);
-        if (invoice == null || !"0".equals(invoice.getDelFlag())) {
+        if (invoice == null || !Integer.valueOf(0).equals(invoice.getDeleted())) {
             throw new IllegalArgumentException("发票不存在");
         }
         return invoice;
@@ -223,7 +223,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     private void updateExpenseInvoiceStatus(Long expenseClaimId) {
         String status = aggregateInvoiceStatus(new LambdaQueryWrapper<OaInvoice>()
                 .eq(OaInvoice::getExpenseClaimId, expenseClaimId)
-                .eq(OaInvoice::getDelFlag, "0"));
+                .eq(OaInvoice::getDeleted, "0"));
         LambdaUpdateWrapper<BizExpenseClaim> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizExpenseClaim::getId, expenseClaimId)
                 .set(BizExpenseClaim::getInvoiceStatus, status)
@@ -235,7 +235,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     private void updatePaymentInvoiceStatus(Long paymentRequestId) {
         String status = aggregateInvoiceStatus(new LambdaQueryWrapper<OaInvoice>()
                 .eq(OaInvoice::getPaymentRequestId, paymentRequestId)
-                .eq(OaInvoice::getDelFlag, "0"));
+                .eq(OaInvoice::getDeleted, "0"));
         LambdaUpdateWrapper<BizPaymentRequest> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizPaymentRequest::getId, paymentRequestId)
                 .set(BizPaymentRequest::getInvoiceStatus, status)
@@ -247,7 +247,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     private void updateContractInvoiceStatus(Long contractId) {
         String status = aggregateInvoiceStatus(new LambdaQueryWrapper<OaInvoice>()
                 .eq(OaInvoice::getContractId, contractId)
-                .eq(OaInvoice::getDelFlag, "0"));
+                .eq(OaInvoice::getDeleted, "0"));
         LambdaUpdateWrapper<OaContract> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(OaContract::getContractId, contractId)
                 .set(OaContract::getInvoiceStatus, status)

@@ -15,8 +15,8 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- =========================================================
 
 -- 1. 系统公告表
-DROP TABLE IF EXISTS sys_announcement;
-CREATE TABLE sys_announcement (
+DROP TABLE IF EXISTS oa_announcement;
+CREATE TABLE oa_announcement (
   announcement_id   BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '公告ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   title             VARCHAR(255)    NOT NULL COMMENT '公告标题',
@@ -34,15 +34,15 @@ CREATE TABLE sys_announcement (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   PRIMARY KEY (announcement_id),
   KEY idx_announcement_tenant (tenant_id),
   KEY idx_announcement_status (status, is_top, priority)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='系统公告表';
 
 -- 2. 公告阅读记录表
-DROP TABLE IF EXISTS sys_announcement_read;
-CREATE TABLE sys_announcement_read (
+DROP TABLE IF EXISTS oa_announcement_read;
+CREATE TABLE oa_announcement_read (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   announcement_id   BIGINT(20)      NOT NULL COMMENT '公告ID',
@@ -57,8 +57,8 @@ CREATE TABLE sys_announcement_read (
 -- =========================================================
 
 -- 3. 会议室资源表
-DROP TABLE IF EXISTS sys_meeting_room;
-CREATE TABLE sys_meeting_room (
+DROP TABLE IF EXISTS oa_meeting_room;
+CREATE TABLE oa_meeting_room (
   room_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '会议室ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   name              VARCHAR(64)     NOT NULL COMMENT '会议室名称',
@@ -70,13 +70,13 @@ CREATE TABLE sys_meeting_room (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   PRIMARY KEY (room_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COMMENT='会议室资源表';
 
 -- 4. 日程事件表
-DROP TABLE IF EXISTS sys_schedule_event;
-CREATE TABLE sys_schedule_event (
+DROP TABLE IF EXISTS oa_schedule_event;
+CREATE TABLE oa_schedule_event (
   event_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '事件ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   title             VARCHAR(255)    NOT NULL COMMENT '日程主题',
@@ -90,7 +90,7 @@ CREATE TABLE sys_schedule_event (
   attendees         VARCHAR(1000)   DEFAULT NULL COMMENT '参与人ID列表(JSON)',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   PRIMARY KEY (event_id),
   KEY idx_creator (creator_id),
   KEY idx_room_time (room_id, start_time, end_time),
@@ -102,8 +102,8 @@ CREATE TABLE sys_schedule_event (
 -- =========================================================
 
 -- 5. 协作任务表
-DROP TABLE IF EXISTS sys_work_task;
-CREATE TABLE sys_work_task (
+DROP TABLE IF EXISTS oa_work_task;
+CREATE TABLE oa_work_task (
   task_id           BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '任务ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   title             VARCHAR(255)    NOT NULL COMMENT '任务标题',
@@ -133,7 +133,7 @@ CREATE TABLE sys_work_task (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   PRIMARY KEY (task_id),
   KEY idx_assignee (assignee_id),
   KEY idx_owner (owner_id),
@@ -147,8 +147,8 @@ CREATE TABLE sys_work_task (
 -- =========================================================
 
 -- 8. 固定资产表
-DROP TABLE IF EXISTS sys_asset;
-CREATE TABLE sys_asset (
+DROP TABLE IF EXISTS oa_asset;
+CREATE TABLE oa_asset (
   asset_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '资产ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   asset_code        VARCHAR(50)     NOT NULL COMMENT '资产编码',
@@ -161,7 +161,7 @@ CREATE TABLE sys_asset (
   owner_id          BIGINT(20)      DEFAULT NULL COMMENT '当前领用人ID',
   location          VARCHAR(100)    DEFAULT NULL COMMENT '存放位置',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -171,8 +171,8 @@ CREATE TABLE sys_asset (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='固定资产表';
 
 -- 9. 耗材库存表
-DROP TABLE IF EXISTS sys_consumable;
-CREATE TABLE sys_consumable (
+DROP TABLE IF EXISTS oa_consumable;
+CREATE TABLE oa_consumable (
   consumable_id     BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '耗材ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   name              VARCHAR(100)    NOT NULL COMMENT '耗材名称',
@@ -183,7 +183,7 @@ CREATE TABLE sys_consumable (
   default_supplier_id BIGINT(20)    DEFAULT NULL COMMENT '默认供应商ID',
   target_stock      INT(11)         DEFAULT 0 COMMENT '目标库存',
   warn_enabled      TINYINT(1)      DEFAULT 1 COMMENT '是否启用库存预警(1启用 0停用)',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -192,8 +192,8 @@ CREATE TABLE sys_consumable (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='耗材库存表';
 
 -- 10. 供应商主数据表
-DROP TABLE IF EXISTS sys_supplier;
-CREATE TABLE sys_supplier (
+DROP TABLE IF EXISTS oa_supplier;
+CREATE TABLE oa_supplier (
   supplier_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '供应商ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   supplier_name     VARCHAR(100)    NOT NULL COMMENT '供应商名称',
@@ -202,7 +202,7 @@ CREATE TABLE sys_supplier (
   bank_name         VARCHAR(100)    DEFAULT NULL COMMENT '开户行',
   bank_account      VARCHAR(100)    DEFAULT NULL COMMENT '银行账号',
   status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE启用/DISABLED停用)',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -213,8 +213,8 @@ CREATE TABLE sys_supplier (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='供应商主数据表';
 
 -- 10. 资产变动日志表
-DROP TABLE IF EXISTS sys_asset_log;
-CREATE TABLE sys_asset_log (
+DROP TABLE IF EXISTS oa_asset_log;
+CREATE TABLE oa_asset_log (
   log_id            BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '日志ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   ref_id            BIGINT(20)      NOT NULL COMMENT '关联ID(资产或耗材)',
@@ -234,8 +234,8 @@ CREATE TABLE sys_asset_log (
 -- =========================================================
 
 -- 11. 车辆信息表
-DROP TABLE IF EXISTS sys_vehicle;
-CREATE TABLE sys_vehicle (
+DROP TABLE IF EXISTS oa_vehicle;
+CREATE TABLE oa_vehicle (
   vehicle_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '车辆ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   license_plate     VARCHAR(20)     NOT NULL COMMENT '车牌号',
@@ -253,7 +253,7 @@ CREATE TABLE sys_vehicle (
   manager_user_id   BIGINT(20)      DEFAULT NULL COMMENT '车辆管理员用户ID',
   location          VARCHAR(100)    DEFAULT NULL COMMENT '停放位置',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -263,8 +263,8 @@ CREATE TABLE sys_vehicle (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆信息表';
 
 -- 12. 用车申请与记录表
-DROP TABLE IF EXISTS sys_vehicle_usage;
-CREATE TABLE sys_vehicle_usage (
+DROP TABLE IF EXISTS oa_vehicle_usage;
+CREATE TABLE oa_vehicle_usage (
   usage_id          BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '用车记录ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
@@ -289,7 +289,7 @@ CREATE TABLE sys_vehicle_usage (
   attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
   status            CHAR(1)         DEFAULT '0' COMMENT '状态（0待审批 1已批准 2已驳回 3进行中 4已完成 5已取消）',
   process_instance_id VARCHAR(64)   DEFAULT NULL COMMENT '流程实例ID',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -299,8 +299,8 @@ CREATE TABLE sys_vehicle_usage (
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='用车申请与记录表';
 
 -- 13. 车辆费用记录表
-DROP TABLE IF EXISTS sys_vehicle_expense;
-CREATE TABLE sys_vehicle_expense (
+DROP TABLE IF EXISTS oa_vehicle_expense;
+CREATE TABLE oa_vehicle_expense (
   expense_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '费用ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
@@ -316,8 +316,8 @@ CREATE TABLE sys_vehicle_expense (
   KEY idx_vehicle_expense_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆费用记录表';
 
-DROP TABLE IF EXISTS sys_vehicle_maintenance;
-CREATE TABLE sys_vehicle_maintenance (
+DROP TABLE IF EXISTS oa_vehicle_maintenance;
+CREATE TABLE oa_vehicle_maintenance (
   maintenance_id    BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '维保记录ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
@@ -336,14 +336,14 @@ CREATE TABLE sys_vehicle_maintenance (
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   PRIMARY KEY (maintenance_id),
   KEY idx_vehicle_maintenance_tenant (tenant_id),
   KEY idx_vehicle_maintenance_vehicle (vehicle_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆维保记录表';
 
-DROP TABLE IF EXISTS sys_vehicle_violation;
-CREATE TABLE sys_vehicle_violation (
+DROP TABLE IF EXISTS oa_vehicle_violation;
+CREATE TABLE oa_vehicle_violation (
   violation_id      BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '违章记录ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
@@ -363,7 +363,7 @@ CREATE TABLE sys_vehicle_violation (
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   PRIMARY KEY (violation_id),
   KEY idx_vehicle_violation_tenant (tenant_id),
   KEY idx_vehicle_violation_vehicle (vehicle_id)
@@ -393,7 +393,7 @@ CREATE TABLE oa_knowledge_document (
   dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '提交人部门名称',
   submit_time       DATETIME        DEFAULT NULL COMMENT '提交审批时间',
   publish_time      DATETIME        DEFAULT NULL COMMENT '发布时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -446,7 +446,7 @@ CREATE TABLE biz_expense_claim (
   budget_subject_code VARCHAR(50)   DEFAULT NULL COMMENT '预算科目编码',
   budget_subject_name VARCHAR(100)  DEFAULT NULL COMMENT '预算科目名称',
   invoice_status    VARCHAR(20)     DEFAULT 'NONE' COMMENT '发票状态',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -504,7 +504,7 @@ CREATE TABLE biz_payment_request (
   budget_subject_code VARCHAR(50)   DEFAULT NULL COMMENT '预算科目编码',
   budget_subject_name VARCHAR(100)  DEFAULT NULL COMMENT '预算科目名称',
   invoice_status    VARCHAR(20)     DEFAULT 'NONE' COMMENT '发票状态',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -546,7 +546,7 @@ CREATE TABLE biz_purchase_request (
   customer_name     VARCHAR(200)    DEFAULT NULL COMMENT '关联客户名称',
   budget_subject_code VARCHAR(50)   DEFAULT NULL COMMENT '预算科目编码',
   budget_subject_name VARCHAR(100)  DEFAULT NULL COMMENT '预算科目名称',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -641,7 +641,7 @@ CREATE TABLE biz_business_trip (
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT草稿/PENDING审批中/APPROVED已通过/REJECTED已驳回/CANCELLED已取消)',
   dept_id           BIGINT(20)      DEFAULT NULL COMMENT '部门ID',
   dept_name         VARCHAR(64)     DEFAULT NULL COMMENT '部门名称',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 2删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
@@ -691,7 +691,7 @@ CREATE TABLE oa_contract (
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   source_type       VARCHAR(30)     DEFAULT 'MANUAL' COMMENT '来源类型 MANUAL/CRM_OPPORTUNITY/CRM_CUSTOMER',
   source_id         BIGINT(20)      DEFAULT NULL COMMENT '来源业务ID',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -738,7 +738,7 @@ CREATE TABLE oa_project (
   baseline_version   INT(11)         DEFAULT 0 COMMENT '基线版本号',
   attachment_url     VARCHAR(1000)   DEFAULT NULL COMMENT '附件',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -762,7 +762,7 @@ CREATE TABLE oa_project_member (
   join_date          DATE            DEFAULT NULL COMMENT '加入日期',
   leave_date         DATE            DEFAULT NULL COMMENT '离开日期',
   billable_flag      TINYINT(1)      DEFAULT 1 COMMENT '是否计费成员',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -788,7 +788,7 @@ CREATE TABLE oa_project_milestone (
   sort_order         INT(11)         DEFAULT 0 COMMENT '排序',
   status             VARCHAR(20)     DEFAULT 'PLANNED' COMMENT '状态',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -812,7 +812,7 @@ CREATE TABLE oa_project_risk (
   summary            VARCHAR(1000)   DEFAULT NULL COMMENT '风险说明',
   action_plan        VARCHAR(1000)   DEFAULT NULL COMMENT '应对计划',
   resolved_time      DATETIME        DEFAULT NULL COMMENT '关闭时间',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -834,7 +834,7 @@ CREATE TABLE oa_project_dependency (
   dependency_type    VARCHAR(20)     DEFAULT 'FS' COMMENT '依赖类型',
   lag_days           INT(11)         DEFAULT 0 COMMENT '延迟天数',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -856,7 +856,7 @@ CREATE TABLE oa_budget_subject (
   sort_order         INT(11)         DEFAULT 0 COMMENT '排序',
   enabled            TINYINT(1)      DEFAULT 1 COMMENT '是否启用',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -890,7 +890,7 @@ CREATE TABLE oa_budget_plan (
   version_no         INT(11)         DEFAULT 1 COMMENT '版本号',
   status             VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -936,7 +936,7 @@ CREATE TABLE oa_budget_adjustment (
   change_amount      DECIMAL(18,2)   NOT NULL COMMENT '调整金额',
   reason             VARCHAR(500)    NOT NULL COMMENT '调整原因',
   status             VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -996,7 +996,7 @@ CREATE TABLE oa_invoice (
   receivable_id      BIGINT(20)      DEFAULT NULL COMMENT '关联回款ID',
   status             VARCHAR(20)     DEFAULT 'REGISTERED' COMMENT '状态',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag           CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted            TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by          VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -1100,7 +1100,7 @@ CREATE TABLE oa_seal (
   status            VARCHAR(20)     DEFAULT 'AVAILABLE' COMMENT '状态(AVAILABLE可用/BORROWED借出/DISABLED停用)',
   borrow_due_time   DATETIME        DEFAULT NULL COMMENT '当前借出预计归还时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -1139,7 +1139,7 @@ CREATE TABLE oa_seal_application (
   handler_name      VARCHAR(64)     DEFAULT NULL COMMENT '最近经办人姓名',
   attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/BORROWED/RETURNED/OVERDUE/CANCELLED)',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -1196,7 +1196,7 @@ CREATE TABLE oa_seal_renewal (
   renewal_reason    VARCHAR(500)    NOT NULL COMMENT '续期原因',
   attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '续期附件URL(多个用逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/CANCELLED)',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -1250,7 +1250,7 @@ CREATE TABLE oa_license (
   attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '证照附件URL(多个用逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'AVAILABLE' COMMENT '状态(AVAILABLE可用/BORROWED借出/DISABLED停用)',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -1284,7 +1284,7 @@ CREATE TABLE oa_license_borrow (
   handler_name      VARCHAR(64)     DEFAULT NULL COMMENT '最近经办人姓名',
   attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '附件URL(多个用逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/BORROWED/RETURNED/OVERDUE/CANCELLED)',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -1340,7 +1340,7 @@ CREATE TABLE oa_license_renewal (
   renewal_reason    VARCHAR(500)    NOT NULL COMMENT '续期原因',
   attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '续期附件URL(多个用逗号分隔)',
   status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/CANCELLED)',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志(0正常 1删除)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -1405,8 +1405,8 @@ CREATE TABLE oa_borrow_reminder_log (
 -- =========================================================
 
 -- 22. 访客预约表
-DROP TABLE IF EXISTS sys_visitor;
-CREATE TABLE sys_visitor (
+DROP TABLE IF EXISTS oa_visitor;
+CREATE TABLE oa_visitor (
   visitor_id        BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '访客记录ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   visitor_name      VARCHAR(64)     NOT NULL COMMENT '访客姓名',
@@ -1430,7 +1430,7 @@ CREATE TABLE sys_visitor (
   pass_code         VARCHAR(32)     DEFAULT NULL COMMENT '通行证编号',
   status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态(PENDING待确认/CONFIRMED已确认/ARRIVED已到访/COMPLETED已离开/CANCELLED已取消)',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
@@ -1447,8 +1447,8 @@ CREATE TABLE sys_visitor (
 -- =========================================================
 
 -- 23. 值班排班计划表
-DROP TABLE IF EXISTS sys_duty_schedule;
-CREATE TABLE sys_duty_schedule (
+DROP TABLE IF EXISTS oa_duty_schedule;
+CREATE TABLE oa_duty_schedule (
   schedule_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '排班ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   title             VARCHAR(100)    NOT NULL COMMENT '排班标题',
@@ -1470,7 +1470,7 @@ CREATE TABLE sys_duty_schedule (
   status            VARCHAR(20)     DEFAULT 'SCHEDULED' COMMENT '状态(SCHEDULED已排班/CHECKED_IN已签到/COMPLETED已完成/SWAPPED已换班/CANCELLED已取消)',
   swap_reason       VARCHAR(255)    DEFAULT NULL COMMENT '换班原因',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT NULL COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
@@ -1506,8 +1506,8 @@ CREATE TABLE oa_sync_device (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='同步设备表';
 
 -- 25. 前端错误日志表
-DROP TABLE IF EXISTS sys_frontend_error_log;
-CREATE TABLE sys_frontend_error_log (
+DROP TABLE IF EXISTS oa_frontend_error_log;
+CREATE TABLE oa_frontend_error_log (
   id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id         BIGINT(20)      DEFAULT NULL COMMENT '租户ID',
   message           VARCHAR(1000)   NOT NULL COMMENT '错误消息',

@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_follow_up")
+@TableName("crm_follow_up")
 public class CrmFollowUp implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -29,7 +29,7 @@ public class CrmFollowUp implements Serializable {
     private String attachmentUrl;
     private Long ownerId;
     private String ownerName;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

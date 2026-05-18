@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 流程归档实体类
  * 用于记录已归档的流程信息
  */
-@TableName("workflow_archive")
+@TableName("wf_template_archive")
 public class WorkflowArchive implements Serializable {
     private static final long serialVersionUID = 1L;
 

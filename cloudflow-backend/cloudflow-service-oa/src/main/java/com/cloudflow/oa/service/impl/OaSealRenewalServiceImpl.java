@@ -50,7 +50,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
                 .eq(StringUtils.hasText(query.getStatus()), OaSealRenewal::getStatus, query.getStatus())
                 .like(StringUtils.hasText(query.getRenewalNo()), OaSealRenewal::getRenewalNo, query.getRenewalNo())
                 .like(StringUtils.hasText(query.getSealName()), OaSealRenewal::getSealName, query.getSealName())
-                .eq(OaSealRenewal::getDelFlag, "0")
+                .eq(OaSealRenewal::getDeleted, "0")
                 .orderByDesc(OaSealRenewal::getCreateTime);
         Page<OaSealRenewal> page = page(pageQuery.build(), wrapper);
         return PageResult.build(page);
@@ -87,7 +87,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
         renewal.setDeptId(UserContext.getDeptId());
         renewal.setDeptName(UserContext.getDeptName());
         renewal.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        renewal.setDelFlag("0");
+        renewal.setDeleted(0);
         renewal.setCreateBy(UserContext.getUserName());
         renewal.setCreateTime(now);
         renewal.setUpdateBy(UserContext.getUserName());
@@ -119,7 +119,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
         renewal.setDeptId(persisted.getDeptId());
         renewal.setDeptName(persisted.getDeptName());
         renewal.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        renewal.setDelFlag("0");
+        renewal.setDeleted(0);
         renewal.setUpdateBy(UserContext.getUserName());
         renewal.setUpdateTime(LocalDateTime.now());
         return updateById(renewal);
@@ -141,7 +141,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
             }
             OaSealRenewal update = new OaSealRenewal();
             update.setId(id);
-            update.setDelFlag("1");
+            update.setDeleted(1);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(now);
             updateById(update);
@@ -267,7 +267,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
 
     private OaSealRenewal requireRenewal(Long id) {
         OaSealRenewal renewal = getById(id);
-        if (renewal == null || !"0".equals(renewal.getDelFlag())) {
+        if (renewal == null || !Integer.valueOf(0).equals(renewal.getDeleted())) {
             throw new IllegalArgumentException("续期申请不存在");
         }
         return renewal;
@@ -275,7 +275,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
 
     private OaSeal requireSeal(Long sealId) {
         OaSeal seal = sealMapper.selectById(sealId);
-        if (seal == null || !"0".equals(seal.getDelFlag())) {
+        if (seal == null || !Integer.valueOf(0).equals(seal.getDeleted())) {
             throw new IllegalArgumentException("印章不存在");
         }
         if (OaBorrowConstants.RESOURCE_DISABLED.equals(seal.getStatus())) {
@@ -289,7 +289,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
                 .ne(currentId != null, OaSealRenewal::getId, currentId)
                 .eq(OaSealRenewal::getSealId, sealId)
                 .eq(OaSealRenewal::getStatus, OaBorrowConstants.STATUS_PENDING)
-                .eq(OaSealRenewal::getDelFlag, "0"));
+                .eq(OaSealRenewal::getDeleted, "0"));
         if (count != null && count > 0) {
             throw new IllegalArgumentException("该印章已有审批中的续期申请");
         }

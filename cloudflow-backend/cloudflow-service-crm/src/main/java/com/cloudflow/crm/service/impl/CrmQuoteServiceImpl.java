@@ -374,7 +374,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
             return;
         }
         CrmProduct product = getProductById(line.getProductId());
-        if (product == null || !CrmConstants.DelFlag.NORMAL.equals(product.getDelFlag())) {
+        if (product == null || !CrmConstants.DelFlag.NORMAL.equals(product.getDeleted())) {
             return;
         }
         if (!StringUtils.hasText(line.getProductNo())) {
@@ -426,7 +426,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     private List<CrmQuoteLine> listQuoteLines(Long quoteId) {
         return quoteLineMapper.selectList(new LambdaQueryWrapper<CrmQuoteLine>()
                 .eq(CrmQuoteLine::getQuoteId, quoteId)
-                .eq(CrmQuoteLine::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmQuoteLine::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmQuoteLine::getSortNo));
     }
 

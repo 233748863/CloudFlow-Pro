@@ -39,7 +39,7 @@ public class SysFile {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;
 
-    private String delFlag;
+    private Integer deleted;
 
     private String remark;
 }

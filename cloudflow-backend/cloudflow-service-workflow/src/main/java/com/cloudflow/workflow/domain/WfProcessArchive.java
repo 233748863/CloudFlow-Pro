@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * @author CloudFlow
  */
 @Data
-@TableName("workflow_archive")
+@TableName("wf_template_archive")
 public class WfProcessArchive {
 
     /**

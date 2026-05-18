@@ -25,7 +25,7 @@ public class OaProjectDependency implements Serializable {
     private String dependencyType;
     private Integer lagDays;
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

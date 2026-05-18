@@ -22,7 +22,7 @@
         <result property="budgetSubjectCode" column="budget_subject_code"/>
         <result property="budgetSubjectName" column="budget_subject_name"/>
         <result property="invoiceStatus" column="invoice_status"/>
-        <result property="delFlag" column="del_flag"/>
+        <result property="deleted" column="deleted"/>
         <result property="createBy" column="create_by"/>
         <result property="createTime" column="create_time"/>
         <result property="updateBy" column="update_by"/>
@@ -54,7 +54,7 @@
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
-            AND del_flag = '0'
+            AND deleted = '0'
         </where>
         ORDER BY create_time DESC
     </select>
@@ -72,7 +72,7 @@
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
-            AND del_flag = '0'
+            AND deleted = '0'
         </where>
         ORDER BY create_time DESC
     </select>
@@ -92,7 +92,7 @@
             i.vehicle_expense_id
         FROM biz_expense_claim c
         LEFT JOIN biz_expense_item i ON c.id = i.claim_id
-        WHERE c.id = #{id} AND c.del_flag = '0'
+        WHERE c.id = #{id} AND c.deleted = '0'
     </select>
 
     <select id="selectMonthlyExpenseByDept" resultType="map">
@@ -103,7 +103,7 @@
         FROM biz_expense_claim
         WHERE DATE_FORMAT(create_time, '%Y-%m') = #{month}
           AND status IN ('APPROVED', 'PAID')
-          AND del_flag = '0'
+          AND deleted = '0'
         GROUP BY dept_name
         ORDER BY total_amount DESC
     </select>
@@ -116,7 +116,7 @@
         FROM biz_expense_claim
         WHERE DATE_FORMAT(create_time, '%Y-%m') = #{month}
           AND status IN ('APPROVED', 'PAID')
-          AND del_flag = '0'
+          AND deleted = '0'
         GROUP BY category
         ORDER BY total_amount DESC
     </select>

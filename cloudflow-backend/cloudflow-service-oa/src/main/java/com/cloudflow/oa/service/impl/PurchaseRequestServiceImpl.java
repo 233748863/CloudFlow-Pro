@@ -99,7 +99,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         purchase.setPurchaseNo(generatePurchaseNo());
         purchase.setStatus(STATUS_DRAFT);
         purchase.setPaymentStatus(PAYMENT_STATUS_NONE);
-        purchase.setDelFlag("0");
+        purchase.setDeleted(0);
         purchase.setCreateBy(UserContext.getUserName());
         purchase.setCreateTime(now);
         purchase.setUpdateBy(UserContext.getUserName());
@@ -119,7 +119,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             throw new IllegalArgumentException("采购申请ID不能为空");
         }
         BizPurchaseRequest persisted = getById(purchase.getId());
-        if (persisted == null || !"0".equals(persisted.getDelFlag())) {
+        if (persisted == null || !Integer.valueOf(0).equals(persisted.getDeleted())) {
             throw new IllegalArgumentException("采购申请不存在");
         }
         if (!STATUS_DRAFT.equals(persisted.getStatus())) {
@@ -145,7 +145,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     @Transactional(rollbackFor = Exception.class)
     public boolean submitPurchase(Long id) {
         BizPurchaseRequest purchase = getRequestWithItems(id);
-        if (purchase == null || !"0".equals(purchase.getDelFlag())) {
+        if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
             return false;
         }
         if (!STATUS_DRAFT.equals(purchase.getStatus())) {
@@ -201,7 +201,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     @Transactional(rollbackFor = Exception.class)
     public boolean receivePurchase(Long id, PurchaseReceiptDTO receipt) {
         BizPurchaseRequest purchase = getRequestWithItems(id);
-        if (purchase == null || !"0".equals(purchase.getDelFlag())) {
+        if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
             throw new IllegalArgumentException("采购申请不存在");
         }
         if (!STATUS_APPROVED.equals(purchase.getStatus()) && !STATUS_PARTIAL_RECEIVED.equals(purchase.getStatus())) {
@@ -271,7 +271,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     @Transactional(rollbackFor = Exception.class)
     public BizPaymentRequest createPaymentRequest(Long id) {
         BizPurchaseRequest purchase = getRequestWithItems(id);
-        if (purchase == null || !"0".equals(purchase.getDelFlag())) {
+        if (purchase == null || !Integer.valueOf(0).equals(purchase.getDeleted())) {
             throw new IllegalArgumentException("采购申请不存在");
         }
         if (!STATUS_APPROVED.equals(purchase.getStatus()) && !STATUS_PARTIAL_RECEIVED.equals(purchase.getStatus())
@@ -357,7 +357,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         }
         LambdaUpdateWrapper<BizPurchaseRequest> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizPurchaseRequest::getPaymentRequestId, paymentRequestId)
-                .eq(BizPurchaseRequest::getDelFlag, "0")
+                .eq(BizPurchaseRequest::getDeleted, "0")
                 .set(BizPurchaseRequest::getPaymentStatus, paymentStatus)
                 .set(BizPurchaseRequest::getUpdateBy, WorkflowCallbackStreamConstants.WORKFLOW_UPDATE_BY)
                 .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());
@@ -421,7 +421,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
 
     private void fillSupplierSnapshot(BizPurchaseRequest purchase) {
         SysSupplier supplier = supplierService.getById(purchase.getSupplierId());
-        if (supplier == null || !"0".equals(supplier.getDelFlag())) {
+        if (supplier == null || !Integer.valueOf(0).equals(supplier.getDeleted())) {
             throw new IllegalArgumentException("供应商不存在");
         }
         if (!"ACTIVE".equals(supplier.getStatus())) {

@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_sales_target")
+@TableName("crm_sales_target")
 public class CrmSalesTarget implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -32,7 +32,7 @@ public class CrmSalesTarget implements Serializable {
     private BigDecimal targetAmount;
     private String status;
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

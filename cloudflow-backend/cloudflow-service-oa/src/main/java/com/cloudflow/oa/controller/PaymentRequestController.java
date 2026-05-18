@@ -117,7 +117,7 @@ public class PaymentRequestController {
         for (Long id : ids) {
             BizPaymentRequest payment = new BizPaymentRequest();
             payment.setId(id);
-            payment.setDelFlag("1");
+            payment.setDeleted(1);
             paymentRequestService.updateById(payment);
         }
         return R.ok();

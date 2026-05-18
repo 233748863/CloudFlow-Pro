@@ -15,5 +15,5 @@ public class SysUser {
     private String email;
     private Long deptId;
     private String status;
-    private String delFlag;
+    private Integer deleted;
 }

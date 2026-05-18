@@ -160,7 +160,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     @Transactional(rollbackFor = Exception.class)
     public boolean confirmPaid(Long id) {
         BizPaymentRequest payment = getById(id);
-        if (payment == null || !"0".equals(payment.getDelFlag())) {
+        if (payment == null || !Integer.valueOf(0).equals(payment.getDeleted())) {
             throw new IllegalArgumentException("付款申请不存在");
         }
         if (!"APPROVED".equals(payment.getStatus())) {
@@ -231,7 +231,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         }
         LambdaUpdateWrapper<BizPurchaseRequest> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(BizPurchaseRequest::getPaymentRequestId, paymentRequestId)
-                .eq(BizPurchaseRequest::getDelFlag, "0")
+                .eq(BizPurchaseRequest::getDeleted, "0")
                 .set(BizPurchaseRequest::getPaymentStatus, paymentStatus)
                 .set(BizPurchaseRequest::getUpdateBy, UserContext.getUserName())
                 .set(BizPurchaseRequest::getUpdateTime, LocalDateTime.now());

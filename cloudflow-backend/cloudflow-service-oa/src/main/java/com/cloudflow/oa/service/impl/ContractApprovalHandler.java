@@ -50,7 +50,7 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
 
     private OaContract updateStatus(ApprovalResultDTO dto, String status, String eventType, String eventTitle) {
         OaContract contract = contractMapper.selectById(dto.getBusinessId());
-        if (contract == null || !"0".equals(contract.getDelFlag())) {
+        if (contract == null || !Integer.valueOf(0).equals(contract.getDeleted())) {
             throw new IllegalStateException("未找到合同记录，businessId=" + dto.getBusinessId());
         }
         LambdaUpdateWrapper<OaContract> wrapper = new LambdaUpdateWrapper<>();

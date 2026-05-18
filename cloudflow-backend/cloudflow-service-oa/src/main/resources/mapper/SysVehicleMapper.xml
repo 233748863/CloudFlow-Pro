@@ -27,35 +27,35 @@
                 CASE WHEN vv.pending_violation_count > 0 THEN '违章待处理,' ELSE '' END
             )) AS warning_tags,
             COALESCE(ve30.expense_amount_30d, 0) AS expense_amount_30d
-        FROM sys_vehicle v
+        FROM oa_vehicle v
         LEFT JOIN (
             SELECT t.*
-            FROM sys_vehicle_usage t
+            FROM oa_vehicle_usage t
             INNER JOIN (
                 SELECT vehicle_id, MAX(COALESCE(dispatch_time, actual_start_time, start_time)) AS max_time
-                FROM sys_vehicle_usage
-                WHERE del_flag = '0' AND status = '3'
+                FROM oa_vehicle_usage
+                WHERE deleted = '0' AND status = '3'
                 GROUP BY vehicle_id
             ) latest ON latest.vehicle_id = t.vehicle_id
                     AND latest.max_time = COALESCE(t.dispatch_time, t.actual_start_time, t.start_time)
-            WHERE t.del_flag = '0' AND t.status = '3'
+            WHERE t.deleted = '0' AND t.status = '3'
         ) cu ON cu.vehicle_id = v.vehicle_id
         LEFT JOIN (
             SELECT t.*
-            FROM sys_vehicle_usage t
+            FROM oa_vehicle_usage t
             INNER JOIN (
                 SELECT vehicle_id, MIN(start_time) AS min_start_time
-                FROM sys_vehicle_usage
-                WHERE del_flag = '0' AND status IN ('0','1') AND start_time >= NOW()
+                FROM oa_vehicle_usage
+                WHERE deleted = '0' AND status IN ('0','1') AND start_time >= NOW()
                 GROUP BY vehicle_id
             ) next_one ON next_one.vehicle_id = t.vehicle_id AND next_one.min_start_time = t.start_time
-            WHERE t.del_flag = '0' AND t.status IN ('0','1') AND t.start_time >= NOW()
+            WHERE t.deleted = '0' AND t.status IN ('0','1') AND t.start_time >= NOW()
         ) nu ON nu.vehicle_id = v.vehicle_id
-        LEFT JOIN sys_user u1 ON u1.user_id = cu.applicant_id AND u1.del_flag = '0'
-        LEFT JOIN sys_user u2 ON u2.user_id = cu.driver_id AND u2.del_flag = '0'
+        LEFT JOIN sys_user u1 ON u1.user_id = cu.applicant_id AND u1.deleted = '0'
+        LEFT JOIN sys_user u2 ON u2.user_id = cu.driver_id AND u2.deleted = '0'
         LEFT JOIN (
             SELECT vehicle_id, SUM(amount) AS expense_amount_30d
-            FROM sys_vehicle_expense
+            FROM oa_vehicle_expense
             WHERE expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
             GROUP BY vehicle_id
         ) ve30 ON ve30.vehicle_id = v.vehicle_id
@@ -68,8 +68,8 @@
         ) vr ON vr.vehicle_id = v.vehicle_id
         LEFT JOIN (
             SELECT vehicle_id, COUNT(*) AS pending_violation_count
-            FROM sys_vehicle_violation
-            WHERE del_flag = '0' AND status IN ('PENDING', 'PROCESSING')
+            FROM oa_vehicle_violation
+            WHERE deleted = '0' AND status IN ('PENDING', 'PROCESSING')
             GROUP BY vehicle_id
         ) vv ON vv.vehicle_id = v.vehicle_id
         <where>
@@ -92,7 +92,7 @@
                     ) = #{query.status}
                 </if>
             </if>
-            AND v.del_flag = '0'
+            AND v.deleted = '0'
         </where>
         ORDER BY v.create_time DESC, v.vehicle_id DESC
     </select>
@@ -102,20 +102,20 @@
             v.*,
             '1' AS runtime_status,
             COALESCE(ve30.expense_amount_30d, 0) AS expense_amount_30d
-        FROM sys_vehicle v
+        FROM oa_vehicle v
         LEFT JOIN (
             SELECT vehicle_id, SUM(amount) AS expense_amount_30d
-            FROM sys_vehicle_expense
+            FROM oa_vehicle_expense
             WHERE expense_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
             GROUP BY vehicle_id
         ) ve30 ON ve30.vehicle_id = v.vehicle_id
-        WHERE v.del_flag = '0'
+        WHERE v.deleted = '0'
           AND v.status = '1'
           AND NOT EXISTS (
               SELECT 1
-              FROM sys_vehicle_usage u
+              FROM oa_vehicle_usage u
               WHERE u.vehicle_id = v.vehicle_id
-                AND u.del_flag = '0'
+                AND u.deleted = '0'
                 AND u.status = '3'
           )
         ORDER BY v.create_time DESC, v.vehicle_id DESC

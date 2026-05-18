@@ -85,7 +85,7 @@ public class SysTenant {
      */
     @TableLogic
     @TableField(fill = FieldFill.INSERT)
-    private String delFlag;
+    private Integer deleted;
 
     /**
      * 创建者

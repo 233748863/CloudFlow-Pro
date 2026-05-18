@@ -169,7 +169,7 @@ public class CrmCustomerController {
         for (Long id : ids) {
             CrmCustomer customer = new CrmCustomer();
             customer.setCustomerId(id);
-            customer.setDelFlag("1");
+            customer.setDeleted(1);
             customerService.updateById(customer);
         }
         return R.ok();

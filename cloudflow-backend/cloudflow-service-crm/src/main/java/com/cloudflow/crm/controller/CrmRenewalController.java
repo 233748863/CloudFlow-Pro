@@ -84,7 +84,7 @@ public class CrmRenewalController {
             }
             CrmRenewal renewal = new CrmRenewal();
             renewal.setRenewalId(id);
-            renewal.setDelFlag("1");
+            renewal.setDeleted(1);
             renewalService.updateById(renewal);
             customerService.refreshHealth(persisted.getCustomerId());
         }

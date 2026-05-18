@@ -57,7 +57,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     public List<RoleOptionDTO> selectRoleOptions() {
         LambdaQueryWrapper<SysRole> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysRole::getStatus, "0")
-                .eq(SysRole::getDelFlag, "0")
+                .eq(SysRole::getDeleted, "0")
                 .orderByAsc(SysRole::getRoleSort)
                 .orderByAsc(SysRole::getRoleId);
         return roleMapper.selectList(wrapper).stream()

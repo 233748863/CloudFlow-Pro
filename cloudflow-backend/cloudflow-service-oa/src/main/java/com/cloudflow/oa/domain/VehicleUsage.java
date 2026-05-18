@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * 用车申请与记录实体
  */
 @Data
-@TableName("sys_vehicle_usage")
+@TableName("oa_vehicle_usage")
 public class VehicleUsage {
 
     @TableId(type = IdType.AUTO)
@@ -75,7 +75,7 @@ public class VehicleUsage {
     private String processInstanceId;
 
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
 
     private String createBy;
 

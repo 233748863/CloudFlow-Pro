@@ -102,7 +102,7 @@ public class CrmReceivableController {
             }
             CrmReceivable receivable = new CrmReceivable();
             receivable.setReceivableId(id);
-            receivable.setDelFlag("1");
+            receivable.setDeleted(1);
             receivableService.updateById(receivable);
             customerService.refreshHealth(persisted.getCustomerId());
         }

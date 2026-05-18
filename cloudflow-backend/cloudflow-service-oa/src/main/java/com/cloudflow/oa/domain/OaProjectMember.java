@@ -28,7 +28,7 @@ public class OaProjectMember implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate leaveDate;
     private Integer billableFlag;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

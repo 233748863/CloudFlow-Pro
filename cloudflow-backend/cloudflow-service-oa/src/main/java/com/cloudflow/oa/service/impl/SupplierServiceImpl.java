@@ -23,7 +23,7 @@ public class SupplierServiceImpl extends ServiceImpl<SysSupplierMapper, SysSuppl
     @Override
     public IPage<SysSupplier> queryPage(SysSupplier query, int pageNum, int pageSize) {
         LambdaQueryWrapper<SysSupplier> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(SysSupplier::getDelFlag, "0")
+        wrapper.eq(SysSupplier::getDeleted, "0")
                 .like(StringUtils.hasText(query.getSupplierName()), SysSupplier::getSupplierName, query.getSupplierName())
                 .eq(StringUtils.hasText(query.getStatus()), SysSupplier::getStatus, query.getStatus())
                 .orderByDesc(SysSupplier::getCreateTime);
@@ -37,7 +37,7 @@ public class SupplierServiceImpl extends ServiceImpl<SysSupplierMapper, SysSuppl
         LocalDateTime now = LocalDateTime.now();
         supplier.setTenantId(UserContext.getTenantId());
         supplier.setStatus(StringUtils.hasText(supplier.getStatus()) ? supplier.getStatus() : "ACTIVE");
-        supplier.setDelFlag("0");
+        supplier.setDeleted(0);
         supplier.setCreateBy(UserContext.getUserName());
         supplier.setCreateTime(now);
         supplier.setUpdateBy(UserContext.getUserName());

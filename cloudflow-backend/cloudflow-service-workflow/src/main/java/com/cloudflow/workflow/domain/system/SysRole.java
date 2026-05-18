@@ -13,5 +13,5 @@ public class SysRole {
     private String roleName;
     private String roleKey;
     private String status;
-    private String delFlag;
+    private Integer deleted;
 }

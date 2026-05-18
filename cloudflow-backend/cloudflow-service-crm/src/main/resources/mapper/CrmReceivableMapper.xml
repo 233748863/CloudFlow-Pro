@@ -24,16 +24,16 @@
                t.owner_name,
                t.remark,
                t.status,
-               t.del_flag,
+               t.deleted,
                t.create_by,
                t.create_time,
                t.update_by,
                t.update_time,
                c.dept_id AS scope_dept_id,
                c.owner_id AS scope_owner_id
-        FROM oa_crm_receivable t
-                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
-        WHERE t.del_flag = '0'
+        FROM crm_receivable t
+                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
+        WHERE t.deleted = '0'
         <if test="query != null and query.customerId != null">
             AND t.customer_id = #{query.customerId}
         </if>
@@ -69,16 +69,16 @@
                t.owner_name,
                t.remark,
                t.status,
-               t.del_flag,
+               t.deleted,
                t.create_by,
                t.create_time,
                t.update_by,
                t.update_time,
                c.dept_id AS scope_dept_id,
                c.owner_id AS scope_owner_id
-        FROM oa_crm_receivable t
-                 INNER JOIN oa_crm_customer c ON c.customer_id = t.customer_id AND c.del_flag = '0'
+        FROM crm_receivable t
+                 INNER JOIN crm_customer c ON c.customer_id = t.customer_id AND c.deleted = '0'
         WHERE t.receivable_id = #{receivableId}
-          AND t.del_flag = '0'
+          AND t.deleted = '0'
     </select>
 </mapper>

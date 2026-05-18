@@ -83,7 +83,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
             wrapper.eq(SysAnnouncement::getStatus, status);
         }
         
-        wrapper.eq(SysAnnouncement::getDelFlag, "0");
+        wrapper.eq(SysAnnouncement::getDeleted, "0");
         wrapper.orderByDesc(SysAnnouncement::getIsTop, SysAnnouncement::getCreateTime);
         
         IPage<SysAnnouncement> result = page(pageParam, wrapper);

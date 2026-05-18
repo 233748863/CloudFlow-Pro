@@ -50,7 +50,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
                 .eq(StringUtils.hasText(query.getStatus()), OaLicenseRenewal::getStatus, query.getStatus())
                 .like(StringUtils.hasText(query.getRenewalNo()), OaLicenseRenewal::getRenewalNo, query.getRenewalNo())
                 .like(StringUtils.hasText(query.getLicenseName()), OaLicenseRenewal::getLicenseName, query.getLicenseName())
-                .eq(OaLicenseRenewal::getDelFlag, "0")
+                .eq(OaLicenseRenewal::getDeleted, "0")
                 .orderByDesc(OaLicenseRenewal::getCreateTime);
         Page<OaLicenseRenewal> page = page(pageQuery.build(), wrapper);
         return PageResult.build(page);
@@ -87,7 +87,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         renewal.setDeptId(UserContext.getDeptId());
         renewal.setDeptName(UserContext.getDeptName());
         renewal.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        renewal.setDelFlag("0");
+        renewal.setDeleted(0);
         renewal.setCreateBy(UserContext.getUserName());
         renewal.setCreateTime(now);
         renewal.setUpdateBy(UserContext.getUserName());
@@ -119,7 +119,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
         renewal.setDeptId(persisted.getDeptId());
         renewal.setDeptName(persisted.getDeptName());
         renewal.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        renewal.setDelFlag("0");
+        renewal.setDeleted(0);
         renewal.setUpdateBy(UserContext.getUserName());
         renewal.setUpdateTime(LocalDateTime.now());
         return updateById(renewal);
@@ -141,7 +141,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
             }
             OaLicenseRenewal update = new OaLicenseRenewal();
             update.setId(id);
-            update.setDelFlag("1");
+            update.setDeleted(1);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(now);
             updateById(update);
@@ -267,7 +267,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
 
     private OaLicenseRenewal requireRenewal(Long id) {
         OaLicenseRenewal renewal = getById(id);
-        if (renewal == null || !"0".equals(renewal.getDelFlag())) {
+        if (renewal == null || !Integer.valueOf(0).equals(renewal.getDeleted())) {
             throw new IllegalArgumentException("续期申请不存在");
         }
         return renewal;
@@ -275,7 +275,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
 
     private OaLicense requireLicense(Long licenseId) {
         OaLicense license = licenseMapper.selectById(licenseId);
-        if (license == null || !"0".equals(license.getDelFlag())) {
+        if (license == null || !Integer.valueOf(0).equals(license.getDeleted())) {
             throw new IllegalArgumentException("证照不存在");
         }
         if (OaBorrowConstants.RESOURCE_DISABLED.equals(license.getStatus())) {
@@ -289,7 +289,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
                 .ne(currentId != null, OaLicenseRenewal::getId, currentId)
                 .eq(OaLicenseRenewal::getLicenseId, licenseId)
                 .eq(OaLicenseRenewal::getStatus, OaBorrowConstants.STATUS_PENDING)
-                .eq(OaLicenseRenewal::getDelFlag, "0"));
+                .eq(OaLicenseRenewal::getDeleted, "0"));
         if (count != null && count > 0) {
             throw new IllegalArgumentException("该证照已有审批中的续期申请");
         }

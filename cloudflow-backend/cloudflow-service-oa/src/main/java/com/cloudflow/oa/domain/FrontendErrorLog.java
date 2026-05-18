@@ -32,7 +32,7 @@ import java.util.Map;
  * }
  */
 @Data
-@TableName(value = "sys_frontend_error_log", autoResultMap = true)
+@TableName(value = "oa_frontend_error_log", autoResultMap = true)
 public class FrontendErrorLog implements Serializable {
     private static final long serialVersionUID = 1L;
 

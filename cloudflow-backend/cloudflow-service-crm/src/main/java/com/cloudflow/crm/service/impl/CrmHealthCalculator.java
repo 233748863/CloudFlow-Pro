@@ -27,7 +27,7 @@ final class CrmHealthCalculator {
     static LocalDate resolveRenewalWindowDate(CrmRenewalMapper renewalMapper, Long customerId) {
         return renewalMapper.selectList(new LambdaQueryWrapper<CrmRenewal>()
                         .eq(CrmRenewal::getCustomerId, customerId)
-                        .eq(CrmRenewal::getDelFlag, CrmConstants.DelFlag.NORMAL))
+                        .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL))
                 .stream()
                 .filter(item -> !CrmConstants.RenewalStatus.LOST.equalsIgnoreCase(item.getStatus()))
                 .map(CrmHealthCalculator::resolveRenewalDate)
@@ -58,7 +58,7 @@ final class CrmHealthCalculator {
     static int resolveMaxOverdueDays(CrmReceivableMapper receivableMapper, Long customerId, LocalDate today) {
         List<CrmReceivable> receivables = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
                 .eq(CrmReceivable::getCustomerId, customerId)
-                .eq(CrmReceivable::getDelFlag, CrmConstants.DelFlag.NORMAL));
+                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL));
         return (int) receivables.stream()
                 .filter(item -> item.getDueDate() != null)
                 .filter(item -> item.getOutstandingAmount() != null && item.getOutstandingAmount().signum() > 0)
@@ -71,7 +71,7 @@ final class CrmHealthCalculator {
     static boolean hasHighSeverityOpenTicket(CrmServiceTicketMapper mapper, Long customerId) {
         return mapper.selectCount(new LambdaQueryWrapper<CrmServiceTicket>()
                 .eq(CrmServiceTicket::getCustomerId, customerId)
-                .eq(CrmServiceTicket::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .in(CrmServiceTicket::getSeverity,
                         CrmConstants.TicketSeverity.HIGH,
                         CrmConstants.TicketSeverity.CRITICAL)

@@ -52,7 +52,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
                 .like(StringUtils.hasText(query.getLicenseNo()), OaLicense::getLicenseNo, query.getLicenseNo())
                 .eq(StringUtils.hasText(query.getLicenseType()), OaLicense::getLicenseType, query.getLicenseType())
                 .eq(StringUtils.hasText(query.getStatus()), OaLicense::getStatus, query.getStatus())
-                .eq(OaLicense::getDelFlag, "0")
+                .eq(OaLicense::getDeleted, "0")
                 .orderByDesc(OaLicense::getCreateTime);
         Page<OaLicense> page = page(pageQuery.build(), wrapper);
         return PageResult.build(page);
@@ -62,14 +62,14 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
     public List<OaLicense> listAvailable() {
         return list(new LambdaQueryWrapper<OaLicense>()
                 .eq(OaLicense::getStatus, OaBorrowConstants.RESOURCE_AVAILABLE)
-                .eq(OaLicense::getDelFlag, "0")
+                .eq(OaLicense::getDeleted, "0")
                 .orderByAsc(OaLicense::getLicenseName));
     }
 
     @Override
     public OaLicense getLicenseInfo(Long id) {
         OaLicense license = getById(id);
-        if (license == null || !"0".equals(license.getDelFlag())) {
+        if (license == null || !Integer.valueOf(0).equals(license.getDeleted())) {
             throw new IllegalArgumentException("证照不存在");
         }
         return license;
@@ -80,7 +80,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         int window = days == null || days < 0 ? 30 : days;
         LocalDate today = LocalDate.now();
         LambdaQueryWrapper<OaLicense> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaLicense::getDelFlag, "0")
+        wrapper.eq(OaLicense::getDeleted, "0")
                 .ne(OaLicense::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                 .isNotNull(OaLicense::getExpireDate)
                 .between(OaLicense::getExpireDate, today, today.plusDays(window))
@@ -123,7 +123,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         for (Integer daysBefore : parseReminderDays()) {
             LocalDate targetDate = today.plusDays(daysBefore);
             List<OaLicense> licenses = list(new LambdaQueryWrapper<OaLicense>()
-                    .eq(OaLicense::getDelFlag, "0")
+                    .eq(OaLicense::getDeleted, "0")
                     .ne(OaLicense::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                     .eq(OaLicense::getExpireDate, targetDate));
             for (OaLicense license : licenses) {
@@ -147,7 +147,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
             throw new IllegalArgumentException("不能通过台账手工设置证照为借出");
         }
         validateLedgerStatus(license.getStatus());
-        license.setDelFlag("0");
+        license.setDeleted(0);
         license.setCreateBy(UserContext.getUserName());
         license.setCreateTime(now);
         license.setUpdateBy(UserContext.getUserName());
@@ -162,7 +162,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
             throw new IllegalArgumentException("证照ID不能为空");
         }
         OaLicense persisted = getById(license.getLicenseId());
-        if (persisted == null || !"0".equals(persisted.getDelFlag())) {
+        if (persisted == null || !Integer.valueOf(0).equals(persisted.getDeleted())) {
             throw new IllegalArgumentException("证照不存在");
         }
         if (isLicenseBorrowLocked(license.getLicenseId(), persisted)) {
@@ -189,7 +189,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         LocalDateTime now = LocalDateTime.now();
         for (Long id : ids) {
             OaLicense license = getById(id);
-            if (license == null || !"0".equals(license.getDelFlag())) {
+            if (license == null || !Integer.valueOf(0).equals(license.getDeleted())) {
                 continue;
             }
             if (isLicenseBorrowLocked(id, license)) {
@@ -197,13 +197,13 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
             }
             Long usageCount = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
                     .eq(OaLicenseBorrow::getLicenseId, id)
-                    .eq(OaLicenseBorrow::getDelFlag, "0"));
+                    .eq(OaLicenseBorrow::getDeleted, "0"));
             OaLicense update = new OaLicense();
             update.setLicenseId(id);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(now);
             if (usageCount != null && usageCount > 0) {
-                update.setDelFlag("1");
+                update.setDeleted(1);
                 updateById(update);
             } else {
                 removeById(id);
@@ -218,7 +218,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         }
         Long activeCount = licenseBorrowMapper.selectCount(new LambdaQueryWrapper<OaLicenseBorrow>()
                 .eq(OaLicenseBorrow::getLicenseId, licenseId)
-                .eq(OaLicenseBorrow::getDelFlag, "0")
+                .eq(OaLicenseBorrow::getDeleted, "0")
                 .in(OaLicenseBorrow::getStatus,
                         OaBorrowConstants.STATUS_BORROWED,
                         OaBorrowConstants.STATUS_OVERDUE));

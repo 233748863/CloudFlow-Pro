@@ -91,7 +91,7 @@ public class WfProcessDefinition implements Serializable {
     /** 删除标记 */
     @TableLogic
     @TableField(fill = FieldFill.INSERT)
-    private String delFlag;
+    private Integer deleted;
 
     public String getDefinitionId() {
         return definitionId;
@@ -277,12 +277,12 @@ public class WfProcessDefinition implements Serializable {
         this.updateTime = updateTime;
     }
 
-    public String getDelFlag() {
-        return delFlag;
+    public Integer getDeleted() {
+        return deleted;
     }
 
-    public void setDelFlag(String delFlag) {
-        this.delFlag = delFlag;
+    public void setDeleted(Integer deleted) {
+        this.deleted = deleted;
     }
 
 }

@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_renewal")
+@TableName("crm_renewal")
 public class CrmRenewal implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -43,7 +43,7 @@ public class CrmRenewal implements Serializable {
     private String riskLevel;
     @TableField(exist = false)
     private String riskReason;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

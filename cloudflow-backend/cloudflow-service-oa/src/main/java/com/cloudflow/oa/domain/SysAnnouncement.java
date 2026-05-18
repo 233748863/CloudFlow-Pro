@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
  * 系统公告实体类
  */
 @Data
-@TableName("sys_announcement")
+@TableName("oa_announcement")
 public class SysAnnouncement {
     
     @TableId(type = IdType.AUTO)
@@ -62,7 +62,7 @@ public class SysAnnouncement {
     private LocalDateTime updateTime;
     
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
     
     /** 租户ID */
     private Long tenantId;

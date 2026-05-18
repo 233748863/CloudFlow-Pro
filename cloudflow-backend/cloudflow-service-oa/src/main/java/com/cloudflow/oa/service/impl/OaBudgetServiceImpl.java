@@ -61,7 +61,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     @Override
     public PageResult<OaBudgetPlan> queryBudgetPage(OaBudgetPlan query, PageQuery pageQuery) {
         LambdaQueryWrapper<OaBudgetPlan> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaBudgetPlan::getDelFlag, "0").orderByDesc(OaBudgetPlan::getUpdateTime);
+        wrapper.eq(OaBudgetPlan::getDeleted, "0").orderByDesc(OaBudgetPlan::getUpdateTime);
         if (StringUtils.hasText(query.getBudgetName())) {
             wrapper.like(OaBudgetPlan::getBudgetName, query.getBudgetName());
         }
@@ -81,7 +81,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     @Override
     public PageResult<OaBudgetSubject> querySubjectPage(OaBudgetSubject query, PageQuery pageQuery) {
         LambdaQueryWrapper<OaBudgetSubject> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaBudgetSubject::getDelFlag, "0").orderByAsc(OaBudgetSubject::getSortOrder);
+        wrapper.eq(OaBudgetSubject::getDeleted, "0").orderByAsc(OaBudgetSubject::getSortOrder);
         if (StringUtils.hasText(query.getSubjectName())) {
             wrapper.like(OaBudgetSubject::getSubjectName, query.getSubjectName());
         }
@@ -93,7 +93,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     @Override
     public PageResult<OaBudgetAdjustment> queryAdjustmentPage(OaBudgetAdjustment query, PageQuery pageQuery) {
         LambdaQueryWrapper<OaBudgetAdjustment> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaBudgetAdjustment::getDelFlag, "0").orderByDesc(OaBudgetAdjustment::getUpdateTime);
+        wrapper.eq(OaBudgetAdjustment::getDeleted, "0").orderByDesc(OaBudgetAdjustment::getUpdateTime);
         if (query.getBudgetId() != null) {
             wrapper.eq(OaBudgetAdjustment::getBudgetId, query.getBudgetId());
         }
@@ -122,7 +122,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         budgetPlan.setCreateTime(now);
         budgetPlan.setUpdateBy(resolveUserName());
         budgetPlan.setUpdateTime(now);
-        budgetPlan.setDelFlag("0");
+        budgetPlan.setDeleted(0);
         boolean saved = save(budgetPlan);
         if (!saved) {
             return false;
@@ -151,7 +151,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         budgetPlan.setAvailableAmount(persisted.getAvailableAmount());
         budgetPlan.setVersionNo(persisted.getVersionNo());
         budgetPlan.setStatus(persisted.getStatus());
-        budgetPlan.setDelFlag(persisted.getDelFlag());
+        budgetPlan.setDeleted(persisted.getDeleted());
         budgetPlan.setCreateBy(persisted.getCreateBy());
         budgetPlan.setCreateTime(persisted.getCreateTime());
         budgetPlan.setUpdateBy(resolveUserName());
@@ -180,7 +180,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         }
         subject.setTenantId(resolveTenantId());
         subject.setEnabled(subject.getEnabled() == null ? 1 : subject.getEnabled());
-        subject.setDelFlag("0");
+        subject.setDeleted(0);
         subject.setCreateBy(resolveUserName());
         subject.setCreateTime(LocalDateTime.now());
         subject.setUpdateBy(resolveUserName());
@@ -210,7 +210,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
         adjustment.setAdjustmentNo(StringUtils.hasText(adjustment.getAdjustmentNo()) ? adjustment.getAdjustmentNo()
                 : "TZ" + now.format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss")));
         adjustment.setStatus(StringUtils.hasText(adjustment.getStatus()) ? adjustment.getStatus() : "DRAFT");
-        adjustment.setDelFlag("0");
+        adjustment.setDeleted(0);
         adjustment.setCreateBy(resolveUserName());
         adjustment.setCreateTime(now);
         adjustment.setUpdateBy(resolveUserName());
@@ -245,7 +245,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     @Transactional(rollbackFor = Exception.class)
     public boolean submitAdjustment(Long adjustmentId) {
         OaBudgetAdjustment adjustment = budgetAdjustmentMapper.selectById(adjustmentId);
-        if (adjustment == null || !"0".equals(adjustment.getDelFlag())) {
+        if (adjustment == null || !Integer.valueOf(0).equals(adjustment.getDeleted())) {
             throw new IllegalArgumentException("预算调整不存在");
         }
         if (!List.of("DRAFT", "REJECTED").contains(adjustment.getStatus())) {
@@ -382,7 +382,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     private OaBudgetPlan requireBudget(Long budgetId) {
         OaBudgetPlan budget = getById(budgetId);
-        if (budget == null || !"0".equals(budget.getDelFlag())) {
+        if (budget == null || !Integer.valueOf(0).equals(budget.getDeleted())) {
             throw new IllegalArgumentException("预算不存在");
         }
         return budget;
@@ -542,7 +542,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     private OaBudgetPlan findEffectiveBudget(String targetType, Long targetId) {
         return getOne(new LambdaQueryWrapper<OaBudgetPlan>()
-                .eq(OaBudgetPlan::getDelFlag, "0")
+                .eq(OaBudgetPlan::getDeleted, "0")
                 .eq(OaBudgetPlan::getTargetType, targetType)
                 .eq(OaBudgetPlan::getTargetId, targetId)
                 .in(OaBudgetPlan::getStatus, "APPROVED", "ACTIVE")
@@ -639,7 +639,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     private OaBudgetSubject findSubjectByCode(String subjectCode) {
         return budgetSubjectMapper.selectOne(new LambdaQueryWrapper<OaBudgetSubject>()
-                .eq(OaBudgetSubject::getDelFlag, "0")
+                .eq(OaBudgetSubject::getDeleted, "0")
                 .eq(OaBudgetSubject::getSubjectCode, subjectCode)
                 .last("limit 1"));
     }

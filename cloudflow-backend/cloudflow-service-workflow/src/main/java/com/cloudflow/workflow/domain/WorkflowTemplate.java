@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 流程模板实体类
  * 用于存储可复用的流程模板定义
  */
-@TableName("workflow_template")
+@TableName("wf_template")
 public class WorkflowTemplate implements Serializable {
     private static final long serialVersionUID = 1L;
 

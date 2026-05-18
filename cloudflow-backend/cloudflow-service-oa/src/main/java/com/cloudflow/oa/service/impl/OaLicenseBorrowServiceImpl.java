@@ -108,7 +108,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         borrow.setDeptId(UserContext.getDeptId());
         borrow.setDeptName(UserContext.getDeptName());
         borrow.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        borrow.setDelFlag("0");
+        borrow.setDeleted(0);
         borrow.setCreateBy(UserContext.getUserName());
         borrow.setCreateTime(now);
         borrow.setUpdateBy(UserContext.getUserName());
@@ -137,7 +137,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         borrow.setDeptId(persisted.getDeptId());
         borrow.setDeptName(persisted.getDeptName());
         borrow.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        borrow.setDelFlag("0");
+        borrow.setDeleted(0);
         borrow.setUpdateBy(UserContext.getUserName());
         borrow.setUpdateTime(LocalDateTime.now());
         return updateById(borrow);
@@ -158,7 +158,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             }
             OaLicenseBorrow update = new OaLicenseBorrow();
             update.setId(id);
-            update.setDelFlag("1");
+            update.setDeleted(1);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(LocalDateTime.now());
             updateById(update);
@@ -283,7 +283,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         borrow.setUpdateTime(now);
         updateById(borrow);
 
-        if (license != null && !"1".equals(license.getDelFlag())) {
+        if (license != null && !Integer.valueOf(1).equals(license.getDeleted())) {
             license.setStatus(OaBorrowConstants.RESOURCE_AVAILABLE);
             license.setUpdateBy(UserContext.getUserName());
             license.setUpdateTime(now);
@@ -313,7 +313,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         LocalDateTime now = LocalDateTime.now();
         List<OaLicenseBorrow> list = list(new LambdaQueryWrapper<OaLicenseBorrow>()
                 .eq(OaLicenseBorrow::getStatus, OaBorrowConstants.STATUS_BORROWED)
-                .eq(OaLicenseBorrow::getDelFlag, "0")
+                .eq(OaLicenseBorrow::getDeleted, "0")
                 .lt(OaLicenseBorrow::getExpectedReturnTime, now));
         int handled = 0;
         for (OaLicenseBorrow borrow : list) {
@@ -358,7 +358,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         Long count = count(new LambdaQueryWrapper<OaLicenseBorrow>()
                 .ne(currentId != null, OaLicenseBorrow::getId, currentId)
                 .eq(OaLicenseBorrow::getLicenseId, licenseId)
-                .eq(OaLicenseBorrow::getDelFlag, "0")
+                .eq(OaLicenseBorrow::getDeleted, "0")
                 .in(OaLicenseBorrow::getStatus,
                         OaBorrowConstants.STATUS_PENDING,
                         OaBorrowConstants.STATUS_APPROVED,
@@ -375,7 +375,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
 
     private OaLicenseBorrow requireBorrow(Long id) {
         OaLicenseBorrow borrow = getById(id);
-        if (borrow == null || !"0".equals(borrow.getDelFlag())) {
+        if (borrow == null || !Integer.valueOf(0).equals(borrow.getDeleted())) {
             throw new IllegalArgumentException("证照借用申请不存在");
         }
         return borrow;
@@ -383,7 +383,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
 
     private OaLicense requireAvailableLicense(Long licenseId, boolean strictAvailable) {
         OaLicense license = licenseMapper.selectById(licenseId);
-        if (license == null || !"0".equals(license.getDelFlag())) {
+        if (license == null || !Integer.valueOf(0).equals(license.getDeleted())) {
             throw new IllegalArgumentException("证照不存在");
         }
         if (OaBorrowConstants.RESOURCE_DISABLED.equals(license.getStatus())) {

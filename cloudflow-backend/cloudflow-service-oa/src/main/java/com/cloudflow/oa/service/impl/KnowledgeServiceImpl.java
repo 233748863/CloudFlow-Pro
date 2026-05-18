@@ -70,7 +70,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
                                                     Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<KnowledgeDocument> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeDocument::getSubmitterId, UserContext.getUserId())
-                .eq(KnowledgeDocument::getDelFlag, "0")
+                .eq(KnowledgeDocument::getDeleted, "0")
                 .eq(StringUtils.hasText(category), KnowledgeDocument::getCategory, category)
                 .eq(StringUtils.hasText(status), KnowledgeDocument::getStatus, status)
                 .and(StringUtils.hasText(keyword), w -> w
@@ -87,7 +87,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     public Page<KnowledgeDocument> getManageList(String keyword, String category, String status,
                                                  Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<KnowledgeDocument> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(KnowledgeDocument::getDelFlag, "0")
+        wrapper.eq(KnowledgeDocument::getDeleted, "0")
                 .eq(StringUtils.hasText(category), KnowledgeDocument::getCategory, category)
                 .eq(StringUtils.hasText(status), KnowledgeDocument::getStatus, status)
                 .and(StringUtils.hasText(keyword), w -> w
@@ -103,7 +103,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     @Override
     public KnowledgeDocument getReadableDetail(Long documentId) {
         KnowledgeDocument document = getById(documentId);
-        if (document == null || !"0".equals(document.getDelFlag())) {
+        if (document == null || !Integer.valueOf(0).equals(document.getDeleted())) {
             throw new IllegalArgumentException("知识文档不存在");
         }
         if ("PUBLISHED".equals(document.getStatus()) && !isVisibleToCurrentUser(document) && !hasManageRole()) {
@@ -129,7 +129,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         document.setDeptId(UserContext.getDeptId());
         document.setDeptName(UserContext.getDeptName());
         document.setStatus("DRAFT");
-        document.setDelFlag("0");
+        document.setDeleted(0);
         document.setCreateBy(UserContext.getUserName());
         document.setCreateTime(now);
         document.setUpdateBy(UserContext.getUserName());
@@ -159,7 +159,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         document.setInstanceId(old.getInstanceId());
         document.setSubmitTime(old.getSubmitTime());
         document.setPublishTime(old.getPublishTime());
-        document.setDelFlag("0");
+        document.setDeleted(0);
         document.setUpdateBy(UserContext.getUserName());
         document.setUpdateTime(LocalDateTime.now());
         return updateById(document);
@@ -257,7 +257,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         }
         KnowledgeDocument update = new KnowledgeDocument();
         update.setDocumentId(documentId);
-        update.setDelFlag("2");
+        update.setDeleted(1);
         update.setUpdateBy(UserContext.getUserName());
         update.setUpdateTime(LocalDateTime.now());
         return updateById(update);
@@ -316,7 +316,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
 
     private KnowledgeDocument requireDocument(Long documentId) {
         KnowledgeDocument document = getById(documentId);
-        if (document == null || !"0".equals(document.getDelFlag())) {
+        if (document == null || !Integer.valueOf(0).equals(document.getDeleted())) {
             throw new IllegalArgumentException("知识文档不存在");
         }
         return document;

@@ -63,5 +63,5 @@ public class SysRole {
      */
     @TableLogic
     @TableField(fill = FieldFill.INSERT)
-    private String delFlag;
+    private Integer deleted;
 }

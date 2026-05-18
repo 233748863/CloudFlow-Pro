@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 耗材库存
  */
 @Data
-@TableName("sys_consumable")
+@TableName("oa_consumable")
 public class SysConsumable {
     
     @TableId(type = IdType.AUTO)
@@ -33,7 +33,7 @@ public class SysConsumable {
 
     private Integer warnEnabled;
 
-    private String delFlag;
+    private Integer deleted;
     
     private Long tenantId;
     

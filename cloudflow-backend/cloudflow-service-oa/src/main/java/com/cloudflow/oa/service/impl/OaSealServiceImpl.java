@@ -53,7 +53,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
                 .like(StringUtils.hasText(query.getSealNo()), OaSeal::getSealNo, query.getSealNo())
                 .eq(StringUtils.hasText(query.getSealType()), OaSeal::getSealType, query.getSealType())
                 .eq(StringUtils.hasText(query.getStatus()), OaSeal::getStatus, query.getStatus())
-                .eq(OaSeal::getDelFlag, "0")
+                .eq(OaSeal::getDeleted, "0")
                 .orderByDesc(OaSeal::getCreateTime);
         Page<OaSeal> page = page(pageQuery.build(), wrapper);
         return PageResult.build(page);
@@ -63,14 +63,14 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
     public List<OaSeal> listAvailable() {
         return list(new LambdaQueryWrapper<OaSeal>()
                 .eq(OaSeal::getStatus, OaBorrowConstants.RESOURCE_AVAILABLE)
-                .eq(OaSeal::getDelFlag, "0")
+                .eq(OaSeal::getDeleted, "0")
                 .orderByAsc(OaSeal::getSealName));
     }
 
     @Override
     public OaSeal getSealInfo(Long id) {
         OaSeal seal = getById(id);
-        if (seal == null || !"0".equals(seal.getDelFlag())) {
+        if (seal == null || !Integer.valueOf(0).equals(seal.getDeleted())) {
             throw new IllegalArgumentException("印章不存在");
         }
         return seal;
@@ -81,7 +81,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         int window = days == null || days < 0 ? 30 : days;
         LocalDate today = LocalDate.now();
         LambdaQueryWrapper<OaSeal> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(OaSeal::getDelFlag, "0")
+        wrapper.eq(OaSeal::getDeleted, "0")
                 .ne(OaSeal::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                 .isNotNull(OaSeal::getExpireDate)
                 .between(OaSeal::getExpireDate, today, today.plusDays(window))
@@ -124,7 +124,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         for (Integer daysBefore : parseReminderDays()) {
             LocalDate targetDate = today.plusDays(daysBefore);
             List<OaSeal> seals = list(new LambdaQueryWrapper<OaSeal>()
-                    .eq(OaSeal::getDelFlag, "0")
+                    .eq(OaSeal::getDeleted, "0")
                     .ne(OaSeal::getStatus, OaBorrowConstants.RESOURCE_DISABLED)
                     .eq(OaSeal::getExpireDate, targetDate));
             for (OaSeal seal : seals) {
@@ -150,7 +150,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         }
         validateLedgerStatus(seal.getStatus());
         seal.setBorrowDueTime(null);
-        seal.setDelFlag("0");
+        seal.setDeleted(0);
         seal.setCreateBy(UserContext.getUserName());
         seal.setCreateTime(now);
         seal.setUpdateBy(UserContext.getUserName());
@@ -165,7 +165,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
             throw new IllegalArgumentException("印章ID不能为空");
         }
         OaSeal persisted = getById(seal.getSealId());
-        if (persisted == null || !"0".equals(persisted.getDelFlag())) {
+        if (persisted == null || !Integer.valueOf(0).equals(persisted.getDeleted())) {
             throw new IllegalArgumentException("印章不存在");
         }
         if (isSealBorrowLocked(seal.getSealId(), persisted)) {
@@ -199,7 +199,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         LocalDateTime now = LocalDateTime.now();
         for (Long id : ids) {
             OaSeal seal = getById(id);
-            if (seal == null || !"0".equals(seal.getDelFlag())) {
+            if (seal == null || !Integer.valueOf(0).equals(seal.getDeleted())) {
                 continue;
             }
             if (isSealBorrowLocked(id, seal)) {
@@ -207,13 +207,13 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
             }
             Long usageCount = sealApplicationMapper.selectCount(new LambdaQueryWrapper<OaSealApplication>()
                     .eq(OaSealApplication::getSealId, id)
-                    .eq(OaSealApplication::getDelFlag, "0"));
+                    .eq(OaSealApplication::getDeleted, "0"));
             OaSeal update = new OaSeal();
             update.setSealId(id);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(now);
             if (usageCount != null && usageCount > 0) {
-                update.setDelFlag("1");
+                update.setDeleted(1);
                 updateById(update);
             } else {
                 removeById(id);
@@ -228,7 +228,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         }
         Long activeCount = sealApplicationMapper.selectCount(new LambdaQueryWrapper<OaSealApplication>()
                 .eq(OaSealApplication::getSealId, sealId)
-                .eq(OaSealApplication::getDelFlag, "0")
+                .eq(OaSealApplication::getDeleted, "0")
                 .in(OaSealApplication::getStatus,
                         OaBorrowConstants.STATUS_BORROWED,
                         OaBorrowConstants.STATUS_OVERDUE));

@@ -11,7 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_price_book")
+@TableName("crm_price_book")
 public class CrmPriceBook implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -29,7 +29,7 @@ public class CrmPriceBook implements Serializable {
     private Long ownerId;
     private String ownerName;
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

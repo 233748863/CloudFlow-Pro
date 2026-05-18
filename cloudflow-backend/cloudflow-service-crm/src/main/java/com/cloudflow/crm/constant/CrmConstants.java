@@ -12,8 +12,8 @@ public final class CrmConstants {
     /** 共用：逻辑删除标记。 */
     public static final class DelFlag {
         private DelFlag() {}
-        public static final String NORMAL = "0";
-        public static final String DELETED = "1";
+        public static final Integer NORMAL = 0;
+        public static final Integer DELETED = 1;
     }
 
     /** 客户健康等级。 */
@@ -30,7 +30,7 @@ public final class CrmConstants {
         public static final String ACTIVE = "ACTIVE";
     }
 
-    /** 客户是否在公海（对应 oa_crm_customer.pool_flag）。 */
+    /** 客户是否在公海（对应 crm_customer.pool_flag）。 */
     public static final class CustomerPoolFlag {
         private CustomerPoolFlag() {}
         public static final String OUT_OF_POOL = "0";

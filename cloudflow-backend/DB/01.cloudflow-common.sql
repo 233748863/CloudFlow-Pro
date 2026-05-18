@@ -34,7 +34,7 @@ CREATE TABLE sys_tenant (
   user_limit        INT(11)         DEFAULT 100 COMMENT '用户数量限制',
   storage_limit     BIGINT(20)      DEFAULT 10240 COMMENT '存储空间限制(MB)',
   storage_used      BIGINT(20)      DEFAULT 0 COMMENT '已使用存储空间(MB)',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -43,7 +43,7 @@ CREATE TABLE sys_tenant (
   PRIMARY KEY (tenant_id),
   UNIQUE KEY uk_tenant_code (tenant_code),
   KEY idx_tenant_status (status),
-  KEY idx_tenant_del_flag (del_flag)
+  KEY idx_tenant_deleted (deleted)
 ) ENGINE=InnoDB AUTO_INCREMENT=100000 DEFAULT CHARSET=utf8mb4 COMMENT='租户表';
 
 -- =========================================================
@@ -63,7 +63,7 @@ CREATE TABLE sys_dept (
   phone             VARCHAR(11)     DEFAULT NULL COMMENT '联系电话',
   email             VARCHAR(50)     DEFAULT NULL COMMENT '邮箱',
   status            CHAR(1)         DEFAULT '0' COMMENT '部门状态（0正常 1停用）',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -85,7 +85,7 @@ CREATE TABLE sys_user (
   sex               CHAR(1)         DEFAULT '0' COMMENT '用户性别（0男 1女 2未知）',
   password          VARCHAR(100)    DEFAULT '' COMMENT '密码',
   status            CHAR(1)         DEFAULT '0' COMMENT '帐号状态（0正常 1停用）',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   pwd_reset_required CHAR(1)        DEFAULT '0' COMMENT '是否首次登录强制改密（0否 1是）',
   login_ip          VARCHAR(128)    DEFAULT '' COMMENT '最后登录IP',
   login_date        DATETIME        DEFAULT NULL COMMENT '最后登录时间',
@@ -116,7 +116,7 @@ CREATE TABLE sys_role (
   ds_type           INT(1)          DEFAULT 1 COMMENT '数据权限类型（0全部 1自定义 2本级及下级 3本级 4本人）',
   ds_scope          VARCHAR(500)    DEFAULT NULL COMMENT '自定义数据权限（部门ID列表，逗号分隔）',
   status            CHAR(1)         DEFAULT '0' COMMENT '角色状态（0正常 1停用）',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
@@ -218,7 +218,7 @@ CREATE TABLE sys_file (
   file_type         VARCHAR(50)     DEFAULT '' COMMENT '文件类型',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '上传者',
   create_time       DATETIME        COMMENT '上传时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标志（0代表存在 2代表删除）',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   remark            VARCHAR(255)    DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (file_id),
   KEY idx_file_tenant (tenant_id)

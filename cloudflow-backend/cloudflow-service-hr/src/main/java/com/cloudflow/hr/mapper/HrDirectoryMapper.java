@@ -111,7 +111,7 @@ public interface HrDirectoryMapper {
                    parent_id AS parentId,
                    status
             FROM sys_dept
-            WHERE del_flag = '0'
+            WHERE deleted = 0
               AND tenant_id = #{tenantId}
             <if test="deptIds != null and deptIds.size() &gt; 0">
               AND dept_id IN

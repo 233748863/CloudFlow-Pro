@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 流程版本实体类
  * 用于记录流程的历史版本信息
  */
-@TableName("workflow_version")
+@TableName("wf_template_version")
 public class WorkflowVersion implements Serializable {
     private static final long serialVersionUID = 1L;
 

@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  * 供应商主数据。
  */
 @Data
-@TableName("sys_supplier")
+@TableName("oa_supplier")
 public class SysSupplier implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -38,7 +38,7 @@ public class SysSupplier implements Serializable {
     private String status;
 
     @TableField(fill = FieldFill.INSERT)
-    private String delFlag;
+    private Integer deleted;
 
     @TableField(fill = FieldFill.INSERT)
     private String createBy;

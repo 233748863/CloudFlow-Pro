@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("sys_vehicle_violation")
+@TableName("oa_vehicle_violation")
 public class VehicleViolation {
 
     @TableId(type = IdType.AUTO)
@@ -49,7 +49,7 @@ public class VehicleViolation {
     private String attachmentUrl;
 
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
 
     private String createBy;
 

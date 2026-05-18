@@ -524,7 +524,7 @@ public class ImportServiceImpl implements IImportService {
     private boolean processKeyExists(String processKey) {
         LambdaQueryWrapper<WfProcessDefinition> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WfProcessDefinition::getProcessKey, processKey)
-            .eq(WfProcessDefinition::getDelFlag, "0");
+            .eq(WfProcessDefinition::getDeleted, "0");
 
         Long tenantId = UserContext.getTenantId();
         if (tenantId != null) {

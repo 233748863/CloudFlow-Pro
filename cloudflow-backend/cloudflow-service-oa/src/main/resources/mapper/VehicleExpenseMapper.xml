@@ -6,8 +6,8 @@
         SELECT
             e.*,
             v.license_plate AS vehicle_plate
-        FROM sys_vehicle_expense e
-        LEFT JOIN sys_vehicle v ON v.vehicle_id = e.vehicle_id
+        FROM oa_vehicle_expense e
+        LEFT JOIN oa_vehicle v ON v.vehicle_id = e.vehicle_id
         <where>
             <if test="query != null">
                 <if test="query.vehicleId != null">
@@ -34,8 +34,8 @@
         SELECT
             e.*,
             v.license_plate AS vehicle_plate
-        FROM sys_vehicle_expense e
-        LEFT JOIN sys_vehicle v ON v.vehicle_id = e.vehicle_id
+        FROM oa_vehicle_expense e
+        LEFT JOIN oa_vehicle v ON v.vehicle_id = e.vehicle_id
         WHERE e.vehicle_id = #{vehicleId}
         ORDER BY e.expense_date DESC, e.expense_id DESC
         LIMIT ${limit}
@@ -48,7 +48,7 @@
             COALESCE(SUM(CASE WHEN expense_date &gt;= DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN amount ELSE 0 END), 0) AS monthlyAmount,
             COALESCE(SUM(CASE WHEN expense_date &gt;= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 1 MONTH), '%Y-%m-01')
                                AND expense_date &lt; DATE_FORMAT(CURDATE(), '%Y-%m-01') THEN amount ELSE 0 END), 0) AS lastMonthAmount
-        FROM sys_vehicle_expense
+        FROM oa_vehicle_expense
         <where>
             <if test="startDate != null and startDate != ''">
                 expense_date &gt;= #{startDate}
@@ -62,7 +62,7 @@
 
     <select id="selectExpenseGroupByType" resultType="map">
         SELECT expense_type AS expenseType, COALESCE(SUM(amount), 0) AS amount
-        FROM sys_vehicle_expense
+        FROM oa_vehicle_expense
         <where>
             <if test="startDate != null and startDate != ''">
                 expense_date &gt;= #{startDate}
@@ -77,7 +77,7 @@
 
     <select id="sumExpenseAmountByVehicle" resultType="java.math.BigDecimal">
         SELECT COALESCE(SUM(amount), 0)
-        FROM sys_vehicle_expense
+        FROM oa_vehicle_expense
         WHERE vehicle_id = #{vehicleId}
           AND expense_date &gt;= DATE_SUB(CURDATE(), INTERVAL ${days} DAY)
     </select>

@@ -153,7 +153,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
 
     private CrmQuote findAcceptedQuote(Long opportunityId) {
         List<CrmQuote> quotes = quoteMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
-                .eq(CrmQuote::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmQuote::getOpportunityId, opportunityId)
                 .in(CrmQuote::getStatus,
                         CrmConstants.QuoteStatus.ACCEPTED,

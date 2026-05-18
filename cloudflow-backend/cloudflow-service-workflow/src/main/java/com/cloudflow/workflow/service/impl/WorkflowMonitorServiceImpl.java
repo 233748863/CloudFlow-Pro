@@ -645,7 +645,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
                 .eq(SysRole::getTenantId, tenantId)
                 .eq(SysRole::getRoleKey, roleKey)
                 .eq(SysRole::getStatus, "0")
-                .eq(SysRole::getDelFlag, "0")
+                .eq(SysRole::getDeleted, "0")
                 .last("LIMIT 1"));
         if (role == null) {
             return null;
@@ -698,7 +698,7 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
         return new LambdaQueryWrapper<SysUser>()
                 .eq(SysUser::getTenantId, tenantId)
                 .eq(SysUser::getStatus, "0")
-                .eq(SysUser::getDelFlag, "0");
+                .eq(SysUser::getDeleted, "0");
     }
 
     private boolean isSameTenant(Long dataTenantId, Long tenantId) {

@@ -142,7 +142,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
             return;
         }
         CrmCustomer customer = getById(customerId);
-        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDelFlag())) {
+        if (customer == null || !CrmConstants.DelFlag.NORMAL.equals(customer.getDeleted())) {
             return;
         }
 
@@ -151,7 +151,7 @@ public class CrmCustomerServiceImpl extends CrmServiceSupport<CrmCustomerMapper,
 
         List<CrmFollowUp> followUps = followUpMapper.selectList(new LambdaQueryWrapper<CrmFollowUp>()
                 .eq(CrmFollowUp::getCustomerId, customerId)
-                .eq(CrmFollowUp::getDelFlag, CrmConstants.DelFlag.NORMAL));
+                .eq(CrmFollowUp::getDeleted, CrmConstants.DelFlag.NORMAL));
 
         LocalDateTime lastFollowUpTime = followUps.stream()
                 .map(CrmFollowUp::getFollowUpTime)

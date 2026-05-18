@@ -83,34 +83,34 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         workspace.setHealthReasons(buildHealthReasons(customerId, customer));
         workspace.setContacts(contactMapper.selectList(new LambdaQueryWrapper<CrmContact>()
                 .eq(CrmContact::getCustomerId, customerId)
-                .eq(CrmContact::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmContact::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmContact::getPrimaryFlag)
                 .orderByAsc(CrmContact::getContactId)));
         workspace.setFollowUps(followUpMapper.selectList(new LambdaQueryWrapper<CrmFollowUp>()
                 .eq(CrmFollowUp::getCustomerId, customerId)
-                .eq(CrmFollowUp::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmFollowUp::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmFollowUp::getFollowUpTime)));
         workspace.setOpportunities(opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
                 .eq(CrmOpportunity::getCustomerId, customerId)
-                .eq(CrmOpportunity::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmOpportunity::getUpdateTime)));
         workspace.setQuotes(quoteMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
                 .eq(CrmQuote::getCustomerId, customerId)
-                .eq(CrmQuote::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmQuote::getUpdateTime)));
         workspace.setReceivables(receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
                 .eq(CrmReceivable::getCustomerId, customerId)
-                .eq(CrmReceivable::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmReceivable::getDueDate)));
         List<CrmRenewal> renewals = renewalMapper.selectList(new LambdaQueryWrapper<CrmRenewal>()
                 .eq(CrmRenewal::getCustomerId, customerId)
-                .eq(CrmRenewal::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmRenewal::getCurrentExpireDate));
         renewals.forEach(CrmRenewalRiskEvaluator::enrich);
         workspace.setRenewals(renewals);
         workspace.setTickets(serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
                 .eq(CrmServiceTicket::getCustomerId, customerId)
-                .eq(CrmServiceTicket::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmServiceTicket::getUpdateTime)));
         workspace.setContracts(loadContracts(customerId));
         workspace.setInvoices(loadInvoices(customerId));
@@ -127,7 +127,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         CrmDashboardSummaryVO summary = new CrmDashboardSummaryVO();
         summary.setFunnel(buildOpportunityBoard());
         summary.setPendingQuotes(quoteMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
-                        .eq(CrmQuote::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                        .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .in(CrmQuote::getStatus, List.of(
                                 CrmConstants.QuoteStatus.PENDING,
                                 CrmConstants.QuoteStatus.APPROVED,
@@ -139,7 +139,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         summary.setAgingBuckets(buildAgingBuckets());
 
         List<CrmRenewal> renewals = renewalMapper.selectList(new LambdaQueryWrapper<CrmRenewal>()
-                .eq(CrmRenewal::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmRenewal::getCurrentExpireDate));
         renewals.forEach(CrmRenewalRiskEvaluator::enrich);
         LocalDate today = LocalDate.now();
@@ -150,7 +150,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .limit(10)
                 .toList());
         summary.setHighSeverityTickets(serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
-                        .eq(CrmServiceTicket::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                        .eq(CrmServiceTicket::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .in(CrmServiceTicket::getSeverity,
                                 CrmConstants.TicketSeverity.HIGH,
                                 CrmConstants.TicketSeverity.CRITICAL)
@@ -162,7 +162,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .limit(10)
                 .toList());
         summary.setStaleFollowCustomers(customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
-                        .eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                        .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .orderByAsc(CrmCustomer::getLastFollowUpTime))
                 .stream()
                 .filter(item -> item.getLastFollowUpTime() == null
@@ -170,7 +170,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .limit(10)
                 .toList());
         summary.setStalledOpportunities(opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
-                        .eq(CrmOpportunity::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                        .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .notIn(CrmOpportunity::getStage,
                                 CrmConstants.OpportunityStage.WON,
                                 CrmConstants.OpportunityStage.LOST)
@@ -250,7 +250,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
 
     private List<CrmOpportunityBoardColumnVO> buildOpportunityBoard() {
         List<CrmOpportunity> opportunities = opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
-                .eq(CrmOpportunity::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmOpportunity::getExpectedAmount)
                 .orderByDesc(CrmOpportunity::getUpdateTime));
         Map<String, CrmOpportunityBoardColumnVO> columns = new LinkedHashMap<>();
@@ -318,7 +318,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
 
         LocalDate today = LocalDate.now();
         List<CrmReceivable> receivables = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
-                .eq(CrmReceivable::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmReceivable::getDueDate));
         Map<String, Set<Long>> customerCounter = new LinkedHashMap<>();
         for (String key : buckets.keySet()) {
@@ -600,7 +600,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
 
     private List<CrmCustomer> topActiveCustomers() {
         return customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
-                        .eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                        .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .orderByDesc(CrmCustomer::getUpdateTime))
                 .stream()
                 .limit(8)
@@ -610,7 +610,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     private List<CrmWorkspaceActivityItemVO> buildDashboardActivities() {
         List<CrmWorkspaceActivityItemVO> activities = new ArrayList<>();
         quoteMapper.selectList(new LambdaQueryWrapper<CrmQuote>()
-                        .eq(CrmQuote::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                        .eq(CrmQuote::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .orderByDesc(CrmQuote::getUpdateTime))
                 .stream()
                 .limit(4)
@@ -625,7 +625,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                         item.getQuoteId(),
                         "CRM_QUOTE")));
         receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
-                        .eq(CrmReceivable::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                        .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
                         .orderByDesc(CrmReceivable::getUpdateTime))
                 .stream()
                 .limit(4)

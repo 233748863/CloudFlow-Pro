@@ -52,7 +52,7 @@ public class OaSealApplication implements Serializable {
     private String handlerName;
     private String attachmentUrl;
     private String status;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

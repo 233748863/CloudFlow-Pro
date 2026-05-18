@@ -50,7 +50,7 @@ public class VisitorServiceImpl extends ServiceImpl<VisitorMapper, Visitor>
         if (query.getVisitDate() != null) {
             wrapper.eq(Visitor::getVisitDate, query.getVisitDate());
         }
-        wrapper.and(w -> w.isNull(Visitor::getDelFlag).or().ne(Visitor::getDelFlag, "2"));
+        wrapper.and(w -> w.isNull(Visitor::getDeleted).or().ne(Visitor::getDeleted, "2"));
         wrapper.orderByDesc(Visitor::getCreateTime);
         return page(new Page<>(pageNum, pageSize), wrapper);
     }

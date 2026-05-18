@@ -202,7 +202,7 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
     public boolean confirmReceivable(Long customerId, Long receivableId) {
         CrmCustomer customer = requireCustomer(customerId);
         CrmReceivable receivable = receivableMapper.selectById(receivableId);
-        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDelFlag())) {
+        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDeleted())) {
             throw new IllegalArgumentException("回款计划不存在");
         }
         if (!Objects.equals(receivable.getCustomerId(), customerId)) {

@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
 
 /**
  * 访客预约实体类
- * 对应表：sys_visitor
+ * 对应表：oa_visitor
  */
 @Data
-@TableName("sys_visitor")
+@TableName("oa_visitor")
 public class Visitor implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -93,7 +93,7 @@ public class Visitor implements Serializable {
     private String remark;
 
     /** 删除标志 */
-    private String delFlag;
+    private Integer deleted;
 
     /** 创建者 */
     private String createBy;

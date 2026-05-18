@@ -70,7 +70,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     public int dispatchFollowUpOverdue() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(followUpInactiveDays);
         List<CrmCustomer> rows = customerMapper.selectList(new LambdaQueryWrapper<CrmCustomer>()
-                .eq(CrmCustomer::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmCustomer::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmCustomer::getPoolFlag, CrmConstants.CustomerPoolFlag.OUT_OF_POOL)
                 .isNotNull(CrmCustomer::getOwnerId)
                 .and(w -> w.lt(CrmCustomer::getLastFollowUpTime, threshold).or().isNull(CrmCustomer::getLastFollowUpTime)));
@@ -93,7 +93,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
         LocalDate today = LocalDate.now();
         LocalDate windowEnd = today.plusDays(receivableLookAheadDays);
         List<CrmReceivable> rows = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
-                .eq(CrmReceivable::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmReceivable::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .ne(CrmReceivable::getStatus, CrmConstants.ReceivableStatus.RECEIVED)
                 .gt(CrmReceivable::getOutstandingAmount, BigDecimal.ZERO)
                 .isNotNull(CrmReceivable::getDueDate)
@@ -119,7 +119,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     public int dispatchStalledOpportunity() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(opportunityStalledDays);
         List<CrmOpportunity> rows = opportunityMapper.selectList(new LambdaQueryWrapper<CrmOpportunity>()
-                .eq(CrmOpportunity::getDelFlag, CrmConstants.DelFlag.NORMAL)
+                .eq(CrmOpportunity::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .eq(CrmOpportunity::getStatus, CrmConstants.OpportunityStatus.OPEN)
                 .ne(CrmOpportunity::getStage, CrmConstants.OpportunityStage.WON)
                 .ne(CrmOpportunity::getStage, CrmConstants.OpportunityStage.LOST)

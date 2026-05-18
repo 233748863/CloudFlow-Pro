@@ -40,7 +40,7 @@ public class OaLicense implements Serializable {
     private String attachmentUrl;
     private String status;
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

@@ -53,7 +53,7 @@ public class CrmRefundApprovalHandler extends AbstractCrmApprovalHandler impleme
             return;
         }
         CrmReceivable receivable = receivableMapper.selectById(receivableId);
-        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDelFlag())) {
+        if (receivable == null || !CrmConstants.DelFlag.NORMAL.equals(receivable.getDeleted())) {
             return;
         }
         BigDecimal received = receivable.getReceivedAmount() == null ? BigDecimal.ZERO : receivable.getReceivedAmount();

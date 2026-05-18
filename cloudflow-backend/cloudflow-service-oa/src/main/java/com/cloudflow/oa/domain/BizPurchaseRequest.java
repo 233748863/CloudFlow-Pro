@@ -78,7 +78,7 @@ public class BizPurchaseRequest implements Serializable {
     private String budgetSubjectName;
 
     @TableField(fill = FieldFill.INSERT)
-    private String delFlag;
+    private Integer deleted;
 
     @TableField(fill = FieldFill.INSERT)
     private String createBy;

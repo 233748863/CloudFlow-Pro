@@ -31,7 +31,7 @@ public class CrmContactController {
     @SaCheckPermission("crm:contact:list")
     public R<CrmContact> getInfo(@PathVariable("id") Long id) {
         CrmContact contact = contactService.getById(id);
-        return contact == null || !"0".equals(contact.getDelFlag()) ? R.fail("联系人不存在") : R.ok(contact);
+        return contact == null || !Integer.valueOf(0).equals(contact.getDeleted()) ? R.fail("联系人不存在") : R.ok(contact);
     }
 
     @SysLog("新增CRM联系人")
@@ -63,7 +63,7 @@ public class CrmContactController {
         for (Long id : ids) {
             CrmContact contact = new CrmContact();
             contact.setContactId(id);
-            contact.setDelFlag("1");
+            contact.setDeleted(1);
             contactService.updateById(contact);
         }
         return R.ok();

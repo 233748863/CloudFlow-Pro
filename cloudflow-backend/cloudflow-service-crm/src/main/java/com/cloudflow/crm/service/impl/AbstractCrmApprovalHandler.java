@@ -28,7 +28,7 @@ abstract class AbstractCrmApprovalHandler {
 
     protected CrmApproval loadApproval(ApprovalResultDTO dto) {
         CrmApproval approval = approvalMapper.selectById(dto.getBusinessId());
-        if (approval == null || !CrmConstants.DelFlag.NORMAL.equals(approval.getDelFlag())) {
+        if (approval == null || !CrmConstants.DelFlag.NORMAL.equals(approval.getDeleted())) {
             throw new IllegalStateException("未找到 CRM 审批流水: " + dto.getBusinessId());
         }
         return approval;

@@ -31,7 +31,7 @@ public class CrmSalesTargetController {
     @SaCheckPermission("crm:sales-target:list")
     public R<CrmSalesTarget> getInfo(@PathVariable("id") Long id) {
         CrmSalesTarget salesTarget = salesTargetService.getById(id);
-        return salesTarget == null || !"0".equals(salesTarget.getDelFlag()) ? R.fail("销售目标不存在") : R.ok(salesTarget);
+        return salesTarget == null || !Integer.valueOf(0).equals(salesTarget.getDeleted()) ? R.fail("销售目标不存在") : R.ok(salesTarget);
     }
 
     @SysLog("新增CRM销售目标")
@@ -63,7 +63,7 @@ public class CrmSalesTargetController {
         for (Long id : ids) {
             CrmSalesTarget salesTarget = new CrmSalesTarget();
             salesTarget.setSalesTargetId(id);
-            salesTarget.setDelFlag("1");
+            salesTarget.setDeleted(1);
             salesTargetService.updateById(salesTarget);
         }
         return R.ok();

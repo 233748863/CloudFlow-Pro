@@ -37,7 +37,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<OaProject> getInfo(@PathVariable("id") Long id) {
         OaProject project = projectService.getById(id);
-        return project == null || !"0".equals(project.getDelFlag()) ? R.fail("项目不存在") : R.ok(project);
+        return project == null || !Integer.valueOf(0).equals(project.getDeleted()) ? R.fail("项目不存在") : R.ok(project);
     }
 
     @GetMapping("/{id}/detail")
@@ -349,7 +349,7 @@ public class ProjectController {
         for (Long id : ids) {
             OaProject project = new OaProject();
             project.setProjectId(id);
-            project.setDelFlag("1");
+            project.setDeleted(1);
             projectService.updateById(project);
         }
         return R.ok();

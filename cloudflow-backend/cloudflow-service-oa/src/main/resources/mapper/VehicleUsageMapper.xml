@@ -15,13 +15,13 @@
     </sql>
 
     <sql id="usageFromClause">
-        FROM sys_vehicle_usage u
-        LEFT JOIN sys_vehicle v ON v.vehicle_id = u.vehicle_id
-        LEFT JOIN sys_user app ON app.user_id = u.applicant_id AND app.del_flag = '0'
-        LEFT JOIN sys_user drv ON drv.user_id = u.driver_id AND drv.del_flag = '0'
+        FROM oa_vehicle_usage u
+        LEFT JOIN oa_vehicle v ON v.vehicle_id = u.vehicle_id
+        LEFT JOIN sys_user app ON app.user_id = u.applicant_id AND app.deleted = '0'
+        LEFT JOIN sys_user drv ON drv.user_id = u.driver_id AND drv.deleted = '0'
         LEFT JOIN (
             SELECT usage_id, SUM(amount) AS total_expense_amount
-            FROM sys_vehicle_expense
+            FROM oa_vehicle_expense
             GROUP BY usage_id
         ) expense_summary ON expense_summary.usage_id = u.usage_id
     </sql>
@@ -42,7 +42,7 @@
                     AND u.status = #{query.status}
                 </if>
             </if>
-            AND u.del_flag = '0'
+            AND u.deleted = '0'
         </where>
         ORDER BY u.create_time DESC, u.usage_id DESC
     </select>
@@ -52,7 +52,7 @@
             <include refid="usageBaseColumns"/>
         <include refid="usageFromClause"/>
         WHERE u.usage_id = #{usageId}
-          AND u.del_flag = '0'
+          AND u.deleted = '0'
         LIMIT 1
     </select>
 
@@ -61,7 +61,7 @@
             <include refid="usageBaseColumns"/>
         <include refid="usageFromClause"/>
         WHERE u.vehicle_id = #{vehicleId}
-          AND u.del_flag = '0'
+          AND u.deleted = '0'
           AND u.status = '3'
         ORDER BY COALESCE(u.dispatch_time, u.actual_start_time, u.start_time) DESC, u.usage_id DESC
         LIMIT 1
@@ -72,7 +72,7 @@
             <include refid="usageBaseColumns"/>
         <include refid="usageFromClause"/>
         WHERE u.vehicle_id = #{vehicleId}
-          AND u.del_flag = '0'
+          AND u.deleted = '0'
           AND u.status IN ('0','1')
           AND u.start_time >= NOW()
         ORDER BY u.start_time ASC, u.usage_id ASC
@@ -84,7 +84,7 @@
             <include refid="usageBaseColumns"/>
         <include refid="usageFromClause"/>
         WHERE u.vehicle_id = #{vehicleId}
-          AND u.del_flag = '0'
+          AND u.deleted = '0'
         ORDER BY u.create_time DESC, u.usage_id DESC
         LIMIT ${limit}
     </select>
@@ -107,11 +107,11 @@
             u.end_time,
             u.actual_start_time,
             u.actual_end_time
-        FROM sys_vehicle_usage u
-        LEFT JOIN sys_vehicle v ON v.vehicle_id = u.vehicle_id
-        LEFT JOIN sys_user app ON app.user_id = u.applicant_id AND app.del_flag = '0'
-        LEFT JOIN sys_user drv ON drv.user_id = u.driver_id AND drv.del_flag = '0'
-        WHERE u.del_flag = '0'
+        FROM oa_vehicle_usage u
+        LEFT JOIN oa_vehicle v ON v.vehicle_id = u.vehicle_id
+        LEFT JOIN sys_user app ON app.user_id = u.applicant_id AND app.deleted = '0'
+        LEFT JOIN sys_user drv ON drv.user_id = u.driver_id AND drv.deleted = '0'
+        WHERE u.deleted = '0'
           <if test="vehicleId != null">
             AND u.vehicle_id = #{vehicleId}
           </if>

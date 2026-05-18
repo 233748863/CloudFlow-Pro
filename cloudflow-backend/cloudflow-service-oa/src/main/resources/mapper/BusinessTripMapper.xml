@@ -17,7 +17,7 @@
                     AND destination LIKE CONCAT('%', #{query.destination}, '%')
                 </if>
             </if>
-            AND (del_flag IS NULL OR del_flag != '2')
+            AND (deleted IS NULL OR deleted != '2')
         </where>
         ORDER BY create_time DESC
     </select>

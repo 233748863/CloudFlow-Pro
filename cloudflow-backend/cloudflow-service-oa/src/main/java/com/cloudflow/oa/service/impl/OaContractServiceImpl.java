@@ -76,7 +76,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setDeptName(StringUtils.hasText(contract.getDeptName()) ? contract.getDeptName() : UserContext.getDeptName());
         contract.setStatus(OaContractConstants.CONTRACT_STATUS_DRAFT);
         contract.setRiskLevel(StringUtils.hasText(contract.getRiskLevel()) ? contract.getRiskLevel() : OaContractConstants.RISK_LEVEL_LOW);
-        contract.setDelFlag("0");
+        contract.setDeleted(0);
         contract.setCreateBy(resolveUserName());
         contract.setCreateTime(now);
         contract.setUpdateBy(resolveUserName());
@@ -115,7 +115,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setInstanceId(persisted.getInstanceId());
         contract.setSealApplicationId(persisted.getSealApplicationId());
         contract.setStatus(persisted.getStatus());
-        contract.setDelFlag("0");
+        contract.setDeleted(0);
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(contract);
@@ -140,7 +140,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             }
             OaContract update = new OaContract();
             update.setContractId(id);
-            update.setDelFlag("1");
+            update.setDeleted(1);
             update.setUpdateBy(resolveUserName());
             update.setUpdateTime(LocalDateTime.now());
             updateById(update);
@@ -216,7 +216,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     public boolean linkSeal(Long contractId, Long sealApplicationId) {
         OaContract contract = requireContract(contractId);
         OaSealApplication application = sealApplicationMapper.selectById(sealApplicationId);
-        if (application == null || !"0".equals(application.getDelFlag())) {
+        if (application == null || !Integer.valueOf(0).equals(application.getDeleted())) {
             throw new IllegalArgumentException("用印申请不存在");
         }
         contract.setSealApplicationId(sealApplicationId);
@@ -279,7 +279,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     private OaContract requireContract(Long id) {
         OaContract contract = getById(id);
-        if (contract == null || !"0".equals(contract.getDelFlag())) {
+        if (contract == null || !Integer.valueOf(0).equals(contract.getDeleted())) {
             throw new IllegalArgumentException("合同不存在");
         }
         return contract;

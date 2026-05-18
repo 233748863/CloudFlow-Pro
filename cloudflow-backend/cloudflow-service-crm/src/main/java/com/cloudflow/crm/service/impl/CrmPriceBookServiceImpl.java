@@ -18,7 +18,7 @@ public class CrmPriceBookServiceImpl extends CrmServiceSupport<CrmPriceBookMappe
     @Override
     public PageResult<CrmPriceBook> queryPage(CrmPriceBook query, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmPriceBook> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmPriceBook::getDelFlag, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmPriceBook::getUpdateTime);
+        wrapper.eq(CrmPriceBook::getDeleted, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmPriceBook::getUpdateTime);
         likeIfPresent(wrapper, CrmPriceBook::getPriceBookName, query.getPriceBookName());
         likeIfPresent(wrapper, CrmPriceBook::getPriceBookNo, query.getPriceBookNo());
         eqIfPresent(wrapper, CrmPriceBook::getStatus, query.getStatus());

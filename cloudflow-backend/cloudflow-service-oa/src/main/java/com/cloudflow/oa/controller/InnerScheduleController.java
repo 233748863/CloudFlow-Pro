@@ -55,7 +55,7 @@ public class InnerScheduleController {
         event.setRoomId(dto.getRoomId());
         event.setCreatorId(dto.getCreatorId() != null ? dto.getCreatorId() : UserContext.getUserId());
         event.setAttendees(dto.getAttendees());
-        event.setDelFlag("0");
+        event.setDeleted(0);
 
         try {
             boolean saved = scheduleService.createEvent(event);

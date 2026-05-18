@@ -13,7 +13,7 @@ final class Localize {
 
     static void fillCommonAudit(Object entity, Long tenantId, String userName, LocalDateTime now) {
         invoke(entity, "setTenantId", Long.class, tenantId);
-        invoke(entity, "setDelFlag", String.class, "0");
+        invoke(entity, "setDeleted", Integer.class, 0);
         invoke(entity, "setCreateBy", String.class, userName);
         invoke(entity, "setCreateTime", LocalDateTime.class, now);
         invoke(entity, "setUpdateBy", String.class, userName);

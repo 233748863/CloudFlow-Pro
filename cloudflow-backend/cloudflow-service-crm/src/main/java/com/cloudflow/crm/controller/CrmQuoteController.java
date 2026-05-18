@@ -126,7 +126,7 @@ public class CrmQuoteController {
             }
             CrmQuote quote = new CrmQuote();
             quote.setQuoteId(id);
-            quote.setDelFlag("1");
+            quote.setDeleted(1);
             quoteService.updateById(quote);
         }
         return R.ok();

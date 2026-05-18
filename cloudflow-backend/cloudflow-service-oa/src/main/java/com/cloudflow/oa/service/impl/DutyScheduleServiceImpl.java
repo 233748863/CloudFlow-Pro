@@ -42,7 +42,7 @@ public class DutyScheduleServiceImpl extends ServiceImpl<DutyScheduleMapper, Dut
         if (deptId != null) {
             wrapper.eq(DutySchedule::getDeptId, deptId);
         }
-        wrapper.and(w -> w.isNull(DutySchedule::getDelFlag).or().ne(DutySchedule::getDelFlag, "2"));
+        wrapper.and(w -> w.isNull(DutySchedule::getDeleted).or().ne(DutySchedule::getDeleted, "2"));
         wrapper.orderByAsc(DutySchedule::getDutyDate);
         return list(wrapper);
     }

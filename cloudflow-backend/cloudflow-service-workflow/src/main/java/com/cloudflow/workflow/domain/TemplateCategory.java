@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 模板分类实体类
  * 支持树形结构的模板分类管理
  */
-@TableName("template_category")
+@TableName("wf_template_category")
 public class TemplateCategory implements Serializable {
     private static final long serialVersionUID = 1L;
 

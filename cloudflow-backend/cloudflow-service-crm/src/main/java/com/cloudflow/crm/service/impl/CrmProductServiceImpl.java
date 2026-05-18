@@ -20,7 +20,7 @@ public class CrmProductServiceImpl extends CrmServiceSupport<CrmProductMapper, C
     @Override
     public PageResult<CrmProduct> queryPage(CrmProduct query, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmProduct> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmProduct::getDelFlag, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmProduct::getUpdateTime);
+        wrapper.eq(CrmProduct::getDeleted, CrmConstants.DelFlag.NORMAL).orderByDesc(CrmProduct::getUpdateTime);
         likeIfPresent(wrapper, CrmProduct::getProductName, query.getProductName());
         likeIfPresent(wrapper, CrmProduct::getProductNo, query.getProductNo());
         likeIfPresent(wrapper, CrmProduct::getCategory, query.getCategory());

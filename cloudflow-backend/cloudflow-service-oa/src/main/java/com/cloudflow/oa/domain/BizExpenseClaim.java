@@ -81,7 +81,7 @@ public class BizExpenseClaim implements Serializable {
 
     /** 删除标志 */
     @TableField(fill = FieldFill.INSERT)
-    private String delFlag;
+    private Integer deleted;
 
     /** 创建者 */
     @TableField(fill = FieldFill.INSERT)

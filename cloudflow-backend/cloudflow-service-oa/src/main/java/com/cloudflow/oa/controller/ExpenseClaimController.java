@@ -106,7 +106,7 @@ public class ExpenseClaimController {
         for (Long id : ids) {
             BizExpenseClaim claim = new BizExpenseClaim();
             claim.setId(id);
-            claim.setDelFlag("1");
+            claim.setDeleted(1);
             expenseClaimService.updateById(claim);
         }
         return R.ok();

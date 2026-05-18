@@ -15,7 +15,7 @@
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
-            AND del_flag = '0'
+            AND deleted = '0'
         </where>
         ORDER BY create_time DESC
     </select>
@@ -33,7 +33,7 @@
             <if test="userId != null">
                 AND user_id = #{userId}
             </if>
-            AND del_flag = '0'
+            AND deleted = '0'
         </where>
         ORDER BY create_time DESC
     </select>
@@ -46,7 +46,7 @@
         FROM biz_payment_request
         WHERE DATE_FORMAT(create_time, '%Y-%m') = #{month}
           AND status IN ('APPROVED', 'PAID')
-          AND del_flag = '0'
+          AND deleted = '0'
         GROUP BY dept_name
         ORDER BY total_amount DESC
     </select>

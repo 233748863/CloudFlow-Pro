@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * 协作任务实体类
  */
 @Data
-@TableName("sys_work_task")
+@TableName("oa_work_task")
 public class WorkTask {
     
     @TableId(type = IdType.AUTO)
@@ -95,7 +95,7 @@ public class WorkTask {
     private LocalDateTime updateTime;
     
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
     
     /** 租户ID */
     private Long tenantId;

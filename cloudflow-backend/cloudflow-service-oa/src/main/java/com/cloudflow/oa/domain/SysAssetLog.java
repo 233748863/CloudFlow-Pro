@@ -13,7 +13,7 @@ import java.time.LocalDateTime;
  * 资产变动日志实体
  */
 @Data
-@TableName("sys_asset_log")
+@TableName("oa_asset_log")
 public class SysAssetLog implements Serializable {
     
     private static final long serialVersionUID = 1L;

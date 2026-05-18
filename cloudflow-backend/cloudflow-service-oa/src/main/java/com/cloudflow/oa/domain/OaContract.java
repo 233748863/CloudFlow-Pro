@@ -56,7 +56,7 @@ public class OaContract implements Serializable {
     private String remark;
     private String sourceType;
     private Long sourceId;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

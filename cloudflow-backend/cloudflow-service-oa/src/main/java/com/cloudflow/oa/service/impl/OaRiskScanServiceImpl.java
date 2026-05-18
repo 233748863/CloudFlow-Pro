@@ -53,7 +53,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     private int scanExpiringContracts() {
         LocalDate today = LocalDate.now();
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
-                .eq(OaContract::getDelFlag, "0")
+                .eq(OaContract::getDeleted, "0")
                 .isNotNull(OaContract::getEndDate)
                 .between(OaContract::getEndDate, today, today.plusDays(30))
                 .in(OaContract::getStatus,
@@ -74,7 +74,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     private int scanPendingApprovals() {
         LocalDateTime threshold = LocalDateTime.now().minusHours(48);
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
-                .eq(OaContract::getDelFlag, "0")
+                .eq(OaContract::getDeleted, "0")
                 .eq(OaContract::getStatus, OaContractConstants.CONTRACT_STATUS_PENDING)
                 .le(OaContract::getUpdateTime, threshold));
         int created = 0;
@@ -90,7 +90,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     private int scanApprovedUnsealed() {
         LocalDateTime threshold = LocalDateTime.now().minusDays(3);
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
-                .eq(OaContract::getDelFlag, "0")
+                .eq(OaContract::getDeleted, "0")
                 .eq(OaContract::getStatus, OaContractConstants.CONTRACT_STATUS_APPROVED)
                 .le(OaContract::getUpdateTime, threshold));
         int created = 0;
@@ -107,7 +107,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
         BusinessRuleDTO rule = resolveContractRiskRule();
         BigDecimal threshold = rule == null || rule.getThresholdValue() == null ? HIGH_AMOUNT_THRESHOLD : rule.getThresholdValue();
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
-                .eq(OaContract::getDelFlag, "0")
+                .eq(OaContract::getDeleted, "0")
                 .ge(OaContract::getAmount, threshold)
                 .and(wrapper -> wrapper.isNull(OaContract::getAttachmentUrl).or().eq(OaContract::getAttachmentUrl, "")));
         int created = 0;
@@ -124,14 +124,14 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
     private int scanOverdueSealReturn() {
         LocalDateTime now = LocalDateTime.now();
         List<OaSealApplication> applications = sealApplicationMapper.selectList(new LambdaQueryWrapper<OaSealApplication>()
-                .eq(OaSealApplication::getDelFlag, "0")
+                .eq(OaSealApplication::getDeleted, "0")
                 .isNotNull(OaSealApplication::getContractId)
                 .in(OaSealApplication::getStatus, OaBorrowConstants.STATUS_BORROWED, OaBorrowConstants.STATUS_OVERDUE)
                 .lt(OaSealApplication::getExpectedReturnTime, now));
         int created = 0;
         for (OaSealApplication application : applications) {
             OaContract contract = contractMapper.selectById(application.getContractId());
-            if (contract == null || !"0".equals(contract.getDelFlag())) {
+            if (contract == null || !Integer.valueOf(0).equals(contract.getDeleted())) {
                 continue;
             }
             if (createRisk(contract, "SEAL_RETURN_OVERDUE", "用印逾期未归还", OaContractConstants.RISK_LEVEL_CRITICAL,
@@ -180,7 +180,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
 
     private int scanSealedUnarchived() {
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
-                .eq(OaContract::getDelFlag, "0")
+                .eq(OaContract::getDeleted, "0")
                 .eq(OaContract::getStatus, OaContractConstants.CONTRACT_STATUS_SEALED)
                 .and(wrapper -> wrapper.isNull(OaContract::getArchiveAttachmentUrl).or().eq(OaContract::getArchiveAttachmentUrl, "")));
         int created = 0;

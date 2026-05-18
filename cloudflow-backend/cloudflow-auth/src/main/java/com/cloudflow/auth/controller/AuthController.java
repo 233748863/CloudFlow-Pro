@@ -151,7 +151,7 @@ public class AuthController {
             return R.fail("用户名或密码错误");
         }
 
-        if ("2".equals(user.getDelFlag())) {
+        if (Integer.valueOf(1).equals(user.getDeleted())) {
             loginLogService.recordLoginFailure(
                 username,
                 user.getTenantId(),
@@ -284,7 +284,7 @@ public class AuthController {
         user.setPassword(registerBody.getPassword());
         user.setEmail(registerBody.getEmail());
         user.setStatus("0");
-        user.setDelFlag("0");
+        user.setDeleted(0);
         user.setTenantId(tenant.getTenantId());
 
         try {

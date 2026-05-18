@@ -10,7 +10,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_service_ticket")
+@TableName("crm_service_ticket")
 public class CrmServiceTicket implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -35,7 +35,7 @@ public class CrmServiceTicket implements Serializable {
     private String solution;
     private String attachmentUrl;
     private String status;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

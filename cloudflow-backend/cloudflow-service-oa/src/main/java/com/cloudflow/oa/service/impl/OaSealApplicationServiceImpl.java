@@ -116,7 +116,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setDeptId(UserContext.getDeptId());
         application.setDeptName(UserContext.getDeptName());
         application.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        application.setDelFlag("0");
+        application.setDeleted(0);
         application.setCreateBy(UserContext.getUserName());
         application.setCreateTime(now);
         application.setUpdateBy(UserContext.getUserName());
@@ -148,7 +148,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setDeptId(persisted.getDeptId());
         application.setDeptName(persisted.getDeptName());
         application.setStatus(OaBorrowConstants.STATUS_DRAFT);
-        application.setDelFlag("0");
+        application.setDeleted(0);
         application.setUpdateBy(UserContext.getUserName());
         application.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(application);
@@ -171,7 +171,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             }
             OaSealApplication update = new OaSealApplication();
             update.setId(id);
-            update.setDelFlag("1");
+            update.setDeleted(1);
             update.setUpdateBy(UserContext.getUserName());
             update.setUpdateTime(LocalDateTime.now());
             updateById(update);
@@ -310,7 +310,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         application.setUpdateTime(now);
         updateById(application);
 
-        if (seal != null && !"1".equals(seal.getDelFlag())) {
+        if (seal != null && !Integer.valueOf(1).equals(seal.getDeleted())) {
             sealMapper.update(null, new LambdaUpdateWrapper<OaSeal>()
                     .eq(OaSeal::getSealId, seal.getSealId())
                     .set(OaSeal::getStatus, OaBorrowConstants.RESOURCE_AVAILABLE)
@@ -346,7 +346,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         LocalDateTime now = LocalDateTime.now();
         List<OaSealApplication> list = list(new LambdaQueryWrapper<OaSealApplication>()
                 .eq(OaSealApplication::getStatus, OaBorrowConstants.STATUS_BORROWED)
-                .eq(OaSealApplication::getDelFlag, "0")
+                .eq(OaSealApplication::getDeleted, "0")
                 .lt(OaSealApplication::getExpectedReturnTime, now));
         int handled = 0;
         for (OaSealApplication application : list) {
@@ -371,7 +371,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     private void syncSealBorrowDueTime(OaSealApplication application, LocalDateTime now) {
         OaSeal seal = sealMapper.selectById(application.getSealId());
-        if (seal == null || "1".equals(seal.getDelFlag())) {
+        if (seal == null || Integer.valueOf(1).equals(seal.getDeleted())) {
             return;
         }
         seal.setStatus(OaBorrowConstants.RESOURCE_BORROWED);
@@ -407,7 +407,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             return;
         }
         OaContract contract = contractMapper.selectById(application.getContractId());
-        if (contract == null || !"0".equals(contract.getDelFlag())) {
+        if (contract == null || !Integer.valueOf(0).equals(contract.getDeleted())) {
             throw new IllegalArgumentException("关联合同不存在");
         }
         application.setContractNo(contract.getContractNo());
@@ -424,7 +424,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         Long count = count(new LambdaQueryWrapper<OaSealApplication>()
                 .ne(currentId != null, OaSealApplication::getId, currentId)
                 .eq(OaSealApplication::getSealId, sealId)
-                .eq(OaSealApplication::getDelFlag, "0")
+                .eq(OaSealApplication::getDeleted, "0")
                 .in(OaSealApplication::getStatus,
                         OaBorrowConstants.STATUS_PENDING,
                         OaBorrowConstants.STATUS_APPROVED,
@@ -441,7 +441,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     private OaSealApplication requireApplication(Long id) {
         OaSealApplication application = getById(id);
-        if (application == null || !"0".equals(application.getDelFlag())) {
+        if (application == null || !Integer.valueOf(0).equals(application.getDeleted())) {
             throw new IllegalArgumentException("用印申请不存在");
         }
         return application;
@@ -449,7 +449,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
 
     private OaSeal requireAvailableSeal(Long sealId, boolean strictAvailable) {
         OaSeal seal = sealMapper.selectById(sealId);
-        if (seal == null || !"0".equals(seal.getDelFlag())) {
+        if (seal == null || !Integer.valueOf(0).equals(seal.getDeleted())) {
             throw new IllegalArgumentException("印章不存在");
         }
         if (OaBorrowConstants.RESOURCE_DISABLED.equals(seal.getStatus())) {
@@ -527,7 +527,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             return;
         }
         OaContract contract = contractMapper.selectById(application.getContractId());
-        if (contract == null || !"0".equals(contract.getDelFlag())) {
+        if (contract == null || !Integer.valueOf(0).equals(contract.getDeleted())) {
             return;
         }
         contract.setSealApplicationId(application.getId());

@@ -42,7 +42,7 @@ public class OaInvoice implements Serializable {
     private Long receivableId;
     private String status;
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

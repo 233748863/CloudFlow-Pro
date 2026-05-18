@@ -13,7 +13,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("sys_vehicle_maintenance")
+@TableName("oa_vehicle_maintenance")
 public class VehicleMaintenance {
 
     @TableId(type = IdType.AUTO)
@@ -48,7 +48,7 @@ public class VehicleMaintenance {
     private String attachmentUrl;
 
     @TableLogic
-    private String delFlag;
+    private Integer deleted;
 
     private String createBy;
 

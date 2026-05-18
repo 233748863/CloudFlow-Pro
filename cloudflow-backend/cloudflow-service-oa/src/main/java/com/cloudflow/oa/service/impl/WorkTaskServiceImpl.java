@@ -49,7 +49,7 @@ public class WorkTaskServiceImpl extends ServiceImpl<WorkTaskMapper, WorkTask> i
     public List<WorkTask> listProjectTasks(Long projectId) {
         LambdaQueryWrapper<WorkTask> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(WorkTask::getProjectId, projectId)
-                .eq(WorkTask::getDelFlag, "0")
+                .eq(WorkTask::getDeleted, "0")
                 .orderByAsc(WorkTask::getSortOrder)
                 .orderByAsc(WorkTask::getParentId)
                 .orderByAsc(WorkTask::getWbsCode)
@@ -65,7 +65,7 @@ public class WorkTaskServiceImpl extends ServiceImpl<WorkTaskMapper, WorkTask> i
         }
         LambdaUpdateWrapper<WorkTask> wrapper = new LambdaUpdateWrapper<>();
         wrapper.in(WorkTask::getTaskId, ids)
-                .set(WorkTask::getDelFlag, "1");
+                .set(WorkTask::getDeleted, "1");
         return update(wrapper);
     }
 

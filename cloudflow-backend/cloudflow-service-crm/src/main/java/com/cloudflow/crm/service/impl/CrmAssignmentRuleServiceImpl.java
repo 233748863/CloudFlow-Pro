@@ -17,7 +17,7 @@ public class CrmAssignmentRuleServiceImpl extends CrmServiceSupport<CrmAssignmen
     @Override
     public PageResult<CrmAssignmentRule> queryPage(CrmAssignmentRule query, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmAssignmentRule> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmAssignmentRule::getDelFlag, CrmConstants.DelFlag.NORMAL)
+        wrapper.eq(CrmAssignmentRule::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmAssignmentRule::getPriority)
                 .orderByDesc(CrmAssignmentRule::getUpdateTime);
         likeIfPresent(wrapper, CrmAssignmentRule::getRuleName, query.getRuleName());

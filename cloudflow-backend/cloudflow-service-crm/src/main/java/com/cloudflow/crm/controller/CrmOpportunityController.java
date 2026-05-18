@@ -123,7 +123,7 @@ public class CrmOpportunityController {
             }
             CrmOpportunity opportunity = new CrmOpportunity();
             opportunity.setOpportunityId(id);
-            opportunity.setDelFlag("1");
+            opportunity.setDeleted(1);
             opportunityService.updateById(opportunity);
         }
         return R.ok();

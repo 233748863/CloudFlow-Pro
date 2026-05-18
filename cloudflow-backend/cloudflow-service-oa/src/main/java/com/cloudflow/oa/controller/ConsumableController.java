@@ -64,7 +64,7 @@ public class ConsumableController {
         consumable.setConsumableId(null);
         consumable.setQuantity(0);
         normalizeWarnFields(consumable);
-        consumable.setDelFlag("0");
+        consumable.setDeleted(0);
         consumable.setTenantId(UserContext.getTenantId());
         consumable.setCreateBy(UserContext.getUserName());
         consumable.setUpdateBy(UserContext.getUserName());
@@ -106,7 +106,7 @@ public class ConsumableController {
     public R remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
             SysConsumable existing = consumableService.getById(id);
-            if (existing == null || !"0".equals(existing.getDelFlag())) {
+            if (existing == null || !Integer.valueOf(0).equals(existing.getDeleted())) {
                 return R.fail("耗材不存在");
             }
             if (existing.getQuantity() != null && existing.getQuantity() > 0) {
@@ -119,7 +119,7 @@ public class ConsumableController {
         for (Long id : ids) {
             SysConsumable consumable = new SysConsumable();
             consumable.setConsumableId(id);
-            consumable.setDelFlag("1");
+            consumable.setDeleted(1);
             consumable.setUpdateBy(UserContext.getUserName());
             consumableService.updateById(consumable);
         }

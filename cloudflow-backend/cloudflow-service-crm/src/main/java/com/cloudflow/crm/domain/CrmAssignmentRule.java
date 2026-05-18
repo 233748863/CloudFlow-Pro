@@ -11,7 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
-@TableName("oa_crm_assignment_rule")
+@TableName("crm_assignment_rule")
 public class CrmAssignmentRule implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -31,7 +31,7 @@ public class CrmAssignmentRule implements Serializable {
     private LocalDate effectiveStart;
     private LocalDate effectiveEnd;
     private String remark;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

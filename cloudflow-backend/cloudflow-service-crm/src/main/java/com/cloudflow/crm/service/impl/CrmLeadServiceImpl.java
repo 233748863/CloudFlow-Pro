@@ -27,7 +27,7 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
     @Override
     public PageResult<CrmLead> queryPage(CrmLead query, PageQuery pageQuery) {
         LambdaQueryWrapper<CrmLead> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(CrmLead::getDelFlag, CrmConstants.DelFlag.NORMAL)
+        wrapper.eq(CrmLead::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByDesc(CrmLead::getUpdateTime);
         likeIfPresent(wrapper, CrmLead::getLeadName, query.getLeadName());
         likeIfPresent(wrapper, CrmLead::getCompanyName, query.getCompanyName());
@@ -71,7 +71,7 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
             throw new IllegalArgumentException("线索ID不能为空");
         }
         CrmLead lead = requireById(request.getLeadId(), "线索不存在");
-        if (!CrmConstants.DelFlag.NORMAL.equals(lead.getDelFlag())) {
+        if (!CrmConstants.DelFlag.NORMAL.equals(lead.getDeleted())) {
             throw new IllegalArgumentException("线索不存在");
         }
         if (lead.getConvertedCustomerId() != null) {

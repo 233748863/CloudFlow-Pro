@@ -37,7 +37,7 @@ CREATE TABLE wf_process_definition (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新人',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标记',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   template_id       VARCHAR(64)     DEFAULT NULL COMMENT '模板ID',
   current_version   VARCHAR(20)     DEFAULT '1.0.0' COMMENT '当前版本号',
   is_archived       TINYINT(1)      DEFAULT 0 COMMENT '是否归档',
@@ -47,7 +47,7 @@ CREATE TABLE wf_process_definition (
   KEY idx_is_latest (is_latest),
   KEY idx_dept_id (dept_id),
   KEY idx_create_by (create_by),
-  KEY idx_del_flag (del_flag),
+  KEY idx_deleted (deleted),
   KEY idx_template (template_id),
   KEY idx_archived (is_archived),
   KEY idx_version (current_version),
@@ -122,7 +122,7 @@ CREATE TABLE wf_process_instance (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新人',
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  del_flag          CHAR(1)         DEFAULT '0' COMMENT '删除标记',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   parent_instance_id VARCHAR(64)    DEFAULT NULL COMMENT '父流程实例ID',
   parent_node_key   VARCHAR(64)     DEFAULT NULL COMMENT '父节点Key',
   PRIMARY KEY (instance_id),
@@ -134,7 +134,7 @@ CREATE TABLE wf_process_instance (
   KEY idx_start_time (start_time),
   KEY idx_dept_id (dept_id),
   KEY idx_create_by (create_by),
-  KEY idx_del_flag (del_flag),
+  KEY idx_deleted (deleted),
   KEY idx_parent_instance (parent_instance_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程实例表';
 
@@ -570,8 +570,8 @@ CREATE TABLE wf_process_version_snapshot (
 -- =========================================================
 
 --
-DROP TABLE IF EXISTS sys_notice;
-CREATE TABLE sys_notice (
+DROP TABLE IF EXISTS wf_notice;
+CREATE TABLE wf_notice (
   notice_id         BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '通知ID',
   tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
   notice_title      VARCHAR(50)     NOT NULL COMMENT '通知标题',
@@ -738,8 +738,8 @@ CREATE TABLE wf_hot_update_record (
 -- =========================================================
 
 --
-DROP TABLE IF EXISTS workflow_template;
-CREATE TABLE workflow_template (
+DROP TABLE IF EXISTS wf_template;
+CREATE TABLE wf_template (
     id VARCHAR(64) PRIMARY KEY COMMENT '主键ID',
     name VARCHAR(200) NOT NULL COMMENT '名称',
     description TEXT COMMENT '描述',
@@ -764,8 +764,8 @@ CREATE TABLE workflow_template (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流模板表';
 
 --
-DROP TABLE IF EXISTS template_category;
-CREATE TABLE template_category (
+DROP TABLE IF EXISTS wf_template_category;
+CREATE TABLE wf_template_category (
     id VARCHAR(64) PRIMARY KEY COMMENT '主键ID',
     name VARCHAR(100) NOT NULL COMMENT '名称',
     description VARCHAR(500) COMMENT '描述',
@@ -780,8 +780,8 @@ CREATE TABLE template_category (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='模板分类表';
 
 --
-DROP TABLE IF EXISTS workflow_version;
-CREATE TABLE workflow_version (
+DROP TABLE IF EXISTS wf_template_version;
+CREATE TABLE wf_template_version (
     id VARCHAR(64) PRIMARY KEY COMMENT '主键ID',
     workflow_id VARCHAR(64) NOT NULL COMMENT '工作流ID',
     version_number VARCHAR(20) NOT NULL COMMENT '版本号',
@@ -799,13 +799,13 @@ CREATE TABLE workflow_version (
     INDEX idx_created_at (created_at),
     INDEX idx_tenant (tenant_id),
     INDEX idx_workflow_created (workflow_id, created_at DESC) COMMENT '工作流创建时间索引',
-    INDEX idx_workflow_version_number (workflow_id, version_number) COMMENT '工作流版本号索引',
-    UNIQUE KEY uk_workflow_version (workflow_id, version_number)
+    INDEX idx_wf_template_version_number (workflow_id, version_number) COMMENT '工作流版本号索引',
+    UNIQUE KEY uk_wf_template_version (workflow_id, version_number)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流版本表';
 
 --
-DROP TABLE IF EXISTS workflow_archive;
-CREATE TABLE workflow_archive (
+DROP TABLE IF EXISTS wf_template_archive;
+CREATE TABLE wf_template_archive (
     id VARCHAR(64) PRIMARY KEY COMMENT '主键ID',
     workflow_id VARCHAR(64) NOT NULL COMMENT '工作流ID',
     workflow_name VARCHAR(200) NOT NULL COMMENT '工作流名称',

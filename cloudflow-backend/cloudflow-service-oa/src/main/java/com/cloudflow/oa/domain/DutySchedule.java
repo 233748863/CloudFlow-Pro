@@ -12,10 +12,10 @@ import java.time.LocalDateTime;
 
 /**
  * 值班排班实体类
- * 对应表：sys_duty_schedule
+ * 对应表：oa_duty_schedule
  */
 @Data
-@TableName("sys_duty_schedule")
+@TableName("oa_duty_schedule")
 public class DutySchedule implements Serializable {
     private static final long serialVersionUID = 1L;
 
@@ -87,7 +87,7 @@ public class DutySchedule implements Serializable {
     private String remark;
 
     /** 删除标志 */
-    private String delFlag;
+    private Integer deleted;
 
     /** 创建者 */
     private String createBy;

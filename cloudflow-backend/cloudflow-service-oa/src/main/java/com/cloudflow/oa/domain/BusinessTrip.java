@@ -114,7 +114,7 @@ public class BusinessTrip implements Serializable {
     private String deptName;
 
     /** 删除标志 */
-    private String delFlag;
+    private Integer deleted;
 
     /** 创建者 */
     private String createBy;

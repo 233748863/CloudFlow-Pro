@@ -108,28 +108,6 @@ cloudflow:
       pay-day: 15
       # 工资条发送提醒
       payslip-remind-enabled: true
-      # 社保基数调整月份
-      social-security-adjust-months:
-        - 7
-      # 个税起征点
-      tax-threshold: 5000
-    
-    # 保险配置
-    insurance:
-      # 社保缴纳比例（企业）
-      social-security-company-rate:
-        pension: 0.16
-        medical: 0.08
-        unemployment: 0.005
-        injury: 0.002
-        maternity: 0.007
-      # 社保缴纳比例（个人）
-      social-security-personal-rate:
-        pension: 0.08
-        medical: 0.02
-        unemployment: 0.005
-      # 公积金缴纳比例
-      housing-fund-rate: 0.12
 
     # 审批流程Key配置
     workflow:

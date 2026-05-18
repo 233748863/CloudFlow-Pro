@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
  * 公告阅读记录实体类
  */
 @Data
-@TableName("sys_announcement_read")
+@TableName("oa_announcement_read")
 public class SysAnnouncementRead {
     
     @TableId(type = IdType.AUTO)

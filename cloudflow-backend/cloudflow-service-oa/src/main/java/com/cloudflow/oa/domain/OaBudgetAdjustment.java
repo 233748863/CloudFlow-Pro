@@ -28,7 +28,7 @@ public class OaBudgetAdjustment implements Serializable {
     private BigDecimal changeAmount;
     private String reason;
     private String status;
-    private String delFlag;
+    private Integer deleted;
     private String createBy;
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createTime;

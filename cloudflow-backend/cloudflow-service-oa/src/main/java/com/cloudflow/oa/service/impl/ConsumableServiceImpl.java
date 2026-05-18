@@ -49,7 +49,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
         if (StringUtils.hasText(query.getModel())) {
             wrapper.like(SysConsumable::getModel, query.getModel());
         }
-        wrapper.eq(SysConsumable::getDelFlag, "0");
+        wrapper.eq(SysConsumable::getDeleted, "0");
         // 按创建时间倒序
         wrapper.orderByDesc(SysConsumable::getCreateTime);
 
@@ -62,7 +62,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
         LambdaQueryWrapper<SysConsumable> wrapper = new LambdaQueryWrapper<>();
         wrapper.apply("quantity <= low_stock_threshold");
         wrapper.eq(SysConsumable::getWarnEnabled, 1);
-        wrapper.eq(SysConsumable::getDelFlag, "0");
+        wrapper.eq(SysConsumable::getDeleted, "0");
         wrapper.orderByAsc(SysConsumable::getQuantity);
         return list(wrapper);
     }
@@ -80,7 +80,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
             return false;
         }
         SysConsumable consumable = getById(consumableId);
-        if (consumable == null || !"0".equals(consumable.getDelFlag())) {
+        if (consumable == null || !Integer.valueOf(0).equals(consumable.getDeleted())) {
             return false;
         }
         consumable.setQuantity(consumable.getQuantity() + quantity);
@@ -106,7 +106,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
             return false;
         }
         SysConsumable consumable = getById(consumableId);
-        if (consumable == null || !"0".equals(consumable.getDelFlag())) {
+        if (consumable == null || !Integer.valueOf(0).equals(consumable.getDeleted())) {
             return false;
         }
         if (consumable.getQuantity() < quantity) {
@@ -163,7 +163,7 @@ public class ConsumableServiceImpl extends ServiceImpl<SysConsumableMapper, SysC
         suggestion.setSuggestedQuantity(Math.max(targetStock - quantity, 0));
         if (consumable.getDefaultSupplierId() != null) {
             SysSupplier supplier = supplierMapper.selectById(consumable.getDefaultSupplierId());
-            if (supplier != null && "0".equals(supplier.getDelFlag())) {
+            if (supplier != null && Integer.valueOf(0).equals(supplier.getDeleted())) {
                 suggestion.setDefaultSupplierName(supplier.getSupplierName());
             }
         }

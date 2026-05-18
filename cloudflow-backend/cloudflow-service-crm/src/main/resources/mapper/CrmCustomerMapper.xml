@@ -35,13 +35,13 @@
                original_owner_name,
                remark,
                status,
-               del_flag,
+               deleted,
                create_by,
                create_time,
                update_by,
                update_time
-        FROM oa_crm_customer
-        WHERE del_flag = '0'
+        FROM crm_customer
+        WHERE deleted = '0'
         <if test="query != null and query.customerName != null and query.customerName != ''">
             AND customer_name LIKE CONCAT('%', #{query.customerName}, '%')
         </if>
@@ -91,13 +91,13 @@
                original_owner_name,
                remark,
                status,
-               del_flag,
+               deleted,
                create_by,
                create_time,
                update_by,
                update_time
-        FROM oa_crm_customer
+        FROM crm_customer
         WHERE customer_id = #{customerId}
-          AND del_flag = '0'
+          AND deleted = '0'
     </select>
 </mapper>

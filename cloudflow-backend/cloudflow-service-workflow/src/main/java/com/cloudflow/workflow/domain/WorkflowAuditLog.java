@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
  * 工作流审计日志实体类
  * 用于记录所有关键操作的审计信息
  */
-@TableName("workflow_audit_log")
+@TableName("wf_audit_log")
 public class WorkflowAuditLog implements Serializable {
     private static final long serialVersionUID = 1L;
 
