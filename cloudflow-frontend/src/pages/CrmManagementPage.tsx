@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { DndContext, DragEndEvent, PointerSensor, useDraggable, useDroppable, useSensor, useSensors } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Eye, FolderKanban, Handshake, LifeBuoy, Plus, ReceiptText, RefreshCcw, Send, ShieldAlert, Target, Trash2, TriangleAlert, UserRound, Wallet } from 'lucide-react';
+import { ArrowRight, CalendarClock, Clock3, Eye, FileWarning, FolderKanban, Handshake, LifeBuoy, ListTodo, Plus, ReceiptText, RefreshCcw, Send, ShieldAlert, Target, Trash2, TriangleAlert, TrendingUp, UserRound, Users2, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, Input, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
@@ -152,6 +152,11 @@ const commonFooter = (
 const nativeSelectClassName = 'cf-control h-10 w-full rounded-xl px-4 py-2.5 text-sm appearance-auto';
 
 const formatDashboardNumber = (value?: number) => Number(value || 0).toLocaleString('zh-CN');
+const formatDashboardCurrency = (value?: number) => `¥${formatDashboardNumber(value)}`;
+const formatDashboardDate = (value?: string) => {
+  const formatted = formatDateTimeDisplay(value);
+  return formatted === '-' ? '未设置' : formatted.slice(0, 10);
+};
 
 const DashboardMetricTile = ({
   label,
@@ -184,6 +189,167 @@ const DashboardFocusItem = ({
     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
     <div className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{title}</div>
     {meta ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{meta}</div> : null}
+  </div>
+);
+
+const DASHBOARD_TONE_STYLES = {
+  cyan: {
+    accent: 'text-cyan-700 dark:text-cyan-300',
+    icon: 'bg-cyan-100 text-cyan-600 dark:bg-cyan-900/30 dark:text-cyan-300',
+    hover: 'group-hover:text-cyan-700 dark:group-hover:text-cyan-300',
+  },
+  emerald: {
+    accent: 'text-emerald-700 dark:text-emerald-300',
+    icon: 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300',
+    hover: 'group-hover:text-emerald-700 dark:group-hover:text-emerald-300',
+  },
+  amber: {
+    accent: 'text-amber-700 dark:text-amber-300',
+    icon: 'bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300',
+    hover: 'group-hover:text-amber-700 dark:group-hover:text-amber-300',
+  },
+  rose: {
+    accent: 'text-rose-700 dark:text-rose-300',
+    icon: 'bg-rose-100 text-rose-600 dark:bg-rose-900/30 dark:text-rose-300',
+    hover: 'group-hover:text-rose-700 dark:group-hover:text-rose-300',
+  },
+};
+
+type DashboardTone = keyof typeof DASHBOARD_TONE_STYLES;
+
+const DashboardSection = ({
+  title,
+  description,
+  aside,
+  children,
+}: {
+  title: string;
+  description?: string;
+  aside?: React.ReactNode;
+  children: React.ReactNode;
+}) => (
+  <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+    <div className="flex flex-wrap items-start justify-between gap-3">
+      <div className="px-5 pt-5">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
+        {description ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{description}</div> : null}
+      </div>
+      {aside ? <div className="px-5 pt-5">{aside}</div> : null}
+    </div>
+    <div className="border-t border-slate-100 p-5 dark:border-slate-800">{children}</div>
+  </section>
+);
+
+const DashboardActionCard = ({
+  tone = 'cyan',
+  label,
+  title,
+  detail,
+  meta,
+  icon,
+  actionLabel,
+  onAction,
+}: {
+  tone?: DashboardTone;
+  label: string;
+  title: string;
+  detail: string;
+  meta: string;
+  icon: React.ReactNode;
+  actionLabel: string;
+  onAction: () => void;
+}) => {
+  const toneStyle = DASHBOARD_TONE_STYLES[tone];
+  return (
+    <button
+      type="button"
+      onClick={onAction}
+      className="group w-full rounded-2xl border border-slate-200 bg-slate-50/80 p-4 text-left transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+    >
+      <div className="flex items-start gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${toneStyle.icon}`}>
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+          <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{title}</div>
+          <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">{detail}</div>
+          <div className="mt-2 text-xs leading-5 text-slate-500 dark:text-slate-400">{meta}</div>
+        </div>
+        <div className={`mt-1 text-slate-400 transition-colors ${toneStyle.hover}`}>
+          <ArrowRight size={16} />
+        </div>
+      </div>
+      <div className={`mt-3 text-xs font-medium ${toneStyle.accent}`}>
+        {actionLabel}
+      </div>
+    </button>
+  );
+};
+
+const DashboardFeedItem = ({
+  tone = 'cyan',
+  label,
+  title,
+  detail,
+  icon,
+  actionLabel,
+  onAction,
+}: {
+  tone?: DashboardTone;
+  label: string;
+  title: string;
+  detail: string;
+  icon: React.ReactNode;
+  actionLabel: string;
+  onAction: () => void;
+}) => {
+  const toneStyle = DASHBOARD_TONE_STYLES[tone];
+  return (
+    <button
+      type="button"
+      onClick={onAction}
+      className="group w-full rounded-xl border border-slate-200 bg-slate-50/80 p-3.5 text-left transition-all duration-200 hover:border-slate-300 hover:bg-slate-100 dark:border-slate-800 dark:bg-slate-900/60 dark:hover:border-slate-700 dark:hover:bg-slate-900"
+    >
+      <div className="flex items-start gap-3">
+        <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${toneStyle.icon}`}>
+          {icon}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+          <div className="mt-1 text-sm font-medium text-slate-900 dark:text-white">{title}</div>
+          <div className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">{detail}</div>
+        </div>
+        <div className={`mt-1 text-slate-400 transition-colors ${toneStyle.hover}`}>
+          <ArrowRight size={15} />
+        </div>
+      </div>
+      <div className={`mt-3 text-xs font-medium ${toneStyle.accent}`}>
+        {actionLabel}
+      </div>
+    </button>
+  );
+};
+
+const DashboardStageCard = ({
+  label,
+  count,
+  amount,
+  emphasis = false,
+}: {
+  label: string;
+  count: number;
+  amount: number;
+  emphasis?: boolean;
+}) => (
+  <div className={`rounded-2xl border px-4 py-4 ${emphasis ? 'border-cyan-200 bg-cyan-50/60 dark:border-cyan-900/40 dark:bg-cyan-950/18' : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900/60'}`}>
+    <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
+    <div className="mt-2 flex items-end justify-between gap-3">
+      <div className={`text-2xl font-semibold tabular-nums ${emphasis ? 'text-cyan-700 dark:text-cyan-200' : 'text-slate-900 dark:text-white'}`}>
+        {count}
+      </div>
+      <div className="text-xs text-slate-500 dark:text-slate-400">{formatDashboardCurrency(amount)}</div>
+    </div>
   </div>
 );
 
@@ -642,7 +808,6 @@ export default function CrmManagementPage() {
     if (!dashboard) return null;
     const totalOutstandingAmount = dashboard.agingBuckets.reduce((sum, item) => sum + Number(item.outstandingAmount || 0), 0);
     const totalReceivableCount = dashboard.agingBuckets.reduce((sum, item) => sum + Number(item.receivableCount || 0), 0);
-    const renewalAndTicketCount = dashboard.renewalWindows.length + dashboard.highSeverityTickets.length;
     const riskAndTodoCount = dashboard.staleFollowCustomers.length
       + dashboard.stalledOpportunities.length
       + dashboard.crossModuleTodos.length
@@ -670,39 +835,361 @@ export default function CrmManagementPage() {
     const processingTicket = tickets.find((item) => item.status === 'OPEN');
     const resolvedTicketCount = tickets.filter((item) => item.status === 'RESOLVED').length;
 
+    if (tab === 'dashboard') {
+      const funnelColumns = (board.length ? board : dashboard.funnel) || [];
+      const activeFunnelColumns = (funnelColumns.filter((item) => item.stage !== 'WON' && item.stage !== 'LOST').slice(0, 4).length
+        ? funnelColumns.filter((item) => item.stage !== 'WON' && item.stage !== 'LOST').slice(0, 4)
+        : funnelColumns.slice(0, 4));
+      const pipelineAmount = funnelColumns.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+      const pendingQuoteAmount = dashboard.pendingQuotes.reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+      const overdueBuckets = dashboard.agingBuckets.filter((item) => !item.bucketName?.includes('未逾期'));
+      const overdueReceivableAmount = overdueBuckets.reduce((sum, item) => sum + Number(item.outstandingAmount || 0), 0);
+      const renewalWindowAmount = dashboard.renewalWindows.reduce((sum, item) => sum + Number(item.renewalAmount || 0), 0);
+      const acceptedQuoteAmount = quotes
+        .filter((item) => item.status === 'ACCEPTED')
+        .reduce((sum, item) => sum + Number(item.totalAmount || 0), 0);
+      const negotiationColumn = funnelColumns.find((item) => item.stage === 'NEGOTIATION');
+
+      const openDashboardPath = (path?: string, fallback?: () => void) => {
+        if (path) {
+          navigate(path);
+          return;
+        }
+        fallback?.();
+      };
+
+      const actionCards: Array<{
+        key: string;
+        tone: DashboardTone;
+        label: string;
+        title: string;
+        detail: string;
+        meta: string;
+        icon: React.ReactNode;
+        actionLabel: string;
+        onAction: () => void;
+      }> = [];
+
+      if (priorityQuote) {
+        actionCards.push({
+          key: `quote-${priorityQuote.quoteId || 'priority'}`,
+          tone: 'emerald',
+          label: '报价审批',
+          title: priorityQuote.quoteName || '待审批报价',
+          detail: `${priorityQuote.customerName || '-'} · ${formatDashboardCurrency(priorityQuote.totalAmount)}`,
+          meta: `当前有 ${dashboard.pendingQuotes.length} 条报价在审批链中，优先处理金额最高的一条。`,
+          icon: <ReceiptText size={18} />,
+          actionLabel: '处理报价',
+          onAction: () => navigateToTab('quote'),
+        });
+      }
+
+      if (firstOverdueBucket) {
+        actionCards.push({
+          key: `receivable-${firstOverdueBucket.bucketCode || 'overdue'}`,
+          tone: 'amber',
+          label: '回款催收',
+          title: firstOverdueBucket.bucketName || '逾期账款',
+          detail: `${firstOverdueBucket.receivableCount || 0} 条 · ${formatDashboardCurrency(firstOverdueBucket.outstandingAmount)}`,
+          meta: '逾期账款直接影响现金流，优先进入回款台账逐条推进。',
+          icon: <Wallet size={18} />,
+          actionLabel: '查看回款',
+          onAction: () => navigateToTab('receivable'),
+        });
+      }
+
+      if (dashboard.renewalWindows[0]) {
+        const renewal = dashboard.renewalWindows[0];
+        actionCards.push({
+          key: `renewal-${renewal.renewalId || 'window'}`,
+          tone: 'cyan',
+          label: '续约推进',
+          title: renewal.renewalName || '临近续约客户',
+          detail: `${renewal.customerName || '-'} · ${formatDashboardCurrency(renewal.renewalAmount)}`,
+          meta: `到期日 ${formatDashboardDate(renewal.nextExpireDate || renewal.currentExpireDate)}，进入续约列表继续推进。`,
+          icon: <CalendarClock size={18} />,
+          actionLabel: '查看续约',
+          onAction: () => navigateToTab('renewal'),
+        });
+      }
+
+      if (dashboard.highSeverityTickets[0]) {
+        const ticket = dashboard.highSeverityTickets[0];
+        actionCards.push({
+          key: `ticket-${ticket.ticketId || 'critical'}`,
+          tone: 'rose',
+          label: '服务升级',
+          title: ticket.ticketTitle || '高严重度工单',
+          detail: `${ticket.customerName || '-'} · ${renderSeverity(ticket.severity)}`,
+          meta: `工单到期 ${formatDashboardDate(ticket.dueTime)}，先处理客户侧风险再推进成交。`,
+          icon: <LifeBuoy size={18} />,
+          actionLabel: '处理工单',
+          onAction: () => navigateToTab('ticket'),
+        });
+      }
+
+      if (dashboard.stalledOpportunities[0]) {
+        const stalled = dashboard.stalledOpportunities[0];
+        actionCards.push({
+          key: `opportunity-${stalled.opportunityId || 'stalled'}`,
+          tone: 'amber',
+          label: '商机卡点',
+          title: stalled.opportunityName || '阶段停滞商机',
+          detail: `${stalled.customerName || '-'} · ${renderStatus(stalled.stage)} · ${formatDashboardCurrency(stalled.expectedAmount)}`,
+          meta: `预计签约 ${formatDashboardDate(stalled.expectedSignDate)}，需要回到商机看板重启推进。`,
+          icon: <Target size={18} />,
+          actionLabel: '查看商机',
+          onAction: () => navigateToTab('opportunity'),
+        });
+      }
+
+      if (staleCustomer) {
+        actionCards.push({
+          key: `customer-${staleCustomer.customerId || 'stale'}`,
+          tone: staleCustomer.healthLevel === 'RED' ? 'rose' : 'amber',
+          label: '客户失温',
+          title: staleCustomer.customerName || '7天未跟进客户',
+          detail: `${staleCustomer.ownerName || '未分配负责人'} · ${renderHealthLabel(staleCustomer.healthLevel)}`,
+          meta: `上次跟进 ${formatDashboardDate(staleCustomer.lastFollowUpTime)}，建议直接进入客户 360 处理。`,
+          icon: <Users2 size={18} />,
+          actionLabel: '打开客户',
+          onAction: () => openCustomerWorkspace(staleCustomer.customerId),
+        });
+      }
+
+      if (actionCards.length < 4 && acceptedQuote) {
+        actionCards.push({
+          key: `accepted-${acceptedQuote.quoteId || 'quote'}`,
+          tone: 'emerald',
+          label: '合同转化',
+          title: acceptedQuote.quoteName || '已接受报价',
+          detail: `${acceptedQuote.customerName || '-'} · ${formatDashboardCurrency(acceptedQuote.totalAmount)}`,
+          meta: '客户已接受报价，建议尽快转合同草稿，缩短签约链路。',
+          icon: <TrendingUp size={18} />,
+          actionLabel: '查看报价',
+          onAction: () => navigateToTab('quote'),
+        });
+      }
+
+      const riskFeedItems: Array<{
+        key: string;
+        tone: DashboardTone;
+        label: string;
+        title: string;
+        detail: string;
+        icon: React.ReactNode;
+        actionLabel: string;
+        onAction: () => void;
+      }> = [];
+
+      dashboard.crossModuleRisks.slice(0, 2).forEach((item, index) => {
+        riskFeedItems.push({
+          key: `risk-${item.id || index}`,
+          tone: item.level === 'RED' ? 'rose' : 'amber',
+          label: item.sourceLabel || item.module || '协同风险',
+          title: item.title || '跨模块风险',
+          detail: item.description || `${renderStatus(item.status)} · ${item.level || '需关注'}`,
+          icon: <ShieldAlert size={16} />,
+          actionLabel: '打开风险',
+          onAction: () => openDashboardPath(item.path, () => navigate('/office/crm')),
+        });
+      });
+
+      dashboard.budgetAlerts.slice(0, 1).forEach((item, index) => {
+        riskFeedItems.push({
+          key: `budget-${item.budgetId || index}`,
+          tone: 'amber',
+          label: '预算阈值',
+          title: item.budgetName || '预算预警',
+          detail: `${item.projectName || '未关联项目'} · ${item.thresholdStatus || item.status || '待处理'}`,
+          icon: <TriangleAlert size={16} />,
+          actionLabel: '打开预算',
+          onAction: () => navigate('/office/budget'),
+        });
+      });
+
+      dashboard.invoiceExceptions.slice(0, 1).forEach((item, index) => {
+        riskFeedItems.push({
+          key: `invoice-${item.invoiceId || index}`,
+          tone: 'rose',
+          label: '发票异常',
+          title: item.invoiceCode || item.invoiceNo || '销项发票异常',
+          detail: `${item.status || '-'} · ${formatDashboardCurrency(item.grossAmount)}`,
+          icon: <FileWarning size={16} />,
+          actionLabel: '打开发票',
+          onAction: () => navigate('/office/invoice'),
+        });
+      });
+
+      if (riskFeedItems.length < 4 && staleCustomer) {
+        riskFeedItems.push({
+          key: `risk-customer-${staleCustomer.customerId || 'stale'}`,
+          tone: staleCustomer.healthLevel === 'RED' ? 'rose' : 'amber',
+          label: '客户失温',
+          title: staleCustomer.customerName || '跟进停滞客户',
+          detail: `${staleCustomer.ownerName || '未分配负责人'} · 上次跟进 ${formatDashboardDate(staleCustomer.lastFollowUpTime)}`,
+          icon: <Clock3 size={16} />,
+          actionLabel: '打开客户',
+          onAction: () => openCustomerWorkspace(staleCustomer.customerId),
+        });
+      }
+
+      const todoFeedItems = dashboard.crossModuleTodos.slice(0, 5).map((item, index) => ({
+        key: `todo-${item.id || index}`,
+        tone: 'cyan' as DashboardTone,
+        label: item.sourceLabel || item.module || '协同待办',
+        title: item.title || '待办事项',
+        detail: item.description || `${renderStatus(item.status)} · 直接进入源业务继续处理`,
+        icon: <ListTodo size={16} />,
+        actionLabel: '打开事项',
+        onAction: () => openDashboardPath(item.path, () => navigate('/office/crm')),
+      }));
+
+      const focusFeedItems = [...riskFeedItems, ...todoFeedItems].slice(0, 5);
+
+      return (
+        <section className="space-y-4">
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+            <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white">客户经营工作台</h2>
+              </div>
+            </div>
+            <div className="grid gap-3 p-5 sm:grid-cols-2 xl:grid-cols-4">
+              <DashboardMetricTile
+                label="成交管道"
+                value={formatDashboardCurrency(pipelineAmount)}
+                hint={`${opportunities.length} 个商机，谈判阶段 ${Number(negotiationColumn?.count || 0)} 个`}
+                valueClassName="text-slate-900 dark:text-white"
+              />
+              <DashboardMetricTile
+                label="待审批金额"
+                value={formatDashboardCurrency(pendingQuoteAmount)}
+                hint={`${dashboard.pendingQuotes.length} 条报价待处理`}
+                valueClassName="text-emerald-700 dark:text-emerald-300"
+              />
+              <DashboardMetricTile
+                label="逾期回款"
+                value={formatDashboardCurrency(overdueReceivableAmount)}
+                hint={`${overdueReceivableCount} 条需催收`}
+                valueClassName="text-amber-700 dark:text-amber-300"
+              />
+              <DashboardMetricTile
+                label="续约窗口"
+                value={formatDashboardCurrency(renewalWindowAmount)}
+                hint={`${dashboard.renewalWindows.length} 条临近到期，已接受报价 ${formatDashboardCurrency(acceptedQuoteAmount)}`}
+                valueClassName="text-cyan-700 dark:text-cyan-300"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_340px]">
+            <DashboardSection
+              title="优先处理"
+              aside={(
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  客户 {customers.length} / 商机 {opportunities.length} / 回款 {totalReceivableCount}
+                </div>
+              )}
+            >
+              {actionCards.length ? (
+                <div className="grid gap-3 md:grid-cols-2">
+                  {actionCards.slice(0, 4).map((item) => (
+                    <DashboardActionCard
+                      key={item.key}
+                      tone={item.tone}
+                      label={item.label}
+                      title={item.title}
+                      detail={item.detail}
+                      meta={item.meta}
+                      icon={item.icon}
+                      actionLabel={item.actionLabel}
+                      onAction={item.onAction}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                  当前没有需要首页优先升级处理的事项。
+                </div>
+              )}
+            </DashboardSection>
+
+            <DashboardSection
+              title="风险与协同"
+              aside={(
+                <div className="text-xs text-slate-500 dark:text-slate-400">
+                  风险 {riskAndTodoCount} / 待办 {dashboard.crossModuleTodos.length}
+                </div>
+              )}
+            >
+              {focusFeedItems.length ? (
+                <div className="space-y-3">
+                  {focusFeedItems.map((item) => (
+                    <DashboardFeedItem
+                      key={item.key}
+                      tone={item.tone}
+                      label={item.label}
+                      title={item.title}
+                      detail={item.detail}
+                      icon={item.icon}
+                      actionLabel={item.actionLabel}
+                      onAction={item.onAction}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                  当前没有跨模块风险或待办。
+                </div>
+              )}
+            </DashboardSection>
+          </div>
+
+          <DashboardSection
+            title="成交推进"
+            aside={(
+              <div className="text-xs text-slate-500 dark:text-slate-400">
+                商务谈判 {Number(negotiationColumn?.count || 0)} 个 / {formatDashboardCurrency(negotiationColumn?.totalAmount)}
+              </div>
+            )}
+          >
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {activeFunnelColumns.map((column) => (
+                <DashboardStageCard
+                  key={column.stage || column.stageLabel}
+                  label={column.stageLabel || column.stage || '-'}
+                  count={Number(column.count || 0)}
+                  amount={Number(column.totalAmount || 0)}
+                  emphasis={column.stage === 'PROPOSAL' || column.stage === 'NEGOTIATION'}
+                />
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {dashboard.stalledOpportunities.length ? dashboard.stalledOpportunities.slice(0, 2).map((item) => (
+                <div key={item.opportunityId} className="rounded-xl border border-amber-200 bg-amber-50/70 p-4 dark:border-amber-900/40 dark:bg-amber-950/18">
+                  <div className="text-xs font-medium text-amber-700 dark:text-amber-300">阶段卡点</div>
+                  <div className="mt-1 text-sm font-semibold text-slate-900 dark:text-white">{item.opportunityName || '未命名商机'}</div>
+                  <div className="mt-1 text-sm text-slate-600 dark:text-slate-300">
+                    {item.customerName || '-'} · {renderStatus(item.stage)} · {formatDashboardCurrency(item.expectedAmount)}
+                  </div>
+                  <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">预计签约 {formatDashboardDate(item.expectedSignDate)}</div>
+                </div>
+              )) : (
+                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 md:col-span-2">
+                  当前没有阶段停滞商机。
+                </div>
+              )}
+            </div>
+          </DashboardSection>
+        </section>
+      );
+    }
+
     let description = '';
     let badgeText = '';
     let metrics: Array<{ label: string; value: React.ReactNode; hint?: string; valueClassName?: string }> = [];
     let focusItems: Array<{ label: string; title: string; meta?: string }> = [];
-
-    if (tab === 'dashboard') {
-      description = '销售业绩与经营协同的整体视图，下钻请使用快捷入口跳转到具体模块';
-      badgeText = `${customers.length} 个客户 / ${opportunities.length} 个商机`;
-      metrics = [
-        { label: '商务谈判', value: negotiationOpportunityCount, hint: 'NEGOTIATION 阶段', valueClassName: 'text-cyan-700 dark:text-cyan-300' },
-        { label: '待审批报价', value: dashboard.pendingQuotes.length, hint: '待经理审批', valueClassName: 'text-teal-700 dark:text-teal-300' },
-        { label: '回款余额', value: formatDashboardNumber(totalOutstandingAmount), hint: `${totalReceivableCount} 条回款计划`, valueClassName: 'text-cyan-700 dark:text-cyan-300' },
-        { label: '风险与协同', value: riskAndTodoCount, hint: '停滞、预算阈值、跨模块待办', valueClassName: 'text-amber-700 dark:text-amber-300' },
-      ];
-      focusItems = [
-        {
-          label: '优先事项',
-          title: priorityQuote?.quoteName || '当前无待审批报价',
-          meta: priorityQuote ? `${priorityQuote.customerName || '-'} / ${formatDashboardNumber(priorityQuote.totalAmount)}` : '可把精力转向客户经营与回款跟进',
-        },
-        {
-          label: '协同提醒',
-          title: dashboard.crossModuleTodos[0]?.title || priorityRisk?.title || staleCustomer?.customerName || '当前无跨模块待办',
-          meta: dashboard.crossModuleTodos[0]
-            ? `${dashboard.crossModuleTodos[0].sourceLabel || dashboard.crossModuleTodos[0].module || '-'} / ${renderStatus(dashboard.crossModuleTodos[0].status)}`
-            : priorityRisk
-              ? `${priorityRisk.sourceLabel || priorityRisk.module || '-'} / ${renderStatus(priorityRisk.status)}`
-              : staleCustomer
-                ? '7天未跟进客户'
-                : '经营协同状态正常',
-        },
-      ];
-    }
 
     if (tab === 'customer') {
       description = '客户、报价、回款与跨模块协同的经营摘要';
@@ -1592,31 +2079,9 @@ export default function CrmManagementPage() {
     </div>
   );
 
-  const dashboardShortcuts = (
-    <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="text-sm font-medium text-slate-700 dark:text-slate-200">快捷入口</div>
-        {hasPermission('crm:customer:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('customer')}>客户管理</Button> : null}
-        {hasPermission('crm:opportunity:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('opportunity')}>商机看板</Button> : null}
-        {hasPermission('crm:quote:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('quote')}>报价管理</Button> : null}
-        {hasPermission('crm:receivable:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('receivable')}>回款台账</Button> : null}
-        {hasPermission('crm:renewal:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('renewal')}>续约管理</Button> : null}
-        {hasPermission('crm:ticket:list') ? <Button size="sm" variant="outline" onClick={() => navigateToTab('ticket')}>服务工单</Button> : null}
-        {hasPermission('crm:lead:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/leads')}>线索池</Button> : null}
-        {hasPermission('crm:product:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/products')}>产品库</Button> : null}
-        {hasPermission('crm:price-book:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/price-books')}>价目表</Button> : null}
-        {hasPermission('crm:sales-target:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/sales-targets')}>销售目标</Button> : null}
-        {hasPermission('crm:customer-pool:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/customer-pool')}>客户公海</Button> : null}
-        {hasPermission('crm:assignment-rule:list') ? <Button size="sm" variant="outline" onClick={() => navigate('/office/crm/assignment-rules')}>分配规则</Button> : null}
-      </div>
-    </div>
-  );
-
   return (
     <div className="space-y-4">
       {renderDashboard()}
-
-      {tab === 'dashboard' ? dashboardShortcuts : null}
 
       {tab === 'opportunity' ? (
         <div className="space-y-6">
