@@ -27,6 +27,7 @@ import {
 } from '@/services/api/purchase';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
@@ -97,7 +98,7 @@ const formatAmount = (value?: number | null) => {
 };
 
 const getAttachmentList = (attachmentUrl?: string) =>
-  attachmentUrl?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+  normalizeAttachmentUrls(attachmentUrl);
 
 const getStatusBadge = (status?: string) => {
   const toneMap: Record<string, string> = {
@@ -823,7 +824,7 @@ export const PurchaseRequestPage: React.FC = () => {
                   {getAttachmentList(detailPurchase.attachmentUrl).map((url) => (
                     <a key={url} href={url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-lg border border-slate-200 px-4 py-3 text-sm text-slate-700 hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300">
                       <Paperclip size={14} />
-                      <span className="truncate">{decodeURIComponent(url.split('/').pop() || '附件')}</span>
+                      <span className="truncate">{getAttachmentDisplayName(url)}</span>
                     </a>
                   ))}
                 </div>

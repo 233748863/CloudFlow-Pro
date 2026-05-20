@@ -180,6 +180,9 @@ services:
       # CORS 白名单：逗号分隔的允许 Origin 列表；默认覆盖 Docker 前端 Nginx（https+http）和 Vite 开发端口
       CLOUDFLOW_CORS_ALLOWED_ORIGINS: ${CLOUDFLOW_CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173,https://localhost,http://localhost}
       MANAGEMENT_SERVER_PORT: 9100
+      CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED: ${CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED:-true}
+      CLOUDFLOW_SECURITY_PROMETHEUS_USERNAME: prometheus
+      CLOUDFLOW_SECURITY_PROMETHEUS_PASSWORD: ${PROMETHEUS_SCRAPE_PASSWORD}
       # JVM 参数
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     ports:
@@ -239,6 +242,9 @@ services:
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
       MANAGEMENT_SERVER_PORT: 9101
+      CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED: ${CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED:-true}
+      CLOUDFLOW_SECURITY_PROMETHEUS_USERNAME: prometheus
+      CLOUDFLOW_SECURITY_PROMETHEUS_PASSWORD: ${PROMETHEUS_SCRAPE_PASSWORD}
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     volumes:
       # 日志目录映射
@@ -297,6 +303,9 @@ services:
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
       MANAGEMENT_SERVER_PORT: 9102
+      CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED: ${CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED:-true}
+      CLOUDFLOW_SECURITY_PROMETHEUS_USERNAME: prometheus
+      CLOUDFLOW_SECURITY_PROMETHEUS_PASSWORD: ${PROMETHEUS_SCRAPE_PASSWORD}
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
     volumes:
       # 日志目录映射
@@ -357,6 +366,9 @@ services:
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
       MANAGEMENT_SERVER_PORT: 9103
+      CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED: ${CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED:-true}
+      CLOUDFLOW_SECURITY_PROMETHEUS_USERNAME: prometheus
+      CLOUDFLOW_SECURITY_PROMETHEUS_PASSWORD: ${PROMETHEUS_SCRAPE_PASSWORD}
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     volumes:
       # 日志目录映射
@@ -417,6 +429,9 @@ services:
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
       MANAGEMENT_SERVER_PORT: 9104
+      CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED: ${CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED:-true}
+      CLOUDFLOW_SECURITY_PROMETHEUS_USERNAME: prometheus
+      CLOUDFLOW_SECURITY_PROMETHEUS_PASSWORD: ${PROMETHEUS_SCRAPE_PASSWORD}
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
     volumes:
       - crm_logs:/app/logs
@@ -474,6 +489,9 @@ services:
       LOG_LEVEL_MAPPER: ${LOG_LEVEL_MAPPER}
       MYBATIS_LOG_IMPL: ${MYBATIS_LOG_IMPL}
       MANAGEMENT_SERVER_PORT: 9105
+      CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED: ${CLOUDFLOW_SECURITY_PROMETHEUS_ENABLED:-true}
+      CLOUDFLOW_SECURITY_PROMETHEUS_USERNAME: prometheus
+      CLOUDFLOW_SECURITY_PROMETHEUS_PASSWORD: ${PROMETHEUS_SCRAPE_PASSWORD}
       JAVA_OPTS: "-XX:+UseContainerSupport -XX:MaxRAMPercentage=70.0"
     volumes:
       - hr_logs:/app/logs
@@ -516,6 +534,9 @@ services:
     image: prom/prometheus:v2.54.1
     container_name: cloudflow-prometheus
     restart: unless-stopped
+    entrypoint:
+      - /bin/sh
+      - /etc/prometheus/docker-entrypoint.sh
     command:
       - --config.file=/etc/prometheus/prometheus.yml
       - --storage.tsdb.path=/prometheus
@@ -523,9 +544,12 @@ services:
       - --web.enable-lifecycle
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
+    environment:
+      PROMETHEUS_SCRAPE_PASSWORD: ${PROMETHEUS_SCRAPE_PASSWORD}
     volumes:
       - ./docker/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./docker/monitoring/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./docker/monitoring/prometheus/docker-entrypoint.sh:/etc/prometheus/docker-entrypoint.sh:ro
       - prometheus_data:/prometheus
     depends_on:
       - gateway

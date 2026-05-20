@@ -1,6 +1,7 @@
 import request from '@/services/api/request';
 import { PageResult } from '@/types';
 import { getStoredAuthUser } from '@/utils/authStorage';
+import { getAttachmentRawValue, normalizeAttachmentUrl, normalizeAttachmentUrls } from '@/utils/attachment';
 
 export type HrRecord = Record<string, any>;
 
@@ -885,6 +886,7 @@ const normalizeCandidate = (item: Candidate): Candidate => ({
   ...item,
   requestId: item.requestId || item.requisitionId,
   requisitionId: item.requisitionId || item.requestId,
+  resumeAttachmentUrls: normalizeAttachmentUrls(item.resumeAttachmentUrls),
   statusDesc: item.statusDesc || statusDescMap[String(item.status || '')] || item.status,
   sourceDesc: item.sourceDesc || sourceDescMap[String(item.source || '')] || item.source,
 });
@@ -978,12 +980,12 @@ const normalizeLifecycleApplication = <T extends HrRecord>(item: T): T => ({
 
 const normalizeEmployeeContract = (item: EmployeeContract): EmployeeContract => ({
   ...item,
-  attachmentUrls: normalizeStringArray(item.attachmentUrls),
+  attachmentUrls: normalizeAttachmentUrls(item.attachmentUrls),
 });
 
 const normalizeEmployeeDocument = (item: EmployeeDocument): EmployeeDocument => ({
   ...item,
-  attachmentUrls: normalizeStringArray(item.attachmentUrls),
+  attachmentUrls: normalizeAttachmentUrls(item.attachmentUrls),
 });
 
 const toRecruitmentPayload = (data: RecruitmentRequestPayload) => ({
@@ -999,7 +1001,9 @@ const toCandidatePayload = (data: CandidatePayload) => ({
   requisitionId: data.requisitionId || data.requestId,
   requestId: undefined,
   candidateNo: data.candidateNo || `HRC${Date.now()}`,
-  resumeAttachmentUrls: normalizeJsonArray(data.resumeAttachmentUrls),
+  resumeAttachmentUrls: normalizeJsonArray(
+    normalizeStringArray(data.resumeAttachmentUrls).map((item) => getAttachmentRawValue(item)),
+  ),
 });
 
 const toOfferPayload = (data: OfferPayload) => ({
@@ -1348,9 +1352,15 @@ export const getEmployeeContract = async (id: number) => {
   return lists.flat().find((item) => item.id === id) as EmployeeContract;
 };
 export const createEmployeeContract = (data: EmployeeContractPayload) =>
-  request.post<number>('/hr/employees/contracts', { ...data, attachmentUrls: normalizeJsonArray(data.attachmentUrls) });
+  request.post<number>('/hr/employees/contracts', {
+    ...data,
+    attachmentUrls: normalizeJsonArray(normalizeStringArray(data.attachmentUrls).map((item) => getAttachmentRawValue(item))),
+  });
 export const updateEmployeeContract = (id: number, data: Partial<EmployeeContractPayload>) =>
-  request.put<void>(`/hr/employees/contracts/${id}`, { ...data, attachmentUrls: normalizeJsonArray(data.attachmentUrls) });
+  request.put<void>(`/hr/employees/contracts/${id}`, {
+    ...data,
+    attachmentUrls: normalizeJsonArray(normalizeStringArray(data.attachmentUrls).map((item) => getAttachmentRawValue(item))),
+  });
 export const deleteEmployeeContract = (id: number) =>
   request.delete<void>(`/hr/employees/contracts/${id}`);
 
@@ -1362,9 +1372,15 @@ export const getEmployeeDocument = async (id: number) => {
   return lists.flat().find((item) => item.id === id) as EmployeeDocument;
 };
 export const createEmployeeDocument = (data: EmployeeDocumentPayload) =>
-  request.post<number>('/hr/employees/documents', { ...data, attachmentUrls: normalizeJsonArray(data.attachmentUrls) });
+  request.post<number>('/hr/employees/documents', {
+    ...data,
+    attachmentUrls: normalizeJsonArray(normalizeStringArray(data.attachmentUrls).map((item) => getAttachmentRawValue(item))),
+  });
 export const updateEmployeeDocument = (id: number, data: Partial<EmployeeDocumentPayload>) =>
-  request.put<void>(`/hr/employees/documents/${id}`, { ...data, attachmentUrls: normalizeJsonArray(data.attachmentUrls) });
+  request.put<void>(`/hr/employees/documents/${id}`, {
+    ...data,
+    attachmentUrls: normalizeJsonArray(normalizeStringArray(data.attachmentUrls).map((item) => getAttachmentRawValue(item))),
+  });
 export const deleteEmployeeDocument = (id: number) =>
   request.delete<void>(`/hr/employees/documents/${id}`);
 

@@ -1,8 +1,9 @@
 package com.cloudflow.oa.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
-import java.time.LocalDateTime;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -172,6 +173,7 @@ public class WorkplaceSummaryDTO implements Serializable {
         private String title;
         private String content;
         private String operatorName;
+        @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
         private LocalDateTime eventTime;
         private String path;
     }

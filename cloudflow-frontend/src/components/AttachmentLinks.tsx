@@ -1,8 +1,9 @@
 import React from 'react';
 import { Paperclip } from 'lucide-react';
+import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 
 export const getAttachmentList = (attachmentUrl?: string) =>
-  attachmentUrl?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+  normalizeAttachmentUrls(attachmentUrl);
 
 interface AttachmentLinksProps {
   value?: string;
@@ -24,7 +25,7 @@ export const AttachmentLinks: React.FC<AttachmentLinksProps> = ({
   return (
     <div className={compact ? 'flex flex-wrap gap-1.5' : 'space-y-2'}>
       {attachments.map((url) => {
-        const label = decodeURIComponent(url.split('/').pop() || '附件');
+        const label = getAttachmentDisplayName(url);
         return (
           <a
             key={url}

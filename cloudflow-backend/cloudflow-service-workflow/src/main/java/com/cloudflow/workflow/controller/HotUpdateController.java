@@ -26,6 +26,12 @@ public class HotUpdateController {
         return R.ok(hotUpdateService.analyzeOrExecute(request));
     }
 
+    @PostMapping("/prepare")
+    @SaCheckRole("admin")
+    public R<HotUpdateResult> prepare(@RequestBody HotUpdateRequest request) {
+        return R.ok(hotUpdateService.prepareExecute(request));
+    }
+
     @PostMapping("/execute")
     @SaCheckRole("admin")
     public R<HotUpdateResult> execute(@RequestBody HotUpdateRequest request) {

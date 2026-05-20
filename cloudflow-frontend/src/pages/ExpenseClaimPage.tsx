@@ -9,6 +9,7 @@ import FileUpload from '@/components/FileUpload';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
@@ -118,7 +119,7 @@ const createDefaultForm = (): ExpenseClaim => ({
 });
 
 const getReceiptList = (receiptUrl?: string) =>
-  receiptUrl?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+  normalizeAttachmentUrls(receiptUrl);
 
 const InlineState: React.FC<{
   title: string;
@@ -996,7 +997,7 @@ export const ExpenseClaimPage: React.FC = () => {
                             {getReceiptList(item.receiptUrl).length ? (
                               <div className="flex flex-col gap-1.5">
                                 {getReceiptList(item.receiptUrl).map((url) => {
-                                  const label = decodeURIComponent(url.split('/').pop() || '凭证附件');
+                                  const label = getAttachmentDisplayName(url) || '凭证附件';
                                   return (
                                     <a
                                       key={url}

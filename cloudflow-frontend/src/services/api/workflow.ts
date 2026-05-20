@@ -1117,6 +1117,7 @@ export interface HotUpdateRequest {
   targetVersion?: number;
   migrationMode: 'COMPATIBLE' | 'FORCE' | 'RESTART';
   instanceIds?: string[];
+  confirmToken?: string;
   dryRun?: boolean;
 }
 
@@ -1139,6 +1140,8 @@ export interface HotUpdateResult {
   details: HotUpdateInstanceDetail[];
   fromVersion: number;
   toVersion: number;
+  confirmToken?: string;
+  confirmExpireSeconds?: number;
   message?: string;
 }
 
@@ -1158,6 +1161,10 @@ export interface HotUpdateRecord {
 
 export async function analyzeHotUpdate(data: HotUpdateRequest): Promise<HotUpdateResult> {
   return request.post('/workflow/hot-update/analyze', data);
+}
+
+export async function prepareHotUpdate(data: HotUpdateRequest): Promise<HotUpdateResult> {
+  return request.post('/workflow/hot-update/prepare', data);
 }
 
 export async function executeHotUpdate(data: HotUpdateRequest): Promise<HotUpdateResult> {
@@ -1243,6 +1250,7 @@ export default {
 
   // 流程热更新
   analyzeHotUpdate,
+  prepareHotUpdate,
   executeHotUpdate,
   getHotUpdateHistory,
 };

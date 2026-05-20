@@ -29,7 +29,6 @@
         <module>cloudflow-common-oss</module>
         <module>cloudflow-common-sse</module>
         <module>cloudflow-common-job</module>
-        <module>cloudflow-common-seata</module>
         <module>cloudflow-common-workflow-callback</module>
     </modules>
 

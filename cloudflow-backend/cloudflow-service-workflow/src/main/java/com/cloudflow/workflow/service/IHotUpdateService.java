@@ -10,5 +10,7 @@ public interface IHotUpdateService {
 
     HotUpdateResult analyzeOrExecute(HotUpdateRequest request);
 
+    HotUpdateResult prepareExecute(HotUpdateRequest request);
+
     List<WfHotUpdateRecord> getHistory(String processKey);
 }

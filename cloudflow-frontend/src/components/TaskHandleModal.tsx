@@ -22,6 +22,7 @@ import { Button, LoadingSpinner, SegmentedControl, SegmentedControlItem, Textare
 import { cn } from '@/utils/cn';
 import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAttachmentDisplayName, isAttachmentImage, normalizeAttachmentUrl } from '@/utils/attachment';
 import { DynamicFormViewer } from './DynamicFormViewer';
 import { ProcessTrace } from './ProcessTrace';
 import { SignatureModal } from './SignatureModal';
@@ -181,9 +182,10 @@ const extractAttachmentFiles = (formData?: Record<string, any>) => {
     .filter(Boolean)
     .map((url) => {
       const trimmed = url.trim();
-      const name = decodeURIComponent(trimmed.split('/').pop() || '附件');
-      const isImg = /\.(jpg|jpeg|png|gif|webp|bmp|svg)$/i.test(trimmed);
-      return { url: trimmed, name, isImg };
+      const normalizedUrl = normalizeAttachmentUrl(trimmed);
+      const name = getAttachmentDisplayName(trimmed);
+      const isImg = isAttachmentImage(trimmed);
+      return { url: normalizedUrl, name, isImg };
     });
 };
 

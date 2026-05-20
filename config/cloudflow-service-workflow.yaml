@@ -4,6 +4,10 @@
 # Group: DEFAULT_GROUP
 
 spring:
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
   # ==================== 多数据源配置（dynamic-datasource） ====================
   # 使用 @DS("数据源名") 注解在 Mapper 层切换数据源
   # 不加 @DS 注解的 Mapper 默认使用 primary 指定的数据源

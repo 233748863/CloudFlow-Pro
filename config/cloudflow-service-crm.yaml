@@ -3,6 +3,10 @@
 # Data ID: cloudflow-service-crm.yaml
 
 spring:
+  cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
   datasource:
     dynamic:
       primary: master

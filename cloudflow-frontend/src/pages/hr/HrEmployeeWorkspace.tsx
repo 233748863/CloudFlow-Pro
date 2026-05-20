@@ -56,6 +56,7 @@ import {
   updateEmployeeDocument,
 } from '@/services/api/hr';
 import { normalizeRows, toDateInputValue } from './hrShared';
+import { normalizeAttachmentUrls } from '@/utils/attachment';
 
 type WorkspaceTab = 'contracts' | 'documents' | 'contacts';
 type SaveKind = WorkspaceTab | null;
@@ -173,7 +174,7 @@ const textValue = (value?: string | number | null) =>
 type AttachmentValue = string[] | string | null | undefined;
 
 const splitAttachmentValue = (value?: string | null) =>
-  value?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+  normalizeAttachmentUrls(value);
 
 const mergeAttachmentValue = (attachmentUrls?: AttachmentValue) => {
   const normalizedUrls = new Set<string>();

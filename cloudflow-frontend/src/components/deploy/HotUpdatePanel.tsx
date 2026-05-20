@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import {
   analyzeHotUpdate,
+  prepareHotUpdate,
   executeHotUpdate,
   getHotUpdateHistory,
   type HotUpdateResult,
@@ -26,7 +27,7 @@ import {
 } from './hotUpdateUi';
 
 const shouldRequireConfirm = (result: HotUpdateResult | null) =>
-  Boolean(result && result.totalInstances > 0 && result.message?.includes('未执行'));
+  Boolean(result && result.totalInstances > 0);
 
 const SummaryMiniCard: React.FC<{
   label: string;
@@ -74,11 +75,18 @@ export const HotUpdatePanel: React.FC = () => {
   const [history, setHistory] = useState<HotUpdateRecord[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [confirmed, setConfirmed] = useState(false);
+  const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
   const modeMeta = useMemo(
     () => HOT_UPDATE_MODE_OPTIONS.find((item) => item.value === mode) || HOT_UPDATE_MODE_OPTIONS[0],
     [mode],
   );
+
+  const resetExecutionState = () => {
+    setResult(null);
+    setConfirmed(false);
+    setConfirmToken(null);
+  };
 
   const handleAnalyze = async () => {
     if (!processKey.trim()) {
@@ -87,9 +95,13 @@ export const HotUpdatePanel: React.FC = () => {
     }
     setLoading(true);
     setConfirmed(false);
+    setConfirmToken(null);
     try {
       const res = await analyzeHotUpdate({ processKey: processKey.trim(), migrationMode: mode });
       setResult(res);
+      if (res.totalInstances === 0) {
+        toast.info(res.message || '没有需要迁移的运行中实例');
+      }
     } catch (e: any) {
       toast.error(e.message || '分析失败');
     } finally {
@@ -97,17 +109,44 @@ export const HotUpdatePanel: React.FC = () => {
     }
   };
 
-  const handleExecute = async () => {
+  const handlePrepare = async () => {
+    if (!result) {
+      toast.error('请先完成影响分析');
+      return;
+    }
     if (!confirmed) {
       toast.error('请先勾选确认');
       return;
     }
     setLoading(true);
     try {
-      const res = await executeHotUpdate({ processKey: processKey.trim(), migrationMode: mode });
+      const res = await prepareHotUpdate({ processKey: processKey.trim(), migrationMode: mode });
+      setResult(res);
+      setConfirmToken(res.confirmToken || null);
+      if (res.confirmToken) {
+        toast.success(`已生成确认令牌，请在 ${res.confirmExpireSeconds || 30} 秒内执行热更新`);
+      } else {
+        toast.info(res.message || '没有需要执行的热更新');
+      }
+    } catch (e: any) {
+      toast.error(e.message || '生成确认令牌失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!confirmToken) {
+      toast.error('请先生成确认令牌');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await executeHotUpdate({ confirmToken, processKey: processKey.trim(), migrationMode: mode });
       setResult(res);
       toast.success(res.message || '热更新完成');
       setConfirmed(false);
+      setConfirmToken(null);
     } catch (e: any) {
       toast.error(e.message || '执行失败');
     } finally {
@@ -136,7 +175,7 @@ export const HotUpdatePanel: React.FC = () => {
     <div className="space-y-4">
       <PanelCard
         title="流程热更新"
-        description="将运行中实例迁移到最新流程版本。先分析影响，再执行迁移。"
+        description="先分析影响，再生成一次性确认令牌，最后执行迁移。"
         aside={(
           <div className="flex flex-wrap items-center gap-2">
             <Button
@@ -167,8 +206,7 @@ export const HotUpdatePanel: React.FC = () => {
                   value={processKey}
                   onChange={(event) => {
                     setProcessKey(event.target.value);
-                    setResult(null);
-                    setConfirmed(false);
+                    resetExecutionState();
                   }}
                   placeholder="如 purchase_request 或 leave_apply"
                 />
@@ -198,8 +236,7 @@ export const HotUpdatePanel: React.FC = () => {
                     type="button"
                     onClick={() => {
                       setMode(option.value);
-                      setResult(null);
-                      setConfirmed(false);
+                      resetExecutionState();
                     }}
                     className={[
                       'rounded-xl border px-4 py-3 text-left transition-all duration-200',
@@ -230,10 +267,19 @@ export const HotUpdatePanel: React.FC = () => {
                 分析影响
               </Button>
               <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrepare}
+                disabled={loading || !result || !confirmed || !!confirmToken}
+              >
+                {loading ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
+                生成确认令牌
+              </Button>
+              <Button
                 variant="warning"
                 size="sm"
                 onClick={handleExecute}
-                disabled={loading || !result || !confirmed}
+                disabled={loading || !confirmToken}
               >
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                 执行热更新
@@ -361,6 +407,11 @@ export const HotUpdatePanel: React.FC = () => {
                       </span>
                     </div>
                   ) : null}
+                  {confirmToken ? (
+                    <div className="mt-2 text-xs text-amber-700 dark:text-amber-200">
+                      已生成一次性确认令牌，请在 {result.confirmExpireSeconds || 30} 秒内执行热更新。
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="grid gap-3 sm:grid-cols-2">
@@ -399,7 +450,7 @@ export const HotUpdatePanel: React.FC = () => {
                       className="mt-1 h-4 w-4"
                     />
                     <span className="leading-6">
-                      我确认要执行热更新，了解此操作会影响 {result.totalInstances} 个运行中实例。
+                      我确认要执行热更新，了解此操作会影响 {result.totalInstances} 个运行中实例，并且必须使用一次性确认令牌执行。
                     </span>
                   </label>
                 ) : null}

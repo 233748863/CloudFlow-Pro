@@ -3,13 +3,12 @@ package com.cloudflow.oa.controller;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.oa.config.properties.OaProperties;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -20,6 +19,9 @@ public class SysAnnouncementController {
     @Autowired
     private ISysAnnouncementService announcementService;
 
+    @Autowired
+    private OaProperties oaProperties;
+
     /**
      * 获取我的公告列表
      */
@@ -27,6 +29,17 @@ public class SysAnnouncementController {
     @SaCheckPermission("oa:announcement:list")
     public R<List<SysAnnouncement>> getMyList() {
         return R.ok(announcementService.getMyAnnouncements(UserContext.getUserId()));
+    }
+
+    /**
+     * 获取匿名公开公告列表
+     */
+    @GetMapping("/public")
+    public R<List<SysAnnouncement>> getPublicList(@RequestParam(defaultValue = "20") Integer limit) {
+        if (!Boolean.TRUE.equals(oaProperties.getAnnouncement().getAllowAnonymousRead())) {
+            return R.fail("当前租户未开放匿名公告访问");
+        }
+        return R.ok(announcementService.getPublicAnnouncements(limit));
     }
 
     /**

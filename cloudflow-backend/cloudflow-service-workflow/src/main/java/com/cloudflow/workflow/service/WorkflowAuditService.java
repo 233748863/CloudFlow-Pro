@@ -64,7 +64,9 @@ public class WorkflowAuditService {
         PROCESS_TERMINATE("流程终止"),
         AUTO_APPROVE("自动审批"),
         IGNORE_PERMISSION("忽略权限"),
-        
+        HOT_UPDATE_PREPARE("热更新预确认"),
+        HOT_UPDATE_EXECUTE("热更新执行"),
+
         // 权限操作
         PERMISSION_DENIED("权限拒绝"),
         RATE_LIMIT_HIT("限流触发");

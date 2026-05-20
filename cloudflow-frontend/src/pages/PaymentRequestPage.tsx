@@ -9,6 +9,7 @@ import FileUpload from '@/components/FileUpload';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
@@ -148,7 +149,7 @@ const getPaymentTypeLabel = (paymentType?: string) =>
   PAYMENT_TYPE_LABELS[paymentType as keyof typeof PAYMENT_TYPE_LABELS] || paymentType || '-';
 
 const getAttachmentList = (attachmentUrl?: string) =>
-  attachmentUrl?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+  normalizeAttachmentUrls(attachmentUrl);
 
 export const PaymentRequestPage: React.FC = () => {
   const { hasPermission } = useAuth();
@@ -896,7 +897,7 @@ export const PaymentRequestPage: React.FC = () => {
               {getAttachmentList(detailPayment.attachmentUrl).length ? (
                 <div className="space-y-2">
                   {getAttachmentList(detailPayment.attachmentUrl).map((url) => {
-                    const label = url.split('/').pop() || '附件';
+                    const label = getAttachmentDisplayName(url);
                     return (
                       <a
                         key={url}

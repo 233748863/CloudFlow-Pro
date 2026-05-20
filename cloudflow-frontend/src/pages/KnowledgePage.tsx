@@ -58,6 +58,7 @@ import {
 } from '@/services/api/knowledge';
 import { renderAnnouncementHtml } from '@/utils/announcementContent';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
+import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 
 type ViewMode = 'library' | 'mine' | 'manage';
 
@@ -135,14 +136,14 @@ const StatusBadge: React.FC<{ status?: string }> = ({ status }) => {
 };
 
 const AttachmentLinks: React.FC<{ value?: string }> = ({ value }) => {
-  const files = value?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+  const files = normalizeAttachmentUrls(value);
   if (!files.length) {
     return <span className="text-sm text-slate-400">无附件</span>;
   }
   return (
     <div className="flex flex-wrap gap-2">
       {files.map((url) => {
-        const label = decodeURIComponent(url.split('/').pop() || '附件');
+        const label = getAttachmentDisplayName(url);
         return (
           <a
             key={url}

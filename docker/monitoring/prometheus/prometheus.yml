@@ -19,6 +19,9 @@ scrape_configs:
   # 采集网关指标，用于观察整体入口流量和错误趋势。
   - job_name: cloudflow-gateway
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/scrape.password
     static_configs:
       - targets:
           - gateway:9100
@@ -28,6 +31,9 @@ scrape_configs:
   # 采集认证服务指标，用于观察租户、登录、用户治理相关运行状态。
   - job_name: cloudflow-auth
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/scrape.password
     static_configs:
       - targets:
           - auth:9101
@@ -37,6 +43,9 @@ scrape_configs:
   # 采集工作流服务指标，用于观察流程引擎与异步执行压力。
   - job_name: cloudflow-workflow
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/scrape.password
     static_configs:
       - targets:
           - workflow:9102
@@ -46,6 +55,9 @@ scrape_configs:
   # 采集 OA 服务指标，用于观察日常业务模块运行情况。
   - job_name: cloudflow-service-oa
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/scrape.password
     static_configs:
       - targets:
           - oa:9103
@@ -55,6 +67,9 @@ scrape_configs:
   # 采集 CRM 服务指标，用于观察客户、商机、报价与回款模块运行情况。
   - job_name: cloudflow-crm
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/scrape.password
     static_configs:
       - targets:
           - crm:9104
@@ -64,6 +79,9 @@ scrape_configs:
   # 采集 HR 服务指标，用于观察人力资源模块运行状态。
   - job_name: cloudflow-hr
     metrics_path: /actuator/prometheus
+    basic_auth:
+      username: prometheus
+      password_file: /etc/prometheus/scrape.password
     static_configs:
       - targets:
           - hr:9105

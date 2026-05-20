@@ -198,7 +198,7 @@ export const VehicleBooking: React.FC = () => {
     formData.startTime && formData.endTime && formData.destination && formData.reason,
   );
   const attachmentCount = formData.attachmentUrl
-    ? formData.attachmentUrl.split(',').filter(Boolean).length
+    ? formData.attachmentUrl.split(',').map((item) => item.trim()).filter(Boolean).length
     : 0;
   const updatePassengers = useCallback((selectedUsers: UserBrief[]) => {
     setFormData((current) => ({

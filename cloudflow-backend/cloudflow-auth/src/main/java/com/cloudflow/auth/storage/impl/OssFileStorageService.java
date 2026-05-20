@@ -67,7 +67,7 @@ public class OssFileStorageService implements FileStorageService {
         return client.getUrl() + "/" + filePath;
     }
 
-    private OssClient getClient() {
+    public OssClient getClient() {
         if (!Boolean.TRUE.equals(authOssProperties.getEnabled())) {
             throw new IllegalStateException("OSS 存储未启用，请先开启 cloudflow.oss.enabled 配置");
         }

@@ -19,6 +19,7 @@ import { ProcessTrace } from '@/components/ProcessTrace';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { buildExcelFileName, downloadBlob } from '@/utils/download';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
@@ -454,7 +455,7 @@ export const BusinessTripPage: React.FC = () => {
   };
 
   const getAttachmentList = (attachmentUrl?: string) =>
-    attachmentUrl?.split(',').map((item) => item.trim()).filter(Boolean) ?? [];
+    normalizeAttachmentUrls(attachmentUrl);
 
   const renderDetailValue = (value?: string | number | null) => {
     if (value === null || value === undefined || value === '') {
@@ -979,7 +980,7 @@ export const BusinessTripPage: React.FC = () => {
               {getAttachmentList(detailTrip.attachmentUrl).length ? (
                 <div className="space-y-2">
                   {getAttachmentList(detailTrip.attachmentUrl).map((url) => {
-                    const label = url.split('/').pop() || '附件';
+                    const label = getAttachmentDisplayName(url);
                     return (
                       <a
                         key={url}

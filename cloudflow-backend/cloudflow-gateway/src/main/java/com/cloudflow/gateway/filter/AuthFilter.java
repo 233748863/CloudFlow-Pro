@@ -1,5 +1,6 @@
 package com.cloudflow.gateway.filter;
 
+import com.cloudflow.common.core.constant.SecurityConstants;
 import com.cloudflow.common.security.core.TokenService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -12,6 +13,7 @@ import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
@@ -43,6 +45,8 @@ public class AuthFilter implements GlobalFilter, Ordered {
             "/auth/register",
             "/auth/tenant/options",
             "/auth/captcha/**",
+            "/oa/announcement/public",
+            "/oa/announcement/public/**",
             "/ws/**"
     );
 
@@ -77,6 +81,12 @@ public class AuthFilter implements GlobalFilter, Ordered {
                     headers.remove("X-User-Roles");
                     headers.remove("X-User-Dept-Name");
                     headers.remove("X-User-Tenant-Id");
+                    String tenantId = resolveTenantId(loginUser);
+                    if (tenantId != null) {
+                        headers.set(SecurityConstants.TENANT_ID_HEADER, tenantId);
+                    } else {
+                        headers.remove(SecurityConstants.TENANT_ID_HEADER);
+                    }
                 })
                 .build();
 
@@ -120,6 +130,18 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return token.substring("Bearer ".length());
         }
         return token;
+    }
+
+    private String resolveTenantId(Map<String, Object> loginUser) {
+        if (loginUser == null) {
+            return null;
+        }
+        Object tenantId = loginUser.get("tenantId");
+        if (tenantId == null) {
+            return null;
+        }
+        String value = String.valueOf(tenantId).trim();
+        return StringUtils.hasText(value) ? value : null;
     }
 
     @Override

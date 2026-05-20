@@ -13,13 +13,10 @@ spring:
     name: cloudflow-service-workflow
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  config:
-    import:
-      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml?refresh=true
-      - optional:nacos:cloudflow-common-${spring.profiles.active}.yaml?refresh=true
-      - optional:nacos:${spring.application.name}.yaml?refresh=true
-      - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
     nacos:
       server-addr: ${NACOS_SERVER:127.0.0.1:8848}
       username: ${NACOS_USERNAME:}
@@ -29,6 +26,12 @@ spring:
         file-extension: yaml
       discovery:
         namespace: ${NACOS_NAMESPACE:cloudflow-${spring.profiles.active}}
+  config:
+    import:
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml?refresh=true
+      - optional:nacos:cloudflow-common-${spring.profiles.active}.yaml?refresh=true
+      - optional:nacos:${spring.application.name}.yaml?refresh=true
+      - optional:nacos:cloudflow-common.yaml?refresh=true
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: ${DB_URL}

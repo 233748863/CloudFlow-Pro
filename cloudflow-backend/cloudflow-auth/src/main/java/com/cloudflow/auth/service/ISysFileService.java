@@ -3,6 +3,7 @@ package com.cloudflow.auth.service;
 import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.web.multipart.MultipartFile;
 
 public interface ISysFileService {
@@ -20,4 +21,9 @@ public interface ISysFileService {
      * 删除文件
      */
     void deleteFileByIds(Long[] fileIds);
+
+    /**
+     * 访问文件
+     */
+    void accessFile(String reference, HttpServletResponse response);
 }

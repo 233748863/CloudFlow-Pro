@@ -3,12 +3,14 @@ import { Upload, X, FileText, Image as ImageIcon, Loader2, Paperclip } from 'luc
 import { uploadFile } from '../services/api/file';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAttachmentDisplayName, getAttachmentRawValue, isAttachmentImage } from '@/utils/attachment';
 import { useConfigInt, useConfigValue } from '../hooks/useSystemConfig';
 import { SYS_UPLOAD_MAX_FILE_SIZE, SYS_UPLOAD_ALLOWED_TYPES } from '../constants/sysConfig';
 
 /** 已上传文件信息 */
 interface UploadedFile {
   url: string;
+  raw: string;
   name: string;
 }
 
@@ -57,14 +59,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   // 解析当前已上传的文件列表
   const fileList: UploadedFile[] = value
-    ? value.split(',').filter(Boolean).map(url => ({
-        url: url.trim(),
-        name: url.trim().split('/').pop() || '附件',
-      }))
+    ? value.split(',').filter(Boolean).map((item) => {
+        const raw = item.trim();
+        return {
+          url: raw,
+          raw,
+          name: getAttachmentDisplayName(raw),
+        };
+      })
     : [];
-
-  // 判断文件是否为图片
-  const isImage = (url: string) => /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url);
 
   // 上传文件处理
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -88,14 +91,13 @@ export const FileUpload: React.FC<FileUploadProps> = ({
           continue;
         }
         const res: any = await uploadFile(file);
-        // 后端返回的文件URL，兼容不同返回格式
-        const url = res?.url || res?.data?.url || res?.filePath || res;
-        if (url) {
-          newUrls.push(typeof url === 'string' ? url : String(url));
+        const path = res?.filePath || res?.data?.filePath || res?.path;
+        if (path) {
+          newUrls.push(typeof path === 'string' ? path : String(path));
         }
       }
       if (newUrls.length > 0) {
-        const allUrls = [...fileList.map(f => f.url), ...newUrls];
+        const allUrls = [...fileList.map((f) => f.raw), ...newUrls];
         onChange(allUrls.join(','));
         toast.success(`成功上传 ${newUrls.length} 个文件`);
       }
@@ -111,7 +113,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   // 删除文件
   const handleRemove = (index: number) => {
     const newList = fileList.filter((_, i) => i !== index);
-    onChange(newList.map(f => f.url).join(','));
+    onChange(newList.map((f) => f.raw).join(','));
   };
 
   return (
@@ -130,7 +132,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               ].join(' ')}
             >
               {/* 文件图标 */}
-              {isImage(file.url) ? (
+              {isAttachmentImage(file.raw) ? (
                 <ImageIcon size={16} className="text-cyan-500 flex-shrink-0" />
               ) : (
                 <FileText size={16} className="text-slate-500 flex-shrink-0" />

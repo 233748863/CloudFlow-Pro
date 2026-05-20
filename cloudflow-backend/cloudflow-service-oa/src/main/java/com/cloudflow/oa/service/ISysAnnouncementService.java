@@ -11,6 +11,11 @@ public interface ISysAnnouncementService extends IService<SysAnnouncement> {
      * 获取我的公告列表
      */
     List<SysAnnouncement> getMyAnnouncements(Long userId);
+
+    /**
+     * 获取匿名公开公告列表
+     */
+    List<SysAnnouncement> getPublicAnnouncements(Integer limit);
     
     /**
      * 标记已读

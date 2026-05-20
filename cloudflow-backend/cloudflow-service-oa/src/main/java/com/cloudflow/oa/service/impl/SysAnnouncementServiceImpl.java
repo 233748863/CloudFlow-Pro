@@ -28,16 +28,29 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
 
     @Override
     public List<SysAnnouncement> getMyAnnouncements(Long userId) {
-        // 1. 获取部门ID，默认为 -1 (表示无部门)
         String deptId = String.valueOf(UserContext.getDeptId() != null ? UserContext.getDeptId() : -1L);
-        
-        // 2. 获取所有角色ID
         Set<String> roleIds = UserContext.getRoles();
         if (roleIds == null) {
             roleIds = new HashSet<>();
         }
-        
         return baseMapper.getMyAnnouncements(userId, deptId, roleIds);
+    }
+
+    @Override
+    public List<SysAnnouncement> getPublicAnnouncements(Integer limit) {
+        int pageSize = limit == null ? 20 : Math.min(Math.max(limit, 1), 50);
+        Page<SysAnnouncement> pageParam = new Page<>(1, pageSize, false);
+        LambdaQueryWrapper<SysAnnouncement> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(SysAnnouncement::getDeleted, 0)
+                .eq(SysAnnouncement::getStatus, "1")
+                .eq(SysAnnouncement::getScopeType, "ALL")
+                .and(w -> w.isNull(SysAnnouncement::getExpireTime)
+                        .or()
+                        .gt(SysAnnouncement::getExpireTime, LocalDateTime.now()))
+                .orderByDesc(SysAnnouncement::getIsTop, SysAnnouncement::getCreateTime);
+        List<SysAnnouncement> records = page(pageParam, wrapper).getRecords();
+        records.forEach(item -> item.setIsRead(Boolean.FALSE));
+        return records;
     }
 
     @Override

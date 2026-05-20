@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import {
   analyzeHotUpdate,
+  prepareHotUpdate,
   executeHotUpdate,
   getHotUpdateHistory,
   type HotUpdateResult,
@@ -37,7 +38,7 @@ interface HotUpdateDialogProps {
 }
 
 const shouldRequireConfirm = (result: HotUpdateResult | null) =>
-  Boolean(result && result.totalInstances > 0 && result.message?.includes('未执行'));
+  Boolean(result && result.totalInstances > 0);
 
 export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
   open,
@@ -52,6 +53,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
   const [history, setHistory] = useState<HotUpdateRecord[]>([]);
   const [activeTab, setActiveTab] = useState<'execute' | 'history'>('execute');
   const [confirmed, setConfirmed] = useState(false);
+  const [confirmToken, setConfirmToken] = useState<string | null>(null);
 
   const modeMeta = useMemo(
     () => HOT_UPDATE_MODE_OPTIONS.find((item) => item.value === mode) || HOT_UPDATE_MODE_OPTIONS[0],
@@ -60,12 +62,22 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
 
   if (!open) return null;
 
+  const resetExecutionState = () => {
+    setResult(null);
+    setConfirmed(false);
+    setConfirmToken(null);
+  };
+
   const handleAnalyze = async () => {
     setLoading(true);
+    setConfirmed(false);
+    setConfirmToken(null);
     try {
       const res = await analyzeHotUpdate({ processKey, migrationMode: mode });
       setResult(res);
-      setConfirmed(false);
+      if (res.totalInstances === 0) {
+        toast.info(res.message || '没有需要迁移的运行中实例');
+      }
     } catch (e: any) {
       toast.error(e.message || '分析失败');
     } finally {
@@ -73,15 +85,43 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
     }
   };
 
-  const handleExecute = async () => {
+  const handlePrepare = async () => {
+    if (!result) {
+      toast.error('请先完成影响分析');
+      return;
+    }
     if (!confirmed) {
       toast.error('请先确认执行');
       return;
     }
     setLoading(true);
     try {
-      const res = await executeHotUpdate({ processKey, migrationMode: mode });
+      const res = await prepareHotUpdate({ processKey, migrationMode: mode });
       setResult(res);
+      setConfirmToken(res.confirmToken || null);
+      if (res.confirmToken) {
+        toast.success(`已生成确认令牌，请在 ${res.confirmExpireSeconds || 30} 秒内执行热更新`);
+      } else {
+        toast.info(res.message || '没有需要执行的热更新');
+      }
+    } catch (e: any) {
+      toast.error(e.message || '生成确认令牌失败');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleExecute = async () => {
+    if (!confirmToken) {
+      toast.error('请先生成确认令牌');
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await executeHotUpdate({ confirmToken, processKey, migrationMode: mode });
+      setResult(res);
+      setConfirmed(false);
+      setConfirmToken(null);
       toast.success(res.message || '热更新完成');
     } catch (e: any) {
       toast.error(e.message || '执行失败');
@@ -164,8 +204,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                     type="button"
                     onClick={() => {
                       setMode(option.value);
-                      setResult(null);
-                      setConfirmed(false);
+                      resetExecutionState();
                     }}
                     className={[
                       'w-full rounded-2xl border p-4 text-left transition-all duration-200',
@@ -197,7 +236,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
               description={
                 result
                   ? result.message || '分析完成'
-                  : '先分析影响，再执行热更新。'
+                  : '先分析影响，再生成确认令牌并执行热更新。'
               }
               bodyClassName="space-y-4"
               headerAside={(
@@ -207,10 +246,19 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                     分析影响
                   </Button>
                   <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrepare}
+                    disabled={loading || !result || !confirmed || !!confirmToken}
+                  >
+                    {loading ? <Loader2 size={14} className="animate-spin" /> : <AlertTriangle size={14} />}
+                    生成确认令牌
+                  </Button>
+                  <Button
                     variant="warning"
                     size="sm"
                     onClick={handleExecute}
-                    disabled={loading || !result || !confirmed}
+                    disabled={loading || !confirmToken}
                   >
                     {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                     执行热更新
@@ -239,6 +287,11 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                     {result.fromVersion > 0 ? (
                       <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">
                         版本迁移：V{result.fromVersion} {'->'} V{result.toVersion}
+                      </div>
+                    ) : null}
+                    {confirmToken ? (
+                      <div className="mt-2 text-xs text-amber-700 dark:text-amber-200">
+                        已生成一次性确认令牌，请在 {result.confirmExpireSeconds || 30} 秒内执行热更新。
                       </div>
                     ) : null}
                   </div>
@@ -305,7 +358,7 @@ export const HotUpdateDialog: React.FC<HotUpdateDialogProps> = ({
                         className="mt-1 h-4 w-4"
                       />
                       <span className="leading-6">
-                        我确认要执行热更新，了解此操作会影响 {result.totalInstances} 个运行中实例。
+                        我确认要执行热更新，了解此操作会影响 {result.totalInstances} 个运行中实例，并且必须使用一次性确认令牌执行。
                       </span>
                     </label>
                   ) : null}

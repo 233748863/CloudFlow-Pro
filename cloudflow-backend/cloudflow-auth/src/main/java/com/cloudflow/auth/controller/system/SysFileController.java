@@ -4,11 +4,13 @@ import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
 import com.cloudflow.auth.service.ISysFileService;
 import com.cloudflow.auth.service.SysTenantService;
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -38,6 +40,12 @@ public class SysFileController {
     @SaCheckPermission("system:file:list")
     public R<PageResult<SysFile>> list(SysFile sysFile, PageQuery pageQuery) {
         return R.ok(sysFileService.selectFileList(sysFile, pageQuery));
+    }
+
+    @GetMapping("/access")
+    @SaCheckLogin
+    public void access(@RequestParam("path") String path, HttpServletResponse response) {
+        sysFileService.accessFile(path, response);
     }
 
     @GetMapping("/storage/summary")

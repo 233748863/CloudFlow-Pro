@@ -6,13 +6,10 @@ spring:
     name: cloudflow-service-crm
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
-  config:
-    import:
-      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml?refresh=true
-      - optional:nacos:cloudflow-common-${spring.profiles.active}.yaml?refresh=true
-      - optional:nacos:${spring.application.name}.yaml?refresh=true
-      - optional:nacos:cloudflow-common.yaml?refresh=true
   cloud:
+    openfeign:
+      circuitbreaker:
+        enabled: true
     nacos:
       server-addr: ${NACOS_SERVER:127.0.0.1:8848}
       username: ${NACOS_USERNAME:}
@@ -25,6 +22,12 @@ spring:
         namespace: ${NACOS_NAMESPACE:cloudflow-${spring.profiles.active}}
         enabled: true
         register-enabled: true
+  config:
+    import:
+      - optional:nacos:${spring.application.name}-${spring.profiles.active}.yaml?refresh=true
+      - optional:nacos:cloudflow-common-${spring.profiles.active}.yaml?refresh=true
+      - optional:nacos:${spring.application.name}.yaml?refresh=true
+      - optional:nacos:cloudflow-common.yaml?refresh=true
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -87,8 +90,6 @@ feign:
         connect-timeout: 5000
         read-timeout: 10000
         logger-level: BASIC
-  circuitbreaker:
-    enabled: true
 
 management:
   server:

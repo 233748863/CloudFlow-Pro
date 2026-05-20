@@ -1,9 +1,11 @@
 package com.cloudflow.auth.service.impl;
 
 import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.net.URLDecoder;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.cloudflow.auth.config.properties.AuthOssProperties;
 import com.cloudflow.auth.config.properties.FileUploadProperties;
 import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.enums.FileStorageType;
@@ -12,16 +14,25 @@ import com.cloudflow.auth.service.ISysFileService;
 import com.cloudflow.auth.service.SysTenantService;
 import com.cloudflow.auth.storage.FileStorageRegistry;
 import com.cloudflow.auth.storage.FileStorageService;
+import com.cloudflow.auth.storage.impl.OssFileStorageService;
 import com.cloudflow.auth.storage.model.StoredFileInfo;
+import com.cloudflow.common.config.CloudFlowConfig;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.file.FileUploadUtils;
+import com.cloudflow.common.oss.core.OssClient;
+import com.cloudflow.common.oss.enums.AccessPolicyType;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -30,10 +41,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysFileServiceImpl implements ISysFileService {
 
+    private static final String FILE_ACCESS_PATH = "/api/auth/system/file/access?path=";
+
     private final SysFileMapper sysFileMapper;
     private final SysTenantService sysTenantService;
     private final FileStorageRegistry storageRegistry;
     private final FileUploadProperties fileUploadProperties;
+    private final AuthOssProperties authOssProperties;
 
     @Override
     public SysFile uploadFile(MultipartFile file) {
@@ -128,6 +142,17 @@ public class SysFileServiceImpl implements ISysFileService {
         }
     }
 
+    @Override
+    public void accessFile(String reference, HttpServletResponse response) {
+        SysFile sysFile = requireAccessibleFile(reference);
+        FileStorageType storageType = storageRegistry.resolveType(sysFile.getStorageType());
+        if (storageType == FileStorageType.LOCAL) {
+            writeLocalFile(sysFile, response);
+            return;
+        }
+        redirectToRemoteFile(sysFile, response);
+    }
+
     private void fillAccessibleUrl(List<SysFile> files) {
         for (SysFile file : files) {
             fillAccessibleUrl(file);
@@ -140,14 +165,168 @@ public class SysFileServiceImpl implements ISysFileService {
         }
         FileStorageType storageType = storageRegistry.resolveType(file.getStorageType());
         file.setStorageType(storageType.name());
-        try {
-            FileStorageService storageService = storageRegistry.getService(storageType);
-            String accessibleUrl = storageService.resolveUrl(file.getFilePath());
-            if (StrUtil.isNotBlank(accessibleUrl)) {
-                file.setUrl(accessibleUrl);
-            }
-        } catch (Exception ex) {
-            log.warn("解析文件访问地址失败: fileId={}, storageType={}, reason={}", file.getFileId(), storageType.name(), ex.getMessage());
+        if (StrUtil.isBlank(file.getFileName())) {
+            file.setFileName(extractFileName(file.getFilePath()));
         }
+        String normalizedPath = normalizeFileReference(file.getUrl(), file.getFilePath());
+        file.setFilePath(normalizedPath);
+        file.setUrl(buildAccessUrl(normalizedPath));
+    }
+
+    private SysFile requireAccessibleFile(String reference) {
+        String normalizedPath = normalizeReference(reference);
+        if (StrUtil.isBlank(normalizedPath)) {
+            throw new IllegalArgumentException("文件标识不能为空");
+        }
+        SysFile sysFile = sysFileMapper.selectOne(new LambdaQueryWrapper<SysFile>()
+                .eq(SysFile::getDeleted, 0)
+                .eq(SysFile::getFilePath, normalizedPath)
+                .last("limit 1"));
+        if (sysFile == null) {
+            String normalizedUrl = removeQuery(normalizedPath);
+            sysFile = sysFileMapper.selectOne(new LambdaQueryWrapper<SysFile>()
+                    .eq(SysFile::getDeleted, 0)
+                    .eq(SysFile::getUrl, normalizedUrl)
+                    .last("limit 1"));
+        }
+        if (sysFile == null) {
+            throw new IllegalArgumentException("文件不存在");
+        }
+        Long currentTenantId = UserContext.getTenantId();
+        if (currentTenantId != null && sysFile.getTenantId() != null && !currentTenantId.equals(sysFile.getTenantId())) {
+            throw new IllegalArgumentException("无权访问该文件");
+        }
+        sysFile.setFilePath(normalizeFileReference(sysFile.getUrl(), sysFile.getFilePath()));
+        return sysFile;
+    }
+
+    private void redirectToRemoteFile(SysFile sysFile, HttpServletResponse response) {
+        try {
+            OssClient client = buildOssClient();
+            String targetUrl;
+            if (client.getAccessPolicy() == AccessPolicyType.PRIVATE) {
+                targetUrl = client.getPresignedUrl(sysFile.getFilePath(), java.time.Duration.ofMinutes(30));
+            } else {
+                targetUrl = client.getUrl() + "/" + sysFile.getFilePath();
+            }
+            response.sendRedirect(targetUrl);
+        } catch (IOException ex) {
+            throw new RuntimeException("文件跳转失败", ex);
+        }
+    }
+
+    private void writeLocalFile(SysFile sysFile, HttpServletResponse response) {
+        String relativePath = StrUtil.removePrefix(sysFile.getFilePath(), "/");
+        File file = FileUtil.file(CloudFlowConfig.getProfile(), relativePath);
+        if (!file.exists() || !file.isFile()) {
+            throw new IllegalArgumentException("文件不存在");
+        }
+        String fileName = StrUtil.blankToDefault(sysFile.getFileName(), extractFileName(sysFile.getFilePath()));
+        try {
+            response.setContentType(resolveContentType(file, fileName));
+            response.setHeader("Content-Disposition", "inline; filename*=UTF-8''" + URLEncoder.encode(fileName, StandardCharsets.UTF_8));
+            response.setContentLengthLong(file.length());
+            java.nio.file.Files.copy(file.toPath(), response.getOutputStream());
+            response.flushBuffer();
+        } catch (IOException ex) {
+            throw new RuntimeException("文件读取失败", ex);
+        }
+    }
+
+    private String buildAccessUrl(String filePath) {
+        return FILE_ACCESS_PATH + URLEncoder.encode(filePath, StandardCharsets.UTF_8);
+    }
+
+    private String normalizeReference(String reference) {
+        String normalized = StrUtil.blankToDefault(reference, "").trim();
+        if (StrUtil.isBlank(normalized)) {
+            return "";
+        }
+        if (normalized.startsWith(FILE_ACCESS_PATH)) {
+            normalized = StrUtil.removePrefix(normalized, FILE_ACCESS_PATH);
+        }
+        if (normalized.contains("/system/file/access?path=")) {
+            normalized = StrUtil.subAfter(normalized, "path=", true);
+        }
+        normalized = URLDecoder.decode(normalized, StandardCharsets.UTF_8);
+        return normalizeFileReference(normalized, normalized);
+    }
+
+    private String normalizeFileReference(String preferredValue, String fallbackValue) {
+        String candidate = StrUtil.blankToDefault(preferredValue, StrUtil.blankToDefault(fallbackValue, "")).trim();
+        if (StrUtil.isBlank(candidate)) {
+            return "";
+        }
+        if (candidate.contains("/system/file/access?path=")) {
+            return normalizeReference(candidate);
+        }
+        if (candidate.startsWith("/upload/")) {
+            return removeQuery(candidate);
+        }
+        if (candidate.startsWith("http://") || candidate.startsWith("https://")) {
+            String candidateWithoutQuery = removeQuery(candidate);
+            String ossBaseUrl = getOssBaseUrl();
+            if (StrUtil.isNotBlank(ossBaseUrl) && candidateWithoutQuery.startsWith(ossBaseUrl + "/")) {
+                return candidateWithoutQuery.substring((ossBaseUrl + "/").length());
+            }
+            if (StrUtil.isNotBlank(fallbackValue) && !candidate.equals(fallbackValue)) {
+                return normalizeFileReference(fallbackValue, "");
+            }
+            return candidateWithoutQuery;
+        }
+        return removeQuery(candidate);
+    }
+
+    private String removeQuery(String value) {
+        String normalized = StrUtil.blankToDefault(value, "");
+        int queryIndex = normalized.indexOf('?');
+        if (queryIndex >= 0) {
+            normalized = normalized.substring(0, queryIndex);
+        }
+        int fragmentIndex = normalized.indexOf('#');
+        if (fragmentIndex >= 0) {
+            normalized = normalized.substring(0, fragmentIndex);
+        }
+        return normalized;
+    }
+
+    private String getOssBaseUrl() {
+        if (!Boolean.TRUE.equals(authOssProperties.getEnabled())) {
+            return "";
+        }
+        try {
+            return buildOssClient().getUrl();
+        } catch (Exception ex) {
+            log.warn("解析 OSS 基础地址失败: {}", ex.getMessage());
+            return "";
+        }
+    }
+
+    private OssClient buildOssClient() {
+        return ((OssFileStorageService) storageRegistry.getService(FileStorageType.OSS)).getClient();
+    }
+
+    private String resolveContentType(File file, String fileName) {
+        try {
+            String contentType = java.nio.file.Files.probeContentType(file.toPath());
+            if (StrUtil.isNotBlank(contentType)) {
+                return contentType;
+            }
+        } catch (IOException ignored) {
+        }
+        String contentType = java.net.URLConnection.guessContentTypeFromName(fileName);
+        return StrUtil.blankToDefault(contentType, "application/octet-stream");
+    }
+
+    private String extractFileName(String filePath) {
+        String normalized = StrUtil.blankToDefault(filePath, "");
+        String fileName = StrUtil.subAfter(normalized, '/', true);
+        fileName = StrUtil.blankToDefault(fileName, normalized);
+        int underscoreIndex = fileName.lastIndexOf('_');
+        int dotIndex = fileName.lastIndexOf('.');
+        if (underscoreIndex > 0 && dotIndex > underscoreIndex) {
+            return fileName.substring(0, underscoreIndex) + fileName.substring(dotIndex);
+        }
+        return fileName;
     }
 }

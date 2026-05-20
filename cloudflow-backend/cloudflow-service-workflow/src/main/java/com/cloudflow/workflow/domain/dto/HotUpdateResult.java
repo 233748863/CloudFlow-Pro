@@ -14,5 +14,7 @@ public class HotUpdateResult {
     private List<HotUpdateInstanceDetail> details = new ArrayList<>();
     private int fromVersion;
     private int toVersion;
+    private String confirmToken;
+    private Integer confirmExpireSeconds;
     private String message;
 }

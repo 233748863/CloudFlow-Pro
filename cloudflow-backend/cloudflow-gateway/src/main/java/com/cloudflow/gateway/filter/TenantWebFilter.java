@@ -1,9 +1,12 @@
 package com.cloudflow.gateway.filter;
 
+import com.cloudflow.common.core.constant.SecurityConstants;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.Ordered;
+import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebFilter;
 import org.springframework.web.server.WebFilterChain;
@@ -18,8 +21,6 @@ import reactor.core.publisher.Mono;
 @Slf4j
 @Component
 public class TenantWebFilter implements WebFilter, Ordered {
-    
-    private static final String TENANT_HEADER = "X-Tenant-Id";
 
     /** 默认租户ID，从配置文件读取，未配置时使用 100000 */
     @Value("${cloudflow.tenant.default-tenant-id:100000}")
@@ -27,20 +28,20 @@ public class TenantWebFilter implements WebFilter, Ordered {
     
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
-        // 从请求头获取租户ID
-        String tenantId = exchange.getRequest().getHeaders().getFirst(TENANT_HEADER);
-        
-        if (tenantId != null && !tenantId.isEmpty()) {
-            log.debug("从请求头获取租户ID: {}", tenantId);
-            // 将租户ID添加到响应式上下文中，供下游使用
-            return chain.filter(exchange)
-                .contextWrite(ctx -> ctx.put("tenantId", tenantId));
+        String resolvedTenantId = exchange.getRequest().getHeaders().getFirst(SecurityConstants.TENANT_ID_HEADER);
+        if (!StringUtils.hasText(resolvedTenantId)) {
+            resolvedTenantId = defaultTenantId;
+            log.debug("未找到租户ID，使用默认值: {}", resolvedTenantId);
         } else {
-            // 使用默认租户ID
-            log.debug("未找到租户ID，使用默认值: {}", defaultTenantId);
-            return chain.filter(exchange)
-                .contextWrite(ctx -> ctx.put("tenantId", defaultTenantId));
+            log.debug("从请求头获取租户ID: {}", resolvedTenantId);
         }
+
+        final String tenantId = resolvedTenantId;
+        ServerHttpRequest request = exchange.getRequest().mutate()
+                .headers(headers -> headers.set(SecurityConstants.TENANT_ID_HEADER, tenantId))
+                .build();
+        return chain.filter(exchange.mutate().request(request).build())
+                .contextWrite(ctx -> ctx.put("tenantId", tenantId));
     }
     
     @Override

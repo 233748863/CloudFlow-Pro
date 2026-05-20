@@ -9,5 +9,6 @@ public class HotUpdateRequest {
     private Integer targetVersion;
     private String migrationMode; // COMPATIBLE / FORCE / RESTART
     private List<String> instanceIds;
+    private String confirmToken;
     private boolean dryRun;
 }

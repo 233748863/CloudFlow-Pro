@@ -69,6 +69,7 @@ import {
 import { getMeetingRooms } from '@/services/api/schedule';
 import { MeetingRoom } from '@/types';
 import { enumLabel, formatDateValue, formatDateTimeValue, formatMoneyValue, optionLabel, optionOrIdLabel } from './hrShared';
+import { getAttachmentRawValue } from '@/utils/attachment';
 
 type RecruitmentTab = 'request' | 'candidate' | 'interview' | 'offer';
 
@@ -232,13 +233,13 @@ const offerFormDefault: OfferPayload = {
 };
 
 const splitAttachmentUrls = (value?: string[] | string) => {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
-  }
-  return String(value || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
+  const list = Array.isArray(value)
+    ? value.map((item) => String(item).trim()).filter(Boolean)
+    : String(value || '')
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
+  return list.map((item) => getAttachmentRawValue(item)).filter(Boolean);
 };
 
 const toBackendDateTime = (value?: string) => {
