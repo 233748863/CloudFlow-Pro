@@ -76,13 +76,13 @@ public interface WorkflowServiceClient {
     /**
      * workflow 原生启动接口
      */
-    @PostMapping("/start")
+    @PostMapping("/wf/start")
     R<Map<String, String>> startProcessInternal(@RequestBody WorkflowStartRequest request);
 
     /**
      * 查询流程实例
      */
-    @GetMapping("/instance/{processInstanceId}")
+    @GetMapping("/wf/instance/{processInstanceId}")
     R<ProcessInstanceVO> getProcessInstance(@PathVariable("processInstanceId") String processInstanceId);
 
     /**

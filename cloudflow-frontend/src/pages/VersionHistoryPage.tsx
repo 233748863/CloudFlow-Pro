@@ -42,7 +42,7 @@ export const VersionHistoryPage: React.FC = () => {
       }
 
       try {
-        const data = await request.get<WorkflowInfo>(`/workflow/definition/${workflowId}`, {
+        const data = await request.get<WorkflowInfo>(`/workflow/wf/definition/${workflowId}`, {
           silent: true,
         });
         setWorkflowInfo(data || null);

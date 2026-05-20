@@ -12,6 +12,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 )
 public interface RemoteWorkflowService {
 
-    @PostMapping("/start")
+    @PostMapping("/wf/start")
     R<?> startProcess(@RequestBody WorkflowProcessStartDTO req);
 }

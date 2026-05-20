@@ -25,8 +25,6 @@ import com.cloudflow.common.tenant.TenantConfigProperties;
 import com.cloudflow.common.core.utils.IpUtils;
 import com.cloudflow.common.security.core.TokenService;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import com.cloudflow.common.ratelimiter.annotation.RateLimiter;
-import com.cloudflow.common.ratelimiter.enums.LimitType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
@@ -297,7 +295,6 @@ public class AuthController {
     }
 
     @GetMapping("/tenant/options")
-    @RateLimiter(count = 10, time = 60, limitType = LimitType.IP, message = "租户列表请求过于频繁，请稍后再试")
     public R<List<TenantOption>> tenantOptions() {
         List<SysTenant> tenants = TenantBroker.applyWithoutTenant(ignored ->
                 tenantService.list(

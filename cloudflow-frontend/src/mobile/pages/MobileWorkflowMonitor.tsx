@@ -103,8 +103,8 @@ export const MobileWorkflowMonitor: React.FC = () => {
     try {
       setError(null);
       const [metricsRes, analysisRes] = await Promise.all([
-        request.get('/workflow/statistics/metrics', { silent: true }).catch(() => null),
-        request.get('/workflow/statistics/analysis', { silent: true }).catch(() => null),
+        request.get('/workflow/wf/statistics/metrics', { silent: true }).catch(() => null),
+        request.get('/workflow/wf/statistics/analysis', { silent: true }).catch(() => null),
       ]);
 
       if (metricsRes) {

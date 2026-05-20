@@ -27,6 +27,7 @@ import org.springframework.web.bind.annotation.*;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 
 @RestController
+@RequestMapping("/wf")
 public class WorkflowController {
 
     @Autowired

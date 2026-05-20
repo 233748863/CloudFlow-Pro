@@ -118,8 +118,8 @@ export async function startProcess(
     businessKey: data.businessKey,
     variables,
   };
-  logApiCall("POST", "/workflow/start", payload);
-  return request.post("/workflow/start", payload);
+  logApiCall("POST", "/workflow/wf/start", payload);
+  return request.post("/workflow/wf/start", payload);
 }
 
 /**
@@ -128,8 +128,8 @@ export async function startProcess(
 export async function getProcessInstance(
   instanceId: string,
 ): Promise<ProcessInstance> {
-  logApiCall("GET", `/workflow/instance/${instanceId}`);
-  return request.get(`/workflow/instance/${instanceId}`);
+  logApiCall("GET", `/workflow/wf/instance/${instanceId}`);
+  return request.get(`/workflow/wf/instance/${instanceId}`);
 }
 
 /**
@@ -138,8 +138,8 @@ export async function getProcessInstance(
 export async function getProcessTrace(
   instanceId: string,
 ): Promise<ProcessTrace> {
-  logApiCall("GET", `/workflow/instance/${instanceId}/trace`);
-  return request.get(`/workflow/instance/${instanceId}/trace`);
+  logApiCall("GET", `/workflow/wf/instance/${instanceId}/trace`);
+  return request.get(`/workflow/wf/instance/${instanceId}/trace`);
 }
 
 /**
@@ -157,7 +157,7 @@ export async function getMyInstances(params?: {
   processNo?: string; // 流程编号搜索
   startUserName?: string; // 申请人姓名模糊搜索
 }): Promise<any> {
-  logApiCall("GET", "/workflow/my-instances", params);
+  logApiCall("GET", "/workflow/wf/my-instances", params);
   // 将筛选条件放到 params[xxx] 格式，匹配后端 PageQuery.params Map
   const query: Record<string, any> = {
     pageNum: params?.pageNum || 1,
@@ -187,7 +187,7 @@ export async function getMyInstances(params?: {
   if (params?.startUserName) {
     query["params[startUserName]"] = params.startUserName;
   }
-  return request.get("/workflow/my-instances", { params: query });
+  return request.get("/workflow/wf/my-instances", { params: query });
 }
 
 // ==================== 任务相关 API ====================
@@ -205,7 +205,7 @@ export async function getTodoTasks(params?: {
   startTimeTo?: string; // 创建时间范围（止），格式 yyyy-MM-dd
   startUserName?: string; // 申请人姓名模糊搜索
 }): Promise<any> {
-  logApiCall("GET", "/workflow/todo", params);
+  logApiCall("GET", "/workflow/wf/todo", params);
   const query: Record<string, any> = {
     pageNum: params?.pageNum || 1,
     pageSize: params?.pageSize || 999,
@@ -225,7 +225,7 @@ export async function getTodoTasks(params?: {
   if (params?.startUserName) {
     query["params[startUserName]"] = params.startUserName;
   }
-  return request.get("/workflow/todo", { params: query });
+  return request.get("/workflow/wf/todo", { params: query });
 }
 
 /**
@@ -240,7 +240,7 @@ export async function getDoneTasks(params?: {
   startTimeTo?: string;
   startUserName?: string;
 }): Promise<any> {
-  logApiCall("GET", "/workflow/done", params);
+  logApiCall("GET", "/workflow/wf/done", params);
   const query: Record<string, any> = {
     pageNum: params?.pageNum || 1,
     pageSize: params?.pageSize || 20,
@@ -250,32 +250,32 @@ export async function getDoneTasks(params?: {
   if (params?.startTimeFrom) query["params[startTimeFrom]"] = params.startTimeFrom;
   if (params?.startTimeTo) query["params[startTimeTo]"] = params.startTimeTo;
   if (params?.startUserName) query["params[startUserName]"] = params.startUserName;
-  return request.get("/workflow/done", { params: query });
+  return request.get("/workflow/wf/done", { params: query });
 }
 
 /**
  * 完成任务（审批/拒绝/转办等）
  */
 export async function completeTask(data: CompleteTaskRequest): Promise<void> {
-  logApiCall("POST", "/workflow/complete", data);
-  return request.post("/workflow/complete", data);
+  logApiCall("POST", "/workflow/wf/complete", data);
+  return request.post("/workflow/wf/complete", data);
 }
 
 /**
  * 标记任务为已读
  */
 export async function readTask(taskId: string): Promise<void> {
-  logApiCall("POST", `/workflow/task/read/${taskId}`);
-  return request.post(`/workflow/task/read/${taskId}`);
+  logApiCall("POST", `/workflow/wf/task/read/${taskId}`);
+  return request.post(`/workflow/wf/task/read/${taskId}`);
 }
 
 /**
  * 催办任务
  */
 export async function urgeTask(taskId: string, reason: string): Promise<void> {
-  logApiCall("POST", "/workflow/task/urge", { taskId, reason });
+  logApiCall("POST", "/workflow/wf/task/urge", { taskId, reason });
   const data: UrgeTaskRequest = { taskId, reason };
-  return request.post("/workflow/task/urge", data);
+  return request.post("/workflow/wf/task/urge", data);
 }
 
 export interface RejectTaskRequest {
@@ -296,36 +296,36 @@ export async function rejectTask(
   targetNodeKey: string,
   comment: string,
 ): Promise<void> {
-  logApiCall("POST", "/workflow/reject", { taskId, targetNodeKey, comment });
+  logApiCall("POST", "/workflow/wf/reject", { taskId, targetNodeKey, comment });
   const data: RejectTaskRequest = { taskId, targetNodeKey, comment };
-  return request.post("/workflow/reject", data);
+  return request.post("/workflow/wf/reject", data);
 }
 
 /**
  * 撤回流程
  */
 export async function recallProcess(instanceId: string): Promise<void> {
-  logApiCall("POST", "/workflow/recall", { instanceId });
+  logApiCall("POST", "/workflow/wf/recall", { instanceId });
   const data: InstanceIdRequest = { instanceId };
-  return request.post("/workflow/recall", data);
+  return request.post("/workflow/wf/recall", data);
 }
 
 /**
  * 暂停流程
  */
 export async function pauseProcess(instanceId: string): Promise<void> {
-  logApiCall("POST", "/workflow/pause", { instanceId });
+  logApiCall("POST", "/workflow/wf/pause", { instanceId });
   const data: InstanceIdRequest = { instanceId };
-  return request.post("/workflow/pause", data);
+  return request.post("/workflow/wf/pause", data);
 }
 
 /**
  * 恢复流程
  */
 export async function resumeProcess(instanceId: string): Promise<void> {
-  logApiCall("POST", "/workflow/resume", { instanceId });
+  logApiCall("POST", "/workflow/wf/resume", { instanceId });
   const data: InstanceIdRequest = { instanceId };
-  return request.post("/workflow/resume", data);
+  return request.post("/workflow/wf/resume", data);
 }
 
 /**
@@ -334,16 +334,16 @@ export async function resumeProcess(instanceId: string): Promise<void> {
 export async function deleteProcessDefinition(
   definitionId: string,
 ): Promise<void> {
-  logApiCall("DELETE", `/workflow/definition/${definitionId}`);
-  return request.delete(`/workflow/definition/${definitionId}`);
+  logApiCall("DELETE", `/workflow/wf/definition/${definitionId}`);
+  return request.delete(`/workflow/wf/definition/${definitionId}`);
 }
 
 /**
  * 获取任务统计
  */
 export async function getTasksCount(): Promise<TasksCount> {
-  logApiCall("GET", "/workflow/tasks/count");
-  return request.get("/workflow/tasks/count");
+  logApiCall("GET", "/workflow/wf/tasks/count");
+  return request.get("/workflow/wf/tasks/count");
 }
 
 /**
@@ -355,8 +355,8 @@ export async function getTaskStatistics(params?: {
   startTime?: string;
   endTime?: string;
 }): Promise<Record<string, any>> {
-  logApiCall("GET", "/workflow/tasks/statistics", params);
-  return request.get("/workflow/tasks/statistics", { params });
+  logApiCall("GET", "/workflow/wf/tasks/statistics", params);
+  return request.get("/workflow/wf/tasks/statistics", { params });
 }
 
 /**
@@ -366,8 +366,8 @@ export async function getTaskStatistics(params?: {
 export async function getTaskGroups(
   userId?: number,
 ): Promise<Record<string, any>> {
-  logApiCall("GET", "/workflow/tasks/groups", { userId });
-  return request.get("/workflow/tasks/groups", { params: { userId } });
+  logApiCall("GET", "/workflow/wf/tasks/groups", { userId });
+  return request.get("/workflow/wf/tasks/groups", { params: { userId } });
 }
 
 // ==================== 流程定义相关 API ====================
@@ -392,8 +392,8 @@ export async function getProcessDefinitions(params?: {
     query["params[latestOnly]"] = "false";
   }
 
-  logApiCall("GET", "/workflow/definitions", query);
-  return request.get("/workflow/definitions", { params: query }).then(extractList);
+  logApiCall("GET", "/workflow/wf/definitions", query);
+  return request.get("/workflow/wf/definitions", { params: query }).then(extractList);
 }
 
 /**
@@ -402,8 +402,8 @@ export async function getProcessDefinitions(params?: {
 export async function getProcessDefinition(
   definitionId: string,
 ): Promise<ProcessDefinitionDetail> {
-  logApiCall("GET", `/workflow/definition/${definitionId}`);
-  return request.get(`/workflow/definition/${definitionId}`);
+  logApiCall("GET", `/workflow/wf/definition/${definitionId}`);
+  return request.get(`/workflow/wf/definition/${definitionId}`);
 }
 
 /**
@@ -412,8 +412,8 @@ export async function getProcessDefinition(
 export async function saveProcessDefinition(
   data: SaveProcessDefinitionRequest,
 ): Promise<SaveProcessDefinitionResponse> {
-  logApiCall("POST", "/workflow/definition/save", data);
-  return request.post("/workflow/definition/save", data);
+  logApiCall("POST", "/workflow/wf/definition/save", data);
+  return request.post("/workflow/wf/definition/save", data);
 }
 
 /**
@@ -422,8 +422,8 @@ export async function saveProcessDefinition(
 export async function deployProcessDefinition(
   definitionId: string,
 ): Promise<void> {
-  logApiCall("POST", `/workflow/definition/deploy/${definitionId}`);
-  return request.post(`/workflow/definition/deploy/${definitionId}`);
+  logApiCall("POST", `/workflow/wf/definition/deploy/${definitionId}`);
+  return request.post(`/workflow/wf/definition/deploy/${definitionId}`);
 }
 
 // ==================== 表单定义相关 API ====================
@@ -437,8 +437,8 @@ export async function getFormDefinitions(): Promise<FormDefinitionListItem[]> {
   let pageNum = 1;
 
   while (true) {
-    logApiCall("GET", "/workflow/forms", { pageNum, pageSize });
-    const response = await request.get("/workflow/forms", {
+    logApiCall("GET", "/workflow/wf/forms", { pageNum, pageSize });
+    const response = await request.get("/workflow/wf/forms", {
       params: { pageNum, pageSize },
     });
     const records = extractList<FormDefinitionListItem>(response);
@@ -467,8 +467,8 @@ export async function getFormDefinitions(): Promise<FormDefinitionListItem[]> {
 export async function getFormDefinition(
   formId: string,
 ): Promise<FormDefinition> {
-  logApiCall("GET", `/workflow/form/${formId}`);
-  return request.get(`/workflow/form/${formId}`);
+  logApiCall("GET", `/workflow/wf/form/${formId}`);
+  return request.get(`/workflow/wf/form/${formId}`);
 }
 
 /**
@@ -477,8 +477,8 @@ export async function getFormDefinition(
 export async function saveFormDefinition(
   data: SaveFormDefinitionRequest,
 ): Promise<FormDefinition> {
-  logApiCall("POST", "/workflow/form/save", data);
-  return request.post("/workflow/form/save", data);
+  logApiCall("POST", "/workflow/wf/form/save", data);
+  return request.post("/workflow/wf/form/save", data);
 }
 
 // ==================== 用户和角色相关 API ====================
@@ -675,13 +675,13 @@ export async function addSignature(
   userIds: number[],
   comment: string,
 ): Promise<void> {
-  logApiCall("POST", "/workflow/task/add-signature", {
+  logApiCall("POST", "/workflow/wf/task/add-signature", {
     taskId,
     userIds,
     comment,
   });
   const data: SignatureChangeRequest = { taskId, userIds, comment };
-  return request.post("/workflow/task/add-signature", data);
+  return request.post("/workflow/wf/task/add-signature", data);
 }
 
 /**
@@ -693,13 +693,13 @@ export async function reductionSignature(
   userIds: number[],
   comment: string,
 ): Promise<void> {
-  logApiCall("POST", "/workflow/task/reduction-signature", {
+  logApiCall("POST", "/workflow/wf/task/reduction-signature", {
     taskId,
     userIds,
     comment,
   });
   const data: SignatureChangeRequest = { taskId, userIds, comment };
-  return request.post("/workflow/task/reduction-signature", data);
+  return request.post("/workflow/wf/task/reduction-signature", data);
 }
 
 /**
@@ -775,8 +775,8 @@ export async function terminateProcess(
   reason: string;
   message: string;
 }> {
-  logApiCall("POST", "/workflow/instance/terminate", data);
-  return request.post("/workflow/instance/terminate", data);
+  logApiCall("POST", "/workflow/wf/instance/terminate", data);
+  return request.post("/workflow/wf/instance/terminate", data);
 }
 
 // ==================== 流程导入导出 API ====================

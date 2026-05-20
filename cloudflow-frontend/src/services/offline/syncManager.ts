@@ -217,14 +217,14 @@ class SyncManager {
     await updatePendingAction(action.id, { status: 'syncing' });
 
     const endpointMap: Record<string, { method: string; url: string }> = {
-      task_complete: { method: 'POST', url: `/workflow/task/complete` },
-      task_approve: { method: 'POST', url: `/workflow/task/complete` },
-      task_reject: { method: 'POST', url: `/workflow/task/complete` },
+      task_complete: { method: 'POST', url: `/workflow/wf/complete` },
+      task_approve: { method: 'POST', url: `/workflow/wf/complete` },
+      task_reject: { method: 'POST', url: `/workflow/wf/complete` },
       notice_read: { method: 'POST', url: `/oa/notice/read/${action.payload.noticeId}` },
       schedule_create: { method: 'POST', url: `/oa/schedule` },
-      hr_leave_request: { method: 'POST', url: `/workflow/process/start` },
-      reimbursement_request: { method: 'POST', url: `/workflow/process/start` },
-      vehicle_booking: { method: 'POST', url: `/workflow/process/start` },
+      hr_leave_request: { method: 'POST', url: `/workflow/wf/start` },
+      reimbursement_request: { method: 'POST', url: `/workflow/wf/start` },
+      vehicle_booking: { method: 'POST', url: `/workflow/wf/start` },
       meeting_booking: { method: 'POST', url: `/oa/meeting-room` },
     };
 
