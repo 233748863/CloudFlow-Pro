@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CalendarRange, Edit, Eye, FolderKanban, Plus, Send, Trash2, Users, AlertTriangle, ListTree, Target, Archive, Link2, RefreshCcw, ArrowRightLeft } from 'lucide-react';
 import { toast } from 'sonner';
@@ -337,6 +338,8 @@ export default function ProjectManagementPage() {
   useEffect(() => {
     void load();
   }, [pageNum, keyword, status]);
+
+  useWorkflowRefresh(load, 'project_approval');
 
   useEffect(() => {
     void loadReferences();

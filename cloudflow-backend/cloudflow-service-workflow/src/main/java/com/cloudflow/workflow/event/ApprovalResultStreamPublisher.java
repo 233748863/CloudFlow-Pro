@@ -2,6 +2,7 @@ package com.cloudflow.workflow.event;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
+import com.cloudflow.workflow.config.NotificationWebSocketHandler;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -13,6 +14,8 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -27,6 +30,7 @@ public class ApprovalResultStreamPublisher {
     private final WfProcessInstanceMapper processInstanceMapper;
     private final RedisStreamUtil redisStreamUtil;
     private final ObjectMapper objectMapper;
+    private final NotificationWebSocketHandler notificationWebSocketHandler;
 
     @Async("workflowEventExecutor")
     @EventListener
@@ -77,6 +81,30 @@ public class ApprovalResultStreamPublisher {
         String messageId = redisStreamUtil.publishGlobal(streamKey, body);
         log.info("[ApprovalResultStream] 审批结果已发布: streamKey={}, messageId={}, businessType={}, businessId={}, result={}",
                 streamKey, messageId, businessType, businessId, approvalResult);
+
+        pushTaskCompletedWs(instance, businessType, businessId, approvalResult);
+    }
+
+    /**
+     * 向发起人推送 workflow.task.completed WS 事件，触发前端业务页自动刷新。
+     */
+    private void pushTaskCompletedWs(WfProcessInstance instance, String businessType, Long businessId, String approvalResult) {
+        Long startUserId = instance.getStartUserId();
+        if (startUserId == null) {
+            return;
+        }
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("processInstanceId", instance.getInstanceId());
+            payload.put("businessType", businessType);
+            payload.put("businessId", businessId);
+            payload.put("approvalResult", approvalResult);
+            payload.put("completedAt", LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+            notificationWebSocketHandler.sendTopicMessage(startUserId, "workflow.task.completed", payload);
+        } catch (Exception e) {
+            log.warn("[ApprovalResultStream] WS 推送失败: instanceId={}, userId={}, error={}",
+                    instance.getInstanceId(), startUserId, e.getMessage());
+        }
     }
 
     private Map<String, Object> parseVariables(String variablesJson) {
@@ -107,3 +135,4 @@ public class ApprovalResultStreamPublisher {
         }
     }
 }
+

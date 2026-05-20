@@ -189,20 +189,6 @@ export interface RoleSelectorProps {
   placeholder?: string;
 }
 
-/** PermissionGuard 组件 Props */
-export interface PermissionGuardProps {
-  /** 子组件 */
-  children: React.ReactNode;
-  /** 所需权限列表 */
-  requiredPermissions?: string[];
-  /** 所需角色列表 */
-  requiredRoles?: string[];
-  /** 是否需要管理员权限 */
-  requireAdmin?: boolean;
-  /** 无权限时的降级组件 */
-  fallback?: React.ReactNode;
-}
-
 /** RouteGuard 组件 Props */
 export interface RouteGuardProps {
   /** 子组件 */

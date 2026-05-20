@@ -9,11 +9,6 @@ interface PermissionRouteGuardProps {
   children: React.ReactNode;
 }
 
-const hasPermission = (userPermissions: string[] = [], permission: string) =>
-  userPermissions.includes(permission)
-  || userPermissions.includes('*:*:*')
-  || userPermissions.includes('*');
-
 export const PermissionRouteGuard: React.FC<PermissionRouteGuardProps> = ({
   permissions,
   fallbackPath = '/workplace',
@@ -30,11 +25,10 @@ export const PermissionRouteGuard: React.FC<PermissionRouteGuardProps> = ({
     return <Navigate to="/login" replace />;
   }
 
-  const hasAccess = hasPermission(permissions, requireAll);
-
-  if (!hasAccess) {
+  if (!hasPermission(permissions, requireAll)) {
     return <Navigate to={fallbackPath} replace />;
   }
 
   return <>{children}</>;
 };
+

@@ -5,7 +5,19 @@ import { getAuthToken } from '@/utils/authStorage';
 
 interface WebSocketMessage {
     type: string;
+    topic?: string;
+    payload?: unknown;
     data: any;
+}
+
+const topicHandlers = new Map<string, (payload: unknown) => void>();
+
+export function subscribeWsTopic(topic: string, handler: (payload: unknown) => void) {
+    topicHandlers.set(topic, handler);
+}
+
+export function unsubscribeWsTopic(topic: string) {
+    topicHandlers.delete(topic);
 }
 
 /**
@@ -106,7 +118,9 @@ export const useWebSocket = () => {
         ws.onmessage = (event) => {
             try {
                 const msg: WebSocketMessage = JSON.parse(event.data);
-                if (msg.type === 'NOTICE') {
+                if (msg.topic && topicHandlers.has(msg.topic)) {
+                    topicHandlers.get(msg.topic)!(msg.payload);
+                } else if (msg.type === 'NOTICE') {
                     const notice = msg.data;
                     toast.info(notice.noticeTitle, {
                         description: notice.noticeContent,
@@ -115,7 +129,6 @@ export const useWebSocket = () => {
                             onClick: () => console.log('View notice', notice.noticeId)
                         }
                     });
-                    // 触发自定义事件，通知其他组件刷新通知列表
                     window.dispatchEvent(new CustomEvent('sys-notice-received'));
                 }
             } catch (e) {

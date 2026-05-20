@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
@@ -151,6 +152,8 @@ export const ContractPage: React.FC = () => {
   useEffect(() => {
     void fetchRows();
   }, [fetchRows]);
+
+  useWorkflowRefresh(fetchRows, 'biz_contract');
 
   useEffect(() => {
     const loadReferences = async () => {

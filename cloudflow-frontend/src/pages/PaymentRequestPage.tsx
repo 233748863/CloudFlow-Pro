@@ -3,6 +3,7 @@ import { CheckCircle2, Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus,
 import { toast } from 'sonner';
 import { paymentRequestApi, PaymentRequest } from '@/services/api/expense';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { projectApi, Project } from '@/services/api/project';
 import { budgetApi, BudgetSubject } from '@/services/api/budget';
 import FileUpload from '@/components/FileUpload';
@@ -173,9 +174,24 @@ export const PaymentRequestPage: React.FC = () => {
   const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
   const [budgetSubjectOptions, setBudgetSubjectOptions] = useState<BudgetSubject[]>([]);
 
+  const fetchPayments = async () => {
+    setLoading(true);
+    try {
+      const result = await paymentRequestApi.list(searchParams);
+      setPayments(result.records || result.rows || []);
+      setTotal(result.total || 0);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取付款申请列表失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     void fetchPayments();
   }, [searchParams]);
+
+  useWorkflowRefresh(fetchPayments, 'payment_request');
 
   useEffect(() => {
     const loadReferences = async () => {
@@ -194,19 +210,6 @@ export const PaymentRequestPage: React.FC = () => {
     };
     void loadReferences();
   }, []);
-
-  const fetchPayments = async () => {
-    setLoading(true);
-    try {
-      const result = await paymentRequestApi.list(searchParams);
-      setPayments(result.records || result.rows || []);
-      setTotal(result.total || 0);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '获取付款申请列表失败'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const draftCount = useMemo(
     () => payments.filter((item) => item.status === 'DRAFT').length,

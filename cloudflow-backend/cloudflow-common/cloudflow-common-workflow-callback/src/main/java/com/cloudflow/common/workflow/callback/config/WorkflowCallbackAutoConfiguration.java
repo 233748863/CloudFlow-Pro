@@ -2,7 +2,10 @@ package com.cloudflow.common.workflow.callback.config;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
+import com.cloudflow.common.workflow.callback.listener.DeadLetterHandler;
+import com.cloudflow.common.workflow.callback.listener.DefaultDeadLetterHandler;
 import com.cloudflow.common.workflow.callback.listener.WorkflowApprovalCallbackStreamConsumer;
+import com.cloudflow.common.workflow.callback.service.CallbackIdempotentStore;
 import com.cloudflow.common.workflow.callback.service.DefaultWorkflowCallbackDispatcher;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
@@ -16,6 +19,7 @@ import org.springframework.data.redis.connection.stream.Consumer;
 import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.connection.stream.ReadOffset;
 import org.springframework.data.redis.connection.stream.StreamOffset;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.stream.StreamMessageListenerContainer;
 import org.springframework.data.redis.stream.Subscription;
 import org.springframework.util.Assert;
@@ -63,12 +67,27 @@ public class WorkflowCallbackAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(CallbackIdempotentStore.class)
+    public CallbackIdempotentStore callbackIdempotentStore(StringRedisTemplate stringRedisTemplate) {
+        return new CallbackIdempotentStore(stringRedisTemplate);
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(DeadLetterHandler.class)
+    public DeadLetterHandler defaultDeadLetterHandler(RedisStreamUtil redisStreamUtil) {
+        return new DefaultDeadLetterHandler(redisStreamUtil);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(WorkflowApprovalCallbackStreamConsumer.class)
     public WorkflowApprovalCallbackStreamConsumer workflowApprovalCallbackStreamConsumer(
             WorkflowCallbackService workflowCallbackService,
             RedisStreamUtil redisStreamUtil,
-            WorkflowCallbackProperties properties) {
-        return new WorkflowApprovalCallbackStreamConsumer(workflowCallbackService, redisStreamUtil, properties);
+            WorkflowCallbackProperties properties,
+            CallbackIdempotentStore callbackIdempotentStore,
+            DeadLetterHandler deadLetterHandler) {
+        return new WorkflowApprovalCallbackStreamConsumer(workflowCallbackService, redisStreamUtil, properties,
+                callbackIdempotentStore, deadLetterHandler);
     }
 
     @Bean

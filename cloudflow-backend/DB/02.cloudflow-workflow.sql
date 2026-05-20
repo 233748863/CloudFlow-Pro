@@ -1021,3 +1021,34 @@ CREATE TABLE wf_audit_log (
     INDEX idx_target_operation (target_type, target_id, operation_type) COMMENT '目标操作索引',
     INDEX idx_operator_time (operator_id, operation_time DESC) COMMENT '操作人时间索引'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流审计日志表';
+
+-- P0-2: 回调死信队列
+DROP TABLE IF EXISTS wf_callback_dead_letter;
+CREATE TABLE wf_callback_dead_letter (
+  id                  BIGINT PRIMARY KEY AUTO_INCREMENT,
+  stream_key          VARCHAR(128) NOT NULL,
+  process_instance_id VARCHAR(64),
+  business_type       VARCHAR(64),
+  business_id         BIGINT,
+  payload_json        JSON NOT NULL,
+  retry_count         INT DEFAULT 0,
+  last_error          TEXT,
+  status              VARCHAR(16) DEFAULT 'PENDING',
+  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP,
+  update_time         DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_process_instance (process_instance_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调死信队列';
+
+-- P0-3: 流程-业务状态对账告警
+DROP TABLE IF EXISTS wf_reconcile_alert;
+CREATE TABLE wf_reconcile_alert (
+  id                  BIGINT PRIMARY KEY AUTO_INCREMENT,
+  process_instance_id VARCHAR(64) NOT NULL,
+  business_type       VARCHAR(64) NOT NULL,
+  business_id         BIGINT NOT NULL,
+  expected_status     VARCHAR(32),
+  actual_status       VARCHAR(32),
+  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_instance (process_instance_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程业务状态对账告警';
+

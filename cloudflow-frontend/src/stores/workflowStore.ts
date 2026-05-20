@@ -1,11 +1,12 @@
 import { create } from 'zustand';
-import { devtools, persist } from 'zustand/middleware';
-import { 
-  WorkflowDefinition, FormDefinition, Task, UnifiedTask, User, Role 
+import { devtools } from 'zustand/middleware';
+import {
+  WorkflowDefinition, FormDefinition, UnifiedTask, User
 } from '../types';
 
 // ============================================================
 // 工作流全局状态管理 (Zustand)
+// 权限/用户态请走 AuthContext（P0-5 单一源）
 // ============================================================
 
 /** 工作流设计器状态 */
@@ -48,18 +49,8 @@ interface TaskState {
   };
 }
 
-/** 用户和权限状态 */
-interface AuthState {
-  /** 当前登录用户 */
-  currentUser: User | null;
-  /** 用户权限列表 */
-  permissions: string[];
-  /** 是否已认证 */
-  isAuthenticated: boolean;
-}
-
 /** 完整的应用状态 */
-interface AppState extends WorkflowDesignState, TaskState, AuthState {
+interface AppState extends WorkflowDesignState, TaskState {
   // === 工作流设计器 Actions ===
   setCurrentWorkflow: (wf: WorkflowDefinition | null) => void;
   setWorkflows: (wfs: WorkflowDefinition[]) => void;
@@ -78,17 +69,7 @@ interface AppState extends WorkflowDesignState, TaskState, AuthState {
   setSelectedTask: (task: UnifiedTask | null) => void;
   setTaskFilter: (filter: Partial<TaskState['taskFilter']>) => void;
 
-  // === 用户和权限 Actions ===
-  setCurrentUser: (user: User | null) => void;
-  setPermissions: (permissions: string[]) => void;
-  login: (user: User, permissions: string[]) => void;
-  logout: () => void;
-
   // === 工具方法 ===
-  /** 检查用户是否有指定权限 */
-  hasPermission: (permission: string) => boolean;
-  /** 检查用户是否有指定角色 */
-  hasRole: (role: Role) => boolean;
   /** 重置所有状态 */
   reset: () => void;
 }
@@ -113,23 +94,16 @@ const initialTaskState: TaskState = {
   taskFilter: { type: 'ALL', status: '', keyword: '' },
 };
 
-const initialAuthState: AuthState = {
-  currentUser: null,
-  permissions: [],
-  isAuthenticated: false,
-};
-
 /**
  * 全局应用状态 Store
- * 使用 Zustand 管理，支持 devtools 调试和部分状态持久化
+ * 使用 Zustand 管理，支持 devtools 调试
  */
 export const useAppStore = create<AppState>()(
   devtools(
-    (set, get) => ({
+    (set) => ({
       // === 初始状态 ===
       ...initialWorkflowState,
       ...initialTaskState,
-      ...initialAuthState,
 
       // === 工作流设计器 Actions ===
       setCurrentWorkflow: (wf) => set({ currentWorkflow: wf, isDirty: false }),
@@ -151,26 +125,6 @@ export const useAppStore = create<AppState>()(
         taskFilter: { ...state.taskFilter, ...filter }
       })),
 
-      // === 用户和权限 Actions ===
-      setCurrentUser: (currentUser) => set({ currentUser }),
-      setPermissions: (permissions) => set({ permissions }),
-      login: (user, permissions) => set({
-        currentUser: user,
-        permissions,
-        isAuthenticated: true,
-      }),
-      logout: () => set({
-        ...initialAuthState,
-        ...initialTaskState,
-      }),
-
-      // === 工具方法 ===
-      hasPermission: (permission) => {
-        return get().permissions.includes(permission);
-      },
-      hasRole: (role) => {
-        return get().currentUser?.role === role;
-      },
       reset: () => set({
         ...initialWorkflowState,
         ...initialTaskState,
@@ -192,5 +146,3 @@ export const useGlobalError = () => useAppStore((s) => s.error);
 export const useTodoTasks = () => useAppStore((s) => s.todoTasks);
 export const useTasksCount = () => useAppStore((s) => s.tasksCount);
 export const useTaskFilter = () => useAppStore((s) => s.taskFilter);
-export const useCurrentUser = () => useAppStore((s) => s.currentUser);
-export const useIsAuthenticated = () => useAppStore((s) => s.isAuthenticated);

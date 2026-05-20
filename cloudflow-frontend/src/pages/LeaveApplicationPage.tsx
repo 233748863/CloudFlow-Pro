@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import {
   AlertCircle,
   Calendar,
@@ -244,6 +245,24 @@ export const LeaveApplicationPage: React.FC = () => {
     reason: '',
   });
 
+  const fetchList = async () => {
+    setLoading(true);
+    try {
+      const response = await leaveApplicationApi.list({
+        pageNum: searchParams.pageNum,
+        pageSize: searchParams.pageSize,
+        status: searchParams.status || undefined,
+        leaveTypeId: searchParams.leaveTypeId ? Number(searchParams.leaveTypeId) : undefined,
+      });
+      setList(response.records || response.rows || []);
+      setTotal(response.total || 0);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取请假申请列表失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     void loadLeaveTypes();
   }, []);
@@ -251,6 +270,8 @@ export const LeaveApplicationPage: React.FC = () => {
   useEffect(() => {
     void fetchList();
   }, [searchParams]);
+
+  useWorkflowRefresh(fetchList, 'LEAVE');
 
   const selectedType = useMemo(
     () => leaveTypes.find((item) => item.id === formData.leaveTypeId),
@@ -316,24 +337,6 @@ export const LeaveApplicationPage: React.FC = () => {
       toast.error(getErrorMessage(error, '获取请假类型失败'));
     } finally {
       setLoadingTypes(false);
-    }
-  };
-
-  const fetchList = async () => {
-    setLoading(true);
-    try {
-      const response = await leaveApplicationApi.list({
-        pageNum: searchParams.pageNum,
-        pageSize: searchParams.pageSize,
-        status: searchParams.status || undefined,
-        leaveTypeId: searchParams.leaveTypeId ? Number(searchParams.leaveTypeId) : undefined,
-      });
-      setList(response.records || response.rows || []);
-      setTotal(response.total || 0);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '获取请假申请列表失败'));
-    } finally {
-      setLoading(false);
     }
   };
 

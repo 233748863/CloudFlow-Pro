@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import {
   AlertCircle,
   Clock,
@@ -172,9 +173,24 @@ export const OvertimeApplicationPage: React.FC = () => {
     restrictionMessage,
   } = useHrSelfServiceEligibility();
 
+  const fetchList = async () => {
+    setLoading(true);
+    try {
+      const response = await overtimeApplicationApi.list(searchParams);
+      setList(response.records || response.rows || []);
+      setTotal(response.total || 0);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取列表失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     void fetchList();
   }, [searchParams]);
+
+  useWorkflowRefresh(fetchList, 'OVERTIME');
 
   const ensureCanOperate = () => {
     if (eligibilityLoading) {
@@ -219,19 +235,6 @@ export const OvertimeApplicationPage: React.FC = () => {
       return '-';
     }
     return String(value);
-  };
-
-  const fetchList = async () => {
-    setLoading(true);
-    try {
-      const response = await overtimeApplicationApi.list(searchParams);
-      setList(response.records || response.rows || []);
-      setTotal(response.total || 0);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '获取列表失败'));
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleAdd = () => {

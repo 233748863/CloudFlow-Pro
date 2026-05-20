@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.workflow.mapper.WfReconcileAlertMapper">
+
+    <!--
+      查询"流程已完成但业务表状态仍为审批中"的不一致记录。
+      windowMinutes: 只检查最近 N 分钟内完成的流程（避免全表扫描）。
+      各业务表通过 UNION ALL 合并，统一返回 (process_instance_id, business_type, business_id, actual_status)。
+    -->
+    <select id="selectInconsistentRecords" resultType="com.cloudflow.workflow.domain.WfReconcileAlert">
+        SELECT
+            pi.instance_id AS processInstanceId,
+            biz.business_type AS businessType,
+            biz.business_id AS businessId,
+            'COMPLETED' AS expectedStatus,
+            biz.actual_status AS actualStatus
+        FROM wf_process_instance pi
+        JOIN (
+            -- HR
+            SELECT process_instance_id, 'HR_RECRUITMENT' AS business_type, id AS business_id, status AS actual_status
+            FROM hr_recruitment_requisition WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'HR_LIFECYCLE', id, status FROM hr_lifecycle_application WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'HR_TIME_REQUEST', id, status FROM hr_time_request WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'HR_OFFER', id, status FROM hr_offer WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'HR_COMP_CHANGE', id, status FROM hr_comp_change WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'HR_PERFORMANCE_OBJECTIVE', id, status FROM hr_performance_objective WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            -- OA
+            UNION ALL
+            SELECT process_instance_id, 'OA_EXPENSE_CLAIM', id, status FROM biz_expense_claim WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_PURCHASE_REQUEST', id, status FROM biz_purchase_request WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_PAYMENT_REQUEST', id, status FROM biz_payment_request WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_CONTRACT', id, status FROM oa_contract WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_BUSINESS_TRIP', id, status FROM oa_business_trip WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_BUDGET_PLAN', id, status FROM oa_budget_plan WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_BUDGET_ADJUSTMENT', id, status FROM oa_budget_adjustment WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_PROJECT', id, status FROM oa_project WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_KNOWLEDGE', id, status FROM oa_knowledge_document WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_SEAL_APPLICATION', id, status FROM oa_seal_application WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_LICENSE_BORROW', id, status FROM oa_license_borrow WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'OA_VEHICLE_USAGE', id, status FROM oa_vehicle_usage WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            -- CRM
+            UNION ALL
+            SELECT process_instance_id, 'CRM_APPROVAL', id, status FROM crm_approval WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'CRM_QUOTE', id, status FROM crm_quote WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+            UNION ALL
+            SELECT process_instance_id, 'CRM_RENEWAL', id, status FROM crm_renewal WHERE status IN ('PENDING','APPROVING') AND process_instance_id IS NOT NULL
+        ) biz ON pi.instance_id = biz.process_instance_id
+        WHERE pi.status = 'COMPLETED'
+          AND pi.end_time >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE)
+    </select>
+
+</mapper>

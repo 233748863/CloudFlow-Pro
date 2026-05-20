@@ -1,5 +1,5 @@
 import React, { ReactNode } from 'react';
-import { usePermission } from '../../hooks/usePermission';
+import { useAuth } from '@/context/AuthContext';
 import { Role } from '../../types';
 import { ShieldOff } from 'lucide-react';
 
@@ -19,7 +19,7 @@ interface PermissionGuardProps {
 
 /**
  * 权限守卫组件
- * 根据用户权限和角色控制子组件的显示
+ * 权限源单一化（P0-5）：统一从 AuthContext 取 user.permissions / user.role。
  */
 export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   children,
@@ -29,32 +29,26 @@ export const PermissionGuard: React.FC<PermissionGuardProps> = ({
   fallback,
   hidden = false,
 }) => {
-  const { hasPermission, hasAnyPermission, hasAllPermissions, hasAnyRole, isAdmin } = usePermission();
+  const { user, hasPermission } = useAuth();
 
-  // 管理员拥有所有权限
-  if (isAdmin()) {
+  if (user?.role === Role.ADMIN) {
     return <>{children}</>;
   }
 
   let hasAccess = true;
 
-  // 检查权限
   if (permissions.length > 0) {
-    hasAccess = requireAll
-      ? hasAllPermissions(permissions)
-      : hasAnyPermission(permissions);
+    hasAccess = hasPermission(permissions, requireAll);
   }
 
-  // 检查角色
   if (hasAccess && roles.length > 0) {
-    hasAccess = hasAnyRole(roles);
+    hasAccess = roles.some((r) => user?.role === r);
   }
 
   if (hasAccess) {
     return <>{children}</>;
   }
 
-  // 无权限时
   if (hidden) return null;
 
   if (fallback) return <>{fallback}</>;
@@ -78,12 +72,12 @@ export const PermissionButton: React.FC<
     roles?: Role[];
   }
 > = ({ permissions = [], roles = [], children, ...props }) => {
-  const { hasAnyPermission, hasAnyRole, isAdmin } = usePermission();
+  const { user, hasPermission } = useAuth();
 
-  const hasAccess =
-    isAdmin() ||
-    (permissions.length === 0 || hasAnyPermission(permissions)) &&
-    (roles.length === 0 || hasAnyRole(roles));
+  const isAdmin = user?.role === Role.ADMIN;
+  const permOk = permissions.length === 0 || hasPermission(permissions);
+  const roleOk = roles.length === 0 || roles.some((r) => user?.role === r);
+  const hasAccess = isAdmin || (permOk && roleOk);
 
   return (
     <button {...props} disabled={!hasAccess || props.disabled} title={!hasAccess ? '无操作权限' : props.title}>
@@ -91,3 +85,4 @@ export const PermissionButton: React.FC<
     </button>
   );
 };
+

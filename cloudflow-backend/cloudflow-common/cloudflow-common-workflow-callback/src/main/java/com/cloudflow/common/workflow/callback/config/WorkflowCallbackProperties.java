@@ -31,4 +31,10 @@ public class WorkflowCallbackProperties {
 
     /** 消费者名称前缀，最终拼接随机后缀。 */
     private String consumerPrefix = "callback";
+
+    /** 幂等键 TTL（小时），防止重复消费。 */
+    private int idempotentTtlHours = 72;
+
+    /** 消费失败最大重试次数，超过后转 DLQ。 */
+    private int maxRetry = 5;
 }

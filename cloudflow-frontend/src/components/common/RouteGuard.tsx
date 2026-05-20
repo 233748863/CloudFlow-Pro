@@ -1,6 +1,6 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { useAppStore } from '../../stores/workflowStore';
+import { useAuth } from '@/context/AuthContext';
 import { Role } from '../../types';
 import { Button } from './button';
 
@@ -14,7 +14,7 @@ interface RouteGuardProps {
 
 /**
  * 路由守卫组件
- * 控制页面级别的访问权限
+ * 权限源单一化（P0-5）：统一从 AuthContext 取 user.role / user.permissions。
  */
 export const RouteGuard: React.FC<RouteGuardProps> = ({
   children,
@@ -23,41 +23,41 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
   requireAuth = true,
   redirectTo = '/login',
 }) => {
-  const { isAuthenticated, currentUser, permissions, hasPermission, hasRole } = useAppStore();
+  const { user, loading, hasPermission } = useAuth();
 
-  // 检查认证状态
-  if (requireAuth && !isAuthenticated) {
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+  }
+
+  if (requireAuth && !user) {
     return <Navigate to={redirectTo} replace />;
   }
 
-  // 检查权限
-  if (requiredPermissions.length > 0) {
-    const hasAllPermissions = requiredPermissions.every((p) => hasPermission(p));
-    if (!hasAllPermissions) {
-      // 管理员跳过权限检查
-      if (currentUser?.role !== Role.ADMIN) {
-        return (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-              <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-slate-800">权限不足</h2>
-            <p className="text-sm text-slate-500">您没有访问此页面的权限</p>
-            <Button onClick={() => window.history.back()}>
-              返回上一页
-            </Button>
+  const isAdmin = user?.role === Role.ADMIN;
+
+  if (requiredPermissions.length > 0 && !isAdmin) {
+    const ok = hasPermission(requiredPermissions, true);
+    if (!ok) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
+            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V7a4 4 0 00-8 0v4h8z" />
+            </svg>
           </div>
-        );
-      }
+          <h2 className="text-lg font-semibold text-slate-800">权限不足</h2>
+          <p className="text-sm text-slate-500">您没有访问此页面的权限</p>
+          <Button onClick={() => window.history.back()}>
+            返回上一页
+          </Button>
+        </div>
+      );
     }
   }
 
-  // 检查角色
-  if (requiredRoles.length > 0) {
-    const hasRequiredRole = requiredRoles.some((r) => hasRole(r));
-    if (!hasRequiredRole && currentUser?.role !== Role.ADMIN) {
+  if (requiredRoles.length > 0 && !isAdmin) {
+    const hasRequiredRole = requiredRoles.some((r) => user?.role === r);
+    if (!hasRequiredRole) {
       return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
           <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">

@@ -3,6 +3,7 @@ import { Clock3, Download, Edit, Eye, Paperclip, Plus, Receipt, RotateCcw, Send,
 import { toast } from 'sonner';
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '@/services/api/expense';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { projectApi, Project } from '@/services/api/project';
 import { budgetApi, BudgetSubject } from '@/services/api/budget';
 import FileUpload from '@/components/FileUpload';
@@ -207,9 +208,24 @@ export const ExpenseClaimPage: React.FC = () => {
   const [customerOptions, setCustomerOptions] = useState<CrmCustomer[]>([]);
   const [budgetSubjectOptions, setBudgetSubjectOptions] = useState<BudgetSubject[]>([]);
 
+  const fetchClaims = async () => {
+    setLoading(true);
+    try {
+      const response = await expenseClaimApi.list(searchParams);
+      setClaims(response.records || response.rows || []);
+      setRemoteTotal(response.total || 0);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取报销申请列表失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     void fetchClaims();
   }, [searchParams]);
+
+  useWorkflowRefresh(fetchClaims, 'expense_claim');
 
   useEffect(() => {
     const loadReferences = async () => {
@@ -228,19 +244,6 @@ export const ExpenseClaimPage: React.FC = () => {
     };
     void loadReferences();
   }, []);
-
-  const fetchClaims = async () => {
-    setLoading(true);
-    try {
-      const response = await expenseClaimApi.list(searchParams);
-      setClaims(response.records || response.rows || []);
-      setRemoteTotal(response.total || 0);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '获取报销申请列表失败'));
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const draftCount = useMemo(
     () => claims.filter((item) => item.status === 'DRAFT').length,

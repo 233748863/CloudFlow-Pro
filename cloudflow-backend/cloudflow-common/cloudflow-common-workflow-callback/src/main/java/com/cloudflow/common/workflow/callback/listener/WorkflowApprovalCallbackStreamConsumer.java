@@ -3,19 +3,19 @@ package com.cloudflow.common.workflow.callback.listener;
 import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackProperties;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
+import com.cloudflow.common.workflow.callback.service.CallbackIdempotentStore;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.MapRecord;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.stream.StreamListener;
 
+import java.time.Duration;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
-/**
- * 通用的工作流审批回调 Stream 消费者。
- *
- * <p>由 {@code WorkflowCallbackAutoConfiguration} 注册为 Bean，业务侧无需自实现。
- */
 @Slf4j
 @RequiredArgsConstructor
 public class WorkflowApprovalCallbackStreamConsumer
@@ -24,57 +24,74 @@ public class WorkflowApprovalCallbackStreamConsumer
     private final WorkflowCallbackService workflowCallbackService;
     private final RedisStreamUtil redisStreamUtil;
     private final WorkflowCallbackProperties properties;
+    private final CallbackIdempotentStore idempotentStore;
+    private final DeadLetterHandler deadLetterHandler;
+
+    private final ConcurrentHashMap<String, AtomicInteger> retryCounters = new ConcurrentHashMap<>();
 
     @Override
     public void onMessage(MapRecord<String, String, String> message) {
         String msgId = message.getId().getValue();
         Map<String, String> body = message.getValue();
-        try {
-            ApprovalResultDTO dto = new ApprovalResultDTO();
-            dto.setTenantId(parseLong(body.get("tenantId")));
-            dto.setProcessInstanceId(normalize(body.get("processInstanceId")));
-            dto.setBusinessType(normalize(body.get("businessType")));
-            dto.setBusinessId(parseLong(body.get("businessId")));
-            dto.setBusinessNo(normalize(body.get("businessNo")));
-            dto.setApprovalResult(normalize(body.get("approvalResult")));
-            dto.setApprovalComment(normalize(body.get("approvalComment")));
-            dto.setApproverId(parseLong(body.get("approverId")));
-            dto.setApproverName(normalize(body.get("approverName")));
-            dto.setApprovalTime(parseLong(body.get("approvalTime")));
+        String processInstanceId = normalize(body.get("processInstanceId"));
 
-            workflowCallbackService.handleApprovalResult(dto);
-
+        if (!idempotentStore.acquire(processInstanceId, Duration.ofHours(properties.getIdempotentTtlHours()))) {
+            log.warn("重复消息已跳过: streamKey={}, msgId={}, processInstanceId={}", properties.getStreamKey(), msgId, processInstanceId);
             redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
             redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
-            log.info("审批结果事件消费成功并已确认: streamKey={}, msgId={}, businessType={}, businessId={}, result={}",
+            return;
+        }
+
+        try {
+            ApprovalResultDTO dto = buildDto(body);
+            workflowCallbackService.handleApprovalResult(dto);
+            redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
+            redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+            retryCounters.remove(processInstanceId);
+            log.info("审批结果消费成功: streamKey={}, msgId={}, businessType={}, businessId={}, result={}",
                     properties.getStreamKey(), msgId, dto.getBusinessType(), dto.getBusinessId(), dto.getApprovalResult());
         } catch (Exception e) {
-            log.error("消费审批结果事件失败: streamKey={}, msgId={}, body={}",
-                    properties.getStreamKey(), msgId, body, e);
+            idempotentStore.release(processInstanceId);
+            int count = retryCounters.computeIfAbsent(processInstanceId, k -> new AtomicInteger(0))
+                    .incrementAndGet();
+            log.error("消费审批结果失败(第{}次): streamKey={}, msgId={}", count, properties.getStreamKey(), msgId, e);
+            if (count >= properties.getMaxRetry()) {
+                retryCounters.remove(processInstanceId);
+                deadLetterHandler.record(properties.getStreamKey(), processInstanceId, body, count, e.getMessage());
+                redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
+                redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
+            }
+            // 未达上限：不 ACK，让 pending 重投
         }
+    }
+
+    private ApprovalResultDTO buildDto(Map<String, String> body) {
+        ApprovalResultDTO dto = new ApprovalResultDTO();
+        dto.setTenantId(parseLong(body.get("tenantId")));
+        dto.setProcessInstanceId(normalize(body.get("processInstanceId")));
+        dto.setBusinessType(normalize(body.get("businessType")));
+        dto.setBusinessId(parseLong(body.get("businessId")));
+        dto.setBusinessNo(normalize(body.get("businessNo")));
+        dto.setApprovalResult(normalize(body.get("approvalResult")));
+        dto.setApprovalComment(normalize(body.get("approvalComment")));
+        dto.setApproverId(parseLong(body.get("approverId")));
+        dto.setApproverName(normalize(body.get("approverName")));
+        dto.setApprovalTime(parseLong(body.get("approvalTime")));
+        return dto;
     }
 
     private Long parseLong(String value) {
-        String normalized = normalize(value);
-        if (normalized == null || normalized.isBlank()) {
-            return null;
-        }
-        try {
-            return Long.parseLong(normalized);
-        } catch (NumberFormatException e) {
-            return null;
-        }
+        String v = normalize(value);
+        if (v == null || v.isBlank()) return null;
+        try { return Long.parseLong(v); } catch (NumberFormatException e) { return null; }
     }
 
-    /** Redis Stream 使用 JSON 序列化时，字符串字段可能带外层引号，这里统一剥离。 */
     private String normalize(String value) {
-        if (value == null) {
-            return null;
+        if (value == null) return null;
+        String v = value.trim();
+        if (v.length() >= 2 && v.startsWith("\"") && v.endsWith("\"")) {
+            v = v.substring(1, v.length() - 1);
         }
-        String normalized = value.trim();
-        if (normalized.length() >= 2 && normalized.startsWith("\"") && normalized.endsWith("\"")) {
-            normalized = normalized.substring(1, normalized.length() - 1);
-        }
-        return normalized;
+        return v;
     }
 }

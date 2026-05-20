@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import {
   AlertCircle,
   CalendarClock,
@@ -160,9 +161,24 @@ export const AttendanceSupplementPage: React.FC = () => {
     restrictionMessage,
   } = useHrSelfServiceEligibility();
 
+  const fetchList = async () => {
+    setLoading(true);
+    try {
+      const response = await attendanceSupplementApi.list(searchParams);
+      setList(response.records || response.rows || []);
+      setTotal(response.total || 0);
+    } catch (error) {
+      toast.error(getErrorMessage(error, '获取列表失败'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     void fetchList();
   }, [searchParams]);
+
+  useWorkflowRefresh(fetchList, 'ATTENDANCE_SUPPLEMENT');
 
   const ensureCanOperate = () => {
     if (eligibilityLoading) {
@@ -202,19 +218,6 @@ export const AttendanceSupplementPage: React.FC = () => {
       return '-';
     }
     return String(value);
-  };
-
-  const fetchList = async () => {
-    setLoading(true);
-    try {
-      const response = await attendanceSupplementApi.list(searchParams);
-      setList(response.records || response.rows || []);
-      setTotal(response.total || 0);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '获取列表失败'));
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleAdd = () => {

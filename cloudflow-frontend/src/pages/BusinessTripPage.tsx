@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import {
   Clock3,
   Download,
@@ -220,18 +221,6 @@ export const BusinessTripPage: React.FC = () => {
   const [selectedCompanionIds, setSelectedCompanionIds] = useState<string[]>([]);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
-  useEffect(() => {
-    void fetchList();
-  }, [searchParams]);
-
-  const draftCount = useMemo(() => list.filter((item) => item.status === 'DRAFT').length, [list]);
-  const pendingCount = useMemo(() => list.filter((item) => item.status === 'PENDING').length, [list]);
-  const approvedCount = useMemo(() => list.filter((item) => item.status === 'APPROVED').length, [list]);
-  const hasActiveFilters = Boolean(searchParams.status || searchParams.destination);
-  const currentStatusLabel = searchParams.status ? STATUS_LABELS[searchParams.status] || searchParams.status : '全部状态';
-  const currentDestinationLabel = searchParams.destination || '全部目的地';
-  const formTripDays = calculateTripDays(formData.startDate, formData.endDate);
-
   const fetchList = async () => {
     setLoading(true);
     try {
@@ -244,6 +233,20 @@ export const BusinessTripPage: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    void fetchList();
+  }, [searchParams]);
+
+  useWorkflowRefresh(fetchList, 'business_trip');
+
+  const draftCount = useMemo(() => list.filter((item) => item.status === 'DRAFT').length, [list]);
+  const pendingCount = useMemo(() => list.filter((item) => item.status === 'PENDING').length, [list]);
+  const approvedCount = useMemo(() => list.filter((item) => item.status === 'APPROVED').length, [list]);
+  const hasActiveFilters = Boolean(searchParams.status || searchParams.destination);
+  const currentStatusLabel = searchParams.status ? STATUS_LABELS[searchParams.status] || searchParams.status : '全部状态';
+  const currentDestinationLabel = searchParams.destination || '全部目的地';
+  const formTripDays = calculateTripDays(formData.startDate, formData.endDate);
 
   const handleApplyFilters = () => {
     setSearchParams((prev) => ({
