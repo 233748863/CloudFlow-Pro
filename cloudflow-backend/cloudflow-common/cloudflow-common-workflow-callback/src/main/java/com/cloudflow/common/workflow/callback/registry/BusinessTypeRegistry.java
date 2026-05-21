@@ -10,6 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import org.springframework.lang.Nullable;
+import org.springframework.stereotype.Component;
 
 /**
  * 业务类型注册中心。
@@ -24,6 +25,7 @@ import org.springframework.lang.Nullable;
  *
  * <p>本类线程安全：注册期与读取期均使用 {@link ConcurrentHashMap}。
  */
+@Component
 public class BusinessTypeRegistry {
 
     private final Map<String, BusinessTypeDef> registry = new ConcurrentHashMap<>();

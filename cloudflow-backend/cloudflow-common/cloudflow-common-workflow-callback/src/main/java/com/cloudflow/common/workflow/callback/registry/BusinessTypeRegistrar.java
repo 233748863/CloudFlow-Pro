@@ -5,6 +5,7 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.stereotype.Component;
 
 /**
  * 业务类型注册收集器。
@@ -16,6 +17,7 @@ import org.springframework.context.event.EventListener;
  * 是为了确保所有 Bean 都已完成初始化（特别是模块自身的 {@code @Configuration} 类）。
  */
 @Slf4j
+@Component
 public class BusinessTypeRegistrar {
 
     private final BusinessTypeRegistry registry;
