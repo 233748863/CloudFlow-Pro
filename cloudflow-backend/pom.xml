@@ -57,6 +57,7 @@
         <fastexcel.version>1.0.0</fastexcel.version>
         <poi.version>5.2.5</poi.version>
         <commons-io.version>2.16.1</commons-io.version>
+        <jasypt-spring-boot.version>3.0.5</jasypt-spring-boot.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <maven.dependency.plugin.version>3.7.0</maven.dependency.plugin.version>
         <jsr305.version>3.0.2</jsr305.version>
@@ -155,6 +156,11 @@
             <dependency>
                 <groupId>com.cloudflow</groupId>
                 <artifactId>cloudflow-common-encrypt</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-config-secret</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <!-- 新增模块 -->
@@ -388,6 +394,13 @@
                 <artifactId>commons-io</artifactId>
                 <version>${commons-io.version}</version>
             </dependency>
+
+            <!-- Jasypt Spring Boot Starter：yaml 配置 ENC(...) 占位的启动期解密 -->
+            <dependency>
+                <groupId>com.github.ulisesbocchio</groupId>
+                <artifactId>jasypt-spring-boot-starter</artifactId>
+                <version>${jasypt-spring-boot.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -510,6 +523,8 @@
                                 <ignoredUnusedDeclaredDependency>io.micrometer:micrometer-registry-prometheus</ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>com.mysql:mysql-connector-j</ignoredUnusedDeclaredDependency>
                                 <ignoredUnusedDeclaredDependency>com.cloudflow:cloudflow-common-*</ignoredUnusedDeclaredDependency>
+                                <!-- Jasypt starter 仅在启动期对配置占位生效，源码不直接 import -->
+                                <ignoredUnusedDeclaredDependency>com.github.ulisesbocchio:jasypt-spring-boot-starter</ignoredUnusedDeclaredDependency>
                             </ignoredUnusedDeclaredDependencies>
                             <ignoredNonTestScopedDependencies>
                                 <!-- FastExcel 传递带入的 POI 在当前项目里主要用于测试校验导出结果 -->

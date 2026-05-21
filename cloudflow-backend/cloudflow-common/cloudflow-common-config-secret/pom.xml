@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>cloudflow-common</artifactId>
+        <groupId>com.cloudflow</groupId>
+        <version>1.0.0</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>cloudflow-common-config-secret</artifactId>
+    <description>CloudFlow 配置敏感信息密文化模块 - 基于 jasypt-spring-boot-starter，支持 yaml 中 ENC(...) 占位</description>
+
+    <dependencies>
+        <!-- Jasypt Spring Boot Starter：自动注册 EnvironmentPostProcessor + StringEncryptor，识别 ENC(...) 占位 -->
+        <dependency>
+            <groupId>com.github.ulisesbocchio</groupId>
+            <artifactId>jasypt-spring-boot-starter</artifactId>
+        </dependency>
+    </dependencies>
+
+</project>

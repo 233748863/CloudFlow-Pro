@@ -40,6 +40,12 @@
             <artifactId>cloudflow-common-security</artifactId>
         </dependency>
 
+        <!-- 配置敏感信息密文化（yaml 中 ENC(...) 占位的启动期解密） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-config-secret</artifactId>
+        </dependency>
+
         <!-- Auth 源码里直接使用了 common-core 的响应体、上下文与工具类 -->
         <dependency>
             <groupId>com.cloudflow</groupId>

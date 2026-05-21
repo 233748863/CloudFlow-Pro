@@ -24,6 +24,7 @@
         <module>cloudflow-common-idempotent</module>
         <module>cloudflow-common-ratelimiter</module>
         <module>cloudflow-common-encrypt</module>
+        <module>cloudflow-common-config-secret</module>
         <module>cloudflow-common-excel</module>
         <module>cloudflow-common-sensitive</module>
         <module>cloudflow-common-oss</module>

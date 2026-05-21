@@ -44,6 +44,12 @@
             <artifactId>cloudflow-common-security</artifactId>
         </dependency>
 
+        <!-- 配置敏感信息密文化（yaml 中 ENC(...) 占位的启动期解密） -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-config-secret</artifactId>
+        </dependency>
+
         <!-- 响应式 Redis（Gateway 是 WebFlux，需要 reactive 版本） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

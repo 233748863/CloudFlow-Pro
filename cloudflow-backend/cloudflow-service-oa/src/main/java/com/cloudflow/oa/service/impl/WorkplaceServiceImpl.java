@@ -15,6 +15,7 @@ import com.cloudflow.oa.service.ISysNoticeService;
 import com.cloudflow.oa.service.ISysScheduleService;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import com.cloudflow.oa.service.remote.RemoteCrmWorkplaceService;
+import com.cloudflow.oa.service.remote.RemoteHrWorkplaceService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaContractConstants;
 import lombok.extern.slf4j.Slf4j;
@@ -63,6 +64,9 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
 
     @Autowired
     private RemoteCrmWorkplaceService remoteCrmWorkplaceService;
+
+    @Autowired
+    private RemoteHrWorkplaceService remoteHrWorkplaceService;
 
     @Override
     @Cacheable(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
@@ -217,15 +221,12 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             summary.setTodayItems(buildTodayItems(todayEvents, announcements));
             List<WorkplaceSummaryDTO.TodayItem> crmTodos = loadCrmTodos(serviceHealth);
             summary.setTodayItems(mergeTodayItems(summary.getTodayItems(), crmTodos));
-            summary.setRiskItems(loadRiskItems(serviceHealth, stats));
+            summary.setRiskItems(loadRiskItems(serviceHealth, stats, userId));
             List<WorkplaceSummaryDTO.ActivityItem> activities = getTimeline(userId, 8);
             stats.setRecentActivities(activities.size());
             summary.setRecentActivities(activities);
             if (!serviceHealth.containsKey("oa")) {
                 markService(serviceHealth, "oa", true, "OK");
-            }
-            if (!serviceHealth.containsKey("hr")) {
-                markService(serviceHealth, "hr", true, "未接入HR提醒数据源");
             }
             
         } catch (Exception e) {
@@ -354,7 +355,8 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     }
 
     private List<WorkplaceSummaryDTO.RiskItem> loadRiskItems(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,
-                                                             WorkplaceSummaryDTO.Stats stats) {
+                                                             WorkplaceSummaryDTO.Stats stats,
+                                                             Long userId) {
         try {
             List<OaRiskAlert> risks = riskAlertService.list(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaRiskAlert>()
                     .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING)
@@ -363,7 +365,9 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                     .last("LIMIT 8"));
             List<WorkplaceSummaryDTO.RiskItem> oaRiskItems = risks.stream().map(this::toRiskItem).collect(Collectors.toList());
             List<WorkplaceSummaryDTO.RiskItem> crmRiskItems = loadCrmRisks();
+            List<WorkplaceSummaryDTO.RiskItem> hrRiskItems = loadHrReminders(serviceHealth, userId);
             List<WorkplaceSummaryDTO.RiskItem> merged = mergeRisks(oaRiskItems, crmRiskItems, 8);
+            merged = mergeRisks(merged, hrRiskItems, 8);
             stats.setOpenRisks(merged.size());
             markService(serviceHealth, "oa.risk", true, "OK");
             return merged;
@@ -499,6 +503,36 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             }).collect(Collectors.toList());
         } catch (Exception e) {
             log.warn("获取 CRM 风险失败", e);
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.RiskItem> loadHrReminders(Map<String, WorkplaceSummaryDTO.ServiceStatus> serviceHealth,
+                                                               Long userId) {
+        try {
+            var response = remoteHrWorkplaceService.listReminders(userId, 30, 8);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                markService(serviceHealth, "hr", false, "HR 提醒返回异常");
+                return new ArrayList<>();
+            }
+            markService(serviceHealth, "hr", true, "OK");
+            return response.getData().stream().map(item -> {
+                WorkplaceSummaryDTO.RiskItem mapped = new WorkplaceSummaryDTO.RiskItem();
+                mapped.setId(parseLongId(item.getId()));
+                mapped.setBusinessType(item.getBusinessType());
+                mapped.setBusinessId(item.getBusinessId());
+                mapped.setModule("HR");
+                mapped.setSourceLabel(item.getSourceLabel());
+                mapped.setTitle(item.getTitle());
+                mapped.setDescription(item.getDescription());
+                mapped.setLevel(item.getSeverity());
+                mapped.setStatus("OPEN");
+                mapped.setPath(item.getPath());
+                return mapped;
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取 HR 提醒失败", e);
+            markService(serviceHealth, "hr", false, "HR 提醒不可用");
             return new ArrayList<>();
         }
     }

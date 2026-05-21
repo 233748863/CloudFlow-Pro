@@ -32,6 +32,8 @@ spring:
         master:
           url: ${DB_URL:jdbc:mysql://192.168.1.173:3306/cloud_flow_db?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&${MYSQL_SSL_PARAMS:useSSL=true&verifyServerCertificate=false&allowPublicKeyRetrieval=true}&serverTimezone=Asia/Shanghai}
           username: ${DB_USERNAME:root}
+          # 推荐改为密文：password: ENC(密文)，主密钥通过环境变量 JASYPT_ENCRYPTOR_PASSWORD 注入
+          # 详见：cloudflow-backend/cloudflow-common/cloudflow-common-config-secret/README.md
           password: ${DB_PASSWORD}
           driver-class-name: com.mysql.cj.jdbc.Driver
       # HikariCP 连接池全局配置（所有数据源共享）
@@ -49,6 +51,7 @@ spring:
     redis:
       host: ${REDIS_HOST:192.168.1.173}
       port: ${REDIS_PORT:6379}
+      # 推荐改为密文：password: ENC(密文)；详见 cloudflow-common-config-secret/README.md
       password: ${REDIS_PASSWORD}
       database: 0
       timeout: 5000
@@ -134,6 +137,20 @@ file:
   upload:
     path: /data/cloudflow/uploads
     max-size: 10485760  # 10MB
+
+# ==================== 配置敏感信息密文化（jasypt-spring-boot） ====================
+# 主密钥通过环境变量 JASYPT_ENCRYPTOR_PASSWORD 注入，禁止写入 yaml / 镜像。
+# 当 yaml 内不存在 ENC(...) 占位时，主密钥可缺省；一旦出现 ENC(...) 而主密钥为空，
+# 启动会以 EncryptionOperationNotPossibleException 失败 —— "密钥缺失即拒绝启动"。
+# 用法、密文生成与轮换流程详见：
+#   cloudflow-backend/cloudflow-common/cloudflow-common-config-secret/README.md
+jasypt:
+  encryptor:
+    password: ${JASYPT_ENCRYPTOR_PASSWORD:}
+    algorithm: PBEWITHHMACSHA512ANDAES_256
+    iv-generator-classname: org.jasypt.iv.RandomIvGenerator
+    pool-size: 1
+    string-output-type: base64
 
 # ============================================================
 # 开发环境配置示例（可选）
