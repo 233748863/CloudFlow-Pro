@@ -21,6 +21,7 @@ import java.util.Map;
  */
 @FeignClient(
         name = "cloudflow-service-workflow",
+        contextId = "hrWorkflowServiceClient",
         fallback = WorkflowServiceFallback.class
 )
 public interface WorkflowServiceClient {

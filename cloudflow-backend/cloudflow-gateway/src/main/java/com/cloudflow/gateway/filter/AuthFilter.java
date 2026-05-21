@@ -81,6 +81,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
                     headers.remove("X-User-Roles");
                     headers.remove("X-User-Dept-Name");
                     headers.remove("X-User-Tenant-Id");
+                    // 防伪造内部调用：外部请求不允许携带 X-Inner-Call / X-From-Service 头穿透到下游
+                    headers.remove(SecurityConstants.INNER_CALL_HEADER);
+                    headers.remove(SecurityConstants.FROM_SERVICE_HEADER);
                     String tenantId = resolveTenantId(loginUser);
                     if (tenantId != null) {
                         headers.set(SecurityConstants.TENANT_ID_HEADER, tenantId);

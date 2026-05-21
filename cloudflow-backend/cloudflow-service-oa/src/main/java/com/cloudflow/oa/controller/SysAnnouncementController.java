@@ -9,6 +9,7 @@ import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.ISysAnnouncementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import cn.dev33.satoken.annotation.SaIgnore;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -35,6 +36,7 @@ public class SysAnnouncementController {
      * 获取匿名公开公告列表
      */
     @GetMapping("/public")
+    @SaIgnore
     public R<List<SysAnnouncement>> getPublicList(@RequestParam(defaultValue = "20") Integer limit) {
         if (!Boolean.TRUE.equals(oaProperties.getAnnouncement().getAllowAnonymousRead())) {
             return R.fail("当前租户未开放匿名公告访问");

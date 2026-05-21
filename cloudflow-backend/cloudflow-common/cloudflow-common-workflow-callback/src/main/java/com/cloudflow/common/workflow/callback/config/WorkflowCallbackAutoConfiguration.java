@@ -5,6 +5,9 @@ import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
 import com.cloudflow.common.workflow.callback.listener.DeadLetterHandler;
 import com.cloudflow.common.workflow.callback.listener.DefaultDeadLetterHandler;
 import com.cloudflow.common.workflow.callback.listener.WorkflowApprovalCallbackStreamConsumer;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeContributor;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistrar;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
 import com.cloudflow.common.workflow.callback.service.CallbackIdempotentStore;
 import com.cloudflow.common.workflow.callback.service.DefaultWorkflowCallbackDispatcher;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
@@ -108,5 +111,18 @@ public class WorkflowCallbackAutoConfiguration {
                 StreamOffset.create(properties.getStreamKey(), ReadOffset.lastConsumed()),
                 consumer
         );
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(BusinessTypeRegistry.class)
+    public BusinessTypeRegistry businessTypeRegistry() {
+        return new BusinessTypeRegistry();
+    }
+
+    @Bean
+    @ConditionalOnMissingBean(BusinessTypeRegistrar.class)
+    public BusinessTypeRegistrar businessTypeRegistrar(BusinessTypeRegistry registry,
+                                                       java.util.List<BusinessTypeContributor> contributors) {
+        return new BusinessTypeRegistrar(registry, contributors);
     }
 }

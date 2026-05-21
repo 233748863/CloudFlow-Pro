@@ -21,11 +21,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmPerformanceInnerController {
 
-    private static final String HR_SERVICE = "cloudflow-service-hr";
+    private static final String HR_CALLERS =
+            "${cloudflow.security.inner.crm.performance-callers:cloudflow-service-hr}";
 
     private final CrmPerformanceQueryService performanceQueryService;
 
-    @Inner(allowedServices = HR_SERVICE)
+    @Inner(allowedServices = HR_CALLERS)
     @GetMapping("/owners")
     public R<List<CrmPerformanceSummaryVO>> summarizeByOwner(
             @RequestParam(value = "ownerIds", required = false) List<Long> ownerIds,
@@ -34,7 +35,7 @@ public class CrmPerformanceInnerController {
         return R.ok(performanceQueryService.summarizeByOwner(ownerIds, startDate, endDate));
     }
 
-    @Inner(allowedServices = HR_SERVICE)
+    @Inner(allowedServices = HR_CALLERS)
     @GetMapping("/depts")
     public R<List<CrmPerformanceSummaryVO>> summarizeByDept(
             @RequestParam(value = "deptIds", required = false) List<Long> deptIds,
@@ -43,7 +44,7 @@ public class CrmPerformanceInnerController {
         return R.ok(performanceQueryService.summarizeByDept(deptIds, startDate, endDate));
     }
 
-    @Inner(allowedServices = HR_SERVICE)
+    @Inner(allowedServices = HR_CALLERS)
     @GetMapping("/top-owners")
     public R<List<CrmPerformanceSummaryVO>> topOwners(
             @RequestParam(value = "limit", defaultValue = "10") int limit,
@@ -52,7 +53,7 @@ public class CrmPerformanceInnerController {
         return R.ok(performanceQueryService.topOwners(limit, startDate, endDate));
     }
 
-    @Inner(allowedServices = HR_SERVICE)
+    @Inner(allowedServices = HR_CALLERS)
     @GetMapping("/top-depts")
     public R<List<CrmPerformanceSummaryVO>> topDepartments(
             @RequestParam(value = "limit", defaultValue = "10") int limit,

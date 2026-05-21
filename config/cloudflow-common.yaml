@@ -138,6 +138,68 @@ file:
     path: /data/cloudflow/uploads
     max-size: 10485760  # 10MB
 
+# ==================== Resilience4j 熔断 / 超时 配置 ====================
+# 与 spring-cloud-starter-circuitbreaker-reactor-resilience4j 集成。
+# 开启 feign.circuitbreaker.enabled=true 后，会按 Feign 的 contextId 自动绑定到
+# 同名 instance 配置（参见各 RemoteXxxService 的 contextId）。
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 20
+        minimumNumberOfCalls: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 30s
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        registerHealthIndicator: true
+    instances:
+      workflow-client:
+        baseConfig: default
+      auth-client:
+        baseConfig: default
+      oa-client:
+        baseConfig: default
+      crm-client:
+        baseConfig: default
+      hr-client:
+        baseConfig: default
+  timelimiter:
+    configs:
+      default:
+        timeoutDuration: 5s
+        cancelRunningFuture: true
+    instances:
+      workflow-client:
+        baseConfig: default
+      auth-client:
+        baseConfig: default
+      oa-client:
+        baseConfig: default
+      crm-client:
+        baseConfig: default
+      hr-client:
+        baseConfig: default
+
+# Feign 熔断器全局开关（各服务也可在自己的 yaml 中开启）
+feign:
+  circuitbreaker:
+    enabled: true
+    alphanumeric-ids:
+      enabled: true
+
+# ==================== Actuator Endpoint 暴露 ====================
+# 暴露熔断器健康指标与事件流，供监控平台轮询/订阅。
+management:
+  endpoint:
+    health:
+      show-details: always
+  endpoints:
+    web:
+      exposure:
+        include: health,info,circuitbreakers,circuitbreakerevents
+
 # ==================== 配置敏感信息密文化（jasypt-spring-boot） ====================
 # 主密钥通过环境变量 JASYPT_ENCRYPTOR_PASSWORD 注入，禁止写入 yaml / 镜像。
 # 当 yaml 内不存在 ENC(...) 占位时，主密钥可缺省；一旦出现 ENC(...) 而主密钥为空，

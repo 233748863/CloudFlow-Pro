@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.job;
 
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
 import com.cloudflow.workflow.domain.WfReconcileAlert;
 import com.cloudflow.workflow.mapper.WfReconcileAlertMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +18,18 @@ import java.util.List;
 public class ProcessBusinessReconcileJob {
 
     private final WfReconcileAlertMapper reconcileAlertMapper;
+    private final BusinessTypeRegistry businessTypeRegistry;
 
     @Scheduled(cron = "0 */5 * * * *")
     @DistributedJob(name = "processBusinessReconcile", lockTime = 240)
     public void reconcile() {
         try {
-            List<WfReconcileAlert> inconsistent = reconcileAlertMapper.selectInconsistentRecords(6);
+            if (businessTypeRegistry.size() == 0) {
+                log.warn("[对账] BusinessTypeRegistry 为空，本次跳过");
+                return;
+            }
+            List<WfReconcileAlert> inconsistent = reconcileAlertMapper.selectInconsistentRecords(
+                    6, businessTypeRegistry.all());
             if (inconsistent.isEmpty()) return;
             for (WfReconcileAlert alert : inconsistent) {
                 alert.setCreateTime(LocalDateTime.now());

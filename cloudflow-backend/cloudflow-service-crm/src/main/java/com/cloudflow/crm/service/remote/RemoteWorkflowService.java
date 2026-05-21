@@ -8,6 +8,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "cloudflow-service-workflow",
+        contextId = "crmRemoteWorkflowService",
         fallbackFactory = RemoteWorkflowFallbackFactory.class
 )
 public interface RemoteWorkflowService {

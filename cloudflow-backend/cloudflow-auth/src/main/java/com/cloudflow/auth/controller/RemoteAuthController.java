@@ -35,15 +35,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class RemoteAuthController {
 
-    private static final String HR_SERVICE = "cloudflow-service-hr";
-    private static final String WORKFLOW_SERVICE = "cloudflow-service-workflow";
+    private static final String HR_CALLERS = "${cloudflow.security.inner.auth.hr-callers:cloudflow-service-hr}";
+    private static final String WORKFLOW_CALLERS = "${cloudflow.security.inner.auth.workflow-callers:cloudflow-service-workflow}";
 
     private final SysDeptMapper sysDeptMapper;
     private final ISysPostService postService;
     private final ISysUserService userService;
     private final ForcePasswordChangeService forcePasswordChangeService;
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/dept/tree")
     public R<List<SysDept>> getDeptTree(@RequestParam(value = "tenantId", required = false) Long tenantId) {
         List<SysDept> depts = sysDeptMapper.selectList(new LambdaQueryWrapper<SysDept>()
@@ -51,13 +51,13 @@ public class RemoteAuthController {
         return R.ok(buildDeptTree(depts));
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/dept/{deptId}")
     public R<SysDept> getDeptById(@PathVariable Long deptId) {
         return R.ok(sysDeptMapper.selectById(deptId));
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @PostMapping("/dept")
     public R<Long> createDept(@RequestBody SysDept dept) {
         if (dept.getParentId() != null && dept.getParentId() > 0) {
@@ -76,7 +76,7 @@ public class RemoteAuthController {
         return R.ok(dept.getDeptId());
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/post/list")
     public R<List<SysPost>> getPostList(@RequestParam(value = "tenantId", required = false) Long tenantId) {
         List<SysPost> posts = postService.list(new LambdaQueryWrapper<SysPost>()
@@ -84,13 +84,13 @@ public class RemoteAuthController {
         return R.ok(posts);
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/post/{postId}")
     public R<SysPost> getPostById(@PathVariable Long postId) {
         return R.ok(postService.getById(postId));
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @PostMapping("/post")
     public R<Long> createPost(@RequestBody SysPost post) {
         if (!postService.checkPostCodeUnique(post)) {
@@ -103,25 +103,25 @@ public class RemoteAuthController {
         return R.ok(post.getPostId());
     }
 
-    @Inner(allowedServices = {HR_SERVICE, WORKFLOW_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS, WORKFLOW_CALLERS})
     @GetMapping("/user/{userId}")
     public R<SysUser> getUser(@PathVariable Long userId) {
         return R.ok(userService.selectUserById(userId));
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/user/by-username")
     public R<SysUser> getUserByUserName(@RequestParam String userName) {
         return R.ok(userService.selectUserByUserName(userName));
     }
 
-    @Inner(allowedServices = {HR_SERVICE, WORKFLOW_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS, WORKFLOW_CALLERS})
     @PostMapping("/user/batch")
     public R<List<SysUser>> batchGetUsers(@RequestBody List<Long> userIds) {
         return R.ok(userService.selectUserByIds(userIds));
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @PostMapping("/user")
     public R<Long> createUser(@RequestBody SysUser user) {
         if (!StringUtils.hasText(user.getStatus())) {
@@ -132,7 +132,7 @@ public class RemoteAuthController {
         return R.ok(user.getUserId());
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @PutMapping("/user/{userId}")
     public R<Void> updateUser(@PathVariable Long userId, @RequestBody SysUser request) {
         SysUser existing = userService.selectUserById(userId);
@@ -174,7 +174,7 @@ public class RemoteAuthController {
         return R.ok();
     }
 
-    @Inner(allowedServices = {HR_SERVICE})
+    @Inner(allowedServices = {HR_CALLERS})
     @DeleteMapping("/user/{userId}")
     public R<Void> disableUser(@PathVariable Long userId) {
         SysUser existing = userService.selectUserById(userId);

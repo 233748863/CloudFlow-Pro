@@ -12,6 +12,7 @@ import java.util.Map;
  */
 @FeignClient(
     name = "cloudflow-service-oa",
+    contextId = "workflowRemoteOaService",
     fallbackFactory = RemoteOaFallbackFactory.class
 )
 public interface RemoteOaService {

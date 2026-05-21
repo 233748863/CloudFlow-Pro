@@ -39,7 +39,19 @@ jobs:
           echo "Hard-coded secrets or password fallbacks detected"
           exit 1
         fi
-        
+
+    - name: Scan unprotected controller endpoints
+      run: |
+        set -euo pipefail
+        BAD=$(python3 .github/scripts/scan-controller-auth.py \
+          cloudflow-backend/cloudflow-service-oa/src/main/java \
+          cloudflow-backend/cloudflow-service-crm/src/main/java)
+        if [ -n "$BAD" ]; then
+          echo "未受保护的 Controller 端点（必须加 @SaCheckPermission / @SaCheckRole / @Inner / @SaIgnore 之一）："
+          echo "$BAD"
+          exit 1
+        fi
+
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:

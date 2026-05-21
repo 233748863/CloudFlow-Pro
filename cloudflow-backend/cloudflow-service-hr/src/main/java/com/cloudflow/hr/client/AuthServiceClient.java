@@ -25,6 +25,7 @@ import java.util.List;
 @FeignClient(
     name = "cloudflow-auth",
     path = "/inner/auth",
+    contextId = "hrAuthServiceClient",
     fallback = AuthServiceFallback.class
 )
 public interface AuthServiceClient {

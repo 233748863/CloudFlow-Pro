@@ -85,24 +85,22 @@ export interface ProcessTraceProps {
   onClose: () => void;
 }
 
-/** DynamicFormViewer 组件 Props */
-export interface DynamicFormViewerProps {
-  /** 表单定义 */
-  formDef: FormDefinition;
-  /** 表单数据 */
-  data: Record<string, unknown>;
-}
-
-/** FormRenderer 组件 Props */
+/** FormRenderer 组件 Props（合并自原 DynamicFormViewerProps + FormRendererProps） */
 export interface FormRendererProps {
   /** 表单定义 */
-  formDef: FormDefinition;
-  /** 表单数据 */
-  data: Record<string, unknown>;
-  /** 数据变更回调 */
-  onChange: (data: Record<string, unknown>) => void;
-  /** 是否只读 */
-  readOnly?: boolean;
+  formDef: FormDefinition | undefined;
+  /** 受控初始数据 / 已存在数据。给出后组件切换为受控展示模式 */
+  data?: Record<string, unknown>;
+  /** 受控变更回调（与 data 配合使用） */
+  onChange?: (id: string, value: unknown) => void;
+  /** 自管模式：提交回调（hideActions=false 时生效） */
+  onSubmit?: (data: Record<string, unknown>) => void;
+  /** 自管模式：取消/关闭回调 */
+  onCancel?: () => void;
+  /** 只读模式：禁用所有控件，仅展示字段值 */
+  readonly?: boolean;
+  /** 嵌入式模式：不渲染 Modal 容器（header + 底部按钮） */
+  hideActions?: boolean;
 }
 
 /** SourceCodeViewer 组件 Props */

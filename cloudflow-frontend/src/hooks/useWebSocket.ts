@@ -41,6 +41,8 @@ export const useWebSocket = () => {
     const hasConnectedRef = useRef(false);
     // 标记组件是否已卸载
     const unmountedRef = useRef(false);
+    // 首帧鉴权是否已通过（收到 AUTH_OK 之前业务消息不应被信任）
+    const authOkRef = useRef(false);
 
     const MAX_RECONNECT_ATTEMPTS = 5;
 
@@ -100,24 +102,47 @@ export const useWebSocket = () => {
 
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.host;
-        const wsUrl = `${protocol}//${host}/ws/notifications?token=${token}`;
+        // P3-6：token 不再随 URL 传输（避免进入 access log / 浏览器历史），改由首帧 AUTH 消息发送
+        const wsUrl = `${protocol}//${host}/ws/notifications`;
 
         const ws = new WebSocket(wsUrl);
+        authOkRef.current = false;
 
         ws.onopen = () => {
             if (unmountedRef.current) {
                 ws.close();
                 return;
             }
-            console.log('WebSocket: 连接成功');
-            setIsConnected(true);
-            hasConnectedRef.current = true;
-            reconnectCountRef.current = 0;
+            // 握手完成后立即发送鉴权首帧
+            try {
+                ws.send(JSON.stringify({ type: 'AUTH', token }));
+            } catch (e) {
+                console.warn('WebSocket: 发送 AUTH 帧失败', e);
+            }
         };
 
         ws.onmessage = (event) => {
             try {
                 const msg: WebSocketMessage = JSON.parse(event.data);
+                // 鉴权状态机：先吃 AUTH_OK / AUTH_FAIL
+                if (msg.type === 'AUTH_OK') {
+                    authOkRef.current = true;
+                    setIsConnected(true);
+                    hasConnectedRef.current = true;
+                    reconnectCountRef.current = 0;
+                    console.log('WebSocket: 鉴权成功');
+                    return;
+                }
+                if (msg.type === 'AUTH_FAIL') {
+                    console.warn('WebSocket: 鉴权失败');
+                    authOkRef.current = false;
+                    // 鉴权失败视同首次连接失败，避免无限重连
+                    hasConnectedRef.current = false;
+                    return;
+                }
+                // 未鉴权前不信任任何业务消息
+                if (!authOkRef.current) return;
+
                 if (msg.topic && topicHandlers.has(msg.topic)) {
                     topicHandlers.get(msg.topic)!(msg.payload);
                 } else if (msg.type === 'NOTICE') {
@@ -138,6 +163,7 @@ export const useWebSocket = () => {
 
         ws.onclose = () => {
             setIsConnected(false);
+            authOkRef.current = false;
 
             // 组件已卸载，不重连
             if (unmountedRef.current) return;

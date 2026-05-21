@@ -21,9 +21,12 @@ import java.time.LocalDateTime;
 @RequestMapping("/inner/oa/announcement")
 public class InnerAnnouncementController {
 
+    private static final String CRM_CALLERS =
+            "${cloudflow.security.inner.oa.announcement-callers:cloudflow-service-crm}";
+
     private final ISysAnnouncementService announcementService;
 
-    @Inner(allowedServices = {"cloudflow-service-crm"})
+    @Inner(allowedServices = {CRM_CALLERS})
     @PostMapping("/publish")
     public R<Long> publish(@RequestBody InnerAnnouncementPublishRequest request) {
         if (request == null || !StringUtils.hasText(request.getTitle())) {

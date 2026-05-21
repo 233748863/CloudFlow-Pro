@@ -1,62 +1,130 @@
 import React, { useState } from 'react';
 import { AlertTriangle, FileText, Send, X } from 'lucide-react';
-import type { FormDefinition } from '../types';
+import type { FormDefinition, FormField } from '../types';
 import { Button, DatePicker, Input, Textarea } from '@/components/common';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './common/select';
 import { WorkspaceInlineState } from '@/components/workspace/WorkspacePrimitives';
 import { cn } from '@/utils/cn';
 
-export const FormRenderer = ({
+const SELECT_NONE_VALUE = '__NONE__';
+
+interface FormRendererProps {
+  formDef: FormDefinition | undefined;
+  /** 提交回调（仅自管模式下生效） */
+  onSubmit?: (data: Record<string, any>) => void;
+  /** 取消/关闭回调（仅自管模式下生效） */
+  onCancel?: () => void;
+  /** 受控初始数据 / 已存在数据。给出后切换为受控展示模式（替代旧 DynamicFormViewer） */
+  data?: Record<string, any>;
+  /** 受控变更回调；与 data 配合使用 */
+  onChange?: (id: string, value: any) => void;
+  /** 只读模式：禁用所有控件，仅展示字段值 */
+  readonly?: boolean;
+  /** 嵌入式模式：不渲染 Modal 容器（header + 底部按钮），仅渲染字段网格 */
+  hideActions?: boolean;
+}
+
+const hasValue = (value: unknown): boolean => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  return true;
+};
+
+const normalizeFieldValue = (fieldType: string, rawValue: string): unknown => {
+  if (fieldType === 'NUMBER') {
+    const trimmed = rawValue.trim();
+    if (trimmed === '') return '';
+    const parsed = Number(trimmed);
+    return Number.isNaN(parsed) ? rawValue : parsed;
+  }
+  return rawValue;
+};
+
+const formatFieldValue = (field: FormField, value: unknown): string => {
+  if (value === null || value === undefined || value === '') return '';
+  switch (field.type) {
+    case 'DATE': {
+      try {
+        const date = new Date(value as string | number | Date);
+        if (!Number.isNaN(date.getTime())) {
+          return date.toLocaleDateString('zh-CN', {
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+          });
+        }
+      } catch {
+        return String(value);
+      }
+      return String(value);
+    }
+    case 'NUMBER': {
+      const num = Number(value);
+      if (!Number.isNaN(num)) {
+        return num.toLocaleString('zh-CN', {
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 2,
+        });
+      }
+      return String(value);
+    }
+    default:
+      return String(value);
+  }
+};
+
+const readFieldValue = (field: FormField, data: Record<string, any> | undefined): any => {
+  if (!data) return undefined;
+  if (field.id in data) return data[field.id];
+  if (field.label in data) return data[field.label];
+  const lowerLabel = field.label.toLowerCase();
+  const lowerId = field.id.toLowerCase();
+  for (const key of Object.keys(data)) {
+    const lowerKey = key.toLowerCase();
+    if (lowerKey === lowerId || lowerKey === lowerLabel) return data[key];
+  }
+  return undefined;
+};
+
+export const FormRenderer: React.FC<FormRendererProps> = ({
   formDef,
   onSubmit,
   onCancel,
-}: {
-  formDef: FormDefinition | undefined;
-  onSubmit: (data: Record<string, any>) => void;
-  onCancel: () => void;
+  data,
+  onChange,
+  readonly = false,
+  hideActions = false,
 }) => {
-  const SELECT_NONE_VALUE = '__NONE__';
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const isControlled = data !== undefined;
+  const [internalData, setInternalData] = useState<Record<string, any>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const hasValue = (value: unknown): boolean => {
-    if (value === null || value === undefined) return false;
-    if (typeof value === 'string') return value.trim() !== '';
-    return true;
-  };
+  const getValue = (field: FormField): any =>
+    isControlled ? readFieldValue(field, data) : internalData[field.id];
 
-  const normalizeFieldValue = (fieldType: string, rawValue: string) => {
-    if (fieldType === 'NUMBER') {
-      const trimmed = rawValue.trim();
-      if (trimmed === '') return '';
-      const parsed = Number(trimmed);
-      return Number.isNaN(parsed) ? rawValue : parsed;
-    }
-    return rawValue;
-  };
-
-  const handleChange = (id: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [id]: value }));
-    if (errors[id]) {
-      setErrors((prev) => ({ ...prev, [id]: '' }));
+  const handleChange = (field: FormField, value: any) => {
+    if (isControlled) {
+      onChange?.(field.id, value);
+    } else {
+      setInternalData((prev) => ({ ...prev, [field.id]: value }));
+      if (errors[field.id]) {
+        setErrors((prev) => ({ ...prev, [field.id]: '' }));
+      }
     }
   };
 
   const handleSubmit = () => {
     if (!formDef?.fields) return;
-
     const nextErrors: Record<string, string> = {};
     let isValid = true;
 
     formDef.fields.forEach((field) => {
-      const value = formData[field.id];
-
+      const value = internalData[field.id];
       if (field.required && !hasValue(value)) {
         nextErrors[field.id] = '此项必填';
         isValid = false;
         return;
       }
-
       if (hasValue(value) && field.regex) {
         try {
           const regex = new RegExp(field.regex);
@@ -69,7 +137,6 @@ export const FormRenderer = ({
           console.error('正则表达式错误', field.regex, error);
         }
       }
-
       if (hasValue(value) && field.type === 'NUMBER') {
         const parsed = Number(value);
         if (Number.isNaN(parsed)) {
@@ -80,7 +147,7 @@ export const FormRenderer = ({
     });
 
     if (isValid) {
-      onSubmit(formData);
+      onSubmit?.(internalData);
       return;
     }
 
@@ -92,38 +159,54 @@ export const FormRenderer = ({
     }
   };
 
-  const renderFieldControl = (field: FormDefinition['fields'][number]) => {
+  const renderReadOnlyValue = (field: FormField) => {
+    const rawValue = getValue(field);
+    const displayValue = formatFieldValue(field, rawValue);
+    const isEmpty = !hasValue(rawValue);
+    return (
+      <div className="min-h-[44px] rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-100">
+        {isEmpty ? (
+          <span className="italic text-slate-400 dark:text-slate-500">未填写</span>
+        ) : (
+          displayValue
+        )}
+      </div>
+    );
+  };
+
+  const renderFieldControl = (field: FormField) => {
+    if (readonly) return renderReadOnlyValue(field);
+
     const hasError = Boolean(errors[field.id]);
     const controlClassName = cn(
       'rounded-xl',
       hasError && 'border-red-300 bg-red-50 focus-visible:ring-red-200',
     );
+    const rawValue = getValue(field);
 
     if (field.type === 'TEXTAREA') {
       return (
         <Textarea
           rows={3}
-          value={formData[field.id] ?? ''}
+          value={rawValue ?? ''}
           placeholder={field.placeholder}
-          onChange={(event) => handleChange(field.id, event.target.value)}
+          onChange={(event) => handleChange(field, event.target.value)}
           className={cn('min-h-[104px]', controlClassName)}
         />
       );
     }
 
     if (field.type === 'SELECT') {
-      const currentValue =
-        formData[field.id] === undefined || formData[field.id] === null || formData[field.id] === ''
-          ? SELECT_NONE_VALUE
-          : String(formData[field.id]);
-
+      const currentValue = hasValue(rawValue) ? String(rawValue) : SELECT_NONE_VALUE;
       return (
         <Select
           value={currentValue}
-          onValueChange={(value) => handleChange(field.id, value === SELECT_NONE_VALUE ? '' : value)}
+          onValueChange={(value) =>
+            handleChange(field, value === SELECT_NONE_VALUE ? '' : value)
+          }
         >
           <SelectTrigger className={cn('h-11 rounded-xl', hasError && 'border-red-300 bg-red-50')}>
-            <SelectValue placeholder="请选择" />
+            <SelectValue placeholder={field.placeholder || '请选择'} />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={SELECT_NONE_VALUE}>请选择</SelectItem>
@@ -141,9 +224,9 @@ export const FormRenderer = ({
       return (
         <DatePicker
           type="date"
-          value={formData[field.id] ?? ''}
+          value={rawValue ?? ''}
           placeholder={field.placeholder}
-          onChange={(event) => handleChange(field.id, event.target.value)}
+          onChange={(event) => handleChange(field, event.target.value)}
           className={cn('h-11', hasError && 'border-red-300 bg-red-50')}
         />
       );
@@ -152,15 +235,25 @@ export const FormRenderer = ({
     return (
       <Input
         type={field.type === 'NUMBER' ? 'number' : 'text'}
-        value={formData[field.id] ?? ''}
+        value={rawValue ?? ''}
         placeholder={field.placeholder}
-        onChange={(event) => handleChange(field.id, normalizeFieldValue(field.type, event.target.value))}
+        onChange={(event) =>
+          handleChange(field, normalizeFieldValue(field.type, event.target.value))
+        }
         className={cn('h-11', controlClassName)}
       />
     );
   };
 
+  // ============== 空字段提示 ==============
   if (!formDef?.fields || formDef.fields.length === 0) {
+    if (hideActions) {
+      return (
+        <div className="py-4 text-center text-sm text-slate-400 dark:text-slate-500">
+          暂无表单字段
+        </div>
+      );
+    }
     return (
       <div className="mx-auto flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)]">
         <div className="border-b border-slate-100 bg-white px-6 py-4">
@@ -178,7 +271,6 @@ export const FormRenderer = ({
             </button>
           </div>
         </div>
-
         <div className="p-5">
           <WorkspaceInlineState
             type="info"
@@ -197,6 +289,28 @@ export const FormRenderer = ({
     );
   }
 
+  // ============== 嵌入式（替代旧 DynamicFormViewer） ==============
+  if (hideActions) {
+    return (
+      <div className="grid grid-cols-1 gap-x-5 gap-y-5 sm:grid-cols-2">
+        {formDef.fields.map((field) => (
+          <div
+            key={field.id}
+            id={`field-${field.id}`}
+            className={cn('space-y-2', field.type === 'TEXTAREA' && 'sm:col-span-2')}
+          >
+            <label className="mb-1 block text-xs font-bold text-slate-500 dark:text-slate-400">
+              {field.label}
+              {!readonly && field.required ? <span className="text-red-500"> *</span> : null}
+            </label>
+            {renderFieldControl(field)}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // ============== 自管模式（原 Modal 表单） ==============
   return (
     <div className="mx-auto flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-[0_22px_44px_rgba(15,23,42,0.14)] animate-fade-in-up">
       <div className="border-b border-slate-100 bg-white px-6 py-4">

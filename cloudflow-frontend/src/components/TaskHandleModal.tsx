@@ -23,7 +23,7 @@ import { cn } from '@/utils/cn';
 import { formatDateTimeDisplay as formatDateTime } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { getAttachmentDisplayName, isAttachmentImage, normalizeAttachmentUrl } from '@/utils/attachment';
-import { DynamicFormViewer } from './DynamicFormViewer';
+import { FormRenderer } from './FormRenderer';
 import { ProcessTrace } from './ProcessTrace';
 import { SignatureModal } from './SignatureModal';
 import { getUserList } from '../services/api/auth';
@@ -943,10 +943,11 @@ export const TaskHandleModal = ({
                             : '当前以只读方式展示表单内容。'
                         }
                       >
-                        <DynamicFormViewer
+                        <FormRenderer
                           formDef={currentFormDef}
                           data={editedFormData}
-                          allowEdit={Boolean(canAct && !viewOnly && task.allowEdit)}
+                          readonly={!(canAct && !viewOnly && task.allowEdit)}
+                          hideActions
                           onChange={(id, value) =>
                             setEditedFormData((previous) => ({ ...previous, [id]: value }))
                           }

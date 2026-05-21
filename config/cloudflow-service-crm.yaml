@@ -50,6 +50,15 @@ cloudflow:
       renewal-yellow-days: 90
       inactive-yellow-days: 30
       overdue-red-days: 30
+  # ==================== 内部服务白名单配置 ====================
+  # 由 @Inner 注解通过占位符引用
+  security:
+    inner:
+      crm:
+        # 应收账款发票状态回写接口允许的调用方
+        receivable-callers: cloudflow-service-oa
+        # CRM 业绩聚合接口（按 owner/dept）允许的调用方
+        performance-callers: cloudflow-service-hr
   workflow:
     callback:
       stream-key: workflow:stream:approval-callback:crm

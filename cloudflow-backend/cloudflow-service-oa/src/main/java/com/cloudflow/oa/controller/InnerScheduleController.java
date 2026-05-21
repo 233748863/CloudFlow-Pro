@@ -24,10 +24,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/inner/oa/schedule")
 public class InnerScheduleController {
 
+    private static final String HR_CALLERS =
+            "${cloudflow.security.inner.oa.schedule-callers:cloudflow-service-hr}";
+
     private final ISysScheduleService scheduleService;
     private final IMeetingRoomService meetingRoomService;
 
-    @Inner(allowedServices = "cloudflow-service-hr")
+    @Inner(allowedServices = HR_CALLERS)
     @PostMapping("/meeting-room-booking")
     public R<MeetingRoomBookingVO> createMeetingRoomBooking(@RequestBody MeetingRoomBookingCreateDTO dto) {
         String message = validate(dto);

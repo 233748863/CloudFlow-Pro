@@ -52,6 +52,16 @@ cloudflow:
     sm4-key: ${CLOUDFLOW_ENCRYPT_SM4_KEY:}
   # 文件上传存储根路径
   profile: /data/cloudflow/profile
+
+  # ==================== 内部服务白名单配置 ====================
+  # 由 @Inner 注解通过占位符引用，支持多服务名 CSV 形式（逗号分隔）
+  security:
+    inner:
+      hr:
+        # HR 元数据接口（员工/部门）允许的调用方
+        integration-callers: cloudflow-service-crm,cloudflow-service-oa,cloudflow-service-workflow
+        # HR 工作台提醒接口允许的调用方
+        workplace-callers: cloudflow-service-oa
   
   hr:
     # 员工配置

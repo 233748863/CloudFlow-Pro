@@ -1,8 +1,12 @@
 package com.cloudflow.workflow.config;
 
+import com.cloudflow.common.security.core.TokenService;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -13,25 +17,105 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
+/**
+ * WebSocket 通知通道
+ *
+ * P3-6 协议：握手阶段不再校验 token；连接建立后客户端必须在 {@link #AUTH_TIMEOUT_MS}ms 内发送
+ * 首帧 {"type":"AUTH","token":"xxx"}，服务端校验通过回 {"type":"AUTH_OK"} 并进入业务消息处理；
+ * 校验失败回 {"type":"AUTH_FAIL"} 并立即关闭；超时未鉴权则服务端主动关闭（reason=AUTH_TIMEOUT）。
+ */
 @Component
 public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationWebSocketHandler.class);
 
+    private static final long AUTH_TIMEOUT_MS = 5000L;
+    private static final String MSG_AUTH_OK = "{\"type\":\"AUTH_OK\"}";
+    private static final String MSG_AUTH_FAIL = "{\"type\":\"AUTH_FAIL\"}";
+
     private static final Map<Long, WebSocketSession> userSessions = new ConcurrentHashMap<>();
+    private final Map<String, Boolean> authenticated = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ScheduledExecutorService authTimer = Executors.newSingleThreadScheduledExecutor(r -> {
+        Thread t = new Thread(r, "ws-auth-timeout");
+        t.setDaemon(true);
+        return t;
+    });
+
+    @Autowired
+    private TokenService tokenService;
 
     @Override
-    public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        Long userId = (Long) session.getAttributes().get("userId");
-        if (userId != null) {
-            userSessions.put(userId, session);
-        }
+    public void afterConnectionEstablished(WebSocketSession session) {
+        String sid = session.getId();
+        authenticated.put(sid, Boolean.FALSE);
+        authTimer.schedule(() -> {
+            if (Boolean.FALSE.equals(authenticated.get(sid))) {
+                closeQuietly(session, CloseStatus.POLICY_VIOLATION.withReason("AUTH_TIMEOUT"));
+            }
+        }, AUTH_TIMEOUT_MS, TimeUnit.MILLISECONDS);
     }
 
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) {
+        String sid = session.getId();
+        JsonNode root;
+        try {
+            root = objectMapper.readTree(message.getPayload());
+        } catch (IOException e) {
+            log.debug("[WS] 消息解析失败 sid={} err={}", sid, e.getMessage());
+            closeQuietly(session, CloseStatus.BAD_DATA.withReason("INVALID_JSON"));
+            return;
+        }
+        String type = root.path("type").asText();
+
+        if (!Boolean.TRUE.equals(authenticated.get(sid))) {
+            if (!"AUTH".equals(type)) {
+                closeQuietly(session, CloseStatus.POLICY_VIOLATION.withReason("NOT_AUTHENTICATED"));
+                return;
+            }
+            String token = root.path("token").asText("");
+            if (token.isBlank()) {
+                sendQuietly(session, MSG_AUTH_FAIL);
+                closeQuietly(session, CloseStatus.NOT_ACCEPTABLE);
+                return;
+            }
+            Map<String, Object> userMap;
+            try {
+                userMap = tokenService.verifyToken(token);
+            } catch (Exception e) {
+                log.warn("[WS] token 校验异常 sid={} err={}", sid, e.getMessage());
+                userMap = null;
+            }
+            if (userMap == null) {
+                sendQuietly(session, MSG_AUTH_FAIL);
+                closeQuietly(session, CloseStatus.NOT_ACCEPTABLE);
+                return;
+            }
+            Long userId = extractUserId(userMap);
+            if (userId == null) {
+                sendQuietly(session, MSG_AUTH_FAIL);
+                closeQuietly(session, CloseStatus.NOT_ACCEPTABLE);
+                return;
+            }
+            session.getAttributes().put("userId", userId);
+            userSessions.put(userId, session);
+            authenticated.put(sid, Boolean.TRUE);
+            sendQuietly(session, MSG_AUTH_OK);
+            return;
+        }
+
+        // 已鉴权连接的业务消息（当前仅做日志占位，后续按需扩展）
+        log.debug("[WS] 收到业务消息 sid={} type={}", sid, type);
+    }
+
+    @Override
+    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
+        authenticated.remove(session.getId());
         Long userId = (Long) session.getAttributes().get("userId");
         if (userId != null) {
             userSessions.remove(userId);
@@ -62,5 +146,38 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
         envelope.put("payload", payload);
         sendMessage(userId, envelope);
     }
-}
 
+    private Long extractUserId(Map<String, Object> userMap) {
+        Object userIdObj = userMap.get("userId");
+        if (userIdObj instanceof Long) {
+            return (Long) userIdObj;
+        }
+        if (userIdObj instanceof Number) {
+            return ((Number) userIdObj).longValue();
+        }
+        return null;
+    }
+
+    private void sendQuietly(WebSocketSession session, String payload) {
+        try {
+            if (session.isOpen()) {
+                session.sendMessage(new TextMessage(payload));
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void closeQuietly(WebSocketSession session, CloseStatus status) {
+        try {
+            if (session.isOpen()) {
+                session.close(status);
+            }
+        } catch (IOException ignored) {
+        }
+    }
+
+    @PreDestroy
+    public void shutdown() {
+        authTimer.shutdownNow();
+    }
+}

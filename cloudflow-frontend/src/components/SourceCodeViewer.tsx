@@ -9,7 +9,7 @@ import {
   Workflow,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { BACKEND_SOURCE } from '../backend_data';
+import { BACKEND_SOURCE } from '@/pages/CodeGeneration/demo-data/code-generation-samples';
 import { generateBackendArtifacts } from '../services/geminiService';
 import { WorkflowDefinition } from '../types';
 import { Button, SegmentedControl, SegmentedControlItem } from '@/components/common';

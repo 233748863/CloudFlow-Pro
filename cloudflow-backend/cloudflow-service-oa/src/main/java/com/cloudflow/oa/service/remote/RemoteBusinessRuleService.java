@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
  */
 @FeignClient(
         name = "cloudflow-auth",
+        contextId = "oaRemoteBusinessRuleService",
         fallbackFactory = RemoteBusinessRuleFallbackFactory.class
 )
 public interface RemoteBusinessRuleService {

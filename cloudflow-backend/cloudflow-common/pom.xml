@@ -28,7 +28,6 @@
         <module>cloudflow-common-excel</module>
         <module>cloudflow-common-sensitive</module>
         <module>cloudflow-common-oss</module>
-        <module>cloudflow-common-sse</module>
         <module>cloudflow-common-job</module>
         <module>cloudflow-common-workflow-callback</module>
     </modules>

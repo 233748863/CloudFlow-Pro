@@ -79,6 +79,13 @@ cloudflow:
     token:
       expiration: 1440  # 令牌有效期（分钟）= 24小时
       refresh-time: 20   # 令牌刷新时间（分钟）
+    # ==================== 内部服务白名单配置 ====================
+    # 由 @Inner 注解通过占位符引用，支持多服务名 CSV 形式
+    # 示例：cloudflow-service-hr,cloudflow-service-oa
+    inner:
+      auth:
+        hr-callers: cloudflow-service-hr
+        workflow-callers: cloudflow-service-workflow
 
 sa-token:
   token-name: Authorization

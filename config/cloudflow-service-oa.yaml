@@ -106,6 +106,16 @@ cloudflow:
       group: group:oa:workflow-callback
       consumer-prefix: oa-callback
 
+  # ==================== 内部服务白名单配置 ====================
+  # 由 @Inner 注解通过占位符引用
+  security:
+    inner:
+      oa:
+        # 会议室预订内部接口允许的调用方
+        schedule-callers: cloudflow-service-hr
+        # 公告/通知发布内部接口允许的调用方
+        announcement-callers: cloudflow-service-crm
+
 # Feign配置
 feign:
   client:

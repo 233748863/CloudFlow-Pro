@@ -16,11 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CrmReceivableInnerController {
 
-    private static final String OA_SERVICE = "cloudflow-service-oa";
+    private static final String OA_CALLERS =
+            "${cloudflow.security.inner.crm.receivable-callers:cloudflow-service-oa}";
 
     private final ICrmReceivableService receivableService;
 
-    @Inner(allowedServices = {OA_SERVICE})
+    @Inner(allowedServices = {OA_CALLERS})
     @PostMapping("/{id}/invoice-status")
     public R<Void> syncInvoiceStatus(@PathVariable("id") Long id,
                                      @RequestBody(required = false) ReceivableInvoiceSyncDTO syncDTO) {

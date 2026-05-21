@@ -13,6 +13,7 @@ import java.time.LocalDate;
 
 @FeignClient(
         name = "cloudflow-service-crm",
+        contextId = "oaRemoteCrmService",
         fallbackFactory = RemoteCrmFallbackFactory.class
 )
 public interface RemoteCrmService {

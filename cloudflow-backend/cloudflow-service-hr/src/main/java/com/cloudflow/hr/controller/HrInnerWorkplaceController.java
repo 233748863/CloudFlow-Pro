@@ -21,11 +21,12 @@ import java.util.List;
 @RequiredArgsConstructor
 public class HrInnerWorkplaceController {
 
-    private static final String OA_SERVICE = "cloudflow-service-oa";
+    private static final String WORKPLACE_CALLERS =
+            "${cloudflow.security.inner.hr.workplace-callers:cloudflow-service-oa}";
 
     private final HrWorkplaceReminderQueryService reminderQueryService;
 
-    @Inner(allowedServices = OA_SERVICE)
+    @Inner(allowedServices = WORKPLACE_CALLERS)
     @GetMapping("/reminders")
     public R<List<HrWorkplaceReminderVO>> listReminders(
             @RequestParam(value = "userId", required = false) Long userId,

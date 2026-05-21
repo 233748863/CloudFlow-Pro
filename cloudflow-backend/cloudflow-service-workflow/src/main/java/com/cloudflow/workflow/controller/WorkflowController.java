@@ -4,6 +4,8 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
+import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
 import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -47,6 +49,18 @@ public class WorkflowController {
 
     @Autowired
     private WorkflowStatisticsService statisticsService;
+
+    @Autowired
+    private BusinessTypeRegistry businessTypeRegistry;
+
+    /**
+     * 查询全量业务类型注册项。
+     * 供前端 BusinessTypeSelector / 监控面板下拉框使用。所有已登录用户可读。
+     */
+    @GetMapping("/business-types")
+    public R<java.util.Collection<BusinessTypeDef>> listBusinessTypes() {
+        return R.ok(businessTypeRegistry.all());
+    }
 
     /**
      * 发起流程
