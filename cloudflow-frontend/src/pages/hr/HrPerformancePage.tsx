@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { BaseDialog, ConfirmDialog, DatePicker } from '@/components/common';
+import { BaseDialog, ConfirmDialog, DatePicker, DeptSelector, EmployeeSelector } from '@/components/common';
 import { TablePageLayout } from '@/components/layout/TablePageLayout';
 import {
   Button,
@@ -1728,19 +1728,19 @@ export const HrPerformancePage: React.FC = () => {
             <div className="divide-y divide-slate-100 dark:divide-slate-800">
               {createDeptRows.map((row) => (
                 <div key={row.key} className="grid gap-3 py-4 first:pt-0 last:pb-0 lg:grid-cols-[minmax(180px,1fr)_150px_minmax(180px,1fr)_minmax(320px,1.8fr)_64px]">
-                  <Select value={row.deptId} onValueChange={(value) => updateDeptRow(row.key, { deptId: value })}>
-                    <SelectTrigger><SelectValue placeholder="选择部门" /></SelectTrigger>
-                    <SelectContent>
-                      {deptOptions.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <DeptSelector
+                    single
+                    value={row.deptId ? Number(row.deptId) : null}
+                    onChange={(id) => updateDeptRow(row.key, { deptId: id ? String(id) : '' })}
+                    placeholder="选择部门"
+                  />
                   <Input type="number" value={row.targetAmount} onChange={(e) => updateDeptRow(row.key, { targetAmount: e.target.value })} placeholder="单指标总目标" />
-                  <Select value={row.ownerEmployeeId} onValueChange={(value) => updateDeptRow(row.key, { ownerEmployeeId: value })}>
-                    <SelectTrigger><SelectValue placeholder="部门负责人" /></SelectTrigger>
-                    <SelectContent>
-                      {employeeOptions.map((option) => <SelectItem key={option.value} value={String(option.value)}>{option.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <EmployeeSelector
+                    single
+                    value={row.ownerEmployeeId ? Number(row.ownerEmployeeId) : null}
+                    onChange={(id) => updateDeptRow(row.key, { ownerEmployeeId: id ? String(id) : '' })}
+                    placeholder="部门负责人"
+                  />
                   <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                     {createMatrixItems.map(({ category, metric, key }) => (
                       <Input

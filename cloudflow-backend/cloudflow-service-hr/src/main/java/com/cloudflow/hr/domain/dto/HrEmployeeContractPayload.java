@@ -26,6 +26,8 @@ public class HrEmployeeContractPayload {
     private LocalDate startDate;
     private LocalDate endDate;
     private String status;
+    private String signStatus;
+    private LocalDateTime signedAt;
     private String createBy;
     private String updateBy;
     private Integer deleted;

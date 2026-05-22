@@ -3,6 +3,7 @@ import { Gauge, Goal, RefreshCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Button,
+  DeptSelector,
   Input,
   Label,
   Select,
@@ -14,6 +15,7 @@ import {
   TableHead,
   TableHeader,
   Textarea,
+  UserSelector,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
@@ -271,27 +273,26 @@ export default function CrmSalesTargetPage() {
             <Input type="number" value={String(form.targetAmount || 0)} onChange={(e) => setForm((prev) => ({ ...prev, targetAmount: Number(e.target.value || 0) }))} placeholder="目标金额" />
           </div>
           {form.dimensionType === 'DEPT' ? (
-            <>
-              <div>
-                <Label>部门ID</Label>
-                <Input type="number" value={form.deptId == null ? '' : String(form.deptId)} onChange={(e) => setForm((prev) => ({ ...prev, deptId: e.target.value ? Number(e.target.value) : undefined }))} placeholder="部门ID" />
-              </div>
-              <div>
-                <Label>部门名称</Label>
-                <Input value={form.deptName || ''} onChange={(e) => setForm((prev) => ({ ...prev, deptName: e.target.value }))} placeholder="部门名称" />
-              </div>
-            </>
+            <div className="md:col-span-2">
+              <Label>部门</Label>
+              <DeptSelector
+                single
+                value={form.deptId ?? null}
+                onChange={(id, picked) => setForm((prev) => ({ ...prev, deptId: id ?? undefined, deptName: picked?.deptName || '' }))}
+                placeholder="选择部门"
+              />
+            </div>
           ) : (
-            <>
-              <div>
-                <Label>负责人ID</Label>
-                <Input type="number" value={form.ownerId == null ? '' : String(form.ownerId)} onChange={(e) => setForm((prev) => ({ ...prev, ownerId: e.target.value ? Number(e.target.value) : undefined }))} placeholder="负责人ID，留空默认当前用户" />
-              </div>
-              <div>
-                <Label>负责人姓名</Label>
-                <Input value={form.ownerName || ''} onChange={(e) => setForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="负责人姓名，留空默认当前用户" />
-              </div>
-            </>
+            <div className="md:col-span-2">
+              <Label>负责人</Label>
+              <UserSelector
+                single
+                value={form.ownerId == null ? null : String(form.ownerId)}
+                onChange={(id, picked) => setForm((prev) => ({ ...prev, ownerId: id ? Number(id) : undefined, ownerName: picked?.name || '' }))}
+                placeholder="选择负责人，留空默认当前用户"
+                allowClear
+              />
+            </div>
           )}
           <div>
             <Label>状态</Label>

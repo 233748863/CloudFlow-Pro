@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import {
   Button,
   DatePicker,
+  DeptSelector,
   Input,
   Label,
   Select,
@@ -241,13 +242,15 @@ export default function CrmAssignmentRulePage() {
               <Input type="number" value={String(form.maxPerOwner ?? 0)} onChange={(e) => setForm((prev) => ({ ...prev, maxPerOwner: Number(e.target.value || 0) }))} placeholder="例如 50" />
             </div>
           ) : null}
-          <div>
-            <Label>适用部门ID</Label>
-            <Input type="number" value={form.deptId == null ? '' : String(form.deptId)} onChange={(e) => setForm((prev) => ({ ...prev, deptId: e.target.value ? Number(e.target.value) : undefined }))} placeholder="留空表示全部" />
-          </div>
-          <div>
-            <Label>适用部门名称</Label>
-            <Input value={form.deptName || ''} onChange={(e) => setForm((prev) => ({ ...prev, deptName: e.target.value }))} placeholder="可选" />
+          <div className="md:col-span-2">
+            <Label>适用部门</Label>
+            <DeptSelector
+              single
+              value={form.deptId ?? null}
+              onChange={(id, picked) => setForm((prev) => ({ ...prev, deptId: id ?? undefined, deptName: picked?.deptName || '' }))}
+              placeholder="留空表示全部"
+              allowClear
+            />
           </div>
           <div>
             <Label>客户等级</Label>

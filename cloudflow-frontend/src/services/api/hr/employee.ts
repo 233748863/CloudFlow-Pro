@@ -3,6 +3,7 @@ import type {
   EmergencyContact,
   EmergencyContactPayload,
   EmergencyContactUpdatePayload,
+  EmployeeBrief,
   HrEmployee,
   HrEmployeePayload,
   HrPageQuery,
@@ -10,6 +11,32 @@ import type {
 
 export const listEmployees = (params?: HrPageQuery) =>
   request.get<HrEmployee[]>('/hr/employees', { params });
+
+/**
+ * 选择器专用：拉取员工精简列表（默认拉一页 size=999 客户端搜索）
+ * 仅返回 id/name/employeeNo/dept/post/position/status 等用于展示与筛选的字段
+ */
+export const listEmployeesForSelect = async (
+  params?: { onlyActive?: boolean } & HrPageQuery,
+): Promise<EmployeeBrief[]> => {
+  const { onlyActive = true, ...rest } = params || {};
+  const list = await request.get<HrEmployee[]>('/hr/employees', {
+    params: { pageNum: 1, pageSize: 999, ...rest },
+  });
+  const arr = Array.isArray(list) ? list : (list as unknown as { records?: HrEmployee[] }).records || [];
+  return arr
+    .filter((e) => !onlyActive || (e.employeeStatus ?? '') !== 'RESIGNED')
+    .map((e) => ({
+      id: e.id,
+      name: e.name,
+      employeeNo: e.employeeNo,
+      deptId: e.deptId ?? undefined,
+      deptName: e.deptName ?? undefined,
+      postName: e.postName ?? undefined,
+      positionName: e.positionName ?? undefined,
+      employeeStatus: e.employeeStatus,
+    }));
+};
 
 export const getCurrentHrEmployee = () =>
   request.get<HrEmployee>('/hr/employees/current');

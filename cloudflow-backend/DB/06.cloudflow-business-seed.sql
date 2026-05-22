@@ -33,11 +33,11 @@ WHERE tenant_id = 100000
 
 DELETE FROM cloud_flow_db.sys_user_post
 WHERE tenant_id = 100000
-  AND user_id BETWEEN 1 AND 20;
+  AND user_id BETWEEN 1 AND 40;
 
 DELETE FROM cloud_flow_db.sys_user_role
 WHERE tenant_id = 100000
-  AND user_id BETWEEN 1 AND 20;
+  AND user_id BETWEEN 1 AND 40;
 
 DELETE FROM cloud_flow_db.sys_role_menu
 WHERE tenant_id = 100000
@@ -53,9 +53,9 @@ WHERE menu_id IN (1, 2, 3, 4, 5, 6, 7)
    OR menu_id BETWEEN 400 AND 404
    OR menu_id BETWEEN 500 AND 586
    OR menu_id BETWEEN 600 AND 635
-   OR menu_id BETWEEN 700 AND 739
+   OR menu_id BETWEEN 700 AND 799
    OR menu_id BETWEEN 800 AND 884
-   OR menu_id BETWEEN 900 AND 1012;
+   OR menu_id BETWEEN 900 AND 1199;
 
 DELETE FROM cloud_flow_db.sys_business_rule_hit_record
 WHERE tenant_id = 100000
@@ -73,7 +73,7 @@ DELETE FROM cloud_flow_db.sys_post
 WHERE post_id BETWEEN 1 AND 11;
 
 DELETE FROM cloud_flow_db.sys_user
-WHERE user_id BETWEEN 1 AND 20;
+WHERE user_id BETWEEN 1 AND 40;
 
 DELETE FROM cloud_flow_db.sys_role
 WHERE role_id BETWEEN 1 AND 11;
@@ -1365,6 +1365,50 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(724, '员工异动',   7, 5, '/hr/life
 INSERT INTO cloud_flow_db.sys_menu VALUES(725, '考勤休假',   7, 6, '/hr/attendance',         'pages/hr/HrAttendancePage',  NULL, 0, 0, 'C', '0', '0', 'hr:attendance:list',      'CalendarClock',   'admin', NOW(), '', NULL, '班次、规则、排班、打卡、休假');
 INSERT INTO cloud_flow_db.sys_menu VALUES(726, '薪酬福利',   7, 7, '/hr/compensation',       'pages/hr/HrCompensationPage',NULL, 0, 0, 'C', '0', '0', 'hr:compensation:list',    'Landmark',        'admin', NOW(), '', NULL, '薪资、社保、公积金与个税');
 INSERT INTO cloud_flow_db.sys_menu VALUES(727, '绩效管理',   7, 8, '/hr/performance',        'pages/hr/HrPerformancePage', NULL, 0, 0, 'C', '0', '0', 'hr:performance:list',     'Target',          'admin', NOW(), '', NULL, '绩效目标、结果与调薪');
+-- HR ESS（员工自助）菜单
+INSERT INTO cloud_flow_db.sys_menu VALUES(728, '员工自助',       7,  9, '/hr/ess',                    'pages/hr/HrEssPortalPage',                NULL, 0, 0, 'C', '0', '0', 'hr:ess:view',             'IdCard',          'admin', NOW(), '', NULL, '员工自助门户');
+INSERT INTO cloud_flow_db.sys_menu VALUES(729, '我的工资条',     7, 10, '/hr/ess/slips',              'pages/hr/ess/HrEssSalarySlipPage',        NULL, 0, 0, 'C', '0', '0', 'hr:ess:slip:view',        'Wallet',          'admin', NOW(), '', NULL, '月度工资条查看与确认');
+INSERT INTO cloud_flow_db.sys_menu VALUES(730, '证明开具',       7, 11, '/hr/ess/certificates',       'pages/hr/ess/HrEssCertificatePage',       NULL, 0, 0, 'C', '0', '0', 'hr:ess:cert:apply',       'FileCheck2',      'admin', NOW(), '', NULL, '在职/收入/社保等证明开具');
+INSERT INTO cloud_flow_db.sys_menu VALUES(731, '个人信息',       7, 12, '/hr/ess/profile',            'pages/hr/ess/HrEssProfilePage',           NULL, 0, 0, 'C', '0', '0', 'hr:ess:profile:edit',     'UserCog',         'admin', NOW(), '', NULL, '银行卡、家庭成员、紧急联系人');
+INSERT INTO cloud_flow_db.sys_menu VALUES(732, '假期余额',       7, 13, '/hr/ess/leave-balance',      'pages/hr/ess/HrEssLeaveBalancePage',      NULL, 0, 0, 'C', '0', '0', 'hr:ess:leave:view',       'CalendarCheck2',  'admin', NOW(), '', NULL, '员工假期额度与申请历史');
+INSERT INTO cloud_flow_db.sys_menu VALUES(733, '社保公积金',     7, 14, '/hr/ess/benefit',            'pages/hr/ess/HrEssBenefitPage',           NULL, 0, 0, 'C', '0', '0', 'hr:ess:benefit:view',     'Landmark',        'admin', NOW(), '', NULL, '社保公积金月度明细');
+INSERT INTO cloud_flow_db.sys_menu VALUES(734, '电子合同',       7, 15, '/hr/ess/contract',           'pages/hr/ess/HrEssContractPage',          NULL, 0, 0, 'C', '0', '0', 'hr:ess:contract:sign',    'FileSignature',   'admin', NOW(), '', NULL, '员工劳动合同签署');
+-- HR 培训管理菜单
+INSERT INTO cloud_flow_db.sys_menu VALUES(735, '培训计划',       7, 16, '/hr/training/plans',         'pages/hr/HrTrainingPlanPage',             NULL, 0, 0, 'C', '0', '0', 'hr:training:plan:list',   'ClipboardList',   'admin', NOW(), '', NULL, '年度/季度/部门/临时培训计划');
+INSERT INTO cloud_flow_db.sys_menu VALUES(736, '课程库',         7, 17, '/hr/training/courses',       'pages/hr/HrTrainingCoursePage',           NULL, 0, 0, 'C', '0', '0', 'hr:training:course:list', 'BookOpen',        'admin', NOW(), '', NULL, '课程、分类与讲师管理');
+INSERT INTO cloud_flow_db.sys_menu VALUES(737, '培训班次',       7, 18, '/hr/training/sessions',      'pages/hr/HrTrainingSessionPage',          NULL, 0, 0, 'C', '0', '0', 'hr:training:session:list','CalendarRange',   'admin', NOW(), '', NULL, '开班/签到/结业');
+INSERT INTO cloud_flow_db.sys_menu VALUES(738, '培训报名',       7, 19, '/hr/training/enrollments',   'pages/hr/HrTrainingEnrollmentPage',       NULL, 0, 0, 'C', '0', '0', 'hr:training:enroll:list', 'UserPlus',        'admin', NOW(), '', NULL, '员工报名与审批');
+INSERT INTO cloud_flow_db.sys_menu VALUES(739, '在线考试',       7, 20, '/hr/training/exams',         'pages/hr/HrTrainingExamPage',             NULL, 0, 0, 'C', '0', '0', 'hr:training:exam:list',   'GraduationCap',   'admin', NOW(), '', NULL, '题库、试卷与作答');
+INSERT INTO cloud_flow_db.sys_menu VALUES(740, '培训证书',       7, 21, '/hr/training/certificates',  'pages/hr/HrTrainingCertificatePage',      NULL, 0, 0, 'C', '0', '0', 'hr:training:cert:list',   'Award',           'admin', NOW(), '', NULL, '证书颁发与吊销');
+INSERT INTO cloud_flow_db.sys_menu VALUES(741, '培训档案',       7, 22, '/hr/training/archive',       'pages/hr/HrTrainingArchivePage',          NULL, 0, 0, 'C', '0', '0', 'hr:training:archive:view','History',         'admin', NOW(), '', NULL, '员工培训档案与学时');
+-- HR 人才盘点菜单（P0 人才盘点）
+INSERT INTO cloud_flow_db.sys_menu VALUES(742, '人才盘点',       7, 23, '/hr/talent',                 'pages/hr/talent/HrTalentDashboardPage',   NULL, 0, 0, 'C', '0', '0', 'hr:talent:view',          'Target',          'admin', NOW(), '', NULL, '人才盘点工作台');
+INSERT INTO cloud_flow_db.sys_menu VALUES(743, '盘点活动',       7, 24, '/hr/talent/reviews',         'pages/hr/talent/HrTalentReviewPage',      NULL, 0, 0, 'C', '0', '0', 'hr:talent:review:list',   'ListChecks',      'admin', NOW(), '', NULL, '年度/周期/范围盘点活动');
+INSERT INTO cloud_flow_db.sys_menu VALUES(744, '九宫格校准',     7, 25, '/hr/talent/nine-box',        'pages/hr/talent/HrTalentNineBoxPage',     NULL, 0, 0, 'C', '0', '0', 'hr:talent:review:calibrate','Grid3x3',       'admin', NOW(), '', NULL, '业绩×潜力九宫格拖拽校准');
+INSERT INTO cloud_flow_db.sys_menu VALUES(745, '校准会议',       7, 26, '/hr/talent/calibration',     'pages/hr/talent/HrTalentCalibrationPage', NULL, 0, 0, 'C', '0', '0', 'hr:talent:review:session','Users',           'admin', NOW(), '', NULL, '校准会议与纪要');
+INSERT INTO cloud_flow_db.sys_menu VALUES(746, '继任计划',       7, 27, '/hr/talent/succession',      'pages/hr/talent/HrTalentSuccessionPage',  NULL, 0, 0, 'C', '0', '0', 'hr:talent:succession:list','GitBranch',      'admin', NOW(), '', NULL, '关键岗位继任计划');
+INSERT INTO cloud_flow_db.sys_menu VALUES(747, '人才池',         7, 28, '/hr/talent/pools',           'pages/hr/talent/HrTalentPoolPage',        NULL, 0, 0, 'C', '0', '0', 'hr:talent:pool:list',     'Layers',          'admin', NOW(), '', NULL, '人才池与成员维护');
+INSERT INTO cloud_flow_db.sys_menu VALUES(748, '培养行动',       7, 29, '/hr/talent/development',     'pages/hr/talent/HrTalentDevelopmentPage', NULL, 0, 0, 'C', '0', '0', 'hr:talent:dev:list',      'Sprout',          'admin', NOW(), '', NULL, '高潜培养行动与导师');
+INSERT INTO cloud_flow_db.sys_menu VALUES(749, '人才档案',       7, 30, '/hr/talent/archive',         'pages/hr/talent/HrTalentArchivePage',     NULL, 0, 0, 'C', '0', '0', 'hr:talent:archive:view',  'Contact',         'admin', NOW(), '', NULL, '单员工人才纵览');
+-- HR 福利与商城（P0 福利管理）
+INSERT INTO cloud_flow_db.sys_menu VALUES(750, '福利与商城',     7, 31, '/hr/benefit',                NULL,                                      NULL, 0, 0, 'M', '0', '0', 'hr:benefit:view',         'Gift',            'admin', NOW(), '', NULL, '福利申领与积分商城目录');
+INSERT INTO cloud_flow_db.sys_menu VALUES(751, '我的福利',     750,  1, '/hr/benefit/mine',           'pages/hr/benefit/HrBenefitMinePage',      NULL, 0, 0, 'C', '0', '0', 'hr:benefit:mine',         'HeartHandshake',  'admin', NOW(), '', NULL, '员工自助福利总览');
+INSERT INTO cloud_flow_db.sys_menu VALUES(752, '福利申领审批', 750,  2, '/hr/benefit/requests',       'pages/hr/benefit/HrBenefitRequestPage',   NULL, 0, 0, 'C', '0', '0', 'hr:benefit:request:list', 'ClipboardCheck',  'admin', NOW(), '', NULL, '福利申领台账');
+INSERT INTO cloud_flow_db.sys_menu VALUES(753, '积分账户',     750,  3, '/hr/benefit/points',         'pages/hr/benefit/HrPointAccountPage',     NULL, 0, 0, 'C', '0', '0', 'hr:benefit:point:view',   'Coins',           'admin', NOW(), '', NULL, '积分账户与流水');
+INSERT INTO cloud_flow_db.sys_menu VALUES(754, '积分商城',     750,  4, '/hr/benefit/mall',           'pages/hr/benefit/HrMallPage',             NULL, 0, 0, 'C', '0', '0', 'hr:benefit:mall:browse',  'ShoppingBag',     'admin', NOW(), '', NULL, '商品浏览与下单');
+INSERT INTO cloud_flow_db.sys_menu VALUES(755, '兑换订单',     750,  5, '/hr/benefit/orders',         'pages/hr/benefit/HrMallOrderPage',        NULL, 0, 0, 'C', '0', '0', 'hr:benefit:order:list',   'PackageCheck',    'admin', NOW(), '', NULL, '订单状态机与发货');
+-- HR 工伤管理（P0 劳动关系）
+INSERT INTO cloud_flow_db.sys_menu VALUES(756, '工伤管理',       7, 32, '/hr/work-injury',            NULL,                                      NULL, 0, 0, 'M', '0', '0', 'hr:injury:view',          'Stethoscope',     'admin', NOW(), '', NULL, '工伤申报/调查/医疗/赔偿/康复');
+INSERT INTO cloud_flow_db.sys_menu VALUES(757, '工伤申报',     756,  1, '/hr/work-injury/list',       'pages/hr/laborRelation/HrWorkInjuryPage',                 NULL, 0, 0, 'C', '0', '0', 'hr:injury:list',         'FileWarning',     'admin', NOW(), '', NULL, '工伤事件主表与时间线');
+INSERT INTO cloud_flow_db.sys_menu VALUES(758, '工伤调查',     756,  2, '/hr/work-injury/investigations','pages/hr/laborRelation/HrWorkInjuryInvestigationPage', NULL, 0, 0, 'C', '0', '0', 'hr:injury:investigate',  'Search',          'admin', NOW(), '', NULL, '现场调查与责任认定');
+INSERT INTO cloud_flow_db.sys_menu VALUES(759, '医疗记录',     756,  3, '/hr/work-injury/treatments', 'pages/hr/laborRelation/HrWorkInjuryTreatmentPage',        NULL, 0, 0, 'C', '0', '0', 'hr:injury:treatment',    'HeartPulse',      'admin', NOW(), '', NULL, '住院与诊断票据');
+INSERT INTO cloud_flow_db.sys_menu VALUES(760, '赔偿登记',     756,  4, '/hr/work-injury/compensations','pages/hr/laborRelation/HrWorkInjuryCompensationPage',    NULL, 0, 0, 'C', '0', '0', 'hr:injury:compensation', 'BadgeDollarSign', 'admin', NOW(), '', NULL, '赔偿项目登记与支付');
+INSERT INTO cloud_flow_db.sys_menu VALUES(761, '康复跟踪',     756,  5, '/hr/work-injury/rehabilitation','pages/hr/laborRelation/HrWorkInjuryRehabilitationPage', NULL, 0, 0, 'C', '0', '0', 'hr:injury:rehab',        'Activity',        'admin', NOW(), '', NULL, '康复返岗跟进');
+-- HR 劳动争议（P0 劳动关系）
+INSERT INTO cloud_flow_db.sys_menu VALUES(762, '劳动争议',       7, 33, '/hr/labor-dispute',          NULL,                                      NULL, 0, 0, 'M', '0', '0', 'hr:dispute:view',         'Scale',           'admin', NOW(), '', NULL, '争议受理/调解/仲裁');
+INSERT INTO cloud_flow_db.sys_menu VALUES(763, '争议台账',     762,  1, '/hr/labor-dispute/list',     'pages/hr/laborRelation/HrLaborDisputePage',        NULL, 0, 0, 'C', '0', '0', 'hr:dispute:list',        'Gavel',           'admin', NOW(), '', NULL, '争议受理与证据');
+INSERT INTO cloud_flow_db.sys_menu VALUES(764, '调解记录',     762,  2, '/hr/labor-dispute/mediations','pages/hr/laborRelation/HrDisputeMediationPage',   NULL, 0, 0, 'C', '0', '0', 'hr:dispute:mediation',   'Handshake',       'admin', NOW(), '', NULL, '调解过程与协议');
+INSERT INTO cloud_flow_db.sys_menu VALUES(765, '仲裁记录',     762,  3, '/hr/labor-dispute/arbitrations','pages/hr/laborRelation/HrDisputeArbitrationPage', NULL, 0, 0, 'C', '0', '0', 'hr:dispute:arbitration', 'Landmark',        'admin', NOW(), '', NULL, '仲裁案件与裁决');
 
 -- 权限统一收口功能节点（原 07 迁移并入种子）
 INSERT INTO cloud_flow_db.sys_menu VALUES
@@ -1484,7 +1528,101 @@ INSERT INTO cloud_flow_db.sys_menu VALUES
 (1009, '任务统计',       100, 10, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:statistics',      '#', 'admin', NOW(), '', NULL, '任务统计权限'),
 (1010, '任务分组',       100, 11, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:groups',          '#', 'admin', NOW(), '', NULL, '任务分组权限'),
 (1011, '流程审计查看',   400,  8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:list',           '#', 'admin', NOW(), '', NULL, '流程审计查看权限'),
-(1012, '流程审计删除',   400,  9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:remove',         '#', 'admin', NOW(), '', NULL, '流程审计删除权限');
+(1012, '流程审计删除',   400,  9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:audit:remove',         '#', 'admin', NOW(), '', NULL, '流程审计删除权限'),
+
+-- HR ESS 按钮级权限
+(1013, '工资条生成',     729,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:slip:generate',          '#', 'admin', NOW(), '', NULL, '工资条月度生成权限'),
+(1014, '工资条确认',     729,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:slip:confirm',           '#', 'admin', NOW(), '', NULL, '员工工资条确认权限'),
+(1015, '证明申请',       730,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:cert:view',              '#', 'admin', NOW(), '', NULL, '证明查看权限'),
+(1016, '证明取消',       730,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:cert:cancel',            '#', 'admin', NOW(), '', NULL, '证明撤销权限'),
+(1017, '银行卡管理',     731,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:bankcard:edit',          '#', 'admin', NOW(), '', NULL, '银行卡新增编辑删除权限'),
+(1018, '家庭成员管理',   731,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:family:edit',            '#', 'admin', NOW(), '', NULL, '家庭成员新增编辑删除权限'),
+(1019, '福利明细生成',   733,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:ess:benefit:generate',       '#', 'admin', NOW(), '', NULL, '社保公积金明细生成权限'),
+
+-- HR 培训按钮级权限
+(1020, '培训计划新增',   735,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:plan:add',          '#', 'admin', NOW(), '', NULL, '培训计划新增权限'),
+(1021, '培训计划编辑',   735,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:plan:edit',         '#', 'admin', NOW(), '', NULL, '培训计划编辑权限'),
+(1022, '培训计划删除',   735,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:plan:remove',       '#', 'admin', NOW(), '', NULL, '培训计划删除权限'),
+(1023, '课程新增',       736,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:course:add',        '#', 'admin', NOW(), '', NULL, '课程新增权限'),
+(1024, '课程编辑',       736,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:course:edit',       '#', 'admin', NOW(), '', NULL, '课程编辑权限'),
+(1025, '课程删除',       736,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:course:remove',     '#', 'admin', NOW(), '', NULL, '课程删除权限'),
+(1026, '班次开班',       737,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:session:add',       '#', 'admin', NOW(), '', NULL, '班次开班权限'),
+(1027, '班次编辑',       737,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:session:edit',      '#', 'admin', NOW(), '', NULL, '班次编辑权限'),
+(1028, '班次签到',       737,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:session:checkin',   '#', 'admin', NOW(), '', NULL, '员工签到权限'),
+(1029, '报名提交',       738,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:enroll:add',        '#', 'admin', NOW(), '', NULL, '员工报名权限'),
+(1030, '报名完成',       738,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:enroll:complete',   '#', 'admin', NOW(), '', NULL, '报名完成判定权限'),
+(1031, '组卷',           739,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:exam:paper:add',    '#', 'admin', NOW(), '', NULL, '试卷生成权限'),
+(1032, '作答提交',       739,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:exam:submit',       '#', 'admin', NOW(), '', NULL, '员工作答提交权限'),
+(1033, '主观题阅卷',     739,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:exam:grade',        '#', 'admin', NOW(), '', NULL, '主观题阅卷权限'),
+(1034, '证书颁发',       740,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:cert:issue',        '#', 'admin', NOW(), '', NULL, '证书颁发权限'),
+(1035, '证书吊销',       740,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:training:cert:revoke',       '#', 'admin', NOW(), '', NULL, '证书吊销权限'),
+
+-- HR 人才盘点按钮级权限
+(1036, '盘点活动新增',   743,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:review:add',          '#', 'admin', NOW(), '', NULL, '盘点活动新增权限'),
+(1037, '盘点活动编辑',   743,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:review:edit',         '#', 'admin', NOW(), '', NULL, '盘点活动编辑权限'),
+(1038, '盘点活动删除',   743,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:review:remove',       '#', 'admin', NOW(), '', NULL, '盘点活动删除权限'),
+(1039, '业绩快照',       743,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:review:snapshot',     '#', 'admin', NOW(), '', NULL, '业绩快照拉取权限'),
+(1040, '盘点发布',       743,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:review:publish',      '#', 'admin', NOW(), '', NULL, '盘点发布发起审批权限'),
+(1041, '九宫格落格',     744,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:review:assign',       '#', 'admin', NOW(), '', NULL, '九宫格员工落格权限'),
+(1042, '潜力评分录入',   744,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:review:potential',    '#', 'admin', NOW(), '', NULL, '潜力评分与评语录入权限'),
+(1043, '校准会议新增',   745,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:session:add',         '#', 'admin', NOW(), '', NULL, '校准会议创建权限'),
+(1044, '校准会议编辑',   745,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:session:edit',        '#', 'admin', NOW(), '', NULL, '校准会议编辑权限'),
+(1045, '继任计划新增',   746,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:succession:add',      '#', 'admin', NOW(), '', NULL, '继任计划新增权限'),
+(1046, '继任计划编辑',   746,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:succession:edit',     '#', 'admin', NOW(), '', NULL, '继任计划编辑权限'),
+(1047, '继任计划删除',   746,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:succession:remove',   '#', 'admin', NOW(), '', NULL, '继任计划删除权限'),
+(1048, '继任人提名',     746,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:succession:nominate', '#', 'admin', NOW(), '', NULL, '继任人提名权限'),
+(1049, '继任计划发布',   746,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:succession:publish',  '#', 'admin', NOW(), '', NULL, '继任计划发布审批权限'),
+(1050, '人才池新增',     747,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:pool:add',            '#', 'admin', NOW(), '', NULL, '人才池新增权限'),
+(1051, '人才池编辑',     747,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:pool:edit',           '#', 'admin', NOW(), '', NULL, '人才池编辑权限'),
+(1052, '人才池删除',     747,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:pool:remove',         '#', 'admin', NOW(), '', NULL, '人才池删除权限'),
+(1053, '入池',           747,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:pool:join',           '#', 'admin', NOW(), '', NULL, '人才入池权限'),
+(1054, '出池',           747,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:pool:exit',           '#', 'admin', NOW(), '', NULL, '人才出池权限'),
+(1055, '培养行动新增',   748,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:dev:add',             '#', 'admin', NOW(), '', NULL, '培养行动新增权限'),
+(1056, '培养行动编辑',   748,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:dev:edit',            '#', 'admin', NOW(), '', NULL, '培养行动编辑权限'),
+(1057, '培养行动删除',   748,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:dev:remove',          '#', 'admin', NOW(), '', NULL, '培养行动删除权限'),
+(1058, '培养行动完成',   748,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:dev:complete',        '#', 'admin', NOW(), '', NULL, '培养行动完成评估权限'),
+(1059, '人才档案我的',   749,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:archive:mine',        '#', 'admin', NOW(), '', NULL, '我的人才档案查看权限'),
+(1060, '人才档案下属',   749,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:talent:archive:report',      '#', 'admin', NOW(), '', NULL, '下属人才档案查看权限');
+
+-- HR 福利与商城 / 工伤管理 / 劳动争议 按钮权限（P0 福利管理 + 劳动关系）
+INSERT INTO cloud_flow_db.sys_menu VALUES
+(1061, '福利申领新增',   752,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:request:add',        '#', 'admin', NOW(), '', NULL, '福利申领新增权限'),
+(1062, '福利申领编辑',   752,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:request:edit',       '#', 'admin', NOW(), '', NULL, '福利申领编辑权限'),
+(1063, '福利申领提交',   752,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:request:submit',     '#', 'admin', NOW(), '', NULL, '福利申领提交审批权限'),
+(1064, '福利申领审批',   752,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:request:approve',    '#', 'admin', NOW(), '', NULL, '福利申领审批操作权限'),
+(1065, '福利申领作废',   752,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:request:cancel',     '#', 'admin', NOW(), '', NULL, '福利申领取消权限'),
+(1066, '我的福利',       751,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:request:mine',       '#', 'admin', NOW(), '', NULL, '本人福利总览权限'),
+(1067, '积分账户查看',   753,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:point:mine',         '#', 'admin', NOW(), '', NULL, '本人积分账户查看权限'),
+(1068, '积分流水查看',   753,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:point:txn',          '#', 'admin', NOW(), '', NULL, '积分流水查询权限'),
+(1069, '积分手动调整',   753,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:point:adjust',       '#', 'admin', NOW(), '', NULL, 'HR 手动调整积分权限'),
+(1070, '商品上架',       754,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:mall:on-shelf',      '#', 'admin', NOW(), '', NULL, '积分商品上架权限'),
+(1071, '商品下架',       754,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:mall:off-shelf',     '#', 'admin', NOW(), '', NULL, '积分商品下架权限'),
+(1072, '商品维护',       754,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:mall:edit',          '#', 'admin', NOW(), '', NULL, '积分商品新增编辑权限'),
+(1073, '下单兑换',       754,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:order:place',        '#', 'admin', NOW(), '', NULL, '积分下单兑换权限'),
+(1074, '我的订单',       755,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:order:my',           '#', 'admin', NOW(), '', NULL, '本人订单查看权限'),
+(1075, '订单发货',       755,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:order:ship',         '#', 'admin', NOW(), '', NULL, 'HR 订单发货权限'),
+(1076, '订单取消',       755,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:order:cancel',       '#', 'admin', NOW(), '', NULL, '订单取消权限'),
+(1077, '订单完成',       755,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:benefit:order:complete',     '#', 'admin', NOW(), '', NULL, '订单确认完成权限'),
+(1078, '工伤申报',       757,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:report',              '#', 'admin', NOW(), '', NULL, '工伤事件录入权限'),
+(1079, '工伤申报本人',   757,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:report:my',           '#', 'admin', NOW(), '', NULL, '员工自助工伤申报权限'),
+(1080, '工伤认定提交',   757,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:submit',              '#', 'admin', NOW(), '', NULL, '工伤认定审批提交权限'),
+(1081, '工伤关闭',       757,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:close',               '#', 'admin', NOW(), '', NULL, '工伤事件关闭权限'),
+(1082, '调查记录维护',   758,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:investigate:edit',    '#', 'admin', NOW(), '', NULL, '工伤调查记录维护权限'),
+(1083, '医疗记录维护',   759,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:treatment:edit',      '#', 'admin', NOW(), '', NULL, '医疗记录维护权限'),
+(1084, '赔偿登记',       760,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:compensation:edit',   '#', 'admin', NOW(), '', NULL, '赔偿项目登记权限'),
+(1085, '赔偿支付',       760,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:compensation:pay',    '#', 'admin', NOW(), '', NULL, '赔偿支付标记权限'),
+(1086, '康复维护',       761,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:rehab:edit',          '#', 'admin', NOW(), '', NULL, '康复跟踪维护权限'),
+(1087, '康复返岗',       761,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:injury:rehab:return',        '#', 'admin', NOW(), '', NULL, '康复返岗确认权限'),
+(1088, '争议登记',       763,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:register',           '#', 'admin', NOW(), '', NULL, '劳动争议登记权限'),
+(1089, '争议自助登记',   763,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:register:my',        '#', 'admin', NOW(), '', NULL, '员工自助登记争议权限'),
+(1090, '争议提交',       763,  3, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:submit',             '#', 'admin', NOW(), '', NULL, '争议处理审批提交权限'),
+(1091, '争议关闭',       763,  4, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:close',              '#', 'admin', NOW(), '', NULL, '争议关闭权限'),
+(1092, '证据上传',       763,  5, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:evidence:upload',    '#', 'admin', NOW(), '', NULL, '证据材料上传权限'),
+(1093, '证据移除',       763,  6, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:evidence:remove',    '#', 'admin', NOW(), '', NULL, '证据材料移除权限'),
+(1094, '调解维护',       764,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:mediation:edit',     '#', 'admin', NOW(), '', NULL, '调解记录维护权限'),
+(1095, '调解结果',       764,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:mediation:result',   '#', 'admin', NOW(), '', NULL, '调解结果登记权限'),
+(1096, '仲裁维护',       765,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:arbitration:edit',   '#', 'admin', NOW(), '', NULL, '仲裁记录维护权限'),
+(1097, '裁决登记',       765,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:arbitration:award',  '#', 'admin', NOW(), '', NULL, '裁决结果登记权限');
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 7, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 720, 100000);
@@ -1495,6 +1633,45 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 724, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 725, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 726, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 727, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 728, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 729, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 730, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 731, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 732, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 733, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 734, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 735, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 736, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 737, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 738, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 739, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 740, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 741, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 742, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 743, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 744, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 745, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 746, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 747, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 748, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 749, 100000);
+-- HR 福利 / 工伤 / 劳动争议（admin 全开）
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 750, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 751, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 752, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 753, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 754, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 755, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 756, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 757, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 758, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 759, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 760, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 761, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 762, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 763, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 764, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(1, 765, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 7, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 720, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 721, 100000);
@@ -1504,6 +1681,45 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 724, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 725, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 726, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 727, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 728, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 729, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 730, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 731, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 732, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 733, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 734, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 735, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 736, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 737, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 738, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 739, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 740, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 741, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 742, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 743, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 744, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 745, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 746, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 747, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 748, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 749, 100000);
+-- HR 福利 / 工伤 / 劳动争议（HR 全开）
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 750, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 751, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 752, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 753, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 754, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 755, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 756, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 757, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 758, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 759, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 760, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 761, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 762, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 763, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 764, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(4, 765, 100000);
 
 -- EMPLOYEE (role_id=5): 工作台 + 办公协同 + 流程中心（仅基础功能）
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 1, 100000);
@@ -1533,6 +1749,30 @@ INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 302, 100000);
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 303, 100000);
 
 INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 613, 100000);
+
+-- HR ESS 与培训（员工角色：仅自助视图 + 培训报名/我的证书/我的档案）
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 7, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 728, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 729, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 730, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 731, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 732, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 733, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 734, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 738, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 740, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 741, 100000);
+-- 人才盘点（员工角色：仅可查看本人人才档案）
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 749, 100000);
+-- HR 福利 / 商城 / 工伤自助 / 争议自助（员工角色：仅自助视图 + 商城浏览 + 自助申报）
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 750, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 751, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 754, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 755, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 756, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 757, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 762, 100000);
+INSERT INTO cloud_flow_db.sys_role_menu VALUES(5, 763, 100000);
 
 -- 模板库（普通用户可查看）
 
@@ -2488,10 +2728,10 @@ INSERT INTO cloud_flow_db.wf_form_definition (form_id, form_name, fields_json, c
 -- 核心流程定义（nodes + edges）
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
 ('wf_reimburse_v2_legacy', '财务报销流程（旧版）', 'biz_reimburse', 2, 'PUBLISHED', 0, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"n2","type":"APPROVAL","title":"票据与行程复核","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","REJECT","RETURN"]}},{"id":"b2","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->b2","source":"n2","target":"b2"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW()),
-('wf_reimburse', '财务报销流程', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"b2","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount >= 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
+('wf_reimburse', '财务报销流程', 'biz_reimburse', 3, 'PUBLISHED', 1, 'form_reimburse', '{"nodes":[{"id":"root","type":"START","title":"提交报销"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"b2","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount >= 1000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1","isDefault":true},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
-('wf_leave', '员工请假流程', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"nodes":[{"id":"root","type":"START","title":"提交请假"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw_leave","type":"CONDITION","title":"天数校验"},{"id":"b1","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr","condition":"days <= 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"days > 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw_leave","source":"n1","target":"gw_leave"},{"id":"gw_leave->b1","source":"gw_leave","target":"b1"},{"id":"gw_leave->b2","source":"gw_leave","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
+('wf_leave', '员工请假流程', 'biz_leave', 1, 'PUBLISHED', 1, 'form_leave', '{"nodes":[{"id":"root","type":"START","title":"提交请假"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"gw_leave","type":"CONDITION","title":"天数校验"},{"id":"b1","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr","condition":"days <= 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"days > 3","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw_leave","source":"n1","target":"gw_leave"},{"id":"gw_leave->b1","source":"gw_leave","target":"b1","isDefault":true},{"id":"gw_leave->b2","source":"gw_leave","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
 ('wf_contract', '合同审批流程', 'biz_contract', 5, 'PUBLISHED', 1, 'form_contract', '{"nodes":[{"id":"root","type":"START","title":"发起合同"},{"id":"n1","type":"APPROVAL","title":"法务与财务会签","signType":"ALL","approverType":"USERS","approverValue":"3,6","props":{"buttons":["APPROVE","REJECT"]}},{"id":"n2","type":"APPROVAL","title":"总经理签发","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
@@ -2500,7 +2740,7 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 ('wf_recruit', '招聘申请流程', 'biz_recruit', 1, 'PUBLISHED', 1, 'form_recruit', '{"nodes":[{"id":"root","type":"START","title":"提交招聘需求"},{"id":"n1","type":"APPROVAL","title":"部门总监审批","approverType":"DEPT_MANAGER","props":{"buttons":["APPROVE","RETURN"]}},{"id":"n2","type":"APPROVAL","title":"HR审核","approverType":"ROLE","approverValue":"hr","props":{"buttons":["APPROVE","REJECT","DELEGATE"]}},{"id":"n3","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->n3","source":"n2","target":"n3"},{"id":"n3->end","source":"n3","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, form_id, model_json, create_time) VALUES
-('wf_payment', '对公付款流程', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"nodes":[{"id":"root","type":"START","title":"提交付款申请"},{"id":"n1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","RETURN","DELEGATE"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
+('wf_payment', '对公付款流程', 'biz_payment', 1, 'PUBLISHED', 1, 'form_payment', '{"nodes":[{"id":"root","type":"START","title":"提交付款申请"},{"id":"n1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance","props":{"buttons":["APPROVE","RETURN","DELEGATE"]}},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1","isDefault":true},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
 
 -- 通用 OA 流程定义
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
@@ -2541,10 +2781,10 @@ INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, pr
 ('wf_transfer_approval', '调岗审批流程', 'transfer_approval', 1, 'PUBLISHED', 1, 'HR', '{"nodes":[{"id":"root","type":"START","title":"提交调岗申请"},{"id":"n1","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","props":{"buttons":["APPROVE","REJECT","RETURN","DELEGATE"]}},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->end","source":"n1","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_payment_request', '付款审批流程', 'payment_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交付款申请"},{"id":"n1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance"},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000"},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
+('wf_payment_request', '付款审批流程', 'payment_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交付款申请"},{"id":"n1","type":"APPROVAL","title":"财务主管审批","approverType":"ROLE","approverValue":"finance"},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"APPROVAL","title":"财务总监审批","approverType":"ROLE","approverValue":"finance","condition":"amount < 50000"},{"id":"b2","type":"APPROVAL","title":"总经理审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->gw1","source":"n1","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1","isDefault":true},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
-('wf_purchase_request', '采购审批流程', 'purchase_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交采购申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"采购经理审批","approverType":"ROLE","approverValue":"manager"},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"CONDITION","title":"低金额采购","condition":"amount < 50000"},{"id":"b2","type":"APPROVAL","title":"管理员审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->gw1","source":"n2","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1"},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
+('wf_purchase_request', '采购审批流程', 'purchase_request', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交采购申请"},{"id":"n1","type":"APPROVAL","title":"直属上级审批","approverType":"DIRECT_LEADER"},{"id":"n2","type":"APPROVAL","title":"采购经理审批","approverType":"ROLE","approverValue":"manager"},{"id":"gw1","type":"CONDITION","title":"金额校验"},{"id":"b1","type":"CONDITION","title":"低金额采购","condition":"amount < 50000"},{"id":"b2","type":"APPROVAL","title":"管理员审批","approverType":"ROLE","approverValue":"admin","condition":"amount >= 50000"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->gw1","source":"n2","target":"gw1"},{"id":"gw1->b1","source":"gw1","target":"b1","isDefault":true},{"id":"gw1->b2","source":"gw1","target":"b2"},{"id":"b1->end","source":"b1","target":"end"},{"id":"b2->end","source":"b2","target":"end"}]}', NOW());
 
 INSERT INTO cloud_flow_db.wf_process_definition (definition_id, process_name, process_key, version, status, is_latest, category, model_json, create_time) VALUES
 ('wf_business_trip', '出差审批流程', 'business_trip', 1, 'PUBLISHED', 1, 'OA', '{"nodes":[{"id":"root","type":"START","title":"提交出差申请"},{"id":"n1","type":"APPROVAL","title":"部门经理审批","approverType":"DEPT_MANAGER"},{"id":"n2","type":"APPROVAL","title":"HR备案","approverType":"ROLE","approverValue":"hr"},{"id":"end","type":"END","title":"流程结束"}],"edges":[{"id":"root->n1","source":"root","target":"n1"},{"id":"n1->n2","source":"n1","target":"n2"},{"id":"n2->end","source":"n2","target":"end"}]}', NOW());
@@ -5545,6 +5785,444 @@ INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags,
       "id": "dep_b2->dep_n7",
       "source": "dep_b2",
       "target": "dep_n7"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+-- HR ESS / 培训新增工作流模板（与 WorkflowBusinessTypeContributor 新增三个 businessType 对齐）
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-cert-001', '证明开具审批', '员工提交 → 部门经理审批 → HR 出具 → 生成 PDF', 'cat-hr',
+'["证明","人事","ESS","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "申请证明"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "部门经理审批",
+      "approverType": "DEPT_MANAGER"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "HR 出具",
+      "approverType": "ROLE",
+      "approverValue": "hr"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-contract-sign-001', '电子合同签署', 'HR 发起 → 员工签署 → HR 复核归档', 'cat-hr',
+'["合同","签署","ESS","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "发起签署"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "员工签署",
+      "approverType": "USER",
+      "approverValue": "${signerId}"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "HR 复核归档",
+      "approverType": "ROLE",
+      "approverValue": "hr"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-training-enroll-001', '培训报名审批', '员工提交 → 部门经理审批 → HR 审核', 'cat-hr',
+'["培训","报名","人事","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "提交报名"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "部门经理审批",
+      "approverType": "DEPT_MANAGER"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "HR 审核",
+      "approverType": "ROLE",
+      "approverValue": "hr"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+-- HR 人才盘点工作流模板（与 WorkflowBusinessTypeContributor 新增两个 businessType 对齐）
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-talent-review-001', '人才盘点发布审批', 'HR 发起 → 部门总监审批 → 人事总监审批 → 发布', 'cat-hr',
+'["人才盘点","人事","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "提交盘点发布"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "部门总监审批",
+      "approverType": "DEPT_DIRECTOR"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "人事总监审批",
+      "approverType": "ROLE",
+      "approverValue": "hr_director"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-talent-succession-001', '继任计划发布审批', 'HR 发起 → 直属领导审批 → CEO 审批 → 发布', 'cat-hr',
+'["继任","人才","人事","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "提交继任发布"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "直属领导审批",
+      "approverType": "DEPT_MANAGER"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "CEO 审批",
+      "approverType": "ROLE",
+      "approverValue": "ceo"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+-- HR 福利申领工作流模板（HR_BENEFIT_REQUEST）
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-benefit-request-001', '福利申领审批', '员工发起 → 直属上级审批 → HR 审批 → 发放', 'cat-hr',
+'["福利","HR","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "提交福利申领"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "直属上级审批",
+      "approverType": "DEPT_MANAGER"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "HR 审批",
+      "approverType": "ROLE",
+      "approverValue": "hr"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+-- HR 积分商城高价值订单工作流模板（HR_MALL_ORDER）
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-mall-order-001', '积分商城高价值订单审批', '员工下单 → HR 审批 → 发货', 'cat-hr',
+'["积分","商城","HR","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "提交订单"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "HR 审批",
+      "approverType": "ROLE",
+      "approverValue": "hr"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->end",
+      "source": "n1",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+-- HR 工伤认定工作流模板（HR_WORK_INJURY）
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-work-injury-001', '工伤认定审批', 'HR 提交 → 部门负责人审批 → 法务/合规审批 → 确定伤残等级', 'cat-hr',
+'["工伤","HR","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "提交工伤认定"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "部门负责人审批",
+      "approverType": "DEPT_MANAGER"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "法务/合规审批",
+      "approverType": "ROLE",
+      "approverValue": "legal"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
+    }
+  ]
+}',
+1, 'active', 'system', NULL);
+
+-- HR 劳动争议处理工作流模板（HR_LABOR_DISPUTE）
+INSERT INTO cloud_flow_db.wf_template (id, name, description, category_id, tags, definition, is_system, status, created_by, tenant_id) VALUES
+('tpl-hr-labor-dispute-001', '劳动争议处理审批', 'HR 受理 → 法务介入 → 总经理审批', 'cat-hr',
+'["劳动争议","仲裁","HR","模板"]',
+'{
+  "nodes": [
+    {
+      "id": "start",
+      "type": "START",
+      "title": "提交劳动争议处理"
+    },
+    {
+      "id": "n1",
+      "type": "APPROVAL",
+      "title": "法务介入",
+      "approverType": "ROLE",
+      "approverValue": "legal"
+    },
+    {
+      "id": "n2",
+      "type": "APPROVAL",
+      "title": "总经理审批",
+      "approverType": "ROLE",
+      "approverValue": "ceo"
+    },
+    {
+      "id": "end",
+      "type": "END",
+      "title": "流程结束"
+    }
+  ],
+  "edges": [
+    {
+      "id": "start->n1",
+      "source": "start",
+      "target": "n1"
+    },
+    {
+      "id": "n1->n2",
+      "source": "n1",
+      "target": "n2"
+    },
+    {
+      "id": "n2->end",
+      "source": "n2",
+      "target": "end"
     }
   ]
 }',
@@ -9137,6 +9815,71 @@ DELETE FROM cloud_flow_db.hr_position_family
 WHERE tenant_id = 100000
    OR id BETWEEN 100 AND 199;
 
+-- =========================================================
+-- 20000-29999 区间：HR 扩展模块 + 工作流回调监控（反向依赖序）
+-- =========================================================
+DELETE FROM cloud_flow_db.wf_callback_dead_letter        WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.wf_reconcile_alert             WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_audit_log                   WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_self_service_message        WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_contract_signature          WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_benefit_payment             WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_family_member               WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_bank_card                   WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_certificate_request         WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_salary_slip                 WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_dispute_evidence            WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_dispute_arbitration         WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_dispute_mediation           WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_labor_dispute               WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_work_injury_rehabilitation  WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_work_injury_compensation    WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_work_injury_treatment       WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_work_injury_investigation   WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_work_injury                 WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_mall_order_item             WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_mall_order                  WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_mall_item                   WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_point_transaction           WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_point_account               WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_benefit_request             WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_development_action   WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_pool_member          WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_pool                 WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_successor            WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_succession_plan      WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_calibration_session  WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_review_participant   WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_talent_review               WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_certificate        WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_certificate_template WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_exam_attempt                WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_exam_paper                  WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_exam_question_bank          WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_enrollment         WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_session            WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_course             WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_instructor         WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_category           WHERE id BETWEEN 20000 AND 29999;
+DELETE FROM cloud_flow_db.hr_training_plan               WHERE id BETWEEN 20000 AND 29999;
+
+-- ---- 工作流监控 + OA + CRM 业务缺口 (26000-26999) ----
+DELETE FROM cloud_flow_db.crm_approval                   WHERE approval_id  BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.crm_handover_task              WHERE handover_id  BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.crm_quote_line                 WHERE quote_line_id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.oa_trace_event                 WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.oa_sync_device                 WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.oa_seal_expiry_reminder_log    WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.oa_seal_renewal                WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.oa_risk_alert                  WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.oa_budget_ledger               WHERE ledger_id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.oa_knowledge_read              WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.wf_deploy_notification         WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.wf_deploy_approval_step        WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.wf_deploy_approval             WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.wf_process_version_snapshot    WHERE id BETWEEN 26000 AND 29999;
+DELETE FROM cloud_flow_db.wf_anomaly_alert               WHERE id BETWEEN 26000 AND 29999;
+
 INSERT INTO cloud_flow_db.hr_position_family (id, tenant_id, family_code, family_name, description, sort_order, status) VALUES
 (100, 100000, 'TECH', '技术族', '研发、测试、架构与技术交付岗位', 1, 1),
 (101, 100000, 'PRODUCT', '产品族', '产品规划、需求与体验岗位', 2, 1),
@@ -9521,6 +10264,1742 @@ INSERT INTO cloud_flow_db.hr_performance_salary_adjustment (id, tenant_id, objec
 (9301, 100000, 9003, 1003, 8301, 1500, 'Q1研发效能归档后触发绩效调薪建议', 'APPROVED'),
 (9302, 100000, 9003, 1005, 8302, 1000, 'Q1交付支撑表现稳定，触发绩效调薪建议', 'APPROVED'),
 (9303, 100000, 9010, 1008, 8303, 1800, '跨部门经营指标阶段达成，生成绩效调薪申请', 'DRAFT');
+
+
+-- =========================================================
+-- 八、员工与登录身份扩展 (sys_user 21-40 + hr_employee 1011-1050)
+--   目标：把员工扩到 50+，覆盖部门 100-119 全部门，为 ESS/培训/人才/工伤/争议提供交互对象
+-- =========================================================
+
+INSERT INTO cloud_flow_db.sys_user VALUES(21, 100000, 106, 'employee21', '杜雪',   'employee21@cloudflow.com', '15888888921', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '前端组开发员',     '');
+INSERT INTO cloud_flow_db.sys_user VALUES(22, 100000, 107, 'employee22', '段嘉义', 'employee22@cloudflow.com', '15888888922', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '后端组开发员',     '');
+INSERT INTO cloud_flow_db.sys_user VALUES(23, 100000, 108, 'employee23', '伍婉清', 'employee23@cloudflow.com', '15888888923', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '会计组财务员',     '');
+INSERT INTO cloud_flow_db.sys_user VALUES(24, 100000, 103, 'employee24', '范若怡', 'employee24@cloudflow.com', '15888888924', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, 'HR招聘官',         '');
+INSERT INTO cloud_flow_db.sys_user VALUES(25, 100000, 103, 'employee25', '林婧',   'employee25@cloudflow.com', '15888888925', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, 'HR培训官',         '');
+INSERT INTO cloud_flow_db.sys_user VALUES(26, 100000, 104, 'employee26', '邱景明', 'employee26@cloudflow.com', '15888888926', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '法务专员',         '');
+INSERT INTO cloud_flow_db.sys_user VALUES(27, 100000, 105, 'employee27', '黎倩',   'employee27@cloudflow.com', '15888888927', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, 'IT支持工程师',     '');
+INSERT INTO cloud_flow_db.sys_user VALUES(28, 100000, 109, 'employee28', '孟昭文', 'employee28@cloudflow.com', '15888888928', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '产品助理',         '');
+INSERT INTO cloud_flow_db.sys_user VALUES(29, 100000, 114, 'employee29', '聂涵',   'employee29@cloudflow.com', '15888888929', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '产品设计师',       '');
+INSERT INTO cloud_flow_db.sys_user VALUES(30, 100000, 115, 'employee30', '潘子皓', 'employee30@cloudflow.com', '15888888930', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '实施工程师',       '');
+INSERT INTO cloud_flow_db.sys_user VALUES(31, 100000, 116, 'employee31', '邵青茉', 'employee31@cloudflow.com', '15888888931', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '客户成功专员',     '');
+INSERT INTO cloud_flow_db.sys_user VALUES(32, 100000, 117, 'employee32', '邰嘉峻', 'employee32@cloudflow.com', '15888888932', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '销售代表',         '');
+INSERT INTO cloud_flow_db.sys_user VALUES(33, 100000, 117, 'employee33', '罗雪枫', 'employee33@cloudflow.com', '15888888933', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '销售助理',         '');
+INSERT INTO cloud_flow_db.sys_user VALUES(34, 100000, 118, 'employee34', '齐振邦', 'employee34@cloudflow.com', '15888888934', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '运维支持员',       '');
+INSERT INTO cloud_flow_db.sys_user VALUES(35, 100000, 119, 'employee35', '尚菡',   'employee35@cloudflow.com', '15888888935', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '测试工程师',       '');
+INSERT INTO cloud_flow_db.sys_user VALUES(36, 100000, 106, 'employee36', '童宇桐', 'employee36@cloudflow.com', '15888888936', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '前端实习生',       '');
+INSERT INTO cloud_flow_db.sys_user VALUES(37, 100000, 107, 'employee37', '汪梓宸', 'employee37@cloudflow.com', '15888888937', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '后端工程师',       '');
+INSERT INTO cloud_flow_db.sys_user VALUES(38, 100000, 108, 'employee38', '魏沐枫', 'employee38@cloudflow.com', '15888888938', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '财务助理',         '');
+INSERT INTO cloud_flow_db.sys_user VALUES(39, 100000, 110, 'employee39', '萧映彤', 'employee39@cloudflow.com', '15888888939', '0', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '交付协调员',       '');
+INSERT INTO cloud_flow_db.sys_user VALUES(40, 100000, 112, 'employee40', '车珩',   'employee40@cloudflow.com', '15888888940', '1', '$2a$10$4xVcDQmj7FaV3k2i1ihyP.2bknxo6Tv4bmRxB6lnilv0aAFOXnwUC', '0', '0', '1', '', NULL, 'admin', NOW(), '', NULL, '销售助理',         '');
+
+-- 角色：21-40 普通员工(role 5)；24/25 兼 HR 管理员(role 4)
+INSERT INTO cloud_flow_db.sys_user_role VALUES(21, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(22, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(23, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(24, 4, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(25, 4, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(26, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(27, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(28, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(29, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(30, 6, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(31, 7, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(32, 8, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(33, 8, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(34, 9, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(35, 10, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(36, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(37, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(38, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(39, 6, 100000);
+INSERT INTO cloud_flow_db.sys_user_role VALUES(40, 8, 100000);
+
+-- 岗位：与 sys_post (1-11) 匹配 (1=研发,2=hrbp,3=财务,4=研发工程师,5=产品经理,6=实施,7=客户成功,8=销售,9=运维,10=测试,11=方案架构师)
+INSERT INTO cloud_flow_db.sys_user_post VALUES(21, 4, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(22, 4, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(23, 3, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(24, 2, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(25, 2, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(26, 3, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(27, 9, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(28, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(29, 5, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(30, 6, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(31, 7, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(32, 8, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(33, 8, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(34, 9, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(35, 10, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(36, 4, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(37, 4, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(38, 3, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(39, 6, 100000);
+INSERT INTO cloud_flow_db.sys_user_post VALUES(40, 8, 100000);
+
+-- 员工档案扩展 1011-1050 (40 人), 覆盖 5 种状态: REGULAR/PROBATION/INTERN/REGULAR(老员工)/RESIGNED
+INSERT INTO cloud_flow_db.hr_employee (id, tenant_id, employee_no, name, gender, birth_date, phone, email, dept_id, post_id, position_id, employee_type, employee_status, hire_date, regular_date, resign_date, user_id, create_by, update_by) VALUES
+(1011, 100000, 'CF20260011', '杜雪',   'FEMALE', '1996-04-22', '13800010011', 'employee21@cloudflow.com', 106, 4, 100, 'FULL_TIME', 'REGULAR',   '2025-01-10', '2025-07-10', NULL, 21, 'admin', 'admin'),
+(1012, 100000, 'CF20260012', '段嘉义', 'MALE',   '1993-08-11', '13800010012', 'employee22@cloudflow.com', 107, 4, 101, 'FULL_TIME', 'REGULAR',   '2025-01-15', '2025-07-15', NULL, 22, 'admin', 'admin'),
+(1013, 100000, 'CF20260013', '伍婉清', 'FEMALE', '1995-12-30', '13800010013', 'employee23@cloudflow.com', 108, 4, 103, 'FULL_TIME', 'REGULAR',   '2024-12-01', '2025-06-01', NULL, 23, 'admin', 'admin'),
+(1014, 100000, 'CF20260014', '范若怡', 'FEMALE', '1994-06-08', '13800010014', 'employee24@cloudflow.com', 103, 2, 102, 'FULL_TIME', 'REGULAR',   '2024-10-20', '2025-04-20', NULL, 24, 'admin', 'admin'),
+(1015, 100000, 'CF20260015', '林婧',   'FEMALE', '1992-03-17', '13800010015', 'employee25@cloudflow.com', 103, 2, 102, 'FULL_TIME', 'REGULAR',   '2024-08-05', '2025-02-05', NULL, 25, 'admin', 'admin'),
+(1016, 100000, 'CF20260016', '邱景明', 'MALE',   '1989-11-04', '13800010016', 'employee26@cloudflow.com', 104, 4, 103, 'FULL_TIME', 'REGULAR',   '2023-06-12', '2023-12-12', NULL, 26, 'admin', 'admin'),
+(1017, 100000, 'CF20260017', '黎倩',   'FEMALE', '1997-02-19', '13800010017', 'employee27@cloudflow.com', 105, 9, NULL,'FULL_TIME', 'REGULAR',   '2025-03-10', '2025-09-10', NULL, 27, 'admin', 'admin'),
+(1018, 100000, 'CF20260018', '孟昭文', 'MALE',   '1991-07-25', '13800010018', 'employee28@cloudflow.com', 109, 5, NULL,'FULL_TIME', 'REGULAR',   '2024-09-01', '2025-03-01', NULL, 28, 'admin', 'admin'),
+(1019, 100000, 'CF20260019', '聂涵',   'FEMALE', '1994-05-14', '13800010019', 'employee29@cloudflow.com', 114, 5, NULL,'FULL_TIME', 'REGULAR',   '2024-11-18', '2025-05-18', NULL, 29, 'admin', 'admin'),
+(1020, 100000, 'CF20260020', '潘子皓', 'MALE',   '1990-10-06', '13800010020', 'employee30@cloudflow.com', 115, 6, NULL,'FULL_TIME', 'REGULAR',   '2023-09-22', '2024-03-22', NULL, 30, 'admin', 'admin'),
+(1021, 100000, 'CF20260021', '邵青茉', 'FEMALE', '1995-09-30', '13800010021', 'employee31@cloudflow.com', 116, 7, NULL,'FULL_TIME', 'REGULAR',   '2024-07-08', '2025-01-08', NULL, 31, 'admin', 'admin'),
+(1022, 100000, 'CF20260022', '邰嘉峻', 'MALE',   '1989-04-12', '13800010022', 'employee32@cloudflow.com', 117, 8, NULL,'FULL_TIME', 'REGULAR',   '2023-04-03', '2023-10-03', NULL, 32, 'admin', 'admin'),
+(1023, 100000, 'CF20260023', '罗雪枫', 'FEMALE', '1998-12-21', '13800010023', 'employee33@cloudflow.com', 117, 8, NULL,'FULL_TIME', 'PROBATION', '2026-02-01', NULL,         NULL, 33, 'admin', 'admin'),
+(1024, 100000, 'CF20260024', '齐振邦', 'MALE',   '1988-01-08', '13800010024', 'employee34@cloudflow.com', 118, 9, NULL,'FULL_TIME', 'REGULAR',   '2022-08-15', '2023-02-15', NULL, 34, 'admin', 'admin'),
+(1025, 100000, 'CF20260025', '尚菡',   'FEMALE', '1996-03-26', '13800010025', 'employee35@cloudflow.com', 119, 10,NULL,'FULL_TIME', 'REGULAR',   '2024-04-20', '2024-10-20', NULL, 35, 'admin', 'admin'),
+(1026, 100000, 'CF20260026', '童宇桐', 'MALE',   '2001-08-15', '13800010026', 'employee36@cloudflow.com', 106, 4, 100, 'INTERN',    'INTERN',    '2026-03-01', NULL,         NULL, 36, 'admin', 'admin'),
+(1027, 100000, 'CF20260027', '汪梓宸', 'MALE',   '1993-11-09', '13800010027', 'employee37@cloudflow.com', 107, 4, 101, 'FULL_TIME', 'REGULAR',   '2024-05-10', '2024-11-10', NULL, 37, 'admin', 'admin'),
+(1028, 100000, 'CF20260028', '魏沐枫', 'FEMALE', '1997-06-18', '13800010028', 'employee38@cloudflow.com', 108, 4, 103, 'FULL_TIME', 'PROBATION', '2026-04-15', NULL,         NULL, 38, 'admin', 'admin'),
+(1029, 100000, 'CF20260029', '萧映彤', 'FEMALE', '1992-02-03', '13800010029', 'employee39@cloudflow.com', 110, 6, NULL,'FULL_TIME', 'REGULAR',   '2023-07-25', '2024-01-25', NULL, 39, 'admin', 'admin'),
+(1030, 100000, 'CF20260030', '车珩',   'MALE',   '1995-10-19', '13800010030', 'employee40@cloudflow.com', 112, 8, NULL,'FULL_TIME', 'PROBATION', '2026-03-22', NULL,         NULL, 40, 'admin', 'admin'),
+(1031, 100000, 'CF20260031', '柴砚书', 'MALE',   '1990-05-07', '13800010031', NULL,                       101, 2, 101, 'FULL_TIME', 'REGULAR',   '2022-11-08', '2023-05-08', NULL, NULL,'admin', 'admin'),
+(1032, 100000, 'CF20260032', '岑沁雨', 'FEMALE', '1993-07-23', '13800010032', NULL,                       106, 4, 100, 'FULL_TIME', 'REGULAR',   '2023-08-15', '2024-02-15', NULL, NULL,'admin', 'admin'),
+(1033, 100000, 'CF20260033', '常嵘',   'MALE',   '1987-09-11', '13800010033', NULL,                       105, 9, NULL,'FULL_TIME', 'REGULAR',   '2022-04-20', '2022-10-20', NULL, NULL,'admin', 'admin'),
+(1034, 100000, 'CF20260034', '巢心远', 'MALE',   '1994-01-29', '13800010034', NULL,                       102, 4, 103, 'FULL_TIME', 'REGULAR',   '2024-02-18', '2024-08-18', NULL, NULL,'admin', 'admin'),
+(1035, 100000, 'CF20260035', '池蔚澜', 'FEMALE', '1996-08-08', '13800010035', NULL,                       103, 2, 102, 'FULL_TIME', 'REGULAR',   '2025-02-14', '2025-08-14', NULL, NULL,'admin', 'admin'),
+(1036, 100000, 'CF20260036', '储慕言', 'MALE',   '1992-12-15', '13800010036', NULL,                       109, 5, NULL,'FULL_TIME', 'REGULAR',   '2024-06-30', '2024-12-30', NULL, NULL,'admin', 'admin'),
+(1037, 100000, 'CF20260037', '邓婉若', 'FEMALE', '1995-04-21', '13800010037', NULL,                       115, 6, NULL,'FULL_TIME', 'REGULAR',   '2024-03-18', '2024-09-18', NULL, NULL,'admin', 'admin'),
+(1038, 100000, 'CF20260038', '丁哲瀚', 'MALE',   '1991-06-30', '13800010038', NULL,                       116, 7, NULL,'FULL_TIME', 'REGULAR',   '2024-01-12', '2024-07-12', NULL, NULL,'admin', 'admin'),
+(1039, 100000, 'CF20260039', '董雨晗', 'FEMALE', '1997-11-16', '13800010039', NULL,                       117, 8, NULL,'FULL_TIME', 'REGULAR',   '2025-01-06', '2025-07-06', NULL, NULL,'admin', 'admin'),
+(1040, 100000, 'CF20260040', '段嘉树', 'MALE',   '1988-03-04', '13800010040', NULL,                       118, 9, NULL,'FULL_TIME', 'REGULAR',   '2022-07-19', '2023-01-19', NULL, NULL,'admin', 'admin'),
+(1041, 100000, 'CF20260041', '范敏言', 'FEMALE', '1996-10-11', '13800010041', NULL,                       119, 10,NULL,'FULL_TIME', 'REGULAR',   '2024-08-08', '2025-02-08', NULL, NULL,'admin', 'admin'),
+(1042, 100000, 'CF20260042', '冯曼笙', 'FEMALE', '1993-05-25', '13800010042', NULL,                       106, 4, 100, 'FULL_TIME', 'REGULAR',   '2023-10-25', '2024-04-25', NULL, NULL,'admin', 'admin'),
+(1043, 100000, 'CF20260043', '甘梓珩', 'MALE',   '1989-08-17', '13800010043', NULL,                       107, 4, 101, 'FULL_TIME', 'REGULAR',   '2022-06-10', '2022-12-10', NULL, NULL,'admin', 'admin'),
+(1044, 100000, 'CF20260044', '高朗',   'MALE',   '1990-12-28', '13800010044', NULL,                       108, 4, 103, 'FULL_TIME', 'RESIGNED',  '2022-03-01', '2022-09-01', '2025-12-15', NULL,'admin', 'admin'),
+(1045, 100000, 'CF20260045', '葛瑶',   'FEMALE', '1994-02-09', '13800010045', NULL,                       104, 4, 103, 'FULL_TIME', 'REGULAR',   '2024-04-04', '2024-10-04', NULL, NULL,'admin', 'admin'),
+(1046, 100000, 'CF20260046', '宫梓宁', 'FEMALE', '1991-09-14', '13800010046', NULL,                       110, 6, NULL,'FULL_TIME', 'REGULAR',   '2023-05-08', '2023-11-08', NULL, NULL,'admin', 'admin'),
+(1047, 100000, 'CF20260047', '郭凯然', 'MALE',   '1995-07-02', '13800010047', NULL,                       111, 7, NULL,'FULL_TIME', 'REGULAR',   '2024-09-12', '2025-03-12', NULL, NULL,'admin', 'admin'),
+(1048, 100000, 'CF20260048', '韩煜霖', 'MALE',   '1988-11-22', '13800010048', NULL,                       112, 8, NULL,'FULL_TIME', 'REGULAR',   '2022-02-28', '2022-08-28', NULL, NULL,'admin', 'admin'),
+(1049, 100000, 'CF20260049', '何苒苒', 'FEMALE', '1997-04-15', '13800010049', NULL,                       113, 9, NULL,'FULL_TIME', 'INTERN',    '2026-04-01', NULL,         NULL, NULL,'admin', 'admin'),
+(1050, 100000, 'CF20260050', '胡致远', 'MALE',   '1986-01-05', '13800010050', NULL,                       100, 1, NULL,'FULL_TIME', 'REGULAR',   '2020-04-15', '2020-10-15', NULL, NULL,'admin', 'admin');
+
+-- 员工合同：补齐 1001/1004-1009 现有员工 + 全部 1011-1050
+INSERT INTO cloud_flow_db.hr_employee_contract (tenant_id, employee_id, contract_type, contract_no, sign_date, start_date, end_date, attachment_urls, status, create_by, update_by) VALUES
+(100000, 1001, 'LABOR', 'HT202304100001', '2023-04-10', '2023-04-10', '2026-04-09', JSON_ARRAY('/upload/hr/contracts/HT202304100001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1004, 'LABOR', 'HT202303010001', '2023-03-01', '2023-03-01', '2026-02-28', JSON_ARRAY('/upload/hr/contracts/HT202303010001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1005, 'LABOR', 'HT202406010001', '2024-06-01', '2024-06-01', '2027-05-31', JSON_ARRAY('/upload/hr/contracts/HT202406010001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1006, 'LABOR', 'HT202403150001', '2024-03-15', '2024-03-15', '2027-03-14', JSON_ARRAY('/upload/hr/contracts/HT202403150001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1007, 'LABOR', 'HT202504080001', '2025-04-08', '2025-04-08', '2028-04-07', JSON_ARRAY('/upload/hr/contracts/HT202504080001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1008, 'LABOR', 'HT202302150001', '2023-02-15', '2023-02-15', '2026-02-14', JSON_ARRAY('/upload/hr/contracts/HT202302150001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1009, 'LABOR', 'HT202411110001', '2024-11-11', '2024-11-11', '2027-11-10', JSON_ARRAY('/upload/hr/contracts/HT202411110001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1011, 'LABOR', 'HT202501100001', '2025-01-10', '2025-01-10', '2028-01-09', JSON_ARRAY('/upload/hr/contracts/HT202501100001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1012, 'LABOR', 'HT202501150001', '2025-01-15', '2025-01-15', '2028-01-14', JSON_ARRAY('/upload/hr/contracts/HT202501150001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1013, 'LABOR', 'HT202412010001', '2024-12-01', '2024-12-01', '2027-11-30', JSON_ARRAY('/upload/hr/contracts/HT202412010001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1014, 'LABOR', 'HT202410200001', '2024-10-20', '2024-10-20', '2027-10-19', JSON_ARRAY('/upload/hr/contracts/HT202410200001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1015, 'LABOR', 'HT202408050001', '2024-08-05', '2024-08-05', '2027-08-04', JSON_ARRAY('/upload/hr/contracts/HT202408050001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1016, 'LABOR', 'HT202306120001', '2023-06-12', '2023-06-12', '2026-06-11', JSON_ARRAY('/upload/hr/contracts/HT202306120001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1017, 'LABOR', 'HT202503100001', '2025-03-10', '2025-03-10', '2028-03-09', JSON_ARRAY('/upload/hr/contracts/HT202503100001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1018, 'LABOR', 'HT202409010001', '2024-09-01', '2024-09-01', '2027-08-31', JSON_ARRAY('/upload/hr/contracts/HT202409010001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1019, 'LABOR', 'HT202411180001', '2024-11-18', '2024-11-18', '2027-11-17', JSON_ARRAY('/upload/hr/contracts/HT202411180001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1020, 'LABOR', 'HT202309220001', '2023-09-22', '2023-09-22', '2026-09-21', JSON_ARRAY('/upload/hr/contracts/HT202309220001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1021, 'LABOR', 'HT202407080001', '2024-07-08', '2024-07-08', '2027-07-07', JSON_ARRAY('/upload/hr/contracts/HT202407080001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1022, 'LABOR', 'HT202304030001', '2023-04-03', '2023-04-03', '2026-04-02', JSON_ARRAY('/upload/hr/contracts/HT202304030001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1023, 'LABOR', 'HT202602010001', '2026-02-01', '2026-02-01', '2029-01-31', JSON_ARRAY('/upload/hr/contracts/HT202602010001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1024, 'LABOR', 'HT202208150001', '2022-08-15', '2022-08-15', '2025-08-14', JSON_ARRAY('/upload/hr/contracts/HT202208150001.pdf'), 'EXPIRED',    'admin', 'admin'),
+(100000, 1024, 'LABOR', 'HT202508150001', '2025-08-15', '2025-08-15', '9999-12-31', JSON_ARRAY('/upload/hr/contracts/HT202508150001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1025, 'LABOR', 'HT202404200001', '2024-04-20', '2024-04-20', '2027-04-19', JSON_ARRAY('/upload/hr/contracts/HT202404200001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1026, 'INTERN','HT202603010001', '2026-03-01', '2026-03-01', '2026-09-01', JSON_ARRAY('/upload/hr/contracts/HT202603010001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1027, 'LABOR', 'HT202405100001', '2024-05-10', '2024-05-10', '2027-05-09', JSON_ARRAY('/upload/hr/contracts/HT202405100001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1028, 'LABOR', 'HT202604150001', '2026-04-15', '2026-04-15', '2029-04-14', JSON_ARRAY('/upload/hr/contracts/HT202604150001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1029, 'LABOR', 'HT202307250001', '2023-07-25', '2023-07-25', '2026-07-24', JSON_ARRAY('/upload/hr/contracts/HT202307250001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1030, 'LABOR', 'HT202603220001', '2026-03-22', '2026-03-22', '2029-03-21', JSON_ARRAY('/upload/hr/contracts/HT202603220001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1031, 'LABOR', 'HT202211080001', '2022-11-08', '2022-11-08', '9999-12-31', JSON_ARRAY('/upload/hr/contracts/HT202211080001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1032, 'LABOR', 'HT202308150001', '2023-08-15', '2023-08-15', '2026-08-14', JSON_ARRAY('/upload/hr/contracts/HT202308150001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1033, 'LABOR', 'HT202204200001', '2022-04-20', '2022-04-20', '9999-12-31', JSON_ARRAY('/upload/hr/contracts/HT202204200001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1034, 'LABOR', 'HT202402180001', '2024-02-18', '2024-02-18', '2027-02-17', JSON_ARRAY('/upload/hr/contracts/HT202402180001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1035, 'LABOR', 'HT202502140001', '2025-02-14', '2025-02-14', '2028-02-13', JSON_ARRAY('/upload/hr/contracts/HT202502140001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1036, 'LABOR', 'HT202406300001', '2024-06-30', '2024-06-30', '2027-06-29', JSON_ARRAY('/upload/hr/contracts/HT202406300001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1037, 'LABOR', 'HT202403180001', '2024-03-18', '2024-03-18', '2027-03-17', JSON_ARRAY('/upload/hr/contracts/HT202403180001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1038, 'LABOR', 'HT202401120001', '2024-01-12', '2024-01-12', '2027-01-11', JSON_ARRAY('/upload/hr/contracts/HT202401120001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1039, 'LABOR', 'HT202501060001', '2025-01-06', '2025-01-06', '2028-01-05', JSON_ARRAY('/upload/hr/contracts/HT202501060001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1040, 'LABOR', 'HT202207190001', '2022-07-19', '2022-07-19', '9999-12-31', JSON_ARRAY('/upload/hr/contracts/HT202207190001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1041, 'LABOR', 'HT202408080001', '2024-08-08', '2024-08-08', '2027-08-07', JSON_ARRAY('/upload/hr/contracts/HT202408080001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1042, 'LABOR', 'HT202310250001', '2023-10-25', '2023-10-25', '2026-10-24', JSON_ARRAY('/upload/hr/contracts/HT202310250001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1043, 'LABOR', 'HT202206100001', '2022-06-10', '2022-06-10', '9999-12-31', JSON_ARRAY('/upload/hr/contracts/HT202206100001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1044, 'LABOR', 'HT202203010001', '2022-03-01', '2022-03-01', '2025-12-15', JSON_ARRAY('/upload/hr/contracts/HT202203010001.pdf'), 'TERMINATED', 'admin', 'admin'),
+(100000, 1045, 'LABOR', 'HT202404040001', '2024-04-04', '2024-04-04', '2027-04-03', JSON_ARRAY('/upload/hr/contracts/HT202404040001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1046, 'LABOR', 'HT202305080001', '2023-05-08', '2023-05-08', '2026-05-07', JSON_ARRAY('/upload/hr/contracts/HT202305080001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1047, 'LABOR', 'HT202409120001', '2024-09-12', '2024-09-12', '2027-09-11', JSON_ARRAY('/upload/hr/contracts/HT202409120001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1048, 'LABOR', 'HT202202280001', '2022-02-28', '2022-02-28', '9999-12-31', JSON_ARRAY('/upload/hr/contracts/HT202202280001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1049, 'INTERN','HT202604010001', '2026-04-01', '2026-04-01', '2026-10-01', JSON_ARRAY('/upload/hr/contracts/HT202604010001.pdf'), 'ACTIVE',     'admin', 'admin'),
+(100000, 1050, 'LABOR', 'HT202004150001', '2020-04-15', '2020-04-15', '9999-12-31', JSON_ARRAY('/upload/hr/contracts/HT202004150001.pdf'), 'ACTIVE',     'admin', 'admin');
+
+-- 员工证件
+INSERT INTO cloud_flow_db.hr_employee_document (tenant_id, employee_id, document_type, document_no, issue_date, expiry_date, attachment_urls, create_by, update_by) VALUES
+(100000, 1001, 'ID_CARD', '320100199006120014', '2016-06-12', '2036-06-12', JSON_ARRAY('/upload/hr/documents/id-1001.pdf'), 'admin', 'admin'),
+(100000, 1004, 'ID_CARD', '320100199205160023', '2018-05-16', '2038-05-16', JSON_ARRAY('/upload/hr/documents/id-1004.pdf'), 'admin', 'admin'),
+(100000, 1005, 'ID_CARD', '320100199507190032', '2015-07-19', '2035-07-19', JSON_ARRAY('/upload/hr/documents/id-1005.pdf'), 'admin', 'admin'),
+(100000, 1006, 'ID_CARD', '320100199409090041', '2014-09-09', '2034-09-09', JSON_ARRAY('/upload/hr/documents/id-1006.pdf'), 'admin', 'admin'),
+(100000, 1007, 'ID_CARD', '320100199701170050', '2017-01-17', '2037-01-17', JSON_ARRAY('/upload/hr/documents/id-1007.pdf'), 'admin', 'admin'),
+(100000, 1008, 'ID_CARD', '320100199112020069', '2011-12-02', '2031-12-02', JSON_ARRAY('/upload/hr/documents/id-1008.pdf'), 'admin', 'admin'),
+(100000, 1009, 'ID_CARD', '320100199510280078', '2015-10-28', '2035-10-28', JSON_ARRAY('/upload/hr/documents/id-1009.pdf'), 'admin', 'admin'),
+(100000, 1011, 'ID_CARD', '320100199604220011', '2016-04-22', '2036-04-22', JSON_ARRAY('/upload/hr/documents/id-1011.pdf'), 'admin', 'admin'),
+(100000, 1012, 'ID_CARD', '320100199308110012', '2013-08-11', '2033-08-11', JSON_ARRAY('/upload/hr/documents/id-1012.pdf'), 'admin', 'admin'),
+(100000, 1013, 'ID_CARD', '320100199512300013', '2015-12-30', '2035-12-30', JSON_ARRAY('/upload/hr/documents/id-1013.pdf'), 'admin', 'admin'),
+(100000, 1014, 'ID_CARD', '320100199406080014', '2014-06-08', '2034-06-08', JSON_ARRAY('/upload/hr/documents/id-1014.pdf'), 'admin', 'admin'),
+(100000, 1015, 'ID_CARD', '320100199203170015', '2012-03-17', '2032-03-17', JSON_ARRAY('/upload/hr/documents/id-1015.pdf'), 'admin', 'admin'),
+(100000, 1016, 'ID_CARD', '320100198911040016', '2009-11-04', '2029-11-04', JSON_ARRAY('/upload/hr/documents/id-1016.pdf'), 'admin', 'admin'),
+(100000, 1017, 'ID_CARD', '320100199702190017', '2017-02-19', '2037-02-19', JSON_ARRAY('/upload/hr/documents/id-1017.pdf'), 'admin', 'admin'),
+(100000, 1018, 'ID_CARD', '320100199107250018', '2011-07-25', '2031-07-25', JSON_ARRAY('/upload/hr/documents/id-1018.pdf'), 'admin', 'admin'),
+(100000, 1019, 'ID_CARD', '320100199405140019', '2014-05-14', '2034-05-14', JSON_ARRAY('/upload/hr/documents/id-1019.pdf'), 'admin', 'admin'),
+(100000, 1020, 'ID_CARD', '320100199010060020', '2010-10-06', '2030-10-06', JSON_ARRAY('/upload/hr/documents/id-1020.pdf'), 'admin', 'admin'),
+(100000, 1021, 'ID_CARD', '320100199509300021', '2015-09-30', '2035-09-30', JSON_ARRAY('/upload/hr/documents/id-1021.pdf'), 'admin', 'admin'),
+(100000, 1022, 'ID_CARD', '320100198904120022', '2009-04-12', '2029-04-12', JSON_ARRAY('/upload/hr/documents/id-1022.pdf'), 'admin', 'admin'),
+(100000, 1023, 'ID_CARD', '320100199812210023', '2018-12-21', '2038-12-21', JSON_ARRAY('/upload/hr/documents/id-1023.pdf'), 'admin', 'admin'),
+(100000, 1024, 'ID_CARD', '320100198801080024', '2008-01-08', '2028-01-08', JSON_ARRAY('/upload/hr/documents/id-1024.pdf'), 'admin', 'admin'),
+(100000, 1025, 'ID_CARD', '320100199603260025', '2016-03-26', '2036-03-26', JSON_ARRAY('/upload/hr/documents/id-1025.pdf'), 'admin', 'admin'),
+(100000, 1026, 'STUDENT','320100200108150026', '2021-08-15', '2027-08-15', JSON_ARRAY('/upload/hr/documents/student-1026.pdf'), 'admin', 'admin'),
+(100000, 1027, 'ID_CARD', '320100199311090027', '2013-11-09', '2033-11-09', JSON_ARRAY('/upload/hr/documents/id-1027.pdf'), 'admin', 'admin'),
+(100000, 1028, 'ID_CARD', '320100199706180028', '2017-06-18', '2037-06-18', JSON_ARRAY('/upload/hr/documents/id-1028.pdf'), 'admin', 'admin'),
+(100000, 1029, 'ID_CARD', '320100199202030029', '2012-02-03', '2032-02-03', JSON_ARRAY('/upload/hr/documents/id-1029.pdf'), 'admin', 'admin'),
+(100000, 1030, 'ID_CARD', '320100199510190030', '2015-10-19', '2035-10-19', JSON_ARRAY('/upload/hr/documents/id-1030.pdf'), 'admin', 'admin'),
+(100000, 1011, 'EDU',     'BS-CS-2018-001011',  '2018-06-30', NULL,         JSON_ARRAY('/upload/hr/documents/edu-1011.pdf'), 'admin', 'admin'),
+(100000, 1012, 'EDU',     'BS-SE-2015-001012',  '2015-06-30', NULL,         JSON_ARRAY('/upload/hr/documents/edu-1012.pdf'), 'admin', 'admin'),
+(100000, 1014, 'EDU',     'MS-HRM-2017-001014', '2017-06-30', NULL,         JSON_ARRAY('/upload/hr/documents/edu-1014.pdf'), 'admin', 'admin'),
+(100000, 1015, 'EDU',     'MS-EDU-2015-001015', '2015-06-30', NULL,         JSON_ARRAY('/upload/hr/documents/edu-1015.pdf'), 'admin', 'admin'),
+(100000, 1018, 'EDU',     'MS-IS-2014-001018',  '2014-06-30', NULL,         JSON_ARRAY('/upload/hr/documents/edu-1018.pdf'), 'admin', 'admin'),
+(100000, 1019, 'EDU',     'BS-ART-2016-001019', '2016-06-30', NULL,         JSON_ARRAY('/upload/hr/documents/edu-1019.pdf'), 'admin', 'admin'),
+(100000, 1024, 'EDU',     'MS-CS-2012-001024',  '2012-06-30', NULL,         JSON_ARRAY('/upload/hr/documents/edu-1024.pdf'), 'admin', 'admin'),
+(100000, 1018, 'OFFER',   'OFFER-2024-001018',  '2024-08-20', NULL,         JSON_ARRAY('/upload/hr/documents/offer-1018.pdf'), 'admin', 'admin'),
+(100000, 1019, 'OFFER',   'OFFER-2024-001019',  '2024-10-30', NULL,         JSON_ARRAY('/upload/hr/documents/offer-1019.pdf'), 'admin', 'admin'),
+(100000, 1024, 'OFFER',   'OFFER-2022-001024',  '2022-08-01', NULL,         JSON_ARRAY('/upload/hr/documents/offer-1024.pdf'), 'admin', 'admin'),
+(100000, 1011, 'OFFER',   'OFFER-2025-001011',  '2024-12-25', NULL,         JSON_ARRAY('/upload/hr/documents/offer-1011.pdf'), 'admin', 'admin'),
+(100000, 1031, 'ID_CARD', '320100199005070031', '2010-05-07', '2030-05-07', JSON_ARRAY('/upload/hr/documents/id-1031.pdf'), 'admin', 'admin'),
+(100000, 1032, 'ID_CARD', '320100199307230032', '2013-07-23', '2033-07-23', JSON_ARRAY('/upload/hr/documents/id-1032.pdf'), 'admin', 'admin'),
+(100000, 1033, 'ID_CARD', '320100198709110033', '2007-09-11', '2027-09-11', JSON_ARRAY('/upload/hr/documents/id-1033.pdf'), 'admin', 'admin'),
+(100000, 1034, 'ID_CARD', '320100199401290034', '2014-01-29', '2034-01-29', JSON_ARRAY('/upload/hr/documents/id-1034.pdf'), 'admin', 'admin'),
+(100000, 1035, 'ID_CARD', '320100199608080035', '2016-08-08', '2036-08-08', JSON_ARRAY('/upload/hr/documents/id-1035.pdf'), 'admin', 'admin'),
+(100000, 1040, 'ID_CARD', '320100198803040040', '2008-03-04', '2028-03-04', JSON_ARRAY('/upload/hr/documents/id-1040.pdf'), 'admin', 'admin'),
+(100000, 1044, 'ID_CARD', '320100199012280044', '2010-12-28', '2030-12-28', JSON_ARRAY('/upload/hr/documents/id-1044.pdf'), 'admin', 'admin'),
+(100000, 1048, 'ID_CARD', '320100198811220048', '2008-11-22', '2028-11-22', JSON_ARRAY('/upload/hr/documents/id-1048.pdf'), 'admin', 'admin'),
+(100000, 1050, 'ID_CARD', '320100198601050050', '2006-01-05', '2026-01-05', JSON_ARRAY('/upload/hr/documents/id-1050.pdf'), 'admin', 'admin');
+
+-- 紧急联系人：每位员工 1 条
+INSERT INTO cloud_flow_db.hr_emergency_contact (tenant_id, employee_id, contact_name, relationship, phone, address, priority, create_by, update_by) VALUES
+(100000, 1001, '赵母',     'PARENT',  '13900020001', '上海市浦东新区张江路100号',     1, 'admin', 'admin'),
+(100000, 1004, '王父',     'PARENT',  '13900020004', '上海市浦东新区世纪大道',       1, 'admin', 'admin'),
+(100000, 1005, '配偶张',   'SPOUSE',  '13900020005', '上海市黄浦区南京东路',         1, 'admin', 'admin'),
+(100000, 1006, '配偶李',   'SPOUSE',  '13900020006', '上海市徐汇区漕溪北路',         1, 'admin', 'admin'),
+(100000, 1007, '父亲',     'PARENT',  '13900020007', '上海市闵行区莘庄镇',           1, 'admin', 'admin'),
+(100000, 1008, '配偶刘',   'SPOUSE',  '13900020008', '上海市长宁区古北路',           1, 'admin', 'admin'),
+(100000, 1009, '母亲',     'PARENT',  '13900020009', '上海市虹口区四川北路',         1, 'admin', 'admin'),
+(100000, 1011, '杜父',     'PARENT',  '13900020011', '上海市浦东新区世博园区',       1, 'admin', 'admin'),
+(100000, 1012, '段母',     'PARENT',  '13900020012', '上海市杨浦区五角场',           1, 'admin', 'admin'),
+(100000, 1013, '伍父',     'PARENT',  '13900020013', '上海市黄浦区豫园街道',         1, 'admin', 'admin'),
+(100000, 1014, '范母',     'PARENT',  '13900020014', '上海市浦东新区世纪公园',       1, 'admin', 'admin'),
+(100000, 1015, '配偶林',   'SPOUSE',  '13900020015', '上海市徐汇区天钥桥路',         1, 'admin', 'admin'),
+(100000, 1016, '邱母',     'PARENT',  '13900020016', '上海市静安区南京西路',         1, 'admin', 'admin'),
+(100000, 1017, '黎父',     'PARENT',  '13900020017', '上海市闵行区七宝镇',           1, 'admin', 'admin'),
+(100000, 1018, '配偶孟',   'SPOUSE',  '13900020018', '上海市长宁区中山公园',         1, 'admin', 'admin'),
+(100000, 1019, '聂母',     'PARENT',  '13900020019', '上海市浦东新区陆家嘴',         1, 'admin', 'admin'),
+(100000, 1020, '配偶潘',   'SPOUSE',  '13900020020', '上海市嘉定区江桥镇',           1, 'admin', 'admin'),
+(100000, 1021, '邵父',     'PARENT',  '13900020021', '上海市浦东新区张江高科',       1, 'admin', 'admin'),
+(100000, 1022, '配偶邰',   'SPOUSE',  '13900020022', '上海市黄浦区淮海中路',         1, 'admin', 'admin'),
+(100000, 1023, '罗母',     'PARENT',  '13900020023', '上海市徐汇区龙华路',           1, 'admin', 'admin'),
+(100000, 1024, '配偶齐',   'SPOUSE',  '13900020024', '上海市浦东新区世纪大道',       1, 'admin', 'admin'),
+(100000, 1025, '尚父',     'PARENT',  '13900020025', '上海市长宁区天山路',           1, 'admin', 'admin'),
+(100000, 1026, '童母',     'PARENT',  '13900020026', '上海市闵行区莘庄',             1, 'admin', 'admin'),
+(100000, 1027, '配偶汪',   'SPOUSE',  '13900020027', '上海市浦东新区张江',           1, 'admin', 'admin'),
+(100000, 1028, '魏父',     'PARENT',  '13900020028', '上海市虹口区四川北路',         1, 'admin', 'admin'),
+(100000, 1029, '配偶萧',   'SPOUSE',  '13900020029', '上海市浦东新区世纪公园',       1, 'admin', 'admin'),
+(100000, 1030, '车母',     'PARENT',  '13900020030', '上海市黄浦区南京西路',         1, 'admin', 'admin'),
+(100000, 1031, '配偶柴',   'SPOUSE',  '13900020031', '上海市徐汇区漕溪路',           1, 'admin', 'admin'),
+(100000, 1032, '岑父',     'PARENT',  '13900020032', '上海市浦东新区杨浦大桥',       1, 'admin', 'admin'),
+(100000, 1033, '配偶常',   'SPOUSE',  '13900020033', '上海市长宁区延安西路',         1, 'admin', 'admin'),
+(100000, 1034, '巢母',     'PARENT',  '13900020034', '上海市闵行区莘庄',             1, 'admin', 'admin'),
+(100000, 1035, '池父',     'PARENT',  '13900020035', '上海市浦东新区张江',           1, 'admin', 'admin'),
+(100000, 1036, '配偶储',   'SPOUSE',  '13900020036', '上海市虹口区四川北路',         1, 'admin', 'admin'),
+(100000, 1037, '邓母',     'PARENT',  '13900020037', '上海市黄浦区淮海中路',         1, 'admin', 'admin'),
+(100000, 1038, '配偶丁',   'SPOUSE',  '13900020038', '上海市浦东新区张江',           1, 'admin', 'admin'),
+(100000, 1039, '董父',     'PARENT',  '13900020039', '上海市徐汇区龙华路',           1, 'admin', 'admin'),
+(100000, 1040, '配偶段',   'SPOUSE',  '13900020040', '上海市浦东新区世纪公园',       1, 'admin', 'admin'),
+(100000, 1041, '范母',     'PARENT',  '13900020041', '上海市闵行区莘庄',             1, 'admin', 'admin'),
+(100000, 1042, '配偶冯',   'SPOUSE',  '13900020042', '上海市浦东新区世纪大道',       1, 'admin', 'admin'),
+(100000, 1043, '甘父',     'PARENT',  '13900020043', '上海市虹口区四川北路',         1, 'admin', 'admin'),
+(100000, 1044, '高母',     'PARENT',  '13900020044', '上海市长宁区天山路',           1, 'admin', 'admin'),
+(100000, 1045, '配偶葛',   'SPOUSE',  '13900020045', '上海市黄浦区南京西路',         1, 'admin', 'admin'),
+(100000, 1046, '宫父',     'PARENT',  '13900020046', '上海市浦东新区张江',           1, 'admin', 'admin'),
+(100000, 1047, '配偶郭',   'SPOUSE',  '13900020047', '上海市徐汇区漕溪路',           1, 'admin', 'admin'),
+(100000, 1048, '韩母',     'PARENT',  '13900020048', '上海市浦东新区世博园区',       1, 'admin', 'admin'),
+(100000, 1049, '何父',     'PARENT',  '13900020049', '上海市长宁区中山公园',         1, 'admin', 'admin'),
+(100000, 1050, '配偶胡',   'SPOUSE',  '13900020050', '上海市浦东新区陆家嘴',         1, 'admin', 'admin');
+
+
+-- =====================================================================
+-- 九、培训域 (training_plan/category/instructor/course/session/enrollment + exam_*)
+--     ID 区间 20100-20999
+-- =====================================================================
+
+INSERT INTO cloud_flow_db.hr_training_plan (id, tenant_id, plan_no, plan_name, plan_type, year, quarter, dept_id, owner_id, budget, status, description, create_by, update_by) VALUES
+(20100, 100000, 'TP-2024-ANN',  '2024 年度全员培训计划',     'ANNUAL',    2024, NULL, NULL, 13, 500000.00, 'ARCHIVED',  '覆盖管理力/产品/技术/合规/通用五条主线，2024 年累计 38 场班次',                'admin', 'admin'),
+(20101, 100000, 'TP-2025-H1',   '2025 上半年专项培训计划',   'QUARTERLY', 2025, 1,    NULL, 13, 280000.00, 'ARCHIVED',  '聚焦新版工作流回调治理与数据加密两个专项，约定 2025-06-30 前完成',           'admin', 'admin'),
+(20102, 100000, 'TP-2026-H2',   '2026 下半年管理梯队培训',   'ANNUAL',    2026, NULL, NULL, 13, 360000.00, 'PUBLISHED', '面向 M2/M3 管理梯队的轮训计划，含 360 度评估 + 行动学习项目',                'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_training_category (id, tenant_id, parent_id, name, sort, status, create_by, update_by) VALUES
+(20110, 100000, 0, '管理力',    1, 'ACTIVE', 'admin', 'admin'),
+(20111, 100000, 0, '产品',      2, 'ACTIVE', 'admin', 'admin'),
+(20112, 100000, 0, '技术',      3, 'ACTIVE', 'admin', 'admin'),
+(20113, 100000, 0, '合规',      4, 'ACTIVE', 'admin', 'admin'),
+(20114, 100000, 0, '通用素质',  5, 'ACTIVE', 'admin', 'admin'),
+(20115, 100000, 0, '外训',      6, 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_training_instructor (id, tenant_id, instructor_name, instructor_type, employee_id, expertise, bio, contact, hourly_rate, status, create_by, update_by) VALUES
+(20120, 100000, '内训师-张磊',  'INTERNAL', 1002, '管理力,情景领导,目标管理',         '12 年研发管理经验，曾任某大厂高级研发总监',                          '13900100120', 800.00,  'ACTIVE', 'admin', 'admin'),
+(20121, 100000, '内训师-周倩',  'INTERNAL', 1004, '产品管理,需求洞察',               '消费互联网产品 8 年，主导过 3 款 DAU 千万级产品',                    '13900100121', 600.00,  'ACTIVE', 'admin', 'admin'),
+(20122, 100000, '内训师-吴峰',  'INTERNAL', 1005, 'Java/数据库优化,系统稳定性',       '资深技术专家，长期负责数据库与中间件治理',                            '13900100122', 700.00,  'ACTIVE', 'admin', 'admin'),
+(20123, 100000, '外训-李教授',  'EXTERNAL', NULL, '人力资源战略,组织发展',           '某商学院教授，央企组织发展顾问',                                      '13900100123', 3000.00, 'ACTIVE', 'admin', 'admin'),
+(20124, 100000, '外训-赵讲师',  'EXTERNAL', NULL, 'GDPR/个人信息保护法,数据合规',     '某律师事务所合伙人，专注数据合规咨询 10 年',                          '13900100124', 2500.00, 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_training_course (id, tenant_id, course_code, course_name, category_id, instructor_id, mode, duration_hours, credit_hours, cover_url, materials, description, status, create_by, update_by) VALUES
+(20130, 100000, 'CRS-MGT-001', '从员工到管理者',           20110, 20120, 'OFFLINE', 16.0, 16.0, '/static/training/cover/mgt001.png', JSON_ARRAY(2001, 2002), '面向新晋管理者的破冰课，含 3 个工作坊',                                 'PUBLISHED', 'admin', 'admin'),
+(20131, 100000, 'CRS-MGT-002', '情景领导 II',             20110, 20120, 'OFFLINE', 14.0, 14.0, '/static/training/cover/mgt002.png', JSON_ARRAY(2003),       'Ken Blanchard 经典课程的内训版，含案例研讨',                            'PUBLISHED', 'admin', 'admin'),
+(20132, 100000, 'CRS-PD-001',  '需求洞察与产品规划',       20111, 20121, 'BLENDED', 12.0, 12.0, '/static/training/cover/pd001.png',  JSON_ARRAY(2004),       '线上自学 8h + 线下工作坊 4h，结业输出一份 PRD',                          'PUBLISHED', 'admin', 'admin'),
+(20133, 100000, 'CRS-PD-002',  '数据驱动的产品决策',       20111, 20121, 'ONLINE',  6.0,  6.0,  '/static/training/cover/pd002.png',  JSON_ARRAY(2005),       '6 节录播课，含 SQL/AB Test 实操',                                       'PUBLISHED', 'admin', 'admin'),
+(20134, 100000, 'CRS-TECH-01', 'MySQL 性能调优实战',        20112, 20122, 'OFFLINE', 18.0, 18.0, '/static/training/cover/tech01.png', JSON_ARRAY(2006, 2007), '通过真实慢 SQL 案例讲解索引/锁/IO',                                     'PUBLISHED', 'admin', 'admin'),
+(20135, 100000, 'CRS-TECH-02', '分布式事务与最终一致性',    20112, 20122, 'OFFLINE', 12.0, 12.0, '/static/training/cover/tech02.png', JSON_ARRAY(2008),       '聚焦工作流回调与对账场景的实践课',                                       'PUBLISHED', 'admin', 'admin'),
+(20136, 100000, 'CRS-TECH-03', 'Spring Cloud 服务治理',     20112, 20122, 'BLENDED', 10.0, 10.0, '/static/training/cover/tech03.png', JSON_ARRAY(2009),       '熔断/限流/重试/网关全景介绍',                                            'PUBLISHED', 'admin', 'admin'),
+(20137, 100000, 'CRS-COMP-01', '数据合规与个人信息保护',    20113, 20124, 'OFFLINE', 8.0,  8.0,  '/static/training/cover/comp01.png', JSON_ARRAY(2010),       '合规必修课，含期末闭卷考试',                                             'PUBLISHED', 'admin', 'admin'),
+(20138, 100000, 'CRS-COMP-02', '商业秘密保护实务',          20113, 20124, 'ONLINE',  4.0,  4.0,  '/static/training/cover/comp02.png', JSON_ARRAY(2011),       '4 节录播 + 章节练习',                                                   'PUBLISHED', 'admin', 'admin'),
+(20139, 100000, 'CRS-GEN-001', '高效沟通与表达',            20114, 20120, 'OFFLINE', 8.0,  8.0,  '/static/training/cover/gen001.png', JSON_ARRAY(2012),       '通用素质入门课',                                                         'PUBLISHED', 'admin', 'admin'),
+(20140, 100000, 'CRS-GEN-002', '时间管理与目标达成',        20114, 20121, 'ONLINE',  4.0,  4.0,  '/static/training/cover/gen002.png', JSON_ARRAY(2013),       '4 节微课 + 工具包',                                                      'PUBLISHED', 'admin', 'admin'),
+(20141, 100000, 'CRS-EXT-001', '工业 4.0 战略洞察(外训)',   20115, 20123, 'OFFLINE', 8.0,  8.0,  '/static/training/cover/ext001.png', JSON_ARRAY(2014),       '外部商学院定制课程，面向中高层',                                          'PUBLISHED', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_training_session (id, tenant_id, plan_id, course_id, session_no, location, start_time, end_time, capacity, enrolled_count, instructor_id, status, remark, create_by, update_by) VALUES
+(20150, 100000, 20100, 20130, 'TS-2024-001', '总部三楼会议室 A',     '2024-04-15 09:00:00', '2024-04-16 17:00:00', 40, 36, 20120, 'COMPLETED',   '新晋经理首期班，结业 32 人',                'admin', 'admin'),
+(20151, 100000, 20100, 20134, 'TS-2024-002', '总部三楼会议室 B',     '2024-09-09 09:00:00', '2024-09-11 17:00:00', 30, 28, 20122, 'COMPLETED',   'MySQL 调优首期班，结业 26 人',              'admin', 'admin'),
+(20152, 100000, 20101, 20135, 'TS-2025-003', '总部三楼会议室 A',     '2025-03-10 09:00:00', '2025-03-11 17:00:00', 30, 30, 20122, 'COMPLETED',   '工作流回调专项班，全员结业',                'admin', 'admin'),
+(20153, 100000, 20101, 20137, 'TS-2025-004', '总部一楼大会议室',     '2025-05-20 09:00:00', '2025-05-20 17:00:00', 80, 75, 20124, 'ONGOING',     '合规必修课进行中，含期末考试',              'admin', 'admin'),
+(20154, 100000, 20102, 20131, 'TS-2026-005', '总部三楼会议室 A',     '2026-04-15 09:00:00', '2026-04-16 17:00:00', 30, 22, 20120, 'ONGOING',     '管理梯队 2026 第一期',                       'admin', 'admin'),
+(20155, 100000, 20102, 20132, 'TS-2026-006', '上海培训中心',         '2026-06-10 09:00:00', '2026-06-11 17:00:00', 30, 18, 20121, 'REGISTERING', '需求洞察工作坊，报名中',                    'admin', 'admin'),
+(20156, 100000, 20102, 20136, 'TS-2026-007', '线上 Zoom',            '2026-07-05 19:00:00', '2026-07-05 21:00:00', 60, 8,  20122, 'PLANNED',     'Spring Cloud 服务治理直播课',               'admin', 'admin'),
+(20157, 100000, 20102, 20141, 'TS-2026-008', '上海交大安泰',          '2026-09-12 09:00:00', '2026-09-13 17:00:00', 20, 5,  20123, 'PLANNED',     '高管外训计划，邀请制',                      'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_training_enrollment (id, tenant_id, session_id, employee_id, enroll_type, status, attended, check_in_time, completion_status, score, comment, create_by, update_by) VALUES
+(20200, 100000, 20150, 1001, 'ASSIGNED', 'APPROVED', 1, '2024-04-15 08:55:00', 'PASSED', 92.0, '受益匪浅', 'admin', 'admin'),
+(20201, 100000, 20150, 1002, 'ASSIGNED', 'APPROVED', 1, '2024-04-15 08:50:00', 'PASSED', 88.5, '案例非常贴合实际', 'admin', 'admin'),
+(20202, 100000, 20150, 1003, 'ASSIGNED', 'APPROVED', 1, '2024-04-15 08:58:00', 'PASSED', 81.0, '需要更多实操', 'admin', 'admin'),
+(20203, 100000, 20150, 1004, 'ASSIGNED', 'APPROVED', 1, '2024-04-15 09:02:00', 'FAILED', 55.5, '部分章节缺勤', 'admin', 'admin'),
+(20204, 100000, 20150, 1005, 'ASSIGNED', 'APPROVED', 1, '2024-04-15 08:55:00', 'PASSED', 95.0, '收获很大', 'admin', 'admin'),
+(20205, 100000, 20150, 1011, 'SELF',     'APPROVED', 1, '2024-04-15 08:53:00', 'PASSED', 85.0, NULL,                          'admin', 'admin'),
+(20206, 100000, 20150, 1012, 'SELF',     'APPROVED', 1, '2024-04-15 08:51:00', 'PASSED', 78.0, NULL,                          'admin', 'admin'),
+(20207, 100000, 20150, 1013, 'SELF',     'APPROVED', 1, '2024-04-15 08:59:00', 'PASSED', 90.0, NULL,                          'admin', 'admin'),
+(20208, 100000, 20150, 1014, 'ASSIGNED', 'APPROVED', 1, '2024-04-15 08:57:00', 'PASSED', 83.5, NULL,                          'admin', 'admin'),
+(20209, 100000, 20150, 1015, 'SELF',     'APPROVED', 0, NULL,                  'FAILED', NULL, '请假未参加',                  'admin', 'admin'),
+
+(20210, 100000, 20151, 1005, 'ASSIGNED', 'APPROVED', 1, '2024-09-09 08:50:00', 'PASSED', 94.0, '调优案例对线上很有帮助',     'admin', 'admin'),
+(20211, 100000, 20151, 1006, 'ASSIGNED', 'APPROVED', 1, '2024-09-09 08:55:00', 'PASSED', 87.0, NULL,                          'admin', 'admin'),
+(20212, 100000, 20151, 1011, 'SELF',     'APPROVED', 1, '2024-09-09 09:00:00', 'PASSED', 76.0, NULL,                          'admin', 'admin'),
+(20213, 100000, 20151, 1015, 'ASSIGNED', 'APPROVED', 1, '2024-09-09 08:58:00', 'PASSED', 82.0, NULL,                          'admin', 'admin'),
+(20214, 100000, 20151, 1016, 'ASSIGNED', 'APPROVED', 1, '2024-09-09 08:53:00', 'PASSED', 79.0, NULL,                          'admin', 'admin'),
+(20215, 100000, 20151, 1017, 'SELF',     'APPROVED', 0, NULL,                  'FAILED', 0.0,  '中途退出',                    'admin', 'admin'),
+(20216, 100000, 20151, 1018, 'SELF',     'APPROVED', 1, '2024-09-09 08:55:00', 'PASSED', 91.0, NULL,                          'admin', 'admin'),
+(20217, 100000, 20151, 1019, 'ASSIGNED', 'APPROVED', 1, '2024-09-09 09:01:00', 'PASSED', 85.0, NULL,                          'admin', 'admin'),
+
+(20220, 100000, 20152, 1005, 'ASSIGNED', 'APPROVED', 1, '2025-03-10 08:55:00', 'PASSED', 96.0, '案例直接对应了线上回调治理', 'admin', 'admin'),
+(20221, 100000, 20152, 1011, 'ASSIGNED', 'APPROVED', 1, '2025-03-10 08:58:00', 'PASSED', 88.0, NULL,                          'admin', 'admin'),
+(20222, 100000, 20152, 1015, 'ASSIGNED', 'APPROVED', 1, '2025-03-10 08:53:00', 'PASSED', 82.0, NULL,                          'admin', 'admin'),
+(20223, 100000, 20152, 1016, 'ASSIGNED', 'APPROVED', 1, '2025-03-10 08:54:00', 'PASSED', 85.0, NULL,                          'admin', 'admin'),
+(20224, 100000, 20152, 1018, 'ASSIGNED', 'APPROVED', 1, '2025-03-10 08:55:00', 'PASSED', 90.0, NULL,                          'admin', 'admin'),
+(20225, 100000, 20152, 1019, 'ASSIGNED', 'APPROVED', 1, '2025-03-10 08:56:00', 'PASSED', 78.0, NULL,                          'admin', 'admin'),
+(20226, 100000, 20152, 1020, 'ASSIGNED', 'APPROVED', 1, '2025-03-10 08:57:00', 'PASSED', 83.0, NULL,                          'admin', 'admin'),
+
+(20230, 100000, 20153, 1001, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:50:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20231, 100000, 20153, 1002, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:52:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20232, 100000, 20153, 1003, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:54:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20233, 100000, 20153, 1004, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:55:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20234, 100000, 20153, 1005, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:56:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20235, 100000, 20153, 1011, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:57:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20236, 100000, 20153, 1012, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:58:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20237, 100000, 20153, 1013, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 08:59:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20238, 100000, 20153, 1014, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 09:00:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20239, 100000, 20153, 1015, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 09:01:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20240, 100000, 20153, 1016, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 09:02:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20241, 100000, 20153, 1017, 'ASSIGNED', 'APPROVED', 1, '2025-05-20 09:03:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+
+(20245, 100000, 20154, 1001, 'ASSIGNED', 'APPROVED', 1, '2026-04-15 08:55:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20246, 100000, 20154, 1002, 'ASSIGNED', 'APPROVED', 1, '2026-04-15 08:56:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20247, 100000, 20154, 1003, 'ASSIGNED', 'APPROVED', 1, '2026-04-15 08:57:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20248, 100000, 20154, 1011, 'SELF',     'APPROVED', 1, '2026-04-15 08:58:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20249, 100000, 20154, 1012, 'SELF',     'APPROVED', 1, '2026-04-15 08:59:00', 'PENDING', NULL, NULL, 'admin', 'admin'),
+
+(20253, 100000, 20155, 1004, 'SELF',     'PENDING',  0, NULL, 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20254, 100000, 20155, 1011, 'SELF',     'PENDING',  0, NULL, 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20255, 100000, 20155, 1014, 'SELF',     'APPROVED', 0, NULL, 'PENDING', NULL, NULL, 'admin', 'admin'),
+(20256, 100000, 20155, 1015, 'SELF',     'REJECTED', 0, NULL, 'PENDING', NULL, '名额已满',                     'admin', 'admin'),
+(20257, 100000, 20155, 1018, 'SELF',     'WITHDRAWN',0, NULL, 'PENDING', NULL, '员工主动撤销',                 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_exam_question_bank (id, tenant_id, category_id, question_type, content, options, answer, score, difficulty, analysis, status, create_by, update_by) VALUES
+(20300, 100000, 20113, 'SINGLE',  '《个人信息保护法》自哪一日起施行?',     JSON_ARRAY(JSON_OBJECT('key','A','text','2021-11-01'), JSON_OBJECT('key','B','text','2020-11-01'), JSON_OBJECT('key','C','text','2019-11-01'), JSON_OBJECT('key','D','text','2022-01-01')), JSON_ARRAY('A'),       2.00, 1, '《个人信息保护法》于 2021-11-01 起施行',     'ACTIVE', 'admin', 'admin'),
+(20301, 100000, 20113, 'SINGLE',  '处理个人信息应当遵循的首要原则是?',     JSON_ARRAY(JSON_OBJECT('key','A','text','便利'), JSON_OBJECT('key','B','text','合法、正当、必要和诚信'), JSON_OBJECT('key','C','text','营利'), JSON_OBJECT('key','D','text','简便')),                            JSON_ARRAY('B'),       2.00, 1, '法定首要原则',                                'ACTIVE', 'admin', 'admin'),
+(20302, 100000, 20113, 'MULTI',   '以下哪些属于敏感个人信息?',             JSON_ARRAY(JSON_OBJECT('key','A','text','生物识别'), JSON_OBJECT('key','B','text','宗教信仰'), JSON_OBJECT('key','C','text','医疗健康'), JSON_OBJECT('key','D','text','工作邮箱')),                       JSON_ARRAY('A','B','C'), 3.00, 2, '工作邮箱不属于敏感个人信息',                  'ACTIVE', 'admin', 'admin'),
+(20303, 100000, 20113, 'JUDGE',   '员工自愿离职时雇主可以无条件拒绝其个人信息可携权请求', JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, '可携权属法定权利，非约定可放弃',              'ACTIVE', 'admin', 'admin'),
+(20304, 100000, 20113, 'SINGLE',  '商业秘密保护期为?',                     JSON_ARRAY(JSON_OBJECT('key','A','text','离职后 1 年'), JSON_OBJECT('key','B','text','离职后 2 年'), JSON_OBJECT('key','C','text','保密义务无固定期限'), JSON_OBJECT('key','D','text','无义务')),     JSON_ARRAY('C'),       2.00, 2, '法定保密义务无固定期限',                      'ACTIVE', 'admin', 'admin'),
+(20305, 100000, 20113, 'SINGLE',  '员工外发文件含商业秘密时应采取的措施?', JSON_ARRAY(JSON_OBJECT('key','A','text','加密+审批'), JSON_OBJECT('key','B','text','直接 IM 发送'), JSON_OBJECT('key','C','text','邮件抄送公开邮箱'), JSON_OBJECT('key','D','text','无须处理')),JSON_ARRAY('A'),       2.00, 1, '加密 + 审批是合规做法',                       'ACTIVE', 'admin', 'admin'),
+(20306, 100000, 20113, 'MULTI',   '以下哪些做法属于个人信息出境合规手段?', JSON_ARRAY(JSON_OBJECT('key','A','text','安全评估'), JSON_OBJECT('key','B','text','认证'), JSON_OBJECT('key','C','text','标准合同'), JSON_OBJECT('key','D','text','匿名邮件')),                       JSON_ARRAY('A','B','C'), 3.00, 3, '匿名邮件并非合规出境路径',                    'ACTIVE', 'admin', 'admin'),
+(20307, 100000, 20113, 'JUDGE',   '收集员工生物识别信息时无需取得单独同意', JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, '生物识别属敏感信息须单独同意',                'ACTIVE', 'admin', 'admin'),
+(20308, 100000, 20113, 'SINGLE',  '本公司数据合规专员邮箱后缀是?',         JSON_ARRAY(JSON_OBJECT('key','A','text','@dpo.cloudflow'), JSON_OBJECT('key','B','text','@hr.cloudflow'), JSON_OBJECT('key','C','text','@admin.cloudflow'), JSON_OBJECT('key','D','text','@it.cloudflow')), JSON_ARRAY('A'), 1.00, 1, '专员邮箱为 @dpo.cloudflow', 'ACTIVE', 'admin', 'admin'),
+(20309, 100000, 20113, 'JUDGE',   '员工可以拒绝雇主对工作设备的合理审计', JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, '工作设备审计为雇主合理管理权',                'ACTIVE', 'admin', 'admin'),
+
+(20310, 100000, 20112, 'SINGLE',  'MySQL InnoDB 中聚簇索引是?',           JSON_ARRAY(JSON_OBJECT('key','A','text','主键索引'), JSON_OBJECT('key','B','text','普通索引'), JSON_OBJECT('key','C','text','全文索引'), JSON_OBJECT('key','D','text','空间索引')),                       JSON_ARRAY('A'),       2.00, 1, 'InnoDB 聚簇索引为主键',                       'ACTIVE', 'admin', 'admin'),
+(20311, 100000, 20112, 'SINGLE',  '索引最左前缀适用于?',                   JSON_ARRAY(JSON_OBJECT('key','A','text','单列'), JSON_OBJECT('key','B','text','联合索引'), JSON_OBJECT('key','C','text','聚簇索引'), JSON_OBJECT('key','D','text','HASH 索引')),                          JSON_ARRAY('B'),       2.00, 2, '联合索引适用最左前缀',                        'ACTIVE', 'admin', 'admin'),
+(20312, 100000, 20112, 'MULTI',   '以下哪些会让索引失效?',                 JSON_ARRAY(JSON_OBJECT('key','A','text','函数运算'), JSON_OBJECT('key','B','text','LIKE 前置通配'), JSON_OBJECT('key','C','text','OR 多列'), JSON_OBJECT('key','D','text','=等值')),                          JSON_ARRAY('A','B','C'), 3.00, 2, '函数/前置 LIKE/OR 都会让索引失效',              'ACTIVE', 'admin', 'admin'),
+(20313, 100000, 20112, 'JUDGE',   'InnoDB 默认隔离级别是读已提交',         JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, 'InnoDB 默认 RR',                              'ACTIVE', 'admin', 'admin'),
+(20314, 100000, 20112, 'SINGLE',  'EXPLAIN 中 type 为 ALL 表示?',          JSON_ARRAY(JSON_OBJECT('key','A','text','全表扫描'), JSON_OBJECT('key','B','text','全索引扫描'), JSON_OBJECT('key','C','text','索引覆盖'), JSON_OBJECT('key','D','text','索引下推')),                       JSON_ARRAY('A'),       2.00, 1, '最差的访问类型',                              'ACTIVE', 'admin', 'admin'),
+(20315, 100000, 20112, 'SINGLE',  '强一致性的分布式事务方案常见的有?',     JSON_ARRAY(JSON_OBJECT('key','A','text','XA'), JSON_OBJECT('key','B','text','本地消息表'), JSON_OBJECT('key','C','text','Saga'), JSON_OBJECT('key','D','text','TCC')),                                JSON_ARRAY('A'),       2.00, 3, 'XA 提供强一致 其他多为最终一致',              'ACTIVE', 'admin', 'admin'),
+(20316, 100000, 20112, 'MULTI',   '常见的限流算法包括?',                   JSON_ARRAY(JSON_OBJECT('key','A','text','令牌桶'), JSON_OBJECT('key','B','text','漏桶'), JSON_OBJECT('key','C','text','滑动窗口'), JSON_OBJECT('key','D','text','LRU')),                                JSON_ARRAY('A','B','C'), 3.00, 2, 'LRU 是缓存淘汰算法',                          'ACTIVE', 'admin', 'admin'),
+(20317, 100000, 20112, 'JUDGE',   'Redis 单线程模型决定其无法支撑高并发',  JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, 'Redis 单线程依旧 QPS 极高',                   'ACTIVE', 'admin', 'admin'),
+(20318, 100000, 20112, 'SINGLE',  'CAP 理论中网络分区时三选二保留?',       JSON_ARRAY(JSON_OBJECT('key','A','text','CA'), JSON_OBJECT('key','B','text','CP'), JSON_OBJECT('key','C','text','AP'), JSON_OBJECT('key','D','text','P 必弃')),                                       JSON_ARRAY('B','C'),   2.00, 3, '网络分区客观存在，只能在 CP/AP 间二选一',     'ACTIVE', 'admin', 'admin'),
+(20319, 100000, 20112, 'JUDGE',   'Spring Cloud Gateway 与 Zuul 都基于 Servlet 阻塞模型', JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                            JSON_ARRAY('B'),       1.00, 2, 'Gateway 基于 Reactor 非阻塞',                 'ACTIVE', 'admin', 'admin'),
+
+(20320, 100000, 20110, 'SINGLE',  'OKR 强调的是?',                          JSON_ARRAY(JSON_OBJECT('key','A','text','结果导向'), JSON_OBJECT('key','B','text','过程汇报'), JSON_OBJECT('key','C','text','日报'), JSON_OBJECT('key','D','text','奖金分配')),                             JSON_ARRAY('A'),       2.00, 1, 'OKR 强调结果',                                'ACTIVE', 'admin', 'admin'),
+(20321, 100000, 20110, 'MULTI',   '情景领导四种风格包括?',                  JSON_ARRAY(JSON_OBJECT('key','A','text','S1 告知'), JSON_OBJECT('key','B','text','S2 推销'), JSON_OBJECT('key','C','text','S3 参与'), JSON_OBJECT('key','D','text','S4 授权')),                          JSON_ARRAY('A','B','C','D'), 3.00, 2, '四种均为情景领导经典风格',                    'ACTIVE', 'admin', 'admin'),
+(20322, 100000, 20110, 'JUDGE',   '团队成长期更适合 S4 授权风格',          JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, '团队成长期更适合 S2 推销',                    'ACTIVE', 'admin', 'admin'),
+(20323, 100000, 20110, 'SINGLE',  '管理者的核心职能不包括?',                JSON_ARRAY(JSON_OBJECT('key','A','text','计划'), JSON_OBJECT('key','B','text','组织'), JSON_OBJECT('key','C','text','领导'), JSON_OBJECT('key','D','text','顶替')),                                  JSON_ARRAY('D'),       2.00, 1, '顶替不属管理者职能',                          'ACTIVE', 'admin', 'admin'),
+(20324, 100000, 20110, 'SINGLE',  '反馈技巧 SBI 模型中 B 代表?',           JSON_ARRAY(JSON_OBJECT('key','A','text','行为'), JSON_OBJECT('key','B','text','收益'), JSON_OBJECT('key','C','text','行为 Behavior'), JSON_OBJECT('key','D','text','奖金')),                            JSON_ARRAY('C'),       2.00, 1, 'SBI=Situation/Behavior/Impact',               'ACTIVE', 'admin', 'admin'),
+(20325, 100000, 20110, 'SINGLE',  '九宫格盘点中 X 轴常表示?',              JSON_ARRAY(JSON_OBJECT('key','A','text','业绩'), JSON_OBJECT('key','B','text','潜力'), JSON_OBJECT('key','C','text','资历'), JSON_OBJECT('key','D','text','学历')),                                  JSON_ARRAY('A'),       2.00, 1, 'X=业绩 Y=潜力',                                'ACTIVE', 'admin', 'admin'),
+(20326, 100000, 20110, 'MULTI',   '高潜员工的常见特征?',                    JSON_ARRAY(JSON_OBJECT('key','A','text','学习敏锐度'), JSON_OBJECT('key','B','text','结果导向'), JSON_OBJECT('key','C','text','人际成熟'), JSON_OBJECT('key','D','text','工龄长')),                       JSON_ARRAY('A','B','C'), 3.00, 2, '工龄长非高潜判据',                            'ACTIVE', 'admin', 'admin'),
+(20327, 100000, 20110, 'JUDGE',   '末位淘汰是 9 Box 的强制规则',           JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, '末位淘汰非 9 Box 标配',                       'ACTIVE', 'admin', 'admin'),
+(20328, 100000, 20110, 'SINGLE',  '管理者首次任职最大的挑战通常是?',        JSON_ARRAY(JSON_OBJECT('key','A','text','身份转变'), JSON_OBJECT('key','B','text','工资'), JSON_OBJECT('key','C','text','工时'), JSON_OBJECT('key','D','text','差旅')),                              JSON_ARRAY('A'),       2.00, 1, '从骨干到管理者最大门槛是身份转变',            'ACTIVE', 'admin', 'admin'),
+(20329, 100000, 20110, 'JUDGE',   '辅导(Coaching)和指挥(Directing)适用于同一情境', JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                          JSON_ARRAY('B'),       1.00, 2, '需结合下属准备度选择',                        'ACTIVE', 'admin', 'admin'),
+
+(20330, 100000, 20111, 'SINGLE',  '产品需求文档简称?',                      JSON_ARRAY(JSON_OBJECT('key','A','text','PRD'), JSON_OBJECT('key','B','text','MRD'), JSON_OBJECT('key','C','text','BRD'), JSON_OBJECT('key','D','text','SRS')),                                          JSON_ARRAY('A'),       2.00, 1, 'PRD=Product Requirement Document',            'ACTIVE', 'admin', 'admin'),
+(20331, 100000, 20111, 'MULTI',   '用户访谈应避免的问法?',                  JSON_ARRAY(JSON_OBJECT('key','A','text','引导式提问'), JSON_OBJECT('key','B','text','假设式提问'), JSON_OBJECT('key','C','text','开放式提问'), JSON_OBJECT('key','D','text','封闭式提问')),                   JSON_ARRAY('A','B'),   3.00, 2, '引导/假设式易导出偏见',                       'ACTIVE', 'admin', 'admin'),
+(20332, 100000, 20111, 'SINGLE',  'AB 实验最重要的指标是?',                JSON_ARRAY(JSON_OBJECT('key','A','text','北极星指标'), JSON_OBJECT('key','B','text','UV'), JSON_OBJECT('key','C','text','PV'), JSON_OBJECT('key','D','text','留存')),                                JSON_ARRAY('A'),       2.00, 2, '北极星指标对齐业务',                          'ACTIVE', 'admin', 'admin'),
+(20333, 100000, 20111, 'JUDGE',   'P0 缺陷可以延期至下一个迭代修复',       JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 1, 'P0 必须本迭代修复',                            'ACTIVE', 'admin', 'admin'),
+(20334, 100000, 20111, 'SINGLE',  'KANO 模型中"基本型需求"特点?',          JSON_ARRAY(JSON_OBJECT('key','A','text','有则满意'), JSON_OBJECT('key','B','text','无则不满'), JSON_OBJECT('key','C','text','双向'), JSON_OBJECT('key','D','text','无影响')),                          JSON_ARRAY('B'),       2.00, 2, '基本型属"必须满足"',                          'ACTIVE', 'admin', 'admin'),
+(20335, 100000, 20111, 'MULTI',   '产品上线前需准备的内容?',                JSON_ARRAY(JSON_OBJECT('key','A','text','灰度计划'), JSON_OBJECT('key','B','text','回滚预案'), JSON_OBJECT('key','C','text','监控告警'), JSON_OBJECT('key','D','text','节日礼物')),                       JSON_ARRAY('A','B','C'), 3.00, 1, '节日礼物与上线无关',                          'ACTIVE', 'admin', 'admin'),
+(20336, 100000, 20111, 'JUDGE',   '北极星指标可以是同时多个',              JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('B'),       1.00, 2, '一段时期内通常聚焦一个',                      'ACTIVE', 'admin', 'admin'),
+(20337, 100000, 20111, 'SINGLE',  '产品 PMF 指?',                          JSON_ARRAY(JSON_OBJECT('key','A','text','产品市场匹配'), JSON_OBJECT('key','B','text','项目管理'), JSON_OBJECT('key','C','text','利润最大化'), JSON_OBJECT('key','D','text','流程改进')),                JSON_ARRAY('A'),       2.00, 1, 'Product Market Fit',                          'ACTIVE', 'admin', 'admin'),
+(20338, 100000, 20111, 'MULTI',   '常用的用户研究方法?',                    JSON_ARRAY(JSON_OBJECT('key','A','text','访谈'), JSON_OBJECT('key','B','text','问卷'), JSON_OBJECT('key','C','text','可用性测试'), JSON_OBJECT('key','D','text','焦点小组')),                              JSON_ARRAY('A','B','C','D'), 3.00, 2, '四种均为用研方法',                            'ACTIVE', 'admin', 'admin'),
+(20339, 100000, 20111, 'JUDGE',   '需求评审应当邀请客服参与',              JSON_ARRAY(JSON_OBJECT('key','A','text','正确'), JSON_OBJECT('key','B','text','错误')),                                                                                                       JSON_ARRAY('A'),       1.00, 1, '客服掌握用户问题，建议参与',                  'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_exam_paper (id, tenant_id, course_id, paper_name, total_score, pass_score, duration_minutes, question_count, question_ids, generate_mode, config, status, create_by, update_by) VALUES
+(20400, 100000, 20137, '数据合规结业考试',          20.00, 12.00, 30, 10, JSON_ARRAY(20300,20301,20302,20303,20304,20305,20306,20307,20308,20309), 'MANUAL', NULL, 'PUBLISHED', 'admin', 'admin'),
+(20401, 100000, 20134, 'MySQL 调优结业考试',        20.00, 14.00, 45, 10, JSON_ARRAY(20310,20311,20312,20313,20314,20315,20316,20317,20318,20319), 'MANUAL', NULL, 'PUBLISHED', 'admin', 'admin'),
+(20402, 100000, 20130, '新晋经理结业考试',          20.00, 12.00, 30, 10, JSON_ARRAY(20320,20321,20322,20323,20324,20325,20326,20327,20328,20329), 'MANUAL', NULL, 'PUBLISHED', 'admin', 'admin'),
+(20403, 100000, 20132, '需求洞察结业考试',          20.00, 12.00, 30, 10, JSON_ARRAY(20330,20331,20332,20333,20334,20335,20336,20337,20338,20339), 'MANUAL', NULL, 'PUBLISHED', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_exam_attempt (id, tenant_id, paper_id, employee_id, session_id, start_time, submit_time, score, pass_flag, answers, status) VALUES
+(20450, 100000, 20402, 1001, 20150, '2024-04-16 15:00:00', '2024-04-16 15:25:00', 18.00, 1, JSON_ARRAY(JSON_OBJECT('q',20320,'a','A','score',2)), 'GRADED'),
+(20451, 100000, 20402, 1002, 20150, '2024-04-16 15:00:00', '2024-04-16 15:23:00', 17.00, 1, JSON_ARRAY(JSON_OBJECT('q',20320,'a','A','score',2)), 'GRADED'),
+(20452, 100000, 20402, 1003, 20150, '2024-04-16 15:00:00', '2024-04-16 15:28:00', 14.00, 1, JSON_ARRAY(JSON_OBJECT('q',20320,'a','A','score',2)), 'GRADED'),
+(20453, 100000, 20402, 1004, 20150, '2024-04-16 15:00:00', '2024-04-16 15:25:00',  9.00, 0, JSON_ARRAY(JSON_OBJECT('q',20320,'a','B','score',0)), 'GRADED'),
+(20454, 100000, 20402, 1011, 20150, '2024-04-16 15:00:00', '2024-04-16 15:23:00', 16.00, 1, JSON_ARRAY(JSON_OBJECT('q',20320,'a','A','score',2)), 'GRADED'),
+(20455, 100000, 20402, 1012, 20150, '2024-04-16 15:00:00', '2024-04-16 15:26:00', 15.00, 1, JSON_ARRAY(JSON_OBJECT('q',20320,'a','A','score',2)), 'GRADED'),
+(20456, 100000, 20402, 1013, 20150, '2024-04-16 15:00:00', '2024-04-16 15:24:00', 19.00, 1, JSON_ARRAY(JSON_OBJECT('q',20320,'a','A','score',2)), 'GRADED'),
+(20457, 100000, 20402, 1014, 20150, '2024-04-16 15:00:00', '2024-04-16 15:27:00', 13.00, 1, JSON_ARRAY(JSON_OBJECT('q',20320,'a','A','score',2)), 'GRADED'),
+(20458, 100000, 20401, 1005, 20151, '2024-09-11 15:00:00', '2024-09-11 15:40:00', 18.00, 1, JSON_ARRAY(JSON_OBJECT('q',20310,'a','A','score',2)), 'GRADED'),
+(20459, 100000, 20401, 1006, 20151, '2024-09-11 15:00:00', '2024-09-11 15:42:00', 16.00, 1, JSON_ARRAY(JSON_OBJECT('q',20310,'a','A','score',2)), 'GRADED'),
+(20460, 100000, 20401, 1011, 20151, '2024-09-11 15:00:00', '2024-09-11 15:38:00', 14.00, 1, JSON_ARRAY(JSON_OBJECT('q',20310,'a','A','score',2)), 'GRADED'),
+(20461, 100000, 20401, 1015, 20151, '2024-09-11 15:00:00', '2024-09-11 15:35:00', 15.00, 1, JSON_ARRAY(JSON_OBJECT('q',20310,'a','A','score',2)), 'GRADED'),
+(20462, 100000, 20401, 1016, 20151, '2024-09-11 15:00:00', '2024-09-11 15:39:00', 14.00, 1, JSON_ARRAY(JSON_OBJECT('q',20310,'a','A','score',2)), 'GRADED'),
+(20463, 100000, 20401, 1017, 20151, '2024-09-11 15:00:00', '2024-09-11 15:36:00', 10.00, 0, JSON_ARRAY(JSON_OBJECT('q',20310,'a','B','score',0)), 'GRADED'),
+(20464, 100000, 20401, 1018, 20151, '2024-09-11 15:00:00', '2024-09-11 15:31:00', 17.00, 1, JSON_ARRAY(JSON_OBJECT('q',20310,'a','A','score',2)), 'GRADED'),
+(20465, 100000, 20401, 1019, 20151, '2024-09-11 15:00:00', '2024-09-11 15:42:00', 15.00, 1, JSON_ARRAY(JSON_OBJECT('q',20310,'a','A','score',2)), 'GRADED'),
+(20466, 100000, 20401, 1005, 20152, '2025-03-11 15:00:00', '2025-03-11 15:30:00', 19.00, 1, JSON_ARRAY(JSON_OBJECT('q',20315,'a','A','score',2)), 'GRADED'),
+(20467, 100000, 20401, 1011, 20152, '2025-03-11 15:00:00', '2025-03-11 15:38:00', 16.00, 1, JSON_ARRAY(JSON_OBJECT('q',20315,'a','A','score',2)), 'GRADED'),
+(20468, 100000, 20401, 1015, 20152, '2025-03-11 15:00:00', '2025-03-11 15:40:00', 15.00, 1, JSON_ARRAY(JSON_OBJECT('q',20315,'a','A','score',2)), 'GRADED'),
+(20469, 100000, 20401, 1016, 20152, '2025-03-11 15:00:00', '2025-03-11 15:35:00', 17.00, 1, JSON_ARRAY(JSON_OBJECT('q',20315,'a','A','score',2)), 'GRADED'),
+(20470, 100000, 20401, 1018, 20152, '2025-03-11 15:00:00', '2025-03-11 15:39:00', 18.00, 1, JSON_ARRAY(JSON_OBJECT('q',20315,'a','A','score',2)), 'GRADED'),
+(20471, 100000, 20401, 1019, 20152, '2025-03-11 15:00:00', '2025-03-11 15:41:00', 14.00, 1, JSON_ARRAY(JSON_OBJECT('q',20315,'a','A','score',2)), 'GRADED'),
+(20472, 100000, 20401, 1020, 20152, '2025-03-11 15:00:00', '2025-03-11 15:40:00', 15.00, 1, JSON_ARRAY(JSON_OBJECT('q',20315,'a','A','score',2)), 'GRADED'),
+(20473, 100000, 20400, 1001, 20153, '2025-05-20 14:00:00', NULL,                 NULL, NULL, NULL,                                                  'IN_PROGRESS'),
+(20474, 100000, 20400, 1002, 20153, '2025-05-20 14:00:00', NULL,                 NULL, NULL, NULL,                                                  'IN_PROGRESS'),
+(20475, 100000, 20400, 1003, 20153, '2025-05-20 14:00:00', NULL,                 NULL, NULL, NULL,                                                  'IN_PROGRESS'),
+(20476, 100000, 20400, 1011, 20153, '2025-05-20 14:00:00', NULL,                 NULL, NULL, NULL,                                                  'IN_PROGRESS'),
+(20477, 100000, 20400, 1012, 20153, '2025-05-20 14:00:00', NULL,                 NULL, NULL, NULL,                                                  'IN_PROGRESS'),
+(20478, 100000, 20400, 1013, 20153, '2025-05-20 14:00:00', NULL,                 NULL, NULL, NULL,                                                  'IN_PROGRESS'),
+(20479, 100000, 20400, 1014, 20153, '2025-05-20 14:00:00', NULL,                 NULL, NULL, NULL,                                                  'IN_PROGRESS');
+
+INSERT INTO cloud_flow_db.hr_training_certificate_template (id, tenant_id, template_code, template_name, background_url, fields, status, create_by, update_by) VALUES
+(20500, 100000, 'CERT-TPL-COMP', '合规培训结业证书模板',     '/static/training/cert/comp-bg.png',  JSON_ARRAY(JSON_OBJECT('key','name','label','姓名','placement',JSON_OBJECT('x',360,'y',420)), JSON_OBJECT('key','course','label','课程','placement',JSON_OBJECT('x',360,'y',520))), 'ACTIVE', 'admin', 'admin'),
+(20501, 100000, 'CERT-TPL-TECH', '技术培训结业证书模板',     '/static/training/cert/tech-bg.png',  JSON_ARRAY(JSON_OBJECT('key','name','label','姓名','placement',JSON_OBJECT('x',360,'y',420)), JSON_OBJECT('key','course','label','课程','placement',JSON_OBJECT('x',360,'y',520))), 'ACTIVE', 'admin', 'admin'),
+(20502, 100000, 'CERT-TPL-MGT',  '管理者结业证书模板',       '/static/training/cert/mgt-bg.png',   JSON_ARRAY(JSON_OBJECT('key','name','label','姓名','placement',JSON_OBJECT('x',360,'y',420)), JSON_OBJECT('key','course','label','课程','placement',JSON_OBJECT('x',360,'y',520))), 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_training_certificate (id, tenant_id, cert_no, employee_id, course_id, session_id, template_id, issue_date, expire_date, pdf_file_id, status, revoked_reason, create_by, update_by) VALUES
+(20510, 100000, 'CERT-2024-0001', 1001, 20130, 20150, 20502, '2024-04-17', NULL, 9001, 'VALID', NULL, 'admin', 'admin'),
+(20511, 100000, 'CERT-2024-0002', 1002, 20130, 20150, 20502, '2024-04-17', NULL, 9002, 'VALID', NULL, 'admin', 'admin'),
+(20512, 100000, 'CERT-2024-0003', 1003, 20130, 20150, 20502, '2024-04-17', NULL, 9003, 'VALID', NULL, 'admin', 'admin'),
+(20513, 100000, 'CERT-2024-0004', 1005, 20130, 20150, 20502, '2024-04-17', NULL, 9004, 'VALID', NULL, 'admin', 'admin'),
+(20514, 100000, 'CERT-2024-0005', 1011, 20130, 20150, 20502, '2024-04-17', NULL, 9005, 'VALID', NULL, 'admin', 'admin'),
+(20515, 100000, 'CERT-2024-0006', 1012, 20130, 20150, 20502, '2024-04-17', NULL, 9006, 'VALID', NULL, 'admin', 'admin'),
+(20516, 100000, 'CERT-2024-0007', 1013, 20130, 20150, 20502, '2024-04-17', NULL, 9007, 'VALID', NULL, 'admin', 'admin'),
+(20517, 100000, 'CERT-2024-0008', 1005, 20134, 20151, 20501, '2024-09-12', NULL, 9008, 'VALID', NULL, 'admin', 'admin'),
+(20518, 100000, 'CERT-2024-0009', 1006, 20134, 20151, 20501, '2024-09-12', NULL, 9009, 'VALID', NULL, 'admin', 'admin'),
+(20519, 100000, 'CERT-2024-0010', 1011, 20134, 20151, 20501, '2024-09-12', NULL, 9010, 'VALID', NULL, 'admin', 'admin'),
+(20520, 100000, 'CERT-2025-0001', 1005, 20135, 20152, 20501, '2025-03-12', NULL, 9011, 'VALID', NULL, 'admin', 'admin'),
+(20521, 100000, 'CERT-2025-0002', 1011, 20135, 20152, 20501, '2025-03-12', NULL, 9012, 'VALID', NULL, 'admin', 'admin'),
+(20522, 100000, 'CERT-2025-0003', 1018, 20135, 20152, 20501, '2025-03-12', NULL, 9013, 'VALID', NULL, 'admin', 'admin'),
+(20523, 100000, 'CERT-2025-0004', 1019, 20135, 20152, 20501, '2025-03-12', NULL, 9014, 'VALID', NULL, 'admin', 'admin'),
+(20524, 100000, 'CERT-2024-0011', 1004, 20130, 20150, 20502, '2024-04-17', NULL, 9015, 'REVOKED', '考核未达标，证书作废', 'admin', 'admin');
+
+
+-- =====================================================================
+-- 十、人才域 (talent_review/participant/calibration/succession_plan/successor/pool/pool_member/development_action)
+--     ID 区间 21000-21999
+-- =====================================================================
+
+INSERT INTO cloud_flow_db.hr_talent_review (id, tenant_id, review_no, review_name, review_year, cycle_type, scope_type, scope_value, performance_source_objective_id, owner_id, deadline, status, process_instance_id, publish_time, description, create_by, update_by) VALUES
+(21000, 100000, 'TR-2024-H2', '2024 H2 全员人才盘点', 2024, 'H2', 'GLOBAL', NULL, NULL, 13, '2025-01-15', 'ARCHIVED',  'WF-TR-2024-001', '2025-01-20 16:00:00', '2024 下半年全员盘点，含 9 宫格 + 校准会议 + 培养行动',  'admin', 'admin'),
+(21001, 100000, 'TR-2025-H2', '2025 H2 全员人才盘点', 2025, 'H2', 'GLOBAL', NULL, NULL, 13, '2026-01-31', 'IN_PROGRESS', 'WF-TR-2025-001', NULL,                  '2025 下半年全员盘点，进行中',                            'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_talent_review_participant (id, tenant_id, review_id, employee_id, performance_score, performance_band, potential_score, potential_band, grid_cell, calibration_notes, develop_action_summary, decided_by, decided_at, create_by, update_by) VALUES
+-- 21000 (2024H2) - 已校准结束, 9 宫格全覆盖
+(21010, 100000, 21000, 1001, 95.00, 'HIGH', 5, 'HIGH', 9, '业绩与潜力均突出，列为高潜核心',         '推入接班人计划 + 战略项目',                       1, '2025-01-18 10:00:00', 'admin', 'admin'),
+(21011, 100000, 21000, 1002, 90.00, 'HIGH', 4, 'HIGH', 9, '管理力强，建议跨部门历练',               '安排跨部门项目，导师 1001',                       1, '2025-01-18 10:15:00', 'admin', 'admin'),
+(21012, 100000, 21000, 1003, 88.00, 'HIGH', 3, 'MID',  6, '业绩高潜力一般，专家路径',               '专家发展，行业内大会发言',                        1, '2025-01-18 10:30:00', 'admin', 'admin'),
+(21013, 100000, 21000, 1004, 75.00, 'MID',  4, 'HIGH', 8, '潜力突出，但当下业绩中等',               '高潜培养计划 + 导师 1002',                        1, '2025-01-18 10:45:00', 'admin', 'admin'),
+(21014, 100000, 21000, 1005, 80.00, 'MID',  3, 'MID',  5, '中坚力量，保持',                         '维持现状，持续辅导',                              1, '2025-01-18 11:00:00', 'admin', 'admin'),
+(21015, 100000, 21000, 1006, 72.00, 'MID',  3, 'MID',  5, '稳定贡献者',                             '维持现状',                                        1, '2025-01-18 11:15:00', 'admin', 'admin'),
+(21016, 100000, 21000, 1007, 70.00, 'MID',  2, 'LOW',  2, '业绩中等但潜力受限',                     '横向轮岗试探',                                    1, '2025-01-18 11:30:00', 'admin', 'admin'),
+(21017, 100000, 21000, 1008, 60.00, 'LOW',  3, 'MID',  4, '潜力可以但业绩不达预期',                 'PIP 改进计划',                                    1, '2025-01-18 11:45:00', 'admin', 'admin'),
+(21018, 100000, 21000, 1009, 55.00, 'LOW',  2, 'LOW',  1, '九宫格末位',                             '观察 1 个迭代，若仍 LOW 则启动改进或退出',         1, '2025-01-18 12:00:00', 'admin', 'admin'),
+(21019, 100000, 21000, 1011, 92.00, 'HIGH', 5, 'HIGH', 9, '管理梯队第一梯队',                       '接班人提名 - 销售总监',                           1, '2025-01-18 13:00:00', 'admin', 'admin'),
+(21020, 100000, 21000, 1012, 70.00, 'MID',  4, 'HIGH', 8, '业绩中潜力高',                           '高潜池 + 跨部门项目',                             1, '2025-01-18 13:15:00', 'admin', 'admin'),
+(21021, 100000, 21000, 1013, 85.00, 'HIGH', 2, 'LOW',  3, '当下业绩好但潜力受限',                   '维持，专家路径',                                  1, '2025-01-18 13:30:00', 'admin', 'admin'),
+(21022, 100000, 21000, 1014, 68.00, 'MID',  3, 'MID',  5, '稳定',                                   '维持',                                            1, '2025-01-18 13:45:00', 'admin', 'admin'),
+(21023, 100000, 21000, 1015, 78.00, 'MID',  4, 'HIGH', 8, '高潜，推入培养',                         '高潜培养',                                        1, '2025-01-18 14:00:00', 'admin', 'admin'),
+(21024, 100000, 21000, 1018, 90.00, 'HIGH', 4, 'HIGH', 9, '技术核心',                               '接班人提名 - 技术总监',                           1, '2025-01-18 14:15:00', 'admin', 'admin'),
+(21025, 100000, 21000, 1020, 65.00, 'LOW',  2, 'LOW',  1, '末位',                                   '启动改进计划',                                    1, '2025-01-18 14:30:00', 'admin', 'admin'),
+-- 21001 (2025H2) - 进行中, 部分尚未定格
+(21030, 100000, 21001, 1001, 96.00, 'HIGH', 5, 'HIGH', 9, '保持顶配',                               '战略级项目',                                      NULL, NULL, 'admin', 'admin'),
+(21031, 100000, 21001, 1002, 88.00, 'HIGH', 4, 'HIGH', 9, '跨部门 1 年后表现优异',                  '推入接班人候选',                                  NULL, NULL, 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_talent_calibration_session (id, tenant_id, review_id, session_no, session_name, scheduled_at, location, facilitator_id, participants, agenda, minutes, status, create_by, update_by) VALUES
+(21040, 100000, 21000, 'CAL-2024-H2-01', '2024H2 - 研发线校准会', '2025-01-10 14:00:00', '总部 6F-A 会议室', 1, JSON_ARRAY(1, 13, 14, 15), '议程: 1.九宫格落格走查 2.HiPo 名单确认 3.PIP 名单确认',     '会议达成共识: HiPo 8 人, PIP 3 人 已逐个落格',  'COMPLETED', 'admin', 'admin'),
+(21041, 100000, 21000, 'CAL-2024-H2-02', '2024H2 - 销售线校准会', '2025-01-11 14:00:00', '总部 6F-B 会议室', 1, JSON_ARRAY(1, 13, 16, 17), '议程: 1.业绩复盘 2.九宫格 3.接班人提名',                       '一致同意接班人提名 1011',                        'COMPLETED', 'admin', 'admin'),
+(21042, 100000, 21001, 'CAL-2025-H2-01', '2025H2 - 全员校准会',   '2026-01-12 14:00:00', '总部 6F-A 会议室', 1, JSON_ARRAY(1, 13, 14, 15, 16), '议程: 待定',                                                'PLANNED',                                        'PLANNED',   'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_talent_succession_plan (id, tenant_id, plan_no, plan_name, position_id, incumbent_employee_id, key_role_flag, risk_level, retention_risk, description, owner_id, status, process_instance_id, publish_time, create_by, update_by) VALUES
+(21050, 100000, 'SP-2024-001', 'CTO 接班人计划',          1003, 1018, 1, 'HIGH', '现任 CTO 有外部商业邀约',     '关键岗位继任计划，目标 12 个月内培养 2 名 ready_now',  13, 'PUBLISHED', 'WF-SP-2024-001', '2025-02-01 10:00:00', 'admin', 'admin'),
+(21051, 100000, 'SP-2024-002', 'HR 总监接班人计划',       1002, 1002, 0, 'MID',  '现任 HR 总监稳定',           '常规继任计划',                                          13, 'PUBLISHED', 'WF-SP-2024-002', '2025-02-01 11:00:00', 'admin', 'admin'),
+(21052, 100000, 'SP-2024-003', '销售总监接班人计划',      1004, 1011, 1, 'HIGH', '现任销售总监被猎头接触',     '关键岗位，年度优先',                                    13, 'PUBLISHED', 'WF-SP-2024-003', '2025-02-01 12:00:00', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_talent_successor (id, tenant_id, plan_id, employee_id, readiness, rank_order, talent_review_participant_id, development_gap, retention_action, status, notified_at, create_by, update_by) VALUES
+(21060, 100000, 21050, 1003, 'READY_NOW',     1, 21012, '架构视野已足，缺乏对外公关经验',                       '安排参与对外峰会 + 与行业大牛对接', 'ACTIVE', '2025-02-05 10:00:00', 'admin', 'admin'),
+(21061, 100000, 21050, 1005, 'IN_1_2_YEARS',  2, 21014, '系统稳定性深度 ok，缺乏团队管理经验',                  '半年内带 8 人团队 + 管理力培训', 'ACTIVE', '2025-02-05 10:10:00', 'admin', 'admin'),
+(21062, 100000, 21050, 1019, 'IN_3_5_YEARS',  3, NULL,  '架构能力初步，需要主导 1 个核心项目',                  '安排主导积分商城重构项目',         'ACTIVE', '2025-02-05 10:20:00', 'admin', 'admin'),
+(21063, 100000, 21051, 1002, 'READY_NOW',     1, 21011, '已就位',                                                '配置股权激励',                     'ACTIVE', '2025-02-05 11:00:00', 'admin', 'admin'),
+(21064, 100000, 21051, 1004, 'IN_1_2_YEARS',  2, 21013, 'HR 战略视野需补',                                       'COE 轮岗',                          'ACTIVE', '2025-02-05 11:10:00', 'admin', 'admin'),
+(21065, 100000, 21051, 1012, 'IN_3_5_YEARS',  3, 21020, '一年内进入 HRBP 序列',                                  'HRBP 轮岗 + 课程',                  'ACTIVE', '2025-02-05 11:20:00', 'admin', 'admin'),
+(21066, 100000, 21052, 1011, 'READY_NOW',     1, 21019, '已就位',                                                '股权激励 + 续签',                   'ACTIVE', '2025-02-05 12:00:00', 'admin', 'admin'),
+(21067, 100000, 21052, 1015, 'IN_1_2_YEARS',  2, 21023, '销售管理刚起步，缺规模化经验',                          '带 15 人销售小队 1 年',             'ACTIVE', '2025-02-05 12:10:00', 'admin', 'admin'),
+(21068, 100000, 21052, 1016, 'IN_3_5_YEARS',  3, NULL,  '需要在大客户场景上历练',                                '大客户单子主导 + 销售管理培训',     'ACTIVE', '2025-02-05 12:20:00', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_talent_pool (id, tenant_id, pool_no, pool_name, pool_type, description, owner_id, status, create_by, update_by) VALUES
+(21070, 100000, 'POOL-HIPO',    '高潜池',           'HIPO',            '高潜员工统一管理，定期复盘',           13, 'ACTIVE', 'admin', 'admin'),
+(21071, 100000, 'POOL-TECH',    '技术专家池',       'CRITICAL_SKILL',  '技术专家路径，独立于管理路径',         13, 'ACTIVE', 'admin', 'admin'),
+(21072, 100000, 'POOL-MGT',     '管理梯队池',       'CORE',            '管理人才梯队',                         13, 'ACTIVE', 'admin', 'admin'),
+(21073, 100000, 'POOL-SUCC',    '接班人储备池',     'SUCCESSOR',       '所有 succession_plan 中的接班人',      13, 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_talent_pool_member (id, tenant_id, pool_id, employee_id, joined_at, joined_review_id, exit_at, exit_reason, status, remark, create_by, update_by) VALUES
+(21080, 100000, 21070, 1004, '2025-01-20 09:00:00', 21000, NULL, NULL, 'IN', '九宫格 8 格，高潜', 'admin', 'admin'),
+(21081, 100000, 21070, 1012, '2025-01-20 09:05:00', 21000, NULL, NULL, 'IN', '九宫格 8 格，高潜', 'admin', 'admin'),
+(21082, 100000, 21070, 1015, '2025-01-20 09:10:00', 21000, NULL, NULL, 'IN', '九宫格 8 格，高潜', 'admin', 'admin'),
+(21083, 100000, 21070, 1019, '2025-01-20 09:15:00', 21000, NULL, NULL, 'IN', '高潜骨干',         'admin', 'admin'),
+(21084, 100000, 21071, 1003, '2025-01-20 10:00:00', 21000, NULL, NULL, 'IN', '技术专家',         'admin', 'admin'),
+(21085, 100000, 21071, 1005, '2025-01-20 10:05:00', 21000, NULL, NULL, 'IN', '系统稳定性专家',   'admin', 'admin'),
+(21086, 100000, 21071, 1013, '2025-01-20 10:10:00', 21000, NULL, NULL, 'IN', '资深算法专家',     'admin', 'admin'),
+(21087, 100000, 21071, 1018, '2025-01-20 10:15:00', 21000, NULL, NULL, 'IN', '架构师',           'admin', 'admin'),
+(21088, 100000, 21072, 1001, '2025-01-20 11:00:00', 21000, NULL, NULL, 'IN', '管理梯队 M3',      'admin', 'admin'),
+(21089, 100000, 21072, 1002, '2025-01-20 11:05:00', 21000, NULL, NULL, 'IN', '管理梯队 M2',      'admin', 'admin'),
+(21090, 100000, 21072, 1011, '2025-01-20 11:10:00', 21000, NULL, NULL, 'IN', '管理梯队 M2',      'admin', 'admin'),
+(21091, 100000, 21072, 1014, '2025-01-20 11:15:00', 21000, NULL, NULL, 'IN', '管理梯队 M1',      'admin', 'admin'),
+(21092, 100000, 21073, 1003, '2025-02-05 09:00:00', NULL,  NULL, NULL, 'IN', 'CTO 接班人',       'admin', 'admin'),
+(21093, 100000, 21073, 1005, '2025-02-05 09:05:00', NULL,  NULL, NULL, 'IN', 'CTO 接班人',       'admin', 'admin'),
+(21094, 100000, 21073, 1019, '2025-02-05 09:10:00', NULL,  NULL, NULL, 'IN', 'CTO 接班人',       'admin', 'admin'),
+(21095, 100000, 21073, 1002, '2025-02-05 09:15:00', NULL,  NULL, NULL, 'IN', 'HR 总监接班人',    'admin', 'admin'),
+(21096, 100000, 21073, 1004, '2025-02-05 09:20:00', NULL,  NULL, NULL, 'IN', 'HR 总监接班人',    'admin', 'admin'),
+(21097, 100000, 21073, 1012, '2025-02-05 09:25:00', NULL,  NULL, NULL, 'IN', 'HR 总监接班人',    'admin', 'admin'),
+(21098, 100000, 21073, 1011, '2025-02-05 09:30:00', NULL,  NULL, NULL, 'IN', '销售总监接班人',   'admin', 'admin'),
+(21099, 100000, 21073, 1015, '2025-02-05 09:35:00', NULL,  NULL, NULL, 'IN', '销售总监接班人',   'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_talent_development_action (id, tenant_id, employee_id, source_review_id, source_pool_id, action_type, action_name, mentor_id, owner_id, start_date, end_date, training_session_id, status, evaluation_score, evaluation_notes, description, create_by, update_by) VALUES
+(21100, 100000, 1004, 21000, 21070, 'TRAINING',       '高潜培养营第 5 期',          1,    13, '2025-03-01', '2025-12-31', 20154, 'ONGOING',   NULL, NULL,                'A1 模块完成，A2 进行中',         'admin', 'admin'),
+(21101, 100000, 1012, 21000, 21070, 'MENTOR',         '导师项目 - 跟随 1002',       1002, 13, '2025-02-01', '2026-02-01', NULL,  'ONGOING',   NULL, NULL,                '已完成 4 次 1on1',                'admin', 'admin'),
+(21102, 100000, 1015, 21000, 21070, 'JOB_ROTATION',   '销售 → 市场 半年轮岗',        NULL, 13, '2025-04-01', '2025-10-01', NULL,  'COMPLETED', 88.0, '评估优秀，建议转岗', '半年轮岗已结束',                  'admin', 'admin'),
+(21103, 100000, 1019, 21000, 21070, 'STRETCH_PROJECT','主导积分商城重构项目',        1003, 1003, '2025-06-01', '2025-12-31', NULL,  'ONGOING',   NULL, NULL,                '架构方案已通过评审',              'admin', 'admin'),
+(21104, 100000, 1003, 21000, 21071, 'EXTERNAL_COURSE','清华大学 EMBA 在职',          NULL, 13, '2025-09-01', '2027-08-31', NULL,  'ONGOING',   NULL, NULL,                '第一学期已完成',                  'admin', 'admin'),
+(21105, 100000, 1005, 21000, 21071, 'TRAINING',       '架构师认证 - CCSP',          NULL, 13, '2025-03-01', '2025-08-31', NULL,  'COMPLETED', 92.0, '一次性通过',         'CCSP 认证完成',                   'admin', 'admin'),
+(21106, 100000, 1011, 21000, 21072, 'MENTOR',         '导师项目 - 跟随 1001',       1001, 13, '2025-01-01', '2026-01-01', NULL,  'ONGOING',   NULL, NULL,                '月度 1on1 + 季度复盘',            'admin', 'admin'),
+(21107, 100000, 1002, 21000, 21072, 'EXTERNAL_COURSE','HR 战略高研班',               NULL, 13, '2025-05-01', '2025-11-30', NULL,  'COMPLETED', 85.0, '论文优秀',           '高研班结业',                      'admin', 'admin'),
+(21108, 100000, 1014, 21000, 21072, 'STRETCH_PROJECT','主导部门年度战略落地',        1001, 13, '2025-02-01', '2025-12-31', NULL,  'ONGOING',   NULL, NULL,                '战略落地第 3 季度',                'admin', 'admin'),
+(21109, 100000, 1018, 21000, 21073, 'STRETCH_PROJECT','主导 K8s 容器化迁移',         NULL, 1018, '2025-04-01', '2025-12-31', NULL,  'ONGOING',   NULL, NULL,                'Phase 1 完成',                    'admin', 'admin'),
+(21110, 100000, 1008, 21000, NULL,  'TRAINING',       'PIP - 业绩改进计划',          1002, 13, '2025-02-15', '2025-05-15', NULL,  'COMPLETED', 65.0, '勉强通过，继续观察', '一季度 PIP 改进',                 'admin', 'admin'),
+(21111, 100000, 1009, 21000, NULL,  'TRAINING',       'PIP - 业绩改进计划',          1002, 13, '2025-02-15', '2025-05-15', NULL,  'COMPLETED', 50.0, '未达预期，启动退出',  '一季度 PIP 改进未达预期',          'admin', 'admin'),
+(21112, 100000, 1020, 21000, NULL,  'TRAINING',       'PIP - 业绩改进计划',          1011, 13, '2025-02-15', '2025-05-15', NULL,  'CANCELLED', NULL, '员工主动离职',       '员工自主离职',                    'admin', 'admin'),
+(21113, 100000, 1011, 21000, 21073, 'EXTERNAL_COURSE','销售总监培养营',              NULL, 13, '2025-07-01', '2026-01-31', NULL,  'ONGOING',   NULL, NULL,                'CEO 班课程',                      'admin', 'admin'),
+(21114, 100000, 1015, 21000, 21073, 'JOB_ROTATION',   '销售小队带队',                1011, 13, '2025-10-01', '2026-09-30', NULL,  'ONGOING',   NULL, NULL,                '小队规模 12 人',                  'admin', 'admin');
+
+
+-- =====================================================================
+-- 十一、积分商城 + 福利申领 (point_account/point_txn/mall_item/mall_order/mall_order_item/benefit_request)
+--      ID 区间 22000-22999
+-- =====================================================================
+
+INSERT INTO cloud_flow_db.hr_point_account (id, tenant_id, employee_id, available_points, total_earned, total_spent, frozen_points, last_active_at, create_by, update_by, version) VALUES
+(22000, 100000, 1001, 1200,  2500, 1300, 0,    '2026-05-20 10:00:00', 'admin', 'admin', 5),
+(22001, 100000, 1002, 800,   2200, 1400, 0,    '2026-05-15 09:30:00', 'admin', 'admin', 4),
+(22002, 100000, 1003, 1500,  2400, 800,  100,  '2026-05-21 14:00:00', 'admin', 'admin', 6),
+(22003, 100000, 1004, 600,   1800, 1200, 0,    '2026-05-18 11:00:00', 'admin', 'admin', 3),
+(22004, 100000, 1005, 2100,  3000, 900,  0,    '2026-05-21 16:00:00', 'admin', 'admin', 5),
+(22005, 100000, 1011, 950,   1500, 550,  100,  '2026-05-21 09:00:00', 'admin', 'admin', 4),
+(22006, 100000, 1012, 700,   1100, 400,  0,    '2026-05-19 15:00:00', 'admin', 'admin', 3),
+(22007, 100000, 1013, 1300,  2000, 700,  0,    '2026-05-20 17:00:00', 'admin', 'admin', 4),
+(22008, 100000, 1015, 450,   1200, 750,  0,    '2026-05-17 10:00:00', 'admin', 'admin', 3),
+(22009, 100000, 1018, 1800,  2800, 1000, 0,    '2026-05-21 08:00:00', 'admin', 'admin', 5),
+(22010, 100000, 1019, 600,   1500, 900,  0,    '2026-05-16 11:00:00', 'admin', 'admin', 3),
+(22011, 100000, 1020, 0,     500,  500,  0,    '2025-12-10 09:00:00', 'admin', 'admin', 2);
+
+INSERT INTO cloud_flow_db.hr_mall_item (id, tenant_id, item_no, item_name, category, point_price, stock, sales_count, cover_image, images, detail_html, status, approval_threshold, sort_order, create_by, update_by, version) VALUES
+(22100, 100000, 'M-GIFT-001',   '小米台灯',                     'GIFT',    300,   50,  18, '/static/mall/gift001.png',  JSON_ARRAY('/static/mall/gift001-1.png'), '<p>米家智能台灯Lite</p>',                  'ON_SHELF',  5000, 1,  'admin', 'admin', 1),
+(22101, 100000, 'M-GIFT-002',   '罗技 MX Master 3S',            'GIFT',    1500,  20,  12, '/static/mall/gift002.png',  JSON_ARRAY('/static/mall/gift002-1.png'), '<p>办公旗舰鼠标</p>',                       'ON_SHELF',  5000, 2,  'admin', 'admin', 1),
+(22102, 100000, 'M-GIFT-003',   'Kindle Oasis',                 'GIFT',    3500,  10,  4,  '/static/mall/gift003.png',  JSON_ARRAY('/static/mall/gift003-1.png'), '<p>电子书阅读器</p>',                       'ON_SHELF',  5000, 3,  'admin', 'admin', 1),
+(22103, 100000, 'M-GIFT-004',   'iPad mini 7',                  'GIFT',    8000,  5,   2,  '/static/mall/gift004.png',  JSON_ARRAY('/static/mall/gift004-1.png'), '<p>iPad mini 7 256G WiFi</p>',              'ON_SHELF',  3000, 4,  'admin', 'admin', 1),
+(22110, 100000, 'M-COUPON-001', '星巴克 100 元电子券',           'COUPON',  200,   200, 88, '/static/mall/coup001.png',  JSON_ARRAY('/static/mall/coup001-1.png'), '<p>邮件发券</p>',                            'ON_SHELF',  10000, 5, 'admin', 'admin', 1),
+(22111, 100000, 'M-COUPON-002', '美团 500 元代金券',             'COUPON',  900,   100, 35, '/static/mall/coup002.png',  JSON_ARRAY('/static/mall/coup002-1.png'), '<p>美团 / 大众点评通用</p>',                  'ON_SHELF',  5000, 6,  'admin', 'admin', 1),
+(22112, 100000, 'M-COUPON-003', '京东 1000 元礼品卡',            'COUPON',  1800,  60,  20, '/static/mall/coup003.png',  JSON_ARRAY('/static/mall/coup003-1.png'), '<p>京东全平台通用</p>',                       'ON_SHELF',  5000, 7,  'admin', 'admin', 1),
+(22120, 100000, 'M-HEALTH-001', '体检套餐 - 标准版',             'HEALTH',  2000,  30,  8,  '/static/mall/health001.png', JSON_ARRAY('/static/mall/health001-1.png'), '<p>覆盖体检 30 项</p>',                   'ON_SHELF',  5000, 8,  'admin', 'admin', 1),
+(22121, 100000, 'M-HEALTH-002', '体检套餐 - 高级版',             'HEALTH',  4500,  20,  3,  '/static/mall/health002.png', JSON_ARRAY('/static/mall/health002-1.png'), '<p>覆盖体检 60 项 含癌筛</p>',             'ON_SHELF',  3000, 9,  'admin', 'admin', 1),
+(22122, 100000, 'M-HEALTH-003', '健身房年卡(中环)',              'HEALTH',  3500,  15,  6,  '/static/mall/health003.png', JSON_ARRAY('/static/mall/health003-1.png'), '<p>中环 5 家通用</p>',                       'ON_SHELF',  3000, 10, 'admin', 'admin', 1),
+(22130, 100000, 'M-WEL-001',    '节日大礼包 - 中秋',             'WELFARE', 800,   200, 150,'/static/mall/wel001.png',   JSON_ARRAY('/static/mall/wel001-1.png'), '<p>中秋节定制礼盒</p>',                       'OFF_SHELF', 5000, 11, 'admin', 'admin', 1),
+(22131, 100000, 'M-WEL-002',    '节日大礼包 - 端午',             'WELFARE', 600,   200, 120,'/static/mall/wel002.png',   JSON_ARRAY('/static/mall/wel002-1.png'), '<p>端午粽子礼盒</p>',                         'OFF_SHELF', 5000, 12, 'admin', 'admin', 1),
+(22132, 100000, 'M-WEL-003',    '生日蛋糕券',                    'WELFARE', 400,   500, 220,'/static/mall/wel003.png',   JSON_ARRAY('/static/mall/wel003-1.png'), '<p>哈根达斯/85度C 通用</p>',                  'ON_SHELF',  5000, 13, 'admin', 'admin', 1),
+(22133, 100000, 'M-WEL-004',    '婚育祝贺礼盒',                  'WELFARE', 1200,  50,  18, '/static/mall/wel004.png',   JSON_ARRAY('/static/mall/wel004-1.png'), '<p>婚育大礼盒</p>',                           'ON_SHELF',  5000, 14, 'admin', 'admin', 1),
+(22134, 100000, 'M-WEL-005',    '过年慰问礼盒',                  'WELFARE', 1500,  100, 88, '/static/mall/wel005.png',   JSON_ARRAY('/static/mall/wel005-1.png'), '<p>过年慰问礼盒</p>',                         'OFF_SHELF', 5000, 15, 'admin', 'admin', 1),
+(22135, 100000, 'M-WEL-006',    '培训抵扣券 1000 元',            'WELFARE', 3000,  30,  5,  '/static/mall/wel006.png',   JSON_ARRAY('/static/mall/wel006-1.png'), '<p>外训抵扣 1000 元</p>',                     'ON_SHELF',  3000, 16, 'admin', 'admin', 1);
+
+INSERT INTO cloud_flow_db.hr_mall_order (id, tenant_id, order_no, employee_id, total_points, item_count, receiver_name, receiver_phone, receiver_address, express_company, express_no, status, process_instance_id, cancel_reason, shipped_at, completed_at, create_by, update_by, version) VALUES
+(22200, 100000, 'MO-2026-05-001', 1001, 300,  1, '管理员',   '13900000001', '上海市浦东新区张江高科技园区',  '顺丰',     'SF1234567890001', 'COMPLETED', NULL,            NULL, '2026-05-01 10:00:00', '2026-05-04 09:00:00', 'admin', 'admin', 3),
+(22201, 100000, 'MO-2026-05-002', 1001, 1500, 1, '管理员',   '13900000001', '上海市浦东新区张江高科技园区',  '顺丰',     'SF1234567890002', 'SHIPPED',   NULL,            NULL, '2026-05-15 10:00:00', NULL,                  'admin', 'admin', 2),
+(22202, 100000, 'MO-2026-05-003', 1002, 200,  1, 'hr 主管',  '13900000002', '上海市徐汇区漕溪路',           '京东',     'JD1234567890001', 'COMPLETED', NULL,            NULL, '2026-04-05 10:00:00', '2026-04-08 09:00:00', 'admin', 'admin', 3),
+(22203, 100000, 'MO-2026-05-004', 1003, 900,  1, '系统张',   '13900000003', '上海市黄浦区南京路',           '中通',     'ZT1234567890001', 'COMPLETED', NULL,            NULL, '2026-03-20 11:00:00', '2026-03-23 14:00:00', 'admin', 'admin', 3),
+(22204, 100000, 'MO-2026-05-005', 1003, 800,  1, '系统张',   '13900000003', '上海市黄浦区南京路',           NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
+(22205, 100000, 'MO-2026-05-006', 1004, 1200, 1, '研发周',   '13900000004', '上海市闵行区莘庄',             '顺丰',     'SF1234567890003', 'COMPLETED', NULL,            NULL, '2026-02-14 09:00:00', '2026-02-17 10:00:00', 'admin', 'admin', 3),
+(22206, 100000, 'MO-2026-05-007', 1005, 900,  1, '运维吴',   '13900000005', '上海市浦东新区世博园区',       '京东',     'JD1234567890002', 'COMPLETED', NULL,            NULL, '2026-04-25 09:00:00', '2026-04-28 14:00:00', 'admin', 'admin', 3),
+(22207, 100000, 'MO-2026-05-008', 1011, 400,  1, '销售员李', '13900020011', '上海市虹口区四川北路',         '顺丰',     'SF1234567890004', 'COMPLETED', NULL,            NULL, '2026-05-08 09:00:00', '2026-05-11 11:00:00', 'admin', 'admin', 3),
+(22208, 100000, 'MO-2026-05-009', 1011, 100,  1, '销售员李', '13900020011', '上海市虹口区四川北路',         NULL,       NULL,               'CANCELLED', NULL,            '用户申请取消', NULL,            NULL,                  'admin', 'admin', 2),
+(22209, 100000, 'MO-2026-05-010', 1012, 400,  1, '员工王',   '13900020012', '上海市浦东新区世纪大道',       '中通',     'ZT1234567890002', 'COMPLETED', NULL,            NULL, '2026-04-15 10:00:00', '2026-04-18 16:00:00', 'admin', 'admin', 3),
+(22210, 100000, 'MO-2026-05-011', 1013, 200,  1, '员工陈',   '13900020013', '上海市长宁区中山公园',         '顺丰',     'SF1234567890005', 'SHIPPED',   NULL,            NULL, '2026-05-19 10:00:00', NULL,                  'admin', 'admin', 2),
+(22211, 100000, 'MO-2026-05-012', 1013, 500,  1, '员工陈',   '13900020013', '上海市长宁区中山公园',         NULL,       NULL,               'APPROVED',  NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
+(22212, 100000, 'MO-2026-05-013', 1015, 750,  1, '员工赵',   '13900020015', '上海市黄浦区南京西路',         '京东',     'JD1234567890003', 'COMPLETED', NULL,            NULL, '2026-03-10 09:00:00', '2026-03-13 14:00:00', 'admin', 'admin', 3),
+(22213, 100000, 'MO-2026-05-014', 1018, 4500, 1, '架构师高', '13900020018', '上海市浦东新区张江',           '顺丰',     'SF1234567890006', 'COMPLETED', NULL,            NULL, '2026-01-15 09:00:00', '2026-01-18 11:00:00', 'admin', 'admin', 3),
+(22214, 100000, 'MO-2026-05-015', 1018, 8000, 1, '架构师高', '13900020018', '上海市浦东新区张江',           '顺丰',     'SF1234567890007', 'APPROVING', 'WF-MO-2026-001', NULL, NULL,                  NULL,                  'admin', 'admin', 1),
+(22215, 100000, 'MO-2026-05-016', 1019, 900,  1, '研发刘',   '13900020019', '上海市浦东新区世纪公园',       '中通',     'ZT1234567890003', 'COMPLETED', NULL,            NULL, '2026-02-20 09:00:00', '2026-02-23 14:00:00', 'admin', 'admin', 3),
+(22216, 100000, 'MO-2026-05-017', 1020, 500,  1, '运维郑',   '13900020020', '上海市浦东新区陆家嘴',         '顺丰',     'SF1234567890008', 'COMPLETED', NULL,            NULL, '2025-11-15 09:00:00', '2025-11-18 16:00:00', 'admin', 'admin', 3),
+(22217, 100000, 'MO-2026-05-018', 1001, 200,  1, '管理员',   '13900000001', '上海市浦东新区张江高科技园区',  NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
+(22218, 100000, 'MO-2026-05-019', 1003, 800,  1, '系统张',   '13900000003', '上海市黄浦区南京路',           '顺丰',     'SF1234567890009', 'SHIPPED',   NULL,            NULL, '2026-05-21 10:00:00', NULL,                  'admin', 'admin', 2),
+(22219, 100000, 'MO-2026-05-020', 1005, 3500, 1, '运维吴',   '13900000005', '上海市浦东新区世博园区',       NULL,       NULL,               'APPROVING', 'WF-MO-2026-002', NULL, NULL,                  NULL,                  'admin', 'admin', 1),
+(22220, 100000, 'MO-2026-05-021', 1011, 100,  1, '销售员李', '13900020011', '上海市虹口区四川北路',         NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1),
+(22221, 100000, 'MO-2026-05-022', 1018, 1500, 1, '架构师高', '13900020018', '上海市浦东新区张江',           NULL,       NULL,               'PENDING',   NULL,            NULL, NULL,                  NULL,                  'admin', 'admin', 1);
+
+INSERT INTO cloud_flow_db.hr_mall_order_item (id, tenant_id, order_id, item_id, item_no, item_name, cover_image, point_price, quantity, subtotal, create_by, update_by) VALUES
+(22300, 100000, 22200, 22100, 'M-GIFT-001',   '小米台灯',         '/static/mall/gift001.png',  300,  1, 300,  'admin', 'admin'),
+(22301, 100000, 22201, 22101, 'M-GIFT-002',   '罗技 MX Master 3S','/static/mall/gift002.png',  1500, 1, 1500, 'admin', 'admin'),
+(22302, 100000, 22202, 22110, 'M-COUPON-001', '星巴克 100 元电子券','/static/mall/coup001.png', 200,  1, 200,  'admin', 'admin'),
+(22303, 100000, 22203, 22111, 'M-COUPON-002', '美团 500 元代金券', '/static/mall/coup002.png',  900,  1, 900,  'admin', 'admin'),
+(22304, 100000, 22204, 22130, 'M-WEL-001',    '节日大礼包 - 中秋','/static/mall/wel001.png',   800,  1, 800,  'admin', 'admin'),
+(22305, 100000, 22205, 22133, 'M-WEL-004',    '婚育祝贺礼盒',      '/static/mall/wel004.png',   1200, 1, 1200, 'admin', 'admin'),
+(22306, 100000, 22206, 22111, 'M-COUPON-002', '美团 500 元代金券', '/static/mall/coup002.png',  900,  1, 900,  'admin', 'admin'),
+(22307, 100000, 22207, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  1, 400,  'admin', 'admin'),
+(22308, 100000, 22208, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  1, 400,  'admin', 'admin'),
+(22309, 100000, 22209, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  1, 400,  'admin', 'admin'),
+(22310, 100000, 22210, 22110, 'M-COUPON-001', '星巴克 100 元电子券','/static/mall/coup001.png',  200,  1, 200,  'admin', 'admin'),
+(22311, 100000, 22211, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  1, 400,  'admin', 'admin'),
+(22312, 100000, 22211, 22132, 'M-WEL-003',    '生日蛋糕券额外赠送', '/static/mall/wel003.png',   400, 0, 0,    'admin', 'admin'),
+(22313, 100000, 22212, 22102, 'M-GIFT-003',   'Kindle Oasis',     '/static/mall/gift003.png',  3500, 0, 0,    'admin', 'admin'),
+(22314, 100000, 22212, 22110, 'M-COUPON-001', '星巴克 100 元电子券','/static/mall/coup001.png',  200,  1, 200,  'admin', 'admin'),
+(22315, 100000, 22212, 22111, 'M-COUPON-002', '美团 500 元代金券', '/static/mall/coup002.png',  900,  0, 0,    'admin', 'admin'),
+(22316, 100000, 22212, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  1, 400,  'admin', 'admin'),
+(22317, 100000, 22212, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  0, 0,    'admin', 'admin'),
+(22318, 100000, 22212, 22110, 'M-COUPON-001', '星巴克 100 元电子券','/static/mall/coup001.png',  200,  0, 0,    'admin', 'admin'),
+(22319, 100000, 22212, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  0, 0,    'admin', 'admin'),
+(22320, 100000, 22213, 22122, 'M-HEALTH-003', '健身房年卡(中环)',  '/static/mall/health003.png',3500, 0, 0,    'admin', 'admin'),
+(22321, 100000, 22213, 22120, 'M-HEALTH-001', '体检套餐 - 标准版', '/static/mall/health001.png',2000, 0, 0,    'admin', 'admin'),
+(22322, 100000, 22213, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  0, 0,    'admin', 'admin'),
+(22323, 100000, 22213, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  0, 0,    'admin', 'admin'),
+(22324, 100000, 22213, 22111, 'M-COUPON-002', '美团 500 元代金券', '/static/mall/coup002.png',  900,  0, 0,    'admin', 'admin'),
+(22325, 100000, 22213, 22122, 'M-HEALTH-003', '健身房年卡(中环)',  '/static/mall/health003.png',3500, 0, 0,    'admin', 'admin'),
+(22326, 100000, 22213, 22120, 'M-HEALTH-001', '体检套餐 - 标准版', '/static/mall/health001.png',2000, 0, 0,    'admin', 'admin'),
+(22327, 100000, 22213, 22130, 'M-WEL-001',    '节日大礼包 - 中秋', '/static/mall/wel001.png',   800,  0, 0,    'admin', 'admin'),
+(22328, 100000, 22213, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   400,  0, 0,    'admin', 'admin'),
+(22329, 100000, 22214, 22103, 'M-GIFT-004',   'iPad mini 7',      '/static/mall/gift004.png',  8000, 1, 8000, 'admin', 'admin'),
+(22330, 100000, 22215, 22111, 'M-COUPON-002', '美团 500 元代金券', '/static/mall/coup002.png',  900,  1, 900,  'admin', 'admin'),
+(22331, 100000, 22216, 22132, 'M-WEL-003',    '生日蛋糕券',        '/static/mall/wel003.png',   500,  1, 500,  'admin', 'admin'),
+(22332, 100000, 22217, 22110, 'M-COUPON-001', '星巴克 100 元电子券','/static/mall/coup001.png',  200,  1, 200,  'admin', 'admin'),
+(22333, 100000, 22218, 22130, 'M-WEL-001',    '节日大礼包 - 中秋', '/static/mall/wel001.png',   800,  1, 800,  'admin', 'admin'),
+(22334, 100000, 22219, 22102, 'M-GIFT-003',   'Kindle Oasis',     '/static/mall/gift003.png',  3500, 1, 3500, 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_point_transaction (id, tenant_id, account_id, employee_id, txn_no, direction, source_type, source_id, points, balance_after, effective_date, expire_date, remark, create_by, update_by) VALUES
+(22400, 100000, 22000, 1001, 'PT-2024-001', 'IN',  'MANUAL_ADJUST', NULL,  500,   500,  '2024-04-17', '2026-04-17', '入职奖励',           'admin', 'admin'),
+(22401, 100000, 22000, 1001, 'PT-2024-002', 'IN',  'MANUAL_ADJUST', NULL,  1000,  1500, '2024-12-31', '2026-12-31', '年终奖励',           'admin', 'admin'),
+(22402, 100000, 22000, 1001, 'PT-2025-001', 'IN',  'MANUAL_ADJUST', NULL,  500,   2000, '2025-04-17', '2027-04-17', '入职 1 年奖励',       'admin', 'admin'),
+(22403, 100000, 22000, 1001, 'PT-2025-002', 'IN',  'MANUAL_ADJUST', NULL,  500,   2500, '2025-12-31', '2027-12-31', '年终奖励',           'admin', 'admin'),
+(22404, 100000, 22000, 1001, 'PT-2026-001', 'OUT', 'MALL_ORDER',    22200, -300,  2200, '2026-05-01', NULL,         '兑换小米台灯',        'admin', 'admin'),
+(22405, 100000, 22000, 1001, 'PT-2026-002', 'OUT', 'MALL_ORDER',    22201, -1500, 700,  '2026-05-15', NULL,         '兑换罗技鼠标',        'admin', 'admin'),
+(22406, 100000, 22000, 1001, 'PT-2026-003', 'IN',  'BENEFIT',       NULL,  500,   1200, '2026-05-20', '2028-05-20', '生日福利',           'admin', 'admin'),
+
+(22410, 100000, 22001, 1002, 'PT-2024-003', 'IN',  'MANUAL_ADJUST', NULL,  1200,  1200, '2024-04-01', '2026-04-01', '入职奖励',           'admin', 'admin'),
+(22411, 100000, 22001, 1002, 'PT-2025-003', 'IN',  'MANUAL_ADJUST', NULL,  1000,  2200, '2025-12-31', '2027-12-31', '年终奖励',           'admin', 'admin'),
+(22412, 100000, 22001, 1002, 'PT-2026-004', 'OUT', 'MALL_ORDER',    22202, -200,  2000, '2026-04-05', NULL,         '兑换星巴克券',        'admin', 'admin'),
+(22413, 100000, 22001, 1002, 'PT-2026-005', 'OUT', 'MANUAL_ADJUST', NULL,  -1200, 800,  '2026-05-10', NULL,         '手动调整',           'admin', 'admin'),
+
+(22420, 100000, 22002, 1003, 'PT-2024-004', 'IN',  'MANUAL_ADJUST', NULL,  800,   800,  '2024-04-01', '2026-04-01', '入职奖励',           'admin', 'admin'),
+(22421, 100000, 22002, 1003, 'PT-2025-004', 'IN',  'MANUAL_ADJUST', NULL,  1200,  2000, '2025-06-30', '2027-06-30', 'H1 业绩奖励',          'admin', 'admin'),
+(22422, 100000, 22002, 1003, 'PT-2025-005', 'IN',  'MANUAL_ADJUST', NULL,  400,   2400, '2025-12-31', '2027-12-31', '年终',                'admin', 'admin'),
+(22423, 100000, 22002, 1003, 'PT-2026-006', 'OUT', 'MALL_ORDER',    22203, -900,  1500, '2026-03-20', NULL,         '兑换美团券',          'admin', 'admin'),
+(22424, 100000, 22002, 1003, 'PT-2026-007', 'FROZEN','MALL_ORDER',  22204, -100,  1500, '2026-05-21', NULL,         '冻结-下单待支付',      'admin', 'admin'),
+
+(22430, 100000, 22003, 1004, 'PT-2024-005', 'IN',  'MANUAL_ADJUST', NULL,  800,   800,  '2024-04-01', '2026-04-01', '入职奖励',           'admin', 'admin'),
+(22431, 100000, 22003, 1004, 'PT-2025-006', 'IN',  'MANUAL_ADJUST', NULL,  1000,  1800, '2025-06-30', '2027-06-30', 'H1 业绩奖励',          'admin', 'admin'),
+(22432, 100000, 22003, 1004, 'PT-2026-008', 'OUT', 'MALL_ORDER',    22205, -1200, 600,  '2026-02-14', NULL,         '兑换婚育礼盒',        'admin', 'admin'),
+
+(22440, 100000, 22004, 1005, 'PT-2024-006', 'IN',  'MANUAL_ADJUST', NULL,  1500,  1500, '2024-04-01', '2026-04-01', '入职奖励',           'admin', 'admin'),
+(22441, 100000, 22004, 1005, 'PT-2025-007', 'IN',  'MANUAL_ADJUST', NULL,  1500,  3000, '2025-12-31', '2027-12-31', '年终',                'admin', 'admin'),
+(22442, 100000, 22004, 1005, 'PT-2026-009', 'OUT', 'MALL_ORDER',    22206, -900,  2100, '2026-04-25', NULL,         '兑换美团券',          'admin', 'admin'),
+
+(22450, 100000, 22005, 1011, 'PT-2025-008', 'IN',  'MANUAL_ADJUST', NULL,  1500,  1500, '2025-04-01', '2027-04-01', '入职奖励',           'admin', 'admin'),
+(22451, 100000, 22005, 1011, 'PT-2026-010', 'OUT', 'MALL_ORDER',    22207, -400,  1100, '2026-05-08', NULL,         '生日券',              'admin', 'admin'),
+(22452, 100000, 22005, 1011, 'PT-2026-011', 'OUT', 'MALL_ORDER',    22208, -400,  700,  '2026-05-09', NULL,         '生日券',              'admin', 'admin'),
+(22453, 100000, 22005, 1011, 'PT-2026-012', 'IN',  'MALL_ORDER',    22208, 400,   1100, '2026-05-10', NULL,         '订单取消退款',        'admin', 'admin'),
+(22454, 100000, 22005, 1011, 'PT-2026-013', 'FROZEN','MALL_ORDER',  22220, -100,  1100, '2026-05-21', NULL,         '冻结-下单待支付',      'admin', 'admin'),
+(22455, 100000, 22005, 1011, 'PT-2026-014', 'OUT', 'EXPIRE',        NULL,  -150,  950,  '2026-04-01', NULL,         '过期积分',           'admin', 'admin'),
+
+(22460, 100000, 22006, 1012, 'PT-2025-009', 'IN',  'MANUAL_ADJUST', NULL,  1100,  1100, '2025-04-01', '2027-04-01', '入职奖励',           'admin', 'admin'),
+(22461, 100000, 22006, 1012, 'PT-2026-015', 'OUT', 'MALL_ORDER',    22209, -400,  700,  '2026-04-15', NULL,         '生日券',              'admin', 'admin'),
+
+(22470, 100000, 22007, 1013, 'PT-2025-010', 'IN',  'MANUAL_ADJUST', NULL,  2000,  2000, '2025-04-01', '2027-04-01', '入职奖励',           'admin', 'admin'),
+(22471, 100000, 22007, 1013, 'PT-2026-016', 'OUT', 'MALL_ORDER',    22210, -200,  1800, '2026-05-19', NULL,         '星巴克券',            'admin', 'admin'),
+(22472, 100000, 22007, 1013, 'PT-2026-017', 'OUT', 'MALL_ORDER',    22211, -500,  1300, '2026-05-20', NULL,         '生日券',              'admin', 'admin'),
+
+(22480, 100000, 22008, 1015, 'PT-2025-011', 'IN',  'MANUAL_ADJUST', NULL,  1200,  1200, '2025-04-01', '2027-04-01', '入职奖励',           'admin', 'admin'),
+(22481, 100000, 22008, 1015, 'PT-2026-018', 'OUT', 'MALL_ORDER',    22212, -750,  450,  '2026-03-10', NULL,         '体检套餐',            'admin', 'admin'),
+
+(22490, 100000, 22009, 1018, 'PT-2025-012', 'IN',  'MANUAL_ADJUST', NULL,  2800,  2800, '2025-04-01', '2027-04-01', '入职奖励',           'admin', 'admin'),
+(22491, 100000, 22009, 1018, 'PT-2026-019', 'OUT', 'MALL_ORDER',    22213, -1000, 1800, '2026-01-15', NULL,         '美团券+生日券',        'admin', 'admin'),
+
+(22500, 100000, 22010, 1019, 'PT-2025-013', 'IN',  'MANUAL_ADJUST', NULL,  1500,  1500, '2025-04-01', '2027-04-01', '入职奖励',           'admin', 'admin'),
+(22501, 100000, 22010, 1019, 'PT-2026-020', 'OUT', 'MALL_ORDER',    22215, -900,  600,  '2026-02-20', NULL,         '美团券',              'admin', 'admin'),
+
+(22510, 100000, 22011, 1020, 'PT-2025-014', 'IN',  'MANUAL_ADJUST', NULL,  500,   500,  '2025-04-01', '2027-04-01', '入职奖励',           'admin', 'admin'),
+(22511, 100000, 22011, 1020, 'PT-2026-021', 'OUT', 'MALL_ORDER',    22216, -500,  0,    '2025-11-15', NULL,         '星巴克券',            'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_benefit_request (id, tenant_id, request_no, employee_id, scheme_id, request_type, amount, point_amount, reason, attachments, status, process_instance_id, approver_id, paid_at, remark, create_by, update_by, version) VALUES
+(22600, 100000, 'BR-2024-001', 1001, NULL, 'POINT_TOPUP',   NULL, 500,  '入职奖励',              JSON_ARRAY(), 'APPROVED',  NULL,            1, '2024-04-17 10:00:00', '', 'admin', 'admin', 2),
+(22601, 100000, 'BR-2025-001', 1001, NULL, 'BENEFIT_CLAIM', 1500.00, 0, '中秋节福利',            JSON_ARRAY(7001), 'PAID',  'WF-BR-2025-001',1, '2025-09-29 10:00:00', '已发放', 'admin', 'admin', 3),
+(22602, 100000, 'BR-2025-002', 1001, NULL, 'BENEFIT_CLAIM', 2000.00, 0, '婚假大礼包',            JSON_ARRAY(7002), 'PAID',  'WF-BR-2025-002',1, '2025-08-10 14:00:00', '已发放', 'admin', 'admin', 3),
+(22603, 100000, 'BR-2026-001', 1011, NULL, 'BENEFIT_CLAIM', 800.00,  0, '生日福利',              JSON_ARRAY(7003), 'PAID',  'WF-BR-2026-001',1, '2026-04-12 10:00:00', '已发放', 'admin', 'admin', 3),
+(22604, 100000, 'BR-2026-002', 1012, NULL, 'BENEFIT_CLAIM', 800.00,  0, '生日福利',              JSON_ARRAY(7004), 'PAID',  'WF-BR-2026-002',1, '2026-04-12 10:00:00', '已发放', 'admin', 'admin', 3),
+(22605, 100000, 'BR-2026-003', 1013, NULL, 'BENEFIT_CLAIM', 5000.00, 0, '婚假大礼包',            JSON_ARRAY(7005), 'APPROVING', 'WF-BR-2026-003', 1, NULL,           '审批中', 'admin', 'admin', 1),
+(22606, 100000, 'BR-2026-004', 1015, NULL, 'BENEFIT_CLAIM', 3000.00, 0, '生育大礼包',            JSON_ARRAY(7006), 'PAID',  'WF-BR-2026-004',1, '2026-03-20 14:00:00', '已发放', 'admin', 'admin', 3),
+(22607, 100000, 'BR-2026-005', 1018, NULL, 'BENEFIT_CLAIM', 1500.00, 0, '过年慰问',              JSON_ARRAY(7007), 'PAID',  'WF-BR-2026-005',1, '2026-02-10 10:00:00', '已发放', 'admin', 'admin', 3),
+(22608, 100000, 'BR-2026-006', 1019, NULL, 'POINT_ADJUST',  NULL,  500, '项目突出贡献积分',      JSON_ARRAY(),    'APPROVED',  NULL,            1, '2026-04-30 10:00:00', '已奖励',  'admin', 'admin', 2),
+(22609, 100000, 'BR-2026-007', 1020, NULL, 'BENEFIT_CLAIM', 500.00,  0, '过年慰问',              JSON_ARRAY(),    'REJECTED', 'WF-BR-2026-007',1, NULL,                '员工已离职',  'admin', 'admin', 2),
+(22610, 100000, 'BR-2026-008', 1011, NULL, 'BENEFIT_CLAIM', 1500.00, 0, '过年慰问',              JSON_ARRAY(7008), 'PAID',  'WF-BR-2026-008',1, '2026-02-12 10:00:00', '已发放', 'admin', 'admin', 3),
+(22611, 100000, 'BR-2026-009', 1014, NULL, 'BENEFIT_CLAIM', 800.00,  0, '生日福利',              JSON_ARRAY(7009), 'SUBMITTED','WF-BR-2026-009',NULL, NULL,           '待审批', 'admin', 'admin', 1);
+
+
+-- =====================================================================
+-- 十二、工伤管理 (work_injury/investigation/treatment/compensation/rehabilitation)
+--      ID 区间 23000-23499
+-- =====================================================================
+
+INSERT INTO cloud_flow_db.hr_work_injury (id, tenant_id, injury_no, employee_id, dept_id, occurred_at, location, event_description, injury_part, injury_level, status, process_instance_id, determined_at, determined_grade, close_reason, closed_at, create_by, update_by, version) VALUES
+(23000, 100000, 'WI-2025-001', 1006, 110, '2025-04-20 14:30:00', '总部 B 座 5 楼楼梯',     '员工下楼过程中踩空摔倒，左手腕扭伤',         '左手腕',     'MODERATE', 'CLOSED',       'WF-WI-2025-001', '2025-05-10 16:00:00', '10', '完成赔付和复工', '2025-08-30 17:00:00', 'admin', 'admin', 5),
+(23001, 100000, 'WI-2026-001', 1015, 113, '2026-04-25 09:15:00', '客户现场 - 上海宝山',     '员工在客户现场被仪器误伤，右脚骨折',         '右脚踝',     'MODERATE', 'INVESTIGATING','WF-WI-2026-001', NULL,                  NULL, NULL,             NULL,                  'admin', 'admin', 2);
+
+INSERT INTO cloud_flow_db.hr_work_injury_investigation (id, tenant_id, injury_id, employee_id, investigator_id, investigation_date, scene_photos, witness_statements, conclusion, responsibility_type, create_by, update_by) VALUES
+(23010, 100000, 23000, 1006, 2, '2025-04-22', JSON_ARRAY(8001, 8002), '同事 X 现场目击，确认员工下楼时踩空',                                   '员工本人下楼时未注意脚下，但楼梯有 1 处地砖松动，物业责任 30%', 'WORK_RELATED', 'admin', 'admin'),
+(23011, 100000, 23001, 1015, 2, '2026-04-27', JSON_ARRAY(8003, 8004), '客户现场仪器操作员 Y 现场陈述，承认仪器操作失误',                       '现场仪器操作问题为主因，建议向第三方追偿',                       'THIRD_PARTY',  'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_work_injury_treatment (id, tenant_id, injury_id, employee_id, hospital_name, admit_date, discharge_date, total_cost, insurance_covered, self_paid, diagnosis, treatment_summary, receipts, create_by, update_by) VALUES
+(23020, 100000, 23000, 1006, '上海市第六人民医院',  '2025-04-20', '2025-04-20', 800.00,   600.00,   200.00,  '左手腕轻度扭伤',    '门诊处理 + 冷敷 + 制动',           JSON_ARRAY(8101),       'admin', 'admin'),
+(23021, 100000, 23000, 1006, '上海市第六人民医院',  '2025-04-27', '2025-04-27', 600.00,   450.00,   150.00,  '左手腕轻度扭伤',    '复诊 + 物理治疗',                  JSON_ARRAY(8102),       'admin', 'admin'),
+(23022, 100000, 23000, 1006, '上海市第六人民医院',  '2025-05-11', '2025-05-25', 12000.00, 9600.00,  2400.00, '左手腕陈旧性扭伤', '住院手术 + 康复',                  JSON_ARRAY(8103,8104),  'admin', 'admin'),
+(23023, 100000, 23001, 1015, '上海市宝山区人民医院','2026-04-25', '2026-04-25', 1500.00,  1200.00,  300.00,  '右脚踝骨折',        '门诊处理 + 影像学检查 + 石膏固定',  JSON_ARRAY(8201),       'admin', 'admin'),
+(23024, 100000, 23001, 1015, '上海市宝山区人民医院','2026-04-26', '2026-05-10', 25000.00, 20000.00, 5000.00, '右脚踝骨折',        '住院手术内固定',                    JSON_ARRAY(8202,8203),  'admin', 'admin'),
+(23025, 100000, 23001, 1015, '上海市宝山区人民医院','2026-05-15', '2026-05-15', 800.00,   640.00,   160.00,  '右脚踝骨折术后', '术后复查',                          JSON_ARRAY(8204),       'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_work_injury_compensation (id, tenant_id, injury_id, employee_id, item_type, amount, payment_status, paid_at, bank_account, remark, create_by, update_by) VALUES
+(23030, 100000, 23000, 1006, 'MEDICAL',              2750.00, 'PAID', '2025-08-25 16:00:00', '6228480000000000006', '医疗自付部分',         'admin', 'admin'),
+(23031, 100000, 23000, 1006, 'DISABILITY_ALLOWANCE', 8000.00, 'PAID', '2025-08-30 16:00:00', '6228480000000000006', '10 级伤残一次性',      'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_work_injury_rehabilitation (id, tenant_id, injury_id, employee_id, return_date, position_adjustment, new_position_id, ability_assessment, follow_up_at, status, create_by, update_by) VALUES
+(23040, 100000, 23000, 1006, '2025-08-15', 'SAME',     NULL, '基本恢复，无明显功能障碍',                       '2025-09-15 14:00:00', 'RETURNED',  'admin', 'admin'),
+(23041, 100000, 23001, 1015, NULL,         'RELIGHTED',NULL, '需 3 个月康复期，建议在家远程办公轻度任务',     NULL,                  'IN_REHAB', 'admin', 'admin');
+
+
+-- =====================================================================
+-- 十三、劳动争议 (labor_dispute/mediation/arbitration/evidence)
+--      ID 区间 23500-23999
+-- =====================================================================
+
+INSERT INTO cloud_flow_db.hr_labor_dispute (id, tenant_id, dispute_no, applicant_employee_id, applicant_external_name, applicant_external_phone, dispute_type, claim_amount, claim_description, status, process_instance_id, opened_at, closed_at, close_reason, create_by, update_by, version) VALUES
+(23500, 100000, 'LD-2025-001', NULL, '前员工马某',      '13900100501', 'SALARY',     35000.00, '主张离职后未结清 2024-12 至 2025-02 三个月奖金 35000 元', 'MEDIATED', 'WF-LD-2025-001', '2025-03-15 10:00:00', '2025-04-22 16:00:00', '调解成功，约定一次性支付 25000', 'admin', 'admin', 5),
+(23501, 100000, 'LD-2025-002', NULL, '前员工孙某',      '13900100502', 'DISMISSAL',  120000.00,'主张违法解除劳动合同，要求支付经济补偿和赔偿金 12 万元', 'AWARDED',  'WF-LD-2025-002', '2025-05-08 11:00:00', '2025-10-30 16:00:00', '仲裁裁决支持部分主张 60000',   'admin', 'admin', 6);
+
+INSERT INTO cloud_flow_db.hr_dispute_mediation (id, tenant_id, dispute_id, mediator_id, mediation_date, location, process_summary, result, agreement_url, signed_at, create_by, update_by) VALUES
+(23510, 100000, 23500, 13, '2025-04-10', '总部 6F 会议室',           '双方就奖金计算口径进行了 3 轮沟通。劳方诉求 35000，资方反诉 18000。最终达成共识一次性支付 25000，并约定 5 个工作日内打款。',                                                              'SUCCESS', '/static/dispute/agreement-2025-001.pdf', '2025-04-15 16:00:00', 'admin', 'admin'),
+(23511, 100000, 23501, 13, '2025-06-15', '总部 6F 会议室',           '劳方坚持违法解除主张，要求 12 万；资方坚持过失性解除并提供考勤数据。本次调解未达成共识，劳方申请仲裁。',                                                                                'FAILED',  NULL,                                     NULL,                  'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_dispute_arbitration (id, tenant_id, dispute_id, arbitration_committee, case_no, accepted_at, hearing_dates, award_no, award_result, award_amount, effective_date, award_doc_url, remark, create_by, update_by) VALUES
+(23520, 100000, 23501, '上海市浦东新区劳动人事争议仲裁委员会', '浦劳人仲(2025)第 312 号', '2025-07-01 10:00:00', JSON_ARRAY('2025-08-15 09:30:00', '2025-09-20 09:30:00'), '浦劳人仲裁(2025)第 312 号', 'PARTIAL', 60000.00, '2025-10-20', '/static/dispute/award-2025-312.pdf', '裁决支持经济补偿，不支持赔偿金', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_dispute_evidence (id, tenant_id, dispute_id, evidence_type, file_id, file_name, file_url, uploaded_by, uploaded_at, remark, create_by, update_by) VALUES
+(23530, 100000, 23500, 'CONTRACT', 8501, '马某劳动合同.pdf',          '/static/dispute/ld001-contract.pdf', 1, '2025-03-15 11:00:00', '合同原件电子版',           'admin', 'admin'),
+(23531, 100000, 23500, 'PAYSLIP',  8502, '马某 2024-12 工资条.pdf',   '/static/dispute/ld001-payslip-12.pdf', 1, '2025-03-15 11:05:00', '12 月工资条',               'admin', 'admin'),
+(23532, 100000, 23500, 'PAYSLIP',  8503, '马某 2025-01 工资条.pdf',   '/static/dispute/ld001-payslip-01.pdf', 1, '2025-03-15 11:08:00', '1 月工资条',                'admin', 'admin'),
+(23533, 100000, 23500, 'PAYSLIP',  8504, '马某 2025-02 工资条.pdf',   '/static/dispute/ld001-payslip-02.pdf', 1, '2025-03-15 11:10:00', '2 月工资条',                'admin', 'admin'),
+(23534, 100000, 23501, 'CONTRACT', 8505, '孙某劳动合同.pdf',          '/static/dispute/ld002-contract.pdf',  1, '2025-05-08 12:00:00', '合同原件',                 'admin', 'admin'),
+(23535, 100000, 23501, 'OTHER',    8506, '孙某考勤记录.xlsx',         '/static/dispute/ld002-attendance.xlsx', 1, '2025-05-08 12:05:00', '考勤数据 2025-Q1',          'admin', 'admin'),
+(23536, 100000, 23501, 'OTHER',    8507, '解除通知书.pdf',            '/static/dispute/ld002-termination.pdf', 1, '2025-05-08 12:10:00', '解除通知书',               'admin', 'admin'),
+(23537, 100000, 23501, 'WITNESS',  8508, '孙某直属上级证人陈述.pdf',  '/static/dispute/ld002-witness.pdf',   1, '2025-08-10 14:00:00', '仲裁阶段补充',              'admin', 'admin');
+
+
+-- =====================================================================
+-- 十四、ESS 自助服务 (salary_slip/certificate_request/bank_card/family_member/benefit_payment/contract_signature/self_service_message)
+--      ID 区间 24000-24999
+-- =====================================================================
+
+INSERT INTO cloud_flow_db.hr_salary_slip (id, tenant_id, employee_id, period_month, gross_total, deduction_total, net_total, tax_amount, benefit_amount, components, pay_date, status, employee_confirmed, confirmed_time, create_by, update_by) VALUES
+-- 1001 (CEO) 三个月
+(24000, 100000, 1001, '2026-03', 50000.00, 12500.00, 37500.00, 8000.00, 4500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',30000,'kind','EARNING'),JSON_OBJECT('code','PERF','name','绩效','amount',15000,'kind','EARNING'),JSON_OBJECT('code','ALLOW','name','补贴','amount',5000,'kind','EARNING'),JSON_OBJECT('code','TAX','name','个税','amount',-8000,'kind','DEDUCTION'),JSON_OBJECT('code','SI','name','五险一金','amount',-4500,'kind','DEDUCTION')), '2026-04-10', 'PAID', 1, '2026-04-11 09:00:00', 'admin', 'admin'),
+(24001, 100000, 1001, '2026-04', 50000.00, 12500.00, 37500.00, 8000.00, 4500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',30000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 09:00:00', 'admin', 'admin'),
+(24002, 100000, 1001, '2026-05', 50000.00, 12500.00, 37500.00, 8000.00, 4500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',30000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+-- 1002 HR
+(24003, 100000, 1002, '2026-03', 35000.00, 8500.00,  26500.00, 4500.00, 4000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',22000,'kind','EARNING')), '2026-04-10', 'PAID',      1, '2026-04-11 09:30:00', 'admin', 'admin'),
+(24004, 100000, 1002, '2026-04', 35000.00, 8500.00,  26500.00, 4500.00, 4000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',22000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 09:30:00', 'admin', 'admin'),
+(24005, 100000, 1002, '2026-05', 35000.00, 8500.00,  26500.00, 4500.00, 4000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',22000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+-- 1003 财务
+(24006, 100000, 1003, '2026-03', 30000.00, 7200.00,  22800.00, 3500.00, 3700.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',20000,'kind','EARNING')), '2026-04-10', 'PAID',      1, '2026-04-11 10:00:00', 'admin', 'admin'),
+(24007, 100000, 1003, '2026-04', 30000.00, 7200.00,  22800.00, 3500.00, 3700.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',20000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 10:00:00', 'admin', 'admin'),
+(24008, 100000, 1003, '2026-05', 30000.00, 7200.00,  22800.00, 3500.00, 3700.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',20000,'kind','EARNING')), '2026-06-10', 'DRAFT',     0, NULL,                  'admin', 'admin'),
+-- 1004 研发
+(24009, 100000, 1004, '2026-03', 28000.00, 6800.00,  21200.00, 3200.00, 3600.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',18000,'kind','EARNING')), '2026-04-10', 'PAID',      1, '2026-04-11 10:30:00', 'admin', 'admin'),
+(24010, 100000, 1004, '2026-04', 28000.00, 6800.00,  21200.00, 3200.00, 3600.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',18000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 10:30:00', 'admin', 'admin'),
+(24011, 100000, 1004, '2026-05', 28000.00, 6800.00,  21200.00, 3200.00, 3600.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',18000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+-- 1005 技术
+(24012, 100000, 1005, '2026-03', 32000.00, 7600.00,  24400.00, 3800.00, 3800.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',21000,'kind','EARNING')), '2026-04-10', 'PAID',      1, '2026-04-11 11:00:00', 'admin', 'admin'),
+(24013, 100000, 1005, '2026-04', 32000.00, 7600.00,  24400.00, 3800.00, 3800.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',21000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 11:00:00', 'admin', 'admin'),
+(24014, 100000, 1005, '2026-05', 32000.00, 7600.00,  24400.00, 3800.00, 3800.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',21000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+-- 1011 销售总监
+(24015, 100000, 1011, '2026-03', 26000.00, 6500.00,  19500.00, 2800.00, 3700.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',16000,'kind','EARNING')), '2026-04-10', 'PAID',      1, '2026-04-11 11:30:00', 'admin', 'admin'),
+(24016, 100000, 1011, '2026-04', 26000.00, 6500.00,  19500.00, 2800.00, 3700.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',16000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 11:30:00', 'admin', 'admin'),
+(24017, 100000, 1011, '2026-05', 26000.00, 6500.00,  19500.00, 2800.00, 3700.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',16000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+-- 1012-1017 各两个月
+(24018, 100000, 1012, '2026-04', 22000.00, 5500.00,  16500.00, 2300.00, 3200.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',14000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 12:00:00', 'admin', 'admin'),
+(24019, 100000, 1012, '2026-05', 22000.00, 5500.00,  16500.00, 2300.00, 3200.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',14000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24020, 100000, 1013, '2026-04', 24000.00, 5800.00,  18200.00, 2500.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 12:30:00', 'admin', 'admin'),
+(24021, 100000, 1013, '2026-05', 24000.00, 5800.00,  18200.00, 2500.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24022, 100000, 1014, '2026-04', 20000.00, 5000.00,  15000.00, 2000.00, 3000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 13:00:00', 'admin', 'admin'),
+(24023, 100000, 1014, '2026-05', 20000.00, 5000.00,  15000.00, 2000.00, 3000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24024, 100000, 1015, '2026-04', 21000.00, 5200.00,  15800.00, 2100.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13500,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 13:30:00', 'admin', 'admin'),
+(24025, 100000, 1015, '2026-05', 21000.00, 5200.00,  15800.00, 2100.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13500,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24026, 100000, 1016, '2026-04', 19000.00, 4700.00,  14300.00, 1900.00, 2800.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12500,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 14:00:00', 'admin', 'admin'),
+(24027, 100000, 1016, '2026-05', 19000.00, 4700.00,  14300.00, 1900.00, 2800.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12500,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24028, 100000, 1017, '2026-04', 18000.00, 4500.00,  13500.00, 1700.00, 2800.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 14:30:00', 'admin', 'admin'),
+(24029, 100000, 1017, '2026-05', 18000.00, 4500.00,  13500.00, 1700.00, 2800.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24030, 100000, 1018, '2026-04', 34000.00, 8000.00,  26000.00, 4000.00, 4000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',23000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 15:00:00', 'admin', 'admin'),
+(24031, 100000, 1018, '2026-05', 34000.00, 8000.00,  26000.00, 4000.00, 4000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',23000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24032, 100000, 1019, '2026-04', 22000.00, 5500.00,  16500.00, 2300.00, 3200.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',14000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 15:30:00', 'admin', 'admin'),
+(24033, 100000, 1019, '2026-05', 22000.00, 5500.00,  16500.00, 2300.00, 3200.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',14000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24034, 100000, 1021, '2026-04', 23000.00, 5800.00,  17200.00, 2400.00, 3400.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 16:00:00', 'admin', 'admin'),
+(24035, 100000, 1021, '2026-05', 23000.00, 5800.00,  17200.00, 2400.00, 3400.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24036, 100000, 1022, '2026-04', 25000.00, 6000.00,  19000.00, 2600.00, 3400.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',16000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 16:30:00', 'admin', 'admin'),
+(24037, 100000, 1022, '2026-05', 25000.00, 6000.00,  19000.00, 2600.00, 3400.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',16000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24038, 100000, 1023, '2026-04', 19500.00, 4800.00,  14700.00, 1900.00, 2900.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12500,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 17:00:00', 'admin', 'admin'),
+(24039, 100000, 1023, '2026-05', 19500.00, 4800.00,  14700.00, 1900.00, 2900.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12500,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24040, 100000, 1024, '2026-04', 18800.00, 4600.00,  14200.00, 1850.00, 2750.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 17:30:00', 'admin', 'admin'),
+(24041, 100000, 1024, '2026-05', 18800.00, 4600.00,  14200.00, 1850.00, 2750.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',12000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24042, 100000, 1025, '2026-04', 20000.00, 5000.00,  15000.00, 2000.00, 3000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 17:45:00', 'admin', 'admin'),
+(24043, 100000, 1025, '2026-05', 20000.00, 5000.00,  15000.00, 2000.00, 3000.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24044, 100000, 1027, '2026-04', 21000.00, 5200.00,  15800.00, 2100.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13500,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 18:00:00', 'admin', 'admin'),
+(24045, 100000, 1027, '2026-05', 21000.00, 5200.00,  15800.00, 2100.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13500,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24046, 100000, 1031, '2026-04', 24000.00, 5800.00,  18200.00, 2500.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 18:30:00', 'admin', 'admin'),
+(24047, 100000, 1031, '2026-05', 24000.00, 5800.00,  18200.00, 2500.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24048, 100000, 1032, '2026-04', 22500.00, 5600.00,  16900.00, 2300.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',14500,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 18:45:00', 'admin', 'admin'),
+(24049, 100000, 1032, '2026-05', 22500.00, 5600.00,  16900.00, 2300.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',14500,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24050, 100000, 1037, '2026-04', 26000.00, 6300.00,  19700.00, 2800.00, 3500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',17000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 19:00:00', 'admin', 'admin'),
+(24051, 100000, 1037, '2026-05', 26000.00, 6300.00,  19700.00, 2800.00, 3500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',17000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24052, 100000, 1041, '2026-04', 25500.00, 6200.00,  19300.00, 2700.00, 3500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',16500,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 19:30:00', 'admin', 'admin'),
+(24053, 100000, 1041, '2026-05', 25500.00, 6200.00,  19300.00, 2700.00, 3500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',16500,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24054, 100000, 1043, '2026-04', 23500.00, 5700.00,  17800.00, 2400.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 19:45:00', 'admin', 'admin'),
+(24055, 100000, 1043, '2026-05', 23500.00, 5700.00,  17800.00, 2400.00, 3300.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',15000,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24056, 100000, 1045, '2026-04', 21500.00, 5300.00,  16200.00, 2200.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13800,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 20:00:00', 'admin', 'admin'),
+(24057, 100000, 1045, '2026-05', 21500.00, 5300.00,  16200.00, 2200.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13800,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin'),
+(24058, 100000, 1048, '2026-04', 20500.00, 5100.00,  15400.00, 2000.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13300,'kind','EARNING')), '2026-05-10', 'PAID',      1, '2026-05-11 20:30:00', 'admin', 'admin'),
+(24059, 100000, 1048, '2026-05', 20500.00, 5100.00,  15400.00, 2000.00, 3100.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',13300,'kind','EARNING')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_certificate_request (id, tenant_id, request_no, employee_id, certificate_type, purpose, language, recipient_org, copies, status, process_instance_id, issued_at, pdf_file_id, remark, create_by, update_by) VALUES
+(24100, 100000, 'CR-2026-001', 1001, 'EMPLOYMENT', '办理签证',      'en', '上海美国领事馆',        2, 'ISSUED',  'WF-CR-2026-001', '2026-04-20 14:00:00', 9201, '签证用',     'admin', 'admin'),
+(24101, 100000, 'CR-2026-002', 1011, 'EMPLOYMENT', '租房需要',      'zh', '上海链家',              1, 'ISSUED',  'WF-CR-2026-002', '2026-04-15 14:00:00', 9202, '租房用',     'admin', 'admin'),
+(24102, 100000, 'CR-2026-003', 1018, 'INCOME',     '住房贷款',      'zh', '工商银行',              1, 'ISSUED',  'WF-CR-2026-003', '2026-03-10 14:00:00', 9203, '贷款用',     'admin', 'admin'),
+(24103, 100000, 'CR-2026-004', 1013, 'EMPLOYMENT', '小孩入学',      'zh', '上海浦东新区教委',      1, 'PENDING', 'WF-CR-2026-004', NULL,                  NULL, '入学用',     'admin', 'admin'),
+(24104, 100000, 'CR-2026-005', 1015, 'INCOME',     '签证申请',      'en', '上海加拿大领事馆',      2, 'APPROVED','WF-CR-2026-005', NULL,                  NULL, '签证用',     'admin', 'admin'),
+(24105, 100000, 'CR-2026-006', 1004, 'EMPLOYMENT', '办理 ETC',      'zh', '中国银行',              1, 'REJECTED','WF-CR-2026-006', NULL,                  NULL, '材料不全',   'admin', 'admin'),
+(24106, 100000, 'CR-2026-007', 1019, 'EMPLOYMENT', '社保转入',      'zh', '社保中心',              1, 'ISSUED',  'WF-CR-2026-007', '2026-02-15 14:00:00', 9204, '社保用',     'admin', 'admin'),
+(24107, 100000, 'CR-2026-008', 1022, 'RESIGNATION','离职证明备用',  'zh', '本人留存',              1, 'DRAFT',   NULL,             NULL,                  NULL, '草稿',       'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_bank_card (id, tenant_id, employee_id, bank_name, bank_branch, account_no, account_holder, is_primary, status, create_by, update_by) VALUES
+(24200, 100000, 1001, '招商银行', '上海张江支行',      '6225880100000001001', '管理员',   1, 'ACTIVE', 'admin', 'admin'),
+(24201, 100000, 1004, '工商银行', '上海徐汇支行',      '6222020100000001004', '研发周',   1, 'ACTIVE', 'admin', 'admin'),
+(24202, 100000, 1005, '建设银行', '上海浦东支行',      '6217001100000001005', '运维吴',   1, 'ACTIVE', 'admin', 'admin'),
+(24203, 100000, 1011, '招商银行', '上海陆家嘴支行',    '6225880100000020011', '销售员李', 1, 'ACTIVE', 'admin', 'admin'),
+(24204, 100000, 1012, '工商银行', '上海杨浦支行',      '6222020100000020012', '员工王',   1, 'ACTIVE', 'admin', 'admin'),
+(24205, 100000, 1013, '中国银行', '上海长宁支行',      '6013821100000020013', '员工陈',   1, 'ACTIVE', 'admin', 'admin'),
+(24206, 100000, 1014, '招商银行', '上海莘庄支行',      '6225880100000020014', '员工孙',   1, 'ACTIVE', 'admin', 'admin'),
+(24207, 100000, 1015, '建设银行', '上海黄浦支行',      '6217001100000020015', '员工赵',   1, 'ACTIVE', 'admin', 'admin'),
+(24208, 100000, 1018, '工商银行', '上海张江支行',      '6222020100000020018', '架构师高', 1, 'ACTIVE', 'admin', 'admin'),
+(24209, 100000, 1019, '招商银行', '上海徐汇支行',      '6225880100000020019', '研发刘',   1, 'ACTIVE', 'admin', 'admin'),
+(24210, 100000, 1019, '中国银行', '上海徐汇支行',      '6013821100000020029', '研发刘',   0, 'INACTIVE','admin', 'admin'),
+(24211, 100000, 1021, '招商银行', '上海徐汇支行',      '6225880100000020021', '员工林',   1, 'ACTIVE', 'admin', 'admin'),
+(24212, 100000, 1031, '建设银行', '上海徐汇支行',      '6217001100000020031', '配偶柴',   1, 'ACTIVE', 'admin', 'admin'),
+(24213, 100000, 1037, '工商银行', '上海黄浦支行',      '6222020100000020037', '邓母',     1, 'ACTIVE', 'admin', 'admin'),
+(24214, 100000, 1041, '招商银行', '上海闵行支行',      '6225880100000020041', '范母',     1, 'ACTIVE', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_family_member (id, tenant_id, employee_id, member_name, relationship, id_card_no, birth_date, occupation, phone, is_dependent, remark, create_by, update_by) VALUES
+(24300, 100000, 1001, '管理员配偶', 'SPOUSE',  '310101198501010001', '1985-01-01', '工程师',   '13900100001', 0, NULL,           'admin', 'admin'),
+(24301, 100000, 1001, '管理员儿子', 'CHILD',   '310101201801010001', '2018-01-01', '学生',     NULL,         1, '小学三年级',   'admin', 'admin'),
+(24302, 100000, 1001, '管理员父亲', 'PARENT',  '310101195501010001', '1955-01-01', '退休',     '13900100011', 1, '退休工人',     'admin', 'admin'),
+(24303, 100000, 1004, '研发周妻子', 'SPOUSE',  '310101198801010002', '1988-01-01', '教师',     '13900100004', 0, NULL,           'admin', 'admin'),
+(24304, 100000, 1004, '研发周儿子', 'CHILD',   '310101202001010002', '2020-01-01', '幼儿园',   NULL,         1, '幼儿园中班',   'admin', 'admin'),
+(24305, 100000, 1005, '运维吴妻子', 'SPOUSE',  '310101198601010003', '1986-01-01', '会计',     '13900100005', 0, NULL,           'admin', 'admin'),
+(24306, 100000, 1005, '运维吴儿子', 'CHILD',   '310101201901010003', '2019-01-01', '学生',     NULL,         1, '小学一年级',   'admin', 'admin'),
+(24307, 100000, 1011, '销售员李妻子','SPOUSE', '310101199001010011', '1990-01-01', '医生',     '13900100021', 0, NULL,           'admin', 'admin'),
+(24308, 100000, 1011, '销售员李儿子','CHILD',  '310101202101010011', '2021-01-01', '幼儿',     NULL,         1, '幼儿园小班',   'admin', 'admin'),
+(24309, 100000, 1012, '员工王母亲', 'PARENT',  '310101196501010012', '1965-01-01', '退休',     '13900100022', 1, '退休教师',     'admin', 'admin'),
+(24310, 100000, 1013, '员工陈丈夫', 'SPOUSE',  '310101199201010013', '1992-01-01', '设计师',   '13900100023', 0, NULL,           'admin', 'admin'),
+(24311, 100000, 1013, '员工陈女儿', 'CHILD',   '310101202201010013', '2022-01-01', '婴儿',     NULL,         1, '婴儿',         'admin', 'admin'),
+(24312, 100000, 1014, '员工孙父亲', 'PARENT',  '310101196001010014', '1960-01-01', '退休',     '13900100024', 1, '退休工人',     'admin', 'admin'),
+(24313, 100000, 1015, '员工赵妻子', 'SPOUSE',  '310101199101010015', '1991-01-01', '护士',     '13900100025', 0, NULL,           'admin', 'admin'),
+(24314, 100000, 1018, '架构师高妻子','SPOUSE', '310101198701010018', '1987-01-01', '律师',     '13900100028', 0, NULL,           'admin', 'admin'),
+(24315, 100000, 1018, '架构师高女儿','CHILD',  '310101201701010018', '2017-01-01', '学生',     NULL,         1, '小学四年级',   'admin', 'admin'),
+(24316, 100000, 1019, '研发刘父亲', 'PARENT',  '310101196201010019', '1962-01-01', '退休',     '13900100029', 1, '退休工人',     'admin', 'admin'),
+(24317, 100000, 1021, '员工林妻子', 'SPOUSE',  '310101199301010021', '1993-01-01', '会计',     '13900100201', 0, NULL,           'admin', 'admin'),
+(24318, 100000, 1022, '员工梁丈夫', 'SPOUSE',  '310101199101010022', '1991-01-01', '律师',     '13900100202', 0, NULL,           'admin', 'admin'),
+(24319, 100000, 1027, '员工汪妻子', 'SPOUSE',  '310101199401010027', '1994-01-01', '产品经理', '13900100207', 0, NULL,           'admin', 'admin'),
+(24320, 100000, 1031, '员工柴妻子', 'SPOUSE',  '310101199301010031', '1993-01-01', '设计师',   '13900100211', 0, NULL,           'admin', 'admin'),
+(24321, 100000, 1031, '员工柴儿子', 'CHILD',   '310101202301010031', '2023-01-01', '婴儿',     NULL,         1, '婴儿',         'admin', 'admin'),
+(24322, 100000, 1037, '邓母-子',    'CHILD',   '310101201801010037', '2018-01-01', '学生',     NULL,         1, '小学三年级',   'admin', 'admin'),
+(24323, 100000, 1041, '范母-子',    'CHILD',   '310101201701010041', '2017-01-01', '学生',     NULL,         1, '小学四年级',   'admin', 'admin'),
+(24324, 100000, 1041, '范母-父',    'PARENT',  '310101196201010041', '1962-01-01', '退休',     '13900100231', 1, '退休工人',     'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_benefit_payment (id, tenant_id, employee_id, scheme_id, period_month, base_amount, company_amount, personal_amount, items, status, pay_date, create_by, update_by) VALUES
+-- 节日慰问/生日/婚育/年终 全部走 scheme_id=1
+(24400, 100000, 1001, 1, '2025-09', 0,    1500.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','MID_AUTUMN','companyAmount',1500,'personalAmount',0)), 'PAID',       '2025-09-29', 'admin', 'admin'),
+(24401, 100000, 1001, 1, '2025-12', 0,    3000.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','YEAR_END','companyAmount',3000,'personalAmount',0)),  'PAID',       '2025-12-29', 'admin', 'admin'),
+(24402, 100000, 1001, 1, '2026-01', 0,    1500.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','SPRING','companyAmount',1500,'personalAmount',0)),   'PAID',       '2026-02-10', 'admin', 'admin'),
+(24403, 100000, 1001, 1, '2026-05', 0,    800.00,  0,   JSON_ARRAY(JSON_OBJECT('itemCode','BIRTHDAY','companyAmount',800,'personalAmount',0)),  'PAID',       '2026-05-20', 'admin', 'admin'),
+(24404, 100000, 1002, 1, '2025-09', 0,    1500.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','MID_AUTUMN','companyAmount',1500,'personalAmount',0)), 'PAID',     '2025-09-29', 'admin', 'admin'),
+(24405, 100000, 1002, 1, '2025-12', 0,    3000.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','YEAR_END','companyAmount',3000,'personalAmount',0)),  'PAID',     '2025-12-29', 'admin', 'admin'),
+(24406, 100000, 1003, 1, '2025-09', 0,    1500.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','MID_AUTUMN','companyAmount',1500,'personalAmount',0)), 'PAID',     '2025-09-29', 'admin', 'admin'),
+(24407, 100000, 1003, 1, '2025-12', 0,    3000.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','YEAR_END','companyAmount',3000,'personalAmount',0)),  'PAID',     '2025-12-29', 'admin', 'admin'),
+(24408, 100000, 1004, 1, '2025-09', 0,    1500.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','MID_AUTUMN','companyAmount',1500,'personalAmount',0)), 'PAID',     '2025-09-29', 'admin', 'admin'),
+(24409, 100000, 1004, 1, '2025-12', 0,    3000.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','YEAR_END','companyAmount',3000,'personalAmount',0)),  'PAID',     '2025-12-29', 'admin', 'admin'),
+(24410, 100000, 1005, 1, '2025-09', 0,    1500.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','MID_AUTUMN','companyAmount',1500,'personalAmount',0)), 'PAID',     '2025-09-29', 'admin', 'admin'),
+(24411, 100000, 1005, 1, '2025-12', 0,    3000.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','YEAR_END','companyAmount',3000,'personalAmount',0)),  'PAID',     '2025-12-29', 'admin', 'admin'),
+(24412, 100000, 1011, 1, '2026-04', 0,    800.00,  0,   JSON_ARRAY(JSON_OBJECT('itemCode','BIRTHDAY','companyAmount',800,'personalAmount',0)),  'PAID',     '2026-04-12', 'admin', 'admin'),
+(24413, 100000, 1012, 1, '2026-04', 0,    800.00,  0,   JSON_ARRAY(JSON_OBJECT('itemCode','BIRTHDAY','companyAmount',800,'personalAmount',0)),  'PAID',     '2026-04-12', 'admin', 'admin'),
+(24414, 100000, 1013, 1, '2026-04', 0,    800.00,  0,   JSON_ARRAY(JSON_OBJECT('itemCode','BIRTHDAY','companyAmount',800,'personalAmount',0)),  'DRAFT',    NULL,         'admin', 'admin'),
+(24415, 100000, 1015, 1, '2026-03', 0,    3000.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','MATERNITY','companyAmount',3000,'personalAmount',0)),'PAID',     '2026-03-20', 'admin', 'admin'),
+(24416, 100000, 1018, 1, '2026-02', 0,    1500.00, 0,   JSON_ARRAY(JSON_OBJECT('itemCode','SPRING','companyAmount',1500,'personalAmount',0)),  'PAID',     '2026-02-10', 'admin', 'admin'),
+-- 五险一金 月度
+(24420, 100000, 1001, 2, '2026-04', 35000.00, 7500.00, 3500.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',2800,'personalAmount',1400),JSON_OBJECT('itemCode','MEDICAL','companyAmount',2900,'personalAmount',700),JSON_OBJECT('itemCode','HOUSING','companyAmount',1800,'personalAmount',1400)), 'PAID', '2026-05-10', 'admin', 'admin'),
+(24421, 100000, 1001, 2, '2026-05', 35000.00, 7500.00, 3500.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',2800,'personalAmount',1400)), 'PAID', '2026-06-10', 'admin', 'admin'),
+(24422, 100000, 1002, 2, '2026-04', 25000.00, 6300.00, 3000.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',2000,'personalAmount',1000)), 'PAID', '2026-05-10', 'admin', 'admin'),
+(24423, 100000, 1002, 2, '2026-05', 25000.00, 6300.00, 3000.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',2000,'personalAmount',1000)), 'PAID', '2026-06-10', 'admin', 'admin'),
+(24424, 100000, 1003, 2, '2026-04', 22000.00, 5800.00, 2700.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1700,'personalAmount',880)),  'PAID', '2026-05-10', 'admin', 'admin'),
+(24425, 100000, 1003, 2, '2026-05', 22000.00, 5800.00, 2700.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1700,'personalAmount',880)),  'PAID', '2026-06-10', 'admin', 'admin'),
+(24426, 100000, 1004, 2, '2026-04', 20000.00, 5400.00, 2500.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1600,'personalAmount',800)),  'PAID', '2026-05-10', 'admin', 'admin'),
+(24427, 100000, 1004, 2, '2026-05', 20000.00, 5400.00, 2500.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1600,'personalAmount',800)),  'PAID', '2026-06-10', 'admin', 'admin'),
+(24428, 100000, 1011, 2, '2026-04', 18000.00, 5100.00, 2400.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1440,'personalAmount',720)),  'PAID', '2026-05-10', 'admin', 'admin'),
+(24429, 100000, 1011, 2, '2026-05', 18000.00, 5100.00, 2400.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1440,'personalAmount',720)),  'PAID', '2026-06-10', 'admin', 'admin'),
+(24430, 100000, 1018, 2, '2026-04', 23000.00, 6000.00, 2800.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1840,'personalAmount',920)),  'PAID', '2026-05-10', 'admin', 'admin'),
+(24431, 100000, 1018, 2, '2026-05', 23000.00, 6000.00, 2800.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',1840,'personalAmount',920)),  'PAID', '2026-06-10', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_contract_signature (id, tenant_id, contract_id, signer_type, signer_id, sign_method, sign_status, sign_time, ip_address, signature_file_id, process_instance_id, expire_time, remark, create_by, update_by) VALUES
+(24500, 100000, 1101, 'EMPLOYEE', 1001, 'E_SIGN', 'SIGNED', '2024-04-15 14:20:00', '10.10.10.101', 9301, 'WF-SIG-001', '2024-04-20 23:59:59', NULL, 'admin', 'admin'),
+(24501, 100000, 1101, 'COMPANY',  1,    'E_SIGN', 'SIGNED', '2024-04-15 15:10:00', '10.10.10.102', 9301, 'WF-SIG-001', '2024-04-20 23:59:59', NULL, 'admin', 'admin'),
+(24502, 100000, 1102, 'EMPLOYEE', 1011, 'E_SIGN', 'SIGNED', '2025-04-01 11:00:00', '10.10.10.103', 9302, 'WF-SIG-002', '2025-04-05 23:59:59', NULL, 'admin', 'admin'),
+(24503, 100000, 1102, 'COMPANY',  1,    'E_SIGN', 'SIGNED', '2025-04-01 11:30:00', '10.10.10.104', 9302, 'WF-SIG-002', '2025-04-05 23:59:59', NULL, 'admin', 'admin'),
+(24504, 100000, 1103, 'EMPLOYEE', 1018, 'E_SIGN', 'SIGNED', '2024-12-01 10:00:00', '10.10.10.105', 9303, 'WF-SIG-003', '2024-12-05 23:59:59', NULL, 'admin', 'admin'),
+(24505, 100000, 1103, 'COMPANY',  1,    'E_SIGN', 'SIGNED', '2024-12-01 10:20:00', '10.10.10.106', 9303, 'WF-SIG-003', '2024-12-05 23:59:59', NULL, 'admin', 'admin'),
+(24506, 100000, 1104, 'EMPLOYEE', 1019, 'E_SIGN', 'PENDING', NULL,                  NULL,           NULL, 'WF-SIG-004', '2026-05-25 23:59:59', '员工待签署', 'admin', 'admin'),
+(24507, 100000, 1104, 'COMPANY',  1,    'E_SIGN', 'PENDING', NULL,                  NULL,           NULL, 'WF-SIG-004', '2026-05-25 23:59:59', '公司待签署', 'admin', 'admin'),
+(24508, 100000, 1105, 'EMPLOYEE', 1031, 'E_SIGN', 'SIGNED',  '2025-09-15 09:00:00', '10.10.10.110', 9304, 'WF-SIG-005', '2025-09-20 23:59:59', NULL, 'admin', 'admin'),
+(24509, 100000, 1105, 'COMPANY',  1,    'E_SIGN', 'SIGNED',  '2025-09-15 09:30:00', '10.10.10.111', 9304, 'WF-SIG-005', '2025-09-20 23:59:59', NULL, 'admin', 'admin'),
+(24510, 100000, 1106, 'EMPLOYEE', 1037, 'E_SIGN', 'EXPIRED', NULL,                  NULL,           NULL, 'WF-SIG-006', '2025-05-31 23:59:59', '员工未签署，已过期', 'admin', 'admin'),
+(24511, 100000, 1107, 'EMPLOYEE', 1041, 'E_SIGN', 'REJECTED','2025-08-01 11:00:00', '10.10.10.115', NULL, 'WF-SIG-007', '2025-08-05 23:59:59', '员工拒签 - 薪资争议', 'admin', 'admin');
+
+INSERT INTO cloud_flow_db.hr_self_service_message (id, tenant_id, employee_id, category, title, summary, link_url, related_id, read_flag) VALUES
+(24600, 100000, 1001, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24002', 24002, 0),
+(24601, 100000, 1001, 'BENEFIT',  '生日福利已发放',                '生日礼盒已发放至工位',    '/ess/benefit/24403',    24403, 0),
+(24602, 100000, 1001, 'CERT',     '您的在职证明已开具',            '请前往 ESS 门户下载 PDF', '/ess/cert/24100',       24100, 1),
+(24603, 100000, 1002, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24005', 24005, 1),
+(24604, 100000, 1003, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24008', 24008, 0),
+(24605, 100000, 1003, 'SLIP',     '您的 2026 年 4 月工资条已确认', '感谢您的及时确认',        '/ess/salary-slip/24007', 24007, 1),
+(24606, 100000, 1004, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24011', 24011, 0),
+(24607, 100000, 1004, 'CERT',     '在职证明申请被驳回',            '材料不全，请重新提交',    '/ess/cert/24105',       24105, 1),
+(24608, 100000, 1005, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24014', 24014, 0),
+(24609, 100000, 1011, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24017', 24017, 0),
+(24610, 100000, 1011, 'BENEFIT',  '生日福利已发放',                '生日礼盒已发放至工位',    '/ess/benefit/24412',    24412, 1),
+(24611, 100000, 1011, 'CERT',     '您的在职证明已开具',            '请前往 ESS 门户下载',     '/ess/cert/24101',       24101, 1),
+(24612, 100000, 1011, 'TRAINING', '您已被分配到培训班 TS-2026-005','请按时签到',              '/ess/training/20245',   20245, 1),
+(24613, 100000, 1012, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24019', 24019, 0),
+(24614, 100000, 1012, 'BENEFIT',  '生日福利已发放',                '生日礼盒已发放至工位',    '/ess/benefit/24413',    24413, 0),
+(24615, 100000, 1013, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24021', 24021, 0),
+(24616, 100000, 1013, 'CERT',     '您的在职证明申请已提交',        '正在审批中',              '/ess/cert/24103',       24103, 1),
+(24617, 100000, 1014, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24023', 24023, 0),
+(24618, 100000, 1015, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24025', 24025, 0),
+(24619, 100000, 1015, 'BENEFIT',  '生育大礼包已发放',              '请查收',                  '/ess/benefit/24415',    24415, 1),
+(24620, 100000, 1015, 'CERT',     '您的在职证明已审批通过',        '审批通过，待出具',        '/ess/cert/24104',       24104, 0),
+(24621, 100000, 1018, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24031', 24031, 1),
+(24622, 100000, 1018, 'CERT',     '您的收入证明已开具',            '请前往 ESS 门户下载',     '/ess/cert/24102',       24102, 1),
+(24623, 100000, 1019, 'SLIP',     '您的 2026 年 5 月工资条已生成', '请前往 ESS 门户确认',     '/ess/salary-slip/24033', 24033, 0),
+(24624, 100000, 1019, 'CONTRACT', '您的合同续签待签署',            '请前往 ESS 门户签署',     '/ess/contract/1104',    1104,  0),
+(24625, 100000, 1037, 'CONTRACT', '您的合同签署链接已过期',        '请重新发起或线下签署',    '/ess/contract/1106',    1106,  0),
+(24626, 100000, 1041, 'CONTRACT', '您的合同被拒签',                '请联系 HR 处理',          '/ess/contract/1107',    1107,  1),
+(24627, 100000, 1001, 'LEAVE',    '您的年假余额还有 5 天',         '年底前请合理安排',        '/ess/leave/balance',    NULL,  0),
+(24628, 100000, 1022, 'CERT',     '您有 1 份离职证明草稿未提交',   '请尽快完善或丢弃',        '/ess/cert/24107',       24107, 0),
+(24629, 100000, 1011, 'TRAINING', '您已结业 TS-2025-003',          '证书已颁发',              '/ess/training/cert/20521', 20521, 1);
+
+
+-- =====================================================================
+-- 十四（续）、ESS 自助数据补齐
+--   目标：让 admin (sys_user.user_id=1 ↔ hr_employee.id=1) 登录后能看到完整自助门户数据。
+--   背景：原 ESS 种子数据 employee_id 起始 1001 (赵HR)，admin 自己 (employee_id=1) 无任何记录，
+--         portalSummary 全部返回空 → 个人信息/工资条/福利/证明/合同/假期余额全部空白。
+--   补齐范围：
+--     1) admin 自身 ESS 全套：contract / employee_comp / leave_quota / salary_slip /
+--        certificate_request / bank_card / family_member / benefit_payment /
+--        contract_signature / self_service_message
+--     2) 顺带给 1001/1003-1009 (其他绑定 sys_user 的员工) 补齐 hr_leave_quota，避免他们登录
+--        ESS 时假期余额一片空白
+--   ID 段：24060-24069 / 24108-24109 / 24215 / 24325-24327 / 24432-24435 / 24512-24513 / 24630-24634
+-- =====================================================================
+
+-- ---------- 14.续.1 admin 员工合同（contract_id=1100 显式指定，错开 1101-1107）----------
+INSERT INTO cloud_flow_db.hr_employee_contract (id, tenant_id, employee_id, contract_type, contract_no, sign_date, start_date, end_date, attachment_urls, status, sign_status, signed_at, create_by, update_by) VALUES
+(1100, 100000, 1, 'LABOR', 'CT-ADMIN-2023-001', '2023-01-01', '2023-01-01', '2028-12-31',
+ JSON_ARRAY('https://demo.cloudflow.local/files/contract/admin-2023.pdf'),
+ 'ACTIVE', 'SIGNED', '2023-01-02 14:00:00', 'admin', 'admin');
+
+-- ---------- 14.续.2 admin + 1001 薪酬卡片 ----------
+INSERT INTO cloud_flow_db.hr_employee_comp (tenant_id, employee_id, structure_id, grade_id, component_values, total_salary, effective_date, status, create_by, update_by) VALUES
+(100000, 1,    100, 101, JSON_OBJECT('BASE',30000,'ALLOWANCE',5000,'BONUS',15000), 50000, '2026-01-01', 'ACTIVE', 'admin', 'admin'),
+(100000, 1001, 100, 100, JSON_OBJECT('BASE',16000,'ALLOWANCE',2000,'BONUS',2000),  20000, '2025-01-01', 'ACTIVE', 'admin', 'admin');
+
+-- ---------- 14.续.3 假期余额：admin + 1001/1003-1009 共 9 员工，每人 ANNUAL+COMP_TIME ----------
+INSERT INTO cloud_flow_db.hr_leave_quota (tenant_id, employee_id, leave_type_id, year, total_quota, used_quota, frozen_quota, available_quota, expiry_date, create_by, update_by) VALUES
+(100000, 1,    100, YEAR(CURDATE()), 15, 3, 1, 11, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1,    102, YEAR(CURDATE()), 16, 6, 0, 10, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1001, 100, YEAR(CURDATE()), 10, 2, 0,  8, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1001, 102, YEAR(CURDATE()),  8, 2, 0,  6, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1003, 100, YEAR(CURDATE()),  8, 1, 0,  7, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1003, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1004, 100, YEAR(CURDATE()), 10, 3, 1,  6, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1004, 102, YEAR(CURDATE()),  8, 4, 0,  4, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1005, 100, YEAR(CURDATE()),  7, 0, 0,  7, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1005, 102, YEAR(CURDATE()),  8, 2, 0,  6, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1006, 100, YEAR(CURDATE()),  7, 1, 0,  6, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1006, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1007, 100, YEAR(CURDATE()),  5, 0, 0,  5, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1007, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1008, 100, YEAR(CURDATE()), 10, 5, 0,  5, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1008, 102, YEAR(CURDATE()),  8, 3, 0,  5, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin'),
+(100000, 1009, 100, YEAR(CURDATE()),  7, 0, 0,  7, STR_TO_DATE(CONCAT(YEAR(CURDATE()), '-12-31'), '%Y-%m-%d'), 'admin', 'admin'),
+(100000, 1009, 102, YEAR(CURDATE()),  8, 0, 0,  8, DATE_ADD(CURDATE(), INTERVAL 90 DAY),                       'admin', 'admin');
+
+-- ---------- 14.续.4 admin 工资条三月 ----------
+INSERT INTO cloud_flow_db.hr_salary_slip (id, tenant_id, employee_id, period_month, gross_total, deduction_total, net_total, tax_amount, benefit_amount, components, pay_date, status, employee_confirmed, confirmed_time, create_by, update_by) VALUES
+(24060, 100000, 1, '2026-03', 50000.00, 12500.00, 37500.00, 8000.00, 4500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',30000,'kind','EARNING'),JSON_OBJECT('code','PERF','name','绩效','amount',15000,'kind','EARNING'),JSON_OBJECT('code','ALLOW','name','补贴','amount',5000,'kind','EARNING'),JSON_OBJECT('code','TAX','name','个税','amount',-8000,'kind','DEDUCTION'),JSON_OBJECT('code','SI','name','五险一金','amount',-4500,'kind','DEDUCTION')), '2026-04-10', 'PAID',      1, '2026-04-11 09:00:00', 'admin', 'admin'),
+(24061, 100000, 1, '2026-04', 50000.00, 12500.00, 37500.00, 8000.00, 4500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',30000,'kind','EARNING'),JSON_OBJECT('code','PERF','name','绩效','amount',15000,'kind','EARNING'),JSON_OBJECT('code','ALLOW','name','补贴','amount',5000,'kind','EARNING'),JSON_OBJECT('code','TAX','name','个税','amount',-8000,'kind','DEDUCTION'),JSON_OBJECT('code','SI','name','五险一金','amount',-4500,'kind','DEDUCTION')), '2026-05-10', 'PAID',      1, '2026-05-11 09:00:00', 'admin', 'admin'),
+(24062, 100000, 1, '2026-05', 50000.00, 12500.00, 37500.00, 8000.00, 4500.00, JSON_ARRAY(JSON_OBJECT('code','BASE','name','基本工资','amount',30000,'kind','EARNING'),JSON_OBJECT('code','PERF','name','绩效','amount',15000,'kind','EARNING'),JSON_OBJECT('code','ALLOW','name','补贴','amount',5000,'kind','EARNING'),JSON_OBJECT('code','TAX','name','个税','amount',-8000,'kind','DEDUCTION'),JSON_OBJECT('code','SI','name','五险一金','amount',-4500,'kind','DEDUCTION')), '2026-06-10', 'CONFIRMED', 0, NULL,                  'admin', 'admin');
+
+-- ---------- 14.续.5 admin 证明开具 ----------
+INSERT INTO cloud_flow_db.hr_certificate_request (id, tenant_id, request_no, employee_id, certificate_type, purpose, language, recipient_org, copies, status, process_instance_id, issued_at, pdf_file_id, remark, create_by, update_by) VALUES
+(24108, 100000, 'CR-2026-009', 1, 'EMPLOYMENT', '出差签证申请',  'en', '上海日本领事馆', 2, 'ISSUED',  'WF-CR-2026-009', '2026-04-25 16:00:00', 9210, 'CEO 出差签证用',         'admin', 'admin'),
+(24109, 100000, 'CR-2026-010', 1, 'INCOME',     '购房贷款',      'zh', '招商银行',       1, 'APPROVED','WF-CR-2026-010', NULL,                  NULL, '待出具 PDF',             'admin', 'admin');
+
+-- ---------- 14.续.6 admin 工资银行卡 ----------
+INSERT INTO cloud_flow_db.hr_bank_card (id, tenant_id, employee_id, bank_name, bank_branch, account_no, account_holder, is_primary, status, create_by, update_by) VALUES
+(24215, 100000, 1, '招商银行', '上海总行营业部', '6225880100000000001', '管理员', 1, 'ACTIVE', 'admin', 'admin');
+
+-- ---------- 14.续.7 admin 家属信息 ----------
+INSERT INTO cloud_flow_db.hr_family_member (id, tenant_id, employee_id, member_name, relationship, id_card_no, birth_date, occupation, phone, is_dependent, remark, create_by, update_by) VALUES
+(24325, 100000, 1, '管理员配偶', 'SPOUSE',  '310101198801010099', '1988-01-01', '高级工程师', '13900100099', 0, NULL,         'admin', 'admin'),
+(24326, 100000, 1, '管理员长子', 'CHILD',   '310101201501010099', '2015-01-01', '学生',       NULL,         1, '小学五年级', 'admin', 'admin'),
+(24327, 100000, 1, '管理员父亲', 'PARENT',  '310101195501010099', '1955-01-01', '退休',       '13900100098', 1, '退休教师',   'admin', 'admin');
+
+-- ---------- 14.续.8 admin 福利发放 ----------
+INSERT INTO cloud_flow_db.hr_benefit_payment (id, tenant_id, employee_id, scheme_id, period_month, base_amount, company_amount, personal_amount, items, status, pay_date, create_by, update_by) VALUES
+(24432, 100000, 1, 1, '2025-09', 0,        1500.00, 0,       JSON_ARRAY(JSON_OBJECT('itemCode','MID_AUTUMN','companyAmount',1500,'personalAmount',0)), 'PAID', '2025-09-29', 'admin', 'admin'),
+(24433, 100000, 1, 1, '2025-12', 0,        5000.00, 0,       JSON_ARRAY(JSON_OBJECT('itemCode','YEAR_END','companyAmount',5000,'personalAmount',0)),   'PAID', '2025-12-29', 'admin', 'admin'),
+(24434, 100000, 1, 2, '2026-04', 35000.00, 7500.00, 3500.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',2800,'personalAmount',1400),JSON_OBJECT('itemCode','MEDICAL','companyAmount',2900,'personalAmount',700),JSON_OBJECT('itemCode','HOUSING','companyAmount',1800,'personalAmount',1400)), 'PAID', '2026-05-10', 'admin', 'admin'),
+(24435, 100000, 1, 2, '2026-05', 35000.00, 7500.00, 3500.00, JSON_ARRAY(JSON_OBJECT('itemCode','PENSION','companyAmount',2800,'personalAmount',1400),JSON_OBJECT('itemCode','MEDICAL','companyAmount',2900,'personalAmount',700),JSON_OBJECT('itemCode','HOUSING','companyAmount',1800,'personalAmount',1400)), 'PAID', '2026-06-10', 'admin', 'admin');
+
+-- ---------- 14.续.9 admin 合同电子签 (contract_id=1100) ----------
+INSERT INTO cloud_flow_db.hr_contract_signature (id, tenant_id, contract_id, signer_type, signer_id, sign_method, sign_status, sign_time, ip_address, signature_file_id, process_instance_id, expire_time, remark, create_by, update_by) VALUES
+(24512, 100000, 1100, 'EMPLOYEE', 1, 'E_SIGN', 'SIGNED', '2023-01-02 13:55:00', '10.10.10.001', 9300, 'WF-SIG-ADMIN', '2023-01-08 23:59:59', NULL, 'admin', 'admin'),
+(24513, 100000, 1100, 'COMPANY',  1, 'E_SIGN', 'SIGNED', '2023-01-02 14:00:00', '10.10.10.002', 9300, 'WF-SIG-ADMIN', '2023-01-08 23:59:59', NULL, 'admin', 'admin');
+
+-- ---------- 14.续.10 admin 自助消息 ----------
+INSERT INTO cloud_flow_db.hr_self_service_message (id, tenant_id, employee_id, category, title, summary, link_url, related_id, read_flag) VALUES
+(24630, 100000, 1, 'SLIP',     '您的 2026 年 5 月工资条已生成',  '请前往 ESS 门户确认',     '/ess/salary-slip/24062', 24062, 0),
+(24631, 100000, 1, 'CERT',     '您的在职证明已开具',             '请前往 ESS 门户下载 PDF', '/ess/cert/24108',       24108, 1),
+(24632, 100000, 1, 'CERT',     '您的收入证明已审批通过',         '审批通过，待出具',        '/ess/cert/24109',       24109, 0),
+(24633, 100000, 1, 'BENEFIT',  '中秋慰问福利已发放',             '已发放至工资卡',          '/ess/benefit/24432',    24432, 1),
+(24634, 100000, 1, 'LEAVE',    '您还有 11 天年假未使用',         '年底前请合理安排',        '/ess/leave/balance',    NULL,  0);
+
+
+-- =====================================================================
+-- 十五、审计日志 + 工作流回调监控 (ID 25000-25999)
+-- =====================================================================
+
+-- ---------- 15.1 HR 审计日志 ----------
+INSERT INTO cloud_flow_db.hr_audit_log
+(id, tenant_id, business_domain, business_id, operation_type, operator_id, operator_name, before_data, after_data, create_time) VALUES
+(25000, 100000, 'EMPLOYEE',    1011, 'CREATE',   2,  '人事专员A',
+ NULL,
+ JSON_OBJECT('employeeNo','CF20260011','name','员工11','departmentId',101,'status','ACTIVE'),
+ '2025-03-01 09:12:31'),
+(25001, 100000, 'EMPLOYEE',    1012, 'CREATE',   2,  '人事专员A',
+ NULL,
+ JSON_OBJECT('employeeNo','CF20260012','name','员工12','departmentId',101,'status','PROBATION'),
+ '2025-03-01 09:15:08'),
+(25002, 100000, 'CONTRACT',    1101, 'CREATE',   2,  '人事专员A',
+ NULL,
+ JSON_OBJECT('contractNo','CT-2025-1011-001','employeeId',1011,'type','FIXED_TERM','startDate','2025-03-01','endDate','2028-02-29'),
+ '2025-03-01 10:02:11'),
+(25003, 100000, 'CONTRACT',    1101, 'APPROVE',  3,  '人事经理',
+ JSON_OBJECT('status','DRAFT'),
+ JSON_OBJECT('status','EFFECTIVE','approvedAt','2025-03-02 14:30:00'),
+ '2025-03-02 14:30:08'),
+(25004, 100000, 'SALARY',      1002, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('basicSalary',18000.00,'effectiveDate','2024-01-01'),
+ JSON_OBJECT('basicSalary',20000.00,'effectiveDate','2025-01-01','reason','年度调薪'),
+ '2025-01-05 11:00:42'),
+(25005, 100000, 'SALARY',      1003, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('basicSalary',15000.00,'effectiveDate','2024-01-01'),
+ JSON_OBJECT('basicSalary',17000.00,'effectiveDate','2025-01-01','reason','年度调薪'),
+ '2025-01-05 11:03:17'),
+(25006, 100000, 'POSITION',    1004, 'UPDATE',   3,  '人事经理',
+ JSON_OBJECT('positionId',2001,'positionName','技术专员','jobLevelId',3),
+ JSON_OBJECT('positionId',2002,'positionName','高级工程师','jobLevelId',4,'reason','晋升'),
+ '2025-04-15 10:00:00'),
+(25007, 100000, 'POSITION',    1005, 'UPDATE',   3,  '人事经理',
+ JSON_OBJECT('positionId',2010,'positionName','销售专员','jobLevelId',3),
+ JSON_OBJECT('positionId',2011,'positionName','销售经理','jobLevelId',5,'reason','岗位调动+晋升'),
+ '2025-05-01 09:30:00'),
+(25008, 100000, 'PERFORMANCE', 9101, 'EXPORT',   3,  '人事经理',
+ NULL,
+ JSON_OBJECT('exportType','EXCEL','rowCount',147,'period','2024-H2','reason','绩效校准会议'),
+ '2025-01-12 16:45:21'),
+(25009, 100000, 'PERFORMANCE', 9102, 'EXPORT',   4,  '总经理',
+ NULL,
+ JSON_OBJECT('exportType','PDF','rowCount',12,'period','2024-H2','scope','高管','reason','董事会汇报'),
+ '2025-01-20 19:10:55'),
+(25010, 100000, 'CONTRACT',    1104, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('status','EFFECTIVE','endDate','2026-03-01'),
+ JSON_OBJECT('status','RENEWING','endDate','2029-02-28','reason','续签发起'),
+ '2026-01-15 14:20:00'),
+(25011, 100000, 'EMPLOYEE',    1037, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('status','PROBATION'),
+ JSON_OBJECT('status','ACTIVE','reason','转正'),
+ '2025-09-01 09:00:00'),
+(25012, 100000, 'EMPLOYEE',    1041, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('status','ACTIVE'),
+ JSON_OBJECT('status','RESIGNED','resignDate','2025-12-15','reason','个人原因'),
+ '2025-12-15 17:30:00'),
+(25013, 100000, 'BANK_CARD',   24200, 'CREATE',  1,  '员工本人',
+ NULL,
+ JSON_OBJECT('employeeId',1001,'bankName','招商银行','isPrimary',true),
+ '2025-06-01 10:00:00'),
+(25014, 100000, 'BANK_CARD',   24201, 'UPDATE',  1011,'员工11',
+ JSON_OBJECT('isPrimary',false),
+ JSON_OBJECT('isPrimary',true,'reason','换卡'),
+ '2025-09-12 11:32:08'),
+(25015, 100000, 'WORK_INJURY', 23000, 'CREATE',  3,  '人事经理',
+ NULL,
+ JSON_OBJECT('caseNo','WI-2025-001','employeeId',1013,'status','REPORTED'),
+ '2025-04-12 09:00:00'),
+(25016, 100000, 'WORK_INJURY', 23000, 'APPROVE', 4,  '总经理',
+ JSON_OBJECT('status','INVESTIGATING'),
+ JSON_OBJECT('status','CLOSED','compensationAmount',38500.00),
+ '2025-10-25 16:00:00'),
+(25017, 100000, 'LABOR_DISPUTE',23500,'CREATE',  3,  '法务专员',
+ NULL,
+ JSON_OBJECT('caseNo','LD-2025-001','employeeId',1041,'stage','MEDIATION'),
+ '2025-12-20 14:00:00'),
+(25018, 100000, 'TRAINING',    20301, 'CREATE',  2,  '培训官A',
+ NULL,
+ JSON_OBJECT('sessionNo','TS-2026-005','courseId',20203,'status','PLANNED'),
+ '2026-04-10 10:00:00'),
+(25019, 100000, 'TRAINING',    20521, 'CREATE',  2,  '培训官A',
+ NULL,
+ JSON_OBJECT('certificateNo','CERT-2025-011','employeeId',1011,'status','VALID'),
+ '2025-09-30 17:00:00'),
+(25020, 100000, 'BENEFIT',     22501, 'APPROVE', 3,  '人事经理',
+ JSON_OBJECT('status','PENDING'),
+ JSON_OBJECT('status','APPROVED','approvedAt','2025-09-25 11:00:00'),
+ '2025-09-25 11:00:00'),
+(25021, 100000, 'POINT',       22100, 'UPDATE',  3,  '人事经理',
+ JSON_OBJECT('totalPoints',850),
+ JSON_OBJECT('totalPoints',1200,'changeAmount',350,'reason','年度奖励'),
+ '2025-12-31 23:55:00'),
+(25022, 100000, 'MALL_ORDER',  22300, 'APPROVE', 3,  '人事经理',
+ JSON_OBJECT('status','APPROVING'),
+ JSON_OBJECT('status','APPROVED','approvedAt','2026-04-12 10:00:00'),
+ '2026-04-12 10:00:00'),
+(25023, 100000, 'TALENT',      21002, 'EXPORT',  3,  '人事经理',
+ NULL,
+ JSON_OBJECT('exportType','EXCEL','reviewId',21000,'participantCount',18,'reason','9 宫格汇报'),
+ '2025-02-05 18:00:00'),
+(25024, 100000, 'CERTIFICATE_REQ',24105,'REJECT',2,  '人事专员A',
+ JSON_OBJECT('status','PENDING'),
+ JSON_OBJECT('status','REJECTED','rejectReason','材料不全'),
+ '2026-05-08 14:20:00'),
+(25025, 100000, 'CONTRACT',    1106, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('status','SIGNING'),
+ JSON_OBJECT('status','EXPIRED','reason','员工未签署超时'),
+ '2025-06-01 00:30:00'),
+(25026, 100000, 'CONTRACT',    1107, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('status','SIGNING'),
+ JSON_OBJECT('status','REJECTED','rejectReason','薪资争议'),
+ '2025-08-01 11:00:00'),
+(25027, 100000, 'EMPLOYEE',    1045, 'UPDATE',   2,  '人事专员A',
+ JSON_OBJECT('employmentType','INTERN'),
+ JSON_OBJECT('employmentType','FORMAL','reason','实习转正'),
+ '2025-11-01 09:00:00'),
+(25028, 100000, 'SALARY_SLIP', 24002, 'EXPORT',  1001,'员工本人',
+ NULL,
+ JSON_OBJECT('exportType','PDF','period','2026-05','channel','ESS_PORTAL'),
+ '2026-05-10 19:32:11'),
+(25029, 100000, 'AUDIT',       0,    'EXPORT',   4,  '审计专员',
+ NULL,
+ JSON_OBJECT('exportType','EXCEL','rowCount',1200,'period','2025-Q4','scope','全量审计日志','reason','年度审计'),
+ '2026-01-15 14:00:00');
+
+-- ---------- 15.2 工作流回调死信队列 ----------
+INSERT INTO cloud_flow_db.wf_callback_dead_letter
+(id, stream_key, process_instance_id, business_type, business_id, payload_json, retry_count, last_error, status, create_time, update_time) VALUES
+(25100, 'workflow:callback:stream', 'PI-HR-CONTRACT-2025-0050', 'HR_CONTRACT_RENEW', 1104,
+ JSON_OBJECT('eventType','APPROVAL_PASSED','processInstanceId','PI-HR-CONTRACT-2025-0050','businessType','HR_CONTRACT_RENEW','businessId',1104,'result','PASS','approver','人事经理','timestamp','2026-01-20 15:30:00'),
+ 5, 'OptimisticLockException: hr_employee_contract version mismatch (expected=3 actual=4)',
+ 'PENDING',     '2026-01-20 15:30:15', '2026-01-20 15:32:08'),
+(25101, 'workflow:callback:stream', 'PI-HR-RESIGN-2025-0017',   'HR_RESIGNATION',    1041,
+ JSON_OBJECT('eventType','APPROVAL_PASSED','processInstanceId','PI-HR-RESIGN-2025-0017','businessType','HR_RESIGNATION','businessId',1041,'result','PASS','approver','总经理','timestamp','2025-12-15 17:00:00'),
+ 3, 'DataIntegrityViolationException: hr_resignation row not found for id=1041',
+ 'REPLAYED',    '2025-12-15 17:00:30', '2025-12-15 18:45:11'),
+(25102, 'workflow:callback:stream', 'PI-CRM-CONTRACT-2026-0023','CRM_SALES_CONTRACT', 9203,
+ JSON_OBJECT('eventType','APPROVAL_REJECTED','processInstanceId','PI-CRM-CONTRACT-2026-0023','businessType','CRM_SALES_CONTRACT','businessId',9203,'result','REJECT','approver','销售总监','rejectReason','金额超限','timestamp','2026-05-10 11:20:00'),
+ 8, 'SocketTimeoutException: connect to crm-service:9203 timed out after 5000ms',
+ 'DISCARDED',   '2026-05-10 11:20:08', '2026-05-10 11:35:42');
+
+-- ---------- 15.3 工作流业务对账告警 ----------
+INSERT INTO cloud_flow_db.wf_reconcile_alert
+(id, process_instance_id, business_type, business_id, expected_status, actual_status, create_time) VALUES
+(25200, 'PI-HR-CONTRACT-2025-0050', 'HR_CONTRACT_RENEW', 1104, 'EFFECTIVE', 'RENEWING',  '2026-05-21 02:00:08'),
+(25201, 'PI-HR-RESIGN-2025-0017',   'HR_RESIGNATION',    1041, 'COMPLETED', 'PENDING',   '2026-05-21 02:00:12'),
+(25202, 'PI-CRM-CONTRACT-2026-0023','CRM_SALES_CONTRACT', 9203, 'REJECTED',  'PENDING',   '2026-05-21 02:00:18');
+
+
+-- =====================================================================
+-- 十六、TODO 占位 — 以下业务表 schema 尚未落地（01-05 DDL 文件均未定义），
+--                 待对应模块 DDL 合入后回补种子数据：
+--   - crm_contract              （合同管理：销售合同生命周期）
+--   - crm_business_card         （销售名片/拓客）
+--   - biz_form_definition       （通用动态表单定义）
+--   - biz_form_data             （通用动态表单数据）
+--   - biz_attachment            （通用附件存储）
+--   补充原则：
+--     1) DELETE-then-INSERT 幂等模式（参见本文件顶部 9800-9900 行 DELETE 区块）
+--     2) ID 段使用 26000-29999（与本批 20000-25999 区段不冲突）
+--     3) 租户统一 tenant_id=100000，时间窗口 2024-01 ~ 2026-05
+--     4) 加密字段（@EncryptField）写明文占位 — Java 侧 MyBatis 拦截器加密
+--     5) FK 顺序：父表先 INSERT、子表后 INSERT；DELETE 反向依赖序
+-- =====================================================================
+
+
+-- =====================================================================
+-- 十七、业务板块缺口补齐 (26000-26999) — wf 监控 5 + OA 7 + CRM 3
+-- 父 ID 引用：oa_seal 9001-9003 / oa_knowledge_document 9001-9002
+--             oa_budget_plan 9101-9104 / oa_budget_line 9101-9106 / oa_budget_subject 9101-9103
+--             crm_customer 8801-8803 / crm_opportunity 8801-8802 / crm_quote 8801-8803
+--             crm_product 8901-8904 / oa_contract 9201-9203 / wf_deploy_record 98001-98002
+-- =====================================================================
+
+-- ---------- 17.1.1 工作流异常告警 wf_anomaly_alert (26000-26014, 15 行) ----------
+INSERT INTO cloud_flow_db.wf_anomaly_alert
+(id, tenant_id, instance_id, task_id, process_def_key, process_def_name, node_key, node_name,
+ anomaly_type, severity, error_message, stack_trace, resolved, resolve_note, alert_time, resolve_time, notification_sent, create_time, update_time) VALUES
+(26000, 100000, 'PI-HR-CONTRACT-2025-0050', 'TASK-2025-0050-3', 'hr_contract_renew', 'HR合同续签', 'NODE_HR_REVIEW', '人事复核',
+ 'CALLBACK_FAILED',     'HIGH',     'OptimisticLockException: hr_employee_contract version mismatch (expected=3 actual=4)',
+ 'java.lang.RuntimeException: OptimisticLockException\n\tat com.cloudflow.hr.service.HrEmployeeContractService.renew(HrEmployeeContractService.java:189)\n\tat ...', 'N', NULL,
+ '2026-01-20 15:30:30', NULL, 'Y', '2026-01-20 15:30:30', '2026-01-20 15:30:30'),
+(26001, 100000, 'PI-HR-RESIGN-2025-0017', 'TASK-2025-0017-2', 'hr_resignation', 'HR员工离职审批', 'NODE_FINANCE_CLEAR', '财务结算',
+ 'NODE_TIMEOUT',         'MEDIUM',   '节点处理超时：财务结算超过 SLA 48h 仍未处理',
+ NULL, 'Y', '已通过加急路由派至张总并签收，案已闭环。',
+ '2025-12-15 17:00:30', '2025-12-16 09:20:00', 'Y', '2025-12-15 17:00:30', '2025-12-16 09:20:00'),
+(26002, 100000, 'PI-CRM-CONTRACT-2026-0023', 'TASK-2026-0023-4', 'crm_sales_contract', 'CRM销售合同审批', 'NODE_SALES_DIRECTOR', '销售总监审批',
+ 'CALLBACK_FAILED',      'CRITICAL', 'SocketTimeoutException: connect to crm-service:9203 timed out after 5000ms',
+ 'java.net.SocketTimeoutException\n\tat io.netty.handler.timeout.ReadTimeoutHandler.readTimedOut(...)', 'N', NULL,
+ '2026-05-10 11:20:08', NULL, 'Y', '2026-05-10 11:20:08', '2026-05-10 11:35:42'),
+(26003, 100000, 'PI-OA-REIMBURSE-2026-0102', 'TASK-2026-0102-1', 'biz_reimburse', '财务报销流程', 'NODE_BUDGET_CHECK', '预算占用校验',
+ 'BUSINESS_EXCEPTION',   'HIGH',     '预算占用失败：oa_budget_plan id=9104 可用余额 20000.00 不足以占用 35000.00',
+ NULL, 'Y', '已调整报销金额至 18000 后重新提交。',
+ '2026-05-12 10:15:22', '2026-05-12 11:00:00', 'Y', '2026-05-12 10:15:22', '2026-05-12 11:00:00'),
+(26004, 100000, 'PI-HR-LEAVE-2026-0381', NULL, 'hr_leave_request', 'HR请假申请', 'NODE_DIRECT_LEADER', '直接上级审批',
+ 'APPROVER_UNAVAILABLE', 'LOW',      '审批人当前请休假中，已自动转交其代理人',
+ NULL, 'Y', '已切换审批人，案自动闭环。',
+ '2026-05-15 09:30:00', '2026-05-15 09:30:05', 'N', '2026-05-15 09:30:00', '2026-05-15 09:30:05'),
+(26005, 100000, 'PI-OA-PAYMENT-2026-0058', 'TASK-2026-0058-2', 'biz_payment', '付款申请流程', 'NODE_FINANCE_PAY', '财务付款',
+ 'CALLBACK_FAILED',      'HIGH',     'biz_payment_request id=8801 not found',
+ NULL, 'N', NULL,
+ '2026-05-18 14:22:08', NULL, 'Y', '2026-05-18 14:22:08', '2026-05-18 14:22:08'),
+(26006, 100000, 'PI-CRM-CLAIM-2026-0011', 'TASK-2026-0011-1', 'crm_customer_claim', 'CRM客户领取审批', 'NODE_SALES_MANAGER', '销售经理审批',
+ 'NODE_TIMEOUT',         'MEDIUM',   '客户领取审批超过 24h SLA',
+ NULL, 'N', NULL,
+ '2026-05-20 08:00:00', NULL, 'Y', '2026-05-20 08:00:00', '2026-05-20 08:00:00'),
+(26007, 100000, 'PI-HR-OFFBOARD-2026-0007', 'TASK-2026-0007-3', 'hr_offboarding', 'HR离职交接', 'NODE_CRM_HANDOVER', 'CRM客户交接',
+ 'BUSINESS_EXCEPTION',   'HIGH',     '名下客户数 12 > 自动分配阈值 10，触发人工介入',
+ NULL, 'Y', '销售总监介入手动分配，已派至刘晓东、王芳两位接手人。',
+ '2026-05-19 16:00:00', '2026-05-20 10:30:00', 'Y', '2026-05-19 16:00:00', '2026-05-20 10:30:00'),
+(26008, 100000, 'PI-OA-SEAL-2026-0033', 'TASK-2026-0033-2', 'oa_seal_use', '用印申请', 'NODE_SEAL_KEEPER', '印章保管员审批',
+ 'NODE_TIMEOUT',         'LOW',      '印章保管员审批超时 4h，已 P0 加急',
+ NULL, 'Y', '加急提醒后保管员立即处理，案闭环。',
+ '2026-05-21 10:00:00', '2026-05-21 11:30:00', 'N', '2026-05-21 10:00:00', '2026-05-21 11:30:00'),
+(26009, 100000, 'PI-HR-PROMOTION-2026-0019', 'TASK-2026-0019-4', 'hr_promotion', 'HR晋升审批', 'NODE_HRBP', 'HRBP复核',
+ 'CALLBACK_FAILED',      'CRITICAL', 'DataIntegrityViolationException: hr_employee id=1043 lock wait timeout exceeded',
+ NULL, 'N', NULL,
+ '2026-05-21 14:10:08', NULL, 'Y', '2026-05-21 14:10:08', '2026-05-21 14:10:08'),
+(26010, 100000, 'PI-HR-CONTRACT-2025-0050', NULL, 'hr_contract_renew', 'HR合同续签', 'NODE_HR_REVIEW', '人事复核',
+ 'CALLBACK_FAILED',      'HIGH',     'OptimisticLockException: hr_employee_contract version mismatch (重试3次)',
+ NULL, 'N', NULL,
+ '2026-01-20 15:32:08', NULL, 'Y', '2026-01-20 15:32:08', '2026-01-20 15:32:08'),
+(26011, 100000, NULL, NULL, NULL, NULL, NULL, NULL,
+ 'SCHEDULER_EXCEPTION',  'MEDIUM',   'ProcessBusinessReconcileJob 巡检任务执行失败: ConnectionPoolFullException',
+ NULL, 'Y', '调大连接池配置至 50 后恢复正常。',
+ '2026-05-20 02:00:08', '2026-05-20 02:30:00', 'N', '2026-05-20 02:00:08', '2026-05-20 02:30:00'),
+(26012, 100000, 'PI-CRM-REFUND-2026-0004', 'TASK-2026-0004-3', 'crm_refund', 'CRM退款审批', 'NODE_FINANCE_APPROVE', '财务审批',
+ 'BUSINESS_EXCEPTION',   'CRITICAL', '退款金额 50000.00 超出原合同金额 42000.00，触发风控拦截',
+ NULL, 'Y', '已修正退款单为部分退款 30000.00 重新提交。',
+ '2026-05-17 11:00:00', '2026-05-17 15:00:00', 'Y', '2026-05-17 11:00:00', '2026-05-17 15:00:00'),
+(26013, 100000, 'PI-HR-TRAVEL-2026-0044', 'TASK-2026-0044-2', 'biz_travel_apply', '出差申请', 'NODE_BUDGET_CHECK', '差旅预算占用',
+ 'BUSINESS_EXCEPTION',   'MEDIUM',   '客户成功部 2026 差旅预算占用比 95%，触发 ALERT 阈值',
+ NULL, 'N', NULL,
+ '2026-05-19 09:45:00', NULL, 'Y', '2026-05-19 09:45:00', '2026-05-19 09:45:00'),
+(26014, 100000, 'PI-OA-CONTRACT-2026-0029', 'TASK-2026-0029-5', 'oa_contract_approve', 'OA合同审批', 'NODE_LEGAL_REVIEW', '法务复核',
+ 'NODE_TIMEOUT',         'HIGH',     '法务复核超时 72h，已升级至总法务顾问',
+ NULL, 'N', NULL,
+ '2026-05-21 16:00:00', NULL, 'Y', '2026-05-21 16:00:00', '2026-05-21 16:00:00');
+
+-- ---------- 17.1.2 流程版本快照 wf_process_version_snapshot (26050-26056, 7 行) ----------
+INSERT INTO cloud_flow_db.wf_process_version_snapshot
+(id, tenant_id, process_def_id, process_key, version, snapshot_data, bpmn_xml, form_config, node_config, create_time) VALUES
+(26050, 100000, 'wf_reimburse', 'biz_reimburse', 1,
+ '{"name":"财务报销流程","version":1,"nodeCount":5,"created":"2024-09-15"}',
+ '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="biz_reimburse" name="财务报销流程V1"><!-- V1 流程定义已省略 --></bpmn:process></bpmn:definitions>',
+ '{"fields":[{"key":"amount","label":"金额","type":"number","required":true},{"key":"reason","label":"事由","type":"text"}]}',
+ '{"nodes":[{"key":"start","name":"开始"},{"key":"apply","name":"申请人填写"},{"key":"manager","name":"部门经理审批"},{"key":"finance","name":"财务审批"},{"key":"end","name":"结束"}]}',
+ '2024-09-15 10:00:00'),
+(26051, 100000, 'wf_reimburse', 'biz_reimburse', 2,
+ '{"name":"财务报销流程","version":2,"nodeCount":6,"changeLog":"V2 新增预算占用校验节点"}',
+ '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="biz_reimburse" name="财务报销流程V2"><!-- V2 增加 budgetCheck 节点 --></bpmn:process></bpmn:definitions>',
+ '{"fields":[{"key":"amount","label":"金额","type":"number","required":true},{"key":"reason","label":"事由","type":"text"},{"key":"budgetSubject","label":"预算科目","type":"select"}]}',
+ '{"nodes":[{"key":"start","name":"开始"},{"key":"apply","name":"申请人填写"},{"key":"budgetCheck","name":"预算占用校验"},{"key":"manager","name":"部门经理审批"},{"key":"finance","name":"财务审批"},{"key":"end","name":"结束"}]}',
+ '2025-01-08 14:30:00'),
+(26052, 100000, 'wf_reimburse', 'biz_reimburse', 3,
+ '{"name":"财务报销流程","version":3,"nodeCount":7,"changeLog":"V3 新增金额条件分支与加签节点"}',
+ '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="biz_reimburse" name="财务报销流程V3"><!-- V3 增加 amountGateway 与 addSign 节点 --></bpmn:process></bpmn:definitions>',
+ '{"fields":[{"key":"amount","label":"金额","type":"number","required":true,"validators":["max:1000000"]},{"key":"reason","label":"事由","type":"text"},{"key":"budgetSubject","label":"预算科目","type":"select"},{"key":"invoice","label":"发票","type":"upload"}]}',
+ '{"nodes":[{"key":"start","name":"开始"},{"key":"apply","name":"申请人填写"},{"key":"budgetCheck","name":"预算占用校验"},{"key":"amountGateway","name":"金额条件分支"},{"key":"manager","name":"部门经理审批"},{"key":"director","name":"总监加签"},{"key":"finance","name":"财务审批"},{"key":"end","name":"结束"}]}',
+ '2026-05-01 11:00:00'),
+(26053, 100000, 'wf_hr_contract_renew', 'hr_contract_renew', 1,
+ '{"name":"HR合同续签","version":1,"nodeCount":4}',
+ '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="hr_contract_renew" name="HR合同续签V1"></bpmn:process></bpmn:definitions>',
+ '{"fields":[{"key":"contractId","label":"合同ID","type":"reference"},{"key":"newEndDate","label":"新到期日","type":"date"}]}',
+ '{"nodes":[{"key":"start","name":"开始"},{"key":"hrReview","name":"人事复核"},{"key":"director","name":"总监审批"},{"key":"end","name":"结束"}]}',
+ '2025-03-10 09:00:00'),
+(26054, 100000, 'wf_crm_sales_contract', 'crm_sales_contract', 2,
+ '{"name":"CRM销售合同审批","version":2,"nodeCount":5,"changeLog":"V2 新增金额超限风控分支"}',
+ '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="crm_sales_contract"></bpmn:process></bpmn:definitions>',
+ '{"fields":[{"key":"customerName","label":"客户","type":"reference"},{"key":"amount","label":"合同金额","type":"number"}]}',
+ '{"nodes":[{"key":"start","name":"开始"},{"key":"riskCheck","name":"风控扫描"},{"key":"salesDirector","name":"销售总监审批"},{"key":"ceoApprove","name":"CEO审批(>500W)"},{"key":"end","name":"结束"}]}',
+ '2026-03-20 16:00:00'),
+(26055, 100000, 'wf_oa_seal_use', 'oa_seal_use', 1,
+ '{"name":"用印申请","version":1,"nodeCount":4}',
+ '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="oa_seal_use"></bpmn:process></bpmn:definitions>',
+ '{"fields":[{"key":"sealId","label":"印章","type":"reference"},{"key":"purpose","label":"用印用途","type":"text"}]}',
+ '{"nodes":[{"key":"start","name":"开始"},{"key":"dept","name":"部门经理审批"},{"key":"sealKeeper","name":"印章保管员审批"},{"key":"end","name":"结束"}]}',
+ '2024-12-01 10:00:00'),
+(26056, 100000, 'wf_hr_offboarding', 'hr_offboarding', 1,
+ '{"name":"HR离职交接","version":1,"nodeCount":6}',
+ '<?xml version="1.0" encoding="UTF-8"?><bpmn:definitions><bpmn:process id="hr_offboarding"></bpmn:process></bpmn:definitions>',
+ '{"fields":[{"key":"employeeId","label":"员工","type":"reference"},{"key":"reason","label":"离职原因","type":"text"}]}',
+ '{"nodes":[{"key":"start","name":"开始"},{"key":"directLeader","name":"直接上级审批"},{"key":"hrReview","name":"HR复核"},{"key":"crmHandover","name":"CRM客户交接"},{"key":"financeClear","name":"财务结算"},{"key":"end","name":"结束"}]}',
+ '2025-02-18 14:00:00');
+
+-- ---------- 17.1.3 发布审批 wf_deploy_approval (26100-26106, 7 行) ----------
+INSERT INTO cloud_flow_db.wf_deploy_approval
+(id, tenant_id, deploy_id, process_def_id, approval_status, current_step, total_steps, approval_config,
+ submitter_id, submit_time, complete_time, created_time, updated_time) VALUES
+(26100, 100000, 98001, 'wf_reimburse', 'APPROVED', 3, 3,
+ '{"steps":[{"step":1,"name":"流程负责人审批","approverType":"USER","approverIds":"1"},{"step":2,"name":"架构师审批","approverType":"ROLE","approverIds":"100"},{"step":3,"name":"运维总监审批","approverType":"USER","approverIds":"2"}]}',
+ 1, '2026-05-02 09:00:00', '2026-05-02 16:30:00', '2026-05-02 09:00:00', '2026-05-02 16:30:00'),
+(26101, 100000, 98002, 'wf_reimburse', 'APPROVED', 1, 1,
+ '{"steps":[{"step":1,"name":"运维总监紧急回滚审批","approverType":"USER","approverIds":"2"}]}',
+ 1, '2026-05-07 14:00:00', '2026-05-07 14:15:00', '2026-05-07 14:00:00', '2026-05-07 14:15:00'),
+(26102, 100000, 98001, 'wf_hr_contract_renew', 'PENDING', 2, 3,
+ '{"steps":[{"step":1,"name":"HR负责人审批","approverType":"USER","approverIds":"1"},{"step":2,"name":"架构师审批","approverType":"ROLE","approverIds":"100"},{"step":3,"name":"运维总监审批","approverType":"USER","approverIds":"2"}]}',
+ 1, '2026-05-19 10:00:00', NULL, '2026-05-19 10:00:00', '2026-05-19 10:00:00'),
+(26103, 100000, 98002, 'wf_crm_sales_contract', 'REJECTED', 2, 3,
+ '{"steps":[{"step":1,"name":"销售负责人审批","approverType":"USER","approverIds":"3"},{"step":2,"name":"架构师审批","approverType":"ROLE","approverIds":"100"},{"step":3,"name":"运维总监审批","approverType":"USER","approverIds":"2"}]}',
+ 3, '2026-05-15 11:00:00', '2026-05-15 15:00:00', '2026-05-15 11:00:00', '2026-05-15 15:00:00'),
+(26104, 100000, 98001, 'wf_oa_seal_use', 'APPROVED', 2, 2,
+ '{"steps":[{"step":1,"name":"OA负责人审批","approverType":"USER","approverIds":"1"},{"step":2,"name":"运维总监审批","approverType":"USER","approverIds":"2"}]}',
+ 1, '2026-04-25 14:00:00', '2026-04-26 10:00:00', '2026-04-25 14:00:00', '2026-04-26 10:00:00'),
+(26105, 100000, 98002, 'wf_hr_offboarding', 'CANCELLED', 1, 3,
+ '{"steps":[{"step":1,"name":"HR负责人审批","approverType":"USER","approverIds":"1"},{"step":2,"name":"架构师审批","approverType":"ROLE","approverIds":"100"},{"step":3,"name":"运维总监审批","approverType":"USER","approverIds":"2"}]}',
+ 1, '2026-05-10 10:00:00', '2026-05-10 11:00:00', '2026-05-10 10:00:00', '2026-05-10 11:00:00'),
+(26106, 100000, 98001, 'biz_payment', 'PENDING', 1, 2,
+ '{"steps":[{"step":1,"name":"财务负责人审批","approverType":"USER","approverIds":"3"},{"step":2,"name":"运维总监审批","approverType":"USER","approverIds":"2"}]}',
+ 3, '2026-05-21 09:00:00', NULL, '2026-05-21 09:00:00', '2026-05-21 09:00:00');
+
+-- ---------- 17.1.4 发布审批步骤 wf_deploy_approval_step (26110-26129, 20 行) ----------
+INSERT INTO cloud_flow_db.wf_deploy_approval_step
+(id, tenant_id, approval_id, step_no, step_name, approver_type, approver_ids, approval_mode, step_status,
+ actual_approver_id, approval_comment, approval_time, created_time) VALUES
+(26110, 100000, 26100, 1, '流程负责人审批',  'USER', '1',   'ANY', 'APPROVED', 1, '流程变更说明清晰，同意。',           '2026-05-02 10:00:00', '2026-05-02 09:00:00'),
+(26111, 100000, 26100, 2, '架构师审批',      'ROLE', '100', 'ANY', 'APPROVED', 5, '架构影响评估通过。',                 '2026-05-02 13:00:00', '2026-05-02 09:00:00'),
+(26112, 100000, 26100, 3, '运维总监审批',    'USER', '2',   'ANY', 'APPROVED', 2, '已选定低峰发布窗口，同意上线。',       '2026-05-02 16:30:00', '2026-05-02 09:00:00'),
+(26113, 100000, 26101, 1, '紧急回滚审批',    'USER', '2',   'ANY', 'APPROVED', 2, 'V3 条件分支生产异常，同意紧急回滚 V2。', '2026-05-07 14:15:00', '2026-05-07 14:00:00'),
+(26114, 100000, 26102, 1, 'HR负责人审批',    'USER', '1',   'ANY', 'APPROVED', 1, '续签流程优化合理，同意。',           '2026-05-19 11:30:00', '2026-05-19 10:00:00'),
+(26115, 100000, 26102, 2, '架构师审批',      'ROLE', '100', 'ANY', 'PENDING',  NULL, NULL,                            NULL,                  '2026-05-19 10:00:00'),
+(26116, 100000, 26102, 3, '运维总监审批',    'USER', '2',   'ANY', 'PENDING',  NULL, NULL,                            NULL,                  '2026-05-19 10:00:00'),
+(26117, 100000, 26103, 1, '销售负责人审批',  'USER', '3',   'ANY', 'APPROVED', 3, '同意。',                             '2026-05-15 12:00:00', '2026-05-15 11:00:00'),
+(26118, 100000, 26103, 2, '架构师审批',      'ROLE', '100', 'ANY', 'REJECTED', 5, '金额超限风控分支与公司风控规则冲突，请先对齐。', '2026-05-15 15:00:00', '2026-05-15 11:00:00'),
+(26119, 100000, 26103, 3, '运维总监审批',    'USER', '2',   'ANY', 'PENDING',  NULL, NULL,                            NULL,                  '2026-05-15 11:00:00'),
+(26120, 100000, 26104, 1, 'OA负责人审批',    'USER', '1',   'ANY', 'APPROVED', 1, '同意。',                             '2026-04-25 17:00:00', '2026-04-25 14:00:00'),
+(26121, 100000, 26104, 2, '运维总监审批',    'USER', '2',   'ANY', 'APPROVED', 2, '同意上线。',                         '2026-04-26 10:00:00', '2026-04-25 14:00:00'),
+(26122, 100000, 26105, 1, 'HR负责人审批',    'USER', '1',   'ANY', 'CANCELLED', NULL, '提交方主动撤回，离职流程暂未变更。', '2026-05-10 11:00:00', '2026-05-10 10:00:00'),
+(26123, 100000, 26105, 2, '架构师审批',      'ROLE', '100', 'ANY', 'CANCELLED', NULL, NULL,                          NULL,                  '2026-05-10 10:00:00'),
+(26124, 100000, 26105, 3, '运维总监审批',    'USER', '2',   'ANY', 'CANCELLED', NULL, NULL,                          NULL,                  '2026-05-10 10:00:00'),
+(26125, 100000, 26106, 1, '财务负责人审批',  'USER', '3',   'ANY', 'PENDING',  NULL, NULL,                            NULL,                  '2026-05-21 09:00:00'),
+(26126, 100000, 26106, 2, '运维总监审批',    'USER', '2',   'ANY', 'PENDING',  NULL, NULL,                            NULL,                  '2026-05-21 09:00:00'),
+(26127, 100000, 26100, 1, '提交人确认',      'USER', '1',   'ANY', 'APPROVED', 1, '提交人补充上线 checklist。',          '2026-05-02 09:30:00', '2026-05-02 09:00:00'),
+(26128, 100000, 26101, 1, '回滚 checklist 复核', 'USER', '1', 'ANY', 'APPROVED', 1, '回滚 checklist 已通过。',          '2026-05-07 14:10:00', '2026-05-07 14:00:00'),
+(26129, 100000, 26104, 1, '架构师备案',      'ROLE', '100', 'ANY', 'APPROVED', 5, '低风险变更已备案。',                  '2026-04-25 15:30:00', '2026-04-25 14:00:00');
+
+-- ---------- 17.1.5 发布通知 wf_deploy_notification (26150-26174, 25 行) ----------
+INSERT INTO cloud_flow_db.wf_deploy_notification
+(id, tenant_id, deploy_id, notification_type, recipient_type, recipient_ids, notification_title, notification_content,
+ send_status, send_time, error_message, created_time) VALUES
+(26150, 100000, 98001, 'EMAIL',   'USER', '1,2,3,4,5',     '【流程发布】财务报销流程 V3 已上线',           '财务报销流程 V3 已于 2026-05-02 16:30 上线，V3 主要变更：1) 新增金额条件分支 2) 新增加签节点。', 'SUCCESS',  '2026-05-02 16:31:00', NULL, '2026-05-02 16:30:00'),
+(26151, 100000, 98001, 'STATION', 'ROLE', '4,5',           '【流程发布】财务报销流程 V3 已上线',           '请熟悉新版本变更内容，详见钉钉公告。',                                                          'SUCCESS',  '2026-05-02 16:31:30', NULL, '2026-05-02 16:30:00'),
+(26152, 100000, 98001, 'DINGTALK','USER', '1,2',           '【流程发布】财务报销流程 V3 上线公告',         '财务报销流程 V3 已上线，请知悉。',                                                              'SUCCESS',  '2026-05-02 16:32:00', NULL, '2026-05-02 16:30:00'),
+(26153, 100000, 98002, 'EMAIL',   'USER', '1,2,3,4,5',     '【流程回滚】财务报销流程已回滚至 V2',          '由于 V3 条件分支生产异常，已于 2026-05-07 14:15 紧急回滚至 V2。受影响待办：2 条已同步处理。',  'SUCCESS',  '2026-05-07 14:16:00', NULL, '2026-05-07 14:15:00'),
+(26154, 100000, 98002, 'STATION', 'USER', '11,12,13,14,15','【流程回滚】影响待办通知',                     '您的当前进行中报销单受 V3 → V2 回滚影响，已自动适配 V2 表单。',                                'SUCCESS',  '2026-05-07 14:16:30', NULL, '2026-05-07 14:15:00'),
+(26155, 100000, 98002, 'SMS',     'USER', '2',             '【紧急】流程紧急回滚通知',                     '财务报销流程已回滚 V2，详情请查看运维群。',                                                    'SUCCESS',  '2026-05-07 14:16:30', NULL, '2026-05-07 14:15:00'),
+(26156, 100000, 98001, 'EMAIL',   'DEPT', '102',           '【流程发布】上线通知',                          '财务报销流程 V3 已上线，部门成员请知悉。',                                                      'SUCCESS',  '2026-05-02 16:33:00', NULL, '2026-05-02 16:30:00'),
+(26157, 100000, 98001, 'EMAIL',   'USER', '1',             '【流程发布】提交人确认通知',                    '您提交的 V3 发布已完成。',                                                                      'SUCCESS',  '2026-05-02 16:33:30', NULL, '2026-05-02 16:30:00'),
+(26158, 100000, 98002, 'EMAIL',   'USER', '11,12,13,14',   '【流程回滚】受影响人通知',                      '您当前进行中的报销流程已自动迁移至 V2。',                                                       'PENDING',  NULL,                  NULL, '2026-05-07 14:15:00'),
+(26159, 100000, 98001, 'STATION', 'ROLE', '100',           '【流程发布】架构师审批通过通知',                '财务报销流程 V3 架构师审批已通过。',                                                            'SUCCESS',  '2026-05-02 13:01:00', NULL, '2026-05-02 09:00:00'),
+(26160, 100000, 98001, 'EMAIL',   'USER', '2',             '【流程发布】运维总监审批通过通知',              '财务报销流程 V3 运维总监审批已通过。',                                                          'SUCCESS',  '2026-05-02 16:30:30', NULL, '2026-05-02 09:00:00'),
+(26161, 100000, 98002, 'STATION', 'USER', '1',             '【流程回滚】回滚 checklist 完成通知',           '回滚 checklist 已完成，可进入回滚审批。',                                                       'SUCCESS',  '2026-05-07 14:11:00', NULL, '2026-05-07 14:00:00'),
+(26162, 100000, 98001, 'EMAIL',   'USER', '5',             '【流程发布】架构师评审通知',                    '请评审 wf_reimburse V3 架构变更。',                                                             'SUCCESS',  '2026-05-02 09:10:00', NULL, '2026-05-02 09:00:00'),
+(26163, 100000, 98002, 'EMAIL',   'USER', '1',             '【流程回滚】回滚发起人通知',                    '回滚已完成，原 V3 状态可继续审计。',                                                            'SUCCESS',  '2026-05-07 14:17:00', NULL, '2026-05-07 14:15:00'),
+(26164, 100000, 98001, 'EMAIL',   'USER', '4,6,7,8',       '【流程发布】HR 部门关注通知',                   '财务报销流程 V3 已上线，影响 HR 部门员工报销操作。',                                            'SUCCESS',  '2026-05-02 16:34:00', NULL, '2026-05-02 16:30:00'),
+(26165, 100000, 98001, 'EMAIL',   'USER', '9,10',          '【流程发布】销售部门关注通知',                  '财务报销流程 V3 已上线，销售部门员工报销请关注。',                                              'SUCCESS',  '2026-05-02 16:34:30', NULL, '2026-05-02 16:30:00'),
+(26166, 100000, 98002, 'EMAIL',   'USER', '15,16',         '【流程回滚】CRM 部门通知',                      '由于 V3 回滚，CRM 报销流程已恢复 V2 行为。',                                                    'FAILED',   '2026-05-07 14:18:00', 'SMTP timeout: connection refused on mail.cloudflow.local:25', '2026-05-07 14:15:00'),
+(26167, 100000, 98001, 'DINGTALK','ROLE', '4,5',           '【流程发布】钉钉群提醒',                        '财务报销流程 V3 已上线，请在钉钉群中确认。',                                                    'SUCCESS',  '2026-05-02 16:35:00', NULL, '2026-05-02 16:30:00'),
+(26168, 100000, 98002, 'SMS',     'USER', '1,2,3',         '【紧急】回滚 SMS 通知',                         '财务报销流程已回滚 V2，详情请查看运维群。',                                                    'SUCCESS',  '2026-05-07 14:18:30', NULL, '2026-05-07 14:15:00'),
+(26169, 100000, 98001, 'EMAIL',   'USER', '12,13,14',      '【流程发布】客户成功部通知',                    '财务报销流程 V3 已上线，请客户成功部成员关注。',                                                'SUCCESS',  '2026-05-02 16:35:30', NULL, '2026-05-02 16:30:00'),
+(26170, 100000, 98002, 'STATION', 'USER', '12,13,14',      '【流程回滚】客户成功部回滚通知',                '财务报销流程已回滚 V2，请客户成功部成员关注。',                                                'SUCCESS',  '2026-05-07 14:19:00', NULL, '2026-05-07 14:15:00'),
+(26171, 100000, 98001, 'EMAIL',   'USER', '17,18,19,20',   '【流程发布】研发部通知',                        '财务报销流程 V3 已上线，研发部成员请关注。',                                                    'PENDING',  NULL,                  NULL, '2026-05-02 16:30:00'),
+(26172, 100000, 98002, 'EMAIL',   'USER', '17,18,19,20',   '【流程回滚】研发部回滚通知',                    '财务报销流程已回滚 V2，研发部成员请关注。',                                                    'SUCCESS',  '2026-05-07 14:19:30', NULL, '2026-05-07 14:15:00'),
+(26173, 100000, 98001, 'EMAIL',   'DEPT', '100',           '【流程发布】公司全员公告',                      '财务报销流程 V3 已上线。',                                                                      'SUCCESS',  '2026-05-02 16:36:00', NULL, '2026-05-02 16:30:00'),
+(26174, 100000, 98002, 'EMAIL',   'DEPT', '100',           '【流程回滚】公司全员回滚公告',                  '财务报销流程已回滚 V2。',                                                                       'SUCCESS',  '2026-05-07 14:20:00', NULL, '2026-05-07 14:15:00');
+
+-- ---------- 17.2.1 知识阅读记录 oa_knowledge_read (26200-26219, 20 行) ----------
+INSERT INTO cloud_flow_db.oa_knowledge_read
+(id, tenant_id, document_id, user_id, user_name, read_time) VALUES
+(26200, 100000, 9001, 1,  'admin',      '2026-05-12 09:30:00'),
+(26201, 100000, 9001, 2,  '张总',       '2026-05-12 10:15:00'),
+(26202, 100000, 9001, 3,  '王财务',     '2026-05-12 14:20:00'),
+(26203, 100000, 9001, 4,  '赵HR',       '2026-05-13 09:00:00'),
+(26204, 100000, 9001, 5,  '钱架构师',   '2026-05-13 11:45:00'),
+(26205, 100000, 9001, 11, '吴思远',     '2026-05-14 08:50:00'),
+(26206, 100000, 9001, 12, '郑雅宁',     '2026-05-14 16:00:00'),
+(26207, 100000, 9001, 13, '何嘉树',     '2026-05-15 09:10:00'),
+(26208, 100000, 9001, 18, '彭骁',       '2026-05-15 14:30:00'),
+(26209, 100000, 9001, 21, '陆培训师',   '2026-05-16 10:00:00'),
+(26210, 100000, 9002, 1,  'admin',      '2026-05-12 10:00:00'),
+(26211, 100000, 9002, 2,  '张总',       '2026-05-12 11:20:00'),
+(26212, 100000, 9002, 4,  '赵HR',       '2026-05-13 09:30:00'),
+(26213, 100000, 9002, 6,  '李HRBP',     '2026-05-13 14:00:00'),
+(26214, 100000, 9002, 11, '吴思远',     '2026-05-14 09:00:00'),
+(26215, 100000, 9002, 12, '郑雅宁',     '2026-05-14 16:30:00'),
+(26216, 100000, 9002, 21, '陆培训师',   '2026-05-16 10:30:00'),
+(26217, 100000, 9002, 22, '苏培训师',   '2026-05-16 14:00:00'),
+(26218, 100000, 9002, 25, '韩产品',     '2026-05-17 09:00:00'),
+(26219, 100000, 9002, 30, '冯销售',     '2026-05-17 11:00:00');
+
+-- ---------- 17.2.2 预算执行台账 oa_budget_ledger (26250-26274, 25 行) ----------
+INSERT INTO cloud_flow_db.oa_budget_ledger
+(ledger_id, tenant_id, budget_id, line_id, target_type, target_id, business_type, business_id, business_no, subject_code, subject_name,
+ operation_type, amount, available_after, status, remark, create_by, create_time) VALUES
+(26250, 100000, 9101, 9101, 'DEPT', 111, 'TRAVEL_APPLY',     8801, 'CC202605080001', 'SUB-TRAVEL',   '差旅费用',   'RESERVE',  6000.00,  89000.00,  'VALID', '客户拜访差旅占用',           'zheng_cs', '2026-05-08 09:00:00'),
+(26251, 100000, 9101, 9101, 'DEPT', 111, 'TRAVEL_APPLY',     8801, 'CC202605080001', 'SUB-TRAVEL',   '差旅费用',   'WRITEOFF', 5800.00,  89200.00,  'VALID', '差旅实际费用核销',           'zheng_cs', '2026-05-15 11:30:00'),
+(26252, 100000, 9101, 9101, 'DEPT', 111, 'TRAVEL_APPLY',     8801, 'CC202605080001', 'SUB-TRAVEL',   '差旅费用',   'RELEASE',  200.00,   89400.00,  'VALID', '余额释放',                   'zheng_cs', '2026-05-15 11:30:00'),
+(26253, 100000, 9101, 9102, 'DEPT', 111, 'EXPENSE_CLAIM',    8801, 'BX202605080001', 'SUB-SERVICE',  '外包服务费', 'WRITEOFF', 15000.00, 150000.00, 'VALID', '客户成功外包核销',           'wu_delivery', '2026-05-10 14:00:00'),
+(26254, 100000, 9101, 9102, 'DEPT', 111, 'EXPENSE_CLAIM',    8802, 'BX202605080002', 'SUB-SERVICE',  '外包服务费', 'WRITEOFF', 8000.00,  142000.00, 'VALID', '技术支持外包核销',           'wu_delivery', '2026-05-12 10:00:00'),
+(26255, 100000, 9102, 9103, 'PROJECT', 9301, 'TRAVEL_APPLY', 8802, 'CC202605080002', 'SUB-TRAVEL',   '差旅费用',   'RESERVE',  4500.00,  33500.00,  'VALID', '景曜科技实施现场支持',       'zheng_cs', '2026-05-09 10:00:00'),
+(26256, 100000, 9102, 9103, 'PROJECT', 9301, 'TRAVEL_APPLY', 8802, 'CC202605080002', 'SUB-TRAVEL',   '差旅费用',   'WRITEOFF', 4200.00,  33800.00,  'VALID', '差旅实际费用核销',           'zheng_cs', '2026-05-16 09:00:00'),
+(26257, 100000, 9102, 9104, 'PROJECT', 9301, 'EXPENSE_CLAIM',8803, 'BX202605080003', 'SUB-DELIVERY', '交付实施费', 'WRITEOFF', 25000.00, 113000.00, 'VALID', '景曜实施成本核销',           'wu_delivery', '2026-05-13 15:30:00'),
+(26258, 100000, 9103, 9105, 'DEPT', 102, 'EXPENSE_CLAIM',    8804, 'BX202605080004', 'SUB-SERVICE',  '外包服务费', 'WRITEOFF', 12000.00, 18000.00,  'VALID', '财务外包核销，接近预警阈值', 'wang', '2026-05-14 11:00:00'),
+(26259, 100000, 9103, 9105, 'DEPT', 102, 'EXPENSE_CLAIM',    8805, 'BX202605080005', 'SUB-SERVICE',  '外包服务费', 'RESERVE',  3000.00,  15000.00,  'VALID', '4 月份外包占用',             'wang', '2026-05-14 11:30:00'),
+(26260, 100000, 9104, 9106, 'PROJECT', 9302, 'EXPENSE_CLAIM',8806, 'BX202605080006', 'SUB-DELIVERY', '交付实施费', 'WRITEOFF', 15000.00, 5000.00,   'VALID', '苏州联拓上线项目实施核销',   'wu_delivery', '2026-05-15 09:00:00'),
+(26261, 100000, 9104, 9106, 'PROJECT', 9302, 'EXPENSE_CLAIM',8807, 'BX202605080007', 'SUB-DELIVERY', '交付实施费', 'RESERVE',  4000.00,  1000.00,   'VALID', '项目尾款占用，触发 90% 告警', 'wu_delivery', '2026-05-16 14:00:00'),
+(26262, 100000, 9101, 9101, 'DEPT', 111, 'TRAVEL_APPLY',     8808, 'CC202605080008', 'SUB-TRAVEL',   '差旅费用',   'RESERVE',  3000.00,  86400.00,  'VALID', '现场支持差旅占用',           'zheng_cs', '2026-05-17 09:00:00'),
+(26263, 100000, 9101, 9102, 'DEPT', 111, 'PAYMENT_REQUEST',  8801, 'FK202605080001', 'SUB-SERVICE',  '外包服务费', 'RESERVE',  20000.00, 130000.00, 'VALID', '客户成功外包付款占用',       'wu_delivery', '2026-05-18 10:00:00'),
+(26264, 100000, 9101, 9102, 'DEPT', 111, 'PAYMENT_REQUEST',  8801, 'FK202605080001', 'SUB-SERVICE',  '外包服务费', 'WRITEOFF', 20000.00, 130000.00, 'VALID', '付款核销',                   'wu_delivery', '2026-05-19 14:00:00'),
+(26265, 100000, 9101, 9101, 'DEPT', 111, 'ADJUST',           0,    'TZ202605080001', 'SUB-TRAVEL',   '差旅费用',   'ADJUST',   10000.00, 96400.00,  'VALID', '差旅预算追加调整',           'admin', '2026-05-20 11:00:00'),
+(26266, 100000, 9102, 9104, 'PROJECT', 9301, 'EXPENSE_CLAIM',8809, 'BX202605080009', 'SUB-DELIVERY', '交付实施费', 'RESERVE',  8000.00,  105000.00, 'VALID', '景曜二期实施占用',           'wu_delivery', '2026-05-20 15:00:00'),
+(26267, 100000, 9103, 9105, 'DEPT', 102, 'PAYMENT_REQUEST',  8802, 'FK202605080002', 'SUB-SERVICE',  '外包服务费', 'RESERVE',  3000.00,  12000.00,  'VALID', '财务外包付款占用',           'wang', '2026-05-21 09:00:00'),
+(26268, 100000, 9104, 9106, 'PROJECT', 9302, 'EXPENSE_CLAIM',8810, 'BX202605080010', 'SUB-DELIVERY', '交付实施费', 'RESERVE',  500.00,   500.00,    'VALID', '尾款最后占用，触发 BLOCK 阈值', 'wu_delivery', '2026-05-21 10:00:00'),
+(26269, 100000, 9101, 9101, 'DEPT', 111, 'TRAVEL_APPLY',     8811, 'CC202605080011', 'SUB-TRAVEL',   '差旅费用',   'RELEASE',  3000.00,  99400.00,  'VALID', '出差取消，释放占用',         'zheng_cs', '2026-05-21 11:00:00'),
+(26270, 100000, 9101, 9102, 'DEPT', 111, 'EXPENSE_CLAIM',    8812, 'BX202605080012', 'SUB-SERVICE',  '外包服务费', 'INVALID',  5000.00,  125000.00, 'VOID',  '原报销单驳回，台账无效化',   'wu_delivery', '2026-05-21 12:00:00'),
+(26271, 100000, 9102, 9103, 'PROJECT', 9301, 'TRAVEL_APPLY', 8813, 'CC202605080013', 'SUB-TRAVEL',   '差旅费用',   'RESERVE',  2000.00,  31800.00,  'VALID', '景曜验收差旅占用',           'zheng_cs', '2026-05-21 14:00:00'),
+(26272, 100000, 9103, 9105, 'DEPT', 102, 'ADJUST',           0,    'TZ202605080002', 'SUB-SERVICE',  '外包服务费', 'ADJUST',   -5000.00, 7000.00,   'VALID', '财务外包预算调减',           'admin', '2026-05-21 15:00:00'),
+(26273, 100000, 9104, 9106, 'PROJECT', 9302, 'EXPENSE_CLAIM',8814, 'BX202605080014', 'SUB-DELIVERY', '交付实施费', 'RELEASE',  500.00,   1000.00,   'VALID', '尾款释放',                   'wu_delivery', '2026-05-21 16:00:00'),
+(26274, 100000, 9101, 9101, 'DEPT', 111, 'TRAVEL_APPLY',     8815, 'CC202605080015', 'SUB-TRAVEL',   '差旅费用',   'RESERVE',  5000.00,  94400.00,  'VALID', '6 月份差旅预占用',           'zheng_cs', '2026-05-21 17:00:00');
+
+-- ---------- 17.2.3 风险提醒 oa_risk_alert (26300-26319, 20 行) ----------
+INSERT INTO cloud_flow_db.oa_risk_alert
+(id, tenant_id, business_type, business_id, risk_code, risk_name, risk_level, risk_status, risk_source,
+ owner_id, owner_name, detected_time, handled_time, handler_id, handler_name, handle_remark, create_by, create_time, update_by, update_time) VALUES
+(26300, 100000, 'CONTRACT', 9201, 'CONTRACT_EXPIRE_SOON',   '合同即将到期(30天内)', 'HIGH',     'OPEN',     'RULE',   12, '郑雅宁', '2026-05-10 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-10 02:00:00', 'system', '2026-05-10 02:00:00'),
+(26301, 100000, 'CONTRACT', 9202, 'CONTRACT_AMOUNT_LARGE',  '合同金额超 50W 风险',  'MEDIUM',   'HANDLING', 'RULE',   11, '吴思远', '2026-05-12 02:00:00', NULL, 11, '吴思远', '已通知法务介入复核', 'system', '2026-05-12 02:00:00', 'wu_delivery', '2026-05-13 09:00:00'),
+(26302, 100000, 'CONTRACT', 9203, 'CONTRACT_AMOUNT_OVER',   '合同金额异常超出报价上限', 'CRITICAL', 'OPEN', 'RULE', 18, '彭骁', '2026-05-18 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-18 02:00:00', 'system', '2026-05-18 02:00:00'),
+(26303, 100000, 'SEAL',     9001, 'SEAL_BORROW_OVERDUE',    '印章借出超期未归还',   'HIGH',     'HANDLING', 'RULE',   1,  'admin',  '2026-05-19 02:00:00', '2026-05-20 09:00:00', 1, 'admin', '已联系借用人，承诺今日归还。', 'system', '2026-05-19 02:00:00', 'admin', '2026-05-20 09:00:00'),
+(26304, 100000, 'SEAL',     9002, 'SEAL_EXPIRE_SOON',       '印章即将到期(30天内)', 'MEDIUM',   'OPEN',     'RULE',   2,  '李经理', '2026-05-15 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-15 02:00:00', 'system', '2026-05-15 02:00:00'),
+(26305, 100000, 'SEAL',     9003, 'SEAL_EXPIRE_SOON',       '印章即将到期(45天内)', 'LOW',      'OPEN',     'RULE',   3,  '王财务', '2026-05-10 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-10 02:00:00', 'system', '2026-05-10 02:00:00'),
+(26306, 100000, 'APPROVAL', 8801, 'APPROVAL_TIMEOUT',       '审批超时 24h 未处理',  'MEDIUM',   'CLOSED',   'RULE',   1,  'admin',  '2026-05-08 14:00:00', '2026-05-09 10:00:00', 1, 'admin', '已加急路由并签收，案闭环。', 'system', '2026-05-08 14:00:00', 'admin', '2026-05-09 10:00:00'),
+(26307, 100000, 'CONTRACT', 9201, 'CONTRACT_RECEIVABLE_OVERDUE', '回款逾期超 30 天',  'CRITICAL', 'HANDLING', 'RULE',   12, '郑雅宁', '2026-05-05 02:00:00', NULL, 12, '郑雅宁', '正与客户协调续约 + 回款联动方案。', 'system', '2026-05-05 02:00:00', 'zheng_cs', '2026-05-15 09:00:00'),
+(26308, 100000, 'APPROVAL', 8802, 'APPROVAL_NODE_TIMEOUT',  '审批节点超时',         'HIGH',     'OPEN',     'RULE',   2,  '张总',   '2026-05-20 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-20 02:00:00', 'system', '2026-05-20 02:00:00'),
+(26309, 100000, 'CONTRACT', 9202, 'CONTRACT_BUDGET_OVERFLOW', '合同金额超出可用预算', 'HIGH',   'CLOSED',   'RULE',   3,  '王财务', '2026-05-12 02:00:00', '2026-05-12 16:00:00', 3, '王财务', '已与销售协商分阶段签约。', 'system', '2026-05-12 02:00:00', 'wang', '2026-05-12 16:00:00'),
+(26310, 100000, 'SEAL',     9001, 'SEAL_USE_FREQUENT',      '7 天内用印超 10 次',    'LOW',      'IGNORED',  'RULE',   1,  'admin',  '2026-05-18 02:00:00', '2026-05-18 14:00:00', 1, 'admin', '为月度签约高峰，业务正常，忽略。', 'system', '2026-05-18 02:00:00', 'admin', '2026-05-18 14:00:00'),
+(26311, 100000, 'APPROVAL', 8803, 'APPROVAL_CONFLICT',      '同一业务并发审批冲突', 'MEDIUM',   'HANDLING', 'MANUAL', 4,  '赵HR',   '2026-05-19 11:00:00', NULL, 4, '赵HR', '正在协调取消重复实例。', 'wu_delivery', '2026-05-19 11:00:00', 'zhao_hr', '2026-05-20 09:00:00'),
+(26312, 100000, 'CONTRACT', 9203, 'CONTRACT_RISK_KEYWORD',  '合同正文出现高风险关键词', 'HIGH', 'OPEN',     'RULE',   18, '彭骁',   '2026-05-21 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-21 02:00:00', 'system', '2026-05-21 02:00:00'),
+(26313, 100000, 'SEAL',     9001, 'SEAL_BORROW_PROLONGED',  '借出累计 3 次超期',    'MEDIUM',   'OPEN',     'RULE',   1,  'admin',  '2026-05-21 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-21 02:00:00', 'system', '2026-05-21 02:00:00'),
+(26314, 100000, 'APPROVAL', 8804, 'APPROVAL_DUPLICATE',     '同一发起人 24h 内重复发起 > 5 次', 'LOW', 'CLOSED', 'RULE', 11, '吴思远', '2026-05-17 09:00:00', '2026-05-17 16:00:00', 11, '吴思远', '与发起人沟通后合并为同一单。', 'system', '2026-05-17 09:00:00', 'wu_delivery', '2026-05-17 16:00:00'),
+(26315, 100000, 'CONTRACT', 9201, 'CONTRACT_PARTY_BLACKLIST', '合同方命中黑名单',   'CRITICAL', 'OPEN',     'MANUAL', 1,  'admin',  '2026-05-21 16:00:00', NULL, NULL, NULL, NULL, 'admin', '2026-05-21 16:00:00', 'admin', '2026-05-21 16:00:00'),
+(26316, 100000, 'SEAL',     9002, 'SEAL_AFTER_HOURS_USE',   '非工作时段用印',       'MEDIUM',   'CLOSED',   'RULE',   2,  '李经理', '2026-05-15 22:30:00', '2026-05-16 09:00:00', 2, '李经理', '紧急用印，已补审批。', 'system', '2026-05-15 22:30:00', 'li_mgr', '2026-05-16 09:00:00'),
+(26317, 100000, 'APPROVAL', 8805, 'APPROVAL_PROXY',         '审批人代签风险',       'HIGH',     'HANDLING', 'MANUAL', 1,  'admin',  '2026-05-18 11:00:00', NULL, 1, 'admin', '已要求审批人本人补签。', 'admin', '2026-05-18 11:00:00', 'admin', '2026-05-19 09:00:00'),
+(26318, 100000, 'CONTRACT', 9202, 'CONTRACT_AMOUNT_REVISED','合同金额异常变更',     'MEDIUM',   'OPEN',     'RULE',   11, '吴思远', '2026-05-20 02:00:00', NULL, NULL, NULL, NULL, 'system', '2026-05-20 02:00:00', 'system', '2026-05-20 02:00:00'),
+(26319, 100000, 'CONTRACT', 9203, 'CONTRACT_RENEW_PENDING', '合同临近到期未续约',   'HIGH',     'HANDLING', 'RULE',   18, '彭骁',   '2026-05-18 02:00:00', NULL, 18, '彭骁', '已与客户协商续约方案，方案 V2 评审中。', 'system', '2026-05-18 02:00:00', 'peng_sales', '2026-05-21 14:00:00');
+
+-- ---------- 17.2.4 印章续期申请 oa_seal_renewal (26350-26354, 5 行) ----------
+INSERT INTO cloud_flow_db.oa_seal_renewal
+(id, tenant_id, instance_id, renewal_no, seal_id, seal_name, seal_no, old_issue_date, old_expire_date, new_issue_date, new_expire_date,
+ applicant_id, applicant_name, dept_id, dept_name, renewal_reason, attachment_url, status, deleted, create_by, create_time, update_by, update_time) VALUES
+(26350, 100000, 'PI-OA-SEAL-RENEW-2026-0001', 'XQ202605080001', 9002, '合同专用章', 'YZ-2022-0002',
+ '2022-01-01', DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 20 DAY), DATE_ADD(CURDATE(), INTERVAL 1115 DAY),
+ 1, 'admin', 100, '总经办', '合同专用章即将到期(20 天内)，按规定提前续期 3 年。', 'https://demo.cloudflow.local/files/seal-renewal/HT-9002-2026.pdf', 'PENDING', 0, 'admin', '2026-05-02 09:00:00', 'admin', '2026-05-02 09:00:00'),
+(26351, 100000, 'PI-OA-SEAL-RENEW-2026-0002', 'XQ202605080002', 9003, '财务专用章', 'YZ-2022-0003',
+ '2022-01-01', DATE_ADD(CURDATE(), INTERVAL 45 DAY), DATE_ADD(CURDATE(), INTERVAL 45 DAY), DATE_ADD(CURDATE(), INTERVAL 1140 DAY),
+ 3, '王财务', 102, '财务部', '财务专用章 45 天后到期，财务部按计划续期 3 年。', 'https://demo.cloudflow.local/files/seal-renewal/CW-9003-2026.pdf', 'APPROVED', 0, 'wang', '2026-04-15 14:00:00', 'wang', '2026-04-22 16:00:00'),
+(26352, 100000, NULL, 'XQ202605080003', 9001, '公司公章', 'YZ-2022-0001',
+ '2022-01-01', '2032-01-01', '2032-01-01', '2042-01-01',
+ 1, 'admin', 100, '总经办', '公司公章长期续期申请草稿，等待补充正本扫描件后提交。', NULL, 'DRAFT', 0, 'admin', '2026-05-18 10:00:00', 'admin', '2026-05-18 10:00:00'),
+(26353, 100000, 'PI-OA-SEAL-RENEW-2025-0099', 'XQ202512280099', 9002, '合同专用章', 'YZ-2022-0002',
+ '2022-01-01', '2025-01-01', '2025-01-01', '2026-01-01',
+ 1, 'admin', 100, '总经办', '历史续期记录(已结案演示用)。', NULL, 'APPROVED', 0, 'admin', '2024-12-15 10:00:00', 'admin', '2024-12-28 16:00:00'),
+(26354, 100000, 'PI-OA-SEAL-RENEW-2026-0003', 'XQ202605080004', 9003, '财务专用章', 'YZ-2022-0003',
+ '2022-01-01', DATE_ADD(CURDATE(), INTERVAL 45 DAY), DATE_ADD(CURDATE(), INTERVAL 45 DAY), DATE_ADD(CURDATE(), INTERVAL 410 DAY),
+ 3, '王财务', 102, '财务部', '财务部内部驳回演示：续期年限不符规章。', NULL, 'REJECTED', 0, 'wang', '2026-05-08 14:00:00', 'wang', '2026-05-09 11:00:00');
+
+-- ---------- 17.2.5 印章到期提醒日志 oa_seal_expiry_reminder_log (26400-26419, 20 行) ----------
+INSERT INTO cloud_flow_db.oa_seal_expiry_reminder_log
+(id, tenant_id, seal_id, seal_name, expire_date, days_before, recipient_id, recipient_name, reminder_type, operator_id, operator_name, reminder_content, reminder_time, create_by, create_time) VALUES
+(26400, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 60, 2, '李经理', 'AUTO',   NULL, NULL, '【提醒】合同专用章将于 60 天后到期，请关注续期。', DATE_SUB(NOW(), INTERVAL 40 DAY), 'system', DATE_SUB(NOW(), INTERVAL 40 DAY)),
+(26401, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 30, 2, '李经理', 'AUTO',   NULL, NULL, '【提醒】合同专用章将于 30 天后到期，请尽快办理续期。', DATE_SUB(NOW(), INTERVAL 10 DAY), 'system', DATE_SUB(NOW(), INTERVAL 10 DAY)),
+(26402, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 15, 1, 'admin',  'AUTO',   NULL, NULL, '【紧急提醒】合同专用章将于 15 天后到期。', DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'system', DATE_ADD(CURDATE(), INTERVAL 5 DAY)),
+(26403, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 7,  1, 'admin',  'AUTO',   NULL, NULL, '【紧急提醒】合同专用章将于 7 天后到期。',  DATE_ADD(CURDATE(), INTERVAL 13 DAY), 'system', DATE_ADD(CURDATE(), INTERVAL 13 DAY)),
+(26404, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 0,  1, 'admin',  'MANUAL', 1, 'admin', '【手动催办】合同专用章已发起续期，请协助跟进。', DATE_SUB(NOW(), INTERVAL 1 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(26405, 100000, 9003, '财务专用章', DATE_ADD(CURDATE(), INTERVAL 45 DAY), 60, 3, '王财务', 'AUTO',   NULL, NULL, '【提醒】财务专用章将于 60 天后到期。', DATE_SUB(NOW(), INTERVAL 15 DAY), 'system', DATE_SUB(NOW(), INTERVAL 15 DAY)),
+(26406, 100000, 9003, '财务专用章', DATE_ADD(CURDATE(), INTERVAL 45 DAY), 30, 3, '王财务', 'AUTO',   NULL, NULL, '【提醒】财务专用章将于 30 天后到期。', DATE_ADD(CURDATE(), INTERVAL 15 DAY), 'system', DATE_ADD(CURDATE(), INTERVAL 15 DAY)),
+(26407, 100000, 9003, '财务专用章', DATE_ADD(CURDATE(), INTERVAL 45 DAY), 15, 3, '王财务', 'AUTO',   NULL, NULL, '【紧急提醒】财务专用章将于 15 天后到期。', DATE_ADD(CURDATE(), INTERVAL 30 DAY), 'system', DATE_ADD(CURDATE(), INTERVAL 30 DAY)),
+(26408, 100000, 9001, '公司公章',   '2032-01-01',                           365,1, 'admin',  'AUTO',   NULL, NULL, '【提醒】公司公章将于 1 年后到期，请规划续期方案。', DATE_SUB(NOW(), INTERVAL 30 DAY), 'system', DATE_SUB(NOW(), INTERVAL 30 DAY)),
+(26409, 100000, 9001, '公司公章',   '2032-01-01',                           180,1, 'admin',  'MANUAL', 1, 'admin', '【手动提醒】公司公章半年到期，已纳入续期计划。', DATE_SUB(NOW(), INTERVAL 5 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 5 DAY)),
+(26410, 100000, 9002, '合同专用章', '2025-01-01',                           30, 1, 'admin',  'AUTO',   NULL, NULL, '【历史】合同专用章到期 30 天提醒。', '2024-12-02 09:00:00', 'system', '2024-12-02 09:00:00'),
+(26411, 100000, 9002, '合同专用章', '2025-01-01',                           15, 1, 'admin',  'AUTO',   NULL, NULL, '【历史】合同专用章到期 15 天提醒。', '2024-12-17 09:00:00', 'system', '2024-12-17 09:00:00'),
+(26412, 100000, 9002, '合同专用章', '2025-01-01',                           7,  1, 'admin',  'AUTO',   NULL, NULL, '【历史】合同专用章到期 7 天提醒。',  '2024-12-25 09:00:00', 'system', '2024-12-25 09:00:00'),
+(26413, 100000, 9003, '财务专用章', DATE_ADD(CURDATE(), INTERVAL 45 DAY), 7,  3, '王财务', 'AUTO',   NULL, NULL, '【紧急提醒】财务专用章将于 7 天后到期。',  DATE_ADD(CURDATE(), INTERVAL 38 DAY), 'system', DATE_ADD(CURDATE(), INTERVAL 38 DAY)),
+(26414, 100000, 9001, '公司公章',   '2032-01-01',                           90, 1, 'admin',  'AUTO',   NULL, NULL, '【提醒】公司公章将于 90 天后到期。', DATE_SUB(NOW(), INTERVAL 60 DAY), 'system', DATE_SUB(NOW(), INTERVAL 60 DAY)),
+(26415, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 60, 1, 'admin',  'AUTO',   NULL, NULL, '【抄送】合同专用章 60 天到期(抄送 admin)。', DATE_SUB(NOW(), INTERVAL 40 DAY), 'system', DATE_SUB(NOW(), INTERVAL 40 DAY)),
+(26416, 100000, 9003, '财务专用章', DATE_ADD(CURDATE(), INTERVAL 45 DAY), 60, 1, 'admin',  'AUTO',   NULL, NULL, '【抄送】财务专用章 60 天到期(抄送 admin)。', DATE_SUB(NOW(), INTERVAL 15 DAY), 'system', DATE_SUB(NOW(), INTERVAL 15 DAY)),
+(26417, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 60, 3, '王财务', 'AUTO',   NULL, NULL, '【抄送】合同专用章 60 天到期(抄送财务)。', DATE_SUB(NOW(), INTERVAL 40 DAY), 'system', DATE_SUB(NOW(), INTERVAL 40 DAY)),
+(26418, 100000, 9001, '公司公章',   '2032-01-01',                           30, 2, '李经理', 'MANUAL', 1, 'admin', '【手动提醒】公司公章 30 天到期，已通知部门。', DATE_SUB(NOW(), INTERVAL 1 DAY), 'admin', DATE_SUB(NOW(), INTERVAL 1 DAY)),
+(26419, 100000, 9002, '合同专用章', DATE_ADD(CURDATE(), INTERVAL 20 DAY), 3,  2, '李经理', 'MANUAL', 2, '李经理', '【自助催办】合同专用章续期请加快处理。', DATE_ADD(CURDATE(), INTERVAL 17 DAY), 'li_mgr', DATE_ADD(CURDATE(), INTERVAL 17 DAY));
+
+-- ---------- 17.2.6 同步设备 oa_sync_device (26450-26464, 15 行) ----------
+INSERT INTO cloud_flow_db.oa_sync_device
+(id, device_id, user_id, tenant_id, device_name, last_sync_time, create_by, create_time, update_by, update_time) VALUES
+(26450, 'DEV-MAC-A001-ZHANGTOTAL',  2,  100000, '张总 MacBook Pro 16',     DATE_SUB(NOW(), INTERVAL 2 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 30 DAY), 'system', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(26451, 'DEV-IOS-B001-ZHANGTOTAL',  2,  100000, '张总 iPhone 15 Pro',      DATE_SUB(NOW(), INTERVAL 30 MINUTE), 'system', DATE_SUB(NOW(), INTERVAL 30 DAY), 'system', DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+(26452, 'DEV-WIN-C001-WANGCAIWU',   3,  100000, '王财务 Dell OptiPlex',    DATE_SUB(NOW(), INTERVAL 1 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 28 DAY), 'system', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+(26453, 'DEV-AND-D001-WANGCAIWU',   3,  100000, '王财务 华为 Mate60',      DATE_SUB(NOW(), INTERVAL 4 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 28 DAY), 'system', DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+(26454, 'DEV-MAC-E001-ZHAOHR',      4,  100000, '赵HR MacBook Air',        DATE_SUB(NOW(), INTERVAL 15 MINUTE), 'system', DATE_SUB(NOW(), INTERVAL 25 DAY), 'system', DATE_SUB(NOW(), INTERVAL 15 MINUTE)),
+(26455, 'DEV-IOS-F001-ZHAOHR',      4,  100000, '赵HR iPhone 14',          DATE_SUB(NOW(), INTERVAL 3 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 25 DAY), 'system', DATE_SUB(NOW(), INTERVAL 3 HOUR)),
+(26456, 'DEV-WIN-G001-WUSIYUAN',    11, 100000, '吴思远 ThinkPad X1',      DATE_SUB(NOW(), INTERVAL 45 MINUTE), 'system', DATE_SUB(NOW(), INTERVAL 22 DAY), 'system', DATE_SUB(NOW(), INTERVAL 45 MINUTE)),
+(26457, 'DEV-MAC-H001-ZHENGYANNING',12, 100000, '郑雅宁 MacBook Pro 14',   DATE_SUB(NOW(), INTERVAL 20 MINUTE), 'system', DATE_SUB(NOW(), INTERVAL 20 DAY), 'system', DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
+(26458, 'DEV-IOS-I001-ZHENGYANNING',12, 100000, '郑雅宁 iPhone 15',        DATE_SUB(NOW(), INTERVAL 2 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 20 DAY), 'system', DATE_SUB(NOW(), INTERVAL 2 HOUR)),
+(26459, 'DEV-WIN-J001-HEJIASHU',    13, 100000, '何嘉树 Surface Laptop 5', DATE_SUB(NOW(), INTERVAL 35 MINUTE), 'system', DATE_SUB(NOW(), INTERVAL 18 DAY), 'system', DATE_SUB(NOW(), INTERVAL 35 MINUTE)),
+(26460, 'DEV-AND-K001-PENGXIAO',    18, 100000, '彭骁 OPPO Find X7',       DATE_SUB(NOW(), INTERVAL 1 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 15 DAY), 'system', DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+(26461, 'DEV-IOS-L001-LUTRAINING',  21, 100000, '陆培训师 iPad Pro 12.9',  DATE_SUB(NOW(), INTERVAL 6 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 10 DAY), 'system', DATE_SUB(NOW(), INTERVAL 6 HOUR)),
+(26462, 'DEV-MAC-M001-LITHRBP',     6,  100000, '李HRBP MacBook Pro 13',   DATE_SUB(NOW(), INTERVAL 50 MINUTE), 'system', DATE_SUB(NOW(), INTERVAL 14 DAY), 'system', DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
+(26463, 'DEV-WIN-N001-QIANJIAGOUSHI',5, 100000, '钱架构师 MacBook Pro 16', DATE_SUB(NOW(), INTERVAL 25 MINUTE), 'system', DATE_SUB(NOW(), INTERVAL 26 DAY), 'system', DATE_SUB(NOW(), INTERVAL 25 MINUTE)),
+(26464, 'DEV-IOS-O001-FENGSALES',   30, 100000, '冯销售 iPhone 14 Pro',    DATE_SUB(NOW(), INTERVAL 5 HOUR), 'system', DATE_SUB(NOW(), INTERVAL 8 DAY), 'system', DATE_SUB(NOW(), INTERVAL 5 HOUR));
+
+-- ---------- 17.2.7 全链路事件 oa_trace_event (26470-26499, 30 行) ----------
+INSERT INTO cloud_flow_db.oa_trace_event
+(id, tenant_id, business_type, business_id, related_type, related_id, event_type, event_title, event_content, operator_id, operator_name, event_time, snapshot_json, create_by, create_time) VALUES
+(26470, 100000, 'CONTRACT', 9201, NULL, NULL, 'CREATE',          '合同创建',           '景曜科技续约合同已创建。', 12, '郑雅宁', '2026-05-08 09:00:00', JSON_OBJECT('contractNo','HT202605080001','amount',368000.00,'customerName','景曜科技'), 'zheng_cs', '2026-05-08 09:00:00'),
+(26471, 100000, 'CONTRACT', 9201, 'APPROVAL', 8801, 'APPROVAL_SUBMIT', '合同提交审批',  '提交至销售总监审批。', 12, '郑雅宁', '2026-05-08 14:00:00', JSON_OBJECT('approvalNo','SP202605080001','submitter','郑雅宁'), 'zheng_cs', '2026-05-08 14:00:00'),
+(26472, 100000, 'CONTRACT', 9201, 'APPROVAL', 8801, 'APPROVAL_PASS',   '合同审批通过',  '销售总监审批通过。', 9,  '销售总监', '2026-05-09 10:00:00', JSON_OBJECT('approvalNo','SP202605080001','approver','销售总监','comment','同意续约'), 'sales_director', '2026-05-09 10:00:00'),
+(26473, 100000, 'CONTRACT', 9201, 'SEAL_APPLY', 8801, 'SEAL_BORROW',   '合同盖章借出',  '合同专用章借出用于景曜续约合同盖章。', 1, 'admin', '2026-05-10 11:00:00', JSON_OBJECT('sealId',9002,'applicationNo','YY202605080001'), 'admin', '2026-05-10 11:00:00'),
+(26474, 100000, 'CONTRACT', 9201, NULL, NULL, 'SEAL_RETURN',     '印章归还',          '合同盖章后印章已归还。', 1,  'admin', '2026-05-10 16:00:00', JSON_OBJECT('sealId',9002,'returnTime','2026-05-10 16:00:00'), 'admin', '2026-05-10 16:00:00'),
+(26475, 100000, 'CONTRACT', 9201, NULL, NULL, 'SIGN',            '合同签订',          '合同已完成双方签署。', 12, '郑雅宁', '2026-05-11 14:00:00', JSON_OBJECT('signMethod','面签','signDate','2026-05-11'), 'zheng_cs', '2026-05-11 14:00:00'),
+(26476, 100000, 'CONTRACT', 9201, 'BUDGET', 26250, 'BUDGET_RESERVE','预算占用',         '差旅预算已占用 6000.00。', 12, '郑雅宁', '2026-05-08 09:00:00', JSON_OBJECT('budgetId',9101,'amount',6000.00), 'zheng_cs', '2026-05-08 09:00:00'),
+(26477, 100000, 'CONTRACT', 9202, NULL, NULL, 'CREATE',          '合同创建',           '苏州联拓制造合同已创建。', 11, '吴思远', '2026-05-09 10:00:00', JSON_OBJECT('contractNo','HT202605080002','amount',520000.00,'customerName','苏州联拓制造'), 'wu_delivery', '2026-05-09 10:00:00'),
+(26478, 100000, 'CONTRACT', 9202, 'RISK', 26301, 'RISK_TRIGGER',   '风险触发',         '合同金额超 50W，触发金额风险告警。', NULL, 'system', '2026-05-12 02:00:00', JSON_OBJECT('riskCode','CONTRACT_AMOUNT_LARGE','riskLevel','MEDIUM'), 'system', '2026-05-12 02:00:00'),
+(26479, 100000, 'CONTRACT', 9202, 'RISK', 26301, 'RISK_HANDLE',    '风险处理',         '已通知法务介入复核。', 11, '吴思远', '2026-05-13 09:00:00', JSON_OBJECT('riskCode','CONTRACT_AMOUNT_LARGE','handleRemark','已通知法务介入复核'), 'wu_delivery', '2026-05-13 09:00:00'),
+(26480, 100000, 'CONTRACT', 9203, NULL, NULL, 'CREATE',           '合同创建',          '启衡软件合同已创建。', 18, '彭骁', '2026-05-10 11:00:00', JSON_OBJECT('contractNo','HT202605080003','amount',680000.00,'customerName','启衡软件'), 'peng_sales', '2026-05-10 11:00:00'),
+(26481, 100000, 'CONTRACT', 9203, 'APPROVAL', 8802, 'APPROVAL_REJECT', '合同审批驳回', '销售总监驳回：金额超限。', 9, '销售总监', '2026-05-10 11:35:00', JSON_OBJECT('approvalNo','SP202605080002','rejectReason','金额超限'), 'sales_director', '2026-05-10 11:35:00'),
+(26482, 100000, 'APPROVAL', 8801, 'CONTRACT', 9201, 'APPROVAL_SUBMIT','审批提交',      '景曜续约审批已提交。', 12, '郑雅宁', '2026-05-08 14:00:00', JSON_OBJECT('businessRef','HT202605080001'), 'zheng_cs', '2026-05-08 14:00:00'),
+(26483, 100000, 'APPROVAL', 8801, 'CONTRACT', 9201, 'APPROVAL_PASS', '审批通过',       '审批通过。', 9, '销售总监', '2026-05-09 10:00:00', JSON_OBJECT('result','PASS','comment','同意续约'), 'sales_director', '2026-05-09 10:00:00'),
+(26484, 100000, 'APPROVAL', 8802, 'CONTRACT', 9202, 'APPROVAL_SUBMIT','审批提交',      '苏州联拓合同审批已提交。', 11, '吴思远', '2026-05-09 10:30:00', JSON_OBJECT('businessRef','HT202605080002'), 'wu_delivery', '2026-05-09 10:30:00'),
+(26485, 100000, 'APPROVAL', 8802, NULL, NULL, 'APPROVAL_TIMEOUT',    '审批超时',       '审批超过 24h 未处理。', NULL, 'system', '2026-05-10 11:00:00', JSON_OBJECT('processInstanceId','PI-CRM-CONTRACT-2026-0023','timeoutHours',24), 'system', '2026-05-10 11:00:00'),
+(26486, 100000, 'APPROVAL', 8803, 'CONTRACT', 9203, 'APPROVAL_SUBMIT','审批提交',      '启衡软件合同审批已提交。', 18, '彭骁', '2026-05-10 11:00:00', JSON_OBJECT('businessRef','HT202605080003'), 'peng_sales', '2026-05-10 11:00:00'),
+(26487, 100000, 'APPROVAL', 8803, 'CONTRACT', 9203, 'APPROVAL_REJECT','审批驳回',      '审批驳回。', 9, '销售总监', '2026-05-10 11:35:00', JSON_OBJECT('result','REJECT','rejectReason','金额超限'), 'sales_director', '2026-05-10 11:35:00'),
+(26488, 100000, 'SEAL', 9001, NULL, NULL, 'SEAL_BORROW',           '印章借出',         '公司公章借出。', 1, 'admin', '2026-05-09 10:00:00', JSON_OBJECT('borrower','admin','expectedReturn','2026-05-09 18:00:00'), 'admin', '2026-05-09 10:00:00'),
+(26489, 100000, 'SEAL', 9001, NULL, NULL, 'SEAL_OVERDUE',          '印章超期未归还', '印章借出超期 2 天。',  NULL, 'system', '2026-05-12 02:00:00', JSON_OBJECT('overdueDays',2), 'system', '2026-05-12 02:00:00'),
+(26490, 100000, 'SEAL', 9001, NULL, NULL, 'SEAL_RETURN',           '印章归还',         '已联系借用人，今日归还。', 1, 'admin', '2026-05-20 16:00:00', JSON_OBJECT('actualReturn','2026-05-20 16:00:00','overdueDays',11), 'admin', '2026-05-20 16:00:00'),
+(26491, 100000, 'SEAL', 9002, 'SEAL_RENEWAL', 26350, 'SEAL_RENEWAL_SUBMIT', '印章续期申请', '合同专用章续期申请已提交。', 1, 'admin', '2026-05-02 09:00:00', JSON_OBJECT('renewalNo','XQ202605080001','newExpire',DATE_ADD(CURDATE(), INTERVAL 1115 DAY)), 'admin', '2026-05-02 09:00:00'),
+(26492, 100000, 'SEAL', 9003, 'SEAL_RENEWAL', 26351, 'SEAL_RENEWAL_APPROVED','印章续期通过', '财务专用章续期已通过审批。', 3, '王财务', '2026-04-22 16:00:00', JSON_OBJECT('renewalNo','XQ202605080002','approver','王财务'), 'wang', '2026-04-22 16:00:00'),
+(26493, 100000, 'CONTRACT', 9201, 'PAYMENT', 8801, 'PAYMENT_RECEIVE', '回款入账',     '景曜科技首期回款 20000.00 已入账。', 3, '王财务', '2026-05-19 10:00:00', JSON_OBJECT('amount',20000.00,'planAmount',120000.00), 'wang', '2026-05-19 10:00:00'),
+(26494, 100000, 'CONTRACT', 9201, 'RISK', 26307, 'RISK_TRIGGER',   '风险触发',       '回款逾期超 30 天。', NULL, 'system', '2026-05-05 02:00:00', JSON_OBJECT('riskCode','CONTRACT_RECEIVABLE_OVERDUE','riskLevel','CRITICAL'), 'system', '2026-05-05 02:00:00'),
+(26495, 100000, 'APPROVAL', 8801, NULL, NULL, 'NOTIFICATION_SEND',  '审批通知发送',   '审批结果通知已发送。', NULL, 'system', '2026-05-09 10:01:00', JSON_OBJECT('channels',JSON_ARRAY('EMAIL','STATION','DINGTALK'),'recipients',JSON_ARRAY('郑雅宁','admin')), 'system', '2026-05-09 10:01:00'),
+(26496, 100000, 'CONTRACT', 9202, 'BUDGET', 26257, 'BUDGET_WRITEOFF','预算核销',     '差旅预算核销 4200.00。', 12, '郑雅宁', '2026-05-16 09:00:00', JSON_OBJECT('budgetId',9102,'amount',4200.00), 'zheng_cs', '2026-05-16 09:00:00'),
+(26497, 100000, 'CONTRACT', 9201, NULL, NULL, 'EXPIRE_REMINDER',   '到期提醒',       '合同将于 30 天后到期。', NULL, 'system', '2026-05-10 02:00:00', JSON_OBJECT('expireDate',DATE_ADD(CURDATE(), INTERVAL 30 DAY)), 'system', '2026-05-10 02:00:00'),
+(26498, 100000, 'CONTRACT', 9203, 'RISK', 26312, 'RISK_TRIGGER',  '风险触发',        '合同正文出现高风险关键词。', NULL, 'system', '2026-05-21 02:00:00', JSON_OBJECT('riskCode','CONTRACT_RISK_KEYWORD','keywords',JSON_ARRAY('独家','排他')), 'system', '2026-05-21 02:00:00'),
+(26499, 100000, 'CONTRACT', 9202, NULL, NULL, 'UPDATE',            '合同更新',       '合同金额由 480000 调整为 520000。', 11, '吴思远', '2026-05-20 14:00:00', JSON_OBJECT('amountBefore',480000.00,'amountAfter',520000.00), 'wu_delivery', '2026-05-20 14:00:00');
+
+-- ---------- 17.3.1 CRM 报价行 crm_quote_line (26500-26529, 30 行) ----------
+INSERT INTO cloud_flow_db.crm_quote_line
+(quote_line_id, tenant_id, quote_id, sort_no, product_id, product_no, product_name, category, spec, unit,
+ quantity, unit_price, discount_rate, tax_rate, line_amount, tax_amount, remark, deleted, create_by, create_time, update_by, update_time) VALUES
+(26500, 100000, 8801, 1, 8901, 'CP202605080001', 'CloudFlow CRM 专业版',         'CRM',         'Professional / SaaS', '年', 3.00, 69800.00,  100.00, 6.00, 209400.00, 12564.00, '主推产品 3 年订阅',           0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26501, 100000, 8801, 2, 8902, 'CP202605080002', 'CloudFlow 交付协同包',          'DELIVERY',    'Delivery Suite',      '年', 2.00, 42800.00,  100.00, 6.00, 85600.00,  5136.00,  '搭配交付协同',               0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26502, 100000, 8801, 3, 8903, 'CP202605080003', 'CloudFlow OA 预算协同模块',     'OA',          'Budget Collaboration','年', 2.00, 36800.00,  100.00, 6.00, 73000.00,  4380.00,  '预算协同附加',               0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26503, 100000, 8802, 1, 8901, 'CP202605080001', 'CloudFlow CRM 专业版',         'CRM',         'Professional / SaaS', '年', 5.00, 69800.00,  90.00,  6.00, 314100.00, 18846.00, '5 年订阅含批量优惠',         0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26504, 100000, 8802, 2, 8902, 'CP202605080002', 'CloudFlow 交付协同包',          'DELIVERY',    'Delivery Suite',      '年', 1.00, 42800.00,  100.00, 6.00, 42800.00,  2568.00,  '标准交付配置',               0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26505, 100000, 8802, 3, 8904, 'CP202605080004', 'CloudFlow 门店零售连接器',      'INTEGRATION', 'Retail Connector',    '套', 4.00, 15800.00,  100.00, 6.00, 63200.00,  3792.00,  '4 个门店连接器',             0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26506, 100000, 8803, 1, 8901, 'CP202605080001', 'CloudFlow CRM 专业版',         'CRM',         'Professional / SaaS', '年', 2.00, 69800.00,  100.00, 6.00, 139600.00, 8376.00,  '基础订阅',                   0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26507, 100000, 8803, 2, 8902, 'CP202605080002', 'CloudFlow 交付协同包',          'DELIVERY',    'Delivery Suite',      '年', 1.00, 42800.00,  100.00, 6.00, 42800.00,  2568.00,  '二期推广交付',               0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26508, 100000, 8803, 3, 8903, 'CP202605080003', 'CloudFlow OA 预算协同模块',     'OA',          'Budget Collaboration','年', 2.00, 36800.00,  100.00, 6.00, 73000.00,  4380.00,  '预算协同模块',               0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26509, 100000, 8801, 4, NULL, 'EXTRA-001',      '专属客户成功服务包',            'SERVICE',     'Premium Support',     '年', 1.00, 28800.00,  100.00, 6.00, 28800.00,  1728.00,  '年度高级 CSM 服务',          0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26510, 100000, 8802, 4, NULL, 'EXTRA-002',      '实施培训服务',                  'SERVICE',     'Onsite Training',     '人天', 10.00, 2800.00, 100.00, 6.00, 28000.00,  1680.00, '现场培训 10 人天',           0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26511, 100000, 8803, 4, NULL, 'EXTRA-003',      '上线辅导服务',                  'SERVICE',     'Go-Live Support',     '次',   2.00, 8800.00, 100.00, 6.00, 17600.00,  1056.00, '2 次上线护航',               0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26512, 100000, 8801, 5, 8904, 'CP202605080004', 'CloudFlow 门店零售连接器',      'INTEGRATION', 'Retail Connector',    '套', 2.00, 15800.00,  100.00, 6.00, 31600.00,  1896.00,  '2 个门店扩展',               0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26513, 100000, 8802, 5, 8903, 'CP202605080003', 'CloudFlow OA 预算协同模块',     'OA',          'Budget Collaboration','年', 3.00, 36800.00,  95.00,  6.00, 104880.00, 6293.00,  '3 年预算协同',               0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26514, 100000, 8803, 5, NULL, 'EXTRA-004',      '定制开发服务',                  'SERVICE',     'Custom Development',  '人天', 20.00, 3200.00, 100.00, 6.00, 64000.00,  3840.00, '定制开发 20 人天',           0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26515, 100000, 8801, 6, NULL, 'EXTRA-005',      '高级数据迁移服务',              'SERVICE',     'Data Migration',      '次',   1.00, 38000.00, 100.00, 6.00, 38000.00, 2280.00, '历史数据迁移一次',           0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26516, 100000, 8801, 7, 8901, 'CP202605080001', 'CloudFlow CRM 专业版-延期',     'CRM',         'Professional / SaaS-Extend','年', 1.00, 35000.00, 80.00, 6.00, 28000.00, 1680.00, '延期 1 年优惠续费',          0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26517, 100000, 8802, 6, NULL, 'EXTRA-006',      '集成对接服务',                  'SERVICE',     'Integration',         '次',   3.00, 12000.00, 100.00, 6.00, 36000.00,  2160.00, '与 3 个第三方系统对接',     0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26518, 100000, 8803, 6, 8902, 'CP202605080002', 'CloudFlow 交付协同包',          'DELIVERY',    'Delivery Suite',      '年', 1.00, 42800.00, 100.00, 6.00, 42800.00,  2568.00,  '二期推广追加交付',           0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26519, 100000, 8802, 7, NULL, 'EXTRA-007',      '7x24 紧急响应服务',             'SERVICE',     'Emergency Response',  '年',   1.00, 18000.00, 100.00, 6.00, 18000.00,  1080.00, '7x24 紧急响应',              0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26520, 100000, 8801, 8, NULL, 'EXTRA-008',      'BPM 流程定制开发',              'SERVICE',     'BPM Customization',   '人天', 15.00, 3500.00, 100.00, 6.00, 52500.00, 3150.00, '15 人天 BPM 定制',           0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26521, 100000, 8803, 7, NULL, 'EXTRA-009',      '现场实施服务',                  'SERVICE',     'Onsite Implementation','人天',8.00, 4500.00, 100.00, 6.00, 36000.00,  2160.00, '8 人天现场实施',             0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26522, 100000, 8801, 9, NULL, 'EXTRA-010',      '高级培训认证服务',              'SERVICE',     'Certification',       '人',   5.00, 4800.00, 100.00, 6.00, 24000.00,  1440.00, '5 人认证培训',               0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26523, 100000, 8802, 8, 8901, 'CP202605080001', '专业版-增量', 'CRM',           'Professional Add-on', '人/月',  20.00, 1200.00, 100.00, 6.00, 24000.00, 1440.00, '20 人月专业版增量许可',       0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26524, 100000, 8803, 8, NULL, 'EXTRA-011',      '行业模板服务',                  'SERVICE',     'Industry Templates',   '套',  1.00, 28000.00, 100.00, 6.00, 28000.00, 1680.00, '制造行业模板套件',           0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26525, 100000, 8801, 10, NULL, 'EXTRA-012',     '专属技术顾问服务',              'SERVICE',     'TAM Service',          '年',  1.00, 60000.00, 100.00, 6.00, 60000.00, 3600.00, '专属技术顾问年度服务',       0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26526, 100000, 8802, 9, 8904, 'CP202605080004', 'CloudFlow 门店零售连接器',      'INTEGRATION', 'Retail Connector',    '套',   8.00, 15800.00, 95.00,  6.00, 120080.00, 7205.00, '8 个门店连接器(批量 5%折扣)', 0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00'),
+(26527, 100000, 8803, 9, NULL, 'EXTRA-013',      '驻场实施服务',                  'SERVICE',     'Resident Service',     '人月', 3.00, 36000.00, 100.00, 6.00, 108000.00, 6480.00, '3 人月驻场',                 0, 'peng_sales', '2026-05-13 14:00:00', 'peng_sales', '2026-05-13 14:00:00'),
+(26528, 100000, 8801, 11, NULL, 'EXTRA-014',     '迁移上云咨询服务',              'SERVICE',     'Cloud Migration',      '次',   1.00, 88000.00, 100.00, 6.00, 88000.00,  5280.00, '迁移咨询一次',               0, 'zheng_cs', '2026-05-08 09:00:00', 'zheng_cs', '2026-05-08 09:00:00'),
+(26529, 100000, 8802, 10, NULL, 'EXTRA-015',     '渠道培训服务',                  'SERVICE',     'Channel Training',     '人',   30.00, 1800.00, 100.00, 6.00, 54000.00, 3240.00, '30 人渠道培训',              0, 'he_sales', '2026-05-15 11:00:00', 'he_sales', '2026-05-15 11:00:00');
+
+-- ---------- 17.3.2 CRM 交接任务 crm_handover_task (26600-26609, 10 行) ----------
+INSERT INTO cloud_flow_db.crm_handover_task
+(handover_id, tenant_id, from_owner_id, from_owner_name, from_dept_id, business_type, business_id, business_name,
+ status, to_owner_id, to_owner_name, trigger_source, trigger_event_id, remark, deleted, create_by, create_time, update_by, update_time) VALUES
+(26600, 100000, 18, '彭骁',     117, 'CRM_CUSTOMER',    8801, '景曜科技',                 'REASSIGNED', 12, '郑雅宁', 'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0001', '原 owner 离职，交接给客户成功负责人。', 0, 'system', '2026-05-19 10:00:00', 'admin', '2026-05-19 14:00:00'),
+(26601, 100000, 18, '彭骁',     117, 'CRM_CUSTOMER',    8802, '苏州联拓制造',             'REASSIGNED', 11, '吴思远', 'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0002', '原 owner 离职，转交实施交付负责人。', 0, 'system', '2026-05-19 10:00:00', 'admin', '2026-05-19 14:00:00'),
+(26602, 100000, 18, '彭骁',     117, 'CRM_CUSTOMER',    8803, '启衡软件',                 'PENDING',    NULL, NULL,    'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0003', '原 owner 离职，等待销售总监指派接手人。', 0, 'system', '2026-05-19 10:00:00', 'system', '2026-05-19 10:00:00'),
+(26603, 100000, 18, '彭骁',     117, 'CRM_OPPORTUNITY', 8801, '启衡软件流程中台升级',     'PENDING',    NULL, NULL,    'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0004', '原 owner 离职，商机等待重新分配。', 0, 'system', '2026-05-19 10:00:00', 'system', '2026-05-19 10:00:00'),
+(26604, 100000, 18, '彭骁',     117, 'CRM_OPPORTUNITY', 8802, '苏州联拓制造二期推广',     'REASSIGNED', 11, '吴思远', 'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0005', '商机转交实施交付负责人。', 0, 'system', '2026-05-19 10:00:00', 'admin', '2026-05-19 14:30:00'),
+(26605, 100000, 19, '李销售',   117, 'CRM_CUSTOMER',    8804, '杭州科达',                 'CLOSED',     12, '郑雅宁', 'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0006', '历史交接完成的案例。', 0, 'system', '2025-12-01 10:00:00', 'admin', '2025-12-05 16:00:00'),
+(26606, 100000, 19, '李销售',   117, 'CRM_OPPORTUNITY', 8803, '杭州科达技术升级',          'CLOSED',     12, '郑雅宁', 'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0007', '历史交接完成的商机。', 0, 'system', '2025-12-01 10:00:00', 'admin', '2025-12-05 16:00:00'),
+(26607, 100000, 20, '陈销售',   117, 'CRM_CUSTOMER',    8805, '南京盛业',                 'PENDING',    NULL, NULL,    'POOL_AUTO_RELEASE', 'STREAM-EVT-2026-0008', '客户进入公海自动释放交接。', 0, 'system', '2026-05-20 02:00:00', 'system', '2026-05-20 02:00:00'),
+(26608, 100000, 18, '彭骁',     117, 'CRM_CUSTOMER',    8806, '广州正达',                 'REASSIGNED', 13, '何嘉树', 'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0009', '小客户交接给何嘉树。', 0, 'system', '2026-05-19 10:00:00', 'admin', '2026-05-19 15:00:00'),
+(26609, 100000, 18, '彭骁',     117, 'CRM_OPPORTUNITY', 8804, '广州正达签约',              'REASSIGNED', 13, '何嘉树', 'EMPLOYEE_LEFT',  'STREAM-EVT-2026-0010', '商机一并转交何嘉树。', 0, 'system', '2026-05-19 10:00:00', 'admin', '2026-05-19 15:00:00');
+
+-- ---------- 17.3.3 CRM 通用审批流水 crm_approval (26700-26719, 20 行) ----------
+INSERT INTO cloud_flow_db.crm_approval
+(approval_id, tenant_id, approval_no, business_type, action_type, business_ref_type, business_ref_id, business_ref_name,
+ payload_json, applicant_id, applicant_name, dept_id, dept_name, status, instance_id, approval_comment, remark, deleted, create_by, create_time, update_by, update_time) VALUES
+(26700, 100000, 'CRM-SP-2026-0001', 'crm_customer_claim',       'CLAIM',     'CRM_CUSTOMER',    8807, '上海望尚商贸',
+ JSON_OBJECT('customerCode','C202604200001','reason','客户进入公海满 30 天可领取','claimUser','何嘉树'), 13, '何嘉树', 112, '销售部', 'APPROVED', 'PI-CRM-CLAIM-2026-0001', '通过：客户公海已满期，何嘉树达成业绩门槛。', '从公海领取', 0, 'he_sales', '2026-04-25 10:00:00', 'he_sales', '2026-04-26 14:00:00'),
+(26701, 100000, 'CRM-SP-2026-0002', 'crm_customer_claim',       'CLAIM',     'CRM_CUSTOMER',    8808, '北京同方',
+ JSON_OBJECT('customerCode','C202604200002','reason','与原销售有跟进资料交接','claimUser','彭骁'), 18, '彭骁', 117, '华东销售组', 'PENDING', 'PI-CRM-CLAIM-2026-0002', NULL, '等待销售经理审批', 0, 'peng_sales', '2026-05-21 09:00:00', 'peng_sales', '2026-05-21 09:00:00'),
+(26702, 100000, 'CRM-SP-2026-0003', 'crm_customer_claim',       'RELEASE',   'CRM_CUSTOMER',    8809, '深圳源诺科技',
+ JSON_OBJECT('customerCode','C202604200003','reason','释放至公海，因长期无跟进'), 12, '郑雅宁', 111, '客户成功部', 'APPROVED', 'PI-CRM-RELEASE-2026-0001', '通过：客户长期无跟进进入公海。', '主动释放至公海', 0, 'zheng_cs', '2026-05-15 11:00:00', 'zheng_cs', '2026-05-15 15:00:00'),
+(26703, 100000, 'CRM-SP-2026-0004', 'crm_customer_level',       'LEVEL_UP',  'CRM_CUSTOMER',    8801, '景曜科技',
+ JSON_OBJECT('levelBefore','NORMAL','levelAfter','VIP','reason','续约金额超 50W'), 12, '郑雅宁', 111, '客户成功部', 'APPROVED', 'PI-CRM-LEVEL-2026-0001', '通过：续约金额符合 VIP 客户标准。', '客户分级提升', 0, 'zheng_cs', '2026-05-09 10:00:00', 'zheng_cs', '2026-05-10 14:00:00'),
+(26704, 100000, 'CRM-SP-2026-0005', 'crm_customer_level',       'LEVEL_DOWN','CRM_CUSTOMER',    8810, '武汉智强',
+ JSON_OBJECT('levelBefore','VIP','levelAfter','NORMAL','reason','无续约迹象'), 13, '何嘉树', 112, '销售部', 'REJECTED', 'PI-CRM-LEVEL-2026-0002', '驳回：客户仍有商机正在跟进。', '客户分级降级', 0, 'he_sales', '2026-05-12 14:00:00', 'he_sales', '2026-05-13 09:00:00'),
+(26705, 100000, 'CRM-SP-2026-0006', 'crm_opportunity_downgrade','DOWNGRADE', 'CRM_OPPORTUNITY', 8803, '杭州科达技术升级',
+ JSON_OBJECT('stageBefore','NEGOTIATION','stageAfter','PROPOSAL','reason','客户预算缩减'), 12, '郑雅宁', 111, '客户成功部', 'APPROVED', 'PI-CRM-DOWNGRADE-2026-0001', '通过：客户预算确认缩减。', '商机阶段降级', 0, 'zheng_cs', '2026-05-11 09:00:00', 'zheng_cs', '2026-05-11 16:00:00'),
+(26706, 100000, 'CRM-SP-2026-0007', 'crm_opportunity_downgrade','CLOSE',     'CRM_OPPORTUNITY', 8804, '广州正达签约',
+ JSON_OBJECT('reason','客户取消采购计划'), 13, '何嘉树', 112, '销售部', 'APPROVED', 'PI-CRM-DOWNGRADE-2026-0002', '通过：客户书面确认取消。', '商机关闭', 0, 'he_sales', '2026-05-18 11:00:00', 'he_sales', '2026-05-19 09:00:00'),
+(26707, 100000, 'CRM-SP-2026-0008', 'crm_refund',               'REFUND',    'CRM_RECEIVABLE',  8801, '景曜科技首期回款',
+ JSON_OBJECT('amount',20000.00,'reason','客户重复支付，退还多余款项'), 3, '王财务', 102, '财务部', 'PENDING', 'PI-CRM-REFUND-2026-0001', NULL, '客户退款审批', 0, 'wang', '2026-05-21 14:00:00', 'wang', '2026-05-21 14:00:00'),
+(26708, 100000, 'CRM-SP-2026-0009', 'crm_refund',               'REFUND',    'CRM_RECEIVABLE',  8802, '苏州联拓制造实施尾款',
+ JSON_OBJECT('amount',50000.00,'reason','合同终止退款'), 3, '王财务', 102, '财务部', 'REJECTED', 'PI-CRM-REFUND-2026-0002', '驳回：退款金额超出原合同金额上限。', '风控驳回', 0, 'wang', '2026-05-17 11:00:00', 'wang', '2026-05-17 15:00:00'),
+(26709, 100000, 'CRM-SP-2026-0010', 'crm_refund',               'REFUND',    'CRM_RECEIVABLE',  8803, '历史回款重复',
+ JSON_OBJECT('amount',5000.00,'reason','演示用历史退款'), 3, '王财务', 102, '财务部', 'APPROVED', 'PI-CRM-REFUND-2025-0099', '通过：金额合理，已退款。', '历史退款', 0, 'wang', '2025-12-15 10:00:00', 'wang', '2025-12-20 14:00:00'),
+(26710, 100000, 'CRM-SP-2026-0011', 'crm_customer_claim',       'CLAIM',     'CRM_CUSTOMER',    8811, '武汉光谷',
+ JSON_OBJECT('claimUser','彭骁','reason','客户主动申请合作'), 18, '彭骁', 117, '华东销售组', 'CANCELLED', NULL, '申请人主动撤回。', '申请人撤回', 0, 'peng_sales', '2026-05-16 09:00:00', 'peng_sales', '2026-05-16 14:00:00'),
+(26711, 100000, 'CRM-SP-2026-0012', 'crm_customer_level',       'LEVEL_UP',  'CRM_CUSTOMER',    8802, '苏州联拓制造',
+ JSON_OBJECT('levelBefore','NORMAL','levelAfter','KEY','reason','二期推广签约'), 11, '吴思远', 110, '实施交付部', 'PENDING', 'PI-CRM-LEVEL-2026-0003', NULL, '重点客户认定', 0, 'wu_delivery', '2026-05-21 10:00:00', 'wu_delivery', '2026-05-21 10:00:00'),
+(26712, 100000, 'CRM-SP-2026-0013', 'crm_opportunity_downgrade','DOWNGRADE', 'CRM_OPPORTUNITY', 8801, '启衡软件流程中台升级',
+ JSON_OBJECT('stageBefore','NEGOTIATION','stageAfter','PROPOSAL','reason','客户内部审批延期'), 13, '何嘉树', 112, '销售部', 'DRAFT', NULL, NULL, '草稿状态', 0, 'he_sales', '2026-05-21 16:00:00', 'he_sales', '2026-05-21 16:00:00'),
+(26713, 100000, 'CRM-SP-2026-0014', 'crm_customer_claim',       'CLAIM',     'CRM_CUSTOMER',    8812, '济南数智',
+ JSON_OBJECT('claimUser','何嘉树','reason','从公海领取'), 13, '何嘉树', 112, '销售部', 'APPROVED', 'PI-CRM-CLAIM-2026-0003', '通过。', '从公海领取', 0, 'he_sales', '2026-05-10 10:00:00', 'he_sales', '2026-05-11 14:00:00'),
+(26714, 100000, 'CRM-SP-2026-0015', 'crm_customer_claim',       'RELEASE',   'CRM_CUSTOMER',    8813, '青岛海宇',
+ JSON_OBJECT('reason','3 个月无跟进自动释放'), 18, '彭骁', 117, '华东销售组', 'APPROVED', 'PI-CRM-RELEASE-2026-0002', '通过：触发自动释放规则。', '自动释放', 0, 'system', '2026-05-08 02:00:00', 'system', '2026-05-08 02:00:30'),
+(26715, 100000, 'CRM-SP-2026-0016', 'crm_customer_level',       'LEVEL_UP',  'CRM_CUSTOMER',    8814, '厦门海创',
+ JSON_OBJECT('levelBefore','NORMAL','levelAfter','VIP','reason','本年签约金额超 80W'), 12, '郑雅宁', 111, '客户成功部', 'APPROVED', 'PI-CRM-LEVEL-2026-0004', '通过。', '客户分级提升', 0, 'zheng_cs', '2026-05-05 09:00:00', 'zheng_cs', '2026-05-06 16:00:00'),
+(26716, 100000, 'CRM-SP-2026-0017', 'crm_opportunity_downgrade','CLOSE',     'CRM_OPPORTUNITY', 8802, '苏州联拓制造二期推广',
+ JSON_OBJECT('reason','商机已转化为合同'), 11, '吴思远', 110, '实施交付部', 'APPROVED', 'PI-CRM-DOWNGRADE-2026-0003', '通过：商机已转化为合同。', '商机关闭', 0, 'wu_delivery', '2026-05-14 09:00:00', 'wu_delivery', '2026-05-14 14:00:00'),
+(26717, 100000, 'CRM-SP-2026-0018', 'crm_refund',               'REFUND',    'CRM_RECEIVABLE',  8804, '杭州科达终止合同退款',
+ JSON_OBJECT('amount',12000.00,'reason','合同终止退款'), 3, '王财务', 102, '财务部', 'PENDING', 'PI-CRM-REFUND-2026-0003', NULL, '终止合同退款', 0, 'wang', '2026-05-20 11:00:00', 'wang', '2026-05-20 11:00:00'),
+(26718, 100000, 'CRM-SP-2026-0019', 'crm_customer_claim',       'CLAIM',     'CRM_CUSTOMER',    8815, '宁波东海',
+ JSON_OBJECT('claimUser','吴思远','reason','客户介绍'), 11, '吴思远', 110, '实施交付部', 'APPROVED', 'PI-CRM-CLAIM-2026-0004', '通过。', '从公海领取', 0, 'wu_delivery', '2026-05-03 14:00:00', 'wu_delivery', '2026-05-04 10:00:00'),
+(26719, 100000, 'CRM-SP-2026-0020', 'crm_customer_level',       'LEVEL_DOWN','CRM_CUSTOMER',    8816, '南京盛业',
+ JSON_OBJECT('levelBefore','VIP','levelAfter','NORMAL','reason','本年无签约'), 13, '何嘉树', 112, '销售部', 'APPROVED', 'PI-CRM-LEVEL-2026-0005', '通过：本年无签约。', '客户分级降级', 0, 'he_sales', '2026-05-01 09:00:00', 'he_sales', '2026-05-02 14:00:00');
+
+
+
 
 
 

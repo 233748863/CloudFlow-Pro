@@ -1,0 +1,188 @@
+package com.cloudflow.hr.controller;
+
+import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.hr.domain.dto.HrTrainingCertificateTemplatePayload;
+import com.cloudflow.hr.domain.entity.HrTrainingCertificate;
+import com.cloudflow.hr.domain.entity.HrTrainingCertificateTemplate;
+import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.mapper.HrTrainingCertificateMapper;
+import com.cloudflow.hr.service.HrEssSupport;
+import com.cloudflow.hr.service.HrFileStorage;
+import com.cloudflow.hr.service.HrTrainingArchiveService;
+import com.cloudflow.hr.service.HrTrainingCertificateService;
+import com.cloudflow.hr.service.HrTypedCrudService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * 培训证书 + 培训档案控制器：颁发 / 撤销 / 重新渲染 PDF / 下载，以及按员工聚合档案视图。
+ */
+@RestController
+@RequestMapping("/training/certificates")
+@RequiredArgsConstructor
+class HrTrainingCertificateController {
+
+    private final HrTrainingCertificateService certificateService;
+    private final HrTrainingCertificateMapper certificateMapper;
+    private final HrTypedCrudService crudService;
+    private final HrEssSupport essSupport;
+    private final HrFileStorage fileStorage;
+
+    @GetMapping
+    @SaCheckPermission("hr:training:cert:list")
+    public R<?> list(@RequestParam Map<String, Object> query) {
+        return R.ok(crudService.page(HrTrainingCertificate.class, query));
+    }
+
+    @GetMapping("/mine")
+    @SaCheckPermission("hr:training:cert:view")
+    public R<?> mine(@RequestParam Map<String, Object> query) {
+        Map<String, Object> normalized = new HashMap<>(query);
+        normalized.put("employeeId", essSupport.currentEmployeeId());
+        return R.ok(crudService.page(HrTrainingCertificate.class, normalized));
+    }
+
+    @GetMapping("/{id}")
+    @SaCheckPermission("hr:training:cert:view")
+    public R<Map<String, Object>> get(@PathVariable Long id) {
+        return R.ok(crudService.get(HrTrainingCertificate.class, id));
+    }
+
+    @SysLog("颁发HR培训证书")
+    @PostMapping("/issue")
+    @SaCheckPermission("hr:training:cert:issue")
+    public R<Long> issue(@RequestBody Map<String, Object> body) {
+        Long employeeId = toLong(body.get("employeeId"));
+        Long courseId = toLong(body.get("courseId"));
+        Long sessionId = toLong(body.get("sessionId"));
+        Long templateId = toLong(body.get("templateId"));
+        return R.ok(certificateService.issue(employeeId, courseId, sessionId, templateId));
+    }
+
+    @SysLog("撤销HR培训证书")
+    @PostMapping("/{id}/revoke")
+    @SaCheckPermission("hr:training:cert:issue")
+    public R<Void> revoke(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        String reason = body == null || body.get("reason") == null ? null : String.valueOf(body.get("reason"));
+        certificateService.revoke(id, reason);
+        return R.ok();
+    }
+
+    @SysLog("重新渲染HR培训证书PDF")
+    @PostMapping("/{id}/regenerate")
+    @SaCheckPermission("hr:training:cert:issue")
+    public R<Void> regenerate(@PathVariable Long id) {
+        certificateService.regeneratePdf(id);
+        return R.ok();
+    }
+
+    @GetMapping("/{id}/pdf")
+    @SaCheckPermission("hr:training:cert:view")
+    public ResponseEntity<byte[]> download(@PathVariable Long id) {
+        HrTrainingCertificate cert = certificateMapper.selectById(id);
+        if (cert == null || Integer.valueOf(1).equals(cert.getDeleted())) {
+            throw new HrBusinessException("CERTIFICATE_NOT_FOUND", "培训证书不存在：" + id);
+        }
+        if (cert.getPdfFileId() == null) {
+            throw new HrBusinessException("CERTIFICATE_PDF_MISSING", "证书 PDF 尚未生成");
+        }
+        essSupport.assertOwner(cert.getEmployeeId());
+        byte[] bytes = fileStorage.load(cert.getPdfFileId());
+        String fileName = "training-certificate-" + cert.getCertNo() + ".pdf";
+        String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.set(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encoded);
+        return new ResponseEntity<>(bytes, headers, 200);
+    }
+
+    private Long toLong(Object value) {
+        if (value == null) {
+            return null;
+        }
+        if (value instanceof Number num) {
+            return num.longValue();
+        }
+        try {
+            return Long.parseLong(String.valueOf(value));
+        } catch (NumberFormatException ex) {
+            return null;
+        }
+    }
+}
+
+@RestController
+@RequestMapping("/training/certificate-templates")
+@RequiredArgsConstructor
+class HrTrainingCertificateTemplateController {
+
+    private final HrTypedCrudService crudService;
+
+    @GetMapping
+    @SaCheckPermission("hr:training:cert:list")
+    public R<?> list(@RequestParam Map<String, Object> query) {
+        return R.ok(crudService.list(HrTrainingCertificateTemplate.class, query));
+    }
+
+    @SysLog("新增培训证书模板")
+    @PostMapping
+    @SaCheckPermission("hr:training:cert:issue")
+    public R<Long> create(@RequestBody HrTrainingCertificateTemplatePayload payload) {
+        return R.ok(crudService.create(HrTrainingCertificateTemplate.class, payload));
+    }
+
+    @SysLog("修改培训证书模板")
+    @PutMapping("/{id}")
+    @SaCheckPermission("hr:training:cert:issue")
+    public R<Void> update(@PathVariable Long id, @RequestBody HrTrainingCertificateTemplatePayload payload) {
+        crudService.update(HrTrainingCertificateTemplate.class, id, payload);
+        return R.ok();
+    }
+
+    @SysLog("删除培训证书模板")
+    @DeleteMapping("/{id}")
+    @SaCheckPermission("hr:training:cert:issue")
+    public R<Void> delete(@PathVariable Long id) {
+        crudService.delete(HrTrainingCertificateTemplate.class, id);
+        return R.ok();
+    }
+}
+
+@RestController
+@RequestMapping("/training/archive")
+@RequiredArgsConstructor
+class HrTrainingArchiveController {
+
+    private final HrTrainingArchiveService archiveService;
+
+    @GetMapping("/mine")
+    @SaCheckPermission("hr:training:archive:view")
+    public R<Map<String, Object>> mine() {
+        return R.ok(archiveService.mine());
+    }
+
+    @GetMapping("/employees/{employeeId}")
+    @SaCheckPermission("hr:training:archive:view")
+    public R<Map<String, Object>> forEmployee(@PathVariable Long employeeId) {
+        return R.ok(archiveService.forEmployee(employeeId));
+    }
+}

@@ -413,7 +413,7 @@ const HrAttendancePage: React.FC = () => {
 
   const requestFields: HrFormField[] = [
     { key: 'requestType', label: '类型', type: 'select', options: [{ label: '请假', value: 'LEAVE' }, { label: '加班', value: 'OVERTIME' }, { label: '补录', value: 'SUPPLEMENT' }] },
-    { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+    { key: 'employeeId', label: '员工', type: 'employee' },
     { key: 'leaveTypeId', label: '假期类型', type: 'select', valueType: 'number', options: leaveTypeOptions },
     { key: 'startTime', label: '开始时间', type: 'datetime-local' },
     { key: 'endTime', label: '结束时间', type: 'datetime-local' },
@@ -530,7 +530,7 @@ const HrAttendancePage: React.FC = () => {
             setForm={setRecordForm}
             resetForm={recordDefault}
             formFields={[
-              { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+              { key: 'employeeId', label: '员工', type: 'employee' },
               { key: 'checkType', label: '类型', type: 'select', options: [{ label: '上班', value: 'CHECK_IN' }, { label: '下班', value: 'CHECK_OUT' }] },
               { key: 'checkTime', label: '时间', type: 'datetime-local' },
               { key: 'checkMethod', label: '方式', type: 'select', options: [{ label: '人工补录', value: 'MANUAL' }, { label: '移动端', value: 'MOBILE' }, { label: '考勤机', value: 'TERMINAL' }] },
@@ -605,7 +605,7 @@ const HrAttendancePage: React.FC = () => {
             setForm={setQuotaForm}
             resetForm={quotaDefault}
             formFields={[
-              { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+              { key: 'employeeId', label: '员工', type: 'employee' },
               { key: 'leaveTypeId', label: '假期类型', type: 'select', valueType: 'number', options: leaveTypeOptions },
               { key: 'year', label: '年度', type: 'number' },
               { key: 'totalQuota', label: '总额度', type: 'number' },

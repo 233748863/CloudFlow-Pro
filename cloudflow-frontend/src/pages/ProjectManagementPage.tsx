@@ -14,7 +14,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { Pagination } from '@/components/common/Pagination';
-import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Tabs, TabsContent, TabsList, TabsTrigger, Textarea } from '@/components/common';
+import { Card, CardContent, CardHeader, CardTitle, Button, DatePicker, DeptSelector, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Tabs, TabsContent, TabsList, TabsTrigger, Textarea, UserSelector } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
@@ -664,61 +664,33 @@ export default function ProjectManagementPage() {
             </div>
             <div>
               <Label className={fieldLabelClassName}>负责人</Label>
-              <Select value={form.ownerId ? String(form.ownerId) : 'NONE'} onValueChange={(value) => {
-                const user = userOptions.find((item) => String(item.userId) === value);
-                setForm((prev) => {
-                  if (value === 'NONE') {
-                    return { ...prev, ownerId: undefined, ownerName: '' };
-                  }
-
-                  return {
-                    ...prev,
-                    ownerId: Number(value),
-                    ownerName: user?.nickName || user?.userName || '',
-                    deptId: user?.deptId || prev.deptId,
-                    deptName: user?.deptName || prev.deptName,
-                  };
-                });
-              }}>
-                <SelectTrigger>{renderSelectText(getUserDisplayText(selectedOwner, form.ownerName), '选择负责人')}</SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">暂不指定负责人</SelectItem>
-                  {form.ownerId && !selectedOwner ? (
-                    <SelectItem value={String(form.ownerId)}>
-                      <div className="flex min-w-0 flex-col">
-                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">{form.ownerName || '当前负责人'}</span>
-                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">历史数据</span>
-                      </div>
-                    </SelectItem>
-                  ) : null}
-                  {userOptions.map((item) => <SelectItem key={item.userId} value={String(item.userId)}>{renderUserOption(item)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <UserSelector
+                single
+                allowClear
+                value={form.ownerId ? String(form.ownerId) : null}
+                onChange={(id, picked) => setForm((prev) => ({
+                  ...prev,
+                  ownerId: id ? Number(id) : undefined,
+                  ownerName: picked?.name || '',
+                  deptId: picked?.deptId != null ? Number(picked.deptId) : prev.deptId,
+                  deptName: picked?.deptName || prev.deptName,
+                }))}
+                placeholder="选择负责人"
+              />
             </div>
             <div>
               <Label className={fieldLabelClassName}>部门</Label>
-              <Select value={form.deptId ? String(form.deptId) : 'NONE'} onValueChange={(value) => {
-                const dept = deptOptions.find((item) => String(item.value) === value);
-                setForm((prev) => ({
+              <DeptSelector
+                single
+                allowClear
+                value={form.deptId ?? null}
+                onChange={(id, picked) => setForm((prev) => ({
                   ...prev,
-                  deptId: value === 'NONE' ? undefined : Number(value),
-                  deptName: value === 'NONE' ? '' : dept?.label || prev.deptName,
-                }));
-              }}>
-                <SelectTrigger>{renderSelectText(selectedDept?.label || form.deptName || '', '选择归属部门')}</SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">暂不指定部门</SelectItem>
-                  {form.deptId && !selectedDept ? (
-                    <SelectItem value={String(form.deptId)}>
-                      <div className="flex min-w-0 flex-col">
-                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">{form.deptName || '当前部门'}</span>
-                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">历史数据</span>
-                      </div>
-                    </SelectItem>
-                  ) : null}
-                  {deptOptions.map((item) => <SelectItem key={item.value} value={String(item.value)}>{item.label}</SelectItem>)}
-                </SelectContent>
-              </Select>
+                  deptId: id ?? undefined,
+                  deptName: picked?.deptName || '',
+                }))}
+                placeholder="选择归属部门"
+              />
             </div>
             <div>
               <Label className={fieldLabelClassName}>预算金额（元）</Label>
@@ -1006,24 +978,16 @@ export default function ProjectManagementPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <Label className={fieldLabelClassName}>成员</Label>
-              <Select value={memberForm.userId ? String(memberForm.userId) : 'NONE'} onValueChange={(value) => {
-                const user = userOptions.find((item) => String(item.userId) === value);
-                setMemberForm((prev) => ({ ...prev, userId: value === 'NONE' ? 0 : Number(value), userName: user?.nickName || user?.userName || '' }));
-              }}>
-                <SelectTrigger>{renderSelectText(getUserDisplayText(selectedMember, memberForm.userName), '选择成员')}</SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="NONE">请选择项目成员</SelectItem>
-                  {memberForm.userId && !selectedMember ? (
-                    <SelectItem value={String(memberForm.userId)}>
-                      <div className="flex min-w-0 flex-col">
-                        <span className="truncate font-medium text-slate-900 dark:text-slate-100">{memberForm.userName || '当前成员'}</span>
-                        <span className="truncate text-xs text-slate-500 dark:text-slate-400">历史数据</span>
-                      </div>
-                    </SelectItem>
-                  ) : null}
-                  {userOptions.map((item) => <SelectItem key={item.userId} value={String(item.userId)}>{renderUserOption(item)}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <UserSelector
+                single
+                value={memberForm.userId ? String(memberForm.userId) : null}
+                onChange={(id, picked) => setMemberForm((prev) => ({
+                  ...prev,
+                  userId: id ? Number(id) : 0,
+                  userName: picked?.name || '',
+                }))}
+                placeholder="选择项目成员"
+              />
             </div>
             <div>
               <Label className={fieldLabelClassName}>角色名称</Label>

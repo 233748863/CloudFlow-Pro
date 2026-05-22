@@ -184,9 +184,9 @@ const HrLifecyclePage: React.FC = () => {
           },
         },
         { key: 'name', label: '姓名' },
-        { key: 'deptId', label: '部门', type: 'select', valueType: 'number', options: deptOptions },
-        { key: 'postId', label: '岗位', type: 'select', valueType: 'number', options: postOptions },
-        { key: 'positionId', label: '职位', type: 'select', valueType: 'number', options: positionOptions },
+        { key: 'deptId', label: '部门', type: 'dept' },
+        { key: 'postId', label: '岗位', type: 'post' },
+        { key: 'positionId', label: '职位', type: 'position', deptFieldKey: 'deptId' },
         { key: 'expectedDate', label: '预计日期', type: 'date' },
         { key: 'remark', label: '备注', type: 'textarea', className: 'md:col-span-2' },
       ];
@@ -194,7 +194,7 @@ const HrLifecyclePage: React.FC = () => {
 
     if (type === 'RESIGNATION') {
       return [
-        { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+        { key: 'employeeId', label: '员工', type: 'employee' },
         { key: 'effectiveDate', label: '离职日期', type: 'date' },
         { key: 'reason', label: '离职原因', type: 'textarea', className: 'md:col-span-2' },
       ];
@@ -202,17 +202,17 @@ const HrLifecyclePage: React.FC = () => {
 
     if (type === 'PROBATION') {
       return [
-        { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+        { key: 'employeeId', label: '员工', type: 'employee' },
         { key: 'expectedDate', label: '转正日期', type: 'date' },
         { key: 'remark', label: '备注', type: 'textarea', className: 'md:col-span-2' },
       ];
     }
 
     return [
-      { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
-      { key: 'deptId', label: '部门', type: 'select', valueType: 'number', options: deptOptions },
-      { key: 'postId', label: '岗位', type: 'select', valueType: 'number', options: postOptions },
-      { key: 'positionId', label: '职位', type: 'select', valueType: 'number', options: positionOptions },
+      { key: 'employeeId', label: '员工', type: 'employee' },
+      { key: 'deptId', label: '部门', type: 'dept' },
+      { key: 'postId', label: '岗位', type: 'post' },
+      { key: 'positionId', label: '职位', type: 'position', deptFieldKey: 'deptId' },
       { key: 'effectiveDate', label: '生效日期', type: 'date' },
       { key: 'remark', label: '备注', type: 'textarea', className: 'md:col-span-2' },
     ];

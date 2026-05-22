@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   Textarea,
+  UserSelector,
 } from '@/components/common';
 import { BaseDialog } from '@/components/common/BaseDialog';
 import { Pagination } from '@/components/common/Pagination';
@@ -210,12 +211,13 @@ export default function CrmCustomerPoolPage() {
       >
         <div className="grid gap-4">
           <div>
-            <Label>新负责人ID</Label>
-            <Input type="number" value={assignForm.ownerId} onChange={(e) => setAssignForm((prev) => ({ ...prev, ownerId: e.target.value }))} placeholder="填写员工ID" />
-          </div>
-          <div>
-            <Label>新负责人姓名</Label>
-            <Input value={assignForm.ownerName} onChange={(e) => setAssignForm((prev) => ({ ...prev, ownerName: e.target.value }))} placeholder="填写员工姓名" />
+            <Label>新负责人</Label>
+            <UserSelector
+              single
+              value={assignForm.ownerId || null}
+              onChange={(id, picked) => setAssignForm((prev) => ({ ...prev, ownerId: id || '', ownerName: picked?.name || '' }))}
+              placeholder="选择新负责人"
+            />
           </div>
           <div>
             <Label>指派原因</Label>

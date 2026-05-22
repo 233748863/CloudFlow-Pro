@@ -28,3 +28,41 @@ export * from './hr/lifecycle';
 export * from './hr/employee-records';
 export * from './hr/compensation';
 export * from './hr/performance';
+
+// ESS / 培训 增量域（2026-05 P0）
+export * from './hr/salary-slip';
+export * from './hr/certificate';
+export * from './hr/bank-card';
+export * from './hr/family-member';
+export * from './hr/benefit-payment';
+export * from './hr/contract-signature';
+export * from './hr/ess-portal';
+export * from './hr/training-plan';
+export * from './hr/training-course';
+export * from './hr/training-session';
+export * from './hr/training-enrollment';
+export * from './hr/exam';
+export * from './hr/training-certificate';
+export * from './hr/training-archive';
+
+// 人才盘点（2026-05 P0）
+export * from './hr/talent-review';
+export * from './hr/talent-succession';
+export * from './hr/talent-pool';
+export * from './hr/talent-development';
+export * from './hr/talent-archive';
+
+// 福利与积分商城 + 劳动关系（2026-05 P0）
+export * from './hr/benefit-mine';
+export * from './hr/benefit-request';
+export * from './hr/point-account';
+export * from './hr/mall-item';
+export * from './hr/mall-order';
+export * from './hr/work-injury';
+export * from './hr/work-injury-investigation';
+export * from './hr/work-injury-treatment';
+export * from './hr/work-injury-compensation';
+export * from './hr/work-injury-rehab';
+export * from './hr/labor-dispute';
+export * from './hr/dispute-mediation';
+export * from './hr/dispute-arbitration';

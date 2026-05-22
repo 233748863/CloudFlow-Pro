@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { CheckCircle2, Clock3, Plus, RotateCcw, Search, ShieldAlert, UserPlus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
-import { BaseDialog, Button, Input, Label, Pagination, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableActionHead, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea } from '@/components/common';
+import { BaseDialog, Button, Input, Label, Pagination, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableActionHead, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, UserSelector } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { contractApi, OaContract, OaRiskAlert, RiskStats, riskApi, RiskStatus } from '@/services/api/contractRisk';
@@ -639,14 +639,15 @@ export const RiskAlertPage: React.FC = () => {
           </>
         )}
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-4">
           <div className="space-y-2">
-            <Label>负责人ID</Label>
-            <Input className="h-11" type="number" value={assignForm.ownerId} onChange={(event) => setAssignForm((prev) => ({ ...prev, ownerId: event.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>负责人姓名</Label>
-            <Input className="h-11" value={assignForm.ownerName} onChange={(event) => setAssignForm((prev) => ({ ...prev, ownerName: event.target.value }))} />
+            <Label>负责人</Label>
+            <UserSelector
+              single
+              value={assignForm.ownerId || null}
+              onChange={(id, picked) => setAssignForm({ ownerId: id || '', ownerName: picked?.name || '' })}
+              placeholder="选择负责人"
+            />
           </div>
         </div>
       </BaseDialog>

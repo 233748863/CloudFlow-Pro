@@ -14,8 +14,10 @@ import FileUpload from '@/components/FileUpload';
 import {
   Button,
   DatePicker,
+  DeptSelector,
   Input,
   Label,
+  PositionSelector,
   Select,
   SelectContent,
   SelectItem,
@@ -1180,43 +1182,22 @@ export const HrRecruitmentPage: React.FC = () => {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
-                <Select
-                  value={String(requestForm.deptId)}
-                  onValueChange={(value) =>
-                    setRequestForm((prev) => ({ ...prev, deptId: Number(value) }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择部门" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {deptOptions.map((option) => (
-                      <SelectItem key={option.value} value={String(option.value)}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DeptSelector
+                  single
+                  value={requestForm.deptId ?? null}
+                  onChange={(id) => setRequestForm((prev) => ({ ...prev, deptId: id ?? 0 }))}
+                  placeholder="请选择部门"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
-                <Select
-                  value={requestForm.positionId ? String(requestForm.positionId) : undefined}
-                  onValueChange={(value) =>
-                    setRequestForm((prev) => ({ ...prev, positionId: Number(value) }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择职位" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {positionOptions.map((option) => (
-                      <SelectItem key={option.id} value={String(option.id)}>
-                        {option.positionName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PositionSelector
+                  single
+                  deptId={requestForm.deptId ?? null}
+                  value={requestForm.positionId ?? null}
+                  onChange={(id) => setRequestForm((prev) => ({ ...prev, positionId: id ?? 0 }))}
+                  placeholder="请选择职位"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">招聘人数</Label>
@@ -1636,23 +1617,12 @@ export const HrRecruitmentPage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
-                <Select
-                  value={offerForm.positionId ? String(offerForm.positionId) : undefined}
-                  onValueChange={(value) =>
-                    setOfferForm((prev) => ({ ...prev, positionId: Number(value) }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择职位" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {positionOptions.map((option) => (
-                      <SelectItem key={option.id} value={String(option.id)}>
-                        {option.positionName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PositionSelector
+                  single
+                  value={offerForm.positionId ?? null}
+                  onChange={(id) => setOfferForm((prev) => ({ ...prev, positionId: id ?? 0 }))}
+                  placeholder="请选择职位"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">薪资</Label>

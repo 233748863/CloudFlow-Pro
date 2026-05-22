@@ -335,6 +335,158 @@ const HrPerformancePage = React.lazy(() =>
     default: module.default,
   })),
 );
+const HrEssPortalPage = React.lazy(() =>
+  import("./pages/hr/HrEssPortalPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrEssSalarySlipPage = React.lazy(() =>
+  import("./pages/hr/ess/HrEssSalarySlipPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrEssCertificatePage = React.lazy(() =>
+  import("./pages/hr/ess/HrEssCertificatePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrEssProfilePage = React.lazy(() =>
+  import("./pages/hr/ess/HrEssProfilePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrEssLeaveBalancePage = React.lazy(() =>
+  import("./pages/hr/ess/HrEssLeaveBalancePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrEssBenefitPage = React.lazy(() =>
+  import("./pages/hr/ess/HrEssBenefitPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrEssContractPage = React.lazy(() =>
+  import("./pages/hr/ess/HrEssContractPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTrainingPlanPage = React.lazy(() =>
+  import("./pages/hr/HrTrainingPlanPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTrainingCoursePage = React.lazy(() =>
+  import("./pages/hr/HrTrainingCoursePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTrainingSessionPage = React.lazy(() =>
+  import("./pages/hr/HrTrainingSessionPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTrainingEnrollmentPage = React.lazy(() =>
+  import("./pages/hr/HrTrainingEnrollmentPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTrainingExamPage = React.lazy(() =>
+  import("./pages/hr/HrTrainingExamPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTrainingCertificatePage = React.lazy(() =>
+  import("./pages/hr/HrTrainingCertificatePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTrainingArchivePage = React.lazy(() =>
+  import("./pages/hr/HrTrainingArchivePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentDashboardPage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentDashboardPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentReviewPage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentReviewPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentNineBoxPage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentNineBoxPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentCalibrationPage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentCalibrationPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentSuccessionPage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentSuccessionPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentPoolPage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentPoolPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentDevelopmentPage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentDevelopmentPage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrTalentArchivePage = React.lazy(() =>
+  import("./pages/hr/talent/HrTalentArchivePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrBenefitMinePage = React.lazy(() =>
+  import("./pages/hr/benefit/HrBenefitMinePage").then((m) => ({ default: m.default })),
+);
+const HrBenefitRequestPage = React.lazy(() =>
+  import("./pages/hr/benefit/HrBenefitRequestPage").then((m) => ({ default: m.default })),
+);
+const HrPointAccountPage = React.lazy(() =>
+  import("./pages/hr/benefit/HrPointAccountPage").then((m) => ({ default: m.default })),
+);
+const HrMallPage = React.lazy(() =>
+  import("./pages/hr/benefit/HrMallPage").then((m) => ({ default: m.default })),
+);
+const HrMallOrderPage = React.lazy(() =>
+  import("./pages/hr/benefit/HrMallOrderPage").then((m) => ({ default: m.default })),
+);
+const HrMallItemAdminPage = React.lazy(() =>
+  import("./pages/hr/benefit/HrMallItemAdminPage").then((m) => ({ default: m.default })),
+);
+const HrWorkInjuryPage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrWorkInjuryPage").then((m) => ({ default: m.default })),
+);
+const HrWorkInjuryInvestigationPage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrWorkInjuryInvestigationPage").then((m) => ({ default: m.default })),
+);
+const HrWorkInjuryTreatmentPage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrWorkInjuryTreatmentPage").then((m) => ({ default: m.default })),
+);
+const HrWorkInjuryCompensationPage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrWorkInjuryCompensationPage").then((m) => ({ default: m.default })),
+);
+const HrWorkInjuryRehabilitationPage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrWorkInjuryRehabilitationPage").then((m) => ({ default: m.default })),
+);
+const HrLaborDisputePage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrLaborDisputePage").then((m) => ({ default: m.default })),
+);
+const HrDisputeMediationPage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrDisputeMediationPage").then((m) => ({ default: m.default })),
+);
+const HrDisputeArbitrationPage = React.lazy(() =>
+  import("./pages/hr/laborRelation/HrDisputeArbitrationPage").then((m) => ({ default: m.default })),
+);
 
 const Loading = () => (
   <div className="flex h-full min-h-[400px] w-full items-center justify-center">
@@ -1339,6 +1491,388 @@ const desktopRoutes = [
               <PermissionRouteGuard permissions={["hr:performance:list"]}>
                 <Suspense fallback={<Loading />}>
                   <HrPerformancePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          // === HR 员工自助（ESS）===
+          {
+            path: "/hr/ess",
+            element: (
+              <PermissionRouteGuard permissions={["hr:ess:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEssPortalPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/ess/slips",
+            element: (
+              <PermissionRouteGuard permissions={["hr:ess:slip:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEssSalarySlipPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/ess/certificates",
+            element: (
+              <PermissionRouteGuard permissions={["hr:ess:cert:apply"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEssCertificatePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/ess/profile",
+            element: (
+              <PermissionRouteGuard permissions={["hr:ess:profile:edit"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEssProfilePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/ess/leave",
+            element: (
+              <PermissionRouteGuard permissions={["hr:ess:leave:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEssLeaveBalancePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/ess/benefit",
+            element: (
+              <PermissionRouteGuard permissions={["hr:ess:benefit:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEssBenefitPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/ess/contract",
+            element: (
+              <PermissionRouteGuard permissions={["hr:ess:contract:sign"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrEssContractPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          // === HR 培训管理 ===
+          {
+            path: "/hr/training",
+            element: <Navigate to="/hr/training/plans" replace />,
+          },
+          {
+            path: "/hr/training/plans",
+            element: (
+              <PermissionRouteGuard permissions={["hr:training:plan:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTrainingPlanPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/training/courses",
+            element: (
+              <PermissionRouteGuard permissions={["hr:training:course:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTrainingCoursePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/training/sessions",
+            element: (
+              <PermissionRouteGuard permissions={["hr:training:session:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTrainingSessionPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/training/enrollments",
+            element: (
+              <PermissionRouteGuard permissions={["hr:training:enroll:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTrainingEnrollmentPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/training/exams",
+            element: (
+              <PermissionRouteGuard permissions={["hr:training:exam:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTrainingExamPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/training/certificates",
+            element: (
+              <PermissionRouteGuard permissions={["hr:training:cert:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTrainingCertificatePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/training/archive",
+            element: (
+              <PermissionRouteGuard permissions={["hr:training:archive:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTrainingArchivePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          // === HR 人才盘点 ===
+          {
+            path: "/hr/talent",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentDashboardPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/talent/reviews",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:review:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentReviewPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/talent/nine-box",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:review:calibrate"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentNineBoxPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/talent/calibration",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:review:session"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentCalibrationPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/talent/succession",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:succession:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentSuccessionPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/talent/pools",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:pool:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentPoolPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/talent/development",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:dev:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentDevelopmentPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/talent/archive",
+            element: (
+              <PermissionRouteGuard permissions={["hr:talent:archive:view", "hr:talent:archive:mine"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrTalentArchivePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          // === HR 福利与积分商城 (P0 2026-05) ===
+          {
+            path: "/hr/benefit",
+            element: <Navigate to="/hr/benefit/mine" replace />,
+          },
+          {
+            path: "/hr/benefit/mine",
+            element: (
+              <PermissionRouteGuard permissions={["hr:benefit:mine"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrBenefitMinePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/benefit/requests",
+            element: (
+              <PermissionRouteGuard permissions={["hr:benefit:request:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrBenefitRequestPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/benefit/points",
+            element: (
+              <PermissionRouteGuard permissions={["hr:benefit:point:view"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrPointAccountPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/benefit/mall",
+            element: (
+              <PermissionRouteGuard permissions={["hr:benefit:mall:browse"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrMallPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/benefit/orders",
+            element: (
+              <PermissionRouteGuard permissions={["hr:benefit:order:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrMallOrderPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/benefit/mall/admin",
+            element: (
+              <PermissionRouteGuard permissions={["hr:benefit:mall:item-manage"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrMallItemAdminPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          // === HR 工伤管理 (P0 2026-05) ===
+          {
+            path: "/hr/work-injury",
+            element: <Navigate to="/hr/work-injury/list" replace />,
+          },
+          {
+            path: "/hr/work-injury/list",
+            element: (
+              <PermissionRouteGuard permissions={["hr:injury:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrWorkInjuryPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/work-injury/investigations",
+            element: (
+              <PermissionRouteGuard permissions={["hr:injury:investigate"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrWorkInjuryInvestigationPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/work-injury/treatments",
+            element: (
+              <PermissionRouteGuard permissions={["hr:injury:treatment"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrWorkInjuryTreatmentPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/work-injury/compensations",
+            element: (
+              <PermissionRouteGuard permissions={["hr:injury:compensation"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrWorkInjuryCompensationPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/work-injury/rehabilitation",
+            element: (
+              <PermissionRouteGuard permissions={["hr:injury:rehab"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrWorkInjuryRehabilitationPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          // === HR 劳动争议 (P0 2026-05) ===
+          {
+            path: "/hr/labor-dispute",
+            element: <Navigate to="/hr/labor-dispute/list" replace />,
+          },
+          {
+            path: "/hr/labor-dispute/list",
+            element: (
+              <PermissionRouteGuard permissions={["hr:dispute:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrLaborDisputePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/labor-dispute/mediations",
+            element: (
+              <PermissionRouteGuard permissions={["hr:dispute:mediation"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrDisputeMediationPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/labor-dispute/arbitrations",
+            element: (
+              <PermissionRouteGuard permissions={["hr:dispute:arbitration"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrDisputeArbitrationPage />
                 </Suspense>
               </PermissionRouteGuard>
             ),

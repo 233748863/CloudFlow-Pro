@@ -1025,30 +1025,30 @@ CREATE TABLE wf_audit_log (
 -- P0-2: 回调死信队列
 DROP TABLE IF EXISTS wf_callback_dead_letter;
 CREATE TABLE wf_callback_dead_letter (
-  id                  BIGINT PRIMARY KEY AUTO_INCREMENT,
-  stream_key          VARCHAR(128) NOT NULL,
-  process_instance_id VARCHAR(64),
-  business_type       VARCHAR(64),
-  business_id         BIGINT,
-  payload_json        JSON NOT NULL,
-  retry_count         INT DEFAULT 0,
-  last_error          TEXT,
-  status              VARCHAR(16) DEFAULT 'PENDING',
-  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP,
-  update_time         DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  stream_key          VARCHAR(128) NOT NULL COMMENT 'Redis Stream 键名',
+  process_instance_id VARCHAR(64) COMMENT '流程实例ID',
+  business_type       VARCHAR(64) COMMENT '业务类型',
+  business_id         BIGINT COMMENT '业务主键ID',
+  payload_json        JSON NOT NULL COMMENT '原始消息载荷(JSON)',
+  retry_count         INT DEFAULT 0 COMMENT '已重试次数',
+  last_error          TEXT COMMENT '最后一次错误信息',
+  status              VARCHAR(16) DEFAULT 'PENDING' COMMENT '处理状态(PENDING/REPLAYED/DISCARDED)',
+  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '入队时间',
+  update_time         DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近更新时间',
   UNIQUE KEY uk_process_instance (process_instance_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调死信队列';
 
 -- P0-3: 流程-业务状态对账告警
 DROP TABLE IF EXISTS wf_reconcile_alert;
 CREATE TABLE wf_reconcile_alert (
-  id                  BIGINT PRIMARY KEY AUTO_INCREMENT,
-  process_instance_id VARCHAR(64) NOT NULL,
-  business_type       VARCHAR(64) NOT NULL,
-  business_id         BIGINT NOT NULL,
-  expected_status     VARCHAR(32),
-  actual_status       VARCHAR(32),
-  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP,
+  id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  process_instance_id VARCHAR(64) NOT NULL COMMENT '流程实例ID',
+  business_type       VARCHAR(64) NOT NULL COMMENT '业务类型',
+  business_id         BIGINT NOT NULL COMMENT '业务主键ID',
+  expected_status     VARCHAR(32) COMMENT '业务期望状态(对账基准)',
+  actual_status       VARCHAR(32) COMMENT '业务实际状态',
+  create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '告警生成时间',
   UNIQUE KEY uk_instance (process_instance_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程业务状态对账告警';
 

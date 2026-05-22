@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Configuration;
  *   <li>{@code WorkflowController.businessTypes()} 暴露 /wf/business-types 给前端选择器。</li>
  * </ul>
  *
- * <p>这些 21 项代码与 {@code WfReconcileAlertMapper.xml} 历史 UNION ALL 中的 business_type 标签对齐，
+ * <p>这些 31 项代码与 {@code WfReconcileAlertMapper.xml} 历史 UNION ALL 中的 business_type 标签对齐，
  * 新增业务模块在本类追加 register 调用即可同步生效。
  */
 @Configuration
@@ -41,6 +41,33 @@ public class WorkflowBusinessTypeContributor implements BusinessTypeContributor 
         registry.register(BusinessTypeDef.builder()
                 .code("HR_PERFORMANCE_OBJECTIVE").module("hr").businessTable("hr_performance_objective")
                 .displayName("绩效目标审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_CERTIFICATE_REQUEST").module("hr").businessTable("hr_certificate_request")
+                .displayName("证明开具审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_CONTRACT_SIGN").module("hr").businessTable("hr_contract_signature")
+                .displayName("电子合同签署").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_TRAINING_ENROLLMENT").module("hr").businessTable("hr_training_enrollment")
+                .displayName("培训报名审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_TALENT_REVIEW").module("hr").businessTable("hr_talent_review")
+                .displayName("人才盘点发布审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_TALENT_SUCCESSION").module("hr").businessTable("hr_talent_succession_plan")
+                .displayName("继任计划发布审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_BENEFIT_REQUEST").module("hr").businessTable("hr_benefit_request")
+                .displayName("福利申领审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_MALL_ORDER").module("hr").businessTable("hr_mall_order")
+                .displayName("积分商城订单审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_WORK_INJURY").module("hr").businessTable("hr_work_injury")
+                .displayName("工伤认定审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_LABOR_DISPUTE").module("hr").businessTable("hr_labor_dispute")
+                .displayName("劳动争议处理审批").build());
 
         // ===== OA =====
         registry.register(BusinessTypeDef.builder()

@@ -1,0 +1,189 @@
+package com.cloudflow.hr.service.impl;
+
+import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.entity.HrPointAccount;
+import com.cloudflow.hr.domain.entity.HrPointTransaction;
+import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.mapper.HrPointAccountMapper;
+import com.cloudflow.hr.mapper.HrPointTransactionMapper;
+import com.cloudflow.hr.service.HrPointAccountService;
+import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class HrPointAccountServiceImpl implements HrPointAccountService {
+
+    private static final long DEFAULT_TENANT_ID = 100000L;
+
+    private final HrPointAccountMapper accountMapper;
+    private final HrPointTransactionMapper transactionMapper;
+    private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public HrPointAccount findOrCreateAccount(Long employeeId) {
+        QueryWrapper<HrPointAccount> qw = new QueryWrapper<>();
+        qw.eq("tenant_id", currentTenantId()).eq("employee_id", employeeId).eq("deleted", 0);
+        HrPointAccount account = accountMapper.selectOne(qw);
+        if (account != null) {
+            return account;
+        }
+        account = new HrPointAccount();
+        account.setTenantId(currentTenantId());
+        account.setEmployeeId(employeeId);
+        account.setAvailablePoints(0);
+        account.setTotalEarned(0);
+        account.setTotalSpent(0);
+        account.setFrozenPoints(0);
+        account.setLastActiveAt(LocalDateTime.now());
+        account.setDeleted(0);
+        account.setCreateBy(currentUserName());
+        account.setUpdateBy(currentUserName());
+        accountMapper.insert(account);
+        return account;
+    }
+
+    @Override
+    public Map<String, Object> getMyAccount() {
+        Long userId = UserContext.getUserId();
+        if (userId == null) {
+            throw new HrBusinessException("UNAUTHORIZED", "未登录用户");
+        }
+        return getEmployeeAccount(userId);
+    }
+
+    @Override
+    public Map<String, Object> getEmployeeAccount(Long employeeId) {
+        QueryWrapper<HrPointAccount> qw = new QueryWrapper<>();
+        qw.eq("tenant_id", currentTenantId()).eq("employee_id", employeeId).eq("deleted", 0);
+        HrPointAccount account = accountMapper.selectOne(qw);
+        if (account == null) {
+            account = findOrCreateAccount(employeeId);
+        }
+        return objectMapper.convertValue(account,
+                new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String, Object>>() {});
+    }
+
+    @Override
+    public Map<String, Object> listTransactions(Long accountId, Map<String, Object> query) {
+        Map<String, Object> q = new LinkedHashMap<>(query == null ? Map.of() : query);
+        q.put("accountId", accountId);
+        return crudService.page(HrPointTransaction.class, q);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long credit(Long accountId, Integer points, String sourceType, Long sourceId, String remark) {
+        if (points == null || points <= 0) {
+            throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
+        }
+        int rows = accountMapper.credit(accountId, currentTenantId(), points);
+        if (rows == 0) {
+            throw new HrBusinessException("ACCOUNT_NOT_FOUND", "积分账户不存在：" + accountId);
+        }
+        return writeTransaction(accountId, points, "IN", sourceType, sourceId, remark);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long debit(Long accountId, Integer points, String sourceType, Long sourceId, String remark) {
+        if (points == null || points <= 0) {
+            throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
+        }
+        int rows = accountMapper.debit(accountId, currentTenantId(), points);
+        if (rows == 0) {
+            throw new HrBusinessException("INSUFFICIENT_POINTS", "积分余额不足或账户不存在");
+        }
+        return writeTransaction(accountId, points, "OUT", sourceType, sourceId, remark);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long freeze(Long accountId, Integer points, String sourceType, Long sourceId, String remark) {
+        if (points == null || points <= 0) {
+            throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
+        }
+        int rows = accountMapper.freeze(accountId, currentTenantId(), points);
+        if (rows == 0) {
+            throw new HrBusinessException("INSUFFICIENT_POINTS", "积分余额不足无法冻结");
+        }
+        return writeTransaction(accountId, points, "FROZEN", sourceType, sourceId, remark);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long unfreeze(Long accountId, Integer points, String sourceType, Long sourceId, String remark) {
+        if (points == null || points <= 0) {
+            throw new HrBusinessException("INVALID_POINTS", "积分必须为正数");
+        }
+        int rows = accountMapper.unfreeze(accountId, currentTenantId(), points);
+        if (rows == 0) {
+            throw new HrBusinessException("INSUFFICIENT_FROZEN_POINTS", "冻结积分不足无法解冻");
+        }
+        return writeTransaction(accountId, points, "UNFROZEN", sourceType, sourceId, remark);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public Long manualAdjust(Long employeeId, Integer points, String direction, String remark) {
+        HrPointAccount account = findOrCreateAccount(employeeId);
+        if ("IN".equalsIgnoreCase(direction)) {
+            return credit(account.getId(), points, "MANUAL_ADJUST", null, remark);
+        }
+        if ("OUT".equalsIgnoreCase(direction)) {
+            return debit(account.getId(), points, "MANUAL_ADJUST", null, remark);
+        }
+        throw new HrBusinessException("INVALID_DIRECTION", "方向必须为 IN 或 OUT");
+    }
+
+    private Long writeTransaction(Long accountId,
+                                  Integer points,
+                                  String direction,
+                                  String sourceType,
+                                  Long sourceId,
+                                  String remark) {
+        HrPointAccount latest = accountMapper.selectById(accountId);
+        HrPointTransaction txn = new HrPointTransaction();
+        txn.setTenantId(currentTenantId());
+        txn.setAccountId(accountId);
+        txn.setTxnNo("PT-" + System.currentTimeMillis() + "-" + accountId);
+        txn.setDirection(direction);
+        txn.setSourceType(sourceType);
+        txn.setSourceId(sourceId);
+        txn.setPoints(points);
+        txn.setBalanceAfter(latest == null ? null : latest.getAvailablePoints());
+        txn.setRemark(remark);
+        txn.setDeleted(0);
+        txn.setCreateBy(currentUserName());
+        txn.setUpdateBy(currentUserName());
+        transactionMapper.insert(txn);
+        return txn.getId();
+    }
+
+    private long currentTenantId() {
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId != null) {
+            return tenantId;
+        }
+        tenantId = UserContext.getTenantId();
+        return tenantId == null ? DEFAULT_TENANT_ID : tenantId;
+    }
+
+    private String currentUserName() {
+        return StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system";
+    }
+}

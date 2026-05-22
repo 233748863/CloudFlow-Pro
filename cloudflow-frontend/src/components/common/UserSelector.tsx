@@ -1,201 +1,163 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { getUsers } from '../../services/api/workflow';
-import { Search, X, Check } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
+import { getUsers } from '../../services/api/workflow';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { cn } from '@/utils/cn';
 import type { UserBrief } from '@/types/workflow';
+import { getCachedOrFetch } from './selectorCache';
+import { SelectorShell, type SelectorShellOption } from './SelectorShell';
 
-interface UserSelectorProps {
-  /** 已选中的用户 ID 列表 */
-  value: string[];
-  /** 选择变化回调 */
-  onChange: (userIds: string[]) => void;
-  /** 已选用户对象变化回调 */
-  onUsersChange?: (users: UserBrief[]) => void;
-  /** 是否多选，默认 true */
-  multiple?: boolean;
-  /** 占位符 */
+interface CommonProps {
   placeholder?: string;
-  /** 是否禁用 */
   disabled?: boolean;
-  /** 自定义类名 */
   className?: string;
-  /** 下拉位置 */
+  allowClear?: boolean;
   dropdownPlacement?: 'bottom' | 'top';
 }
 
+interface SingleProps extends CommonProps {
+  single: true;
+  value: string | null | undefined;
+  onChange: (id: string | null, picked: UserBrief | null) => void;
+  /** 兼容旧用法但单选场景不再使用 */
+  onUsersChange?: never;
+  multiple?: never;
+}
+
+interface MultipleProps extends CommonProps {
+  single?: false;
+  multiple?: boolean;
+  value: string[];
+  onChange: (ids: string[], picked: UserBrief[]) => void;
+  /** 已废弃但保留以兼容旧调用方；新代码请使用 onChange 第二参 */
+  onUsersChange?: (users: UserBrief[]) => void;
+}
+
+export type UserSelectorProps = SingleProps | MultipleProps;
+
+const CACHE_KEY = 'sysUser:list';
+
+const loadUsers = () => getCachedOrFetch(CACHE_KEY, () => getUsers());
+
 /**
- * 用户选择器组件
- * 支持搜索、多选、单选
+ * 用户选择器（对接 /auth/system/user/list，id 为 sys_user.user_id）
+ * 注意：与 HR 员工 ID 不同，不可与 EmployeeSelector 混用
+ *
+ * 用法：
+ *   单选（推荐）：<UserSelector single value={ownerId} onChange={(id, user) => ...} />
+ *   多选：<UserSelector value={ids} onChange={(ids, users) => ...} />
  */
-export const UserSelector: React.FC<UserSelectorProps> = ({
-  value = [],
-  onChange,
-  onUsersChange,
-  multiple = true,
-  placeholder = '选择用户',
-  disabled = false,
-  className = '',
-  dropdownPlacement = 'bottom',
-}) => {
+export const UserSelector: React.FC<UserSelectorProps> = (props) => {
+  const {
+    placeholder = '选择用户',
+    disabled,
+    className,
+    allowClear,
+    dropdownPlacement,
+  } = props;
+
+  const isSingle = (props as SingleProps).single === true;
+
   const [users, setUsers] = useState<UserBrief[]>([]);
   const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    loadUsers();
+    let cancelled = false;
+    setLoading(true);
+    loadUsers()
+      .then((data) => {
+        if (!cancelled) setUsers(data);
+      })
+      .catch((err) => toast.error(getErrorMessage(err, '加载用户列表失败')))
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  const loadUsers = async () => {
-    try {
-      setLoading(true);
-      const data = await getUsers();
-      setUsers(data);
-    } catch (error) {
-      toast.error(getErrorMessage(error, '加载用户列表失败'));
-    } finally {
-      setLoading(false);
+  const options: SelectorShellOption[] = useMemo(
+    () =>
+      users.map((u) => ({
+        id: u.id,
+        label: u.name,
+        subLabel: u.deptName || u.email || undefined,
+      })),
+    [users],
+  );
+
+  const valueArray: string[] = useMemo(() => {
+    if (isSingle) {
+      const v = (props as SingleProps).value;
+      return v !== null && v !== undefined && v !== '' ? [v] : [];
     }
-  };
+    return (props as MultipleProps).value || [];
+  }, [isSingle, props]);
 
-  const filteredUsers = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
-    return users.filter((user) =>
-      !keyword ||
-      user.name.toLowerCase().includes(keyword) ||
-      (user.email && user.email.toLowerCase().includes(keyword)) ||
-      (user.deptName && user.deptName.toLowerCase().includes(keyword))
-    );
-  }, [searchTerm, users]);
-
-  const selectedUsers = useMemo(() => users.filter((u) => value.includes(u.id)), [users, value]);
+  const selectedUsers = useMemo(
+    () => valueArray.map((id) => users.find((u) => u.id === id)).filter(Boolean) as UserBrief[],
+    [users, valueArray],
+  );
 
   useEffect(() => {
-    onUsersChange?.(selectedUsers);
-  }, [onUsersChange, selectedUsers]);
-
-  const handleToggle = (userId: string) => {
-    if (multiple) {
-      const newValue = value.includes(userId)
-        ? value.filter((id) => id !== userId)
-        : [...value, userId];
-      onChange(newValue);
-    } else {
-      onChange([userId]);
-      setIsOpen(false);
+    const multi = props as MultipleProps;
+    if (!isSingle && multi.onUsersChange) {
+      multi.onUsersChange(selectedUsers);
     }
-  };
+  }, [isSingle, props, selectedUsers]);
 
-  const handleRemove = (userId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange(value.filter((id) => id !== userId));
-  };
+  const find = useCallback((id: string) => users.find((u) => u.id === id), [users]);
+
+  const emitChange = useCallback(
+    (next: string[]) => {
+      if (isSingle) {
+        const single = props as SingleProps;
+        const id = next[0] ?? null;
+        single.onChange(id, id ? find(id) || null : null);
+      } else {
+        const multi = props as MultipleProps;
+        multi.onChange(next, next.map((v) => find(v)).filter(Boolean) as UserBrief[]);
+      }
+    },
+    [find, isSingle, props],
+  );
+
+  const handleToggle = useCallback(
+    (id: string) => {
+      if (isSingle) {
+        emitChange(valueArray[0] === id ? [] : [id]);
+      } else {
+        emitChange(valueArray.includes(id) ? valueArray.filter((v) => v !== id) : [...valueArray, id]);
+      }
+    },
+    [emitChange, isSingle, valueArray],
+  );
+
+  const handleRemove = useCallback(
+    (id: string) => {
+      emitChange(valueArray.filter((v) => v !== id));
+    },
+    [emitChange, valueArray],
+  );
+
+  const explicitMultiple = (props as MultipleProps).multiple;
+  const shellMultiple = isSingle ? false : explicitMultiple !== false;
 
   return (
-    <div className={cn('relative', className)}>
-      {/* 选择框 */}
-      <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={cn(
-          'cf-control min-h-[44px] rounded-xl px-3.5 py-2.5',
-          disabled ? 'cursor-not-allowed bg-slate-50 dark:bg-slate-900' : 'cursor-pointer',
-          isOpen && 'cf-control-active',
-        )}
-      >
-        {selectedUsers.length === 0 ? (
-          <span className="text-slate-400 text-sm">{placeholder}</span>
-        ) : (
-          <div className="flex flex-wrap gap-1">
-            {selectedUsers.map((user) => (
-              <span
-                key={user.id}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-              >
-                {user.name}
-                {!disabled && (
-                  <button
-                    onClick={(e) => handleRemove(user.id, e)}
-                    className="rounded-full p-0.5 transition hover:bg-slate-200 dark:hover:bg-slate-800"
-                  >
-                    <X size={12} />
-                  </button>
-                )}
-              </span>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* 下拉列表 */}
-      {isOpen && !disabled && (
-        <div
-          className={cn(
-            'absolute z-[80] max-h-56 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
-            dropdownPlacement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
-          )}
-        >
-          {/* 搜索框 */}
-          <div className="border-b border-slate-200 p-2 dark:border-slate-800">
-            <div className="relative">
-              <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="搜索用户..."
-                className="cf-control h-10 w-full rounded-xl pl-8 pr-3 text-sm"
-                onClick={(e) => e.stopPropagation()}
-              />
-            </div>
-          </div>
-
-          {/* 用户列表 */}
-          <div className="max-h-40 overflow-y-auto">
-            {loading ? (
-              <div className="p-4 text-center text-sm text-slate-500">加载中...</div>
-            ) : filteredUsers.length === 0 ? (
-              <div className="p-4 text-center text-sm text-slate-500">未找到用户</div>
-            ) : (
-              filteredUsers.map((user) => {
-                const isSelected = value.includes(user.id);
-                return (
-                  <div
-                    key={user.id}
-                    onClick={() => handleToggle(user.id)}
-                    className={cn(
-                      'flex cursor-pointer items-center justify-between px-3 py-2 transition-colors dark:hover:bg-slate-900',
-                      isSelected ? 'cf-option-active' : 'hover:bg-slate-50',
-                    )}
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-sm font-medium text-[color:var(--cf-primary-600)] dark:bg-slate-900 dark:text-[rgb(204,251,241)]">
-                        {user.name[0]}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.name}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">
-                          {user.deptName || user.email || '未设置部门'}
-                        </div>
-                      </div>
-                    </div>
-                    {isSelected && <Check className="text-[color:var(--cf-primary-600)] dark:text-[rgb(204,251,241)]" size={16} />}
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* 点击外部关闭 */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40"
-          onClick={() => setIsOpen(false)}
-        />
-      )}
-    </div>
+    <SelectorShell
+      options={options}
+      loading={loading}
+      value={valueArray}
+      onToggle={handleToggle}
+      onRemove={handleRemove}
+      multiple={shellMultiple}
+      placeholder={placeholder}
+      searchPlaceholder="搜索用户姓名 / 部门..."
+      disabled={disabled}
+      allowClear={allowClear}
+      emptyText="未找到用户"
+      className={className}
+      dropdownPlacement={dropdownPlacement}
+    />
   );
 };

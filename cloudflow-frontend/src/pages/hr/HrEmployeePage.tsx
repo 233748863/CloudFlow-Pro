@@ -13,8 +13,11 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import {
   Button,
   DatePicker,
+  DeptSelector,
   Input,
   Label,
+  PositionSelector,
+  PostSelector,
   Select,
   SelectContent,
   SelectItem,
@@ -709,59 +712,34 @@ export const HrEmployeePage: React.FC = () => {
             <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">部门</Label>
-                <Select
-                  value={form.deptId ? String(form.deptId) : undefined}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, deptId: Number(value) }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择部门" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {deptOptions.map((option) => (
-                      <SelectItem key={option.value} value={String(option.value)}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <DeptSelector
+                  single
+                  allowClear
+                  value={form.deptId ?? null}
+                  onChange={(id) => setForm((prev) => ({ ...prev, deptId: id ?? undefined }))}
+                  placeholder="请选择部门"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">岗位</Label>
-                <Select
-                  value={form.postId ? String(form.postId) : undefined}
-                  onValueChange={(value) => setForm((prev) => ({ ...prev, postId: Number(value) }))}
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择岗位" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {postOptions.map((option) => (
-                      <SelectItem key={option.postId} value={String(option.postId)}>
-                        {option.postName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PostSelector
+                  single
+                  allowClear
+                  value={form.postId ?? null}
+                  onChange={(id) => setForm((prev) => ({ ...prev, postId: id ?? undefined }))}
+                  placeholder="请选择岗位"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">职位</Label>
-                <Select
-                  value={form.positionId ? String(form.positionId) : undefined}
-                  onValueChange={(value) =>
-                    setForm((prev) => ({ ...prev, positionId: Number(value) }))
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue placeholder="请选择职位" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {positionOptions.map((option) => (
-                      <SelectItem key={option.id} value={String(option.id)}>
-                        {option.positionName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PositionSelector
+                  single
+                  allowClear
+                  deptId={form.deptId ?? null}
+                  value={form.positionId ?? null}
+                  onChange={(id) => setForm((prev) => ({ ...prev, positionId: id ?? undefined }))}
+                  placeholder="请选择职位"
+                />
               </div>
             </div>
           </DialogSection>

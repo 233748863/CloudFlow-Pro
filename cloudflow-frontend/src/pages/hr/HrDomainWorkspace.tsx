@@ -4,8 +4,12 @@ import {
   BaseDialog,
   Button,
   DatePicker,
+  DeptSelector,
+  EmployeeSelector,
   Input,
   Label,
+  PositionSelector,
+  PostSelector,
   Select,
   SelectContent,
   SelectItem,
@@ -35,13 +39,30 @@ export interface HrSelectOption {
 export interface HrFormField {
   key: string;
   label: string;
-  type?: 'text' | 'number' | 'date' | 'time' | 'datetime-local' | 'textarea' | 'select' | 'city' | 'multiselect';
+  type?:
+    | 'text'
+    | 'number'
+    | 'date'
+    | 'time'
+    | 'datetime-local'
+    | 'textarea'
+    | 'select'
+    | 'city'
+    | 'multiselect'
+    | 'employee'
+    | 'dept'
+    | 'post'
+    | 'position';
   options?: HrSelectOption[];
   placeholder?: string;
   required?: boolean;
   className?: string;
   valueType?: 'string' | 'number';
   onValueChange?: (value: string | number | Array<string | number>, form: HrRecord) => Partial<HrRecord> | void;
+  /** employee/dept/post/position 选择器是否允许清空 */
+  allowClear?: boolean;
+  /** position 选择器按部门过滤时引用的部门字段 key */
+  deptFieldKey?: string;
 }
 
 export interface HrTableColumn<T extends HrRecord = HrRecord> {
@@ -368,6 +389,65 @@ export const HrCrudPanel = <T extends HrRecord = HrRecord>({
                       ))}
                     </SelectContent>
                   </Select>
+                ) : field.type === 'employee' ? (
+                  (() => {
+                    const raw = form[field.key];
+                    const idVal = raw == null || raw === '' ? null : Number(raw);
+                    return (
+                      <EmployeeSelector
+                        single
+                        allowClear={field.allowClear !== false}
+                        value={Number.isFinite(idVal) ? idVal : null}
+                        onChange={(id) => setFieldValue(setForm, field, id == null ? '' : String(id))}
+                        placeholder={field.placeholder || field.label}
+                      />
+                    );
+                  })()
+                ) : field.type === 'dept' ? (
+                  (() => {
+                    const raw = form[field.key];
+                    const idVal = raw == null || raw === '' ? null : Number(raw);
+                    return (
+                      <DeptSelector
+                        single
+                        allowClear={field.allowClear !== false}
+                        value={Number.isFinite(idVal) ? idVal : null}
+                        onChange={(id) => setFieldValue(setForm, field, id == null ? '' : String(id))}
+                        placeholder={field.placeholder || field.label}
+                      />
+                    );
+                  })()
+                ) : field.type === 'post' ? (
+                  (() => {
+                    const raw = form[field.key];
+                    const idVal = raw == null || raw === '' ? null : Number(raw);
+                    return (
+                      <PostSelector
+                        single
+                        allowClear={field.allowClear !== false}
+                        value={Number.isFinite(idVal) ? idVal : null}
+                        onChange={(id) => setFieldValue(setForm, field, id == null ? '' : String(id))}
+                        placeholder={field.placeholder || field.label}
+                      />
+                    );
+                  })()
+                ) : field.type === 'position' ? (
+                  (() => {
+                    const raw = form[field.key];
+                    const idVal = raw == null || raw === '' ? null : Number(raw);
+                    const deptRaw = field.deptFieldKey ? form[field.deptFieldKey] : null;
+                    const deptId = deptRaw == null || deptRaw === '' ? null : Number(deptRaw);
+                    return (
+                      <PositionSelector
+                        single
+                        allowClear={field.allowClear !== false}
+                        deptId={Number.isFinite(deptId) ? deptId : null}
+                        value={Number.isFinite(idVal) ? idVal : null}
+                        onChange={(id) => setFieldValue(setForm, field, id == null ? '' : String(id))}
+                        placeholder={field.placeholder || field.label}
+                      />
+                    );
+                  })()
                 ) : field.type === 'multiselect' ? (
                   (() => {
                     const selectedValues = getFieldArrayValue(form, field);

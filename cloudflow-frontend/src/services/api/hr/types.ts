@@ -69,6 +69,17 @@ export interface HrEmployeePayload extends HrRecord {
   employeeStatus: string;
 }
 
+export interface EmployeeBrief {
+  id: number;
+  name: string;
+  employeeNo?: string;
+  deptId?: number | null;
+  deptName?: string | null;
+  postName?: string | null;
+  positionName?: string | null;
+  employeeStatus?: string | null;
+}
+
 export interface EmergencyContact extends HrRecord {
   id: number;
   employeeId: number;
@@ -766,3 +777,687 @@ export interface CrmPerformanceRangeQuery {
   startDate?: string;
   endDate?: string;
 }
+
+// ========== ESS / 培训 增量类型（2026-05 P0）==========
+
+export interface HrSalarySlip extends HrRecord {
+  id: number;
+  employeeId: number;
+  employeeName?: string;
+  periodMonth: string;
+  grossTotal?: number | string;
+  deductionTotal?: number | string;
+  netTotal?: number | string;
+  taxAmount?: number | string;
+  benefitAmount?: number | string;
+  components?: Record<string, number | string>;
+  payDate?: string | null;
+  status: 'DRAFT' | 'CONFIRMED' | 'PAID' | 'RELEASED' | string;
+  employeeConfirmed?: boolean;
+  confirmedTime?: string | null;
+}
+
+export interface HrCertificateRequest extends HrRecord {
+  id: number;
+  requestNo: string;
+  employeeId: number;
+  certificateType: 'EMPLOYMENT' | 'INCOME' | 'SOCIAL_INSURANCE' | 'CUSTOM' | string;
+  purpose?: string;
+  language?: string;
+  recipientOrg?: string;
+  copies?: number;
+  status: 'DRAFT' | 'PENDING' | 'APPROVING' | 'APPROVED' | 'REJECTED' | 'ISSUED' | 'CANCELLED' | string;
+  processInstanceId?: string;
+  issuedAt?: string;
+  pdfFileId?: number | null;
+  remark?: string;
+}
+
+export interface HrCertificateRequestPayload {
+  certificateType: string;
+  purpose?: string;
+  language?: string;
+  recipientOrg?: string;
+  copies?: number;
+  remark?: string;
+}
+
+export interface HrBankCard extends HrRecord {
+  id: number;
+  employeeId: number;
+  bankName: string;
+  bankBranch?: string;
+  accountNo: string;
+  accountHolder: string;
+  isPrimary?: boolean;
+  status?: string;
+}
+
+export type HrBankCardPayload = Omit<HrBankCard, 'id'> & { id?: number };
+
+export interface HrFamilyMember extends HrRecord {
+  id: number;
+  employeeId: number;
+  memberName: string;
+  relationship: string;
+  idCardNo?: string;
+  birthDate?: string;
+  occupation?: string;
+  phone?: string;
+  isDependent?: boolean;
+}
+
+export type HrFamilyMemberPayload = Omit<HrFamilyMember, 'id'> & { id?: number };
+
+export interface HrBenefitPayment extends HrRecord {
+  id: number;
+  employeeId: number;
+  schemeId: number;
+  periodMonth: string;
+  baseAmount?: number | string;
+  companyAmount?: number | string;
+  personalAmount?: number | string;
+  items?: Record<string, number | string>;
+  status?: string;
+  payDate?: string | null;
+}
+
+export interface HrContractSignature extends HrRecord {
+  id: number;
+  contractId: number;
+  signerType: 'EMPLOYEE' | 'COMPANY' | string;
+  signerId: number;
+  signMethod?: 'E_SIGN' | 'MANUAL' | string;
+  signStatus: 'PENDING' | 'SIGNED' | 'REJECTED' | 'EXPIRED' | 'CANCELLED' | string;
+  signTime?: string | null;
+  ipAddress?: string;
+  signatureFileId?: number | null;
+  processInstanceId?: string;
+  expireTime?: string | null;
+}
+
+export interface HrContractSignaturePayload {
+  signerType?: string;
+  signMethod?: string;
+  comment?: string;
+}
+
+export interface HrSelfServiceMessage extends HrRecord {
+  id: number;
+  employeeId: number;
+  category?: string;
+  title: string;
+  summary?: string;
+  linkUrl?: string;
+  readFlag: boolean;
+  relatedId?: number | null;
+  createTime?: string;
+}
+
+export interface HrEssPortalSummary {
+  employee: Partial<HrEmployee>;
+  leaveBalances: Array<{
+    leaveTypeId: number;
+    leaveTypeName?: string;
+    leaveCode?: string;
+    unit?: string;
+    totalQuota?: number | string;
+    usedQuota?: number | string;
+    remainQuota?: number | string;
+    year?: number;
+  }>;
+  latestSlip: HrSalarySlip | Record<string, never>;
+  pendingContracts: Array<HrRecord>;
+  recentCertificates: HrCertificateRequest[];
+  unreadMessages: HrSelfServiceMessage[];
+  unreadCount: number;
+}
+
+// ========== 培训 ==========
+
+export interface HrTrainingPlan extends HrRecord {
+  id: number;
+  planNo?: string;
+  planName: string;
+  planType?: 'ANNUAL' | 'QUARTERLY' | 'DEPT' | 'ADHOC' | string;
+  year?: number;
+  quarter?: number;
+  deptId?: number;
+  ownerId?: number;
+  budget?: number | string;
+  status?: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | string;
+  description?: string;
+}
+
+export type HrTrainingPlanPayload = Omit<HrTrainingPlan, 'id'> & { id?: number };
+
+export interface HrTrainingCategory extends HrRecord {
+  id: number;
+  parentId?: number;
+  name: string;
+  sort?: number;
+  status?: string;
+}
+
+export type HrTrainingCategoryPayload = Omit<HrTrainingCategory, 'id'> & { id?: number };
+
+export interface HrTrainingInstructor extends HrRecord {
+  id: number;
+  instructorName: string;
+  instructorType?: 'INTERNAL' | 'EXTERNAL' | string;
+  employeeId?: number;
+  expertise?: string;
+  bio?: string;
+  contact?: string;
+  hourlyRate?: number | string;
+  status?: string;
+}
+
+export type HrTrainingInstructorPayload = Omit<HrTrainingInstructor, 'id'> & { id?: number };
+
+export interface HrTrainingCourse extends HrRecord {
+  id: number;
+  courseCode?: string;
+  courseName: string;
+  categoryId?: number;
+  instructorId?: number;
+  mode?: 'ONLINE' | 'OFFLINE' | 'BLENDED' | string;
+  durationHours?: number | string;
+  creditHours?: number | string;
+  coverUrl?: string;
+  materials?: number[];
+  description?: string;
+  status?: string;
+}
+
+export type HrTrainingCoursePayload = Omit<HrTrainingCourse, 'id'> & { id?: number };
+
+export interface HrTrainingSession extends HrRecord {
+  id: number;
+  planId?: number;
+  courseId: number;
+  sessionNo?: string;
+  location?: string;
+  startTime: string;
+  endTime: string;
+  capacity: number;
+  enrolledCount?: number;
+  instructorId?: number;
+  status?: 'PLANNED' | 'REGISTERING' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' | string;
+  remark?: string;
+}
+
+export type HrTrainingSessionPayload = Omit<HrTrainingSession, 'id'> & { id?: number };
+
+export interface HrTrainingEnrollment extends HrRecord {
+  id: number;
+  sessionId: number;
+  employeeId: number;
+  enrollType?: 'SELF' | 'ASSIGNED' | string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'WITHDRAWN' | string;
+  processInstanceId?: string;
+  attended?: boolean;
+  checkInTime?: string | null;
+  completionStatus?: 'PENDING' | 'PASSED' | 'FAILED' | string;
+  score?: number | string;
+  comment?: string;
+}
+
+export interface HrExamQuestionBank extends HrRecord {
+  id: number;
+  categoryId?: number;
+  questionType: 'SINGLE' | 'MULTI' | 'JUDGE' | 'FILL' | 'ESSAY' | string;
+  content: string;
+  options?: Array<{ key: string; text: string }> | Record<string, string>;
+  answer?: unknown[];
+  score?: number | string;
+  difficulty?: number;
+  analysis?: string;
+  status?: string;
+}
+
+export type HrExamQuestionBankPayload = Omit<HrExamQuestionBank, 'id'> & { id?: number };
+
+export interface HrExamPaper extends HrRecord {
+  id: number;
+  courseId?: number;
+  paperName: string;
+  totalScore?: number | string;
+  passScore?: number | string;
+  durationMinutes?: number;
+  questionCount?: number;
+  questionIds?: number[];
+  generateMode?: 'MANUAL' | 'RANDOM' | string;
+  config?: Record<string, unknown>;
+  status?: 'DRAFT' | 'PUBLISHED' | string;
+}
+
+export type HrExamPaperPayload = Omit<HrExamPaper, 'id'> & { id?: number };
+
+export interface HrExamAttempt extends HrRecord {
+  id: number;
+  paperId: number;
+  employeeId: number;
+  sessionId?: number;
+  startTime?: string;
+  submitTime?: string | null;
+  score?: number | string;
+  passFlag?: boolean | null;
+  answers?: Array<Record<string, unknown>>;
+  status: 'IN_PROGRESS' | 'SUBMITTED' | 'GRADED' | string;
+}
+
+export interface HrTrainingCertificate extends HrRecord {
+  id: number;
+  certNo: string;
+  employeeId: number;
+  courseId: number;
+  sessionId?: number;
+  templateId?: number;
+  issueDate?: string;
+  expireDate?: string | null;
+  pdfFileId?: number | null;
+  status: 'VALID' | 'REVOKED' | string;
+  revokedReason?: string;
+}
+
+export interface HrTrainingCertificateIssuePayload {
+  employeeId: number;
+  courseId: number;
+  sessionId?: number;
+  templateId?: number;
+}
+
+export interface HrTrainingArchive {
+  employee: Partial<HrEmployee>;
+  totalCreditHours: number | string;
+  completedCount: number;
+  ongoingCount: number;
+  certificateCount: number;
+  enrollments: Array<HrRecord>;
+  certificates: HrTrainingCertificate[];
+}
+
+// ===== 人才盘点（Talent Review）域类型 =====
+
+export type TalentBand = 'HIGH' | 'MEDIUM' | 'LOW' | string;
+export type TalentReviewStatus =
+  | 'DRAFT'
+  | 'IN_PROGRESS'
+  | 'CALIBRATING'
+  | 'PUBLISHED'
+  | 'ARCHIVED'
+  | 'REJECTED'
+  | string;
+
+export interface HrTalentReview extends HrRecord {
+  id: number;
+  tenantId?: number;
+  reviewNo: string;
+  reviewName: string;
+  reviewYear: number;
+  cycleType: 'ANNUAL' | 'H1' | 'H2' | 'QUARTER' | string;
+  scopeType: 'GLOBAL' | 'DEPT' | 'POSITION' | string;
+  scopeValue?: string;
+  ownerId?: number;
+  deadline?: string;
+  status: TalentReviewStatus;
+  processInstanceId?: string;
+  performanceSourceObjectiveId?: number;
+  publishTime?: string;
+  description?: string;
+}
+
+export type HrTalentReviewPayload = Omit<HrTalentReview, 'id'> & { id?: number };
+
+export interface HrTalentReviewParticipant extends HrRecord {
+  id: number;
+  reviewId: number;
+  employeeId: number;
+  performanceScore?: number | string;
+  performanceBand?: TalentBand;
+  potentialScore?: number;
+  potentialBand?: TalentBand;
+  gridCell?: number;
+  calibrationNotes?: string;
+  developActionSummary?: string;
+  decidedBy?: number;
+  decidedAt?: string;
+}
+
+export interface HrTalentNineBoxGrid {
+  [cell: number]: HrTalentReviewParticipant[];
+}
+
+export interface HrTalentCalibrationSession extends HrRecord {
+  id: number;
+  reviewId: number;
+  sessionNo: string;
+  scheduledAt?: string;
+  location?: string;
+  facilitatorId?: number;
+  participants?: number[];
+  agenda?: string;
+  minutes?: string;
+  status: 'PLANNED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' | string;
+}
+
+export type HrTalentCalibrationSessionPayload = Omit<HrTalentCalibrationSession, 'id'> & { id?: number };
+
+export interface HrTalentSuccessionPlan extends HrRecord {
+  id: number;
+  planNo: string;
+  planName: string;
+  positionId?: number;
+  incumbentEmployeeId?: number;
+  keyRoleFlag?: boolean;
+  riskLevel?: 'LOW' | 'MID' | 'HIGH' | 'CRITICAL' | string;
+  retentionRisk?: string;
+  description?: string;
+  ownerId?: number;
+  status: 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | 'REJECTED' | string;
+  processInstanceId?: string;
+  publishTime?: string;
+  successors?: HrTalentSuccessor[];
+}
+
+export type HrTalentSuccessionPlanPayload = Omit<HrTalentSuccessionPlan, 'id' | 'successors'> & { id?: number };
+
+export interface HrTalentSuccessor extends HrRecord {
+  id: number;
+  planId: number;
+  employeeId: number;
+  readiness?: 'READY_NOW' | 'IN_1_2_YEARS' | 'IN_3_5_YEARS' | string;
+  rankOrder?: number;
+  talentReviewParticipantId?: number;
+  developmentGap?: string;
+  retentionAction?: string;
+  status: 'ACTIVE' | 'REMOVED' | string;
+}
+
+export interface HrTalentPool extends HrRecord {
+  id: number;
+  poolNo: string;
+  poolName: string;
+  poolType: 'CORE' | 'HIPO' | 'SUCCESSOR' | 'CRITICAL_SKILL' | 'EXTERNAL_BENCH' | string;
+  description?: string;
+  ownerId?: number;
+  status: 'ACTIVE' | 'ARCHIVED' | string;
+}
+
+export type HrTalentPoolPayload = Omit<HrTalentPool, 'id'> & { id?: number };
+
+export interface HrTalentPoolMember extends HrRecord {
+  id: number;
+  poolId: number;
+  employeeId: number;
+  joinedAt?: string;
+  joinedReviewId?: number;
+  exitAt?: string;
+  exitReason?: 'PROMOTED' | 'RESIGNED' | 'DOWNGRADE' | 'MANUAL' | string;
+  status: 'IN' | 'OUT' | string;
+}
+
+export interface HrTalentDevelopmentAction extends HrRecord {
+  id: number;
+  employeeId: number;
+  sourceReviewId?: number;
+  sourcePoolId?: number;
+  actionType: 'TRAINING' | 'MENTOR' | 'JOB_ROTATION' | 'STRETCH_PROJECT' | 'EXTERNAL_COURSE' | string;
+  actionName: string;
+  mentorId?: number;
+  ownerId?: number;
+  startDate?: string;
+  endDate?: string;
+  trainingSessionId?: number;
+  status: 'PLANNED' | 'ONGOING' | 'COMPLETED' | 'CANCELLED' | string;
+  evaluationScore?: number | string;
+  evaluationNotes?: string;
+  description?: string;
+}
+
+export type HrTalentDevelopmentActionPayload = Omit<HrTalentDevelopmentAction, 'id'> & { id?: number };
+
+export interface HrTalentArchive {
+  employee: Partial<HrEmployee> & { employeeId?: number; employeeNo?: string };
+  reviews: Array<HrRecord>;
+  pools: Array<HrRecord>;
+  developmentActions: Array<HrRecord>;
+  successorOf: Array<HrRecord>;
+}
+
+export interface HrBenefitRequest extends HrRecord {
+  id: number;
+  requestNo: string;
+  employeeId: number;
+  schemeId?: number;
+  requestType: 'BENEFIT_CLAIM' | 'POINT_TOPUP' | 'POINT_ADJUST' | string;
+  amount?: number | string;
+  pointAmount?: number;
+  reason?: string;
+  attachments?: any[];
+  status: 'DRAFT' | 'SUBMITTED' | 'APPROVING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'CANCELLED' | string;
+  processInstanceId?: string;
+  approverId?: number;
+  paidAt?: string;
+}
+
+export type HrBenefitRequestPayload = Omit<HrBenefitRequest, 'id'> & { id?: number };
+
+export interface HrPointAccount extends HrRecord {
+  id: number;
+  employeeId: number;
+  availablePoints: number;
+  totalEarned: number;
+  totalSpent: number;
+  frozenPoints: number;
+  lastActiveAt?: string;
+}
+
+export interface HrPointTransaction extends HrRecord {
+  id: number;
+  accountId: number;
+  txnNo: string;
+  direction: 'IN' | 'OUT' | 'FROZEN' | 'UNFROZEN' | string;
+  sourceType: 'BENEFIT' | 'MALL_ORDER' | 'MANUAL_ADJUST' | 'EXPIRE' | string;
+  sourceId?: number;
+  points: number;
+  balanceAfter?: number;
+  effectiveDate?: string;
+  expireDate?: string;
+  remark?: string;
+  createTime?: string;
+}
+
+export interface HrMallItem extends HrRecord {
+  id: number;
+  itemNo: string;
+  itemName: string;
+  category?: string;
+  pointPrice: number;
+  stock: number;
+  salesCount?: number;
+  coverImage?: string;
+  images?: string[];
+  detailHtml?: string;
+  status: 'ON_SHELF' | 'OFF_SHELF' | string;
+  approvalThreshold?: number;
+}
+
+export type HrMallItemPayload = Omit<HrMallItem, 'id'> & { id?: number };
+
+export interface HrMallOrderItem extends HrRecord {
+  id?: number;
+  orderId?: number;
+  itemId: number;
+  itemName?: string;
+  pointPrice?: number;
+  quantity: number;
+  subtotal?: number;
+}
+
+export interface HrMallOrder extends HrRecord {
+  id: number;
+  orderNo: string;
+  employeeId: number;
+  totalPoints: number;
+  receiverName?: string;
+  receiverPhone?: string;
+  receiverAddress?: string;
+  expressNo?: string;
+  status: 'PENDING' | 'APPROVING' | 'APPROVED' | 'SHIPPED' | 'COMPLETED' | 'CANCELLED' | string;
+  processInstanceId?: string;
+  shippedAt?: string;
+  completedAt?: string;
+  remark?: string;
+  items?: HrMallOrderItem[];
+}
+
+export interface HrMallOrderPayload {
+  employeeId?: number;
+  receiverName?: string;
+  receiverPhone?: string;
+  receiverAddress?: string;
+  remark?: string;
+  items: HrMallOrderItem[];
+}
+
+export interface HrBenefitMineSummary {
+  activeBenefits: HrRecord[];
+  pointAccount: HrPointAccount | HrRecord;
+  inFlightOrders: HrMallOrder[];
+  recentRequests: HrBenefitRequest[];
+}
+
+export interface HrWorkInjury extends HrRecord {
+  id: number;
+  injuryNo: string;
+  employeeId: number;
+  occurredAt?: string;
+  location?: string;
+  eventDescription?: string;
+  injuryPart?: string;
+  injuryLevel?: 'MINOR' | 'MODERATE' | 'SEVERE' | 'DEATH' | string;
+  status: 'REPORTED' | 'INVESTIGATING' | 'DETERMINING' | 'DETERMINED' | 'COMPENSATING' | 'REHABILITATING' | 'CLOSED' | string;
+  processInstanceId?: string;
+  determinedAt?: string;
+  determinedGrade?: number;
+  remark?: string;
+}
+
+export type HrWorkInjuryPayload = Omit<HrWorkInjury, 'id'> & { id?: number };
+
+export interface HrWorkInjuryInvestigation extends HrRecord {
+  id: number;
+  injuryId: number;
+  investigatorId?: number;
+  investigationDate?: string;
+  scenePhotos?: string[];
+  witnessStatements?: string;
+  conclusion?: string;
+  responsibilityType?: 'WORK_RELATED' | 'COMMUTE' | 'THIRD_PARTY' | string;
+}
+
+export type HrWorkInjuryInvestigationPayload = Omit<HrWorkInjuryInvestigation, 'id'> & { id?: number };
+
+export interface HrWorkInjuryTreatment extends HrRecord {
+  id: number;
+  injuryId: number;
+  hospitalName?: string;
+  admitDate?: string;
+  dischargeDate?: string;
+  totalCost?: number | string;
+  insuranceCovered?: number | string;
+  selfPaid?: number | string;
+  diagnosis?: string;
+  treatmentSummary?: string;
+  receipts?: number[];
+}
+
+export type HrWorkInjuryTreatmentPayload = Omit<HrWorkInjuryTreatment, 'id'> & { id?: number };
+
+export interface HrWorkInjuryCompensation extends HrRecord {
+  id: number;
+  injuryId: number;
+  itemType?: 'MEDICAL' | 'DISABILITY_ALLOWANCE' | 'LUMP_SUM' | 'FUNERAL' | 'DEPENDENT_SUPPORT' | string;
+  amount?: number | string;
+  paymentStatus: 'PLANNED' | 'PAID' | 'REJECTED' | string;
+  paidAt?: string;
+  bankAccount?: string;
+  remark?: string;
+}
+
+export type HrWorkInjuryCompensationPayload = Omit<HrWorkInjuryCompensation, 'id'> & { id?: number };
+
+export interface HrWorkInjuryRehabilitation extends HrRecord {
+  id: number;
+  injuryId: number;
+  returnDate?: string;
+  positionAdjustment?: 'SAME' | 'RELIGHTED' | 'CHANGED' | string;
+  newPositionId?: number;
+  abilityAssessment?: string;
+  followUpAt?: string;
+  status: 'IN_REHAB' | 'RETURNED' | 'UNABLE_RETURN' | string;
+}
+
+export type HrWorkInjuryRehabilitationPayload = Omit<HrWorkInjuryRehabilitation, 'id'> & { id?: number };
+
+export interface HrLaborDispute extends HrRecord {
+  id: number;
+  disputeNo: string;
+  applicantEmployeeId?: number;
+  applicantExternalName?: string;
+  applicantExternalPhone?: string;
+  disputeType?: 'SALARY' | 'CONTRACT' | 'DISMISSAL' | 'SOCIAL_INSURANCE' | 'OTHER' | string;
+  claimAmount?: number | string;
+  claimDescription?: string;
+  status: 'REGISTERED' | 'MEDIATING' | 'MEDIATED' | 'ARBITRATING' | 'AWARDED' | 'EXECUTED' | 'CLOSED' | string;
+  processInstanceId?: string;
+  openedAt?: string;
+  closedAt?: string;
+  remark?: string;
+}
+
+export type HrLaborDisputePayload = Omit<HrLaborDispute, 'id'> & { id?: number };
+
+export interface HrDisputeMediation extends HrRecord {
+  id: number;
+  disputeId: number;
+  mediatorId?: number;
+  mediationDate?: string;
+  location?: string;
+  processSummary?: string;
+  result?: 'SUCCESS' | 'PARTIAL' | 'FAILED' | string;
+  agreementUrl?: string;
+  signedAt?: string;
+}
+
+export type HrDisputeMediationPayload = Omit<HrDisputeMediation, 'id'> & { id?: number };
+
+export interface HrDisputeArbitration extends HrRecord {
+  id: number;
+  disputeId: number;
+  arbitrationCommittee?: string;
+  caseNo?: string;
+  acceptedAt?: string;
+  hearingDates?: string[];
+  awardNo?: string;
+  awardResult?: string;
+  awardAmount?: number | string;
+  effectiveDate?: string;
+  awardDocUrl?: string;
+}
+
+export type HrDisputeArbitrationPayload = Omit<HrDisputeArbitration, 'id'> & { id?: number };
+
+export interface HrDisputeEvidence extends HrRecord {
+  id: number;
+  disputeId: number;
+  evidenceType?: 'CONTRACT' | 'PAYSLIP' | 'MEDICAL' | 'WITNESS' | 'OTHER' | string;
+  fileId?: number;
+  uploadedBy?: number;
+  uploadedAt?: string;
+  remark?: string;
+}
+
+export type HrDisputeEvidencePayload = Omit<HrDisputeEvidence, 'id'> & { id?: number };

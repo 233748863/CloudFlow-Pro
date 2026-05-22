@@ -58,6 +58,8 @@
         <poi.version>5.2.5</poi.version>
         <commons-io.version>2.16.1</commons-io.version>
         <jasypt-spring-boot.version>3.0.5</jasypt-spring-boot.version>
+        <openhtmltopdf.version>1.0.10</openhtmltopdf.version>
+        <jsoup.version>1.17.2</jsoup.version>
         <maven.enforcer.plugin.version>3.6.2</maven.enforcer.plugin.version>
         <maven.dependency.plugin.version>3.7.0</maven.dependency.plugin.version>
         <jsr305.version>3.0.2</jsr305.version>
@@ -395,6 +397,25 @@
                 <groupId>com.github.ulisesbocchio</groupId>
                 <artifactId>jasypt-spring-boot-starter</artifactId>
                 <version>${jasypt-spring-boot.version}</version>
+            </dependency>
+
+            <!-- openhtmltopdf：HR ESS 证明开具 / 培训证书 PDF 渲染（HTML 模板 → PDF） -->
+            <dependency>
+                <groupId>com.openhtmltopdf</groupId>
+                <artifactId>openhtmltopdf-core</artifactId>
+                <version>${openhtmltopdf.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.openhtmltopdf</groupId>
+                <artifactId>openhtmltopdf-pdfbox</artifactId>
+                <version>${openhtmltopdf.version}</version>
+            </dependency>
+
+            <!-- jsoup：HTML 模板渲染前置预处理，配套 openhtmltopdf 使用 -->
+            <dependency>
+                <groupId>org.jsoup</groupId>
+                <artifactId>jsoup</artifactId>
+                <version>${jsoup.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

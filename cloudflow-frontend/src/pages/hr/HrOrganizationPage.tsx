@@ -167,7 +167,7 @@ const HrOrganizationPage: React.FC = () => {
     { key: 'positionName', label: '职位名称' },
     { key: 'familyId', label: '职位族', type: 'select', valueType: 'number', options: familyOptions },
     { key: 'levelId', label: '职级', type: 'select', valueType: 'number', options: levelOptions },
-    { key: 'postId', label: '岗位', type: 'select', valueType: 'number', options: postOptions },
+    { key: 'postId', label: '岗位', type: 'post' },
     { key: 'status', label: '状态', type: 'select', valueType: 'number', options: [{ label: '启用', value: 1 }, { label: '停用', value: 0 }] },
     { key: 'jobDescription', label: '职责', type: 'textarea', className: 'md:col-span-2' },
     { key: 'requirements', label: '任职要求', type: 'textarea', className: 'md:col-span-2' },

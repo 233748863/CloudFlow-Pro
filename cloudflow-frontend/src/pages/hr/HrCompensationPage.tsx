@@ -428,7 +428,7 @@ const HrCompensationPage: React.FC = () => {
             setForm={setEmployeeCompForm}
             resetForm={employeeCompDefault}
             formFields={[
-              { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+              { key: 'employeeId', label: '员工', type: 'employee' },
               { key: 'structureId', label: '薪资结构', type: 'select', valueType: 'number', options: structureOptions },
               { key: 'gradeId', label: '薪级', type: 'select', valueType: 'number', options: gradeOptions },
               { key: 'totalSalary', label: '总薪资', type: 'number' },
@@ -458,7 +458,7 @@ const HrCompensationPage: React.FC = () => {
             setForm={setChangeForm}
             resetForm={changeDefault}
             formFields={[
-              { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+              { key: 'employeeId', label: '员工', type: 'employee' },
               { key: 'changeType', label: '类型', type: 'select', options: [{ label: '调薪', value: 'ADJUST' }, { label: '晋升', value: 'PROMOTION' }, { label: '绩效', value: 'PERFORMANCE' }] },
               { key: 'beforeTotal', label: '调整前', type: 'number' },
               { key: 'afterTotal', label: '调整后', type: 'number' },
@@ -518,7 +518,7 @@ const HrCompensationPage: React.FC = () => {
             setForm={setEmployeeBenefitForm}
             resetForm={employeeBenefitDefault}
             formFields={[
-              { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+              { key: 'employeeId', label: '员工', type: 'employee' },
               { key: 'schemeId', label: '方案', type: 'select', valueType: 'number', options: benefitOptions },
               { key: 'baseAmount', label: '缴费基数', type: 'number' },
               { key: 'effectiveDate', label: '生效日期', type: 'date' },
@@ -546,7 +546,7 @@ const HrCompensationPage: React.FC = () => {
             setForm={setTaxProfileForm}
             resetForm={taxProfileDefault}
             formFields={[
-              { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+              { key: 'employeeId', label: '员工', type: 'employee' },
               { key: 'taxResidenceCity', label: '纳税城市', type: 'city' },
               { key: 'threshold', label: '起征点', type: 'number' },
               { key: 'status', label: '状态', type: 'select', options: [{ label: '启用', value: 'ACTIVE' }, { label: '停用', value: 'INACTIVE' }] },
@@ -572,7 +572,7 @@ const HrCompensationPage: React.FC = () => {
             setForm={setTaxDeductionForm}
             resetForm={taxDeductionDefault}
             formFields={[
-              { key: 'employeeId', label: '员工', type: 'select', valueType: 'number', options: employeeOptions },
+              { key: 'employeeId', label: '员工', type: 'employee' },
               { key: 'deductionType', label: '扣除类型', type: 'select', options: [{ label: '子女教育', value: 'CHILD_EDUCATION' }, { label: '继续教育', value: 'CONTINUING_EDU' }, { label: '住房贷款利息', value: 'HOUSING_LOAN' }, { label: '住房租金', value: 'HOUSING_RENT' }, { label: '赡养老人', value: 'ELDERLY_CARE' }, { label: '婴幼儿照护', value: 'INFANT_CARE' }] },
               { key: 'amount', label: '金额', type: 'number' },
               { key: 'startDate', label: '开始日期', type: 'date' },
