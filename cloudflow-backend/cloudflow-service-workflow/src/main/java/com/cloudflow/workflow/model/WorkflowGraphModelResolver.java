@@ -15,6 +15,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +30,7 @@ public class WorkflowGraphModelResolver {
     private static final TypeReference<Map<String, String>> STRING_MAP_TYPE = new TypeReference<>() {};
     private static final TypeReference<Map<String, Object>> OBJECT_MAP_TYPE = new TypeReference<>() {};
     private static final String RUNTIME_GRAPH_PROP_KEY = "__runtimeGraph";
+    private static final Set<String> PARALLEL_SIGN_MODES = Set.of("ALL", "ANY", "PERCENT", "SEQUENTIAL");
 
     private final ObjectMapper objectMapper = new ObjectMapper()
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
@@ -213,6 +215,59 @@ public class WorkflowGraphModelResolver {
             }
         }
 
+        // R8/R9/R10：多分支决策节点拓扑校验
+        // 适用：任何拥有 >=2 条出边的节点（CONDITION/GATEWAY/PARALLEL-分支模式 类型且为路由角色，
+        // 或 APPROVAL 等业务节点通过 branchStrategy=EXCLUSIVE 充当路由），均视为"多分支路由"。
+        // 单出边的 CONDITION 视为分支标签节点（兼容历史模板），不强制 R8。
+        for (Map.Entry<String, JsonNode> entry : nodeMap.entrySet()) {
+            String nodeId = entry.getKey();
+            JsonNode node = entry.getValue();
+            List<EdgeLink> outs = outgoing.getOrDefault(nodeId, List.of());
+            boolean isRouterByOutgoing = outs.size() >= 2;
+            boolean isRouterByType = isMultiBranchDecisionNode(node);
+            if (!isRouterByOutgoing && !isRouterByType) {
+                continue;
+            }
+            // R8：声明为 GATEWAY/PARALLEL-branch 类型的节点必须 >=2 条出边
+            // CONDITION 单出边作为"分支标签"使用——其上游必须是真正的多出边路由节点
+            if (isRouterByType && !isRouterByOutgoing) {
+                String upperType = textUpper(node, "type");
+                if ("CONDITION".equals(upperType)) {
+                    if (!isConditionLabelDownstreamOfRouter(nodeId, incoming, outgoing)) {
+                        throw WorkflowException.validationError(
+                                "CONDITION 节点既非多出边路由也非合法分支标签: " + nodeId);
+                    }
+                } else {
+                    throw WorkflowException.validationError("多分支决策节点至少需要两条出边: " + nodeId);
+                }
+                continue;
+            }
+            // 仅对真正的多出边路由节点应用 R9/R10
+            if (!isRouterByOutgoing) {
+                continue;
+            }
+            // R9：必须恰好 1 条 isDefault=true（兜底分支）
+            long defaultCount = outs.stream().filter(EdgeLink::isDefault).count();
+            if (defaultCount == 0) {
+                throw WorkflowException.validationError("多分支路由节点缺少默认分支(isDefault=true): " + nodeId);
+            }
+            if (defaultCount > 1) {
+                throw WorkflowException.validationError("多分支路由节点存在多条默认分支: " + nodeId);
+            }
+            // R10：非默认分支不得直连结束节点(END)，必须先经过中间业务节点
+            // （默认分支保留"兜底直接结束"的合法业务语义）
+            for (EdgeLink edge : outs) {
+                if (edge.isDefault()) {
+                    continue;
+                }
+                JsonNode targetNode = nodeMap.get(edge.targetId());
+                if ("END".equalsIgnoreCase(text(targetNode, "type"))) {
+                    throw WorkflowException.validationError(
+                            "多分支路由节点的非默认分支不能直接连向结束节点(END): " + nodeId + " -> " + edge.targetId());
+                }
+            }
+        }
+
         Set<String> reachable = new LinkedHashSet<>();
         collectReachable(startId, outgoing, reachable, new HashSet<>());
         if (reachable.size() != nodeMap.size()) {
@@ -371,6 +426,47 @@ public class WorkflowGraphModelResolver {
         }
         String value = node.get(field).asText();
         return StringUtils.hasText(value) ? value : null;
+    }
+
+    private String textUpper(JsonNode node, String field) {
+        String value = text(node, field);
+        return value == null ? null : value.toUpperCase(Locale.ROOT);
+    }
+
+    /**
+     * 判断 CONDITION 节点是否作为"分支标签"使用：
+     * 只有一条入边，且来源节点是真正的多出边路由节点。
+     */
+    private boolean isConditionLabelDownstreamOfRouter(String conditionId,
+                                                       Map<String, List<EdgeLink>> incoming,
+                                                       Map<String, List<EdgeLink>> outgoing) {
+        List<EdgeLink> ins = incoming.getOrDefault(conditionId, List.of());
+        if (ins.size() != 1) {
+            return false;
+        }
+        String upstreamId = ins.get(0).sourceId();
+        return outgoing.getOrDefault(upstreamId, List.of()).size() >= 2;
+    }
+
+    private boolean isMultiBranchDecisionNode(JsonNode node) {
+        if (node == null) {
+            return false;
+        }
+        String type = text(node, "type");
+        if (type == null) {
+            return false;
+        }
+        String upperType = type.toUpperCase(Locale.ROOT);
+        if ("CONDITION".equals(upperType) || "GATEWAY".equals(upperType)) {
+            return true;
+        }
+        if ("PARALLEL".equals(upperType)) {
+            String signType = text(node, "signType");
+            // 分支模式：signType 缺失或不属于合规会签模式
+            return signType == null
+                    || !PARALLEL_SIGN_MODES.contains(signType.trim().toUpperCase(Locale.ROOT));
+        }
+        return false;
     }
 
     private EdgeLink resolveDefaultEdge(String sourceId, List<EdgeLink> edges) {

@@ -107,6 +107,7 @@ import {
   getWorkflowGraphBranchChildIds,
   isWorkflowGraphNodeInsideBranchScope,
   isWorkflowGraphNodeInBranchSubtree,
+  isMultiBranchDecisionNode,
   isWorkflowGraphBranchRoot,
   isWorkflowGraphSharedEndNode,
   insertWorkflowGraphNodeAfter,
@@ -349,7 +350,23 @@ const workflowConnectorLineClassName = "bg-slate-300 dark:bg-slate-700";
 const buildQuickAddOptions = (
   canAddBranch: boolean,
   includeEnd: boolean,
+  options?: {
+    parentIsMultiBranch?: boolean;
+    parentIsBranchRoot?: boolean;
+  },
 ): QuickAddOption[] => {
+  // 多分支决策节点：只允许追加分支，禁掉所有顺序节点选项，消除"+号挂 END"歧义
+  if (options?.parentIsMultiBranch && canAddBranch) {
+    return [
+      {
+        type: NodeType.CONDITION,
+        icon: GitBranch,
+        label: "添加分支",
+        isBranch: true,
+      },
+    ];
+  }
+
   const items: QuickAddOption[] = [
     {
       type: NodeType.APPROVAL,
@@ -393,7 +410,8 @@ const buildQuickAddOptions = (
     },
   ];
 
-  if (canAddBranch) {
+  // 分支根节点：禁掉「条件分支」选项避免在分支根上再嵌一层分支
+  if (canAddBranch && !options?.parentIsBranchRoot) {
     items.push({
       type: NodeType.CONDITION,
       icon: GitBranch,
@@ -2002,6 +2020,10 @@ interface FlowNodeActionsContextValue {
   getBranchSharedEndId: (nodeId: string) => string | null;
   getMainTargetId: (nodeId: string) => string | null;
   isSharedEndNode: (nodeId: string) => boolean;
+  // 用于 + 号菜单按节点类型动态分流：多分支决策节点（CONDITION/GATEWAY/PARALLEL 分支模式/出边≥2）
+  isMultiBranchAt: (nodeId: string) => boolean;
+  // 分支根节点（入边为分支边）禁掉「条件分支」选项，避免双层嵌套
+  isBranchRootAt: (nodeId: string) => boolean;
   setDraggingGlobal: (value: boolean) => void;
   setDraggingNodeId: (id: string | null) => void;
   setActiveQuickAddId: (id: string | null) => void;
@@ -2021,6 +2043,8 @@ const flowNodeActionsFallback: FlowNodeActionsContextValue = {
   getBranchSharedEndId: () => null,
   getMainTargetId: () => null,
   isSharedEndNode: () => false,
+  isMultiBranchAt: () => false,
+  isBranchRootAt: () => false,
   setDraggingGlobal: noop as (value: boolean) => void,
   setDraggingNodeId: noop as (id: string | null) => void,
   setActiveQuickAddId: noop as (id: string | null) => void,
@@ -2220,7 +2244,12 @@ const FlowNode = ({
                   }}
                   style={{ pointerEvents: "auto" }}
                 >
-                  {buildQuickAddOptions(canAddBranch, false).map((item) => {
+                  {buildQuickAddOptions(canAddBranch, false, {
+                    // END 上方 + 号：用户语义是「在 END 与前驱之间插入」，
+                    // 菜单按完整选项展示，由 applyInsert 内的多分支兜底分流保证脏图不会落库
+                    parentIsMultiBranch: false,
+                    parentIsBranchRoot: false,
+                  }).map((item) => {
                     const ItemIcon = item.icon;
                     return (
                       <button
@@ -2302,7 +2331,10 @@ const FlowNode = ({
                   }}
                   style={{ pointerEvents: "auto" }}
                 >
-                  {buildQuickAddOptions(canAddBranch, true).map((item) => {
+                  {buildQuickAddOptions(canAddBranch, true, {
+                    parentIsMultiBranch: actions.isMultiBranchAt(nodeId),
+                    parentIsBranchRoot: actions.isBranchRootAt(nodeId),
+                  }).map((item) => {
                     const ItemIcon = item.icon;
                     return (
                       <button
@@ -3471,27 +3503,23 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
   );
   const handleZoomReset = useCallback(() => setZoom(1), []);
 
-  // 滚轮缩放支持 (Ctrl + Wheel)
+  // 画布滚轮缩放：鼠标悬停在画布内，单纯滚轮即缩放（不需要按 Ctrl/Meta）
+  // 画布外层 overflow-hidden 不会滚动，直接消费滚轮事件避免穿透到页面
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const handleWheel = (e: WheelEvent) => {
-      // 只有按住 Ctrl 或 Meta 键时才触发缩放，避免影响正常滚动
-      if (e.ctrlKey || e.metaKey) {
-        e.preventDefault();
-        const delta = e.deltaY;
-        setZoom((prev) => {
-          // 向上滚动 (delta < 0) 是放大，向下滚动 (delta > 0) 是缩小
-          // 使用较小的步长以获得更平滑的体验
-          const step = 0.05;
-          const newZoom = delta < 0 ? prev + step : prev - step;
-          return Math.min(Math.max(newZoom, 0.3), 2);
-        });
-      }
+      e.preventDefault();
+      const delta = e.deltaY;
+      setZoom((prev) => {
+        // Ctrl/Meta 用较大步长（快速缩放），默认用较小步长（平滑缩放）
+        const step = e.ctrlKey || e.metaKey ? 0.1 : 0.05;
+        const newZoom = delta < 0 ? prev + step : prev - step;
+        return Math.min(Math.max(newZoom, 0.3), 2);
+      });
     };
 
-    // 使用 passive: false 以便能够调用 preventDefault
     canvas.addEventListener("wheel", handleWheel, { passive: false });
 
     return () => {
@@ -3636,6 +3664,19 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       }
 
       const anchorNode = findWorkflowGraphNode(graph, anchorId);
+
+      // 通用多分支决策节点保护：CONDITION/GATEWAY、分支模式 PARALLEL、出边≥2 的节点
+      // 这类节点无「主干位」可挂顺序节点（否则会形成 anchor→新→END 把新节点变成默认分支唯一占位），
+      // 转发到 handleAddBranch 追加并行分支；nodeType=END 不走此分支（用户主动替换结束）
+      if (
+        nodeType !== NodeType.END &&
+        anchorNode &&
+        isMultiBranchDecisionNode(anchorNode, graph)
+      ) {
+        handleAddBranch(anchorId);
+        return;
+      }
+
       const nextGraph =
         anchorNode?.type === NodeType.END && isWorkflowGraphSharedEndNode(graph, anchorId)
           ? graph
@@ -4109,6 +4150,13 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
         findWorkflowGraphMainTargetId(graphModelRef.current, nodeId),
       isSharedEndNode: (nodeId) =>
         isWorkflowGraphSharedEndNode(graphModelRef.current, nodeId),
+      isMultiBranchAt: (nodeId) => {
+        const graph = graphModelRef.current;
+        const node = findWorkflowGraphNode(graph, nodeId);
+        return isMultiBranchDecisionNode(node, graph);
+      },
+      isBranchRootAt: (nodeId) =>
+        isWorkflowGraphBranchRoot(graphModelRef.current, nodeId),
       setDraggingGlobal,
       setDraggingNodeId,
       setActiveQuickAddId,
