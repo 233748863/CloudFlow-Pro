@@ -72,6 +72,17 @@ export enum NodeType {
   // 新增：支持自定义字符串类型（插件扩展）
 }
 
+/**
+ * P2-7: PARALLEL 节点会签模式（与后端 WfNode.signType 枚举对齐）。
+ * 出现在 PARALLEL 节点时表示其当前为"会签模式"，不再作为路由分支节点。
+ *  - ALL: 全签（所有人同意才通过）
+ *  - ANY: 或签（任一人同意即通过）
+ *  - PERCENT: 比例签（按比例通过）
+ *  - SEQUENTIAL: 顺序签（按顺序逐个审批）
+ */
+export const PARALLEL_SIGN_MODES = ['ALL', 'ANY', 'PERCENT', 'SEQUENTIAL'] as const;
+export type ParallelSignMode = (typeof PARALLEL_SIGN_MODES)[number];
+
 export interface WorkflowGraphNode {
   id: string;
   type: string;
@@ -203,7 +214,7 @@ export interface StepDetail {
   /** 实际处理人姓名（已完成的步骤才有） */
   operatorName?: string;
   /** 会签类型 (ALL-全部同意 / ANY-任一同意 / PERCENT-按比例 / SEQUENTIAL-顺序签署)，仅会签节点 */
-  signType?: 'ALL' | 'ANY' | 'PERCENT' | 'SEQUENTIAL';
+  signType?: ParallelSignMode;
   /** 会签通过百分比，仅 PERCENT 类型 */
   passPercent?: number;
   /** 分支策略 (PARALLEL/EXCLUSIVE)，仅网关节点 */

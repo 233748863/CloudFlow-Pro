@@ -1,5 +1,6 @@
 import {
   NodeType,
+  PARALLEL_SIGN_MODES,
   WorkflowGraphDefinition,
   WorkflowGraphEdge,
   WorkflowGraphNode,
@@ -70,14 +71,85 @@ const hasNodeCondition = (node?: WorkflowGraphNode): boolean => {
 const isEndNode = (node?: WorkflowGraphNode): boolean =>
   String(node?.type || '').toUpperCase() === NodeType.END;
 
-const PARALLEL_SIGN_MODES = new Set(['ALL', 'ANY', 'PERCENT', 'SEQUENTIAL']);
+// P2-7: PARALLEL_SIGN_MODES 已迁移到 types.ts 与后端 WfNode.signType 枚举对齐
+const PARALLEL_SIGN_MODE_SET = new Set<string>(PARALLEL_SIGN_MODES);
 
 // PARALLEL 处于会签模式（signType ∈ ALL/ANY/PERCENT/SEQUENTIAL）时不视为分支决策节点
 const isParallelInSignMode = (node?: WorkflowGraphNode): boolean => {
   if (!node) return false;
   if (String(node.type || '').toUpperCase() !== NodeType.PARALLEL) return false;
   const signType = typeof node.signType === 'string' ? node.signType.trim().toUpperCase() : '';
-  return PARALLEL_SIGN_MODES.has(signType);
+  return PARALLEL_SIGN_MODE_SET.has(signType);
+};
+
+/**
+ * P1-7: 统一的出边/入边查询 API。
+ * 替代 12+ 处手写 graph.edges.filter(e => e.source === id) / e.target === id，
+ * 消除命名分散与边界遗漏（孤儿边）风险。
+ */
+export const getWorkflowGraphOutgoingEdges = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): WorkflowGraphEdge[] => {
+  return graph.edges.filter((edge) => edge.source === nodeId);
+};
+
+/**
+ * P2-6: 生成不与现有 edges 列表冲突的 edge id。
+ * 简单 `${source}->${target}` 在同一对 source/target 出现多条边时会重复；
+ * 重复时回退为 `${source}->${target}__${seq}`（seq 从 2 起递增），保证 id 唯一。
+ */
+const generateUniqueEdgeId = (
+  edges: WorkflowGraphEdge[],
+  source: string,
+  target: string,
+): string => {
+  const base = `${source}->${target}`;
+  const existing = new Set(edges.map((edge) => edge.id).filter(Boolean) as string[]);
+  if (!existing.has(base)) return base;
+  let seq = 2;
+  while (existing.has(`${base}__${seq}`)) seq++;
+  return `${base}__${seq}`;
+};
+
+/**
+ * P2-5: 维护"同一 source 至多一条 default 出边"的不变量。
+ *  - 出边数 0/1：清掉冗余的 isDefault 字段（单条无需 default）；
+ *  - 出边数 ≥2：若已有恰好 1 条 default 则保留；多条则只保留第一条；0 条则提升第一条。
+ *
+ * 适用场景：结构性变更（删除分支 / 追加分支 / 移动节点）后做收尾归一，
+ * 避免重复在四个调用点散落手写"是否提升 default"的判断。
+ */
+const ensureExactlyOneDefault = (
+  edges: WorkflowGraphEdge[],
+  sourceId: string,
+): WorkflowGraphEdge[] => {
+  const outgoing = edges.filter((edge) => edge.source === sourceId);
+  if (outgoing.length === 0) return edges;
+  if (outgoing.length === 1) {
+    // 单条出边无需 default 标记，清掉冗余字段，避免与他处"出边数 ≥2 才视为分支"的判定冲突
+    return edges.map((edge) => {
+      if (edge.source !== sourceId || !isDefaultEdge(edge)) return edge;
+      const { isDefault: _isDefault, ...rest } = edge;
+      return rest;
+    });
+  }
+  const defaults = outgoing.filter((edge) => isDefaultEdge(edge));
+  if (defaults.length === 1) return edges;
+
+  if (defaults.length === 0) {
+    const promote = outgoing[0];
+    return edges.map((edge) => (edge === promote ? { ...edge, isDefault: true } : edge));
+  }
+
+  // 多条 default：只保留第一条
+  const keep = defaults[0];
+  return edges.map((edge) => {
+    if (edge === keep) return edge;
+    if (edge.source !== sourceId || !isDefaultEdge(edge)) return edge;
+    const { isDefault: _isDefault, ...rest } = edge;
+    return rest;
+  });
 };
 
 /**
@@ -109,18 +181,12 @@ export const isMultiBranchDecisionNode = (
 
   // CONDITION/GATEWAY 单出边场景：若上游为真路由，则本节点为分支标签而非独立路由
   if (type === NodeType.CONDITION || type === 'GATEWAY') {
-    const outgoingCount = graph.edges.reduce(
-      (count, edge) => (edge.source === node.id ? count + 1 : count),
-      0,
-    );
+    const outgoingCount = getWorkflowGraphOutgoingEdges(graph, node.id).length;
     if (outgoingCount < 2) {
       const incomingEdges = graph.edges.filter((edge) => edge.target === node.id);
       if (incomingEdges.length === 1) {
         const upstreamId = incomingEdges[0].source;
-        const upstreamOutCount = graph.edges.reduce(
-          (count, edge) => (edge.source === upstreamId ? count + 1 : count),
-          0,
-        );
+        const upstreamOutCount = getWorkflowGraphOutgoingEdges(graph, upstreamId).length;
         if (upstreamOutCount >= 2) return false; // 标签节点
       }
     }
@@ -158,7 +224,7 @@ const resolveGraphMainEdge = (
     return undefined;
   }
 
-  const outgoingEdges = graph.edges.filter((edge) => edge.source === sourceId);
+  const outgoingEdges = getWorkflowGraphOutgoingEdges(graph, sourceId);
   const defaultEdge = outgoingEdges.find((edge) => isDefaultEdge(edge));
   if (defaultEdge) {
     return defaultEdge;
@@ -172,8 +238,20 @@ const resolveGraphMainEdge = (
   return isBranchEdge(singleEdge, nodeMap, graph) ? undefined : singleEdge;
 };
 
-// 截断后续子图时，要一次性回收被丢弃的整条主干子树
-const collectGraphSubtreeIds = (
+/**
+ * P1-8: 从 startIds 出发做纯 DFS，收集所有可达后代节点 ID（含 startIds 自身）。
+ *
+ * **不剔除任何节点**——即使下游节点存在来自集合外的入边（如多分支汇聚到的共享 END），
+ * 也一律纳入结果。调用方若需要"保护外部可达节点"，请额外调用
+ * {@link pruneExternallyReachableFromSet} 进行二次过滤。
+ *
+ * 适用场景：subgraph 提取、节点克隆等纯结构遍历。
+ *
+ * **不可与 {@link pruneExternallyReachableFromSet} 互换**：
+ * - 本函数返回完整下游集（用于"知道有哪些"）；
+ * - prune 函数返回可安全删除子集（用于"知道哪些能动"）。
+ */
+const collectDownstreamSubtreeIds = (
   graph: WorkflowGraphDefinition,
   startIds: string[],
 ): Set<string> => {
@@ -187,34 +265,54 @@ const collectGraphSubtreeIds = (
     }
 
     idsToRemove.add(currentId);
-    graph.edges
-      .filter((edge) => edge.source === currentId)
-      .forEach((edge) => stack.push(edge.target));
+    getWorkflowGraphOutgoingEdges(graph, currentId).forEach((edge) =>
+      stack.push(edge.target),
+    );
   }
 
   return idsToRemove;
+};
+
+/**
+ * P1-8: 在初始候选集合上反复剔除"存在来自集合外入边的节点"，直到不动点。
+ *
+ * 适用场景：删除子树时保留多分支汇聚点（共享 END / merge 节点）的语义；
+ * replaceWorkflowGraphNextNode / removeWorkflowGraphBranch 的级联截断共用该语义。
+ *
+ * @param graph 当前图
+ * @param ids 初始候选删除集合（会被原地修改）
+ * @param protectedAnchor 可选锚点 ID；存在时即使该节点有外部入边也强制保留在删除集中
+ *                       （删除场景的"显式锚点"语义，例如 removeBranch 的 branchId）
+ */
+const pruneExternallyReachableFromSet = (
+  graph: WorkflowGraphDefinition,
+  ids: Set<string>,
+  protectedAnchor?: string,
+): void => {
+  let changed = true;
+  while (changed) {
+    changed = false;
+    ids.forEach((nodeId) => {
+      if (protectedAnchor && nodeId === protectedAnchor) {
+        return;
+      }
+      const hasExternalIncoming = graph.edges.some(
+        (edge) => edge.target === nodeId && !ids.has(edge.source),
+      );
+      if (hasExternalIncoming) {
+        ids.delete(nodeId);
+        changed = true;
+      }
+    });
+  }
 };
 
 const collectRemovableSubtreeIds = (
   graph: WorkflowGraphDefinition,
   startIds: string[],
 ): Set<string> => {
-  const idsToRemove = collectGraphSubtreeIds(graph, startIds);
-  let changed = true;
-
-  while (changed) {
-    changed = false;
-    idsToRemove.forEach((nodeId) => {
-      const hasExternalIncoming = graph.edges.some(
-        (edge) => edge.target === nodeId && !idsToRemove.has(edge.source),
-      );
-      if (hasExternalIncoming) {
-        idsToRemove.delete(nodeId);
-        changed = true;
-      }
-    });
-  }
-
+  const idsToRemove = collectDownstreamSubtreeIds(graph, startIds);
+  pruneExternallyReachableFromSet(graph, idsToRemove);
   return idsToRemove;
 };
 
@@ -275,6 +373,9 @@ export const assertWorkflowGraphIntegrity = (
   const incomingCount = new Map<string, number>();
   nodeMap.forEach((_, id) => incomingCount.set(id, 0));
 
+  // P2-6: edge id 唯一性校验，承接 generateUniqueEdgeId 的不变量
+  const edgeIdSet = new Set<string>();
+
   (Array.isArray(graph.edges) ? graph.edges : []).forEach((edge) => {
     const source = edge?.source;
     const target = edge?.target;
@@ -283,6 +384,18 @@ export const assertWorkflowGraphIntegrity = (
     }
     if (!nodeMap.has(source) || !nodeMap.has(target)) {
       throw new Error(`流程图连线引用了不存在的节点: ${source} -> ${target}`);
+    }
+    // P1-9: 自环显式拦截。理论上下方 reachable 的 path 检查也能在递归时捕获，
+    // 但自环是合法图模型从不允许的形态，直接在边校验阶段抛出更直观。
+    if (source === target) {
+      throw new Error(`流程图存在自环连线: ${source} -> ${target}`);
+    }
+
+    if (edge.id) {
+      if (edgeIdSet.has(edge.id)) {
+        throw new Error(`流程图存在重复连线ID: ${edge.id}`);
+      }
+      edgeIdSet.add(edge.id);
     }
 
     const edges = outgoing.get(source) ?? [];
@@ -298,6 +411,15 @@ export const assertWorkflowGraphIntegrity = (
     throw new Error('流程图必须且只能包含一个 START 节点');
   }
   const startNode = startNodes[0];
+
+  // P1-9: 非 START 节点入度为 0 的孤立检查。
+  // 下方"不可达"检查也能间接捕获该问题，但显式校验给出节点级错误更精准。
+  incomingCount.forEach((count, nodeId) => {
+    if (nodeId === startNode.id) return;
+    if (count === 0) {
+      throw new Error(`流程图存在孤立节点（无任何入边）: ${nodeId}`);
+    }
+  });
 
   incomingCount.forEach((count, nodeId) => {
     if (nodeId === startNode.id || count <= 1) {
@@ -391,17 +513,6 @@ export const appendWorkflowGraphBranch = (
     return graph;
   }
 
-  const outgoingEdges = graph.edges.filter((edge) => edge.source === parentId);
-  const edges = graph.edges.map((edge) => {
-    if (edge.source !== parentId) {
-      return edge;
-    }
-    if (outgoingEdges.length === 1 && !isDefaultEdge(edge)) {
-      return { ...edge, isDefault: true };
-    }
-    return edge;
-  });
-
   const normalizedCondition =
     typeof branchNode.condition === "string" ? branchNode.condition.trim() : "";
   const nodes = graph.nodes.map((node) => {
@@ -416,12 +527,16 @@ export const appendWorkflowGraphBranch = (
   });
 
   nodes.push(branchNode);
-  edges.push({
-    id: `${parentId}->${branchNode.id}`,
+  // P2-6: 用 generateUniqueEdgeId 兜底，避免同一 parent→branch 对存在多条边时 id 冲突
+  let edges = [...graph.edges, {
+    id: generateUniqueEdgeId(graph.edges, parentId, branchNode.id),
     source: parentId,
     target: branchNode.id,
     condition: normalizedCondition || undefined,
-  });
+  }];
+  // P2-5: 由 ensureExactlyOneDefault 统一收尾——之前"出边数=1 时提升原边为 default"的手写逻辑
+  // 等价于"加入新分支后，原边自动成为该 source 的首条 default 候选"。
+  edges = ensureExactlyOneDefault(edges, parentId);
 
   return { nodes, edges };
 };
@@ -526,7 +641,7 @@ export const isWorkflowGraphNodeInBranchSubtree = (
   if (branchChildIds.length === 0) {
     return false;
   }
-  return collectGraphSubtreeIds(graph, branchChildIds).has(targetId);
+  return collectDownstreamSubtreeIds(graph, branchChildIds).has(targetId);
 };
 
 /**
@@ -581,7 +696,7 @@ export const extractWorkflowGraphSubgraph = (
     return null;
   }
 
-  const includedIds = collectGraphSubtreeIds(graph, [nodeId]);
+  const includedIds = collectDownstreamSubtreeIds(graph, [nodeId]);
   return {
     nodes: graph.nodes.filter((node) => includedIds.has(node.id)),
     edges: graph.edges.filter(
@@ -622,12 +737,12 @@ export const cloneWorkflowGraphSubgraph = (
   const mainEdge = resolveGraphMainEdge(graph, nodeId, nodeMap);
   const idsToClone = new Set<string>([nodeId]);
 
-  collectGraphSubtreeIds(graph, getWorkflowGraphBranchChildIds(graph, nodeId)).forEach((id) => {
+  collectDownstreamSubtreeIds(graph, getWorkflowGraphBranchChildIds(graph, nodeId)).forEach((id) => {
     idsToClone.add(id);
   });
 
   if (options?.includeMainPath && mainEdge?.target) {
-    collectGraphSubtreeIds(graph, [mainEdge.target]).forEach((id) => {
+    collectDownstreamSubtreeIds(graph, [mainEdge.target]).forEach((id) => {
       idsToClone.add(id);
     });
   }
@@ -709,10 +824,10 @@ export const insertWorkflowGraphSubgraphAfter = (
   const shouldMarkDefault =
     otherOutgoingEdges.length > 0 || (!!mainEdge && isDefaultEdge(mainEdge));
 
-  const edges = graph.edges.filter((edge) => edge !== mainEdge);
+  let edges = graph.edges.filter((edge) => edge !== mainEdge);
   edges.push(...subgraph.edges);
   edges.push({
-    id: `${parentId}->${rootId}`,
+    id: generateUniqueEdgeId(edges, parentId, rootId),
     source: parentId,
     target: rootId,
     isDefault: shouldMarkDefault || undefined,
@@ -720,11 +835,14 @@ export const insertWorkflowGraphSubgraphAfter = (
 
   if (mainEdge) {
     edges.push({
-      id: `${rootId}->${mainEdge.target}`,
+      id: generateUniqueEdgeId(edges, rootId, mainEdge.target),
       source: rootId,
       target: mainEdge.target,
     });
   }
+
+  // P2-5: 收尾归一 default 不变量
+  edges = ensureExactlyOneDefault(edges, parentId);
 
   return {
     nodes: [...graph.nodes, ...subgraph.nodes],
@@ -770,30 +888,13 @@ export const replaceWorkflowGraphNextNode = (
   const idsToRemove = new Set<string>();
   if (mainEdge) {
     const anchorId = mainEdge.target;
-    const subtree = collectGraphSubtreeIds(graph, [anchorId]);
-    subtree.forEach((id) => idsToRemove.add(id));
-    let changed = true;
-    while (changed) {
-      changed = false;
-      idsToRemove.forEach((nodeId) => {
-        if (nodeId === anchorId) {
-          return;
-        }
-        const hasExternalIncoming = graph.edges.some(
-          (edge) =>
-            edge.target === nodeId &&
-            edge !== mainEdge &&
-            !idsToRemove.has(edge.source),
-        );
-        if (hasExternalIncoming) {
-          idsToRemove.delete(nodeId);
-          changed = true;
-        }
-      });
-    }
+    collectDownstreamSubtreeIds(graph, [anchorId]).forEach((id) =>
+      idsToRemove.add(id),
+    );
+    pruneExternallyReachableFromSet(graph, idsToRemove, anchorId);
   }
 
-  const edges = graph.edges.filter(
+  let edges = graph.edges.filter(
     (edge) =>
       edge !== mainEdge &&
       !idsToRemove.has(edge.source) &&
@@ -801,11 +902,14 @@ export const replaceWorkflowGraphNextNode = (
   );
   const hasRemainingBranches = edges.some((edge) => edge.source === parentId);
   edges.push({
-    id: `${parentId}->${newNode.id}`,
+    id: generateUniqueEdgeId(edges, parentId, newNode.id),
     source: parentId,
     target: newNode.id,
     isDefault: hasRemainingBranches || undefined,
   });
+
+  // P2-5: 收尾归一 default 不变量
+  edges = ensureExactlyOneDefault(edges, parentId);
 
   return {
     nodes: [...graph.nodes.filter((node) => !idsToRemove.has(node.id)), newNode],
@@ -836,7 +940,7 @@ export const moveWorkflowGraphNode = (
   const branchTargets = graph.edges
     .filter((edge) => edge.source === nodeId && edge !== sourceMainEdge)
     .map((edge) => edge.target);
-  const movedBranchIds = collectGraphSubtreeIds(graph, branchTargets);
+  const movedBranchIds = collectDownstreamSubtreeIds(graph, branchTargets);
   const movedIds = new Set<string>([nodeId, ...movedBranchIds]);
   const incomingEdges = graph.edges.filter(
     (edge) => edge.target === nodeId && !movedIds.has(edge.source),
@@ -860,7 +964,7 @@ export const moveWorkflowGraphNode = (
     incomingEdges.forEach((edge) => {
       const rewiredEdge: WorkflowGraphEdge = {
         ...edge,
-        id: `${edge.source}->${sourceMainEdge.target}` ,
+        id: generateUniqueEdgeId(edges, edge.source, sourceMainEdge.target),
         target: sourceMainEdge.target,
       };
       const rewiredKey = buildEdgeKey(rewiredEdge);
@@ -886,7 +990,7 @@ export const moveWorkflowGraphNode = (
 
   edges = edges.filter((edge) => edge !== targetMainEdge);
   edges.push({
-    id: `${targetParentId}->${nodeId}`,
+    id: generateUniqueEdgeId(edges, targetParentId, nodeId),
     source: targetParentId,
     target: nodeId,
     isDefault: shouldMarkDefault || undefined,
@@ -894,10 +998,19 @@ export const moveWorkflowGraphNode = (
 
   if (targetMainEdge) {
     edges.push({
-      id: `${nodeId}->${targetMainEdge.target}`,
+      id: generateUniqueEdgeId(edges, nodeId, targetMainEdge.target),
       source: nodeId,
       target: targetMainEdge.target,
     });
+  }
+
+  // P2-5: 收尾归一 default 不变量（同时覆盖源/目标父节点）
+  edges = ensureExactlyOneDefault(edges, targetParentId);
+  if (sourceMainEdge) {
+    const sourceParent = incomingEdges[0]?.source;
+    if (sourceParent && sourceParent !== targetParentId) {
+      edges = ensureExactlyOneDefault(edges, sourceParent);
+    }
   }
 
   return {
@@ -984,7 +1097,7 @@ export const removeWorkflowGraphNode = (
       .forEach((edge) => {
         const rewiredEdge: WorkflowGraphEdge = {
           ...edge,
-          id: `${edge.source}->${keepTargetId}`,
+          id: generateUniqueEdgeId(edges, edge.source, keepTargetId),
           target: keepTargetId,
         };
         const rewiredKey = buildEdgeKey(rewiredEdge);
@@ -995,6 +1108,13 @@ export const removeWorkflowGraphNode = (
         edges.push(rewiredEdge);
       });
   }
+
+  // P2-5: 删除节点后，原父节点出边数变化时归一 default
+  incomingEdges.forEach((edge) => {
+    if (!removableIds.has(edge.source)) {
+      edges = ensureExactlyOneDefault(edges, edge.source);
+    }
+  });
 
   return { nodes, edges };
 };
@@ -1016,28 +1136,13 @@ export const removeWorkflowGraphBranch = (
   // END 节点是流程终点，永远不属于分支自身，分支删除时必须无条件保留（即使没有其他入边）；
   // 其余下游节点若存在来自集合外的入边（汇聚节点）则从删除集中剥离。
   const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
-  const idsToRemove = collectGraphSubtreeIds(graph, [branchId]);
+  const idsToRemove = collectDownstreamSubtreeIds(graph, [branchId]);
   idsToRemove.forEach((nodeId) => {
     if (nodeId !== branchId && isEndNode(nodeMap.get(nodeId))) {
       idsToRemove.delete(nodeId);
     }
   });
-  let changed = true;
-  while (changed) {
-    changed = false;
-    idsToRemove.forEach((nodeId) => {
-      if (nodeId === branchId) {
-        return;
-      }
-      const hasExternalIncoming = graph.edges.some(
-        (edge) => edge.target === nodeId && !idsToRemove.has(edge.source),
-      );
-      if (hasExternalIncoming) {
-        idsToRemove.delete(nodeId);
-        changed = true;
-      }
-    });
-  }
+  pruneExternallyReachableFromSet(graph, idsToRemove, branchId);
 
   // 记录原分支根的下游 END 节点（删除最后一个分支后用于重连，避免 END 不可达）
   const removedBranchEndIds = new Set<string>();
@@ -1069,14 +1174,9 @@ export const removeWorkflowGraphBranch = (
   let reconnectTargetId: string | null = null;
 
   if (remainingParentEdges.length >= 2) {
-    // 仍为多分支：若删的是默认分支，提升首条剩余为默认，满足 R9
-    const stillHasDefault = remainingParentEdges.some((edge) => isDefaultEdge(edge));
-    if (!stillHasDefault) {
-      const promoteId = remainingParentEdges[0].id;
-      edges = edges.map((edge) =>
-        edge.id === promoteId ? { ...edge, isDefault: true } : edge,
-      );
-    }
+    // P2-5: 删完分支后仍 ≥2 出边，统一通过 ensureExactlyOneDefault 维护 default 不变量
+    // （取代原手写 "若无 default 则把首条提升" 逻辑，满足 R9 同时清理多 default 隐患）
+    edges = ensureExactlyOneDefault(edges, parentId);
   } else if (isParentDecisionType) {
     // 父决策节点剩 0 或 1 条出边：级联删除父节点本身
     cascadeRemoveParent = true;
@@ -1089,10 +1189,11 @@ export const removeWorkflowGraphBranch = (
     }
   } else if (remainingParentEdges.length === 0 && removedBranchEndIds.size > 0) {
     // 非决策类型父节点失去所有出边：直接补回 parent->END
+    const endTarget = Array.from(removedBranchEndIds)[0];
     edges.push({
-      id: `${parentId}->${Array.from(removedBranchEndIds)[0]}`,
+      id: generateUniqueEdgeId(edges, parentId, endTarget),
       source: parentId,
-      target: Array.from(removedBranchEndIds)[0],
+      target: endTarget,
     });
   }
 
@@ -1105,7 +1206,7 @@ export const removeWorkflowGraphBranch = (
     parentIncoming.forEach((edge) => {
       edges.push({
         ...edge,
-        id: `${edge.source}->${target}`,
+        id: generateUniqueEdgeId(edges, edge.source, target),
         target,
       });
     });
