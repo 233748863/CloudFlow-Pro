@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrPerfEvaluatorMapper">
+
+    <select id="selectEvaluatorsWithResponse" resultType="java.util.LinkedHashMap">
+        SELECT e.id              AS id,
+               e.tenant_id       AS tenantId,
+               e.objective_id    AS objectiveId,
+               e.assignment_id   AS assignmentId,
+               e.result_id       AS resultId,
+               e.evaluatee_id    AS evaluateeId,
+               e.evaluatee_name  AS evaluateeName,
+               e.evaluator_id    AS evaluatorId,
+               e.evaluator_name  AS evaluatorName,
+               e.evaluator_source AS evaluatorSource,
+               e.weight          AS weight,
+               e.status          AS status,
+               e.invite_time     AS inviteTime,
+               e.remind_count    AS remindCount,
+               r.score           AS responseScore,
+               r.dimension_scores AS responseDimensions,
+               r.comment_text    AS responseComment,
+               r.submit_time     AS responseSubmitTime
+        FROM hr_perf_evaluator e
+        LEFT JOIN hr_perf_evaluator_response r
+               ON r.evaluator_id = e.id AND r.deleted = 0
+        WHERE e.tenant_id    = #{tenantId}
+          AND e.deleted      = 0
+          AND e.objective_id = #{objectiveId}
+        <if test="evaluateeId != null">
+          AND e.evaluatee_id = #{evaluateeId}
+        </if>
+        ORDER BY e.evaluatee_id, e.evaluator_source, e.id
+    </select>
+
+    <select id="selectPendingForEvaluator" resultType="java.util.LinkedHashMap">
+        SELECT e.id              AS id,
+               e.tenant_id       AS tenantId,
+               e.objective_id    AS objectiveId,
+               e.assignment_id   AS assignmentId,
+               e.result_id       AS resultId,
+               e.evaluatee_id    AS evaluateeId,
+               e.evaluatee_name  AS evaluateeName,
+               e.evaluator_id    AS evaluatorId,
+               e.evaluator_name  AS evaluatorName,
+               e.evaluator_source AS evaluatorSource,
+               e.weight          AS weight,
+               e.status          AS status,
+               e.invite_time     AS inviteTime,
+               e.remind_count    AS remindCount,
+               o.objective_name  AS objectiveName,
+               o.cycle_name      AS cycleName
+        FROM hr_perf_evaluator e
+        LEFT JOIN hr_performance_objective o
+               ON o.id = e.objective_id
+        WHERE e.tenant_id    = #{tenantId}
+          AND e.deleted      = 0
+          AND e.evaluator_id = #{evaluatorId}
+          AND e.status       = 'PENDING'
+        ORDER BY e.invite_time DESC, e.id DESC
+    </select>
+
+    <select id="selectAggregationRows" resultType="java.util.LinkedHashMap">
+        SELECT e.evaluator_source AS evaluatorSource,
+               e.weight           AS weight,
+               r.score            AS score
+        FROM hr_perf_evaluator e
+        INNER JOIN hr_perf_evaluator_response r
+                ON r.evaluator_id = e.id AND r.deleted = 0
+        WHERE e.tenant_id    = #{tenantId}
+          AND e.deleted      = 0
+          AND e.objective_id = #{objectiveId}
+          AND e.evaluatee_id = #{evaluateeId}
+          AND e.status       = 'SUBMITTED'
+    </select>
+
+</mapper>

@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
@@ -7,10 +8,14 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
+import com.cloudflow.hr.domain.entity.HrPerformanceResult;
 import com.cloudflow.hr.domain.entity.HrTalentCalibrationSession;
 import com.cloudflow.hr.domain.entity.HrTalentReview;
 import com.cloudflow.hr.domain.entity.HrTalentReviewParticipant;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.mapper.HrPerformanceObjectiveMapper;
+import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrTalentCalibrationSessionMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewParticipantMapper;
@@ -21,7 +26,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -45,8 +49,9 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
     private final HrTalentReviewMapper reviewMapper;
     private final HrTalentReviewParticipantMapper participantMapper;
     private final HrTalentCalibrationSessionMapper calibrationSessionMapper;
+    private final HrPerformanceObjectiveMapper performanceObjectiveMapper;
+    private final HrPerformanceResultMapper performanceResultMapper;
     private final HrTypedCrudService crudService;
-    private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
     private final WorkflowServiceClient workflowServiceClient;
 
@@ -96,22 +101,25 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
             throw new HrBusinessException("REVIEW_STATUS_INVALID",
                     "盘点状态 " + review.getStatus() + " 不允许重新拉取业绩快照");
         }
-        Integer objectivePublished = jdbcTemplate.queryForObject(
-                "SELECT COUNT(1) FROM hr_performance_objective WHERE id = ? AND tenant_id = ? AND status = 'PUBLISHED' AND deleted = 0",
-                Integer.class, objectiveId, currentTenantId());
+        Integer objectivePublished = Math.toIntExact(performanceObjectiveMapper.selectCount(
+                new LambdaQueryWrapper<HrPerformanceObjective>()
+                        .eq(HrPerformanceObjective::getId, objectiveId)
+                        .eq(HrPerformanceObjective::getTenantId, currentTenantId())
+                        .eq(HrPerformanceObjective::getStatus, "PUBLISHED")
+                        .eq(HrPerformanceObjective::getDeleted, 0)));
         if (objectivePublished == null || objectivePublished == 0) {
             throw new HrBusinessException("OBJECTIVE_NOT_PUBLISHED",
                     "目标计划未发布（status != PUBLISHED），无法拉取业绩快照");
         }
-        List<Map<String, Object>> results = jdbcTemplate.queryForList(
-                "SELECT employee_id, score, grade FROM hr_performance_result "
-                        + "WHERE objective_id = ? AND tenant_id = ? AND deleted = 0",
-                objectiveId, currentTenantId());
+        List<HrPerformanceResult> results = performanceResultMapper.selectList(
+                new LambdaQueryWrapper<HrPerformanceResult>()
+                        .eq(HrPerformanceResult::getObjectiveId, objectiveId)
+                        .eq(HrPerformanceResult::getTenantId, currentTenantId()));
         int inserted = 0;
         Long tenantId = currentTenantId();
-        for (Map<String, Object> row : results) {
-            Long empId = ((Number) row.get("employee_id")).longValue();
-            BigDecimal score = row.get("score") == null ? null : new BigDecimal(row.get("score").toString());
+        for (HrPerformanceResult row : results) {
+            Long empId = row.getEmployeeId();
+            BigDecimal score = row.getScore();
             String band = performanceBand(score);
             QueryWrapper<HrTalentReviewParticipant> dup = new QueryWrapper<>();
             dup.eq("tenant_id", tenantId).eq("review_id", reviewId).eq("employee_id", empId).eq("deleted", 0);

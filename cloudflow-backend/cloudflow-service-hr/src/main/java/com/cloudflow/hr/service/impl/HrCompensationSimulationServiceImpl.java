@@ -1,10 +1,14 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.hr.domain.dto.HrCompensationSimulateRequest;
+import com.cloudflow.hr.domain.entity.HrCompComponent;
+import com.cloudflow.hr.domain.entity.HrCompGrade;
+import com.cloudflow.hr.mapper.HrCompComponentMapper;
+import com.cloudflow.hr.mapper.HrCompGradeMapper;
 import com.cloudflow.hr.service.HrCompensationSimulationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -19,7 +23,7 @@ import java.util.Map;
  *
  * <p>计算规则（月度模拟，简化版 2026 中国个税月度累计扣缴近似）：
  * <ol>
- *   <li>应发合计 = Σ component_overrides，未显式给出的项目按 grade 的 mid_value 或 0 兜底</li>
+ *   <li>应发合计 = Σ component_overrides，未显式给出的项目按 grade 的 mid_salary 或 0 兜底</li>
  *   <li>个人社保 = socialBase × socialPersonalRate（默认 10.5% 五险一金合计估算）</li>
  *   <li>应纳税所得额 = 应发 − 个人社保 − 起征点 5000 − 专项附加扣除</li>
  *   <li>个税 = 应纳税所得额 × 月度税率 − 速算扣除数（按 7 档税率表）</li>
@@ -48,7 +52,8 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
             {new BigDecimal("80000"),    null,                      new BigDecimal("0.45"), new BigDecimal("15160")},
     };
 
-    private final JdbcTemplate jdbcTemplate;
+    private final HrCompComponentMapper compComponentMapper;
+    private final HrCompGradeMapper compGradeMapper;
 
     @Override
     public Map<String, Object> simulate(HrCompensationSimulateRequest request) {
@@ -56,18 +61,22 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
             throw new IllegalArgumentException("structureId 不能为空");
         }
         // 1) 查询结构关联的薪酬项
-        List<Map<String, Object>> components = jdbcTemplate.queryForList(
-                "SELECT c.id, c.component_code, c.component_name, c.component_type, c.category, c.taxable "
-                        + "FROM hr_comp_component c WHERE c.tenant_id=? AND c.deleted=0 AND c.status=1 ORDER BY c.sort_order, c.id",
-                TENANT_ID);
-        // 2) 查询 grade 中位值
+        List<HrCompComponent> components = compComponentMapper.selectList(
+                new LambdaQueryWrapper<HrCompComponent>()
+                        .eq(HrCompComponent::getTenantId, TENANT_ID)
+                        .eq(HrCompComponent::getStatus, 1)
+                        .orderByAsc(HrCompComponent::getSortOrder)
+                        .orderByAsc(HrCompComponent::getId));
+        // 2) 查询 grade 中位值（mid_salary 加密存储，实体 getter 自动解密）
         BigDecimal gradeMid = BigDecimal.ZERO;
         if (request.getGradeId() != null) {
-            BigDecimal val = jdbcTemplate.query(
-                    "SELECT mid_value FROM hr_comp_grade WHERE id=? AND tenant_id=? AND deleted=0",
-                    rs -> rs.next() ? rs.getBigDecimal("mid_value") : null,
-                    request.getGradeId(), TENANT_ID);
-            gradeMid = val == null ? BigDecimal.ZERO : val;
+            HrCompGrade grade = compGradeMapper.selectOne(
+                    new LambdaQueryWrapper<HrCompGrade>()
+                            .eq(HrCompGrade::getId, request.getGradeId())
+                            .eq(HrCompGrade::getTenantId, TENANT_ID));
+            if (grade != null && grade.getMidSalary() != null) {
+                gradeMid = grade.getMidSalary();
+            }
         }
 
         Map<String, BigDecimal> overrides = request.getComponentOverrides() == null
@@ -76,10 +85,10 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
         BigDecimal gross = BigDecimal.ZERO;
         BigDecimal taxableGross = BigDecimal.ZERO;
         List<Map<String, Object>> breakdown = new ArrayList<>();
-        for (Map<String, Object> comp : components) {
-            String code = String.valueOf(comp.get("component_code"));
-            String type = String.valueOf(comp.get("component_type"));
-            Integer taxable = comp.get("taxable") == null ? 1 : ((Number) comp.get("taxable")).intValue();
+        for (HrCompComponent comp : components) {
+            String code = comp.getComponentCode();
+            String type = comp.getComponentType();
+            Integer taxable = comp.getTaxable() == null ? 1 : comp.getTaxable();
             BigDecimal amount = overrides.getOrDefault(code, BigDecimal.ZERO);
             if (amount.signum() == 0 && "BASE".equalsIgnoreCase(type) && gradeMid.signum() > 0) {
                 amount = gradeMid;
@@ -88,9 +97,9 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
                 continue;
             }
             Map<String, Object> item = new LinkedHashMap<>();
-            item.put("componentId", comp.get("id"));
+            item.put("componentId", comp.getId());
             item.put("componentCode", code);
-            item.put("componentName", comp.get("component_name"));
+            item.put("componentName", comp.getComponentName());
             item.put("componentType", type);
             item.put("amount", amount);
             item.put("taxable", taxable);

@@ -1587,7 +1587,7 @@ const desktopRoutes = [
             ),
           },
           {
-            path: "/hr/ess/leave",
+            path: "/hr/ess/leave-balance",
             element: (
               <RouteGuard requiredPermissions={["hr:ess:leave:view"]}>
                 <Suspense fallback={<Loading />}>

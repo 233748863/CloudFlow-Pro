@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrTalentArchiveMapper">
+
+    <select id="selectEmployeeBrief" resultType="java.util.LinkedHashMap">
+        SELECT
+            id              AS employeeId,
+            employee_no     AS employeeNo,
+            name,
+            dept_id         AS deptId,
+            position_id     AS positionId,
+            employee_status AS employeeStatus
+        FROM hr_employee
+        WHERE id = #{employeeId}
+          AND tenant_id = #{tenantId}
+          AND deleted = 0
+        LIMIT 1
+    </select>
+
+    <select id="selectArchiveReviews" resultType="java.util.LinkedHashMap">
+        SELECT
+            p.review_id          AS reviewId,
+            r.review_no          AS reviewNo,
+            r.review_name        AS reviewName,
+            r.review_year        AS reviewYear,
+            p.grid_cell          AS gridCell,
+            p.performance_band   AS performanceBand,
+            p.potential_band     AS potentialBand,
+            p.performance_score  AS performanceScore,
+            p.potential_score    AS potentialScore,
+            p.calibration_notes  AS calibrationNotes,
+            r.status             AS status
+        FROM hr_talent_review_participant p
+        JOIN hr_talent_review r
+            ON r.id = p.review_id
+           AND r.deleted = 0
+        WHERE p.employee_id = #{employeeId}
+          AND p.tenant_id  = #{tenantId}
+          AND p.deleted    = 0
+        ORDER BY r.review_year DESC, p.review_id DESC
+    </select>
+
+    <select id="selectArchivePools" resultType="java.util.LinkedHashMap">
+        SELECT
+            m.pool_id    AS poolId,
+            p.pool_no    AS poolNo,
+            p.pool_name  AS poolName,
+            p.pool_type  AS poolType,
+            m.joined_at  AS joinedAt,
+            m.status     AS status
+        FROM hr_talent_pool_member m
+        JOIN hr_talent_pool p
+            ON p.id = m.pool_id
+           AND p.deleted = 0
+        WHERE m.employee_id = #{employeeId}
+          AND m.tenant_id  = #{tenantId}
+          AND m.deleted    = 0
+          AND m.status     = 'IN'
+        ORDER BY m.joined_at DESC
+    </select>
+
+    <select id="selectArchiveDevelopmentActions" resultType="java.util.LinkedHashMap">
+        SELECT
+            id,
+            action_type        AS actionType,
+            action_name        AS actionName,
+            mentor_id          AS mentorId,
+            start_date         AS startDate,
+            end_date           AS endDate,
+            status             AS status,
+            evaluation_score   AS evaluationScore
+        FROM hr_talent_development_action
+        WHERE employee_id = #{employeeId}
+          AND tenant_id   = #{tenantId}
+          AND deleted     = 0
+        ORDER BY start_date DESC, id DESC
+    </select>
+
+    <select id="selectArchiveSuccessors" resultType="java.util.LinkedHashMap">
+        SELECT
+            s.plan_id     AS planId,
+            p.plan_no     AS planNo,
+            p.plan_name   AS planName,
+            p.position_id AS positionId,
+            s.readiness   AS readiness,
+            s.rank_order  AS rankOrder,
+            s.status      AS status
+        FROM hr_talent_successor s
+        JOIN hr_talent_succession_plan p
+            ON p.id = s.plan_id
+           AND p.deleted = 0
+        WHERE s.employee_id = #{employeeId}
+          AND s.tenant_id   = #{tenantId}
+          AND s.deleted     = 0
+          AND s.status      = 'ACTIVE'
+        ORDER BY s.rank_order ASC
+    </select>
+
+</mapper>

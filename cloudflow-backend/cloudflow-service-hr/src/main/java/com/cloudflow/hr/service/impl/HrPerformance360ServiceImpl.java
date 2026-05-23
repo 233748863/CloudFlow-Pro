@@ -1,22 +1,28 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorInvitePayload;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorResponsePayload;
-import com.cloudflow.hr.service.HrPerformance360Service;
+import com.cloudflow.hr.domain.entity.HrPerfEvaluator;
+import com.cloudflow.hr.domain.entity.HrPerfEvaluatorResponse;
+import com.cloudflow.hr.domain.entity.HrPerformanceResult;
+import com.cloudflow.hr.mapper.HrAuditLogMapper;
+import com.cloudflow.hr.mapper.HrPerfEvaluatorMapper;
+import com.cloudflow.hr.mapper.HrPerfEvaluatorResponseMapper;
+import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cloudflow.hr.service.HrPerformance360Service;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Types;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,7 +45,10 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
     private static final Set<String> ALLOWED_SOURCES = Set.of(
             "SELF", "MANAGER", "PEER", "SUBORDINATE", "CUSTOMER");
 
-    private final JdbcTemplate jdbcTemplate;
+    private final HrPerfEvaluatorMapper evaluatorMapper;
+    private final HrPerfEvaluatorResponseMapper responseMapper;
+    private final HrPerformanceResultMapper performanceResultMapper;
+    private final HrAuditLogMapper auditLogMapper;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -59,34 +68,42 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
             String source = normalizeSource(item.getEvaluatorSource());
             BigDecimal weight = item.getWeight() == null ? BigDecimal.valueOf(20) : item.getWeight();
 
-            Long existing = jdbcTemplate.query(
-                    "SELECT id FROM hr_perf_evaluator WHERE tenant_id=? AND objective_id=? AND evaluatee_id=? AND evaluator_id=? AND evaluator_source=? AND deleted=0",
-                    rs -> rs.next() ? rs.getLong("id") : null,
-                    TENANT_ID, payload.getObjectiveId(), payload.getEvaluateeId(),
-                    item.getEvaluatorId(), source);
+            HrPerfEvaluator existing = evaluatorMapper.selectOne(
+                    new LambdaQueryWrapper<HrPerfEvaluator>()
+                            .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                            .eq(HrPerfEvaluator::getObjectiveId, payload.getObjectiveId())
+                            .eq(HrPerfEvaluator::getEvaluateeId, payload.getEvaluateeId())
+                            .eq(HrPerfEvaluator::getEvaluatorId, item.getEvaluatorId())
+                            .eq(HrPerfEvaluator::getEvaluatorSource, source)
+                            .eq(HrPerfEvaluator::getDeleted, 0));
             if (existing != null) {
-                jdbcTemplate.update(
-                        "UPDATE hr_perf_evaluator SET weight=?, status='PENDING', invite_time=NOW(), update_by=? WHERE id=?",
-                        weight, defaultOperator(), existing);
-                ids.add(existing);
+                existing.setWeight(weight);
+                existing.setStatus("PENDING");
+                existing.setInviteTime(LocalDateTime.now());
+                existing.setUpdateBy(defaultOperator());
+                evaluatorMapper.updateById(existing);
+                ids.add(existing.getId());
                 continue;
             }
 
-            Long newId = insertAndReturnId(
-                    "INSERT INTO hr_perf_evaluator (tenant_id, objective_id, assignment_id, evaluatee_id, evaluatee_name, evaluator_id, evaluator_name, evaluator_source, weight, status, invite_time, create_by, update_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', NOW(), ?, ?)",
-                    TENANT_ID,
-                    payload.getObjectiveId(),
-                    payload.getAssignmentId(),
-                    payload.getEvaluateeId(),
-                    payload.getEvaluateeName(),
-                    item.getEvaluatorId(),
-                    item.getEvaluatorName(),
-                    source,
-                    weight,
-                    defaultOperator(),
-                    defaultOperator()
-            );
-            ids.add(newId);
+            HrPerfEvaluator entity = new HrPerfEvaluator();
+            entity.setTenantId(TENANT_ID);
+            entity.setObjectiveId(payload.getObjectiveId());
+            entity.setAssignmentId(payload.getAssignmentId());
+            entity.setEvaluateeId(payload.getEvaluateeId());
+            entity.setEvaluateeName(payload.getEvaluateeName());
+            entity.setEvaluatorId(item.getEvaluatorId());
+            entity.setEvaluatorName(item.getEvaluatorName());
+            entity.setEvaluatorSource(source);
+            entity.setWeight(weight);
+            entity.setStatus("PENDING");
+            entity.setInviteTime(LocalDateTime.now());
+            entity.setRemindCount(0);
+            entity.setCreateBy(defaultOperator());
+            entity.setUpdateBy(defaultOperator());
+            entity.setDeleted(0);
+            evaluatorMapper.insert(entity);
+            ids.add(entity.getId());
         }
         writeAuditLog("hr_perf_evaluator", payload.getEvaluateeId(), "INVITE",
                 Map.of("objectiveId", payload.getObjectiveId()),
@@ -100,44 +117,52 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
         if (payload == null || payload.getEvaluatorId() == null || payload.getScore() == null) {
             throw new IllegalArgumentException("evaluatorId 与 score 不能为空");
         }
-        Map<String, Object> evaluator = jdbcTemplate.query(
-                "SELECT * FROM hr_perf_evaluator WHERE id=? AND tenant_id=? AND deleted=0",
-                rs -> rs.next() ? rowToMap(rs) : null,
-                payload.getEvaluatorId(), TENANT_ID);
+        HrPerfEvaluator evaluator = evaluatorMapper.selectOne(
+                new LambdaQueryWrapper<HrPerfEvaluator>()
+                        .eq(HrPerfEvaluator::getId, payload.getEvaluatorId())
+                        .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                        .eq(HrPerfEvaluator::getDeleted, 0));
         if (evaluator == null) {
             throw new IllegalArgumentException("评估邀请不存在");
         }
-        if (!"PENDING".equalsIgnoreCase(String.valueOf(evaluator.get("status")))) {
+        if (!"PENDING".equalsIgnoreCase(evaluator.getStatus())) {
             throw new IllegalStateException("评估邀请状态非 PENDING，不可再提交");
         }
-        String dimensionJson = writeJson(payload.getDimensionScores() == null ? List.of() : payload.getDimensionScores());
+        List<Map<String, Object>> dimensionScores = payload.getDimensionScores() == null
+                ? List.of() : payload.getDimensionScores();
 
-        Long existingResp = jdbcTemplate.query(
-                "SELECT id FROM hr_perf_evaluator_response WHERE tenant_id=? AND evaluator_id=? AND deleted=0",
-                rs -> rs.next() ? rs.getLong("id") : null,
-                TENANT_ID, payload.getEvaluatorId());
+        HrPerfEvaluatorResponse existingResp = responseMapper.selectOne(
+                new LambdaQueryWrapper<HrPerfEvaluatorResponse>()
+                        .eq(HrPerfEvaluatorResponse::getTenantId, TENANT_ID)
+                        .eq(HrPerfEvaluatorResponse::getEvaluatorId, payload.getEvaluatorId())
+                        .eq(HrPerfEvaluatorResponse::getDeleted, 0));
         if (existingResp == null) {
-            jdbcTemplate.update(
-                    "INSERT INTO hr_perf_evaluator_response (tenant_id, evaluator_id, objective_id, evaluatee_id, evaluator_source, score, dimension_scores, comment_text, submit_time, create_by, update_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)",
-                    TENANT_ID,
-                    payload.getEvaluatorId(),
-                    evaluator.get("objective_id"),
-                    evaluator.get("evaluatee_id"),
-                    evaluator.get("evaluator_source"),
-                    payload.getScore(),
-                    dimensionJson,
-                    payload.getCommentText(),
-                    defaultOperator(),
-                    defaultOperator()
-            );
+            HrPerfEvaluatorResponse resp = new HrPerfEvaluatorResponse();
+            resp.setTenantId(TENANT_ID);
+            resp.setEvaluatorId(payload.getEvaluatorId());
+            resp.setObjectiveId(evaluator.getObjectiveId());
+            resp.setEvaluateeId(evaluator.getEvaluateeId());
+            resp.setEvaluatorSource(evaluator.getEvaluatorSource());
+            resp.setScore(payload.getScore());
+            resp.setDimensionScores(dimensionScores);
+            resp.setCommentText(payload.getCommentText());
+            resp.setSubmitTime(LocalDateTime.now());
+            resp.setCreateBy(defaultOperator());
+            resp.setUpdateBy(defaultOperator());
+            resp.setDeleted(0);
+            responseMapper.insert(resp);
         } else {
-            jdbcTemplate.update(
-                    "UPDATE hr_perf_evaluator_response SET score=?, dimension_scores=?, comment_text=?, submit_time=NOW(), update_by=? WHERE id=?",
-                    payload.getScore(), dimensionJson, payload.getCommentText(), defaultOperator(), existingResp);
+            existingResp.setScore(payload.getScore());
+            existingResp.setDimensionScores(dimensionScores);
+            existingResp.setCommentText(payload.getCommentText());
+            existingResp.setSubmitTime(LocalDateTime.now());
+            existingResp.setUpdateBy(defaultOperator());
+            responseMapper.updateById(existingResp);
         }
-        jdbcTemplate.update(
-                "UPDATE hr_perf_evaluator SET status='SUBMITTED', update_by=? WHERE id=?",
-                defaultOperator(), payload.getEvaluatorId());
+
+        evaluator.setStatus("SUBMITTED");
+        evaluator.setUpdateBy(defaultOperator());
+        evaluatorMapper.updateById(evaluator);
 
         writeAuditLog("hr_perf_evaluator_response", payload.getEvaluatorId(), "SUBMIT",
                 Map.of(),
@@ -147,54 +172,27 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
     @Override
     @Transactional
     public void cancelEvaluator(Long evaluatorId) {
-        jdbcTemplate.update(
-                "UPDATE hr_perf_evaluator SET status='CANCELLED', update_by=? WHERE id=? AND tenant_id=?",
-                defaultOperator(), evaluatorId, TENANT_ID);
+        evaluatorMapper.update(null, new LambdaUpdateWrapper<HrPerfEvaluator>()
+                .eq(HrPerfEvaluator::getId, evaluatorId)
+                .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                .set(HrPerfEvaluator::getStatus, "CANCELLED")
+                .set(HrPerfEvaluator::getUpdateBy, defaultOperator()));
     }
 
     @Override
     public List<Map<String, Object>> listEvaluators(Long objectiveId, Long evaluateeId) {
-        StringBuilder sql = new StringBuilder(
-                "SELECT e.*, r.score AS response_score, r.dimension_scores AS response_dimensions, r.comment_text AS response_comment, r.submit_time AS response_submit_time "
-                + "FROM hr_perf_evaluator e LEFT JOIN hr_perf_evaluator_response r ON r.evaluator_id = e.id AND r.deleted=0 "
-                + "WHERE e.tenant_id=? AND e.deleted=0 AND e.objective_id=?");
-        List<Object> args = new ArrayList<>(List.of(TENANT_ID, objectiveId));
-        if (evaluateeId != null) {
-            sql.append(" AND e.evaluatee_id=?");
-            args.add(evaluateeId);
-        }
-        sql.append(" ORDER BY e.evaluatee_id, e.evaluator_source, e.id");
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString(), args.toArray());
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            result.add(toCamelRow(row));
-        }
-        return result;
+        return evaluatorMapper.selectEvaluatorsWithResponse(TENANT_ID, objectiveId, evaluateeId);
     }
 
     @Override
     public List<Map<String, Object>> listPendingForEvaluator(Long evaluatorId) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT e.*, o.objective_name, o.cycle_name FROM hr_perf_evaluator e "
-                        + "LEFT JOIN hr_performance_objective o ON o.id = e.objective_id "
-                        + "WHERE e.tenant_id=? AND e.deleted=0 AND e.evaluator_id=? AND e.status='PENDING' "
-                        + "ORDER BY e.invite_time DESC, e.id DESC",
-                TENANT_ID, evaluatorId);
-        List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            result.add(toCamelRow(row));
-        }
-        return result;
+        return evaluatorMapper.selectPendingForEvaluator(TENANT_ID, evaluatorId);
     }
 
     @Override
     @Transactional
     public Map<String, Object> aggregate(Long objectiveId, Long evaluateeId) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT e.evaluator_source, e.weight, r.score FROM hr_perf_evaluator e "
-                        + "INNER JOIN hr_perf_evaluator_response r ON r.evaluator_id = e.id AND r.deleted=0 "
-                        + "WHERE e.tenant_id=? AND e.deleted=0 AND e.objective_id=? AND e.evaluatee_id=? AND e.status='SUBMITTED'",
-                TENANT_ID, objectiveId, evaluateeId);
+        List<Map<String, Object>> rows = evaluatorMapper.selectAggregationRows(TENANT_ID, objectiveId, evaluateeId);
         if (rows.isEmpty()) {
             throw new IllegalStateException("尚无任何评估人提交打分，无法聚合");
         }
@@ -202,7 +200,7 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
         Map<String, List<BigDecimal>> bySource = new LinkedHashMap<>();
         Map<String, BigDecimal> weightBySource = new LinkedHashMap<>();
         for (Map<String, Object> row : rows) {
-            String source = String.valueOf(row.get("evaluator_source")).toUpperCase(Locale.ROOT);
+            String source = String.valueOf(row.get("evaluatorSource")).toUpperCase(Locale.ROOT);
             BigDecimal score = new BigDecimal(String.valueOf(row.get("score")));
             BigDecimal weight = new BigDecimal(String.valueOf(row.get("weight")));
             bySource.computeIfAbsent(source, k -> new ArrayList<>()).add(score);
@@ -228,23 +226,35 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
                 : weightedSum;
         String grade = gradeOfScore(aggregated);
 
-        Long resultId = jdbcTemplate.query(
-                "SELECT id FROM hr_performance_result WHERE tenant_id=? AND objective_id=? AND employee_id=? ORDER BY id DESC LIMIT 1",
-                rs -> rs.next() ? rs.getLong("id") : null,
-                TENANT_ID, objectiveId, evaluateeId);
-        if (resultId == null) {
-            resultId = insertAndReturnId(
-                    "INSERT INTO hr_performance_result (tenant_id, objective_id, employee_id, score, grade, status) VALUES (?, ?, ?, ?, ?, 'DRAFT')",
-                    TENANT_ID, objectiveId, evaluateeId, aggregated, grade);
+        HrPerformanceResult existingResult = performanceResultMapper.selectOne(
+                new LambdaQueryWrapper<HrPerformanceResult>()
+                        .eq(HrPerformanceResult::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceResult::getObjectiveId, objectiveId)
+                        .eq(HrPerformanceResult::getEmployeeId, evaluateeId)
+                        .orderByDesc(HrPerformanceResult::getId)
+                        .last("LIMIT 1"));
+        Long resultId;
+        if (existingResult == null) {
+            HrPerformanceResult entity = new HrPerformanceResult();
+            entity.setTenantId(TENANT_ID);
+            entity.setObjectiveId(objectiveId);
+            entity.setEmployeeId(evaluateeId);
+            entity.setScore(aggregated);
+            entity.setGrade(grade);
+            entity.setStatus("DRAFT");
+            performanceResultMapper.insert(entity);
+            resultId = entity.getId();
         } else {
-            jdbcTemplate.update(
-                    "UPDATE hr_performance_result SET score=?, grade=? WHERE id=?",
-                    aggregated, grade, resultId);
+            existingResult.setScore(aggregated);
+            existingResult.setGrade(grade);
+            performanceResultMapper.updateById(existingResult);
+            resultId = existingResult.getId();
         }
-        Long finalResultId = resultId;
-        jdbcTemplate.update(
-                "UPDATE hr_perf_evaluator SET result_id=? WHERE tenant_id=? AND objective_id=? AND evaluatee_id=?",
-                finalResultId, TENANT_ID, objectiveId, evaluateeId);
+        evaluatorMapper.update(null, new LambdaUpdateWrapper<HrPerfEvaluator>()
+                .eq(HrPerfEvaluator::getTenantId, TENANT_ID)
+                .eq(HrPerfEvaluator::getObjectiveId, objectiveId)
+                .eq(HrPerfEvaluator::getEvaluateeId, evaluateeId)
+                .set(HrPerfEvaluator::getResultId, resultId));
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("resultId", resultId);
@@ -268,58 +278,6 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
             throw new IllegalArgumentException("evaluatorSource 非法: " + source);
         }
         return value;
-    }
-
-    private Long insertAndReturnId(String sql, Object... values) {
-        return jdbcTemplate.execute((org.springframework.jdbc.core.ConnectionCallback<Long>) connection -> {
-            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            for (int i = 0; i < values.length; i++) {
-                Object value = values[i];
-                if (value == null) {
-                    statement.setNull(i + 1, Types.NULL);
-                } else {
-                    statement.setObject(i + 1, value);
-                }
-            }
-            statement.executeUpdate();
-            try (var rs = statement.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
-                }
-            }
-            return null;
-        });
-    }
-
-    private Map<String, Object> rowToMap(java.sql.ResultSet rs) throws java.sql.SQLException {
-        Map<String, Object> map = new LinkedHashMap<>();
-        java.sql.ResultSetMetaData md = rs.getMetaData();
-        for (int i = 1; i <= md.getColumnCount(); i++) {
-            map.put(md.getColumnLabel(i), rs.getObject(i));
-        }
-        return map;
-    }
-
-    private Map<String, Object> toCamelRow(Map<String, Object> row) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : row.entrySet()) {
-            result.put(toCamel(entry.getKey()), entry.getValue());
-        }
-        return result;
-    }
-
-    private String toCamel(String key) {
-        StringBuilder builder = new StringBuilder();
-        boolean upperNext = false;
-        for (char ch : key.toCharArray()) {
-            if (ch == '_') {
-                upperNext = true;
-                continue;
-            }
-            builder.append(upperNext ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
-            upperNext = false;
-        }
-        return builder.toString();
     }
 
     private String writeJson(Object value) {
@@ -346,8 +304,7 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
     private void writeAuditLog(String tableName, Long businessId, String operationType,
                                Map<String, Object> before, Map<String, Object> after) {
         try {
-            jdbcTemplate.update(
-                    "INSERT INTO hr_audit_log (tenant_id, business_domain, business_id, operation_type, operator_id, operator_name, before_data, after_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            auditLogMapper.insertLog(
                     TENANT_ID, tableName, businessId, operationType,
                     UserContext.getUserId(), UserContext.getUserName(),
                     writeJson(before == null ? Map.of() : before),

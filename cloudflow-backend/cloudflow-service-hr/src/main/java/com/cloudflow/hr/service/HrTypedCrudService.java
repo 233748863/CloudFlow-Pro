@@ -1,5 +1,6 @@
 package com.cloudflow.hr.service;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
@@ -14,13 +15,19 @@ import com.cloudflow.common.encrypt.annotation.EncryptField;
 import com.cloudflow.common.sensitive.utils.SensitiveUtils;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.HrAuditSnapshot;
+import com.cloudflow.hr.domain.entity.HrCompGrade;
+import com.cloudflow.hr.domain.entity.HrEmployee;
+import com.cloudflow.hr.domain.entity.HrPosition;
 import com.cloudflow.hr.exception.HrBusinessException;
+import com.cloudflow.hr.mapper.HrAuditLogMapper;
+import com.cloudflow.hr.mapper.HrCompGradeMapper;
+import com.cloudflow.hr.mapper.HrEmployeeMapper;
+import com.cloudflow.hr.mapper.HrPositionMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationContext;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -77,7 +84,10 @@ public class HrTypedCrudService {
 
     private final ApplicationContext applicationContext;
     private final ObjectMapper objectMapper;
-    private final JdbcTemplate jdbcTemplate;
+    private final HrEmployeeMapper employeeMapper;
+    private final HrPositionMapper positionMapper;
+    private final HrCompGradeMapper compGradeMapper;
+    private final HrAuditLogMapper auditLogMapper;
 
     public <T> List<Map<String, Object>> list(Class<T> entityClass, Map<String, ?> query) {
         BaseMapper<T> mapper = mapper(entityClass);
@@ -372,35 +382,39 @@ public class HrTypedCrudService {
         }
         Long tenantId = currentTenantId();
         try {
-            Map<String, Object> employee = jdbcTemplate.queryForMap(
-                    "SELECT position_id FROM hr_employee WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                    employeeId, tenantId);
-            Object positionIdObj = employee.get("position_id");
-            if (positionIdObj == null) {
+            HrEmployee employee = employeeMapper.selectOne(
+                    new LambdaQueryWrapper<HrEmployee>()
+                            .eq(HrEmployee::getId, employeeId)
+                            .eq(HrEmployee::getTenantId, tenantId)
+                            .eq(HrEmployee::getDeleted, 0));
+            if (employee == null || employee.getPositionId() == null) {
                 return;
             }
-            Map<String, Object> position = jdbcTemplate.queryForMap(
-                    "SELECT level_id FROM hr_position WHERE id = ? AND tenant_id = ? AND deleted = 0",
-                    ((Number) positionIdObj).longValue(), tenantId);
-            Object levelIdObj = position.get("level_id");
-            if (levelIdObj == null) {
+            HrPosition position = positionMapper.selectOne(
+                    new LambdaQueryWrapper<HrPosition>()
+                            .eq(HrPosition::getId, employee.getPositionId())
+                            .eq(HrPosition::getTenantId, tenantId));
+            if (position == null || position.getLevelId() == null) {
                 return;
             }
-            List<Map<String, Object>> grades = jdbcTemplate.queryForList(
-                    "SELECT id, mid_salary FROM hr_comp_grade WHERE level_id = ? AND tenant_id = ? AND status = 1 ORDER BY id ASC LIMIT 1",
-                    ((Number) levelIdObj).longValue(), tenantId);
+            List<HrCompGrade> grades = compGradeMapper.selectList(
+                    new LambdaQueryWrapper<HrCompGrade>()
+                            .eq(HrCompGrade::getLevelId, position.getLevelId())
+                            .eq(HrCompGrade::getTenantId, tenantId)
+                            .eq(HrCompGrade::getStatus, 1)
+                            .orderByAsc(HrCompGrade::getId)
+                            .last("LIMIT 1"));
             if (grades.isEmpty()) {
                 return;
             }
-            Map<String, Object> grade = grades.get(0);
-            Long gradeId = ((Number) grade.get("id")).longValue();
+            HrCompGrade grade = grades.get(0);
             if (readProperty(entity, "gradeId") == null) {
-                writeProperty(entity, "gradeId", gradeId);
+                writeProperty(entity, "gradeId", grade.getId());
             }
             if (readProperty(entity, "totalSalaryText") == null) {
-                Object midSalaryText = grade.get("mid_salary");
+                String midSalaryText = grade.getMidSalaryText();
                 if (midSalaryText != null) {
-                    writeProperty(entity, "totalSalaryText", midSalaryText.toString());
+                    writeProperty(entity, "totalSalaryText", midSalaryText);
                 }
             }
         } catch (Exception ex) {
@@ -550,8 +564,7 @@ public class HrTypedCrudService {
                                Map<String, Object> before,
                                Map<String, Object> after) {
         try {
-            jdbcTemplate.update(
-                    "INSERT INTO hr_audit_log (tenant_id, business_domain, business_id, operation_type, operator_id, operator_name, before_data, after_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            auditLogMapper.insertLog(
                     currentTenantId(),
                     tableName,
                     businessId,

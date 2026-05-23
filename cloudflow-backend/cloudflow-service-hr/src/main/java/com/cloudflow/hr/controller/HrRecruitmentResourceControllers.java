@@ -205,7 +205,7 @@ class HrRecruitmentChannelController {
     @GetMapping("/channels")
     @SaCheckPermission("hr:recruitment:list")
     public R<?> listChannels(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrRecruitmentChannel.class, query));
+        return R.ok(crudService.list(HrRecruitmentChannel.class, query));
     }
 
     @SysLog("新增HR招聘渠道")

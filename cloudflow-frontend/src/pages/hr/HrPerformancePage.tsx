@@ -739,7 +739,6 @@ export const HrPerformancePage: React.FC = () => {
   // HR-P0-1/2 360 评估与强制分布抽屉开关
   const [show360Panel, setShow360Panel] = useState(false);
   const [showDistributionPanel, setShowDistributionPanel] = useState(false);
-  const [evaluateeIdInput, setEvaluateeIdInput] = useState('');
   const [createForm, setCreateForm] = useState(defaultCreateForm);
   const [createCategoryRows, setCreateCategoryRows] = useState<CreateCategoryRow[]>(defaultCategoryRows);
   const [createMetricRows, setCreateMetricRows] = useState<CreateMetricRow[]>(defaultMetricRows);
@@ -1477,10 +1476,10 @@ export const HrPerformancePage: React.FC = () => {
                     <FilePlus2 className="h-4 w-4" />
                     新建绩效目标
                   </Button>
-                  <Button variant="soft" onClick={() => setShow360Panel((v) => !v)} disabled={!currentObjective}>
+                  <Button variant="soft" onClick={() => setShow360Panel(true)} disabled={!currentObjective}>
                     360 度评估
                   </Button>
-                  <Button variant="soft" onClick={() => setShowDistributionPanel((v) => !v)} disabled={!currentObjective}>
+                  <Button variant="soft" onClick={() => setShowDistributionPanel(true)} disabled={!currentObjective}>
                     强制分布
                   </Button>
                 </div>
@@ -1623,31 +1622,19 @@ export const HrPerformancePage: React.FC = () => {
       />
 
       {show360Panel && currentObjective ? (
-        <div className="px-6 pb-4">
-          <div className="mb-2 flex items-center gap-2">
-            <Input
-              placeholder="被评人员工 ID"
-              value={evaluateeIdInput}
-              onChange={(e) => setEvaluateeIdInput(e.target.value)}
-              className="w-40"
-            />
-            <span className="text-xs text-slate-500">输入被评估员工 ID 后展示评估关系与打分入口</span>
-          </div>
-          <Hr360EvaluationPanel
-            objectiveId={currentObjective.id}
-            evaluateeId={Number(evaluateeIdInput) || undefined}
-            onClose={() => setShow360Panel(false)}
-          />
-        </div>
+        <Hr360EvaluationPanel
+          open={show360Panel}
+          objectiveId={currentObjective.id}
+          onClose={() => setShow360Panel(false)}
+        />
       ) : null}
 
       {showDistributionPanel && currentObjective ? (
-        <div className="px-6 pb-4">
-          <HrPerformanceDistributionPanel
-            objectiveId={currentObjective.id}
-            onClose={() => setShowDistributionPanel(false)}
-          />
-        </div>
+        <HrPerformanceDistributionPanel
+          open={showDistributionPanel}
+          objectiveId={currentObjective.id}
+          onClose={() => setShowDistributionPanel(false)}
+        />
       ) : null}
 
       <BaseDialog

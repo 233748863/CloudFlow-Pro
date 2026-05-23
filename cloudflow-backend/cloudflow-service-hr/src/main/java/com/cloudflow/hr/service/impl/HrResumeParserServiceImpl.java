@@ -1,13 +1,18 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrResumeParsedFieldsPayload;
+import com.cloudflow.hr.domain.entity.HrCandidate;
+import com.cloudflow.hr.domain.entity.HrResumeParsedFields;
+import com.cloudflow.hr.mapper.HrCandidateMapper;
+import com.cloudflow.hr.mapper.HrResumeParsedFieldsMapper;
 import com.cloudflow.hr.service.HrResumeParserService;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -37,6 +42,7 @@ import java.util.regex.Pattern;
 public class HrResumeParserServiceImpl implements HrResumeParserService {
 
     private static final long TENANT_ID = 100000L;
+    private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     // 11 位中国手机号
     private static final Pattern PHONE_PATTERN = Pattern.compile("(?<![\\d])(1[3-9]\\d{9})(?![\\d])");
@@ -62,7 +68,8 @@ public class HrResumeParserServiceImpl implements HrResumeParserService {
             "项目管理", "PMP", "Scrum", "Agile",
             "招聘", "薪酬", "绩效", "培训", "员工关系", "组织发展");
 
-    private final JdbcTemplate jdbcTemplate;
+    private final HrResumeParsedFieldsMapper parsedFieldsMapper;
+    private final HrCandidateMapper candidateMapper;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -91,38 +98,63 @@ public class HrResumeParserServiceImpl implements HrResumeParserService {
         BigDecimal confidence = BigDecimal.valueOf(hits)
                 .divide(BigDecimal.valueOf(probes), 3, RoundingMode.HALF_UP);
 
-        String skillsJson = writeJson(skills);
-        String experiencesJson = writeJson(experiences);
-
-        Long existing = jdbcTemplate.query(
-                "SELECT id FROM hr_resume_parsed_fields WHERE tenant_id=? AND candidate_id=? AND deleted=0 ORDER BY id DESC LIMIT 1",
-                rs -> rs.next() ? rs.getLong(1) : null,
-                TENANT_ID, candidateId);
         String operator = defaultOperator();
+        HrResumeParsedFields existing = parsedFieldsMapper.selectOne(
+                new LambdaQueryWrapper<HrResumeParsedFields>()
+                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getCandidateId, candidateId)
+                        .eq(HrResumeParsedFields::getDeleted, 0)
+                        .orderByDesc(HrResumeParsedFields::getId)
+                        .last("LIMIT 1"));
         if (existing != null) {
-            jdbcTemplate.update(
-                    "UPDATE hr_resume_parsed_fields SET resume_url=?, parsed_name=?, parsed_phone=?, parsed_email=?, parsed_education=?, parsed_school=?, parsed_skills=?, parsed_experiences=?, raw_text=?, confidence=?, review_status='PENDING', parse_error=NULL, update_by=? WHERE id=?",
-                    resumeUrl, name, phone, email, education, school,
-                    skillsJson, experiencesJson, text, confidence, operator, existing);
-            return existing;
+            existing.setResumeUrl(resumeUrl);
+            existing.setParsedName(name);
+            existing.setParsedPhone(phone);
+            existing.setParsedEmail(email);
+            existing.setParsedEducation(education);
+            existing.setParsedSchool(school);
+            existing.setParsedSkills(skills);
+            existing.setParsedExperiences(experiences);
+            existing.setRawText(text);
+            existing.setConfidence(confidence);
+            existing.setReviewStatus("PENDING");
+            existing.setParseError(null);
+            existing.setUpdateBy(operator);
+            parsedFieldsMapper.updateById(existing);
+            return existing.getId();
         }
-        jdbcTemplate.update(
-                "INSERT INTO hr_resume_parsed_fields (tenant_id, candidate_id, resume_url, parsed_name, parsed_phone, parsed_email, parsed_education, parsed_school, parsed_skills, parsed_experiences, raw_text, confidence, review_status, create_by, update_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?)",
-                TENANT_ID, candidateId, resumeUrl, name, phone, email, education, school,
-                skillsJson, experiencesJson, text, confidence, operator, operator);
-        return jdbcTemplate.queryForObject(
-                "SELECT id FROM hr_resume_parsed_fields WHERE tenant_id=? AND candidate_id=? ORDER BY id DESC LIMIT 1",
-                Long.class, TENANT_ID, candidateId);
+        HrResumeParsedFields row = new HrResumeParsedFields();
+        row.setTenantId(TENANT_ID);
+        row.setCandidateId(candidateId);
+        row.setResumeUrl(resumeUrl);
+        row.setParsedName(name);
+        row.setParsedPhone(phone);
+        row.setParsedEmail(email);
+        row.setParsedEducation(education);
+        row.setParsedSchool(school);
+        row.setParsedSkills(skills);
+        row.setParsedExperiences(experiences);
+        row.setRawText(text);
+        row.setConfidence(confidence);
+        row.setReviewStatus("PENDING");
+        row.setCreateBy(operator);
+        row.setUpdateBy(operator);
+        row.setDeleted(0);
+        parsedFieldsMapper.insert(row);
+        return row.getId();
     }
 
     @Override
     public List<Map<String, Object>> listParsed(Long candidateId) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_resume_parsed_fields WHERE tenant_id=? AND candidate_id=? AND deleted=0 ORDER BY id DESC",
-                TENANT_ID, candidateId);
+        List<HrResumeParsedFields> rows = parsedFieldsMapper.selectList(
+                new LambdaQueryWrapper<HrResumeParsedFields>()
+                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getCandidateId, candidateId)
+                        .eq(HrResumeParsedFields::getDeleted, 0)
+                        .orderByDesc(HrResumeParsedFields::getId));
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            result.add(toCamel(row));
+        for (HrResumeParsedFields row : rows) {
+            result.add(objectMapper.convertValue(row, MAP_TYPE));
         }
         return result;
     }
@@ -130,35 +162,65 @@ public class HrResumeParserServiceImpl implements HrResumeParserService {
     @Override
     @Transactional
     public void confirmParsed(Long parsedId) {
-        Map<String, Object> row = jdbcTemplate.queryForMap(
-                "SELECT candidate_id, parsed_name, parsed_phone, parsed_email FROM hr_resume_parsed_fields WHERE id=? AND tenant_id=? AND deleted=0",
-                parsedId, TENANT_ID);
-        Long candidateId = ((Number) row.get("candidate_id")).longValue();
-        String name = (String) row.get("parsed_name");
-        String phone = (String) row.get("parsed_phone");
-        String email = (String) row.get("parsed_email");
+        HrResumeParsedFields row = parsedFieldsMapper.selectOne(
+                new LambdaQueryWrapper<HrResumeParsedFields>()
+                        .eq(HrResumeParsedFields::getId, parsedId)
+                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
+                        .eq(HrResumeParsedFields::getDeleted, 0));
+        if (row == null) {
+            return;
+        }
 
         // 仅回填空字段，避免覆盖 HR 手动填的更准确值。
-        jdbcTemplate.update(
-                "UPDATE hr_candidate SET "
-                        + "name=COALESCE(NULLIF(name,''), ?), "
-                        + "phone=COALESCE(NULLIF(phone,''), ?), "
-                        + "email=COALESCE(NULLIF(email,''), ?), "
-                        + "update_by=? "
-                        + "WHERE id=? AND tenant_id=? AND deleted=0",
-                name, phone, email, defaultOperator(), candidateId, TENANT_ID);
+        HrCandidate candidate = candidateMapper.selectOne(
+                new LambdaQueryWrapper<HrCandidate>()
+                        .eq(HrCandidate::getId, row.getCandidateId())
+                        .eq(HrCandidate::getTenantId, TENANT_ID)
+                        .eq(HrCandidate::getDeleted, 0));
+        if (candidate != null) {
+            boolean dirty = false;
+            if (!StringUtils.hasText(candidate.getName()) && StringUtils.hasText(row.getParsedName())) {
+                candidate.setName(row.getParsedName());
+                dirty = true;
+            }
+            if (!StringUtils.hasText(candidate.getPhone()) && StringUtils.hasText(row.getParsedPhone())) {
+                candidate.setPhone(row.getParsedPhone());
+                dirty = true;
+            }
+            if (!StringUtils.hasText(candidate.getEmail()) && StringUtils.hasText(row.getParsedEmail())) {
+                candidate.setEmail(row.getParsedEmail());
+                dirty = true;
+            }
+            if (dirty) {
+                candidate.setUpdateBy(defaultOperator());
+                candidateMapper.updateById(candidate);
+            }
+        }
 
-        jdbcTemplate.update(
-                "UPDATE hr_resume_parsed_fields SET review_status='CONFIRMED', reviewer_id=?, reviewer_name=?, review_time=?, update_by=? WHERE id=? AND tenant_id=?",
-                UserContext.getUserId(), defaultOperator(), LocalDateTime.now(), defaultOperator(), parsedId, TENANT_ID);
+        row.setReviewStatus("CONFIRMED");
+        row.setReviewerId(UserContext.getUserId());
+        row.setReviewerName(defaultOperator());
+        row.setReviewTime(LocalDateTime.now());
+        row.setUpdateBy(defaultOperator());
+        parsedFieldsMapper.updateById(row);
     }
 
     @Override
     public void rejectParsed(Long parsedId, String reason) {
-        jdbcTemplate.update(
-                "UPDATE hr_resume_parsed_fields SET review_status='REJECTED', reviewer_id=?, reviewer_name=?, review_time=?, parse_error=?, update_by=? WHERE id=? AND tenant_id=?",
-                UserContext.getUserId(), defaultOperator(), LocalDateTime.now(),
-                reason, defaultOperator(), parsedId, TENANT_ID);
+        HrResumeParsedFields row = parsedFieldsMapper.selectOne(
+                new LambdaQueryWrapper<HrResumeParsedFields>()
+                        .eq(HrResumeParsedFields::getId, parsedId)
+                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID));
+        if (row == null) {
+            return;
+        }
+        row.setReviewStatus("REJECTED");
+        row.setReviewerId(UserContext.getUserId());
+        row.setReviewerName(defaultOperator());
+        row.setReviewTime(LocalDateTime.now());
+        row.setParseError(reason);
+        row.setUpdateBy(defaultOperator());
+        parsedFieldsMapper.updateById(row);
     }
 
     @Override
@@ -166,12 +228,22 @@ public class HrResumeParserServiceImpl implements HrResumeParserService {
         if (payload == null) {
             return;
         }
-        jdbcTemplate.update(
-                "UPDATE hr_resume_parsed_fields SET parsed_name=?, parsed_phone=?, parsed_email=?, parsed_education=?, parsed_school=?, parsed_skills=?, parsed_experiences=?, update_by=? WHERE id=? AND tenant_id=?",
-                payload.getParsedName(), payload.getParsedPhone(), payload.getParsedEmail(),
-                payload.getParsedEducation(), payload.getParsedSchool(),
-                writeJson(payload.getParsedSkills()), writeJson(payload.getParsedExperiences()),
-                defaultOperator(), parsedId, TENANT_ID);
+        HrResumeParsedFields row = parsedFieldsMapper.selectOne(
+                new LambdaQueryWrapper<HrResumeParsedFields>()
+                        .eq(HrResumeParsedFields::getId, parsedId)
+                        .eq(HrResumeParsedFields::getTenantId, TENANT_ID));
+        if (row == null) {
+            return;
+        }
+        row.setParsedName(payload.getParsedName());
+        row.setParsedPhone(payload.getParsedPhone());
+        row.setParsedEmail(payload.getParsedEmail());
+        row.setParsedEducation(payload.getParsedEducation());
+        row.setParsedSchool(payload.getParsedSchool());
+        row.setParsedSkills(payload.getParsedSkills());
+        row.setParsedExperiences(payload.getParsedExperiences());
+        row.setUpdateBy(defaultOperator());
+        parsedFieldsMapper.updateById(row);
     }
 
     // ============== helpers ==============
@@ -249,39 +321,6 @@ public class HrResumeParserServiceImpl implements HrResumeParserService {
             cap++;
         }
         return arr;
-    }
-
-    private String writeJson(Object value) {
-        if (value == null) {
-            return null;
-        }
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private Map<String, Object> toCamel(Map<String, Object> row) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : row.entrySet()) {
-            result.put(toCamelKey(entry.getKey()), entry.getValue());
-        }
-        return result;
-    }
-
-    private String toCamelKey(String key) {
-        StringBuilder builder = new StringBuilder();
-        boolean upperNext = false;
-        for (char ch : key.toCharArray()) {
-            if (ch == '_') {
-                upperNext = true;
-                continue;
-            }
-            builder.append(upperNext ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
-            upperNext = false;
-        }
-        return builder.toString();
     }
 
     private String defaultOperator() {

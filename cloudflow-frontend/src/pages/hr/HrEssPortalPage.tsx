@@ -144,7 +144,7 @@ export const HrEssPortalPage: React.FC = () => {
           hint="单位：天"
           icon={<CalendarClock className="h-5 w-5" />}
           tone="sky"
-          onClick={() => navigate('/hr/ess/leave')}
+          onClick={() => navigate('/hr/ess/leave-balance')}
         />
         <SummaryCard
           title="最新工资条"

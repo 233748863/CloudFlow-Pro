@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrFileStorageMapper">
+
+    <insert id="insertSysFile" useGeneratedKeys="true" keyProperty="r.fileId">
+        INSERT INTO sys_file (
+            tenant_id, file_name, file_path, url, storage_type,
+            file_size, file_type, create_by, create_time, deleted, remark
+        ) VALUES (
+            #{r.tenantId}, #{r.fileName}, #{r.filePath}, #{r.url}, 'LOCAL',
+            #{r.fileSize}, #{r.fileType}, #{r.createBy}, NOW(), 0, 'hr-pdf'
+        )
+    </insert>
+
+    <select id="selectFilePathById" resultType="java.lang.String">
+        SELECT file_path
+        FROM sys_file
+        WHERE file_id = #{fileId}
+          AND deleted = 0
+        LIMIT 1
+    </select>
+
+</mapper>

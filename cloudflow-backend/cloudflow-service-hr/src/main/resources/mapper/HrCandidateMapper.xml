@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.hr.mapper.HrCandidateMapper">
+
+    <select id="selectChannelHireStats" resultType="java.util.LinkedHashMap">
+        SELECT
+            channel_id,
+            COUNT(*)                                            AS total,
+            SUM(CASE WHEN status = 'HIRED' THEN 1 ELSE 0 END)   AS hired
+        FROM hr_candidate
+        WHERE tenant_id = #{tenantId}
+          AND deleted   = 0
+          AND channel_id IS NOT NULL
+        GROUP BY channel_id
+    </select>
+
+</mapper>

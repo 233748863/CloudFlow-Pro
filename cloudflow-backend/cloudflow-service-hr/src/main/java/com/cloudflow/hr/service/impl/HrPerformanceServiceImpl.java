@@ -1,6 +1,9 @@
 package com.cloudflow.hr.service.impl;
 
-import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrPerformanceObjectiveTreePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceResultUpdatePayload;
@@ -8,27 +11,31 @@ import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
 import com.cloudflow.hr.domain.dto.HrPerformanceSplitPayload;
 import com.cloudflow.hr.domain.entity.HrCompChange;
 import com.cloudflow.hr.domain.entity.HrEmployeeComp;
+import com.cloudflow.hr.domain.entity.HrPerformanceAssignment;
+import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
+import com.cloudflow.hr.domain.entity.HrPerformanceResult;
 import com.cloudflow.hr.domain.entity.HrPerformanceSalaryAdjustment;
+import com.cloudflow.hr.mapper.HrAuditLogMapper;
 import com.cloudflow.hr.mapper.HrCompChangeMapper;
 import com.cloudflow.hr.mapper.HrEmployeeCompMapper;
+import com.cloudflow.hr.mapper.HrPerformanceAssignmentMapper;
+import com.cloudflow.hr.mapper.HrPerformanceObjectiveMapper;
+import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrPerformanceSalaryAdjustmentMapper;
 import com.cloudflow.hr.service.HrPerformanceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.Date;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Types;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -36,8 +43,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -48,11 +53,14 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};
     private static final TypeReference<List<LinkedHashMap<String, Object>>> LIST_MAP_TYPE = new TypeReference<>() {};
 
-    private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
+    private final HrPerformanceObjectiveMapper objectiveMapper;
+    private final HrPerformanceAssignmentMapper assignmentMapper;
+    private final HrPerformanceResultMapper performanceResultMapper;
     private final HrEmployeeCompMapper employeeCompMapper;
     private final HrCompChangeMapper compChangeMapper;
     private final HrPerformanceSalaryAdjustmentMapper performanceSalaryAdjustmentMapper;
+    private final HrAuditLogMapper auditLogMapper;
 
     @Override
     public Map<String, Object> listObjectives(Map<String, Object> query) {
@@ -61,40 +69,30 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         int pageNum = Math.max(1, toInt(query.get("pageNum"), toInt(query.get("current"), 1)));
         int pageSize = Math.min(500, Math.max(1, toInt(query.get("pageSize"), toInt(query.get("size"), 50))));
 
-        StringBuilder where = new StringBuilder(" WHERE tenant_id = ? AND deleted = 0");
-        List<Object> args = new ArrayList<>();
-        args.add(TENANT_ID);
+        LambdaQueryWrapper<HrPerformanceObjective> wrapper = new LambdaQueryWrapper<HrPerformanceObjective>()
+                .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                .eq(HrPerformanceObjective::getDeleted, 0);
         if (StringUtils.hasText(keyword)) {
-            where.append(" AND (objective_no LIKE ? OR objective_name LIKE ? OR cycle_name LIKE ?)");
-            String like = "%" + keyword.trim() + "%";
-            args.add(like);
-            args.add(like);
-            args.add(like);
+            String like = keyword.trim();
+            wrapper.and(w -> w.like(HrPerformanceObjective::getObjectiveNo, like)
+                    .or().like(HrPerformanceObjective::getObjectiveName, like)
+                    .or().like(HrPerformanceObjective::getCycleName, like));
         }
         if (StringUtils.hasText(status)) {
-            where.append(" AND status = ?");
-            args.add(status.trim());
+            wrapper.eq(HrPerformanceObjective::getStatus, status.trim());
         }
+        wrapper.orderByDesc(HrPerformanceObjective::getUpdateTime).orderByDesc(HrPerformanceObjective::getId);
 
-        Long total = jdbcTemplate.queryForObject(
-                "SELECT COUNT(1) FROM hr_performance_objective" + where,
-                Long.class,
-                args.toArray()
-        );
-
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_performance_objective" + where + " ORDER BY update_time DESC, id DESC LIMIT ? OFFSET ?",
-                appendArgs(args, pageSize, (pageNum - 1) * pageSize)
-        );
-
-        List<Map<String, Object>> records = rows.stream()
+        IPage<HrPerformanceObjective> page = objectiveMapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
+        List<Map<String, Object>> records = page.getRecords().stream()
+                .map(this::toMap)
                 .map(this::normalizeObjectiveRow)
                 .toList();
 
         Map<String, Object> result = new LinkedHashMap<>();
         result.put("records", records);
         result.put("rows", records);
-        result.put("total", total == null ? records.size() : total);
+        result.put("total", page.getTotal());
         result.put("current", pageNum);
         result.put("size", pageSize);
         return result;
@@ -107,9 +105,9 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             return Map.of();
         }
         List<Map<String, Object>> salaryAdjustments = performanceSalaryAdjustmentMapper.selectList(
-                        new QueryWrapper<HrPerformanceSalaryAdjustment>()
-                                .eq("objective_id", id)
-                                .orderByDesc("id"))
+                        new LambdaQueryWrapper<HrPerformanceSalaryAdjustment>()
+                                .eq(HrPerformanceSalaryAdjustment::getObjectiveId, id)
+                                .orderByDesc(HrPerformanceSalaryAdjustment::getId))
                 .stream()
                 .map(this::toMap)
                 .toList();
@@ -121,17 +119,18 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
 
     @Override
     public Map<String, Object> getOverview() {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT status FROM hr_performance_objective WHERE tenant_id = ? AND deleted = 0",
-                TENANT_ID
-        );
+        List<HrPerformanceObjective> rows = objectiveMapper.selectList(
+                new LambdaQueryWrapper<HrPerformanceObjective>()
+                        .select(HrPerformanceObjective::getStatus)
+                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getDeleted, 0));
         int draftCount = 0;
         int planApprovingCount = 0;
         int runningCount = 0;
         int resultApprovingCount = 0;
         int completedCount = 0;
-        for (Map<String, Object> row : rows) {
-            String status = text(row.get("status")).toUpperCase(Locale.ROOT);
+        for (HrPerformanceObjective row : rows) {
+            String status = text(row.getStatus()).toUpperCase(Locale.ROOT);
             switch (status) {
                 case "DRAFT", "REJECTED" -> draftCount++;
                 case "PLAN_APPROVING" -> planApprovingCount++;
@@ -175,20 +174,21 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             objectiveNo = "HRPF" + System.currentTimeMillis();
         }
 
-        Long objectiveId = insertAndReturnId(
-                "INSERT INTO hr_performance_objective (tenant_id, objective_no, cycle_name, cycle_start_date, cycle_end_date, objective_name, owner_employee_id, metric_config, status, create_by, update_by, deleted) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)",
-                TENANT_ID,
-                objectiveNo,
-                requireText(payloadMap.get("cycleName"), "cycleName"),
-                toSqlDate(requireText(payloadMap.get("cycleStartDate"), "cycleStartDate")),
-                toSqlDate(requireText(payloadMap.get("cycleEndDate"), "cycleEndDate")),
-                requireText(payloadMap.get("objectiveName"), "objectiveName"),
-                resolveOwnerEmployeeId(departmentAssignments),
-                writeJson(metricConfig),
-                "DRAFT",
-                "admin",
-                "admin"
-        );
+        HrPerformanceObjective objective = new HrPerformanceObjective();
+        objective.setTenantId(TENANT_ID);
+        objective.setObjectiveNo(objectiveNo);
+        objective.setCycleName(requireText(payloadMap.get("cycleName"), "cycleName"));
+        objective.setCycleStartDate(LocalDate.parse(requireText(payloadMap.get("cycleStartDate"), "cycleStartDate")));
+        objective.setCycleEndDate(LocalDate.parse(requireText(payloadMap.get("cycleEndDate"), "cycleEndDate")));
+        objective.setObjectiveName(requireText(payloadMap.get("objectiveName"), "objectiveName"));
+        objective.setOwnerEmployeeId(resolveOwnerEmployeeId(departmentAssignments));
+        objective.setMetricConfig(objectMapper.valueToTree(metricConfig));
+        objective.setStatus("DRAFT");
+        objective.setCreateBy("admin");
+        objective.setUpdateBy("admin");
+        objective.setDeleted(0);
+        objectiveMapper.insert(objective);
+        Long objectiveId = objective.getId();
 
         Map<String, Object> assignmentMeta = new LinkedHashMap<>();
         for (Map<String, Object> dept : departmentAssignments) {
@@ -197,19 +197,20 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
                 continue;
             }
             BigDecimal deptTargetAmount = toDecimal(dept.get("targetAmount"));
-            Long deptAssignmentId = insertAndReturnId(
-                    "INSERT INTO hr_performance_assignment (tenant_id, objective_id, parent_id, assignee_type, assignee_id, assignee_name, target_value, actual_value, weight, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    TENANT_ID,
-                    objectiveId,
-                    null,
-                    "DEPT",
-                    deptId,
-                    text(dept.get("deptName")),
-                    deptTargetAmount,
-                    BigDecimal.ZERO,
-                    BigDecimal.valueOf(100),
-                    "ACTIVE"
-            );
+            HrPerformanceAssignment deptAssignment = new HrPerformanceAssignment();
+            deptAssignment.setTenantId(TENANT_ID);
+            deptAssignment.setObjectiveId(objectiveId);
+            deptAssignment.setParentId(null);
+            deptAssignment.setAssigneeType("DEPT");
+            deptAssignment.setAssigneeId(deptId);
+            deptAssignment.setAssigneeName(text(dept.get("deptName")));
+            deptAssignment.setTargetValue(deptTargetAmount);
+            deptAssignment.setActualValue(BigDecimal.ZERO);
+            deptAssignment.setWeight(BigDecimal.valueOf(100));
+            deptAssignment.setStatus("ACTIVE");
+            assignmentMapper.insert(deptAssignment);
+            Long deptAssignmentId = deptAssignment.getId();
+
             Map<String, Object> deptMeta = new LinkedHashMap<>();
             deptMeta.put("targetAmount", deptTargetAmount);
             deptMeta.put("actualAmount", BigDecimal.ZERO);
@@ -221,19 +222,20 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             for (Map<String, Object> category : asMapList(dept.get("categories"))) {
                 BigDecimal weight = toDecimal(category.get("metricWeight"), BigDecimal.valueOf(100));
                 BigDecimal targetAmount = toDecimal(category.get("targetAmount"));
-                Long categoryAssignmentId = insertAndReturnId(
-                        "INSERT INTO hr_performance_assignment (tenant_id, objective_id, parent_id, assignee_type, assignee_id, assignee_name, target_value, actual_value, weight, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                        TENANT_ID,
-                        objectiveId,
-                        deptAssignmentId,
-                        "DEPT",
-                        deptId,
-                        text(dept.get("deptName")),
-                        targetAmount,
-                        BigDecimal.ZERO,
-                        weight,
-                        "ACTIVE"
-                );
+                HrPerformanceAssignment catAssignment = new HrPerformanceAssignment();
+                catAssignment.setTenantId(TENANT_ID);
+                catAssignment.setObjectiveId(objectiveId);
+                catAssignment.setParentId(deptAssignmentId);
+                catAssignment.setAssigneeType("DEPT");
+                catAssignment.setAssigneeId(deptId);
+                catAssignment.setAssigneeName(text(dept.get("deptName")));
+                catAssignment.setTargetValue(targetAmount);
+                catAssignment.setActualValue(BigDecimal.ZERO);
+                catAssignment.setWeight(weight);
+                catAssignment.setStatus("ACTIVE");
+                assignmentMapper.insert(catAssignment);
+                Long categoryAssignmentId = catAssignment.getId();
+
                 Map<String, Object> categoryMeta = new LinkedHashMap<>();
                 categoryMeta.put("categoryCode", text(category.get("categoryCode")));
                 categoryMeta.put("categoryName", text(category.get("categoryName")));
@@ -252,10 +254,12 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         }
 
         metricConfig.put("assignmentMeta", assignmentMeta);
-        jdbcTemplate.update(
-                "UPDATE hr_performance_objective SET metric_config = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
-                writeJson(metricConfig), objectiveId, TENANT_ID
-        );
+        objectiveMapper.update(null,
+                new LambdaUpdateWrapper<HrPerformanceObjective>()
+                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getId, objectiveId)
+                        .set(HrPerformanceObjective::getMetricConfig, objectMapper.valueToTree(metricConfig))
+                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
         writeAuditLog("hr_performance_objective", objectiveId, "CREATE", Map.of(), loadObjective(objectiveId));
         return objectiveId;
     }
@@ -279,26 +283,25 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         Map<String, Object> metricConfig = parseJsonObject(objective.get("metricConfig"));
         Map<String, Object> assignmentMeta = mutableMap(parseJsonObject(metricConfig.get("assignmentMeta")));
 
-        List<Map<String, Object>> existed = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_performance_assignment WHERE tenant_id = ? AND parent_id = ? ORDER BY id ASC",
-                TENANT_ID, parentId
-        );
+        List<HrPerformanceAssignment> existed = assignmentMapper.selectList(
+                new LambdaQueryWrapper<HrPerformanceAssignment>()
+                        .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceAssignment::getParentId, parentId)
+                        .orderByAsc(HrPerformanceAssignment::getId));
         if (!existed.isEmpty()) {
-            List<Long> existingIds = existed.stream().map(item -> toLong(item.get("id"))).filter(Objects::nonNull).toList();
-            jdbcTemplate.update(
-                    "DELETE FROM hr_performance_result WHERE tenant_id = ? AND assignment_id IN (" +
-                            existingIds.stream().map(id -> "?").collect(Collectors.joining(",")) + ")",
-                    appendArgs(List.of(TENANT_ID), existingIds.toArray())
-            );
-            jdbcTemplate.update(
-                    "DELETE FROM hr_performance_assignment WHERE tenant_id = ? AND parent_id = ?",
-                    TENANT_ID, parentId
-            );
+            List<Long> existingIds = existed.stream().map(HrPerformanceAssignment::getId).toList();
+            performanceResultMapper.delete(
+                    new LambdaQueryWrapper<HrPerformanceResult>()
+                            .eq(HrPerformanceResult::getTenantId, TENANT_ID)
+                            .in(HrPerformanceResult::getAssignmentId, existingIds));
+            assignmentMapper.delete(
+                    new LambdaQueryWrapper<HrPerformanceAssignment>()
+                            .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                            .eq(HrPerformanceAssignment::getParentId, parentId));
             existingIds.forEach(id -> assignmentMeta.remove(String.valueOf(id)));
         }
 
         Long objectiveOwner = toLong(objective.get("ownerEmployeeId"));
-        String parentAssigneeType = text(parent.get("assigneeType")).toUpperCase(Locale.ROOT);
         Long parentAssigneeId = toLong(parent.get("assigneeId"));
         String parentAssigneeName = text(parent.get("assigneeName"));
         for (Map<String, Object> child : children) {
@@ -308,19 +311,19 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             BigDecimal targetAmount = toDecimal(child.get("targetAmount"));
             BigDecimal weight = toDecimal(firstNonNull(child.get("metricWeight"), child.get("weight")), BigDecimal.valueOf(100));
 
-            Long childId = insertAndReturnId(
-                    "INSERT INTO hr_performance_assignment (tenant_id, objective_id, parent_id, assignee_type, assignee_id, assignee_name, target_value, actual_value, weight, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    TENANT_ID,
-                    objectiveId,
-                    parentId,
-                    assigneeType,
-                    assigneeId,
-                    assigneeName,
-                    targetAmount,
-                    BigDecimal.ZERO,
-                    weight,
-                    "ACTIVE"
-            );
+            HrPerformanceAssignment childEntity = new HrPerformanceAssignment();
+            childEntity.setTenantId(TENANT_ID);
+            childEntity.setObjectiveId(objectiveId);
+            childEntity.setParentId(parentId);
+            childEntity.setAssigneeType(assigneeType);
+            childEntity.setAssigneeId(assigneeId);
+            childEntity.setAssigneeName(assigneeName);
+            childEntity.setTargetValue(targetAmount);
+            childEntity.setActualValue(BigDecimal.ZERO);
+            childEntity.setWeight(weight);
+            childEntity.setStatus("ACTIVE");
+            assignmentMapper.insert(childEntity);
+            Long childId = childEntity.getId();
 
             Map<String, Object> meta = new LinkedHashMap<>();
             copyIfPresent(child, meta, "categoryCode", "categoryName", "metricCode", "metricName", "metricUnit", "quotaSource");
@@ -337,11 +340,15 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         }
 
         metricConfig.put("assignmentMeta", assignmentMeta);
-        jdbcTemplate.update(
-                "UPDATE hr_performance_objective SET metric_config = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
-                writeJson(metricConfig), objectiveId, TENANT_ID
-        );
-        writeAuditLog("hr_performance_assignment", parentId, "UPSERT_CHILDREN", Map.of("children", beforeAssignments), Map.of("children", loadAssignmentsByParent(parentId)));
+        objectiveMapper.update(null,
+                new LambdaUpdateWrapper<HrPerformanceObjective>()
+                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getId, objectiveId)
+                        .set(HrPerformanceObjective::getMetricConfig, objectMapper.valueToTree(metricConfig))
+                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
+        writeAuditLog("hr_performance_assignment", parentId, "UPSERT_CHILDREN",
+                Map.of("children", beforeAssignments),
+                Map.of("children", loadAssignmentsByParent(parentId)));
     }
 
     @Override
@@ -354,10 +361,12 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             throw new IllegalArgumentException("绩效分解节点不存在");
         }
         Map<String, Object> before = new LinkedHashMap<>(assignment);
-        jdbcTemplate.update(
-                "UPDATE hr_performance_assignment SET actual_value = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
-                actualAmount, assignmentId, TENANT_ID
-        );
+        assignmentMapper.update(null,
+                new LambdaUpdateWrapper<HrPerformanceAssignment>()
+                        .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceAssignment::getId, assignmentId)
+                        .set(HrPerformanceAssignment::getActualValue, actualAmount)
+                        .set(HrPerformanceAssignment::getUpdateTime, LocalDateTime.now()));
 
         Long objectiveId = toLong(assignment.get("objectiveId"));
         Map<String, Object> objective = loadObjective(objectiveId);
@@ -367,30 +376,36 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         meta.put("actualAmount", actualAmount);
         assignmentMeta.put(String.valueOf(assignmentId), meta);
         metricConfig.put("assignmentMeta", assignmentMeta);
-        jdbcTemplate.update(
-                "UPDATE hr_performance_objective SET metric_config = ?, update_time = NOW() WHERE id = ? AND tenant_id = ?",
-                writeJson(metricConfig), objectiveId, TENANT_ID
-        );
+        objectiveMapper.update(null,
+                new LambdaUpdateWrapper<HrPerformanceObjective>()
+                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getId, objectiveId)
+                        .set(HrPerformanceObjective::getMetricConfig, objectMapper.valueToTree(metricConfig))
+                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
         writeAuditLog("hr_performance_assignment", assignmentId, "UPDATE_RESULT", before, getAssignment(assignmentId));
     }
 
     @Override
     public void submitPlan(Long objectiveId) {
         Map<String, Object> before = loadObjective(objectiveId);
-        jdbcTemplate.update(
-                "UPDATE hr_performance_objective SET status = 'PLAN_APPROVING', update_time = NOW() WHERE id = ? AND tenant_id = ?",
-                objectiveId, TENANT_ID
-        );
+        objectiveMapper.update(null,
+                new LambdaUpdateWrapper<HrPerformanceObjective>()
+                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getId, objectiveId)
+                        .set(HrPerformanceObjective::getStatus, "PLAN_APPROVING")
+                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
         writeAuditLog("hr_performance_objective", objectiveId, "SUBMIT_PLAN", before, loadObjective(objectiveId));
     }
 
     @Override
     public void submitResult(Long objectiveId) {
         Map<String, Object> before = loadObjective(objectiveId);
-        jdbcTemplate.update(
-                "UPDATE hr_performance_objective SET status = 'RESULT_APPROVING', update_time = NOW() WHERE id = ? AND tenant_id = ?",
-                objectiveId, TENANT_ID
-        );
+        objectiveMapper.update(null,
+                new LambdaUpdateWrapper<HrPerformanceObjective>()
+                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getId, objectiveId)
+                        .set(HrPerformanceObjective::getStatus, "RESULT_APPROVING")
+                        .set(HrPerformanceObjective::getUpdateTime, LocalDateTime.now()));
         writeAuditLog("hr_performance_objective", objectiveId, "SUBMIT_RESULT", before, loadObjective(objectiveId));
     }
 
@@ -405,7 +420,7 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         BigDecimal beforeTotal = queryEmployeeSalary(employeeId);
         BigDecimal adjustmentAmount = afterTotal.subtract(beforeTotal);
         String reason = defaultText(payload.getAdjustmentReason(), "绩效结果调薪");
-        Date effectiveDate = toSqlDate(defaultText(payload.getEffectiveDate(), LocalDate.now().toString()));
+        LocalDate effectiveDate = LocalDate.parse(defaultText(payload.getEffectiveDate(), LocalDate.now().toString()));
 
         HrCompChange compChange = new HrCompChange();
         compChange.setTenantId(TENANT_ID);
@@ -415,7 +430,7 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         compChange.setBeforeTotal(beforeTotal);
         compChange.setAfterTotal(afterTotal);
         compChange.setChangeAmount(adjustmentAmount);
-        compChange.setEffectiveDate(effectiveDate.toLocalDate());
+        compChange.setEffectiveDate(effectiveDate);
         compChange.setReason(reason);
         compChange.setStatus("DRAFT");
         compChange.setCreateBy("admin");
@@ -439,7 +454,7 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
     }
 
     private Map<String, Object> normalizeObjectiveRow(Map<String, Object> row) {
-        Map<String, Object> result = isDbSnakeCaseRow(row) ? toCamelRow(row) : new LinkedHashMap<>(row);
+        Map<String, Object> result = new LinkedHashMap<>(row);
         Map<String, Object> metricConfig = parseJsonObject(result.get("metricConfig"));
         result.put("totalTargetAmount", toDecimal(metricConfig.get("totalTargetAmount")));
         result.put("scoreCap", toDecimal(metricConfig.get("scoreCap"), BigDecimal.valueOf(120)));
@@ -448,15 +463,22 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         result.put("metrics", normalizeMetrics(asMapList(metricConfig.get("metrics"))));
         result.put("status", normalizeObjectiveStatus(text(result.get("status"))));
 
-        List<Map<String, Object>> assignments = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_performance_assignment WHERE tenant_id = ? AND objective_id = ?",
-                TENANT_ID, toLong(result.get("id"))
-        );
+        Long objectiveId = toLong(result.get("id"));
+        List<Map<String, Object>> assignments = assignmentMapper.selectList(
+                        new LambdaQueryWrapper<HrPerformanceAssignment>()
+                                .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                                .eq(HrPerformanceAssignment::getObjectiveId, objectiveId))
+                .stream()
+                .map(this::toMap)
+                .toList();
         Map<String, Object> assignmentMeta = parseJsonObject(metricConfig.get("assignmentMeta"));
-        List<Map<String, Object>> results = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_performance_result WHERE tenant_id = ? AND objective_id = ?",
-                TENANT_ID, toLong(result.get("id"))
-        );
+        List<Map<String, Object>> results = performanceResultMapper.selectList(
+                        new LambdaQueryWrapper<HrPerformanceResult>()
+                                .eq(HrPerformanceResult::getTenantId, TENANT_ID)
+                                .eq(HrPerformanceResult::getObjectiveId, objectiveId))
+                .stream()
+                .map(this::toMap)
+                .toList();
         List<Map<String, Object>> tree = buildAssignmentTree(assignments, results, assignmentMeta);
         result.put("assignments", tree);
         result.put("leafTaskCount", countLeafTasks(tree));
@@ -466,18 +488,10 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         return result;
     }
 
-    private boolean isDbSnakeCaseRow(Map<String, Object> row) {
-        return row.containsKey("objective_no")
-                || row.containsKey("cycle_name")
-                || row.containsKey("metric_config")
-                || row.containsKey("create_time");
-    }
-
     private List<Map<String, Object>> buildAssignmentTree(List<Map<String, Object>> rows,
                                                           List<Map<String, Object>> results,
                                                           Map<String, Object> assignmentMeta) {
         Map<Long, Map<String, Object>> resultByAssignment = results.stream()
-                .map(this::toCamelRow)
                 .collect(Collectors.toMap(
                         item -> toLong(item.get("assignmentId")),
                         item -> item,
@@ -486,7 +500,7 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
                 ));
         Map<Long, Map<String, Object>> byId = new LinkedHashMap<>();
         for (Map<String, Object> row : rows.stream().sorted(Comparator.comparing(item -> toLong(item.get("id")))).toList()) {
-            Map<String, Object> node = toCamelRow(row);
+            Map<String, Object> node = new LinkedHashMap<>(row);
             Long id = toLong(node.get("id"));
             Map<String, Object> meta = parseJsonObject(assignmentMeta.get(String.valueOf(id)));
             mergeMeta(node, meta);
@@ -625,42 +639,45 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
     }
 
     private Map<String, Object> loadObjective(Long id) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_performance_objective WHERE tenant_id = ? AND id = ? AND deleted = 0",
-                TENANT_ID, id
-        );
-        return rows.isEmpty() ? Map.of() : toCamelRow(rows.get(0));
+        HrPerformanceObjective entity = objectiveMapper.selectOne(
+                new LambdaQueryWrapper<HrPerformanceObjective>()
+                        .eq(HrPerformanceObjective::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceObjective::getId, id)
+                        .eq(HrPerformanceObjective::getDeleted, 0)
+                        .last("LIMIT 1"));
+        return entity == null ? Map.of() : toMap(entity);
     }
 
     private Map<String, Object> getAssignment(Long id) {
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
-                "SELECT * FROM hr_performance_assignment WHERE tenant_id = ? AND id = ?",
-                TENANT_ID, id
-        );
-        return rows.isEmpty() ? Map.of() : toCamelRow(rows.get(0));
+        if (id == null) {
+            return Map.of();
+        }
+        HrPerformanceAssignment entity = assignmentMapper.selectOne(
+                new LambdaQueryWrapper<HrPerformanceAssignment>()
+                        .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                        .eq(HrPerformanceAssignment::getId, id)
+                        .last("LIMIT 1"));
+        return entity == null ? Map.of() : toMap(entity);
     }
 
     private List<Map<String, Object>> loadAssignmentsByParent(Long parentId) {
-        return jdbcTemplate.queryForList(
-                        "SELECT * FROM hr_performance_assignment WHERE tenant_id = ? AND parent_id = ? ORDER BY id ASC",
-                        TENANT_ID, parentId)
+        return assignmentMapper.selectList(
+                        new LambdaQueryWrapper<HrPerformanceAssignment>()
+                                .eq(HrPerformanceAssignment::getTenantId, TENANT_ID)
+                                .eq(HrPerformanceAssignment::getParentId, parentId)
+                                .orderByAsc(HrPerformanceAssignment::getId))
                 .stream()
-                .map(this::toCamelRow)
+                .map(this::toMap)
                 .toList();
-    }
-
-    private Map<String, Object> loadSalaryAdjustment(Long id) {
-        HrPerformanceSalaryAdjustment adjustment = performanceSalaryAdjustmentMapper.selectById(id);
-        return adjustment == null ? Map.of() : toMap(adjustment);
     }
 
     private BigDecimal queryEmployeeSalary(Long employeeId) {
         List<HrEmployeeComp> rows = employeeCompMapper.selectList(
-                new QueryWrapper<HrEmployeeComp>()
-                        .eq("employee_id", employeeId)
-                        .eq("deleted", 0)
-                        .orderByDesc("effective_date")
-                        .orderByDesc("id")
+                new LambdaQueryWrapper<HrEmployeeComp>()
+                        .eq(HrEmployeeComp::getEmployeeId, employeeId)
+                        .eq(HrEmployeeComp::getDeleted, 0)
+                        .orderByDesc(HrEmployeeComp::getEffectiveDate)
+                        .orderByDesc(HrEmployeeComp::getId)
                         .last("LIMIT 1")
         );
         if (rows.isEmpty() || rows.get(0).getTotalSalary() == null) {
@@ -669,35 +686,13 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         return rows.get(0).getTotalSalary();
     }
 
-    private Long insertAndReturnId(String sql, Object... values) {
-        return jdbcTemplate.execute((org.springframework.jdbc.core.ConnectionCallback<Long>) connection -> {
-            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            for (int i = 0; i < values.length; i++) {
-                Object value = values[i];
-                if (value == null) {
-                    statement.setNull(i + 1, Types.NULL);
-                } else {
-                    statement.setObject(i + 1, value);
-                }
-            }
-            statement.executeUpdate();
-            try (var rs = statement.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
-                }
-            }
-            return null;
-        });
-    }
-
     private void writeAuditLog(String tableName,
                                Long businessId,
                                String operationType,
                                Map<String, Object> before,
                                Map<String, Object> after) {
         try {
-            jdbcTemplate.update(
-                    "INSERT INTO hr_audit_log (tenant_id, business_domain, business_id, operation_type, operator_id, operator_name, before_data, after_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            auditLogMapper.insertLog(
                     TENANT_ID,
                     tableName,
                     businessId,
@@ -705,42 +700,13 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
                     UserContext.getUserId(),
                     UserContext.getUserName(),
                     writeJson(before == null ? Map.of() : before),
-                    writeJson(after == null ? Map.of() : after)
-            );
+                    writeJson(after == null ? Map.of() : after));
         } catch (Exception ignored) {
         }
     }
 
-    private Object[] appendArgs(List<Object> args, Object... extra) {
-        List<Object> values = new ArrayList<>(args);
-        values.addAll(List.of(extra));
-        return values.toArray();
-    }
-
-    private Map<String, Object> toCamelRow(Map<String, Object> row) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : row.entrySet()) {
-            result.put(toCamel(entry.getKey()), entry.getValue());
-        }
-        return result;
-    }
-
     private Map<String, Object> toMap(Object value) {
         return objectMapper.convertValue(value, MAP_TYPE);
-    }
-
-    private String toCamel(String key) {
-        StringBuilder builder = new StringBuilder();
-        boolean upperNext = false;
-        for (char ch : key.toCharArray()) {
-            if (ch == '_') {
-                upperNext = true;
-                continue;
-            }
-            builder.append(upperNext ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
-            upperNext = false;
-        }
-        return builder.toString();
     }
 
     private Map<String, Object> parseJsonObject(Object value) {
@@ -751,6 +717,9 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             Map<String, Object> result = new LinkedHashMap<>();
             map.forEach((k, v) -> result.put(String.valueOf(k), v));
             return result;
+        }
+        if (value instanceof JsonNode node) {
+            return objectMapper.convertValue(node, MAP_TYPE);
         }
         try {
             return objectMapper.readValue(String.valueOf(value), MAP_TYPE);
@@ -768,6 +737,11 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
             for (Object item : collection) {
                 result.add(mutableMap(parseJsonObject(item)));
             }
+            return result;
+        }
+        if (value instanceof JsonNode node && node.isArray()) {
+            List<Map<String, Object>> result = new ArrayList<>();
+            node.forEach(child -> result.add(mutableMap(parseJsonObject(child))));
             return result;
         }
         if (value instanceof String text && StringUtils.hasText(text)) {
@@ -805,6 +779,16 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         }
         if (value instanceof Collection<?> collection) {
             return collection.stream().map(String::valueOf).filter(StringUtils::hasText).toList();
+        }
+        if (value instanceof JsonNode node && node.isArray()) {
+            List<String> result = new ArrayList<>();
+            node.forEach(child -> {
+                String text = child.asText();
+                if (StringUtils.hasText(text)) {
+                    result.add(text);
+                }
+            });
+            return result;
         }
         String text = text(value);
         if (!StringUtils.hasText(text)) {
@@ -845,10 +829,6 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         } catch (JsonProcessingException e) {
             throw new IllegalArgumentException("JSON序列化失败", e);
         }
-    }
-
-    private Date toSqlDate(String value) {
-        return Date.valueOf(LocalDate.parse(value));
     }
 
     private String requireText(Object value, String fieldName) {

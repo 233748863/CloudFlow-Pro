@@ -4,12 +4,13 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrAttendanceAppealPayload;
 import com.cloudflow.hr.domain.entity.HrAttendanceAppeal;
 import com.cloudflow.hr.mapper.HrAttendanceAppealMapper;
+import com.cloudflow.hr.mapper.HrAttendanceRecordMapper;
+import com.cloudflow.hr.mapper.HrAuditLogMapper;
 import com.cloudflow.hr.service.HrAttendanceAppealService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -30,8 +31,9 @@ public class HrAttendanceAppealServiceImpl implements HrAttendanceAppealService 
     private static final long TENANT_ID = 100000L;
 
     private final HrAttendanceAppealMapper appealMapper;
+    private final HrAttendanceRecordMapper attendanceRecordMapper;
+    private final HrAuditLogMapper auditLogMapper;
     private final HrTypedCrudService crudService;
-    private final JdbcTemplate jdbcTemplate;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -119,31 +121,24 @@ public class HrAttendanceAppealServiceImpl implements HrAttendanceAppealService 
         return crudService.get(HrAttendanceAppeal.class, id);
     }
 
-    @SuppressWarnings("unchecked")
     private void rewriteAttendanceRecord(HrAttendanceAppeal appeal) {
         if (appeal.getAttendanceRecordId() == null) {
             log.warn("申诉 {} 无关联考勤记录，跳过改写", appeal.getId());
             return;
         }
-        Map<String, Object> beforeRow;
-        try {
-            beforeRow = jdbcTemplate.queryForMap(
-                    "SELECT * FROM hr_attendance_record WHERE id=? AND tenant_id=?",
-                    appeal.getAttendanceRecordId(), TENANT_ID);
-        } catch (org.springframework.dao.EmptyResultDataAccessException e) {
+        Map<String, Object> beforeRow = attendanceRecordMapper.selectRowAsMap(
+                appeal.getAttendanceRecordId(), TENANT_ID);
+        if (beforeRow == null || beforeRow.isEmpty()) {
             log.warn("申诉 {} 关联考勤记录 {} 不存在，跳过改写", appeal.getId(), appeal.getAttendanceRecordId());
             return;
         }
-        int rows = jdbcTemplate.update(
-                "UPDATE hr_attendance_record SET check_in=COALESCE(?, check_in), check_out=COALESCE(?, check_out), "
-                        + "exception_type=NULL, remark=CONCAT(IFNULL(remark,''), ?), update_by=? "
-                        + "WHERE id=? AND tenant_id=?",
+        int rows = attendanceRecordMapper.rewriteForAppeal(
+                appeal.getAttendanceRecordId(),
+                TENANT_ID,
                 appeal.getExpectedCheckIn(),
                 appeal.getExpectedCheckOut(),
                 " [APPEAL_REWRITE id=" + appeal.getId() + "]",
-                defaultOperator(),
-                appeal.getAttendanceRecordId(),
-                TENANT_ID);
+                defaultOperator());
         if (rows == 0) {
             log.warn("申诉 {} 改写未命中记录 {}", appeal.getId(), appeal.getAttendanceRecordId());
             return;
@@ -167,10 +162,13 @@ public class HrAttendanceAppealServiceImpl implements HrAttendanceAppealService 
     private void writeAuditLog(String tableName, Long businessId, String operationType,
                                Map<String, Object> before, Map<String, Object> after) {
         try {
-            jdbcTemplate.update(
-                    "INSERT INTO hr_audit_log (tenant_id, business_domain, business_id, operation_type, operator_id, operator_name, before_data, after_data) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-                    TENANT_ID, tableName, businessId, operationType,
-                    UserContext.getUserId(), defaultOperator(),
+            auditLogMapper.insertLog(
+                    TENANT_ID,
+                    tableName,
+                    businessId,
+                    operationType,
+                    UserContext.getUserId(),
+                    defaultOperator(),
                     objectMapper.writeValueAsString(before == null ? Map.of() : before),
                     objectMapper.writeValueAsString(after == null ? Map.of() : after));
         } catch (Exception ignored) {

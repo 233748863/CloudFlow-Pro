@@ -1,24 +1,22 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrPerfDistributionCheckPayload;
 import com.cloudflow.hr.domain.dto.HrPerfDistributionRulePayload;
+import com.cloudflow.hr.domain.entity.HrPerfDistributionRule;
+import com.cloudflow.hr.mapper.HrPerfDistributionRuleMapper;
 import com.cloudflow.hr.service.HrPerformanceDistributionService;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.sql.PreparedStatement;
-import java.sql.Statement;
-import java.sql.Types;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -35,25 +33,29 @@ import java.util.Map;
 public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistributionService {
 
     private static final long TENANT_ID = 100000L;
-    private static final TypeReference<List<LinkedHashMap<String, Object>>> LIST_MAP_TYPE = new TypeReference<>() {};
 
-    private final JdbcTemplate jdbcTemplate;
+    private final HrPerfDistributionRuleMapper distributionRuleMapper;
     private final ObjectMapper objectMapper;
 
     @Override
     public List<Map<String, Object>> listRules(Long objectiveId) {
-        StringBuilder sql = new StringBuilder("SELECT * FROM hr_perf_distribution_rule WHERE tenant_id=? AND deleted=0");
-        List<Object> args = new ArrayList<>(List.of(TENANT_ID));
+        LambdaQueryWrapper<HrPerfDistributionRule> qw = new LambdaQueryWrapper<HrPerfDistributionRule>()
+                .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
+                .eq(HrPerfDistributionRule::getDeleted, 0);
         if (objectiveId != null) {
-            sql.append(" AND (objective_id IS NULL OR objective_id=?)");
-            args.add(objectiveId);
+            qw.and(w -> w.isNull(HrPerfDistributionRule::getObjectiveId)
+                    .or().eq(HrPerfDistributionRule::getObjectiveId, objectiveId));
         }
-        sql.append(" ORDER BY objective_id IS NULL DESC, id DESC");
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList(sql.toString(), args.toArray());
+        List<HrPerfDistributionRule> rows = distributionRuleMapper.selectList(qw);
+        // 全局规则(objectiveId IS NULL) 排在前；同组按 id DESC
+        rows.sort(Comparator
+                .comparing((HrPerfDistributionRule r) -> r.getObjectiveId() != null)
+                .thenComparing(HrPerfDistributionRule::getId, Comparator.reverseOrder()));
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> row : rows) {
-            Map<String, Object> camel = toCamelRow(row);
-            camel.put("distribution", parseList(row.get("distribution")));
+        for (HrPerfDistributionRule row : rows) {
+            Map<String, Object> camel = objectMapper.convertValue(row,
+                    new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String, Object>>() {});
+            camel.put("distribution", row.getDistribution() == null ? List.of() : row.getDistribution());
             result.add(camel);
         }
         return result;
@@ -68,49 +70,59 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
         if (payload.getDistribution() == null || payload.getDistribution().isEmpty()) {
             throw new IllegalArgumentException("distribution 不能为空");
         }
-        String distJson = writeJson(payload.getDistribution());
         String enforceMode = StringUtils.hasText(payload.getEnforceMode())
                 ? payload.getEnforceMode().toUpperCase(Locale.ROOT) : "BLOCK";
         String status = StringUtils.hasText(payload.getStatus())
                 ? payload.getStatus().toUpperCase(Locale.ROOT) : "ACTIVE";
 
         if (payload.getId() == null) {
-            return insertAndReturnId(
-                    "INSERT INTO hr_perf_distribution_rule (tenant_id, objective_id, rule_name, distribution, total_population, enforce_mode, status, remark, create_by, update_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                    TENANT_ID,
-                    payload.getObjectiveId(),
-                    payload.getRuleName(),
-                    distJson,
-                    payload.getTotalPopulation(),
-                    enforceMode,
-                    status,
-                    payload.getRemark(),
-                    defaultOperator(),
-                    defaultOperator()
-            );
+            HrPerfDistributionRule entity = new HrPerfDistributionRule();
+            entity.setTenantId(TENANT_ID);
+            entity.setObjectiveId(payload.getObjectiveId());
+            entity.setRuleName(payload.getRuleName());
+            entity.setDistribution(payload.getDistribution());
+            entity.setTotalPopulation(payload.getTotalPopulation());
+            entity.setEnforceMode(enforceMode);
+            entity.setStatus(status);
+            entity.setRemark(payload.getRemark());
+            entity.setCreateBy(defaultOperator());
+            entity.setUpdateBy(defaultOperator());
+            entity.setDeleted(0);
+            distributionRuleMapper.insert(entity);
+            return entity.getId();
         }
-        jdbcTemplate.update(
-                "UPDATE hr_perf_distribution_rule SET objective_id=?, rule_name=?, distribution=?, total_population=?, enforce_mode=?, status=?, remark=?, update_by=? WHERE id=? AND tenant_id=?",
-                payload.getObjectiveId(),
-                payload.getRuleName(),
-                distJson,
-                payload.getTotalPopulation(),
-                enforceMode,
-                status,
-                payload.getRemark(),
-                defaultOperator(),
-                payload.getId(),
-                TENANT_ID
-        );
+        HrPerfDistributionRule entity = distributionRuleMapper.selectOne(
+                new LambdaQueryWrapper<HrPerfDistributionRule>()
+                        .eq(HrPerfDistributionRule::getId, payload.getId())
+                        .eq(HrPerfDistributionRule::getTenantId, TENANT_ID));
+        if (entity == null) {
+            throw new IllegalArgumentException("规则不存在：" + payload.getId());
+        }
+        entity.setObjectiveId(payload.getObjectiveId());
+        entity.setRuleName(payload.getRuleName());
+        entity.setDistribution(payload.getDistribution());
+        entity.setTotalPopulation(payload.getTotalPopulation());
+        entity.setEnforceMode(enforceMode);
+        entity.setStatus(status);
+        entity.setRemark(payload.getRemark());
+        entity.setUpdateBy(defaultOperator());
+        distributionRuleMapper.updateById(entity);
         return payload.getId();
     }
 
     @Override
     @Transactional
     public void deleteRule(Long id) {
-        jdbcTemplate.update(
-                "UPDATE hr_perf_distribution_rule SET deleted=1, update_by=? WHERE id=? AND tenant_id=?",
-                defaultOperator(), id, TENANT_ID);
+        HrPerfDistributionRule entity = distributionRuleMapper.selectOne(
+                new LambdaQueryWrapper<HrPerfDistributionRule>()
+                        .eq(HrPerfDistributionRule::getId, id)
+                        .eq(HrPerfDistributionRule::getTenantId, TENANT_ID));
+        if (entity == null) {
+            return;
+        }
+        entity.setDeleted(1);
+        entity.setUpdateBy(defaultOperator());
+        distributionRuleMapper.updateById(entity);
     }
 
     @Override
@@ -128,15 +140,23 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
         }
 
         // 选规则：优先目标专属规则，其次全局规则(objective_id IS NULL)
-        Map<String, Object> rule = jdbcTemplate.query(
-                "SELECT * FROM hr_perf_distribution_rule WHERE tenant_id=? AND deleted=0 AND status='ACTIVE' AND objective_id=? ORDER BY id DESC LIMIT 1",
-                rs -> rs.next() ? rowToMap(rs) : null,
-                TENANT_ID, payload.getObjectiveId());
+        HrPerfDistributionRule rule = distributionRuleMapper.selectOne(
+                new LambdaQueryWrapper<HrPerfDistributionRule>()
+                        .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
+                        .eq(HrPerfDistributionRule::getDeleted, 0)
+                        .eq(HrPerfDistributionRule::getStatus, "ACTIVE")
+                        .eq(HrPerfDistributionRule::getObjectiveId, payload.getObjectiveId())
+                        .orderByDesc(HrPerfDistributionRule::getId)
+                        .last("LIMIT 1"));
         if (rule == null) {
-            rule = jdbcTemplate.query(
-                    "SELECT * FROM hr_perf_distribution_rule WHERE tenant_id=? AND deleted=0 AND status='ACTIVE' AND objective_id IS NULL ORDER BY id DESC LIMIT 1",
-                    rs -> rs.next() ? rowToMap(rs) : null,
-                    TENANT_ID);
+            rule = distributionRuleMapper.selectOne(
+                    new LambdaQueryWrapper<HrPerfDistributionRule>()
+                            .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
+                            .eq(HrPerfDistributionRule::getDeleted, 0)
+                            .eq(HrPerfDistributionRule::getStatus, "ACTIVE")
+                            .isNull(HrPerfDistributionRule::getObjectiveId)
+                            .orderByDesc(HrPerfDistributionRule::getId)
+                            .last("LIMIT 1"));
         }
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("total", total);
@@ -146,8 +166,8 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
             response.put("hasRule", false);
             return response;
         }
-        List<Map<String, Object>> distribution = parseList(rule.get("distribution"));
-        String enforceMode = String.valueOf(rule.getOrDefault("enforce_mode", "BLOCK")).toUpperCase(Locale.ROOT);
+        List<Map<String, Object>> distribution = rule.getDistribution() == null ? List.of() : rule.getDistribution();
+        String enforceMode = String.valueOf(rule.getEnforceMode() == null ? "BLOCK" : rule.getEnforceMode()).toUpperCase(Locale.ROOT);
 
         Map<String, Map<String, Object>> quotaByGrade = new LinkedHashMap<>();
         List<Map<String, Object>> violations = new ArrayList<>();
@@ -191,8 +211,8 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
         boolean valid = violations.isEmpty() || !"BLOCK".equals(enforceMode);
         response.put("valid", valid);
         response.put("hasRule", true);
-        response.put("ruleId", rule.get("id"));
-        response.put("ruleName", rule.get("rule_name"));
+        response.put("ruleId", rule.getId());
+        response.put("ruleName", rule.getRuleName());
         response.put("enforceMode", enforceMode);
         response.put("quotaByGrade", quotaByGrade);
         response.put("violations", violations);
@@ -216,82 +236,6 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
         if (s.compareTo(BigDecimal.valueOf(75)) >= 0) return "B";
         if (s.compareTo(BigDecimal.valueOf(60)) >= 0) return "C";
         return "D";
-    }
-
-    private List<Map<String, Object>> parseList(Object value) {
-        if (value == null) return List.of();
-        if (value instanceof java.util.Collection<?> collection) {
-            List<Map<String, Object>> result = new ArrayList<>();
-            for (Object o : collection) {
-                if (o instanceof Map<?, ?> m) {
-                    Map<String, Object> r = new LinkedHashMap<>();
-                    m.forEach((k, v) -> r.put(String.valueOf(k), v));
-                    result.add(r);
-                }
-            }
-            return result;
-        }
-        String text = String.valueOf(value);
-        if (!StringUtils.hasText(text)) return List.of();
-        try {
-            return new ArrayList<>(objectMapper.readValue(text, LIST_MAP_TYPE));
-        } catch (JsonProcessingException e) {
-            return List.of();
-        }
-    }
-
-    private Map<String, Object> rowToMap(java.sql.ResultSet rs) throws java.sql.SQLException {
-        Map<String, Object> map = new LinkedHashMap<>();
-        java.sql.ResultSetMetaData md = rs.getMetaData();
-        for (int i = 1; i <= md.getColumnCount(); i++) {
-            map.put(md.getColumnLabel(i), rs.getObject(i));
-        }
-        return map;
-    }
-
-    private Map<String, Object> toCamelRow(Map<String, Object> row) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        for (Map.Entry<String, Object> entry : row.entrySet()) {
-            String key = entry.getKey();
-            StringBuilder builder = new StringBuilder();
-            boolean upperNext = false;
-            for (char ch : key.toCharArray()) {
-                if (ch == '_') { upperNext = true; continue; }
-                builder.append(upperNext ? Character.toUpperCase(ch) : Character.toLowerCase(ch));
-                upperNext = false;
-            }
-            result.put(builder.toString(), entry.getValue());
-        }
-        return result;
-    }
-
-    private Long insertAndReturnId(String sql, Object... values) {
-        return jdbcTemplate.execute((org.springframework.jdbc.core.ConnectionCallback<Long>) connection -> {
-            PreparedStatement statement = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            for (int i = 0; i < values.length; i++) {
-                Object value = values[i];
-                if (value == null) {
-                    statement.setNull(i + 1, Types.NULL);
-                } else {
-                    statement.setObject(i + 1, value);
-                }
-            }
-            statement.executeUpdate();
-            try (var rs = statement.getGeneratedKeys()) {
-                if (rs.next()) {
-                    return rs.getLong(1);
-                }
-            }
-            return null;
-        });
-    }
-
-    private String writeJson(Object value) {
-        try {
-            return objectMapper.writeValueAsString(value);
-        } catch (JsonProcessingException e) {
-            throw new IllegalArgumentException("JSON序列化失败", e);
-        }
     }
 
     private String defaultOperator() {

@@ -1,8 +1,11 @@
 package com.cloudflow.hr.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.hr.domain.entity.HrRecruitmentChannel;
+import com.cloudflow.hr.mapper.HrCandidateMapper;
+import com.cloudflow.hr.mapper.HrRecruitmentChannelMapper;
 import com.cloudflow.hr.service.HrRecruitmentChannelService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -18,21 +21,20 @@ public class HrRecruitmentChannelServiceImpl implements HrRecruitmentChannelServ
 
     private static final long TENANT_ID = 100000L;
 
-    private final JdbcTemplate jdbcTemplate;
+    private final HrRecruitmentChannelMapper channelMapper;
+    private final HrCandidateMapper candidateMapper;
 
     @Override
     public List<Map<String, Object>> channelStats() {
-        List<Map<String, Object>> channels = jdbcTemplate.queryForList(
-                "SELECT id, channel_code, channel_name, channel_type, cost_amount, cost_currency, status, contract_start, contract_end "
-                        + "FROM hr_recruitment_channel WHERE tenant_id=? AND deleted=0 ORDER BY id DESC",
-                TENANT_ID);
+        List<HrRecruitmentChannel> channels = channelMapper.selectList(
+                new LambdaQueryWrapper<HrRecruitmentChannel>()
+                        .eq(HrRecruitmentChannel::getTenantId, TENANT_ID)
+                        .eq(HrRecruitmentChannel::getDeleted, 0)
+                        .orderByDesc(HrRecruitmentChannel::getId));
         if (channels.isEmpty()) {
             return List.of();
         }
-        List<Map<String, Object>> stats = jdbcTemplate.queryForList(
-                "SELECT channel_id, COUNT(*) AS total, SUM(CASE WHEN status='HIRED' THEN 1 ELSE 0 END) AS hired "
-                        + "FROM hr_candidate WHERE tenant_id=? AND deleted=0 AND channel_id IS NOT NULL GROUP BY channel_id",
-                TENANT_ID);
+        List<Map<String, Object>> stats = candidateMapper.selectChannelHireStats(TENANT_ID);
         Map<Long, Map<String, Object>> statByChannel = new LinkedHashMap<>();
         for (Map<String, Object> s : stats) {
             Long channelId = ((Number) s.get("channel_id")).longValue();
@@ -40,21 +42,20 @@ public class HrRecruitmentChannelServiceImpl implements HrRecruitmentChannelServ
         }
 
         List<Map<String, Object>> result = new ArrayList<>();
-        for (Map<String, Object> ch : channels) {
+        for (HrRecruitmentChannel ch : channels) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", ch.get("id"));
-            row.put("channelCode", ch.get("channel_code"));
-            row.put("channelName", ch.get("channel_name"));
-            row.put("channelType", ch.get("channel_type"));
-            row.put("status", ch.get("status"));
-            row.put("contractStart", ch.get("contract_start"));
-            row.put("contractEnd", ch.get("contract_end"));
-            BigDecimal cost = ch.get("cost_amount") == null
-                    ? BigDecimal.ZERO : new BigDecimal(String.valueOf(ch.get("cost_amount")));
+            row.put("id", ch.getId());
+            row.put("channelCode", ch.getChannelCode());
+            row.put("channelName", ch.getChannelName());
+            row.put("channelType", ch.getChannelType());
+            row.put("status", ch.getStatus());
+            row.put("contractStart", ch.getContractStart());
+            row.put("contractEnd", ch.getContractEnd());
+            BigDecimal cost = ch.getCostAmount() == null ? BigDecimal.ZERO : ch.getCostAmount();
             row.put("costAmount", cost);
-            row.put("costCurrency", ch.get("cost_currency"));
+            row.put("costCurrency", ch.getCostCurrency());
 
-            Map<String, Object> s = statByChannel.get(((Number) ch.get("id")).longValue());
+            Map<String, Object> s = statByChannel.get(ch.getId());
             long total = s == null ? 0 : ((Number) s.get("total")).longValue();
             long hired = s == null || s.get("hired") == null ? 0 : ((Number) s.get("hired")).longValue();
             row.put("totalCandidates", total);
