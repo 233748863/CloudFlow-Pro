@@ -113,7 +113,7 @@ const CrmManagementShell: React.FC = () => {
 
   return (
     <div className="space-y-4 animate-fade-in">
-      <DashboardTab />
+      {tab === 'dashboard' ? <DashboardTab /> : null}
 
       {tab === 'opportunity' ? (
         <div className="space-y-6">
