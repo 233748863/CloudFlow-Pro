@@ -59,7 +59,7 @@ const RULE_TYPE_OPTIONS: { value: IpAclRuleType; label: string; tip: string }[] 
 
 const MODE_OPTIONS: { value: IpAclMode; label: string; tip: string }[] = [
   { value: 'BLACK', label: '黑名单', tip: '命中即拒绝' },
-  { value: 'WHITE', label: '白名单', tip: '存在白名单时未命中即拒绝' },
+  { value: 'WHITE', label: '白名单', tip: '命中即优先放行，可作为黑名单例外' },
 ];
 
 const STATUS_BADGE: Record<IpAclStatus, string> = {

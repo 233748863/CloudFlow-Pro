@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <ul>
  *   <li>启动期从 Redis Hash {@code cloudflow:acl:ip:active} 加载全量 ACTIVE IP 规则。</li>
  *   <li>订阅 Redis pubsub 通道 {@code cloudflow:acl:ip}, 收到 RELOAD 后即时刷新本地缓存。</li>
- *   <li>每个请求按 priority 升序匹配: 全局存在 WHITE 规则时未命中即 403; 命中 BLACK 即 403。</li>
+ *   <li>每个请求按 priority 升序匹配: 首条命中 WHITE 立即放行; 首条命中 BLACK 即 403; 未命中任何规则则放行。</li>
  *   <li>用户黑名单复用 auth 模块写的 Redis KEY {@code acl:user:black:{userId}}, 命中即 403。</li>
  * </ul>
  *
@@ -114,33 +114,22 @@ public class BlacklistFilter implements GlobalFilter, Ordered {
 
         List<IpAclSnapshot> rules = activeRulesRef.get();
         if (!rules.isEmpty()) {
-            IpAclSnapshot hitBlack = null;
-            boolean hasWhiteRule = false;
-            boolean whiteMatched = false;
             for (IpAclSnapshot rule : rules) {
                 if (!"ACTIVE".equalsIgnoreCase(rule.getStatus())) {
                     continue;
                 }
                 boolean matched = ipMatches(ip, rule);
-                if ("WHITE".equalsIgnoreCase(rule.getMode())) {
-                    hasWhiteRule = true;
-                    if (matched) {
-                        whiteMatched = true;
-                    }
-                } else if ("BLACK".equalsIgnoreCase(rule.getMode()) && matched && hitBlack == null) {
-                    hitBlack = rule;
+                if (!matched) {
+                    continue;
                 }
-            }
-            if (whiteMatched) {
-                return chain.filter(exchange);
-            }
-            if (hasWhiteRule) {
-                log.warn("IP {} 不在白名单, 拒绝访问 path={}", ip, request.getURI().getPath());
-                return forbidden(exchange, "IP_NOT_WHITELISTED", "IP 不在访问白名单内");
-            }
-            if (hitBlack != null) {
-                log.warn("IP {} 命中黑名单 rule={} path={}", ip, hitBlack.getRuleCode(), request.getURI().getPath());
-                return forbidden(exchange, hitBlack.getRuleCode(), "IP 被黑名单禁止访问");
+                if ("WHITE".equalsIgnoreCase(rule.getMode())) {
+                    log.info("IP {} 命中白名单 rule={} path={}", ip, rule.getRuleCode(), request.getURI().getPath());
+                    return chain.filter(exchange);
+                }
+                if ("BLACK".equalsIgnoreCase(rule.getMode())) {
+                    log.warn("IP {} 命中黑名单 rule={} path={}", ip, rule.getRuleCode(), request.getURI().getPath());
+                    return forbidden(exchange, rule.getRuleCode(), "IP 被黑名单禁止访问");
+                }
             }
         }
 

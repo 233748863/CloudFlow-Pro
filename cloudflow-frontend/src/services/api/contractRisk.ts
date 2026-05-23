@@ -52,13 +52,12 @@ export interface OaContract {
 }
 
 export interface OaContractTemplate {
-  templateId?: number;
+  id?: number;
   tenantId?: number;
   templateCode?: string;
   templateName: string;
-  contractType?: string;
   category?: string;
-  contentHtml?: string;
+  content?: string;
   /** 变量定义 JSON 字符串 [{key,label,required}] */
   variables?: string;
   status?: string;
@@ -136,11 +135,10 @@ export const contractTemplateApi = {
     pageSize?: number;
     keyword?: string;
     category?: string;
-    contractType?: string;
     status?: string;
   }) => request.get('/oa/contract/template/page', { params }) as Promise<PageResult<OaContractTemplate>>,
-  listActive: (contractType?: string) =>
-    request.get('/oa/contract/template/active', { params: { contractType } }) as Promise<OaContractTemplate[]>,
+  listActive: (category?: string) =>
+    request.get('/oa/contract/template/active', { params: { category } }) as Promise<OaContractTemplate[]>,
   getInfo: (id: number) => request.get(`/oa/contract/template/${id}`) as Promise<OaContractTemplate>,
   add: (data: OaContractTemplate) => request.post('/oa/contract/template', data),
   edit: (data: OaContractTemplate) => request.put('/oa/contract/template', data),

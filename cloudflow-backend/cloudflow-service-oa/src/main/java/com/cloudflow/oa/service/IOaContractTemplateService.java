@@ -12,23 +12,23 @@ import java.util.Map;
 public interface IOaContractTemplateService {
 
     /** 分页列表 (status: ACTIVE/INACTIVE 可选)。 */
-    Page<OaContractTemplate> page(String keyword, String category, String contractType, String status,
+    Page<OaContractTemplate> page(String keyword, String category, String status,
                                   Integer pageNum, Integer pageSize);
 
     /** 启用中的模板下拉(供新建合同使用)。 */
-    List<OaContractTemplate> listActive(String contractType);
+    List<OaContractTemplate> listActive(String category);
 
-    OaContractTemplate getById(Long templateId);
+    OaContractTemplate getById(Long id);
 
     boolean save(OaContractTemplate template);
 
     boolean update(OaContractTemplate template);
 
-    boolean remove(Long templateId);
+    boolean remove(Long id);
 
     /**
      * 按模板正文进行 {{var}} 占位变量替换，返回最终合同正文。
      * variables 为变量值映射, 缺失的变量保留原占位。
      */
-    String renderContent(Long templateId, Map<String, Object> variables);
+    String renderContent(Long id, Map<String, Object> variables);
 }

@@ -33,7 +33,7 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
     private final OaContractTemplateMapper templateMapper;
 
     @Override
-    public Page<OaContractTemplate> page(String keyword, String category, String contractType, String status,
+    public Page<OaContractTemplate> page(String keyword, String category, String status,
                                          Integer pageNum, Integer pageSize) {
         LambdaQueryWrapper<OaContractTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(OaContractTemplate::getDeleted, 0);
@@ -44,9 +44,6 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
         if (StringUtils.hasText(category)) {
             wrapper.eq(OaContractTemplate::getCategory, category);
         }
-        if (StringUtils.hasText(contractType)) {
-            wrapper.eq(OaContractTemplate::getContractType, contractType);
-        }
         if (StringUtils.hasText(status)) {
             wrapper.eq(OaContractTemplate::getStatus, status);
         }
@@ -55,23 +52,23 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
     }
 
     @Override
-    public List<OaContractTemplate> listActive(String contractType) {
+    public List<OaContractTemplate> listActive(String category) {
         LambdaQueryWrapper<OaContractTemplate> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(OaContractTemplate::getDeleted, 0)
                 .eq(OaContractTemplate::getStatus, "ACTIVE");
-        if (StringUtils.hasText(contractType)) {
-            wrapper.eq(OaContractTemplate::getContractType, contractType);
+        if (StringUtils.hasText(category)) {
+            wrapper.eq(OaContractTemplate::getCategory, category);
         }
         wrapper.orderByAsc(OaContractTemplate::getTemplateName);
         return templateMapper.selectList(wrapper);
     }
 
     @Override
-    public OaContractTemplate getById(Long templateId) {
-        if (templateId == null) {
+    public OaContractTemplate getById(Long id) {
+        if (id == null) {
             return null;
         }
-        return templateMapper.selectById(templateId);
+        return templateMapper.selectById(id);
     }
 
     @Override
@@ -94,7 +91,7 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
     @Override
     @Transactional
     public boolean update(OaContractTemplate template) {
-        if (template == null || template.getTemplateId() == null) {
+        if (template == null || template.getId() == null) {
             throw new IllegalArgumentException("模板 ID 必填");
         }
         template.setUpdateBy(UserContext.getUserName());
@@ -104,11 +101,11 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
 
     @Override
     @Transactional
-    public boolean remove(Long templateId) {
-        if (templateId == null) {
+    public boolean remove(Long id) {
+        if (id == null) {
             return false;
         }
-        OaContractTemplate template = templateMapper.selectById(templateId);
+        OaContractTemplate template = templateMapper.selectById(id);
         if (template == null) {
             return false;
         }
@@ -119,12 +116,12 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
     }
 
     @Override
-    public String renderContent(Long templateId, Map<String, Object> variables) {
-        OaContractTemplate template = getById(templateId);
-        if (template == null || !StringUtils.hasText(template.getContentHtml())) {
+    public String renderContent(Long id, Map<String, Object> variables) {
+        OaContractTemplate template = getById(id);
+        if (template == null || !StringUtils.hasText(template.getContent())) {
             return "";
         }
-        String content = template.getContentHtml();
+        String content = template.getContent();
         if (variables == null || variables.isEmpty()) {
             return content;
         }

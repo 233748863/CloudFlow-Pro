@@ -229,7 +229,7 @@ export const ContractPage: React.FC = () => {
       setForm((prev) => ({ ...prev, templateId: undefined }));
       return;
     }
-    const tpl = templates.find((t) => String(t.templateId) === templateIdStr);
+    const tpl = templates.find((t) => String(t.id) === templateIdStr);
     if (!tpl) return;
     let varDefs: Array<{ key: string; label?: string; required?: boolean }> = [];
     try {
@@ -246,22 +246,22 @@ export const ContractPage: React.FC = () => {
     } else {
       setForm((prev) => ({
         ...prev,
-        templateId: tpl.templateId,
-        contractType: tpl.contractType || prev.contractType,
-        remark: prev.remark || tpl.contentHtml || '',
+        templateId: tpl.id,
+        contractType: tpl.category || prev.contractType,
+        remark: prev.remark || tpl.content || '',
       }));
       toast.success(`已套用模板：${tpl.templateName}`);
     }
   };
 
   const handleApplyTemplateVars = async () => {
-    if (!activeTemplate?.templateId) return;
+    if (!activeTemplate?.id) return;
     try {
-      const rendered = await contractTemplateApi.render(activeTemplate.templateId, templateVarsForm);
+      const rendered = await contractTemplateApi.render(activeTemplate.id, templateVarsForm);
       setForm((prev) => ({
         ...prev,
-        templateId: activeTemplate.templateId,
-        contractType: activeTemplate.contractType || prev.contractType,
+        templateId: activeTemplate.id,
+        contractType: activeTemplate.category || prev.contractType,
         remark: rendered || prev.remark,
       }));
       setTemplateVarsOpen(false);
@@ -510,9 +510,9 @@ export const ContractPage: React.FC = () => {
                 <SelectContent>
                   <SelectItem value="NONE">不使用模板</SelectItem>
                   {templates
-                    .filter((t) => !form.contractType || !t.contractType || t.contractType === form.contractType)
+                    .filter((t) => !form.contractType || !t.category || t.category === form.contractType)
                     .map((t) => (
-                      <SelectItem key={t.templateId} value={String(t.templateId)}>
+                      <SelectItem key={t.id} value={String(t.id)}>
                         {t.templateName}（{t.templateCode || '-'}）
                       </SelectItem>
                     ))}

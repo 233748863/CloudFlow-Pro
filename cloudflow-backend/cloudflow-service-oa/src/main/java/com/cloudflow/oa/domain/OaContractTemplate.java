@@ -18,14 +18,14 @@ public class OaContractTemplate implements Serializable {
     private static final long serialVersionUID = 1L;
 
     @TableId(type = IdType.AUTO)
-    private Long templateId;
+    private Long id;
 
     private Long tenantId;
     private String templateCode;
     private String templateName;
-    private String contractType;
     private String category;
-    private String contentHtml;
+    private String content;
+
     /** 变量定义 JSON, 形如 [{"key":"partyA","label":"甲方","required":true}, ...] */
     private String variables;
     private String status;

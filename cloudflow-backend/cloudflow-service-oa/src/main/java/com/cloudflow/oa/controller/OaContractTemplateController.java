@@ -26,23 +26,22 @@ public class OaContractTemplateController {
     @SaCheckPermission("oa:contract:template:list")
     public R<Page<OaContractTemplate>> page(@RequestParam(required = false) String keyword,
                                             @RequestParam(required = false) String category,
-                                            @RequestParam(required = false) String contractType,
                                             @RequestParam(required = false) String status,
                                             @RequestParam(defaultValue = "1") Integer pageNum,
                                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(templateService.page(keyword, category, contractType, status, pageNum, pageSize));
+        return R.ok(templateService.page(keyword, category, status, pageNum, pageSize));
     }
 
     @GetMapping("/active")
     @SaCheckPermission("oa:contract:add")
-    public R<List<OaContractTemplate>> listActive(@RequestParam(required = false) String contractType) {
-        return R.ok(templateService.listActive(contractType));
+    public R<List<OaContractTemplate>> listActive(@RequestParam(required = false) String category) {
+        return R.ok(templateService.listActive(category));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("oa:contract:template:list")
-    public R<OaContractTemplate> getInfo(@PathVariable("id") Long templateId) {
-        return R.ok(templateService.getById(templateId));
+    public R<OaContractTemplate> getInfo(@PathVariable("id") Long id) {
+        return R.ok(templateService.getById(id));
     }
 
     @SysLog("新增合同模板")
@@ -70,14 +69,14 @@ public class OaContractTemplateController {
     @SysLog("删除合同模板")
     @DeleteMapping("/{id}")
     @SaCheckPermission("oa:contract:template:remove")
-    public R<Void> remove(@PathVariable("id") Long templateId) {
-        return templateService.remove(templateId) ? R.ok() : R.fail("删除失败");
+    public R<Void> remove(@PathVariable("id") Long id) {
+        return templateService.remove(id) ? R.ok() : R.fail("删除失败");
     }
 
     @PostMapping("/{id}/render")
     @SaCheckPermission("oa:contract:add")
-    public R<String> render(@PathVariable("id") Long templateId,
+    public R<String> render(@PathVariable("id") Long id,
                             @RequestBody(required = false) Map<String, Object> variables) {
-        return R.ok(templateService.renderContent(templateId, variables));
+        return R.ok(templateService.renderContent(id, variables));
     }
 }
