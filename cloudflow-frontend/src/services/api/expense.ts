@@ -35,9 +35,25 @@ export interface ExpenseClaim {
   budgetSubjectCode?: string;
   budgetSubjectName?: string;
   invoiceStatus?: string;
+  /** OA-P0-3 是否超标(0/1) */
+  exceededStandard?: number;
+  exceededAmount?: number;
+  exceededDetail?: string;
   items?: ExpenseItem[];
   createTime?: string;
   updateTime?: string;
+}
+
+export interface ExpenseStandard {
+  standardId?: number;
+  tenantId?: number;
+  positionLevel?: string;
+  category?: string;
+  city?: string;
+  limitAmount?: number;
+  limitType?: 'PER_ITEM' | 'DAILY' | 'MONTHLY' | 'YEARLY' | string;
+  status?: string;
+  remark?: string;
 }
 
 export interface PaymentRequest {
@@ -155,6 +171,29 @@ export const expenseClaimApi = {
   // 按类别统计月度报销费用
   getMonthlyExpenseByCategory: (month: string) =>
     request.get('/oa/expense/claim/stats/category', { params: { month } }),
+};
+
+// OA-P0-3 费用标准相关 API
+export const expenseStandardApi = {
+  page: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    keyword?: string;
+    positionLevel?: string;
+    category?: string;
+    city?: string;
+    status?: string;
+  }) => request.get('/oa/expense/standard/page', { params }) as Promise<PageResult<ExpenseStandard>>,
+
+  listActive: () => request.get('/oa/expense/standard/active') as Promise<ExpenseStandard[]>,
+
+  getInfo: (id: number) => request.get(`/oa/expense/standard/${id}`) as Promise<ExpenseStandard>,
+
+  add: (data: ExpenseStandard) => request.post('/oa/expense/standard', data),
+
+  edit: (data: ExpenseStandard) => request.put('/oa/expense/standard', data),
+
+  remove: (id: number) => request.delete(`/oa/expense/standard/${id}`),
 };
 
 // 付款申请相关 API

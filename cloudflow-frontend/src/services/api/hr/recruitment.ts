@@ -137,3 +137,43 @@ export const acceptOffer = (id: number) => request.post<void>(`/hr/recruitment/o
 export const rejectOffer = (id: number) => request.post<void>(`/hr/recruitment/offers/${id}/reject`);
 export const convertOfferToOnboarding = (id: number) =>
   request.post<number>(`/hr/recruitment/offers/${id}/convert-to-onboarding`);
+
+// ============================================================================
+// HR-P0-3 招聘渠道管理
+// ============================================================================
+
+export interface RecruitmentChannel extends HrRecord {
+  id?: number;
+  channelCode?: string;
+  channelName?: string;
+  channelType?: 'PORTAL' | 'HEADHUNTER' | 'REFERRAL' | 'CAMPUS' | 'SOCIAL' | 'OTHER' | string;
+  costAmount?: number;
+  contractStart?: string;
+  contractEnd?: string;
+  contactName?: string;
+  contactPhone?: string;
+  contactEmail?: string;
+  status?: string;
+  remark?: string;
+}
+
+export interface RecruitmentChannelStat extends RecruitmentChannel {
+  totalCandidates?: number;
+  hiredCount?: number;
+  hireRate?: number;
+  costPerHire?: number;
+}
+
+export const listRecruitmentChannels = (params?: HrRecord) =>
+  request.get<RecruitmentChannel[]>('/hr/recruitment/channels', { params });
+
+export const saveRecruitmentChannel = (data: RecruitmentChannel) =>
+  data.id
+    ? request.put<void>('/hr/recruitment/channels', data)
+    : request.post<number>('/hr/recruitment/channels', data);
+
+export const deleteRecruitmentChannel = (id: number) =>
+  request.delete<void>(`/hr/recruitment/channels/${id}`);
+
+export const getRecruitmentChannelStats = () =>
+  request.get<RecruitmentChannelStat[]>('/hr/recruitment/channels/stats');

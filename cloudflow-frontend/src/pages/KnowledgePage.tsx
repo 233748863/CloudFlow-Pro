@@ -51,14 +51,17 @@ import { AnnouncementScope } from '@/types';
 import { getDeptTree, getRoleOptions, type SysRole } from '@/services/api/auth';
 import {
   knowledgeApi,
+  knowledgeTemplateApi,
   type KnowledgeDocument,
   type KnowledgeReadStats,
   type KnowledgeScopeType,
   type KnowledgeStatus,
+  type OaKnowledgeTemplate,
 } from '@/services/api/knowledge';
 import { renderAnnouncementHtml } from '@/utils/announcementContent';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getAttachmentDisplayName, normalizeAttachmentUrls } from '@/utils/attachment';
+import { getErrorMessage } from '@/utils/errorMessage';
 
 type ViewMode = 'library' | 'mine' | 'manage';
 
@@ -225,9 +228,20 @@ const KnowledgePage: React.FC = () => {
   const [detail, setDetail] = useState<KnowledgeDocument | null>(null);
   const [statsOpen, setStatsOpen] = useState(false);
   const [readStats, setReadStats] = useState<KnowledgeReadStats | null>(null);
+  const [versionOpen, setVersionOpen] = useState(false);
+  const [versionDocId, setVersionDocId] = useState<number | null>(null);
+  const [versionDocTitle, setVersionDocTitle] = useState('');
+  const [versions, setVersions] = useState<import('@/services/api/knowledge').KnowledgeDocVersion[]>([]);
+  const [versionLoading, setVersionLoading] = useState(false);
+  const [versionDiff, setVersionDiff] = useState<import('@/services/api/knowledge').KnowledgeVersionDiffResult | null>(null);
+  const [diffFrom, setDiffFrom] = useState<number | null>(null);
+  const [diffTo, setDiffTo] = useState<number | null>(null);
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
   const [deptTree, setDeptTree] = useState<DeptItem[]>([]);
   const [roles, setRoles] = useState<SysRole[]>([]);
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false);
+  const [templates, setTemplates] = useState<OaKnowledgeTemplate[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
 
   const activeRows = viewMode === 'library' ? library : viewMode === 'mine' ? submissions : manageRows;
   const tableTotal = viewMode === 'library' ? library.length : total;
@@ -345,6 +359,36 @@ const KnowledgePage: React.FC = () => {
   const openCreate = () => {
     setFormData(createEmptyForm());
     setFormOpen(true);
+  };
+
+  const openTemplatePicker = async () => {
+    setTemplatePickerOpen(true);
+    setTemplatesLoading(true);
+    try {
+      const rows = await knowledgeTemplateApi.listActive();
+      setTemplates(Array.isArray(rows) ? rows : []);
+    } catch (err) {
+      toast.error(getErrorMessage(err, '加载模板失败'));
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const applyTemplate = async (template: OaKnowledgeTemplate) => {
+    if (!template.id) return;
+    try {
+      const content = await knowledgeTemplateApi.use(template.id);
+      setFormData((prev) => ({
+        ...prev,
+        title: prev.title || template.templateName,
+        summary: prev.summary || template.summary || '',
+        content: content || template.content || prev.content,
+      }));
+      toast.success(`已套用模板 ${template.templateName}`);
+      setTemplatePickerOpen(false);
+    } catch (err) {
+      toast.error(getErrorMessage(err, '套用模板失败'));
+    }
   };
 
   const openEdit = (document: KnowledgeDocument) => {
@@ -473,6 +517,51 @@ const KnowledgePage: React.FC = () => {
       setStatsOpen(true);
     } catch (error: any) {
       toast.error(error?.message || '阅读统计加载失败');
+    }
+  };
+
+  const openVersions = async (document: KnowledgeDocument) => {
+    if (!document.documentId) return;
+    setVersionDocId(document.documentId);
+    setVersionDocTitle(document.title || '');
+    setVersionOpen(true);
+    setVersionLoading(true);
+    setVersionDiff(null);
+    setDiffFrom(null);
+    setDiffTo(null);
+    try {
+      const list = await knowledgeApi.listVersions(document.documentId);
+      setVersions(list || []);
+    } catch (err: any) {
+      toast.error(err?.message || '加载版本列表失败');
+    } finally {
+      setVersionLoading(false);
+    }
+  };
+
+  const handleVersionDiff = async () => {
+    if (!versionDocId || diffFrom == null || diffTo == null) {
+      toast.warning('请先选择对比的两个版本');
+      return;
+    }
+    try {
+      const result = await knowledgeApi.diffVersions(versionDocId, diffFrom, diffTo);
+      setVersionDiff(result);
+    } catch (err: any) {
+      toast.error(err?.message || '对比失败');
+    }
+  };
+
+  const handleVersionRollback = async (versionNo?: number) => {
+    if (!versionDocId || !versionNo) return;
+    if (!window.confirm(`确定回滚到 v${versionNo}？将覆盖当前正文。`)) return;
+    try {
+      await knowledgeApi.rollbackVersion(versionDocId, versionNo);
+      toast.success(`已回滚到 v${versionNo}`);
+      setVersionOpen(false);
+      await fetchData();
+    } catch (err: any) {
+      toast.error(err?.message || '回滚失败');
     }
   };
 
@@ -681,6 +770,13 @@ const KnowledgePage: React.FC = () => {
                     hidden: viewMode !== 'manage',
                   },
                   {
+                    label: '版本历史',
+                    icon: <RotateCcw size={14} />,
+                    onClick: () => void openVersions(item),
+                    tone: 'neutral',
+                    hidden: !(viewMode === 'mine' || viewMode === 'manage'),
+                  },
+                  {
                     label: '删除',
                     icon: <Trash2 size={14} />,
                     onClick: () => openDeleteConfirm(item),
@@ -761,6 +857,14 @@ const KnowledgePage: React.FC = () => {
           <DialogHeader>
             <DialogTitle>{formData.documentId ? '编辑知识文档' : '新建知识文档'}</DialogTitle>
           </DialogHeader>
+          {!formData.documentId ? (
+            <div className="-mt-2 flex flex-wrap items-center gap-2 text-xs">
+              <span className="text-slate-500">不知道怎么开头？</span>
+              <Button size="sm" variant="outline" onClick={() => void openTemplatePicker()}>
+                <FileText className="mr-1 h-3.5 w-3.5" />从模板开始
+              </Button>
+            </div>
+          ) : null}
           <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_27rem]">
             <div className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem]">
@@ -806,6 +910,46 @@ const KnowledgePage: React.FC = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
             <Button onClick={() => void saveForm()}>保存草稿</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={templatePickerOpen} onOpenChange={setTemplatePickerOpen}>
+        <DialogContent className="sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>选择文档模板</DialogTitle>
+          </DialogHeader>
+          {templatesLoading ? (
+            <div className="flex items-center justify-center py-10 text-sm text-slate-400">
+              <LoaderCircle className="mr-2 h-4 w-4 animate-spin" />加载模板中...
+            </div>
+          ) : templates.length === 0 ? (
+            <div className="py-10 text-center text-sm text-slate-400">暂无可用模板</div>
+          ) : (
+            <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+              {templates.map((tpl) => (
+                <button
+                  key={tpl.id}
+                  type="button"
+                  onClick={() => void applyTemplate(tpl)}
+                  className="w-full rounded-xl border border-slate-200 px-4 py-3 text-left transition hover:border-sky-400 hover:bg-sky-50/50 dark:border-slate-700 dark:hover:bg-slate-800/40"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tpl.templateName}</div>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-500 dark:bg-slate-800 dark:text-slate-400">
+                      {tpl.category}
+                    </span>
+                  </div>
+                  {tpl.summary ? (
+                    <div className="mt-1 line-clamp-2 text-xs text-slate-500 dark:text-slate-400">{tpl.summary}</div>
+                  ) : null}
+                  <div className="mt-1 text-xs text-slate-400">使用次数 {tpl.usageCount ?? 0}</div>
+                </button>
+              ))}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setTemplatePickerOpen(false)}>取消</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -887,6 +1031,97 @@ const KnowledgePage: React.FC = () => {
                 )}
               </div>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={versionOpen} onOpenChange={setVersionOpen}>
+        <DialogContent className="sm:max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>版本历史 · {versionDocTitle || '-'}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {versionLoading ? (
+              <InlineState title="加载中..." />
+            ) : versions.length === 0 ? (
+              <InlineState title="暂无版本快照" />
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
+                  <span>对比：</span>
+                  <Select value={diffFrom != null ? String(diffFrom) : ''} onValueChange={(v) => setDiffFrom(Number(v))}>
+                    <SelectTrigger className="h-8 w-32">
+                      <SelectValue placeholder="基准版本" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {versions.map((v) => (
+                        <SelectItem key={`from-${v.versionNo}`} value={String(v.versionNo)}>
+                          v{v.versionNo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <span>→</span>
+                  <Select value={diffTo != null ? String(diffTo) : ''} onValueChange={(v) => setDiffTo(Number(v))}>
+                    <SelectTrigger className="h-8 w-32">
+                      <SelectValue placeholder="目标版本" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {versions.map((v) => (
+                        <SelectItem key={`to-${v.versionNo}`} value={String(v.versionNo)}>
+                          v{v.versionNo}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button size="sm" variant="soft" onClick={() => void handleVersionDiff()}>对比</Button>
+                </div>
+
+                <div className="max-h-72 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-800">
+                  {versions.map((v) => (
+                    <div key={v.versionNo} className="flex items-center justify-between border-b border-slate-100 px-4 py-2 text-sm last:border-b-0 dark:border-slate-800">
+                      <div className="flex flex-col">
+                        <div className="font-medium text-slate-900 dark:text-slate-100">v{v.versionNo} · {v.title || '-'}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">
+                          {v.operatorName || '-'} · {v.publishTime || v.createTime || '-'} · {v.changeSummary || '无变更说明'}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" onClick={() => void handleVersionRollback(v.versionNo)}>
+                        回滚到此版本
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+
+                {versionDiff ? (
+                  <div className="rounded-lg border border-slate-200 p-3 text-xs dark:border-slate-800">
+                    <div className="mb-2 font-medium">
+                      v{versionDiff.fromVersion?.versionNo} → v{versionDiff.toVersion?.versionNo}
+                      {versionDiff.titleChanged ? ' · 标题已变化' : ''}
+                      {versionDiff.summaryChanged ? ' · 摘要已变化' : ''}
+                      {versionDiff.attachmentChanged ? ' · 附件已变化' : ''}
+                    </div>
+                    <div className="max-h-64 space-y-0.5 overflow-y-auto font-mono">
+                      {(versionDiff.contentDiff || []).map((line, idx) => (
+                        <div
+                          key={idx}
+                          className={
+                            line.type === 'ADD'
+                              ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
+                              : line.type === 'DEL'
+                                ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/30 dark:text-rose-200'
+                                : 'text-slate-600 dark:text-slate-300'
+                          }
+                        >
+                          {line.type === 'ADD' ? '+ ' : line.type === 'DEL' ? '- ' : '  '}
+                          {line.text}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </>
+            )}
           </div>
         </DialogContent>
       </Dialog>

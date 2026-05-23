@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { toast } from 'sonner';
 import { Button, Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/common';
+import { Link } from 'react-router-dom';
 import {
   AttendanceRuleAssignment,
   DeptTreeNode,
@@ -434,6 +435,12 @@ const HrAttendancePage: React.FC = () => {
           { label: '申请', value: timeRequests.length, tone: 'active' },
         ]}
       />
+
+      <div className="flex justify-end">
+        <Link to="/hr/attendance/appeals">
+          <Button variant="outline">考勤异常申诉</Button>
+        </Link>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">

@@ -126,6 +126,8 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             case "MALL_ORDER" -> new CallbackTarget(HrMallOrder.class, "status");
             case "WORK_INJURY" -> new CallbackTarget(HrWorkInjury.class, "status");
             case "LABOR_DISPUTE" -> new CallbackTarget(HrLaborDispute.class, "status");
+            case "ATTENDANCE_APPEAL" -> new CallbackTarget(
+                    com.cloudflow.hr.domain.entity.HrAttendanceAppeal.class, "status");
             default -> throw new HrBusinessException("UNSUPPORTED_BUSINESS_TYPE",
                     "不支持的业务类型：" + businessType);
         };

@@ -68,6 +68,9 @@ public class WorkflowBusinessTypeContributor implements BusinessTypeContributor 
         registry.register(BusinessTypeDef.builder()
                 .code("HR_LABOR_DISPUTE").module("hr").businessTable("hr_labor_dispute")
                 .displayName("劳动争议处理审批").build());
+        registry.register(BusinessTypeDef.builder()
+                .code("HR_ATTENDANCE_APPEAL").module("hr").businessTable("hr_attendance_appeal")
+                .displayName("考勤异常申诉审批").build());
 
         // ===== OA =====
         registry.register(BusinessTypeDef.builder()

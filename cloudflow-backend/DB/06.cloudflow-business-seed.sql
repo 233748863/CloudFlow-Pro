@@ -69,6 +69,10 @@ DELETE FROM cloud_flow_db.sys_business_rule
 WHERE tenant_id = 100000
   AND rule_code IN ('hr.leave.quota.limit', 'oa.expense.amount.limit', 'oa.contract.risk.threshold', 'oa.budget.warn.threshold', 'oa.budget.alert.threshold', 'oa.budget.block.threshold');
 
+DELETE FROM cloud_flow_db.sys_api_ratelimit_rule
+WHERE tenant_id IN (0, 100000)
+  AND rule_code IN ('auth.login.guard', 'workflow.start.guard', 'oa.contract.read.guard', 'global.heavy.api.guard');
+
 DELETE FROM cloud_flow_db.sys_post
 WHERE post_id BETWEEN 1 AND 11;
 
@@ -741,6 +745,14 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(634, '规则回滚',   630, 4, '',    
 
 INSERT INTO cloud_flow_db.sys_menu VALUES(635, '审计台账',   6, 16, '/system/audit-events','pages/system/AuditEventPage',     NULL, 0, 0, 'C', '0', '0', 'system:audit:events',      'FileClock',       'admin', NOW(), '', null, 'OA业务审计台账');
 
+INSERT INTO cloud_flow_db.sys_menu VALUES(640, 'API限流',     6, 17, '/system/api-ratelimit','pages/system/ApiRateLimitPage',  NULL, 0, 0, 'C', '0', '0', 'system:apiRateLimit:list', 'GaugeCircle',     'admin', NOW(), '', null, 'API动态限流规则');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(641, '限流新增',   640, 1, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:apiRateLimit:add',    '#',               'admin', NOW(), '', null, 'API限流规则新增');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(642, '限流编辑',   640, 2, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:apiRateLimit:edit',   '#',               'admin', NOW(), '', null, 'API限流规则编辑');
+
+INSERT INTO cloud_flow_db.sys_menu VALUES(643, '限流删除',   640, 3, '',                   NULL,                             NULL, 0, 0, 'F', '0', '0', 'system:apiRateLimit:remove', '#',               'admin', NOW(), '', null, 'API限流规则删除');
+
 
 
 
@@ -1409,6 +1421,10 @@ INSERT INTO cloud_flow_db.sys_menu VALUES(762, '劳动争议',       7, 33, '/hr
 INSERT INTO cloud_flow_db.sys_menu VALUES(763, '争议台账',     762,  1, '/hr/labor-dispute/list',     'pages/hr/laborRelation/HrLaborDisputePage',        NULL, 0, 0, 'C', '0', '0', 'hr:dispute:list',        'Gavel',           'admin', NOW(), '', NULL, '争议受理与证据');
 INSERT INTO cloud_flow_db.sys_menu VALUES(764, '调解记录',     762,  2, '/hr/labor-dispute/mediations','pages/hr/laborRelation/HrDisputeMediationPage',   NULL, 0, 0, 'C', '0', '0', 'hr:dispute:mediation',   'Handshake',       'admin', NOW(), '', NULL, '调解过程与协议');
 INSERT INTO cloud_flow_db.sys_menu VALUES(765, '仲裁记录',     762,  3, '/hr/labor-dispute/arbitrations','pages/hr/laborRelation/HrDisputeArbitrationPage', NULL, 0, 0, 'C', '0', '0', 'hr:dispute:arbitration', 'Landmark',        'admin', NOW(), '', NULL, '仲裁案件与裁决');
+
+-- HR-P1-4 考勤异常申诉 + OA-P1-2 会议纪要 菜单种子
+INSERT INTO cloud_flow_db.sys_menu VALUES(766, '考勤申诉',     725,  1, '/hr/attendance/appeals',     'pages/hr/HrAttendanceAppealPage',         NULL, 0, 0, 'C', '0', '0', 'hr:attendance:list',      'AlertTriangle',   'admin', NOW(), '', NULL, '考勤异常申诉受理与审核');
+INSERT INTO cloud_flow_db.sys_menu VALUES(280, '会议纪要',     2,   18, '/office/meeting-minutes',    'pages/MeetingMinutesPage',                NULL, 0, 0, 'C', '0', '0', 'oa:meeting:list',         'FileText',        'admin', NOW(), '', NULL, '会议纪要 / 决议项 → 工作任务派发');
 
 -- 权限统一收口功能节点（原 07 迁移并入种子）
 INSERT INTO cloud_flow_db.sys_menu VALUES
@@ -2353,6 +2369,17 @@ FROM cloud_flow_db.sys_role_menu rm
 JOIN cloud_flow_db.sys_menu child ON child.parent_id = 727 AND child.menu_id IN (944, 945, 946)
 WHERE rm.menu_id = 727;
 
+-- HR-P1-4 考勤申诉 766 跟随 725 考勤休假; OA-P1-2 会议纪要 280 跟随 OA 根目录(menu_id=2)
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 766, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 725;
+
+INSERT IGNORE INTO cloud_flow_db.sys_role_menu (role_id, menu_id, tenant_id)
+SELECT rm.role_id, 280, rm.tenant_id
+FROM cloud_flow_db.sys_role_menu rm
+WHERE rm.menu_id = 2;
+
 -- 10. 初始化字典类型数据
 INSERT INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
 ('用户性别', 'sys_user_sex', '用户性别列表'),
@@ -2613,6 +2640,15 @@ SELECT tenant_id, id, rule_code, 1, threshold_value, effect, enabled, priority, 
 FROM cloud_flow_db.sys_business_rule
 WHERE tenant_id = 100000
   AND rule_code IN ('hr.leave.quota.limit', 'oa.expense.amount.limit', 'oa.contract.risk.threshold', 'oa.budget.warn.threshold', 'oa.budget.alert.threshold', 'oa.budget.block.threshold');
+
+-- GOV-P1-1: API 动态限流规则演示数据
+INSERT INTO cloud_flow_db.sys_api_ratelimit_rule
+(tenant_id, rule_code, rule_name, service_name, path_pattern, http_method, dimension, rps, burst, status, priority, reject_strategy, remark, deleted, create_by, create_time, update_by, update_time)
+VALUES
+(100000, 'auth.login.guard',       '登录接口限流',           'cloudflow-auth',        '/auth/login',           'POST', 'IP',     5,  10, 'ACTIVE', 10,  'REJECT', '登录接口防爆破，IP 维度 5RPS', 0, 'admin', NOW(), '', NOW()),
+(100000, 'workflow.start.guard',   '流程发起限流',           'cloudflow-service-workflow', '/workflow/start',  'POST', 'USER',   20, 50, 'ACTIVE', 20,  'REJECT', '单用户发起流程并发保护', 0, 'admin', NOW(), '', NOW()),
+(100000, 'oa.contract.read.guard', '合同列表读保护',         'cloudflow-service-oa',  '/oa/contract/page',     'GET',  'TENANT', 50, 100,'ACTIVE', 30,  'LOG',    '高频读保护，记录但不拦截', 0, 'admin', NOW(), '', NOW()),
+(100000, 'global.heavy.api.guard', '重型 API 全局保护',      NULL,                    '/**/export/**',         'ALL',  'GLOBAL', 30, 60, 'INACTIVE', 100,'REJECT', '导出类接口全局保护，默认关闭', 0, 'admin', NOW(), '', NOW());
 
 -- =========================================================
 -- Phase 2: 性能优化与监控告警配置（全局）

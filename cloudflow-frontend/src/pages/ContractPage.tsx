@@ -8,8 +8,9 @@ import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import AttachmentLinks, { getAttachmentList } from '@/components/AttachmentLinks';
 import BusinessTimeline from '@/components/common/BusinessTimeline';
+import { ContractMilestoneSection } from '@/components/contract/ContractMilestoneSection';
 import FileUpload from '@/components/FileUpload';
-import { contractApi, OaContract, OaRiskAlert } from '@/services/api/contractRisk';
+import { contractApi, contractTemplateApi, OaContract, OaContractTemplate, OaRiskAlert } from '@/services/api/contractRisk';
 import { crmApi, CrmCustomer } from '@/services/api/crm';
 import { projectApi, Project } from '@/services/api/project';
 import { budgetApi, BudgetSubject } from '@/services/api/budget';
@@ -118,6 +119,10 @@ export const ContractPage: React.FC = () => {
   const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, status: '', contractName: '', contractNo: '', riskLevel: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaContract>(emptyForm);
+  const [templates, setTemplates] = useState<OaContractTemplate[]>([]);
+  const [templateVarsOpen, setTemplateVarsOpen] = useState(false);
+  const [templateVarsForm, setTemplateVarsForm] = useState<Record<string, string>>({});
+  const [activeTemplate, setActiveTemplate] = useState<OaContractTemplate | null>(null);
   const [detail, setDetail] = useState<OaContract | null>(null);
   const [risks, setRisks] = useState<OaRiskAlert[]>([]);
   const [sealApplications, setSealApplications] = useState<OaSealApplication[]>([]);
@@ -174,6 +179,17 @@ export const ContractPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    (async () => {
+      try {
+        const list = await contractTemplateApi.listActive();
+        setTemplates(list || []);
+      } catch (err) {
+        console.warn('加载合同模板失败', err);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
     const state = location.state as { focusContractId?: number } | null;
     if (!state?.focusContractId) {
       return;
@@ -206,6 +222,54 @@ export const ContractPage: React.FC = () => {
   const closeDialog = () => {
     setDialogOpen(false);
     setForm(emptyForm);
+  };
+
+  const handlePickTemplate = (templateIdStr: string) => {
+    if (!templateIdStr || templateIdStr === 'NONE') {
+      setForm((prev) => ({ ...prev, templateId: undefined }));
+      return;
+    }
+    const tpl = templates.find((t) => String(t.templateId) === templateIdStr);
+    if (!tpl) return;
+    let varDefs: Array<{ key: string; label?: string; required?: boolean }> = [];
+    try {
+      if (tpl.variables) varDefs = JSON.parse(tpl.variables);
+    } catch {
+      varDefs = [];
+    }
+    setActiveTemplate(tpl);
+    if (varDefs && varDefs.length > 0) {
+      const init: Record<string, string> = {};
+      varDefs.forEach((v) => { init[v.key] = ''; });
+      setTemplateVarsForm(init);
+      setTemplateVarsOpen(true);
+    } else {
+      setForm((prev) => ({
+        ...prev,
+        templateId: tpl.templateId,
+        contractType: tpl.contractType || prev.contractType,
+        remark: prev.remark || tpl.contentHtml || '',
+      }));
+      toast.success(`已套用模板：${tpl.templateName}`);
+    }
+  };
+
+  const handleApplyTemplateVars = async () => {
+    if (!activeTemplate?.templateId) return;
+    try {
+      const rendered = await contractTemplateApi.render(activeTemplate.templateId, templateVarsForm);
+      setForm((prev) => ({
+        ...prev,
+        templateId: activeTemplate.templateId,
+        contractType: activeTemplate.contractType || prev.contractType,
+        remark: rendered || prev.remark,
+      }));
+      setTemplateVarsOpen(false);
+      setActiveTemplate(null);
+      toast.success(`已套用模板：${activeTemplate.templateName}`);
+    } catch (err) {
+      toast.error(getErrorMessage(err, '模板渲染失败'));
+    }
   };
 
   const openDetail = async (item: OaContract) => {
@@ -437,6 +501,25 @@ export const ContractPage: React.FC = () => {
               </Select>
             </div>
             <div className="space-y-2">
+              <Label>合同模板</Label>
+              <Select
+                value={form.templateId ? String(form.templateId) : 'NONE'}
+                onValueChange={handlePickTemplate}
+              >
+                <SelectTrigger className="h-11"><SelectValue placeholder="可选模板套用" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NONE">不使用模板</SelectItem>
+                  {templates
+                    .filter((t) => !form.contractType || !t.contractType || t.contractType === form.contractType)
+                    .map((t) => (
+                      <SelectItem key={t.templateId} value={String(t.templateId)}>
+                        {t.templateName}（{t.templateCode || '-'}）
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
               <Label>合同金额</Label>
               <Input className="h-11" type="number" min={0} value={form.amount} onChange={(event) => setForm((prev) => ({ ...prev, amount: Number(event.target.value) || 0 }))} />
             </div>
@@ -636,9 +719,40 @@ export const ContractPage: React.FC = () => {
               ) : <div className="py-6 text-center text-sm text-slate-400">暂无风险记录</div>}
             </div>
 
+            {detail.contractId ? <ContractMilestoneSection contractId={detail.contractId} /> : null}
+
             <BusinessTimeline businessType="CONTRACT" businessId={detail.contractId} />
           </div>
         ) : null}
+      </BaseDialog>
+
+      <BaseDialog
+        open={templateVarsOpen}
+        title={`填入模板变量 · ${activeTemplate?.templateName || ''}`}
+        onClose={() => { setTemplateVarsOpen(false); setActiveTemplate(null); }}
+        footer={(
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => { setTemplateVarsOpen(false); setActiveTemplate(null); }}>取消</Button>
+            <Button onClick={() => void handleApplyTemplateVars()}>套用</Button>
+          </div>
+        )}
+      >
+        <div className="space-y-3">
+          {Object.keys(templateVarsForm).length === 0 ? (
+            <div className="text-sm text-slate-500">该模板未定义变量。</div>
+          ) : (
+            Object.keys(templateVarsForm).map((key) => (
+              <div key={key} className="space-y-1">
+                <Label>{key}</Label>
+                <Input
+                  value={templateVarsForm[key] || ''}
+                  onChange={(e) => setTemplateVarsForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                  placeholder={`{{${key}}} 的值`}
+                />
+              </div>
+            ))
+          )}
+        </div>
       </BaseDialog>
 
       <ConfirmDialog

@@ -8,6 +8,7 @@ import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.dto.WorkplaceSummaryDTO;
 import com.cloudflow.oa.domain.dto.RecentTaskDTO;
+import com.cloudflow.oa.service.IOaContractMilestoneService;
 import com.cloudflow.oa.service.IOaRiskAlertService;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.service.IWorkplaceService;
@@ -67,6 +68,9 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
 
     @Autowired
     private RemoteHrWorkplaceService remoteHrWorkplaceService;
+
+    @Autowired
+    private IOaContractMilestoneService contractMilestoneService;
 
     @Override
     @Cacheable(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
@@ -366,8 +370,10 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             List<WorkplaceSummaryDTO.RiskItem> oaRiskItems = risks.stream().map(this::toRiskItem).collect(Collectors.toList());
             List<WorkplaceSummaryDTO.RiskItem> crmRiskItems = loadCrmRisks();
             List<WorkplaceSummaryDTO.RiskItem> hrRiskItems = loadHrReminders(serviceHealth, userId);
+            List<WorkplaceSummaryDTO.RiskItem> contractRiskItems = loadContractMilestoneRisks();
             List<WorkplaceSummaryDTO.RiskItem> merged = mergeRisks(oaRiskItems, crmRiskItems, 8);
             merged = mergeRisks(merged, hrRiskItems, 8);
+            merged = mergeRisks(merged, contractRiskItems, 8);
             stats.setOpenRisks(merged.size());
             markService(serviceHealth, "oa.risk", true, "OK");
             return merged;
@@ -533,6 +539,37 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
         } catch (Exception e) {
             log.warn("获取 HR 提醒失败", e);
             markService(serviceHealth, "hr", false, "HR 提醒不可用");
+            return new ArrayList<>();
+        }
+    }
+
+    private List<WorkplaceSummaryDTO.RiskItem> loadContractMilestoneRisks() {
+        try {
+            List<Map<String, Object>> overdueItems = contractMilestoneService.loadOverdueRiskItems(8);
+            if (overdueItems == null || overdueItems.isEmpty()) {
+                return new ArrayList<>();
+            }
+            return overdueItems.stream().map(item -> {
+                WorkplaceSummaryDTO.RiskItem mapped = new WorkplaceSummaryDTO.RiskItem();
+                String idStr = String.valueOf(item.get("id"));
+                mapped.setId(parseLongId(idStr));
+                mapped.setBusinessType(String.valueOf(item.get("businessType")));
+                Object businessId = item.get("businessId");
+                if (businessId instanceof Number num) {
+                    mapped.setBusinessId(num.longValue());
+                }
+                mapped.setModule("OA");
+                mapped.setSourceLabel("合同履约");
+                mapped.setTitle(String.valueOf(item.get("title")));
+                mapped.setDescription(String.valueOf(item.get("description")));
+                mapped.setLevel(String.valueOf(item.getOrDefault("level", "HIGH")));
+                mapped.setStatus("OPEN");
+                mapped.setOwnerName(item.get("ownerName") == null ? null : String.valueOf(item.get("ownerName")));
+                mapped.setPath("/office/contracts");
+                return mapped;
+            }).collect(Collectors.toList());
+        } catch (Exception e) {
+            log.warn("获取合同履约风险失败", e);
             return new ArrayList<>();
         }
     }

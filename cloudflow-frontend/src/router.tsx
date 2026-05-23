@@ -217,6 +217,7 @@ const KnowledgePage = React.lazy(() => import("./pages/KnowledgePage"));
 const SealApplicationPage = React.lazy(() => import("./pages/SealApplicationPage"));
 const LicenseBorrowPage = React.lazy(() => import("./pages/LicenseBorrowPage"));
 const ContractPage = React.lazy(() => import("./pages/ContractPage"));
+const MeetingMinutesPage = React.lazy(() => import("./pages/MeetingMinutesPage"));
 const ProjectManagementPage = React.lazy(() => import("./pages/ProjectManagementPage"));
 const BudgetManagementPage = React.lazy(() => import("./pages/BudgetManagementPage"));
 const InvoiceManagementPage = React.lazy(() => import("./pages/InvoiceManagementPage"));
@@ -263,6 +264,11 @@ const AuditEventPage = React.lazy(() =>
 const CacheMonitor = React.lazy(() =>
   import("./pages/system/CacheMonitor").then((module) => ({
     default: module.CacheMonitor,
+  })),
+);
+const ApiRateLimitPage = React.lazy(() =>
+  import("./pages/system/ApiRateLimitPage").then((module) => ({
+    default: module.ApiRateLimitPage,
   })),
 );
 const ProcessManagement = React.lazy(() =>
@@ -322,6 +328,11 @@ const HrLifecyclePage = React.lazy(() =>
 );
 const HrAttendancePage = React.lazy(() =>
   import("./pages/hr/HrAttendancePage").then((module) => ({
+    default: module.default,
+  })),
+);
+const HrAttendanceAppealPage = React.lazy(() =>
+  import("./pages/hr/HrAttendanceAppealPage").then((module) => ({
     default: module.default,
   })),
 );
@@ -1038,6 +1049,16 @@ const desktopRoutes = [
             ),
           },
           {
+            path: "/office/meeting-minutes",
+            element: (
+              <PermissionRouteGuard permissions={["oa:meeting:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <MeetingMinutesPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
             path: "/office/project",
             element: (
               <PermissionRouteGuard permissions={["oa:project:list"]}>
@@ -1471,6 +1492,16 @@ const desktopRoutes = [
               <PermissionRouteGuard permissions={["hr:attendance:list"]}>
                 <Suspense fallback={<Loading />}>
                   <HrAttendancePage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/hr/attendance/appeals",
+            element: (
+              <PermissionRouteGuard permissions={["hr:attendance:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <HrAttendanceAppealPage />
                 </Suspense>
               </PermissionRouteGuard>
             ),
@@ -1924,6 +1955,16 @@ const desktopRoutes = [
               <PermissionRouteGuard permissions={["system:cache:list"]}>
                 <Suspense fallback={<Loading />}>
                   <CacheMonitor />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/system/api-ratelimit",
+            element: (
+              <PermissionRouteGuard permissions={["system:apiRateLimit:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ApiRateLimitPage />
                 </Suspense>
               </PermissionRouteGuard>
             ),

@@ -45,7 +45,27 @@ export interface OaContract {
   status?: ContractStatus;
   riskLevel?: RiskLevel;
   remark?: string;
+  /** OA-P0-2 关联的合同模板 ID */
+  templateId?: number;
   createTime?: string;
+  updateTime?: string;
+}
+
+export interface OaContractTemplate {
+  templateId?: number;
+  tenantId?: number;
+  templateCode?: string;
+  templateName: string;
+  contractType?: string;
+  category?: string;
+  contentHtml?: string;
+  /** 变量定义 JSON 字符串 [{key,label,required}] */
+  variables?: string;
+  status?: string;
+  remark?: string;
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
   updateTime?: string;
 }
 
@@ -107,6 +127,97 @@ export const contractApi = {
   linkSeal: (id: number, sealApplicationId: number) => request.put(`/oa/contract/${id}/link-seal/${sealApplicationId}`),
   timeline: (id: number) => request.get(`/oa/contract/${id}/timeline`) as Promise<OaTraceEvent[]>,
   risks: (id: number) => request.get(`/oa/contract/${id}/risks`) as Promise<OaRiskAlert[]>,
+};
+
+// OA-P0-2 合同模板 API
+export const contractTemplateApi = {
+  page: (params: {
+    pageNum?: number;
+    pageSize?: number;
+    keyword?: string;
+    category?: string;
+    contractType?: string;
+    status?: string;
+  }) => request.get('/oa/contract/template/page', { params }) as Promise<PageResult<OaContractTemplate>>,
+  listActive: (contractType?: string) =>
+    request.get('/oa/contract/template/active', { params: { contractType } }) as Promise<OaContractTemplate[]>,
+  getInfo: (id: number) => request.get(`/oa/contract/template/${id}`) as Promise<OaContractTemplate>,
+  add: (data: OaContractTemplate) => request.post('/oa/contract/template', data),
+  edit: (data: OaContractTemplate) => request.put('/oa/contract/template', data),
+  remove: (id: number) => request.delete(`/oa/contract/template/${id}`),
+  render: (id: number, variables: Record<string, unknown>) =>
+    request.post(`/oa/contract/template/${id}/render`, variables) as Promise<string>,
+};
+
+// OA-P1-1 合同履约里程碑 + 付款计划
+export type ContractMilestoneStatus = 'PENDING' | 'IN_PROGRESS' | 'DONE' | 'OVERDUE' | 'CANCELLED';
+export type ContractMilestoneType = 'DELIVERY' | 'PAYMENT' | 'ACCEPTANCE' | 'OTHER';
+export type PaymentStatus = 'PENDING' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+
+export interface OaContractMilestone {
+  id?: number;
+  tenantId?: number;
+  contractId: number;
+  milestoneNo?: number;
+  milestoneName: string;
+  milestoneType: ContractMilestoneType;
+  plannedDate: string;
+  actualDate?: string;
+  amount?: number;
+  status: ContractMilestoneStatus;
+  ownerId?: number;
+  ownerName?: string;
+  completionRemark?: string;
+  attachmentUrl?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export interface OaContractPaymentSchedule {
+  id?: number;
+  tenantId?: number;
+  contractId: number;
+  milestoneId?: number;
+  paymentNo?: number;
+  paymentName: string;
+  planDate: string;
+  actualDate?: string;
+  amount: number;
+  actualAmount?: number;
+  currency?: string;
+  payeeId?: number;
+  payeeName?: string;
+  status: PaymentStatus;
+  invoiceId?: number;
+  remark?: string;
+  createTime?: string;
+  updateTime?: string;
+}
+
+export const contractMilestoneApi = {
+  page: (params: { pageNum?: number; pageSize?: number; contractId?: number; status?: string }) =>
+    request.get('/oa/contract/milestone/page', { params }) as Promise<PageResult<OaContractMilestone>>,
+  listByContract: (contractId: number) =>
+    request.get('/oa/contract/milestone/list', { params: { contractId } }) as Promise<OaContractMilestone[]>,
+  add: (data: OaContractMilestone) => request.post('/oa/contract/milestone', data),
+  edit: (data: OaContractMilestone) => request.put('/oa/contract/milestone', data),
+  remove: (id: number) => request.delete(`/oa/contract/milestone/${id}`),
+  complete: (id: number, remark?: string) =>
+    request.post(`/oa/contract/milestone/${id}/complete`, undefined, { params: { remark } }),
+};
+
+export const contractPaymentApi = {
+  page: (params: { pageNum?: number; pageSize?: number; contractId?: number; status?: string }) =>
+    request.get('/oa/contract/payment/page', { params }) as Promise<PageResult<OaContractPaymentSchedule>>,
+  listByContract: (contractId: number) =>
+    request.get('/oa/contract/payment/list', { params: { contractId } }) as Promise<OaContractPaymentSchedule[]>,
+  add: (data: OaContractPaymentSchedule) => request.post('/oa/contract/payment', data),
+  edit: (data: OaContractPaymentSchedule) => request.put('/oa/contract/payment', data),
+  remove: (id: number) => request.delete(`/oa/contract/payment/${id}`),
+  pay: (id: number, actualAmount?: number, remark?: string) =>
+    request.post(`/oa/contract/payment/${id}/pay`, undefined, {
+      params: { actualAmount, remark },
+    }),
 };
 
 export const riskApi = {

@@ -402,6 +402,35 @@ CREATE TABLE sys_business_rule_hit_record (
   KEY idx_rule_hit_result (hit_result, created_time)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='业务规则命中记录表';
 
+-- =========================================================
+-- GOV-P1-1 API 动态限流规则
+-- =========================================================
+DROP TABLE IF EXISTS sys_api_ratelimit_rule;
+CREATE TABLE sys_api_ratelimit_rule (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID(0或100000表示全租户)',
+  rule_code         VARCHAR(60)     NOT NULL COMMENT '规则编码',
+  rule_name         VARCHAR(200)    NOT NULL COMMENT '规则名称',
+  service_name      VARCHAR(60)     DEFAULT NULL COMMENT '目标服务名(为空匹配全部)',
+  path_pattern      VARCHAR(500)    NOT NULL COMMENT '路径模板(Ant风格 /xx/**)',
+  http_method       VARCHAR(20)     DEFAULT 'ALL' COMMENT 'HTTP方法(GET/POST/PUT/DELETE/ALL)',
+  dimension         VARCHAR(20)     NOT NULL DEFAULT 'IP' COMMENT '限流维度(IP/USER/TENANT/GLOBAL)',
+  rps               INT(11)         NOT NULL DEFAULT 10 COMMENT '每秒请求数上限',
+  burst             INT(11)         DEFAULT NULL COMMENT '突发上限(令牌桶容量,默认 rps*2)',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
+  priority          INT(11)         NOT NULL DEFAULT 100 COMMENT '优先级(数小先匹配)',
+  reject_strategy   VARCHAR(20)     DEFAULT 'REJECT' COMMENT '超限策略(REJECT直接拒绝/QUEUE排队/LOG仅记录)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_api_ratelimit_code (tenant_id, rule_code),
+  KEY idx_api_ratelimit_match (status, priority, service_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API动态限流规则';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================

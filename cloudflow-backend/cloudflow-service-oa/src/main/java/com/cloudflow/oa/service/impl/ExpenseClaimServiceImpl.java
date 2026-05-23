@@ -20,9 +20,11 @@ import com.cloudflow.oa.mapper.BizExpenseItemMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.IExpenseClaimService;
 import com.cloudflow.oa.service.IOaBudgetService;
+import com.cloudflow.oa.service.IOaExpenseStandardService;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.service.remote.RemoteBusinessRuleService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,6 +65,11 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Autowired
     private IOaBudgetService budgetService;
+
+    @Autowired
+    private IOaExpenseStandardService expenseStandardService;
+
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
     public Page<BizExpenseClaim> queryPage(Integer pageNum, Integer pageSize, String status, String category, Long userId) {
@@ -170,6 +177,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         }
 
         evaluateExpenseAmountRule(claim);
+        // OA-P0-3 超标校验, 命中后落表用于流程 CONDITION 分支
+        Map<String, Object> exceedResult = evaluateExpenseStandard(claim);
         reserveBudget(claim);
 
         // 更新状态为审批中
@@ -190,6 +199,13 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             variables.put("category", claim.getCategory());
             variables.put("description", claim.getDescription());
             variables.put("deptName", claim.getDeptName());
+            // OA-P0-3 超标变量(供工作流 CONDITION 分支路由到上级节点)
+            if (exceedResult != null) {
+                variables.put("exceededStandard", Boolean.TRUE.equals(exceedResult.get("exceeded")));
+                variables.put("exceededAmount", exceedResult.get("totalExceededAmount"));
+            } else {
+                variables.put("exceededStandard", false);
+            }
             // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
             WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
@@ -374,6 +390,43 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                     OaAttachmentUrlUtils.normalizeMultiAttachmentUrls(item.getReceiptUrl(), "报销明细凭证附件")
             );
         }
+    }
+
+    /**
+     * OA-P0-3 超标校验, 返回 standard 服务结果, 同时把超标标记写入 claim 字段。
+     */
+    private Map<String, Object> evaluateExpenseStandard(BizExpenseClaim claim) {
+        if (claim == null) {
+            return null;
+        }
+        if (claim.getItems() == null || claim.getItems().isEmpty()) {
+            BizExpenseClaim detail = getClaimWithItems(claim.getId());
+            if (detail != null) {
+                claim.setItems(detail.getItems());
+            }
+        }
+        // 当前 UserContext 未携带职级/城市, 先按通用规则匹配; 后续可扩展为远程取员工档案
+        String applicantLevel = null;
+        String city = null;
+        Map<String, Object> result = expenseStandardService.validateExceed(claim, applicantLevel, city);
+        boolean exceeded = Boolean.TRUE.equals(result.get("exceeded"));
+        claim.setExceededStandard(exceeded ? 1 : 0);
+        Object total = result.get("totalExceededAmount");
+        if (total instanceof BigDecimal) {
+            claim.setExceededAmount((BigDecimal) total);
+        }
+        Object details = result.get("details");
+        if (exceeded && details instanceof List) {
+            try {
+                claim.setExceededDetail(OBJECT_MAPPER.writeValueAsString(details));
+            } catch (Exception e) {
+                log.warn("超标明细 JSON 序列化失败, claimId={}", claim.getId(), e);
+            }
+        }
+        if (exceeded) {
+            log.info("报销超标: claimId={}, totalExceeded={}", claim.getId(), total);
+        }
+        return result;
     }
 
     private void evaluateExpenseAmountRule(BizExpenseClaim claim) {

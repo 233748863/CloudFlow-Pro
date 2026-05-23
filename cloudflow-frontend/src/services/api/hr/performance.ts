@@ -97,6 +97,90 @@ export const createPerformanceSalaryAdjustment = (id: number, data: HrRecord) =>
   request.post<number>(`/hr/performance/objective/${id}/salary-adjustment`, data);
 
 // ============================================================================
+// HR-P0-1 绩效 360 度评估
+// ============================================================================
+
+export interface PerformanceEvaluator extends HrRecord {
+  id?: number;
+  objectiveId?: number;
+  assignmentId?: number;
+  evaluateeId?: number;
+  evaluatorId?: number;
+  evaluatorSource?: 'SELF' | 'MANAGER' | 'PEER' | 'SUBORDINATE' | 'CUSTOMER' | string;
+  weight?: number;
+  status?: string;
+}
+
+export interface PerformanceEvaluatorResponsePayload {
+  evaluatorId: number;
+  score: number;
+  dimensionScores?: HrRecord;
+  commentText?: string;
+}
+
+export interface PerformanceInvitePayload {
+  objectiveId: number;
+  assignmentId?: number;
+  evaluateeId: number;
+  evaluators: Array<{
+    evaluatorId: number;
+    source: string;
+    weight?: number;
+  }>;
+}
+
+export const invitePerformance360 = (data: PerformanceInvitePayload) =>
+  request.post<void>('/hr/performance/360/invite', data);
+
+export const submitPerformance360Response = (data: PerformanceEvaluatorResponsePayload) =>
+  request.post<void>('/hr/performance/360/response', data);
+
+export const cancelPerformance360Evaluator = (id: number) =>
+  request.post<void>(`/hr/performance/360/evaluator/${id}/cancel`);
+
+export const listPerformance360Evaluators = (objectiveId: number, evaluateeId?: number) =>
+  request.get<PerformanceEvaluator[]>('/hr/performance/360/evaluators', {
+    params: { objectiveId, evaluateeId },
+  });
+
+export const listPerformance360Pending = (evaluatorId: number) =>
+  request.get<PerformanceEvaluator[]>('/hr/performance/360/pending', { params: { evaluatorId } });
+
+export const aggregatePerformance360 = (objectiveId: number, evaluateeId: number) =>
+  request.post<HrRecord>('/hr/performance/360/aggregate', null, {
+    params: { objectiveId, evaluateeId },
+  });
+
+// ============================================================================
+// HR-P0-2 绩效强制分布
+// ============================================================================
+
+export interface PerformanceDistributionRule extends HrRecord {
+  id?: number;
+  objectiveId?: number;
+  ruleName?: string;
+  distribution?: Array<{ grade: string; percent: number }>;
+  enforceMode?: 'BLOCK' | 'WARN';
+  status?: string;
+}
+
+export const listPerformanceDistributionRules = (objectiveId?: number) =>
+  request.get<PerformanceDistributionRule[]>('/hr/performance/distribution/rules', {
+    params: { objectiveId },
+  });
+
+export const savePerformanceDistributionRule = (data: PerformanceDistributionRule) =>
+  request.post<number>('/hr/performance/distribution/rules', data);
+
+export const deletePerformanceDistributionRule = (id: number) =>
+  request.delete<void>(`/hr/performance/distribution/rules/${id}`);
+
+export const validatePerformanceDistribution = (data: {
+  objectiveId: number;
+  grades: Array<{ employeeId: number; grade: string }>;
+}) => request.post<HrRecord>('/hr/performance/distribution/validate', data);
+
+// ============================================================================
 // CRM 销售业绩聚合（HR 绩效看板展示用），透传到 service-crm /inner/crm/performance/*
 // ============================================================================
 

@@ -58,6 +58,9 @@ import {
 } from '@/services/api/hr';
 import { buildEmployeeLabel, flattenDeptTree, matchEmployeeKeyword, normalizeRows } from './hrShared';
 import { cn } from '@/utils/cn';
+import Hr360EvaluationPanel from './components/Hr360EvaluationPanel';
+import HrPerformanceDistributionPanel from './components/HrPerformanceDistributionPanel';
+import HrPerformanceInterviewPanel from './components/HrPerformanceInterviewPanel';
 
 const ALL_STATUS = '__all__';
 
@@ -721,6 +724,7 @@ export const HrPerformancePage: React.FC = () => {
   const [objectives, setObjectives] = useState<PerformanceObjective[]>([]);
   const [overview, setOverview] = useState<PerformanceOverview | null>(null);
   const [currentObjective, setCurrentObjective] = useState<PerformanceObjective | null>(null);
+  const [interviewPanelOpen, setInterviewPanelOpen] = useState(false);
   const [deptOptions, setDeptOptions] = useState<Array<{ label: string; value: number }>>([]);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [employeeLoading, setEmployeeLoading] = useState(false);
@@ -732,6 +736,10 @@ export const HrPerformancePage: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState(ALL_STATUS);
   const [activeTab, setActiveTab] = useState<PerformanceTab>('tree');
   const [createOpen, setCreateOpen] = useState(false);
+  // HR-P0-1/2 360 评估与强制分布抽屉开关
+  const [show360Panel, setShow360Panel] = useState(false);
+  const [showDistributionPanel, setShowDistributionPanel] = useState(false);
+  const [evaluateeIdInput, setEvaluateeIdInput] = useState('');
   const [createForm, setCreateForm] = useState(defaultCreateForm);
   const [createCategoryRows, setCreateCategoryRows] = useState<CreateCategoryRow[]>(defaultCategoryRows);
   const [createMetricRows, setCreateMetricRows] = useState<CreateMetricRow[]>(defaultMetricRows);
@@ -1469,6 +1477,12 @@ export const HrPerformancePage: React.FC = () => {
                     <FilePlus2 className="h-4 w-4" />
                     新建绩效目标
                   </Button>
+                  <Button variant="soft" onClick={() => setShow360Panel((v) => !v)} disabled={!currentObjective}>
+                    360 度评估
+                  </Button>
+                  <Button variant="soft" onClick={() => setShowDistributionPanel((v) => !v)} disabled={!currentObjective}>
+                    强制分布
+                  </Button>
                 </div>
               </div>
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -1496,6 +1510,11 @@ export const HrPerformancePage: React.FC = () => {
                       {currentObjective.status === 'PLAN_APPROVED' ? (
                         <Button size="sm" variant="soft" onClick={() => void handleSubmitResult()} disabled={pendingAction === 'submit-result'}>
                           提交结果审批
+                        </Button>
+                      ) : null}
+                      {['PLAN_APPROVED', 'RESULT_APPROVED'].includes(currentObjective.status) ? (
+                        <Button size="sm" variant="soft" onClick={() => setInterviewPanelOpen(true)}>
+                          录入面谈
                         </Button>
                       ) : null}
                     </>
@@ -1602,6 +1621,34 @@ export const HrPerformancePage: React.FC = () => {
           </div>
         }
       />
+
+      {show360Panel && currentObjective ? (
+        <div className="px-6 pb-4">
+          <div className="mb-2 flex items-center gap-2">
+            <Input
+              placeholder="被评人员工 ID"
+              value={evaluateeIdInput}
+              onChange={(e) => setEvaluateeIdInput(e.target.value)}
+              className="w-40"
+            />
+            <span className="text-xs text-slate-500">输入被评估员工 ID 后展示评估关系与打分入口</span>
+          </div>
+          <Hr360EvaluationPanel
+            objectiveId={currentObjective.id}
+            evaluateeId={Number(evaluateeIdInput) || undefined}
+            onClose={() => setShow360Panel(false)}
+          />
+        </div>
+      ) : null}
+
+      {showDistributionPanel && currentObjective ? (
+        <div className="px-6 pb-4">
+          <HrPerformanceDistributionPanel
+            objectiveId={currentObjective.id}
+            onClose={() => setShowDistributionPanel(false)}
+          />
+        </div>
+      ) : null}
 
       <BaseDialog
         open={createOpen}
@@ -1864,6 +1911,14 @@ export const HrPerformancePage: React.FC = () => {
         danger
         onCancel={closeDeleteTarget}
         onConfirm={confirmDeleteTarget}
+      />
+
+      <HrPerformanceInterviewPanel
+        open={interviewPanelOpen}
+        resultId={currentObjective?.id}
+        employeeId={currentObjective?.targetEmployeeId}
+        employeeName={currentObjective?.title || currentObjective?.targetEmployeeName}
+        onClose={() => setInterviewPanelOpen(false)}
       />
     </>
   );

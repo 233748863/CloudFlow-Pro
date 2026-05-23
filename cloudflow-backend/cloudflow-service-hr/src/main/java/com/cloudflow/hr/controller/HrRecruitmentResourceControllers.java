@@ -6,14 +6,18 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrCandidatePayload;
 import com.cloudflow.hr.domain.dto.HrInterviewPayload;
 import com.cloudflow.hr.domain.dto.HrOfferPayload;
+import com.cloudflow.hr.domain.dto.HrRecruitmentChannelPayload;
 import com.cloudflow.hr.domain.dto.HrRecruitmentRequisitionPayload;
 import com.cloudflow.hr.domain.entity.HrCandidate;
 import com.cloudflow.hr.domain.entity.HrInterview;
 import com.cloudflow.hr.domain.entity.HrOffer;
+import com.cloudflow.hr.domain.entity.HrRecruitmentChannel;
 import com.cloudflow.hr.domain.entity.HrRecruitmentRequisition;
+import com.cloudflow.hr.service.HrRecruitmentChannelService;
 import com.cloudflow.hr.service.HrRecruitmentService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,6 +27,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -183,5 +188,52 @@ class HrOfferController {
     public R<Void> changeOfferStatus(@PathVariable Long id, @PathVariable String action) {
         crudService.changeStatus(HrOffer.class, id, action);
         return R.ok();
+    }
+}
+
+/**
+ * HR-P0-3 招聘渠道端点。
+ */
+@RestController
+@RequestMapping("/recruitment")
+@RequiredArgsConstructor
+class HrRecruitmentChannelController {
+
+    private final HrTypedCrudService crudService;
+    private final HrRecruitmentChannelService channelService;
+
+    @GetMapping("/channels")
+    @SaCheckPermission("hr:recruitment:list")
+    public R<?> listChannels(@RequestParam Map<String, Object> query) {
+        return R.ok(crudService.page(HrRecruitmentChannel.class, query));
+    }
+
+    @SysLog("新增HR招聘渠道")
+    @PostMapping("/channels")
+    @SaCheckPermission("hr:recruitment:add")
+    public R<Long> createChannel(@RequestBody HrRecruitmentChannelPayload payload) {
+        return R.ok(crudService.create(HrRecruitmentChannel.class, payload));
+    }
+
+    @SysLog("修改HR招聘渠道")
+    @PutMapping("/channels/{id}")
+    @SaCheckPermission("hr:recruitment:edit")
+    public R<Void> updateChannel(@PathVariable Long id, @RequestBody HrRecruitmentChannelPayload payload) {
+        crudService.update(HrRecruitmentChannel.class, id, payload);
+        return R.ok();
+    }
+
+    @SysLog("删除HR招聘渠道")
+    @DeleteMapping("/channels/{id}")
+    @SaCheckPermission("hr:recruitment:edit")
+    public R<Void> deleteChannel(@PathVariable Long id) {
+        crudService.delete(HrRecruitmentChannel.class, id);
+        return R.ok();
+    }
+
+    @GetMapping("/channels/stats")
+    @SaCheckPermission("hr:recruitment:list")
+    public R<List<Map<String, Object>>> channelStats() {
+        return R.ok(channelService.channelStats());
     }
 }

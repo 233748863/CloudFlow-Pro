@@ -226,6 +226,8 @@ export interface Candidate extends HrRecord {
   positionName?: string;
   source?: string;
   sourceDesc?: string;
+  channelId?: number;
+  channelName?: string;
   status?: string;
   statusDesc?: string;
   createTime?: string;
@@ -239,6 +241,7 @@ export interface CandidatePayload extends HrRecord {
   requestId?: number;
   requisitionId?: number;
   source?: string;
+  channelId?: number;
   resumeAttachmentUrls?: string[] | string;
 }
 

@@ -72,8 +72,11 @@ import { getMeetingRooms } from '@/services/api/schedule';
 import { MeetingRoom } from '@/types';
 import { enumLabel, formatDateValue, formatDateTimeValue, formatMoneyValue, optionLabel, optionOrIdLabel } from './hrShared';
 import { getAttachmentRawValue } from '@/utils/attachment';
+import HrRecruitmentChannelPanel from './components/HrRecruitmentChannelPanel';
+import HrResumeParsePanel from './components/HrResumeParsePanel';
+import { listRecruitmentChannels, type RecruitmentChannel } from '@/services/api/hr/recruitment';
 
-type RecruitmentTab = 'request' | 'candidate' | 'interview' | 'offer';
+type RecruitmentTab = 'request' | 'candidate' | 'interview' | 'offer' | 'channel';
 
 const normalizeRows = <T,>(data: unknown): T[] => {
   if (!data) return [];
@@ -326,6 +329,7 @@ export const HrRecruitmentPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<RecruitmentTab>('request');
   const [requestDialog, setRequestDialog] = useState(false);
   const [candidateDialog, setCandidateDialog] = useState(false);
+  const [channels, setChannels] = useState<RecruitmentChannel[]>([]);
   const [interviewDialog, setInterviewDialog] = useState(false);
   const [offerDialog, setOfferDialog] = useState(false);
   const [rejectCandidateId, setRejectCandidateId] = useState<number | null>(null);
@@ -334,6 +338,7 @@ export const HrRecruitmentPage: React.FC = () => {
   const [candidateForm, setCandidateForm] = useState<CandidatePayload>(candidateFormDefault);
   const [interviewForm, setInterviewForm] = useState<InterviewSchedulePayload>(interviewFormDefault);
   const [offerForm, setOfferForm] = useState<OfferPayload>(offerFormDefault);
+  const [resumePanel, setResumePanel] = useState<{ open: boolean; candidate?: Candidate }>({ open: false });
 
   const loadData = async () => {
     setLoading(true);
@@ -364,6 +369,17 @@ export const HrRecruitmentPage: React.FC = () => {
 
   useEffect(() => {
     void loadData();
+  }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const list = await listRecruitmentChannels({ status: 'ACTIVE' });
+        setChannels(list || []);
+      } catch (err) {
+        console.warn('加载招聘渠道失败', err);
+      }
+    })();
   }, []);
 
   useEffect(() => {
@@ -799,6 +815,9 @@ export const HrRecruitmentPage: React.FC = () => {
           <TabsTrigger value="offer" className="flex-1 lg:flex-none">
             Offer
           </TabsTrigger>
+          <TabsTrigger value="channel" className="flex-1 lg:flex-none">
+            招聘渠道
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="request" className="space-y-0">
@@ -966,33 +985,42 @@ export const HrRecruitmentPage: React.FC = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          {['OFFER', 'HIRED'].includes(item.status) ? (
-                            <div className="ml-auto w-[180px] text-right text-xs text-slate-500 dark:text-slate-400">
-                              请在 Offer 或员工异动中继续推进
-                            </div>
-                          ) : (
-                            <Select
-                              value={item.status}
-                              onValueChange={(value) => handleCandidateStatusChange(item.id, value)}
+                          <div className="ml-auto flex items-center justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setResumePanel({ open: true, candidate: item })}
                             >
-                              <SelectTrigger className="ml-auto w-[148px]">
-                                <SelectValue placeholder="更新状态" />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {editableCandidateStatuses.map((status) => (
-                                  <SelectItem key={status} value={status}>
-                                    {status === 'NEW'
-                                      ? '新简历'
-                                      : status === 'SCREENING'
-                                        ? '筛选中'
-                                        : status === 'INTERVIEW'
-                                          ? '面试中'
-                                          : '已拒绝'}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
+                              简历解析
+                            </Button>
+                            {['OFFER', 'HIRED'].includes(item.status) ? (
+                              <div className="w-[180px] text-right text-xs text-slate-500 dark:text-slate-400">
+                                请在 Offer 或员工异动中继续推进
+                              </div>
+                            ) : (
+                              <Select
+                                value={item.status}
+                                onValueChange={(value) => handleCandidateStatusChange(item.id, value)}
+                              >
+                                <SelectTrigger className="w-[148px]">
+                                  <SelectValue placeholder="更新状态" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {editableCandidateStatuses.map((status) => (
+                                    <SelectItem key={status} value={status}>
+                                      {status === 'NEW'
+                                        ? '新简历'
+                                        : status === 'SCREENING'
+                                          ? '筛选中'
+                                          : status === 'INTERVIEW'
+                                            ? '面试中'
+                                            : '已拒绝'}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
@@ -1156,6 +1184,10 @@ export const HrRecruitmentPage: React.FC = () => {
               </Table>
             </div>
           </div>
+        </TabsContent>
+
+        <TabsContent value="channel" className="space-y-0">
+          <HrRecruitmentChannelPanel onClose={() => setActiveTab('request')} />
         </TabsContent>
       </Tabs>
 
@@ -1380,6 +1412,30 @@ export const HrRecruitmentPage: React.FC = () => {
                     <SelectItem value="REFERRAL">内推</SelectItem>
                     <SelectItem value="HEADHUNTER">猎头</SelectItem>
                     <SelectItem value="CAMPUS">校招</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">招聘渠道</Label>
+                <Select
+                  value={candidateForm.channelId ? String(candidateForm.channelId) : '__NONE__'}
+                  onValueChange={(value) =>
+                    setCandidateForm((prev) => ({
+                      ...prev,
+                      channelId: value === '__NONE__' ? undefined : Number(value),
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue placeholder="选择渠道(可选)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__NONE__">未指定渠道</SelectItem>
+                    {channels.map((ch) => (
+                      <SelectItem key={ch.id} value={String(ch.id)}>
+                        {ch.channelName}（{ch.channelCode}）
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -1707,6 +1763,16 @@ export const HrRecruitmentPage: React.FC = () => {
           />
         </div>
       </BaseDialog>
+
+      <HrResumeParsePanel
+        open={resumePanel.open}
+        candidateId={resumePanel.candidate?.id ?? null}
+        candidateName={resumePanel.candidate?.name}
+        defaultResumeUrl={Array.isArray(resumePanel.candidate?.resumeAttachmentUrls)
+          ? resumePanel.candidate?.resumeAttachmentUrls.join(',')
+          : (resumePanel.candidate?.resumeAttachmentUrls as string | undefined)}
+        onClose={() => setResumePanel({ open: false })}
+      />
     </div>
   );
 };

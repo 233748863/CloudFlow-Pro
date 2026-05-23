@@ -294,7 +294,8 @@ CREATE TABLE hr_candidate (
   gender VARCHAR(20) DEFAULT NULL COMMENT '性别',
   phone VARCHAR(30) DEFAULT NULL COMMENT '联系电话',
   email VARCHAR(120) DEFAULT NULL COMMENT '邮箱',
-  source VARCHAR(50) DEFAULT NULL COMMENT '简历来源',
+  source VARCHAR(50) DEFAULT NULL COMMENT '简历来源(自由文本,兼容历史)',
+  channel_id BIGINT DEFAULT NULL COMMENT '关联招聘渠道ID(hr_recruitment_channel.id)',
   resume_attachment_urls JSON DEFAULT NULL COMMENT '简历附件URL列表',
   status VARCHAR(30) NOT NULL DEFAULT 'SCREENING' COMMENT '候选人状态(SCREENING/INTERVIEWING/OFFERED/REJECTED/HIRED)',
   reject_reason VARCHAR(500) DEFAULT NULL COMMENT '淘汰原因',
@@ -305,7 +306,8 @@ CREATE TABLE hr_candidate (
   deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
   PRIMARY KEY (id),
   KEY idx_hr_candidate_req (tenant_id, requisition_id),
-  KEY idx_hr_candidate_status (tenant_id, status)
+  KEY idx_hr_candidate_status (tenant_id, status),
+  KEY idx_hr_candidate_channel (tenant_id, channel_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR候选人';
 
 CREATE TABLE hr_interview (
@@ -1780,5 +1782,207 @@ CREATE TABLE hr_dispute_evidence (
   PRIMARY KEY (id),
   KEY idx_hr_dispute_evidence (tenant_id, dispute_id, evidence_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR 劳动争议证据材料';
+
+-- =========================================================
+-- HR-P0-1 绩效 360 度评估：评估关系 + 多源打分
+-- =========================================================
+CREATE TABLE hr_perf_evaluator (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
+  objective_id BIGINT NOT NULL COMMENT '关联绩效目标ID',
+  assignment_id BIGINT DEFAULT NULL COMMENT '关联分解节点ID',
+  result_id BIGINT DEFAULT NULL COMMENT '关联绩效结果ID(评分聚合后回填)',
+  evaluatee_id BIGINT NOT NULL COMMENT '被评员工ID',
+  evaluatee_name VARCHAR(120) DEFAULT NULL COMMENT '被评员工姓名(冗余快照)',
+  evaluator_id BIGINT NOT NULL COMMENT '评估人员工ID',
+  evaluator_name VARCHAR(120) DEFAULT NULL COMMENT '评估人姓名(冗余快照)',
+  evaluator_source VARCHAR(20) NOT NULL COMMENT '评估源(SELF/MANAGER/PEER/SUBORDINATE/CUSTOMER)',
+  weight DECIMAL(5,2) NOT NULL DEFAULT 20.00 COMMENT '该评估源权重(%)',
+  status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '评估状态(PENDING/SUBMITTED/CANCELLED)',
+  invite_time DATETIME DEFAULT NULL COMMENT '邀请发起时间',
+  remind_count INT NOT NULL DEFAULT 0 COMMENT '催办次数',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_hr_perf_evaluator_relation (tenant_id, objective_id, evaluatee_id, evaluator_id, evaluator_source),
+  KEY idx_hr_perf_evaluator_evaluatee (tenant_id, evaluatee_id, status),
+  KEY idx_hr_perf_evaluator_evaluator (tenant_id, evaluator_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR绩效360评估关系';
+
+CREATE TABLE hr_perf_evaluator_response (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
+  evaluator_id BIGINT NOT NULL COMMENT '关联 hr_perf_evaluator.id',
+  objective_id BIGINT NOT NULL COMMENT '关联绩效目标ID(冗余便于联表)',
+  evaluatee_id BIGINT NOT NULL COMMENT '被评员工ID(冗余便于联表)',
+  evaluator_source VARCHAR(20) NOT NULL COMMENT '评估源(冗余便于聚合)',
+  score DECIMAL(8,2) NOT NULL COMMENT '总评分',
+  dimension_scores JSON DEFAULT NULL COMMENT '各维度细分打分 [{dimension,score,weight}]',
+  comment_text TEXT DEFAULT NULL COMMENT '文字评价',
+  submit_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_hr_perf_response_evaluator (tenant_id, evaluator_id),
+  KEY idx_hr_perf_response_obj (tenant_id, objective_id, evaluatee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR绩效360评估打分';
+
+-- =========================================================
+-- HR-P0-2 绩效强制分布规则
+-- =========================================================
+CREATE TABLE hr_perf_distribution_rule (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
+  objective_id BIGINT DEFAULT NULL COMMENT '关联绩效目标ID(为空表示租户全局默认规则)',
+  rule_name VARCHAR(120) NOT NULL COMMENT '规则名称',
+  distribution JSON NOT NULL COMMENT '分布配额配置 [{grade:"S",percent:10,minCount:0,maxCount:99}]',
+  total_population INT DEFAULT NULL COMMENT '总人数(校验快照)',
+  enforce_mode VARCHAR(20) NOT NULL DEFAULT 'BLOCK' COMMENT '强制模式(BLOCK 超额拦截 / WARN 仅警告)',
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '规则状态(ACTIVE/INACTIVE)',
+  remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  KEY idx_hr_perf_distribution_obj (tenant_id, objective_id, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR绩效强制分布规则';
+
+-- =========================================================
+-- HR-P0-3 招聘渠道管理
+-- =========================================================
+CREATE TABLE hr_recruitment_channel (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
+  channel_code VARCHAR(60) NOT NULL COMMENT '渠道编码',
+  channel_name VARCHAR(120) NOT NULL COMMENT '渠道名称',
+  channel_type VARCHAR(30) NOT NULL DEFAULT 'PORTAL' COMMENT '渠道类型(PORTAL门户/HEADHUNTER猎头/REFERRAL内推/CAMPUS校招/SOCIAL社招/OTHER)',
+  cost_amount DECIMAL(12,2) DEFAULT 0 COMMENT '渠道费用',
+  cost_currency VARCHAR(10) DEFAULT 'CNY' COMMENT '费用币种',
+  contract_start DATE DEFAULT NULL COMMENT '合作开始日期',
+  contract_end DATE DEFAULT NULL COMMENT '合作结束日期',
+  contact_name VARCHAR(100) DEFAULT NULL COMMENT '渠道对接人姓名',
+  contact_phone VARCHAR(40) DEFAULT NULL COMMENT '渠道对接人电话',
+  contact_email VARCHAR(120) DEFAULT NULL COMMENT '渠道对接人邮箱',
+  status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE' COMMENT '渠道状态(ACTIVE/EXPIRED/DISABLED)',
+  remark VARCHAR(500) DEFAULT NULL COMMENT '备注',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_hr_recruitment_channel_code (tenant_id, channel_code),
+  KEY idx_hr_recruitment_channel_status (tenant_id, status, channel_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR招聘渠道';
+
+-- =========================================================
+-- HR-P1-1 简历解析字段(候选人附件解析回填)
+-- =========================================================
+CREATE TABLE hr_resume_parsed_fields (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
+  candidate_id BIGINT NOT NULL COMMENT '候选人ID hr_candidate.id',
+  resume_url VARCHAR(500) DEFAULT NULL COMMENT '原始简历附件URL',
+  parsed_name VARCHAR(100) DEFAULT NULL COMMENT '解析姓名',
+  parsed_phone VARCHAR(40) DEFAULT NULL COMMENT '解析手机',
+  parsed_email VARCHAR(120) DEFAULT NULL COMMENT '解析邮箱',
+  parsed_education VARCHAR(120) DEFAULT NULL COMMENT '解析学历',
+  parsed_school VARCHAR(120) DEFAULT NULL COMMENT '解析最高学历院校',
+  parsed_skills JSON DEFAULT NULL COMMENT '解析技能标签 ["Java","Spring"]',
+  parsed_experiences JSON DEFAULT NULL COMMENT '工作经历 [{company,title,start,end}]',
+  raw_text MEDIUMTEXT DEFAULT NULL COMMENT '解析提取的纯文本(便于复核与重跑)',
+  confidence DECIMAL(4,3) DEFAULT NULL COMMENT '整体置信度(0-1)',
+  review_status VARCHAR(20) NOT NULL DEFAULT 'PENDING' COMMENT '复核状态(PENDING/CONFIRMED/REJECTED)',
+  reviewer_id BIGINT DEFAULT NULL COMMENT '复核人ID',
+  reviewer_name VARCHAR(100) DEFAULT NULL COMMENT '复核人姓名',
+  review_time DATETIME DEFAULT NULL COMMENT '复核时间',
+  parse_error VARCHAR(500) DEFAULT NULL COMMENT '解析失败原因',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  KEY idx_hr_resume_parsed_candidate (tenant_id, candidate_id, review_status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR简历解析字段';
+
+-- =========================================================
+-- HR-P1-3 绩效面谈记录
+-- =========================================================
+CREATE TABLE hr_performance_interview (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
+  objective_id BIGINT NOT NULL COMMENT '关联绩效目标ID',
+  result_id BIGINT DEFAULT NULL COMMENT '关联绩效结果ID hr_performance_result.id',
+  evaluatee_id BIGINT NOT NULL COMMENT '被面谈员工ID(评估对象)',
+  evaluatee_name VARCHAR(100) DEFAULT NULL COMMENT '员工姓名',
+  interviewer_id BIGINT NOT NULL COMMENT '面谈主持人ID(直属上级)',
+  interviewer_name VARCHAR(100) DEFAULT NULL COMMENT '主持人姓名',
+  hr_observer_id BIGINT DEFAULT NULL COMMENT 'HR旁听人ID',
+  hr_observer_name VARCHAR(100) DEFAULT NULL COMMENT 'HR旁听人姓名',
+  interview_time DATETIME NOT NULL COMMENT '面谈时间',
+  location VARCHAR(200) DEFAULT NULL COMMENT '面谈地点',
+  duration_minutes INT DEFAULT NULL COMMENT '面谈时长(分钟)',
+  consensus TEXT DEFAULT NULL COMMENT '双方共识/结论',
+  improvement_items JSON DEFAULT NULL COMMENT '改进项清单 [{item,owner,deadline}]',
+  employee_feedback TEXT DEFAULT NULL COMMENT '员工反馈',
+  manager_comment TEXT DEFAULT NULL COMMENT '主管点评',
+  attachment_urls JSON DEFAULT NULL COMMENT '附件URL列表',
+  status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态(DRAFT/CONFIRMED)',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  KEY idx_hr_perf_interview_result (tenant_id, result_id),
+  KEY idx_hr_perf_interview_obj (tenant_id, objective_id, evaluatee_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR绩效面谈记录';
+
+-- =========================================================
+-- HR-P1-4 考勤异常申诉
+-- =========================================================
+CREATE TABLE hr_attendance_appeal (
+  id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id BIGINT NOT NULL COMMENT '租户ID',
+  appeal_no VARCHAR(40) DEFAULT NULL COMMENT '申诉编号',
+  employee_id BIGINT NOT NULL COMMENT '员工ID hr_employee.id',
+  employee_name VARCHAR(100) DEFAULT NULL COMMENT '员工姓名',
+  dept_id BIGINT DEFAULT NULL COMMENT '部门ID',
+  dept_name VARCHAR(120) DEFAULT NULL COMMENT '部门名称',
+  attendance_record_id BIGINT DEFAULT NULL COMMENT '关联考勤记录ID hr_attendance_record.id',
+  attendance_date DATE NOT NULL COMMENT '申诉考勤日期',
+  exception_type VARCHAR(40) NOT NULL COMMENT '异常类型(LATE迟到/EARLY_LEAVE早退/ABSENT缺勤/MISSING_PUNCH漏打卡/OTHER)',
+  reason TEXT NOT NULL COMMENT '申诉理由',
+  evidence_urls JSON DEFAULT NULL COMMENT '证据材料URL列表',
+  expected_check_in DATETIME DEFAULT NULL COMMENT '员工申报应打卡时间',
+  expected_check_out DATETIME DEFAULT NULL COMMENT '员工申报应下班时间',
+  status VARCHAR(20) NOT NULL DEFAULT 'DRAFT' COMMENT '状态(DRAFT/PENDING/APPROVED/REJECTED/CANCELLED)',
+  instance_id VARCHAR(64) DEFAULT NULL COMMENT '关联工作流实例ID',
+  manager_id BIGINT DEFAULT NULL COMMENT '审批主管ID',
+  manager_remark VARCHAR(500) DEFAULT NULL COMMENT '主管审批意见',
+  hr_reviewer_id BIGINT DEFAULT NULL COMMENT 'HR复核人ID',
+  hr_remark VARCHAR(500) DEFAULT NULL COMMENT 'HR复核意见',
+  approved_check_in DATETIME DEFAULT NULL COMMENT 'HR最终采纳的打卡时间',
+  approved_check_out DATETIME DEFAULT NULL COMMENT 'HR最终采纳的下班时间',
+  final_decision VARCHAR(40) DEFAULT NULL COMMENT '最终判定(REWRITE改写/REJECT驳回/IGNORE忽略)',
+  decided_time DATETIME DEFAULT NULL COMMENT '判定时间',
+  create_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by VARCHAR(64) DEFAULT '' COMMENT '创建者',
+  update_by VARCHAR(64) DEFAULT '' COMMENT '更新者',
+  deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '逻辑删除标志(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  KEY idx_hr_attendance_appeal_emp (tenant_id, employee_id, attendance_date),
+  KEY idx_hr_attendance_appeal_status (tenant_id, status, attendance_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR考勤异常申诉';
 
 SET FOREIGN_KEY_CHECKS = 1;

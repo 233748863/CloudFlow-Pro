@@ -25,6 +25,7 @@ public class HrCandidatePayload {
     private String phone;
     private String email;
     private String source;
+    private Long channelId;
     private String status;
     private String rejectReason;
     private String createBy;

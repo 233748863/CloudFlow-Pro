@@ -56,6 +56,7 @@ public class OaContract implements Serializable {
     private String remark;
     private String sourceType;
     private Long sourceId;
+    private Long templateId;
     private Integer deleted;
     private String createBy;
 

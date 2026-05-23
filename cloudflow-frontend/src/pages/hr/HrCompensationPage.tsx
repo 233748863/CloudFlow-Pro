@@ -47,6 +47,7 @@ import {
   yesNoLabel,
 } from './hrShared';
 import { HrCrudPanel, HrFormField, HrPageHeader, renderStatus } from './HrDomainWorkspace';
+import HrCompensationSimulatePanel from './components/HrCompensationSimulatePanel';
 
 const componentTypeLabels: Record<string, string> = {
   FIXED: '固定薪酬',
@@ -163,6 +164,7 @@ const taxDeductionDefault = (): HrRecord => ({
 
 const HrCompensationPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState('components');
+  const [simulateOpen, setSimulateOpen] = useState(false);
   const [components, setComponents] = useState<SalaryItem[]>([]);
   const [structures, setStructures] = useState<SalaryStructure[]>([]);
   const [grades, setGrades] = useState<SalaryGrade[]>([]);
@@ -321,6 +323,12 @@ const HrCompensationPage: React.FC = () => {
           { label: '调薪', value: changes.length, tone: 'active' },
         ]}
       />
+
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={() => setSimulateOpen(true)}>
+          薪酬模拟器
+        </Button>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <TabsList className="w-full justify-start overflow-x-auto lg:w-auto">
@@ -591,6 +599,13 @@ const HrCompensationPage: React.FC = () => {
           />
         </TabsContent>
       </Tabs>
+
+      <HrCompensationSimulatePanel
+        open={simulateOpen}
+        onClose={() => setSimulateOpen(false)}
+        employees={employees.map((emp) => ({ id: emp.id, name: emp.name, employeeNo: emp.employeeNo }))}
+        positionLevels={grades.map((g) => ({ id: g.id, gradeName: g.gradeName, gradeCode: g.gradeCode }))}
+      />
     </div>
   );
 };

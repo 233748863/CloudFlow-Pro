@@ -446,6 +446,9 @@ CREATE TABLE biz_expense_claim (
   budget_subject_code VARCHAR(50)   DEFAULT NULL COMMENT '预算科目编码',
   budget_subject_name VARCHAR(100)  DEFAULT NULL COMMENT '预算科目名称',
   invoice_status    VARCHAR(20)     DEFAULT 'NONE' COMMENT '发票状态',
+  exceeded_standard TINYINT(1)      DEFAULT 0 COMMENT 'OA-P0-3 是否超标(0否1是)',
+  exceeded_amount   DECIMAL(12,2)   DEFAULT 0.00 COMMENT 'OA-P0-3 超标金额合计',
+  exceeded_detail   JSON            DEFAULT NULL COMMENT 'OA-P0-3 超标明细[{itemId,category,amount,limitAmount}]',
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -691,6 +694,7 @@ CREATE TABLE oa_contract (
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   source_type       VARCHAR(30)     DEFAULT 'MANUAL' COMMENT '来源类型 MANUAL/CRM_OPPORTUNITY/CRM_CUSTOMER',
   source_id         BIGINT(20)      DEFAULT NULL COMMENT '来源业务ID',
+  template_id       BIGINT(20)      DEFAULT NULL COMMENT 'OA-P0-2 使用的合同模板ID(oa_contract_template.id)',
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -703,7 +707,8 @@ CREATE TABLE oa_contract (
   KEY idx_contract_dept (dept_id),
   KEY idx_contract_status (status),
   KEY idx_contract_end_date (end_date),
-  KEY idx_contract_seal (seal_application_id)
+  KEY idx_contract_seal (seal_application_id),
+  KEY idx_contract_template (tenant_id, template_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='OA合同台账表';
 
 DROP TABLE IF EXISTS oa_project;
@@ -1530,6 +1535,220 @@ CREATE TABLE oa_frontend_error_log (
   KEY idx_fe_error_create_time (create_time),
   KEY idx_fe_error_user (user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='前端错误日志表';
+
+-- =========================================================
+-- OA-P0-1 知识库版本管理
+-- =========================================================
+DROP TABLE IF EXISTS oa_knowledge_doc_version;
+CREATE TABLE oa_knowledge_doc_version (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  document_id       BIGINT(20)      NOT NULL COMMENT '关联文档ID(oa_knowledge_document.document_id)',
+  version_no        INT(11)         NOT NULL COMMENT '版本号(递增)',
+  title             VARCHAR(255)    NOT NULL COMMENT '版本快照-标题',
+  summary           VARCHAR(500)    DEFAULT NULL COMMENT '版本快照-摘要',
+  content           LONGTEXT        NOT NULL COMMENT '版本快照-正文',
+  attachment_url    VARCHAR(1000)   DEFAULT NULL COMMENT '版本快照-附件',
+  change_summary    VARCHAR(500)    DEFAULT NULL COMMENT '版本说明(本次变更内容)',
+  operator_id       BIGINT(20)      DEFAULT NULL COMMENT '操作人ID',
+  operator_name     VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
+  publish_time      DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '发布时间(版本生成时间)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_knowledge_version (document_id, version_no),
+  KEY idx_knowledge_version_doc (tenant_id, document_id, version_no)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA知识库文档版本快照';
+
+-- =========================================================
+-- OA-P0-2 合同模板
+-- =========================================================
+DROP TABLE IF EXISTS oa_contract_template;
+CREATE TABLE oa_contract_template (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  template_code     VARCHAR(60)     NOT NULL COMMENT '模板编码',
+  template_name     VARCHAR(200)    NOT NULL COMMENT '模板名称',
+  category          VARCHAR(60)     DEFAULT NULL COMMENT '模板类别(SALES/PURCHASE/SERVICE/RENT/OTHER)',
+  content           LONGTEXT        NOT NULL COMMENT '模板正文HTML(支持{{partyA}}等占位符)',
+  variables         JSON            DEFAULT NULL COMMENT '变量定义 [{code,name,type,required,defaultValue}]',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
+  usage_count       INT(11)         DEFAULT 0 COMMENT '使用次数(被合同引用次数)',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_contract_template_code (tenant_id, template_code),
+  KEY idx_contract_template_category (tenant_id, category, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA合同模板';
+
+-- 注：oa_contract.template_id / idx_contract_template 已内嵌在 oa_contract CREATE 中
+
+-- =========================================================
+-- OA-P0-3 费用标准(超标审批分支)
+-- =========================================================
+DROP TABLE IF EXISTS oa_expense_standard;
+CREATE TABLE oa_expense_standard (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  standard_code     VARCHAR(60)     NOT NULL COMMENT '标准编码',
+  standard_name     VARCHAR(200)    NOT NULL COMMENT '标准名称',
+  job_level         VARCHAR(60)     DEFAULT NULL COMMENT '职级(为空表示通用)',
+  category          VARCHAR(30)     NOT NULL COMMENT '报销类别(TRAVEL/OFFICE/ENTERTAIN/TRANSPORT/OTHER)',
+  city_tier         VARCHAR(30)     DEFAULT NULL COMMENT '城市等级(TIER1/TIER2/TIER3/ANY)',
+  limit_amount      DECIMAL(12,2)   NOT NULL DEFAULT 0.00 COMMENT '限额(单次)',
+  limit_currency    VARCHAR(10)     DEFAULT 'CNY' COMMENT '币种',
+  limit_period      VARCHAR(20)     DEFAULT 'PER_CLAIM' COMMENT '限额周期(PER_CLAIM/PER_DAY/PER_MONTH)',
+  status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_expense_standard_code (tenant_id, standard_code),
+  KEY idx_expense_standard_match (tenant_id, category, job_level, city_tier, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA报销费用标准';
+
+-- 注：biz_expense_claim.exceeded_* 已内嵌在 biz_expense_claim CREATE 中
+
+-- =========================================================
+-- OA-P1-1 合同履约里程碑 + 付款计划
+-- =========================================================
+DROP TABLE IF EXISTS oa_contract_milestone;
+CREATE TABLE oa_contract_milestone (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  contract_id       BIGINT(20)      NOT NULL COMMENT '关联合同ID oa_contract.id',
+  milestone_no      INT(11)         NOT NULL DEFAULT 1 COMMENT '里程碑序号(展示用)',
+  milestone_name    VARCHAR(200)    NOT NULL COMMENT '里程碑名称',
+  milestone_type    VARCHAR(30)     NOT NULL DEFAULT 'DELIVERY' COMMENT '类型(DELIVERY交付/PAYMENT付款/ACCEPTANCE验收/OTHER其他)',
+  planned_date      DATE            DEFAULT NULL COMMENT '计划完成日期',
+  actual_date       DATE            DEFAULT NULL COMMENT '实际完成日期',
+  amount            DECIMAL(18,2)   DEFAULT NULL COMMENT '里程碑金额(可选)',
+  status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态(PENDING待开始/IN_PROGRESS进行中/DONE已完成/OVERDUE逾期/CANCELLED已取消)',
+  owner_id          BIGINT(20)      DEFAULT NULL COMMENT '负责人ID',
+  owner_name        VARCHAR(100)    DEFAULT NULL COMMENT '负责人姓名',
+  completion_remark VARCHAR(500)    DEFAULT NULL COMMENT '完成备注',
+  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_contract_milestone_contract (tenant_id, contract_id, status),
+  KEY idx_contract_milestone_planned (tenant_id, planned_date, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA合同履约里程碑';
+
+DROP TABLE IF EXISTS oa_contract_payment_schedule;
+CREATE TABLE oa_contract_payment_schedule (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  contract_id       BIGINT(20)      NOT NULL COMMENT '关联合同ID',
+  milestone_id      BIGINT(20)      DEFAULT NULL COMMENT '关联里程碑ID(可空)',
+  payment_no        INT(11)         NOT NULL DEFAULT 1 COMMENT '付款序号',
+  payment_name      VARCHAR(200)    NOT NULL COMMENT '付款节点名称',
+  plan_date         DATE            NOT NULL COMMENT '计划付款日期',
+  actual_date       DATE            DEFAULT NULL COMMENT '实际付款日期',
+  amount            DECIMAL(18,2)   NOT NULL COMMENT '应付金额',
+  actual_amount     DECIMAL(18,2)   DEFAULT NULL COMMENT '实际付款金额',
+  currency          VARCHAR(10)     DEFAULT 'CNY' COMMENT '币种',
+  payee_id          BIGINT(20)      DEFAULT NULL COMMENT '收款方ID',
+  payee_name        VARCHAR(200)    DEFAULT NULL COMMENT '收款方名称',
+  status            VARCHAR(20)     DEFAULT 'PENDING' COMMENT '状态(PENDING待付/PAID已付/OVERDUE逾期/CANCELLED已取消)',
+  invoice_id        BIGINT(20)      DEFAULT NULL COMMENT '关联发票ID(可空)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_contract_payment_contract (tenant_id, contract_id, status),
+  KEY idx_contract_payment_plan (tenant_id, plan_date, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA合同付款计划';
+
+-- =========================================================
+-- OA-P1-2 会议纪要 + 出席记录
+-- =========================================================
+DROP TABLE IF EXISTS oa_meeting_minutes;
+CREATE TABLE oa_meeting_minutes (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  meeting_id        BIGINT(20)      DEFAULT NULL COMMENT '会议ID(关联 sys_schedule 等)',
+  meeting_title     VARCHAR(200)    DEFAULT NULL COMMENT '会议标题',
+  meeting_time      DATETIME        DEFAULT NULL COMMENT '会议时间',
+  location          VARCHAR(200)    DEFAULT NULL COMMENT '会议地点/会议室',
+  organizer_id      BIGINT(20)      DEFAULT NULL COMMENT '召集人ID',
+  organizer_name    VARCHAR(100)    DEFAULT NULL COMMENT '召集人姓名',
+  minutes_content   MEDIUMTEXT      DEFAULT NULL COMMENT '纪要正文(富文本HTML)',
+  decisions         JSON            DEFAULT NULL COMMENT '决议项 [{title,owner,deadline,workTaskId}]',
+  attachment_url    VARCHAR(500)    DEFAULT NULL COMMENT '附件URL列表(逗号分隔)',
+  status            VARCHAR(20)     DEFAULT 'DRAFT' COMMENT '状态(DRAFT/CONFIRMED)',
+  confirmed_time    DATETIME        DEFAULT NULL COMMENT '确认时间',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_meeting_minutes_meeting (tenant_id, meeting_id),
+  KEY idx_meeting_minutes_status (tenant_id, status, meeting_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA会议纪要';
+
+DROP TABLE IF EXISTS oa_meeting_attendance;
+CREATE TABLE oa_meeting_attendance (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  minutes_id        BIGINT(20)      NOT NULL COMMENT '关联会议纪要ID',
+  meeting_id        BIGINT(20)      DEFAULT NULL COMMENT '关联会议ID(冗余便于查询)',
+  user_id           BIGINT(20)      NOT NULL COMMENT '参会人员ID',
+  user_name         VARCHAR(100)    DEFAULT NULL COMMENT '参会人员姓名',
+  attend_status     VARCHAR(20)     DEFAULT 'NOT_CHECKED' COMMENT '出席状态(ATTEND已出席/ABSENT缺席/LATE迟到/LEAVE请假/NOT_CHECKED未签到)',
+  check_in_time     DATETIME        DEFAULT NULL COMMENT '签到时间',
+  remark            VARCHAR(200)    DEFAULT NULL COMMENT '备注',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_meeting_attendance_minutes_user (minutes_id, user_id),
+  KEY idx_meeting_attendance_user (tenant_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA会议出席记录';
+
+-- =========================================================
+-- OA-P1-3 知识库文档模板
+-- =========================================================
+DROP TABLE IF EXISTS oa_knowledge_template;
+CREATE TABLE oa_knowledge_template (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  template_code     VARCHAR(60)     NOT NULL COMMENT '模板编码',
+  template_name     VARCHAR(200)    NOT NULL COMMENT '模板名称',
+  category          VARCHAR(60)     DEFAULT NULL COMMENT '分类(MEETING会议纪要/WEEKLY周报/REVIEW复盘/POLICY制度/OTHER)',
+  summary           VARCHAR(500)    DEFAULT NULL COMMENT '模板摘要',
+  content           MEDIUMTEXT      DEFAULT NULL COMMENT '模板正文(富文本HTML)',
+  cover_url         VARCHAR(500)    DEFAULT NULL COMMENT '封面图URL',
+  status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
+  usage_count       INT(11)         DEFAULT 0 COMMENT '使用次数',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_knowledge_template_code (tenant_id, template_code),
+  KEY idx_knowledge_template_category (tenant_id, category, status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA知识库文档模板';
 
 SET FOREIGN_KEY_CHECKS = 1;
 

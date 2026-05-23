@@ -7,6 +7,7 @@ import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.KnowledgeDocument;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
+import com.cloudflow.oa.service.IKnowledgeVersionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,6 +20,7 @@ import java.time.LocalDateTime;
 public class KnowledgeApprovalHandler implements ApprovalResultHandler {
 
     private final KnowledgeDocumentMapper knowledgeDocumentMapper;
+    private final IKnowledgeVersionService knowledgeVersionService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -35,6 +37,17 @@ public class KnowledgeApprovalHandler implements ApprovalResultHandler {
                 .set(KnowledgeDocument::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(KnowledgeDocument::getUpdateTime, LocalDateTime.now());
         updateStatus(dto, wrapper, "PUBLISHED");
+
+        // OA-P0-1 发布即生成版本快照
+        try {
+            KnowledgeDocument document = knowledgeDocumentMapper.selectById(dto.getBusinessId());
+            if (document != null) {
+                knowledgeVersionService.snapshot(document, "审批通过发布");
+            }
+        } catch (Exception e) {
+            log.warn("知识库版本快照生成失败(发布回写已成功): businessId={}, err={}",
+                    dto.getBusinessId(), e.getMessage());
+        }
     }
 
     @Override

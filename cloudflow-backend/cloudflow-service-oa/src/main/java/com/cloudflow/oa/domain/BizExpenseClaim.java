@@ -79,6 +79,15 @@ public class BizExpenseClaim implements Serializable {
     /** 发票汇总状态 */
     private String invoiceStatus;
 
+    /** OA-P0-3 是否超标(0=否/1=是) */
+    private Integer exceededStandard;
+
+    /** OA-P0-3 超标金额 */
+    private BigDecimal exceededAmount;
+
+    /** OA-P0-3 超标明细 JSON, 形如 [{itemId,category,city,standardLimit,actualAmount,exceededAmount}] */
+    private String exceededDetail;
+
     /** 删除标志 */
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;

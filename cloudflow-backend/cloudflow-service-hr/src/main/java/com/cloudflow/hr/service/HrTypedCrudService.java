@@ -131,6 +131,7 @@ public class HrTypedCrudService {
         TableInfo tableInfo = tableInfo(entityClass);
         assertWriteAllowed(tableInfo.getTableName());
         T entity = objectMapper.convertValue(payload, entityClass);
+        applyCompGradeAutoFill(entity, tableInfo);
         applyCreateDefaults(entity, tableInfo);
         mapper.insert(entity);
         Long createdId = extractId(entity, tableInfo);
@@ -353,6 +354,83 @@ public class HrTypedCrudService {
         }
         if (tableInfo.getKeyColumn() != null) {
             wrapper.orderByDesc(tableInfo.getKeyColumn());
+        }
+    }
+
+    /**
+     * P2 薪酬套改: 新增 hr_employee_comp 时, 若 gradeId 或 totalSalary 留空,
+     * 按 hr_employee.position_id -> hr_position.level_id -> hr_comp_grade 套用默认区间(mid_salary).
+     * HR 仍可手动覆盖, 不强制锁死.
+     */
+    private <T> void applyCompGradeAutoFill(T entity, TableInfo tableInfo) {
+        if (!"hr_employee_comp".equals(tableInfo.getTableName())) {
+            return;
+        }
+        Long employeeId = (Long) readProperty(entity, "employeeId");
+        if (employeeId == null) {
+            return;
+        }
+        Long tenantId = currentTenantId();
+        try {
+            Map<String, Object> employee = jdbcTemplate.queryForMap(
+                    "SELECT position_id FROM hr_employee WHERE id = ? AND tenant_id = ? AND deleted = 0",
+                    employeeId, tenantId);
+            Object positionIdObj = employee.get("position_id");
+            if (positionIdObj == null) {
+                return;
+            }
+            Map<String, Object> position = jdbcTemplate.queryForMap(
+                    "SELECT level_id FROM hr_position WHERE id = ? AND tenant_id = ? AND deleted = 0",
+                    ((Number) positionIdObj).longValue(), tenantId);
+            Object levelIdObj = position.get("level_id");
+            if (levelIdObj == null) {
+                return;
+            }
+            List<Map<String, Object>> grades = jdbcTemplate.queryForList(
+                    "SELECT id, mid_salary FROM hr_comp_grade WHERE level_id = ? AND tenant_id = ? AND status = 1 ORDER BY id ASC LIMIT 1",
+                    ((Number) levelIdObj).longValue(), tenantId);
+            if (grades.isEmpty()) {
+                return;
+            }
+            Map<String, Object> grade = grades.get(0);
+            Long gradeId = ((Number) grade.get("id")).longValue();
+            if (readProperty(entity, "gradeId") == null) {
+                writeProperty(entity, "gradeId", gradeId);
+            }
+            if (readProperty(entity, "totalSalaryText") == null) {
+                Object midSalaryText = grade.get("mid_salary");
+                if (midSalaryText != null) {
+                    writeProperty(entity, "totalSalaryText", midSalaryText.toString());
+                }
+            }
+        } catch (Exception ex) {
+            // 套改失败不阻断主流程, HR 仍可手动填写
+        }
+    }
+
+    private Object readProperty(Object entity, String propertyName) {
+        try {
+            Field field = findField(entity.getClass(), propertyName);
+            if (field == null) {
+                return null;
+            }
+            field.setAccessible(true);
+            return field.get(entity);
+        } catch (IllegalAccessException ex) {
+            return null;
+        }
+    }
+
+    private void writeProperty(Object entity, String propertyName, Object value) {
+        try {
+            Field field = findField(entity.getClass(), propertyName);
+            if (field == null) {
+                return;
+            }
+            field.setAccessible(true);
+            field.set(entity, value);
+        } catch (IllegalAccessException ex) {
+            // ignore
         }
     }
 

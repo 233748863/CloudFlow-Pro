@@ -951,6 +951,20 @@ export const ExpenseClaimPage: React.FC = () => {
           <InlineState title="正在加载报销详情..." className="py-12" icon={<Clock3 className="h-4 w-4 animate-spin" />} />
         ) : detailClaim ? (
           <>
+            {detailClaim.exceededStandard ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+                <div className="font-medium">超标提示</div>
+                <div className="mt-1 text-xs">
+                  超出标准合计 {formatAmount(detailClaim.exceededAmount || 0)}，已触发上级追加审批。
+                </div>
+                {detailClaim.exceededDetail ? (
+                  <pre className="mt-2 max-h-32 overflow-auto rounded bg-amber-100/60 p-2 text-[11px] dark:bg-amber-900/30">
+                    {detailClaim.exceededDetail}
+                  </pre>
+                ) : null}
+              </div>
+            ) : null}
+
             <DetailRows>
               <DetailRow label="申请人" value={renderDetailValue(detailClaim.userName)} />
               <DetailRow label="所属部门" value={renderDetailValue(detailClaim.deptName)} />
