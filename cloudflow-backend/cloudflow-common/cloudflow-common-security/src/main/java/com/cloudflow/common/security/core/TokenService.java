@@ -196,6 +196,32 @@ public class TokenService {
     }
 
     /**
+     * 主动续期 Token 至完整 expiration 周期（P2-1 滑动续签）。
+     *
+     * verifyToken 已在剩余时间低于 refreshTime 阈值时自动调用 renewTimeout；
+     * 本方法面向需要显式 /auth/refresh 等场景：调用方可主动延长有效期。
+     *
+     * @return 续期后剩余秒数；Token 不存在或已过期返回 -2
+     */
+    public long renewToken(String token) {
+        String rawToken = normalizeToken(token);
+        if (!StringUtils.hasText(rawToken)) {
+            return -2L;
+        }
+        try {
+            Object loginId = StpUtil.getLoginIdByToken(rawToken);
+            if (loginId == null) {
+                return -2L;
+            }
+            long timeoutSeconds = getExpiration() * SECONDS_PER_MINUTE;
+            StpUtil.renewTimeout(rawToken, timeoutSeconds);
+            return StpUtil.getTokenTimeout(rawToken);
+        } catch (Exception ignored) {
+            return -2L;
+        }
+    }
+
+    /**
      * 搜索在线 Token 列表。
      */
     public List<String> searchTokenValue(String keyword, int start, int size, boolean sortType) {

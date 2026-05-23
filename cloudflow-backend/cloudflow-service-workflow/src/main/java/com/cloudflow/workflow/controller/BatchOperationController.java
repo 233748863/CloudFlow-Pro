@@ -13,10 +13,7 @@ import com.cloudflow.workflow.service.IArchiveService;
 import com.cloudflow.workflow.util.SafetyChecker;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
-import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -54,7 +51,7 @@ public class BatchOperationController {
      * 批量归档流程（管理员权限）。
      */
     @PostMapping("/archive")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:batch:manage")
     public R<BatchOperationResultDTO> archiveWorkflows(@RequestBody BatchArchiveRequest request) {
         log.info("批量归档流程: workflowIds={}, reason={}", request.getWorkflowIds(), request.getReason());
 
@@ -78,7 +75,7 @@ public class BatchOperationController {
      * 获取归档流程列表（管理员权限）。
      */
     @GetMapping("/archived")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:batch:manage")
     public R<Page<ArchivedWorkflowDTO>> listArchivedWorkflows(
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String archivedAfter,
@@ -114,7 +111,7 @@ public class BatchOperationController {
      * 批量恢复归档流程（管理员权限）。
      */
     @PostMapping("/restore")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:batch:manage")
     public R<BatchOperationResultDTO> restoreWorkflows(@RequestBody BatchRestoreRequest request) {
         log.info("批量恢复归档流程: workflowIds={}", request.getWorkflowIds());
 
@@ -131,7 +128,7 @@ public class BatchOperationController {
      * 永久删除流程（管理员权限）。
      */
     @DeleteMapping("/permanent")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:batch:manage")
     public R<BatchOperationResultDTO> permanentDeleteWorkflows(@RequestBody BatchDeleteRequest request) {
         log.info("永久删除流程: workflowIds={}, confirmed={}",
             request.getWorkflowIds(), request.getConfirmed());
@@ -153,7 +150,7 @@ public class BatchOperationController {
      * 检查流程是否可以安全归档/删除。
      */
     @PostMapping("/check-safety")
-    @SaCheckRole("admin")
+    @SaCheckPermission("workflow:batch:manage")
     public R<SafetyCheckResultDTO> checkOperationSafety(@RequestBody BatchIdsRequest request) {
         List<String> workflowIds = request != null ? request.getWorkflowIds() : null;
         log.info("安全检查: workflowIds={}", workflowIds);

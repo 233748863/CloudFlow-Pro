@@ -5,7 +5,7 @@ import { User } from '@/types';
 import { getInfo, logout as logoutApi, switchTenant as switchTenantApi, type UserInfo } from '@/services/api/auth';
 import { logger } from '@/utils/logger';
 import { clearAuthSession } from '@/utils/sessionCleanup';
-import { setAuthToken, setStoredAuthUser } from '@/utils/authStorage';
+import { setAuthToken, setCurrentUserSnapshot } from '@/utils/authStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -67,7 +67,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         if (userInfo) {
           const currentUser = buildAuthUser(userInfo);
           setUser(currentUser);
-          setStoredAuthUser(currentUser);
+          setCurrentUserSnapshot(currentUser);
         }
       } catch (error) {
         logger.error('Failed to get user info:', error);
@@ -86,7 +86,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (userInfo) {
         const currentUser = buildAuthUser(userInfo);
         setUser(currentUser);
-        setStoredAuthUser(currentUser);
+        setCurrentUserSnapshot(currentUser);
         return currentUser;
       }
       return null;
@@ -103,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return prev;
       }
       const nextUser = { ...prev, forcePasswordChange: false };
-      setStoredAuthUser(nextUser);
+      setCurrentUserSnapshot(nextUser);
       return nextUser;
     });
   };
@@ -135,13 +135,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (userInfo) {
         const updatedUser = buildAuthUser(userInfo);
         setUser(updatedUser);
-        setStoredAuthUser(updatedUser);
+        setCurrentUserSnapshot(updatedUser);
         toast.success(`已切换到${updatedUser.tenantName || `租户 ${tenantId}`}`);
       } else {
         toast.success(`已切换到租户 ${tenantId}`);
       }
-
-      window.location.reload();
+      // P2-1：取消 window.location.reload() 全页刷新，React Context 已更新即可触发树重渲染
     } catch (error) {
       logger.error('租户切换失败:', error);
       toast.error('租户切换失败，请重试');

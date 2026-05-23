@@ -32,6 +32,13 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- WebSocket（provided，AbstractTokenHandshakeInterceptor 模板需要 HandshakeInterceptor） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-actuator-autoconfigure</artifactId>

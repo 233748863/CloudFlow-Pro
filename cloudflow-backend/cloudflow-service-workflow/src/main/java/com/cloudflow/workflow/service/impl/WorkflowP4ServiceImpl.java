@@ -3,12 +3,14 @@ package com.cloudflow.workflow.service.impl;
 import com.cloudflow.workflow.service.IWorkflowP4Service;
 
 import java.time.LocalDateTime;
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.workflow.config.WorkflowTaskSecurityProperties;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.exception.WorkflowException;
@@ -52,6 +54,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     @Autowired private TaskMonitorMapper taskMonitorMapper;
     @Autowired private com.cloudflow.workflow.service.monitor.IProcessMonitorService processMonitorService;
     @Autowired private RedissonClient redissonClient;
+    @Autowired private WorkflowTaskSecurityProperties taskSecurityProperties;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -1051,10 +1054,34 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
 
     private void assertTaskAccess(WfTask task, Long operatorId, String operation) {
         assertTaskTenantAccess(task, operation);
-        if (task != null && operatorId != null && !Objects.equals(task.getAssignee(), operatorId)) {
+        if (task == null || operatorId == null) {
+            return;
+        }
+        // 严格模式开关关闭：跳过办理人归属校验，仅由 Controller 层 @SaCheckPermission 兜底
+        if (taskSecurityProperties != null && !taskSecurityProperties.isStrictOwner()) {
+            return;
+        }
+        // 持有跨人操作权限码（如 admin 的 workflow:task:override）：直接放行
+        if (taskSecurityProperties != null && hasOverridePermission(taskSecurityProperties.getOverridePermission())) {
+            log.info("[{}] 操作人持有跨人操作权限, 放行, taskId={}, operatorId={}", operation, task.getTaskId(), operatorId);
+            return;
+        }
+        if (!Objects.equals(task.getAssignee(), operatorId)) {
             log.warn("[{}] 操作人不匹配, taskId={}, operatorId={}, assignee={}",
                     operation, task.getTaskId(), operatorId, task.getAssignee());
             throw WorkflowException.permissionDenied(operation);
+        }
+    }
+
+    private boolean hasOverridePermission(String permission) {
+        if (permission == null || permission.isBlank()) {
+            return false;
+        }
+        try {
+            return StpUtil.hasPermission(permission);
+        } catch (Exception ex) {
+            // 非 HTTP 上下文（定时任务、内调）下 Sa-Token 会话不可用，不算持有跨人权限
+            return false;
         }
     }
 

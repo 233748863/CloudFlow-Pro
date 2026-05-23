@@ -1,4 +1,4 @@
-import { removeAuthToken, removeStoredAuthUser } from '@/utils/authStorage';
+import { removeAuthToken, clearCurrentUserSnapshot } from '@/utils/authStorage';
 
 const SESSION_CACHE_PREFIXES = ['cloudflow_pro_api_cache_'];
 
@@ -17,6 +17,6 @@ export const clearSessionCaches = (): void => {
 
 export const clearAuthSession = (): void => {
   removeAuthToken();
-  removeStoredAuthUser();
+  clearCurrentUserSnapshot();
   clearSessionCaches();
 };

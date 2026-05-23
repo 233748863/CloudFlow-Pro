@@ -1,6 +1,6 @@
 package com.cloudflow.workflow.controller;
 
-import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
 @RestController
 @RequestMapping("/wf/callback/dlq")
 @RequiredArgsConstructor
-@SaCheckRole("admin")
+@SaCheckPermission("workflow:callback:admin")
 public class CallbackDlqAdminController {
 
     private final WfCallbackDeadLetterMapper deadLetterMapper;

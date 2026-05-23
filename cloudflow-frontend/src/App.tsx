@@ -9,6 +9,11 @@ import { router } from './router';
 import { restoreUnlockedBodyScroll } from './utils/bodyScrollLock';
 import { queryClient } from './lib/queryClient';
 import { subscribeWsTopic, unsubscribeWsTopic } from './hooks/useWebSocket';
+import { setNavigator } from './utils/navigation';
+
+setNavigator((to, opts) => {
+  void router.navigate(to, { replace: opts?.replace });
+});
 
 function AppInner() {
   useEffect(() => {

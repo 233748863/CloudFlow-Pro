@@ -10,7 +10,7 @@ import { NodeType, WorkflowGraphDefinition } from '../types';
 import { toast } from 'sonner';
 import { BellRing } from 'lucide-react';
 import { parseWorkflowGraphDefinition } from '../utils/workflowGraph';
-import { getStoredAuthUser } from '@/utils/authStorage';
+import { getCurrentUserSnapshot } from '@/utils/authStorage';
 
 interface ProcessTraceProps {
   instanceId: string;
@@ -139,22 +139,11 @@ const getCurrentUserId = () => {
   if (typeof window === 'undefined') {
     return null;
   }
-
-  try {
-    const rawUser = getStoredAuthUser();
-    if (!rawUser) {
-      return null;
-    }
-
-    const parsedUser = JSON.parse(rawUser) as { id?: string | number };
-    if (parsedUser.id === undefined || parsedUser.id === null) {
-      return null;
-    }
-
-    return String(parsedUser.id);
-  } catch {
+  const user = getCurrentUserSnapshot();
+  if (!user || user.id == null) {
     return null;
   }
+  return String(user.id);
 };
 
 export const ProcessTrace = ({ instanceId, onClose, variant = 'default' }: ProcessTraceProps) => {

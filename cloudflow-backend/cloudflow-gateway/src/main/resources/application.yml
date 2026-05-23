@@ -157,6 +157,18 @@ cloudflow:
     token:
       expiration: 1440
       refresh-time: 20
+  gateway:
+    auth:
+      # 网关认证白名单（P2-2：配置化，支持 Nacos 动态刷新）
+      # 留空时回退到 GatewayAuthProperties.DEFAULT_WHITELIST 兜底，确保登录链路始终可用
+      whitelist:
+        - /auth/login
+        - /auth/register
+        - /auth/tenant/options
+        - /auth/captcha/**
+        - /oa/announcement/public
+        - /oa/announcement/public/**
+        - /ws/**
 
 sa-token:
   token-name: Authorization

@@ -2,6 +2,7 @@ package com.cloudflow.gateway.filter;
 
 import com.cloudflow.common.core.constant.SecurityConstants;
 import com.cloudflow.common.security.core.TokenService;
+import com.cloudflow.gateway.config.GatewayAuthProperties;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -17,7 +18,6 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -28,6 +28,7 @@ import java.util.Map;
  * - 网关只负责校验 Bearer Token 是否有效
  * - 下游服务统一从 Authorization 头读取原始 Token，并通过 Sa-Token / Redis 还原登录态
  * - 清理旧版 X-Auth-Token、X-User-* 透传头，避免伪造和链路歧义
+ * - P2-2：白名单改为读 GatewayAuthProperties，支持 Nacos 动态刷新
  *
  * @author CloudFlow
  */
@@ -35,27 +36,20 @@ import java.util.Map;
 public class AuthFilter implements GlobalFilter, Ordered {
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
-    
+
     @Autowired
     private TokenService tokenService;
 
-    // 白名单（WebSocket 认证由下游服务的 HandshakeInterceptor 处理，网关放行）
-    private final List<String> whiteList = Arrays.asList(
-            "/auth/login",
-            "/auth/register",
-            "/auth/tenant/options",
-            "/auth/captcha/**",
-            "/oa/announcement/public",
-            "/oa/announcement/public/**",
-            "/ws/**"
-    );
+    @Autowired
+    private GatewayAuthProperties authProperties;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
 
-        // 跳过白名单
+        // 跳过白名单（每次取最新生效配置，支持 Nacos @RefreshScope 动态刷新）
+        List<String> whiteList = authProperties.effectiveWhitelist();
         for (String url : whiteList) {
             if (pathMatcher.match(url, path)) {
                 return chain.filter(exchange);

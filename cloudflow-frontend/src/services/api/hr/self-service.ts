@@ -1,21 +1,14 @@
-import { getStoredAuthUser } from '@/utils/authStorage';
+import { getCurrentUserSnapshot } from '@/utils/authStorage';
 import { getCurrentHrEmployee, listEmployees } from './employee';
 import type { HrEmployee } from './types';
 
 const employeeResolverMap = new Map<string, Promise<HrEmployee>>();
 
-const readStoredUser = (): Record<string, unknown> | null => {
-  try {
-    const raw = getStoredAuthUser();
-    return raw ? (JSON.parse(raw) as Record<string, unknown>) : null;
-  } catch {
-    return null;
-  }
-};
+const readStoredUser = () => getCurrentUserSnapshot();
 
 const readStoredUserId = () => {
   const storedUser = readStoredUser();
-  return storedUser?.id ?? storedUser?.userId ?? storedUser?.user_id;
+  return storedUser?.id ?? storedUser?.userId;
 };
 
 const getCurrentUserId = (userId?: number | string) => {

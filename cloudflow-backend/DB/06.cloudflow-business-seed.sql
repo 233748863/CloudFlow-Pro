@@ -1640,6 +1640,12 @@ INSERT IGNORE INTO cloud_flow_db.sys_menu VALUES
 (1096, '仲裁维护',       765,  1, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:arbitration:edit',   '#', 'admin', NOW(), '', NULL, '仲裁记录维护权限'),
 (1097, '裁决登记',       765,  2, '', NULL, NULL, 0, 0, 'F', '1', '0', 'hr:dispute:arbitration:award',  '#', 'admin', NOW(), '', NULL, '裁决结果登记权限');
 
+-- Workflow 治理按钮权限（P0-1 / P0-2 注解统一收口新增）
+INSERT IGNORE INTO cloud_flow_db.sys_menu VALUES
+(1098, '流程批量管理', 404, 10, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:batch:manage',    '#', 'admin', NOW(), '', NULL, '流程批量归档/恢复/永久删除/安全检查权限（原 @SaCheckRole admin 收口为权限码）'),
+(1099, '回调死信管理', 401,  9, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:callback:admin',  '#', 'admin', NOW(), '', NULL, '工作流回调死信查看/重放/忽略权限（原 @SaCheckRole admin 收口为权限码）'),
+(1100, '任务办理人覆盖', 302, 8, '', NULL, NULL, 0, 0, 'F', '1', '0', 'workflow:task:override',  '#', 'admin', NOW(), '', NULL, 'admin 跳过办理人归属校验，加签/减签/委派他人任务（P0-2 strictOwner 兜底）');
+
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 7, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 720, 100000);
 INSERT IGNORE INTO cloud_flow_db.sys_role_menu VALUES(1, 721, 100000);

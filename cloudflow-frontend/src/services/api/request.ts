@@ -3,7 +3,8 @@ import { toast } from 'sonner';
 import { API_TIMEOUT, API_SUCCESS_CODE } from '@/constants/api';
 import { handleApiError, ApiErrorResponse } from '@/utils/errorHandler';
 import { clearAuthSession } from '@/utils/sessionCleanup';
-import { getStoredAuthUser } from '@/utils/authStorage';
+import { getCurrentUserSnapshot } from '@/utils/authStorage';
+import { navigateTo } from '@/utils/navigation';
 
 const appBasePath = import.meta.env.BASE_URL === '/'
   ? ''
@@ -28,16 +29,8 @@ function getResponseErrorMessage(data: unknown, fallback = '网络请求失败')
 }
 
 function isForcePasswordChangeUser() {
-  try {
-    const userStr = getStoredAuthUser();
-    if (!userStr) {
-      return false;
-    }
-    const user = JSON.parse(userStr) as { forcePasswordChange?: boolean };
-    return Boolean(user.forcePasswordChange);
-  } catch {
-    return false;
-  }
+  const user = getCurrentUserSnapshot();
+  return Boolean(user?.forcePasswordChange);
 }
 
 // 扩展 AxiosRequestConfig 以支持静默模式
@@ -156,18 +149,10 @@ request.interceptors.request.use(
 
     // Token 通过 httpOnly cookie 自动携带，无需手动设置 Authorization header
 
-    // 从 localStorage 获取 tenantId 并添加到请求头
-    try {
-      const userStr = getStoredAuthUser();
-      if (userStr) {
-        const user = JSON.parse(userStr);
-        if (user.tenantId) {
-          config.headers['X-Tenant-Id'] = String(user.tenantId);
-        }
-      }
-    } catch (e) {
-      // 如果解析失败，忽略错误，不添加 X-Tenant-Id 头
-      console.warn('Failed to parse user info from localStorage:', e);
+    // 从 AuthContext 维护的 in-memory 快照取 tenantId 并添加到请求头
+    const user = getCurrentUserSnapshot();
+    if (user?.tenantId != null) {
+      config.headers['X-Tenant-Id'] = String(user.tenantId);
     }
 
     return config;
@@ -241,12 +226,11 @@ request.interceptors.response.use(
          return Promise.reject(new Error('登录态校验中，请先完成密码修改'));
        }
        toast.error('登录已过期，请重新登录');
-       // 清除认证信息和会话缓存，并跳转登录页
+       // 清除认证信息和会话缓存，并跳转登录页（P2-1: SPA 软跳转替代 window.location.href，避免全页刷新清空 React 状态）
        clearAuthSession();
-       // 使用 window.location.href 强制跳转，确保状态重置
        const loginPath = `${appBasePath}/login`;
        if (window.location.pathname !== loginPath) {
-           window.location.href = loginPath;
+           navigateTo(loginPath, { replace: true });
        }
     } else if (error.response && error.response.status === 503) {
        // 服务不可用 - 微服务未启动，静默处理不弹 toast
