@@ -169,7 +169,7 @@ const DashboardMetricTile = ({
   hint?: string;
   valueClassName?: string;
 }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+  <div className="cf-section-card px-4 py-4">
     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
     <div className={`mt-2 text-2xl font-semibold tracking-tight tabular-nums ${valueClassName}`}>{value}</div>
     {hint ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{hint}</div> : null}
@@ -185,7 +185,7 @@ const DashboardFocusItem = ({
   title: string;
   meta?: string;
 }) => (
-  <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+  <div className="cf-section-card px-4 py-4">
     <div className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</div>
     <div className="mt-2 text-sm font-medium text-slate-900 dark:text-white">{title}</div>
     {meta ? <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{meta}</div> : null}
@@ -228,7 +228,7 @@ const DashboardSection = ({
   aside?: React.ReactNode;
   children: React.ReactNode;
 }) => (
-  <section className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+  <section className="cf-section-card p-0">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="px-5 pt-5">
         <h3 className="text-sm font-semibold text-slate-900 dark:text-white">{title}</h3>
@@ -1048,8 +1048,8 @@ export default function CrmManagementPage() {
       const focusFeedItems = [...riskFeedItems, ...todoFeedItems].slice(0, 5);
 
       return (
-        <section className="space-y-4">
-          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
+        <section className="space-y-4 animate-fade-in">
+          <div className="cf-section-card bg-mesh-gradient p-0">
             <div className="border-b border-slate-100 px-5 py-5 dark:border-slate-800">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900 dark:text-white">客户经营工作台</h2>
@@ -1109,7 +1109,7 @@ export default function CrmManagementPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                <div className="cf-section-card text-sm text-slate-600 dark:text-slate-300">
                   当前没有需要首页优先升级处理的事项。
                 </div>
               )}
@@ -1139,7 +1139,7 @@ export default function CrmManagementPage() {
                   ))}
                 </div>
               ) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300">
+                <div className="cf-section-card text-sm text-slate-600 dark:text-slate-300">
                   当前没有跨模块风险或待办。
                 </div>
               )}
@@ -1176,7 +1176,7 @@ export default function CrmManagementPage() {
                   <div className="mt-2 text-xs text-slate-500 dark:text-slate-400">预计签约 {formatDashboardDate(item.expectedSignDate)}</div>
                 </div>
               )) : (
-                <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 md:col-span-2">
+                <div className="cf-section-card text-sm text-slate-600 dark:text-slate-300 md:col-span-2">
                   当前没有阶段停滞商机。
                 </div>
               )}
@@ -1573,7 +1573,7 @@ export default function CrmManagementPage() {
   );
 
   const renderReceivableTable = () => (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/88">
+    <section className="cf-section-card">
       <div className="mb-4">
         <div className="flex items-center gap-2 text-sm font-medium"><Wallet size={16} />回款计划</div>
         <div className="mt-1 text-xs text-slate-500">主操作 = 新增回款。次操作统一放到行内。</div>
@@ -1625,7 +1625,7 @@ export default function CrmManagementPage() {
   );
 
   const renderRenewalTable = () => (
-    <section className="rounded-2xl border border-slate-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-950/88">
+    <section className="cf-section-card">
       <div className="mb-4">
         <div className="flex items-center gap-2 text-sm font-medium"><RefreshCcw size={16} />续约管理</div>
         <div className="mt-1 text-xs text-slate-500">主操作 = 新增续约。审批与编辑属于次操作，放在行内。</div>
@@ -2060,7 +2060,7 @@ export default function CrmManagementPage() {
   const currentViewLabel = tabLabelMap[tab];
   const filterBar = (
     <div className="space-y-3">
-      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white/95 px-4 py-3.5 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+      <div className="cf-filter-bar">
         <div className="flex flex-wrap items-center gap-3">
           <Input value={keyword} onChange={(e) => setKeyword(e.target.value)} placeholder="客户 / 商机 / 报价关键字" className="w-full sm:w-[280px]" />
           <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
@@ -2080,7 +2080,7 @@ export default function CrmManagementPage() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       {renderDashboard()}
 
       {tab === 'opportunity' ? (

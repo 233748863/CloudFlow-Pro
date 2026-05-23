@@ -133,10 +133,10 @@ export default function CrmLeadPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <TablePageLayout
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+          <div className="cf-filter-bar">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <Input value={leadName} onChange={(e) => { setPageNum(1); setLeadName(e.target.value); }} placeholder="线索名称" className="w-full sm:w-[220px]" />
               <Input value={companyName} onChange={(e) => { setPageNum(1); setCompanyName(e.target.value); }} placeholder="公司名称" className="w-full sm:w-[220px]" />

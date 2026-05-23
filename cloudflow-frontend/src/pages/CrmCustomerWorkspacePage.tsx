@@ -298,7 +298,7 @@ export default function CrmCustomerWorkspacePage() {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <WorkspaceHeroCard
         badge={renderHealthBadge(workspace.customer.healthLevel)}
         title={workspace.customer.customerName}

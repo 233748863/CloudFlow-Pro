@@ -139,10 +139,10 @@ export default function CrmSalesTargetPage() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 animate-fade-in">
       <TablePageLayout
         filters={(
-          <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+          <div className="cf-filter-bar">
             <div className="flex flex-1 flex-wrap items-center gap-3">
               <Input value={targetName} onChange={(e) => { setPageNum(1); setTargetName(e.target.value); }} placeholder="目标名称" className="w-full sm:w-[220px]" />
               <div className="w-full sm:w-[160px]">
