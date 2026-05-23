@@ -41,6 +41,15 @@ public interface IOaBudgetService extends IService<OaBudgetPlan> {
                        Long deptId, String deptName, Long projectId, String projectName,
                        String subjectCode, String subjectName, java.math.BigDecimal amount, String remark);
 
+    /**
+     * OA-P0-2 预占预算并在命中 BLOCK 阈值时返回超额信息而非抛异常,
+     * 让上层流程动态追加 CFO 特批节点。
+     */
+    BudgetReserveResult reserveBudgetWithFallback(String businessType, Long businessId, String businessNo,
+                                                  Long deptId, String deptName, Long projectId, String projectName,
+                                                  String subjectCode, String subjectName,
+                                                  java.math.BigDecimal amount, String remark);
+
     void releaseBudget(String businessType, Long businessId, String businessNo,
                        Long deptId, String deptName, Long projectId, String projectName,
                        String subjectCode, String subjectName, java.math.BigDecimal amount, String remark);

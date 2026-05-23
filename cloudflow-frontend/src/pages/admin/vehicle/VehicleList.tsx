@@ -47,6 +47,8 @@ import {
   deleteVehicle,
   getVehicleList,
   getVehicleProfile,
+  getFuelLogList,
+  type VehicleFuelLog,
   getVehicleStats,
   SysVehicle,
   updateVehicle,
@@ -250,6 +252,7 @@ const VehicleList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailProfile, setDetailProfile] = useState<VehicleProfile | null>(null);
+  const [detailFuelLogs, setDetailFuelLogs] = useState<VehicleFuelLog[]>([]);
   const [query, setQuery] = useState({
     pageNum: 1,
     pageSize: 10,
@@ -292,9 +295,16 @@ const VehicleList: React.FC = () => {
     setDetailLoading(true);
     try {
       setDetailProfile(await getVehicleProfile(vehicleId));
+      try {
+        const fuelPage = await getFuelLogList({ vehicleId, pageNum: 1, pageSize: 10 });
+        setDetailFuelLogs(Array.isArray(fuelPage?.records) ? fuelPage.records : []);
+      } catch {
+        setDetailFuelLogs([]);
+      }
     } catch (error) {
       toast.error(getErrorMessage(error, '加载车辆运营详情失败'));
       setDetailProfile(null);
+      setDetailFuelLogs([]);
     } finally {
       setDetailLoading(false);
     }
@@ -908,6 +918,43 @@ const VehicleList: React.FC = () => {
                 )}
               </DetailSection>
             </div>
+
+            <DetailSection title="油耗记录 (最近 10 笔)">
+              {detailFuelLogs.length ? (
+                <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {detailFuelLogs.map((item) => (
+                    <div key={item.fuelLogId} className="grid grid-cols-2 gap-2 px-4 py-3 text-sm sm:grid-cols-5">
+                      <div>
+                        <div className="text-xs text-slate-400">日期</div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{item.fuelDate}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">加油量 / 单价</div>
+                        <div className="font-mono text-xs text-slate-700 dark:text-slate-200">
+                          {item.liters} L · ¥{item.unitPrice}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">总额</div>
+                        <div className="font-medium text-slate-900 dark:text-slate-100">{formatCurrency(Number(item.totalAmount))}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">行驶里程</div>
+                        <div className="text-xs text-slate-700 dark:text-slate-200">{item.driveDistance ?? '-'} km</div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-slate-400">百公里油耗</div>
+                        <div className="font-medium text-emerald-600 dark:text-emerald-300">
+                          {item.fuelPer100km != null ? `${item.fuelPer100km} L` : '-'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-6 text-sm text-slate-400 dark:text-slate-500">暂无油耗记录</div>
+              )}
+            </DetailSection>
 
             {detailVehicle.remark ? (
               <DetailSection title="备注">

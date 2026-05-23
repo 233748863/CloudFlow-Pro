@@ -13,6 +13,7 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrEssSupport;
+import com.cloudflow.hr.service.HrTrainingArchiveService;
 import com.cloudflow.hr.service.HrTrainingEnrollmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class HrTrainingEnrollmentServiceImpl implements HrTrainingEnrollmentServ
     private final HrTrainingSessionMapper sessionMapper;
     private final HrEssSupport essSupport;
     private final WorkflowServiceClient workflowServiceClient;
+    private final HrTrainingArchiveService archiveService;
 
     @Value("${cloudflow.hr.training.enrollment-process-key:wf_hr_training_enrollment}")
     private String processDefinitionKey;
@@ -117,6 +119,8 @@ public class HrTrainingEnrollmentServiceImpl implements HrTrainingEnrollmentServ
         enrollmentMapper.update(null, wrapper);
         log.info("培训报名已提交，enrollmentId: {}, sessionId: {}, employeeId: {}, processInstanceId: {}",
                 enrollment.getId(), sessionId, employeeId, response.getData());
+        // HR-P0-1 触发培训档案异步增量刷新
+        archiveService.incrementOnEnrollmentChange(employeeId);
         return enrollment.getId();
     }
 
@@ -166,6 +170,8 @@ public class HrTrainingEnrollmentServiceImpl implements HrTrainingEnrollmentServ
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
         enrollmentMapper.update(null, wrapper);
+        // HR-P0-1 触发培训档案异步增量刷新(完成/失败均影响累计学时与完成次数)
+        archiveService.incrementOnEnrollmentChange(enrollment.getEmployeeId());
     }
 
     @Override
@@ -191,6 +197,8 @@ public class HrTrainingEnrollmentServiceImpl implements HrTrainingEnrollmentServ
                 .set("update_time", LocalDateTime.now())
                 .set("update_by", currentUserName());
         enrollmentMapper.update(null, wrapper);
+        // HR-P0-1 触发培训档案异步增量刷新(撤销影响进行中计数)
+        archiveService.incrementOnEnrollmentChange(enrollment.getEmployeeId());
     }
 
     private HrTrainingEnrollment loadEnrollment(Long id) {

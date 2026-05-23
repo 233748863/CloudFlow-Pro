@@ -315,6 +315,28 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public com.cloudflow.oa.service.BudgetReserveResult reserveBudgetWithFallback(
+            String businessType, Long businessId, String businessNo,
+            Long deptId, String deptName, Long projectId, String projectName,
+            String subjectCode, String subjectName, BigDecimal amount, String remark) {
+        try {
+            applyBudgetOperation("RESERVE", businessType, businessId, businessNo, deptId, deptName,
+                    projectId, projectName, subjectCode, subjectName, amount, remark);
+            return com.cloudflow.oa.service.BudgetReserveResult.accepted();
+        } catch (IllegalArgumentException e) {
+            String msg = e.getMessage() == null ? "" : e.getMessage();
+            if (msg.contains("预算") || msg.contains("拦截阈值") || msg.contains("额度不足")) {
+                log.warn("预算预占受阻 businessType={} businessId={} amount={} reason={}",
+                        businessType, businessId, amount, msg);
+                return com.cloudflow.oa.service.BudgetReserveResult
+                        .rejected(amount, null, msg);
+            }
+            throw e;
+        }
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void releaseBudget(String businessType, Long businessId, String businessNo,
                               Long deptId, String deptName, Long projectId, String projectName,
                               String subjectCode, String subjectName, BigDecimal amount, String remark) {

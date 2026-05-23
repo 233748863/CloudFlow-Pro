@@ -271,6 +271,21 @@ const ApiRateLimitPage = React.lazy(() =>
     default: module.ApiRateLimitPage,
   })),
 );
+const IpAclPage = React.lazy(() =>
+  import("./pages/system/IpAclPage").then((module) => ({
+    default: module.IpAclPage,
+  })),
+);
+const UserBlacklistPage = React.lazy(() =>
+  import("./pages/system/UserBlacklistPage").then((module) => ({
+    default: module.UserBlacklistPage,
+  })),
+);
+const ContractThresholdPage = React.lazy(() =>
+  import("./pages/oa/ContractThresholdPage").then((module) => ({
+    default: module.ContractThresholdPage,
+  })),
+);
 const ProcessManagement = React.lazy(() =>
   import("./pages/admin/ProcessManagement").then((module) => ({
     default: module.ProcessManagement,
@@ -1965,6 +1980,36 @@ const desktopRoutes = [
               <PermissionRouteGuard permissions={["system:apiRateLimit:list"]}>
                 <Suspense fallback={<Loading />}>
                   <ApiRateLimitPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/system/ip-acl",
+            element: (
+              <PermissionRouteGuard permissions={["system:ipAcl:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <IpAclPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/system/user-blacklist",
+            element: (
+              <PermissionRouteGuard permissions={["system:userBlacklist:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <UserBlacklistPage />
+                </Suspense>
+              </PermissionRouteGuard>
+            ),
+          },
+          {
+            path: "/oa/contract-threshold",
+            element: (
+              <PermissionRouteGuard permissions={["oa:contract:threshold:list"]}>
+                <Suspense fallback={<Loading />}>
+                  <ContractThresholdPage />
                 </Suspense>
               </PermissionRouteGuard>
             ),

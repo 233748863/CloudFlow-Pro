@@ -88,6 +88,12 @@ public class BizExpenseClaim implements Serializable {
     /** OA-P0-3 超标明细 JSON, 形如 [{itemId,category,city,standardLimit,actualAmount,exceededAmount}] */
     private String exceededDetail;
 
+    /** OA-P0-2 是否触发预算特批(0=否/1=是) */
+    private Integer budgetExceeded;
+
+    /** OA-P0-2 超过预算的金额 */
+    private BigDecimal budgetExceededAmount;
+
     /** 删除标志 */
     @TableField(fill = FieldFill.INSERT)
     private Integer deleted;

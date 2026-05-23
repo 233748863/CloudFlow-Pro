@@ -291,3 +291,61 @@ export const getViolationList = (query: PageQuery & Partial<VehicleViolation>) =
 
 export const addViolation = (data: VehicleViolation) =>
   request.post('/oa/vehicle/violation', data) as Promise<void>;
+
+// OA-P0-1 油耗记录
+export interface VehicleFuelLog {
+  fuelLogId?: number;
+  vehicleId: number;
+  fuelDate: string;
+  fuelType?: string;
+  liters: number | string;
+  unitPrice: number | string;
+  totalAmount?: number | string;
+  startMileage?: number | string;
+  endMileage?: number | string;
+  driveDistance?: number | string;
+  fuelPer100km?: number | string;
+  stationName?: string;
+  receiptUrl?: string;
+  driverId?: number;
+  driverName?: string;
+  remark?: string;
+  vehiclePlate?: string;
+  createBy?: string;
+  createTime?: string;
+}
+
+export interface FuelLogQuery {
+  vehicleId?: number;
+  startDate?: string;
+  endDate?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+export interface FuelStats {
+  count?: number;
+  totalLiters?: number;
+  totalAmount?: number;
+  avgFuelPer100km?: number;
+  monthlyAmount?: Record<string, number>;
+  monthlyFuelPer100km?: Record<string, number>;
+}
+
+export const getFuelLogList = (query: FuelLogQuery) =>
+  request.get('/oa/vehicle/fuel/list', { params: query }) as Promise<{
+    records: VehicleFuelLog[];
+    total: number;
+  }>;
+
+export const addFuelLog = (data: VehicleFuelLog) =>
+  request.post('/oa/vehicle/fuel', data) as Promise<void>;
+
+export const updateFuelLog = (data: VehicleFuelLog) =>
+  request.put('/oa/vehicle/fuel', data) as Promise<void>;
+
+export const deleteFuelLog = (id: number) =>
+  request.delete(`/oa/vehicle/fuel/${id}`) as Promise<void>;
+
+export const getFuelStats = (vehicleId: number, recentDays?: number) =>
+  request.get('/oa/vehicle/fuel/stats', { params: { vehicleId, recentDays } }) as Promise<FuelStats>;

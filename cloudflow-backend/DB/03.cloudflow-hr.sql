@@ -1985,4 +1985,29 @@ CREATE TABLE hr_attendance_appeal (
   KEY idx_hr_attendance_appeal_status (tenant_id, status, attendance_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR考勤异常申诉';
 
+-- =========================================================
+-- HR-P0-1 培训档案物理化(实时聚合改异步增量 + 凌晨重建兜底)
+-- =========================================================
+DROP TABLE IF EXISTS hr_training_archive;
+CREATE TABLE hr_training_archive (
+  id                  BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id           BIGINT(20)      NOT NULL DEFAULT 100000 COMMENT '租户ID',
+  employee_id         BIGINT(20)      NOT NULL COMMENT '员工ID',
+  total_hours         DECIMAL(10,2)   NOT NULL DEFAULT 0 COMMENT '累计学时',
+  completion_count    INT(11)         NOT NULL DEFAULT 0 COMMENT '已完成培训次数(PASSED)',
+  cert_count          INT(11)         NOT NULL DEFAULT 0 COMMENT '有效证书数(VALID)',
+  ongoing_count       INT(11)         NOT NULL DEFAULT 0 COMMENT '进行中培训次数(APPROVED+PENDING)',
+  last_training_date  DATE            DEFAULT NULL COMMENT '最近一次培训日期',
+  year_hours          JSON            DEFAULT NULL COMMENT '分年度学时 JSON {"2024":12.5,"2025":40.0}',
+  refreshed_at        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '最近一次刷新时间',
+  create_time         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_time         DATETIME        NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  create_by           VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  update_by           VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  deleted             TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删,1=已删)',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_hr_training_archive_emp (tenant_id, employee_id, deleted),
+  KEY idx_hr_training_archive_refresh (tenant_id, refreshed_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='HR培训档案(物理化聚合)';
+
 SET FOREIGN_KEY_CHECKS = 1;

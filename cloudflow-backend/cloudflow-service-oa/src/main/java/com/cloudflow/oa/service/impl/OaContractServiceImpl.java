@@ -11,6 +11,7 @@ import com.cloudflow.common.datascope.DataScopeUtils;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.OaContract;
+import com.cloudflow.oa.domain.OaContractAmountThreshold;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaSealApplication;
 import com.cloudflow.oa.domain.OaTraceEvent;
@@ -18,6 +19,7 @@ import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.OaContractMapper;
 import com.cloudflow.oa.mapper.OaSealApplicationMapper;
 import com.cloudflow.oa.service.IOaContractService;
+import com.cloudflow.oa.service.IOaContractAmountThresholdService;
 import com.cloudflow.oa.service.IOaRiskAlertService;
 import com.cloudflow.oa.service.IOaTraceEventService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
@@ -51,6 +53,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     private final RemoteWorkflowService remoteWorkflowService;
     private final IOaTraceEventService traceEventService;
     private final IOaRiskAlertService riskAlertService;
+    private final IOaContractAmountThresholdService contractAmountThresholdService;
 
     @Override
     public PageResult<OaContract> queryPage(OaContract query, PageQuery pageQuery) {
@@ -309,6 +312,15 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         variables.put("startDate", contract.getStartDate() == null ? null : contract.getStartDate().toString());
         variables.put("endDate", contract.getEndDate() == null ? null : contract.getEndDate().toString());
         variables.put("hasAttachment", StringUtils.hasText(contract.getAttachmentUrl()));
+        // OA-P0-3 合同金额阈值: 按金额命中规则后写入 amountTier / requiredApproverRole, 供流程 CONDITION 分支路由
+        OaContractAmountThreshold threshold = null;
+        try {
+            threshold = contractAmountThresholdService.matchThreshold(contract.getDeptName(), contract.getAmount());
+        } catch (Exception e) {
+            log.warn("合同金额阈值匹配失败, contractId={}, amount={}", contract.getContractId(), contract.getAmount(), e);
+        }
+        variables.put("amountTier", threshold == null ? "T1" : threshold.getAmountTier());
+        variables.put("requiredApproverRole", threshold == null ? "DEPT_MGR" : threshold.getApproverRole());
         return variables;
     }
 

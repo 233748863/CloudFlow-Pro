@@ -431,6 +431,57 @@ CREATE TABLE sys_api_ratelimit_rule (
   KEY idx_api_ratelimit_match (status, priority, service_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='API动态限流规则';
 
+-- ----------------------------
+-- GOV-P0-1 IP 黑白名单
+-- ----------------------------
+DROP TABLE IF EXISTS sys_ip_acl;
+CREATE TABLE sys_ip_acl (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID(0或100000表示全租户)',
+  rule_code         VARCHAR(60)     NOT NULL COMMENT '规则编码',
+  rule_name         VARCHAR(200)    NOT NULL COMMENT '规则名称',
+  ip_pattern        VARCHAR(120)    NOT NULL COMMENT 'IP/CIDR/区间表达式',
+  rule_type         VARCHAR(20)     NOT NULL DEFAULT 'EXACT' COMMENT '匹配类型(EXACT精确/CIDR网段/RANGE区间)',
+  mode              VARCHAR(20)     NOT NULL COMMENT '名单类型(BLACK黑名单/WHITE白名单)',
+  priority          INT(11)         NOT NULL DEFAULT 100 COMMENT '优先级(数小先匹配)',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
+  expire_at         DATETIME        DEFAULT NULL COMMENT '过期时间(NULL=永不过期)',
+  reason            VARCHAR(500)    DEFAULT NULL COMMENT '原因/备注',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  UNIQUE KEY uk_ip_acl_code (tenant_id, rule_code),
+  KEY idx_ip_acl_status (status, mode, priority),
+  KEY idx_ip_acl_tenant (tenant_id, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='IP黑白名单';
+
+-- ----------------------------
+-- GOV-P0-1 用户黑名单(白名单等价 RBAC,不建)
+-- ----------------------------
+DROP TABLE IF EXISTS sys_user_blacklist;
+CREATE TABLE sys_user_blacklist (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  user_id           BIGINT(20)      NOT NULL COMMENT '被拉黑用户ID',
+  user_name         VARCHAR(64)     DEFAULT NULL COMMENT '被拉黑用户名(冗余)',
+  status            VARCHAR(20)     NOT NULL DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE生效/INACTIVE解除)',
+  expire_at         DATETIME        DEFAULT NULL COMMENT '过期时间(NULL=永久)',
+  reason            VARCHAR(500)    DEFAULT NULL COMMENT '拉黑原因',
+  op_user_id        BIGINT(20)      DEFAULT NULL COMMENT '操作人用户ID',
+  op_user_name      VARCHAR(64)     DEFAULT NULL COMMENT '操作人姓名',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_user_blacklist_user (user_id, deleted),
+  KEY idx_user_blacklist_status (tenant_id, status, deleted)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户黑名单(GOV-P0-1)';
+
 SET FOREIGN_KEY_CHECKS = 1;
 
 -- =========================================================

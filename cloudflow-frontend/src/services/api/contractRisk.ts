@@ -228,3 +228,33 @@ export const riskApi = {
   updateStatus: (id: number, data: { riskStatus: RiskStatus; handleRemark?: string }) => request.put(`/oa/risk/${id}/status`, data),
   assign: (id: number, data: { ownerId: number; ownerName?: string }) => request.put(`/oa/risk/${id}/assign`, data),
 };
+
+// OA-P0-3 合同金额阈值
+export type ContractAmountTier = 'T1' | 'T2' | 'T3';
+export type ContractApproverRole = 'DEPT_MGR' | 'VP' | 'CEO';
+
+export interface OaContractAmountThreshold {
+  id?: number;
+  tenantId?: number;
+  businessUnit?: string;
+  thresholdMin: number;
+  thresholdMax?: number;
+  amountTier: ContractAmountTier;
+  approverRole: ContractApproverRole;
+  status?: 'ACTIVE' | 'INACTIVE';
+  remark?: string;
+  createBy?: string;
+  createTime?: string;
+  updateBy?: string;
+  updateTime?: string;
+}
+
+export const contractThresholdApi = {
+  page: (params: { pageNum?: number; pageSize?: number; keyword?: string; businessUnit?: string; amountTier?: string; status?: string }) =>
+    request.get('/oa/contract/threshold/page', { params }) as Promise<PageResult<OaContractAmountThreshold>>,
+  listActive: () => request.get('/oa/contract/threshold/active') as Promise<OaContractAmountThreshold[]>,
+  getInfo: (id: number) => request.get(`/oa/contract/threshold/${id}`) as Promise<OaContractAmountThreshold>,
+  add: (data: OaContractAmountThreshold) => request.post('/oa/contract/threshold', data),
+  edit: (data: OaContractAmountThreshold) => request.put('/oa/contract/threshold', data),
+  remove: (id: number) => request.delete(`/oa/contract/threshold/${id}`),
+};

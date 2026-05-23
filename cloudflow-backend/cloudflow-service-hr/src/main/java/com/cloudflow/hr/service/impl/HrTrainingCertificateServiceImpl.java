@@ -17,6 +17,7 @@ import com.cloudflow.hr.mapper.HrTrainingCourseMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrFileStorage;
 import com.cloudflow.hr.service.HrPdfRenderer;
+import com.cloudflow.hr.service.HrTrainingArchiveService;
 import com.cloudflow.hr.service.HrTrainingCertificateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +57,7 @@ public class HrTrainingCertificateServiceImpl implements HrTrainingCertificateSe
     private final HrEmployeeMapper employeeMapper;
     private final HrPdfRenderer pdfRenderer;
     private final HrFileStorage fileStorage;
+    private final HrTrainingArchiveService archiveService;
 
     @Value("${cloudflow.hr.certificate.company-name:CloudFlow 科技有限公司}")
     private String companyName;
@@ -104,6 +106,8 @@ public class HrTrainingCertificateServiceImpl implements HrTrainingCertificateSe
         certificateMapper.update(null, wrapper);
         log.info("培训证书已颁发，certNo: {}, employeeId: {}, courseId: {}, pdfFileId: {}",
                 cert.getCertNo(), employeeId, courseId, fileId);
+        // HR-P0-1 触发培训档案异步增量刷新(证书数量变更)
+        archiveService.incrementOnCertificateChange(employeeId);
         return cert.getId();
     }
 
@@ -123,6 +127,8 @@ public class HrTrainingCertificateServiceImpl implements HrTrainingCertificateSe
                 .set("update_by", currentUserName());
         certificateMapper.update(null, wrapper);
         log.info("培训证书已撤销，certNo: {}, reason: {}", cert.getCertNo(), reason);
+        // HR-P0-1 触发培训档案异步增量刷新(撤销影响有效证书数)
+        archiveService.incrementOnCertificateChange(cert.getEmployeeId());
     }
 
     @Override

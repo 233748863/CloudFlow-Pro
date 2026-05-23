@@ -1,13 +1,7 @@
 {
+  "skipAutoPermissionPrompt": true,
   "permissions": {
-    "allow": [
-      "Bash(xargs ls -la)",
-      "Bash(cat cloudflow-gateway/src/main/resources/bootstrap.yml)",
-      "Bash(ls cloudflow-gateway/src/main/java/com/cloudflow/gateway)",
-      "Bash(awk -F/ '{print $2}')",
-      "Bash(dir *)",
-      "Skill(update-config)",
-      "Bash(grep -rn '\\\\${' --include='*.xml' cloudflow-service-crm cloudflow-service-hr cloudflow-service-oa cloudflow-service-workflow)"
-    ]
-  }
+    "defaultMode": "auto"
+  },
+  "effortLevel": "xhigh"
 }

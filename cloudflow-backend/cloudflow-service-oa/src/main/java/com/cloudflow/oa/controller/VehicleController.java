@@ -6,6 +6,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysVehicle;
 import com.cloudflow.oa.domain.VehicleExpense;
+import com.cloudflow.oa.domain.VehicleFuelLog;
 import com.cloudflow.oa.domain.VehicleMaintenance;
 import com.cloudflow.oa.domain.VehicleUsage;
 import com.cloudflow.oa.domain.VehicleViolation;
@@ -16,6 +17,7 @@ import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.domain.vo.VehicleProfileVO;
 import com.cloudflow.oa.domain.vo.VehicleScheduleItemVO;
 import com.cloudflow.oa.service.IVehicleExpenseService;
+import com.cloudflow.oa.service.IVehicleFuelLogService;
 import com.cloudflow.oa.service.IVehicleMaintenanceService;
 import com.cloudflow.oa.service.IVehicleService;
 import com.cloudflow.oa.service.IVehicleUsageService;
@@ -26,6 +28,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 车辆管理 Controller
@@ -40,6 +43,7 @@ public class VehicleController {
     private final IVehicleExpenseService expenseService;
     private final IVehicleMaintenanceService maintenanceService;
     private final IVehicleViolationService violationService;
+    private final IVehicleFuelLogService fuelLogService;
 
     // ==================== 车辆管理 ====================
 
@@ -225,6 +229,53 @@ public class VehicleController {
     @SaCheckPermission("oa:vehicle:violation:add")
     public R<Void> addViolation(@RequestBody VehicleViolation violation) {
         return R.result(violationService.save(violation));
+    }
+
+    // ==================== OA-P0-1 油耗记录 ====================
+
+    /** 油耗记录列表 */
+    @GetMapping("/fuel/list")
+    @SaCheckPermission("oa:vehicle:list")
+    public R<com.baomidou.mybatisplus.extension.plugins.pagination.Page<VehicleFuelLog>> listFuelLog(
+            @RequestParam(value = "vehicleId", required = false) Long vehicleId,
+            @RequestParam(value = "startDate", required = false) String startDate,
+            @RequestParam(value = "endDate", required = false) String endDate,
+            @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
+            @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
+        return R.ok(fuelLogService.queryPage(vehicleId, startDate, endDate, pageNum, pageSize));
+    }
+
+    /** 新增油耗记录 */
+    @SysLog("新增车辆油耗记录")
+    @PostMapping("/fuel")
+    @SaCheckPermission("oa:vehicle:expense:add")
+    public R<Void> addFuelLog(@RequestBody VehicleFuelLog log) {
+        return R.result(fuelLogService.saveFuelLog(log));
+    }
+
+    /** 修改油耗记录 */
+    @SysLog("修改车辆油耗记录")
+    @PutMapping("/fuel")
+    @SaCheckPermission("oa:vehicle:expense:add")
+    public R<Void> updateFuelLog(@RequestBody VehicleFuelLog log) {
+        return R.result(fuelLogService.updateFuelLog(log));
+    }
+
+    /** 删除油耗记录 */
+    @SysLog("删除车辆油耗记录")
+    @DeleteMapping("/fuel/{id}")
+    @SaCheckPermission("oa:vehicle:expense:add")
+    public R<Void> removeFuelLog(@PathVariable("id") Long id) {
+        return R.result(fuelLogService.removeById(id));
+    }
+
+    /** 油耗统计 */
+    @GetMapping("/fuel/stats")
+    @SaCheckPermission("oa:vehicle:list")
+    public R<DynamicMapVO> fuelStats(@RequestParam("vehicleId") Long vehicleId,
+                                     @RequestParam(value = "recentDays", required = false) Integer recentDays) {
+        Map<String, Object> stats = fuelLogService.statsByVehicle(vehicleId, recentDays);
+        return R.ok(DynamicMapVO.from(stats));
     }
 }
 

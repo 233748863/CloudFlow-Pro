@@ -18,6 +18,7 @@ import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
+import com.cloudflow.oa.service.BudgetReserveResult;
 import com.cloudflow.oa.service.IExpenseClaimService;
 import com.cloudflow.oa.service.IOaBudgetService;
 import com.cloudflow.oa.service.IOaExpenseStandardService;
@@ -206,6 +207,11 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             } else {
                 variables.put("exceededStandard", false);
             }
+            // OA-P0-2 预算超额变量(供工作流 CONDITION 分支路由到 CFO 特批节点)
+            boolean budgetExceeded = claim.getBudgetExceeded() != null && claim.getBudgetExceeded() == 1;
+            variables.put("budgetExceeded", budgetExceeded);
+            variables.put("budgetExceededAmount", claim.getBudgetExceededAmount() != null
+                    ? claim.getBudgetExceededAmount() : BigDecimal.ZERO);
             // 显式写入回调元数据，审批完成后由 OA 自己通过 Stream 回写业务状态。
             WorkflowCallbackConstants.applyCallbackMetadata(
                     variables,
@@ -486,9 +492,13 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         if (claim == null || claim.getId() == null) {
             return;
         }
+        // OA-P0-2 累计预算超额信息(用于流程变量 budgetExceeded / budgetExceededAmount)
+        BigDecimal totalExceeded = BigDecimal.ZERO;
+        boolean anyExceeded = false;
+
         List<BizExpenseItem> items = claim.getItems();
         if (items == null || items.isEmpty()) {
-            budgetService.reserveBudget(
+            BudgetReserveResult r = budgetService.reserveBudgetWithFallback(
                     OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
@@ -501,22 +511,42 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
                     claim.getTotalAmount(),
                     "报销提交占用预算"
             );
-            return;
+            if (r != null && !r.isAccepted()) {
+                anyExceeded = true;
+                if (r.getExceededAmount() != null) {
+                    totalExceeded = totalExceeded.add(r.getExceededAmount());
+                }
+            }
+        } else {
+            for (BizExpenseItem item : items) {
+                BudgetReserveResult r = budgetService.reserveBudgetWithFallback(
+                        OaBusinessTypes.EXPENSE_CLAIM,
+                        claim.getId(),
+                        claim.getClaimNo(),
+                        claim.getDeptId(),
+                        claim.getDeptName(),
+                        claim.getProjectId(),
+                        claim.getProjectName(),
+                        StringUtils.hasText(item.getBudgetSubjectCode()) ? item.getBudgetSubjectCode() : claim.getBudgetSubjectCode(),
+                        StringUtils.hasText(item.getBudgetSubjectName()) ? item.getBudgetSubjectName() : claim.getBudgetSubjectName(),
+                        item.getAmount(),
+                        "报销明细占用预算"
+                );
+                if (r != null && !r.isAccepted()) {
+                    anyExceeded = true;
+                    if (r.getExceededAmount() != null) {
+                        totalExceeded = totalExceeded.add(r.getExceededAmount());
+                    }
+                }
+            }
         }
-        for (BizExpenseItem item : items) {
-            budgetService.reserveBudget(
-                    OaBusinessTypes.EXPENSE_CLAIM,
-                    claim.getId(),
-                    claim.getClaimNo(),
-                    claim.getDeptId(),
-                    claim.getDeptName(),
-                    claim.getProjectId(),
-                    claim.getProjectName(),
-                    StringUtils.hasText(item.getBudgetSubjectCode()) ? item.getBudgetSubjectCode() : claim.getBudgetSubjectCode(),
-                    StringUtils.hasText(item.getBudgetSubjectName()) ? item.getBudgetSubjectName() : claim.getBudgetSubjectName(),
-                    item.getAmount(),
-                    "报销明细占用预算"
-            );
+
+        if (anyExceeded) {
+            claim.setBudgetExceeded(1);
+            claim.setBudgetExceededAmount(totalExceeded);
+        } else {
+            claim.setBudgetExceeded(0);
+            claim.setBudgetExceededAmount(BigDecimal.ZERO);
         }
     }
 

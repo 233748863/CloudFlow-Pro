@@ -369,6 +369,36 @@ CREATE TABLE oa_vehicle_violation (
   KEY idx_vehicle_violation_vehicle (vehicle_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆违章记录表';
 
+-- OA-P0-1 车辆油耗记录表
+DROP TABLE IF EXISTS oa_vehicle_fuel_log;
+CREATE TABLE oa_vehicle_fuel_log (
+  fuel_log_id       BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '油耗记录ID',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  vehicle_id        BIGINT(20)      NOT NULL COMMENT '车辆ID',
+  fuel_date         DATE            NOT NULL COMMENT '加油日期',
+  fuel_type         VARCHAR(20)     DEFAULT NULL COMMENT '燃料类型(汽油92/汽油95/汽油98/柴油/电)',
+  liters            DECIMAL(10,2)   NOT NULL COMMENT '加油量(升)或电量(度)',
+  unit_price        DECIMAL(10,4)   NOT NULL COMMENT '单价',
+  total_amount      DECIMAL(10,2)   NOT NULL COMMENT '总金额',
+  start_mileage     DECIMAL(10,2)   DEFAULT NULL COMMENT '加油前里程',
+  end_mileage       DECIMAL(10,2)   DEFAULT NULL COMMENT '当前里程',
+  drive_distance    DECIMAL(10,2)   DEFAULT NULL COMMENT '本次行驶里程(自动= end_mileage - 上次 end_mileage)',
+  fuel_per_100km    DECIMAL(10,2)   DEFAULT NULL COMMENT '百公里油耗(自动= liters/distance×100)',
+  station_name      VARCHAR(100)    DEFAULT NULL COMMENT '加油站',
+  receipt_url       VARCHAR(1000)   DEFAULT NULL COMMENT '票据/附件',
+  driver_id         BIGINT(20)      DEFAULT NULL COMMENT '司机ID',
+  driver_name       VARCHAR(50)     DEFAULT NULL COMMENT '司机姓名',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  PRIMARY KEY (fuel_log_id),
+  KEY idx_vehicle_fuel_vehicle_date (vehicle_id, fuel_date),
+  KEY idx_vehicle_fuel_tenant (tenant_id, fuel_date)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='车辆油耗记录表';
+
 -- =========================================================
 -- 七、业务表（与工作流关联，OA 范围）
 -- =========================================================
@@ -449,6 +479,8 @@ CREATE TABLE biz_expense_claim (
   exceeded_standard TINYINT(1)      DEFAULT 0 COMMENT 'OA-P0-3 是否超标(0否1是)',
   exceeded_amount   DECIMAL(12,2)   DEFAULT 0.00 COMMENT 'OA-P0-3 超标金额合计',
   exceeded_detail   JSON            DEFAULT NULL COMMENT 'OA-P0-3 超标明细[{itemId,category,amount,limitAmount}]',
+  budget_exceeded   TINYINT(1)      DEFAULT 0 COMMENT 'OA-P0-2 是否触发预算特批(0否1是)',
+  budget_exceeded_amount DECIMAL(12,2) DEFAULT 0.00 COMMENT 'OA-P0-2 超过预算的金额',
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -1749,6 +1781,30 @@ CREATE TABLE oa_knowledge_template (
   UNIQUE KEY uk_knowledge_template_code (tenant_id, template_code),
   KEY idx_knowledge_template_category (tenant_id, category, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA知识库文档模板';
+
+-- =========================================================
+-- OA-P0-3 合同金额阈值 (按金额区间路由审批层级)
+-- =========================================================
+DROP TABLE IF EXISTS oa_contract_amount_threshold;
+CREATE TABLE oa_contract_amount_threshold (
+  id                BIGINT(20)      NOT NULL AUTO_INCREMENT COMMENT '主键',
+  tenant_id         BIGINT(20)      DEFAULT 100000 COMMENT '租户ID',
+  business_unit     VARCHAR(100)    DEFAULT NULL COMMENT '业务单元(可选: 部门/产品线/留空=全租户)',
+  threshold_min     DECIMAL(18,2)   NOT NULL DEFAULT 0 COMMENT '金额下限(含)',
+  threshold_max     DECIMAL(18,2)   DEFAULT NULL COMMENT '金额上限(不含,NULL=∞)',
+  amount_tier       VARCHAR(20)     NOT NULL COMMENT '金额档位(T1/T2/T3,写入流程变量 amountTier)',
+  approver_role     VARCHAR(60)     NOT NULL COMMENT '所需审批角色(DEPT_MGR/VP/CEO,写入流程变量 requiredApproverRole)',
+  status            VARCHAR(20)     DEFAULT 'ACTIVE' COMMENT '状态(ACTIVE/INACTIVE)',
+  remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
+  deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
+  create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
+  create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
+  update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (id),
+  KEY idx_contract_threshold_tenant (tenant_id, status, deleted),
+  KEY idx_contract_threshold_range (tenant_id, threshold_min)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA合同金额审批阈值';
 
 SET FOREIGN_KEY_CHECKS = 1;
 

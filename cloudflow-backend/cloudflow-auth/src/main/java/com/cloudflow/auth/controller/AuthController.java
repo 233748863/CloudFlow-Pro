@@ -87,6 +87,9 @@ public class AuthController {
     private com.cloudflow.auth.service.LoginLockService loginLockService;
 
     @Autowired
+    private com.cloudflow.auth.service.ISysUserBlacklistService userBlacklistService;
+
+    @Autowired
     private PasswordService passwordService;
 
     @Autowired
@@ -182,6 +185,17 @@ public class AuthController {
                 System.currentTimeMillis() - startAt
             );
             return R.fail("用户名或密码错误");
+        }
+
+        if (userBlacklistService.isBanned(user.getUserId())) {
+            loginLogService.recordLoginFailure(
+                username,
+                user.getTenantId(),
+                request,
+                "用户已被拉黑",
+                System.currentTimeMillis() - startAt
+            );
+            return R.fail("账号已被限制登录,请联系管理员");
         }
 
         String loginIp = getClientIp(request);

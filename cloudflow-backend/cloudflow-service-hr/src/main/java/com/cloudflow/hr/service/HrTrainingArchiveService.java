@@ -3,13 +3,11 @@ package com.cloudflow.hr.service;
 import java.util.Map;
 
 /**
- * 培训档案服务：按员工聚合培训学时 / 课程列表 / 证书列表。
+ * HR-P0-1 培训档案服务: 物理化聚合 hr_training_archive。
  *
- * <p>不建物理 hr_training_archive 表，由 service 在请求时实时聚合
- * {@code hr_training_enrollment + hr_training_certificate + hr_training_course}，
- * 用 {@code idx_hr_training_enrollment_completion(tenant_id, employee_id, completion_status)} 缓解。
- *
- * <p>跨年统计性能不足时，可在 P2 阶段加物化表；本批次先保证一致性。
+ * <p>读路径优先查 hr_training_archive 物理表, 未命中(新员工/库存量为 0)回退到旧实时聚合并写回。
+ * 写路径由 hr_training_enrollment / hr_training_certificate 状态变更 hook 异步触发单员工重算,
+ * 凌晨 02:30 由 {@code TrainingArchiveRebuildJob} 全量重建兜底。
  */
 public interface HrTrainingArchiveService {
 
@@ -19,7 +17,27 @@ public interface HrTrainingArchiveService {
     Map<String, Object> mine();
 
     /**
-     * 指定员工档案（HR 管理员视角）。
+     * 指定员工档案(HR 管理员视角)。
      */
     Map<String, Object> forEmployee(Long employeeId);
+
+    /**
+     * HR-P0-1 报名状态变更触发增量重算: PENDING → APPROVED / COMPLETED / REJECTED 等。
+     */
+    void incrementOnEnrollmentChange(Long employeeId);
+
+    /**
+     * HR-P0-1 证书颁发 / 撤销触发增量重算。
+     */
+    void incrementOnCertificateChange(Long employeeId);
+
+    /**
+     * HR-P0-1 单员工全量重算并写入 hr_training_archive(同步)。
+     */
+    void rebuildOne(Long employeeId);
+
+    /**
+     * HR-P0-1 全量重建所有员工档案 - 由凌晨定时任务调用兜底数据漂移。
+     */
+    int rebuildAll();
 }
