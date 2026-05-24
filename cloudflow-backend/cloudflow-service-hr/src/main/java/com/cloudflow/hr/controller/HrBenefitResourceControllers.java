@@ -2,15 +2,25 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestQueryDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallItemDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallItemQueryDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallOrderPlaceDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallOrderQueryDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrPointTransactionQueryDTO;
 import com.cloudflow.hr.service.HrBenefitMineService;
 import com.cloudflow.hr.service.HrBenefitRequestService;
 import com.cloudflow.hr.service.HrMallItemService;
 import com.cloudflow.hr.service.HrMallOrderService;
 import com.cloudflow.hr.service.HrPointAccountService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -18,8 +28,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 /**
  * HR 福利与积分商城多 Controller 聚合文件。
@@ -47,11 +55,12 @@ class HrBenefitMineController {
 class HrBenefitRequestController {
 
     private final HrBenefitRequestService requestService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:request:list")
-    public R<?> page(@RequestParam Map<String, Object> query) {
-        return R.ok(requestService.page(query));
+    public R<?> page(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
+        return R.ok(requestService.page(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -62,22 +71,22 @@ class HrBenefitRequestController {
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:mine")
-    public R<?> mine(@RequestParam Map<String, Object> query) {
-        return R.ok(requestService.listMine(query));
+    public R<?> mine(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
+        return R.ok(requestService.listMine(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增福利申领")
     @PostMapping
     @SaCheckPermission("hr:benefit:request:add")
-    public R<Long> create(@RequestBody Map<String, Object> payload) {
-        return R.ok(requestService.createRequest(payload));
+    public R<Long> create(@Validated @RequestBody HrBenefitRequestDTO dto) {
+        return R.ok(requestService.createRequest(MapConverters.toMap(dto, objectMapper)));
     }
 
     @SysLog("修改福利申领")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:benefit:request:edit")
-    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        requestService.updateRequest(id, payload);
+    public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrBenefitRequestDTO dto) {
+        requestService.updateRequest(id, MapConverters.toMap(dto, objectMapper));
         return R.ok();
     }
 
@@ -104,6 +113,7 @@ class HrBenefitRequestController {
 class HrPointAccountController {
 
     private final HrPointAccountService pointAccountService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:point:view")
@@ -120,8 +130,9 @@ class HrPointAccountController {
     @GetMapping("/{accountId}/transactions")
     @SaCheckPermission("hr:benefit:point:view")
     public R<?> transactions(@PathVariable Long accountId,
-                             @RequestParam Map<String, Object> query) {
-        return R.ok(pointAccountService.listTransactions(accountId, query));
+                             @Validated @ModelAttribute HrPointTransactionQueryDTO query) {
+        return R.ok(pointAccountService.listTransactions(accountId,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("积分手动调整")
@@ -141,11 +152,12 @@ class HrPointAccountController {
 class HrMallItemController {
 
     private final HrMallItemService mallItemService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:mall:browse")
-    public R<?> page(@RequestParam Map<String, Object> query) {
-        return R.ok(mallItemService.page(query));
+    public R<?> page(@Validated @ModelAttribute HrMallItemQueryDTO query) {
+        return R.ok(mallItemService.page(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -157,15 +169,15 @@ class HrMallItemController {
     @SysLog("新增积分商品")
     @PostMapping
     @SaCheckPermission("hr:benefit:mall:item:manage")
-    public R<Long> create(@RequestBody Map<String, Object> payload) {
-        return R.ok(mallItemService.createItem(payload));
+    public R<Long> create(@Validated @RequestBody HrMallItemDTO dto) {
+        return R.ok(mallItemService.createItem(MapConverters.toMap(dto, objectMapper)));
     }
 
     @SysLog("修改积分商品")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:benefit:mall:item:manage")
-    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        mallItemService.updateItem(id, payload);
+    public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrMallItemDTO dto) {
+        mallItemService.updateItem(id, MapConverters.toMap(dto, objectMapper));
         return R.ok();
     }
 
@@ -192,17 +204,18 @@ class HrMallItemController {
 class HrMallOrderController {
 
     private final HrMallOrderService mallOrderService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:order:list")
-    public R<?> page(@RequestParam Map<String, Object> query) {
-        return R.ok(mallOrderService.page(query));
+    public R<?> page(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
+        return R.ok(mallOrderService.page(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:order:my")
-    public R<?> mine(@RequestParam Map<String, Object> query) {
-        return R.ok(mallOrderService.listMine(query));
+    public R<?> mine(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
+        return R.ok(mallOrderService.listMine(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -214,8 +227,8 @@ class HrMallOrderController {
     @SysLog("积分商城下单")
     @PostMapping
     @SaCheckPermission("hr:benefit:order:place")
-    public R<Long> placeOrder(@RequestBody Map<String, Object> payload) {
-        return R.ok(mallOrderService.placeOrder(payload));
+    public R<Long> placeOrder(@Validated @RequestBody HrMallOrderPlaceDTO dto) {
+        return R.ok(mallOrderService.placeOrder(MapConverters.toMap(dto, objectMapper)));
     }
 
     @SysLog("订单发货")

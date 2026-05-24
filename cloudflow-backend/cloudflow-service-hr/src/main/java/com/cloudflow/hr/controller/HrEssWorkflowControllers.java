@@ -2,9 +2,11 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrCertificateRequestPayload;
 import com.cloudflow.hr.domain.dto.HrContractSignaturePayload;
+import com.cloudflow.hr.domain.dto.ess.HrEssCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrCertificateRequest;
 import com.cloudflow.hr.domain.entity.HrContractSignature;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
@@ -12,21 +14,22 @@ import com.cloudflow.hr.service.HrCertificateService;
 import com.cloudflow.hr.service.HrContractSignatureService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -43,11 +46,12 @@ class HrCertificateRequestController {
     private final HrCertificateService certificateService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:ess:cert:view")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
         return R.ok(crudService.page(HrCertificateRequest.class, normalized));
     }
@@ -101,19 +105,20 @@ class HrEssContractController {
     private final HrContractSignatureService contractSignatureService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:ess:contract:view")
-    public R<?> mine(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> mine(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
         return R.ok(crudService.list(HrEmployeeContract.class, normalized));
     }
 
     @GetMapping("/signatures")
     @SaCheckPermission("hr:ess:contract:view")
-    public R<?> signatures(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> signatures(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("signerId", essSupport.currentEmployeeId());
         return R.ok(crudService.list(HrContractSignature.class, normalized));
     }

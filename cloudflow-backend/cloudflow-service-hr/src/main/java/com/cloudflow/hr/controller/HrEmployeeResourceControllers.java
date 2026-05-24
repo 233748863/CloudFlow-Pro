@@ -3,19 +3,24 @@ package com.cloudflow.hr.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrEmergencyContactPayload;
 import com.cloudflow.hr.domain.dto.HrEmployeeContractPayload;
 import com.cloudflow.hr.domain.dto.HrEmployeeDocumentPayload;
 import com.cloudflow.hr.domain.dto.HrEmployeePayload;
+import com.cloudflow.hr.domain.dto.employee.HrEmployeeCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrEmergencyContact;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.domain.entity.HrEmployeeDocument;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -32,6 +37,7 @@ import java.util.Map;
 class HrEmployeeController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/current")
     @SaCheckPermission("hr:employees:view")
@@ -43,8 +49,9 @@ class HrEmployeeController {
 
     @GetMapping
     @SaCheckPermission("hr:employees:list")
-    public R<?> listEmployees(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrEmployee.class, query));
+    public R<?> listEmployees(@Validated @ModelAttribute HrEmployeeCommonQueryDTO query) {
+        return R.ok(crudService.list(HrEmployee.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR员工")

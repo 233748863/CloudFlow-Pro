@@ -2,12 +2,14 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrTrainingCategoryPayload;
 import com.cloudflow.hr.domain.dto.HrTrainingCoursePayload;
 import com.cloudflow.hr.domain.dto.HrTrainingInstructorPayload;
 import com.cloudflow.hr.domain.dto.HrTrainingPlanPayload;
 import com.cloudflow.hr.domain.dto.HrTrainingSessionPayload;
+import com.cloudflow.hr.domain.dto.training.HrTrainingCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrTrainingCategory;
 import com.cloudflow.hr.domain.entity.HrTrainingCourse;
 import com.cloudflow.hr.domain.entity.HrTrainingInstructor;
@@ -15,15 +17,17 @@ import com.cloudflow.hr.domain.entity.HrTrainingPlan;
 import com.cloudflow.hr.domain.entity.HrTrainingSession;
 import com.cloudflow.hr.service.HrTrainingService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.LinkedHashMap;
@@ -41,11 +45,12 @@ import java.util.Map;
 class HrTrainingPlanController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:plan:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrTrainingPlan.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrTrainingPlan.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -92,11 +97,12 @@ class HrTrainingPlanController {
 class HrTrainingCategoryController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:course:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrTrainingCategory.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.list(HrTrainingCategory.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR培训分类")
@@ -129,11 +135,12 @@ class HrTrainingCategoryController {
 class HrTrainingInstructorController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:course:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrTrainingInstructor.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrTrainingInstructor.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR培训讲师")
@@ -166,11 +173,12 @@ class HrTrainingInstructorController {
 class HrTrainingCourseController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:course:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrTrainingCourse.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrTrainingCourse.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -210,11 +218,12 @@ class HrTrainingSessionController {
 
     private final HrTypedCrudService crudService;
     private final HrTrainingService trainingService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:session:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrTrainingSession.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrTrainingSession.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")

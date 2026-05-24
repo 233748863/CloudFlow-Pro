@@ -2,12 +2,14 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrCandidatePayload;
 import com.cloudflow.hr.domain.dto.HrInterviewPayload;
 import com.cloudflow.hr.domain.dto.HrOfferPayload;
 import com.cloudflow.hr.domain.dto.HrRecruitmentChannelPayload;
 import com.cloudflow.hr.domain.dto.HrRecruitmentRequisitionPayload;
+import com.cloudflow.hr.domain.dto.recruitment.HrRecruitmentCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrCandidate;
 import com.cloudflow.hr.domain.entity.HrInterview;
 import com.cloudflow.hr.domain.entity.HrOffer;
@@ -16,9 +18,12 @@ import com.cloudflow.hr.domain.entity.HrRecruitmentRequisition;
 import com.cloudflow.hr.service.HrRecruitmentChannelService;
 import com.cloudflow.hr.service.HrRecruitmentService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -37,11 +42,12 @@ class HrRecruitmentRequisitionController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/requisitions")
     @SaCheckPermission("hr:recruitment:list")
-    public R<?> listRequisitions(@RequestParam Map<String, Object> query) {
-        return R.ok(recruitmentService.pageRequisitions(query));
+    public R<?> listRequisitions(@Validated @ModelAttribute HrRecruitmentCommonQueryDTO query) {
+        return R.ok(recruitmentService.pageRequisitions(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR招聘需求")
@@ -75,11 +81,12 @@ class HrCandidateController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/candidates")
     @SaCheckPermission("hr:recruitment:list")
-    public R<?> listCandidates(@RequestParam Map<String, Object> query) {
-        return R.ok(recruitmentService.pageCandidates(query));
+    public R<?> listCandidates(@Validated @ModelAttribute HrRecruitmentCommonQueryDTO query) {
+        return R.ok(recruitmentService.pageCandidates(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR候选人")
@@ -115,11 +122,12 @@ class HrInterviewController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/interviews")
     @SaCheckPermission("hr:recruitment:list")
-    public R<?> listInterviews(@RequestParam Map<String, Object> query) {
-        return R.ok(recruitmentService.listInterviews(query));
+    public R<?> listInterviews(@Validated @ModelAttribute HrRecruitmentCommonQueryDTO query) {
+        return R.ok(recruitmentService.listInterviews(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR面试")
@@ -153,11 +161,12 @@ class HrOfferController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentService recruitmentService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/offers")
     @SaCheckPermission("hr:recruitment:list")
-    public R<?> listOffers(@RequestParam Map<String, Object> query) {
-        return R.ok(recruitmentService.listOffers(query));
+    public R<?> listOffers(@Validated @ModelAttribute HrRecruitmentCommonQueryDTO query) {
+        return R.ok(recruitmentService.listOffers(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR Offer")
@@ -201,11 +210,12 @@ class HrRecruitmentChannelController {
 
     private final HrTypedCrudService crudService;
     private final HrRecruitmentChannelService channelService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/channels")
     @SaCheckPermission("hr:recruitment:list")
-    public R<?> listChannels(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrRecruitmentChannel.class, query));
+    public R<?> listChannels(@Validated @ModelAttribute HrRecruitmentCommonQueryDTO query) {
+        return R.ok(crudService.list(HrRecruitmentChannel.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR招聘渠道")

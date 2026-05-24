@@ -2,6 +2,7 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorInvitePayload;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorResponsePayload;
@@ -15,6 +16,7 @@ import com.cloudflow.hr.domain.dto.HrPerformanceResultUpdatePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentPayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
 import com.cloudflow.hr.domain.dto.HrPerformanceSplitPayload;
+import com.cloudflow.hr.domain.dto.performance.HrPerformanceCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrPerformanceAssignment;
 import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
 import com.cloudflow.hr.domain.entity.HrPerformanceResult;
@@ -23,9 +25,12 @@ import com.cloudflow.hr.service.HrPerformance360Service;
 import com.cloudflow.hr.service.HrPerformanceDistributionService;
 import com.cloudflow.hr.service.HrPerformanceService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -42,11 +47,13 @@ import java.util.Map;
 class HrPerformanceObjectiveCrudController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/objectives")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceObjectives(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrPerformanceObjective.class, query));
+    public R<?> listPerformanceObjectives(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(crudService.page(HrPerformanceObjective.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR绩效目标")
@@ -72,11 +79,13 @@ class HrPerformanceAssignmentController {
 
     private final HrTypedCrudService crudService;
     private final HrPerformanceService performanceService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/assignments")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceAssignments(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrPerformanceAssignment.class, query));
+    public R<?> listPerformanceAssignments(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(crudService.list(HrPerformanceAssignment.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR绩效分解")
@@ -102,11 +111,13 @@ class HrPerformanceResultController {
 
     private final HrTypedCrudService crudService;
     private final HrPerformanceService performanceService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/results")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceResults(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrPerformanceResult.class, query));
+    public R<?> listPerformanceResults(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(crudService.list(HrPerformanceResult.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR绩效结果")
@@ -132,11 +143,13 @@ class HrPerformanceSalaryAdjustmentController {
 
     private final HrTypedCrudService crudService;
     private final HrPerformanceService performanceService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/salary-adjustments")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceSalaryAdjustments(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrPerformanceSalaryAdjustment.class, query));
+    public R<?> listPerformanceSalaryAdjustments(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(crudService.list(HrPerformanceSalaryAdjustment.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR绩效调薪记录")
@@ -160,6 +173,7 @@ class HrPerformanceSalaryAdjustmentController {
 class HrPerformanceObjectiveController {
 
     private final HrPerformanceService performanceService;
+    private final ObjectMapper objectMapper;
 
     @SysLog("新增HR绩效目标树")
     @PostMapping("/objective")
@@ -170,8 +184,8 @@ class HrPerformanceObjectiveController {
 
     @GetMapping("/objective/list")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceObjectiveV2(@RequestParam Map<String, Object> query) {
-        return R.ok(performanceService.listObjectives(query));
+    public R<?> listPerformanceObjectiveV2(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(performanceService.listObjectives(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/objective/{id}")

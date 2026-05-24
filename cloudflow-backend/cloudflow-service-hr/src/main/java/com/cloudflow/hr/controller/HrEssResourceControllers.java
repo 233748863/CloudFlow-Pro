@@ -2,9 +2,11 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrBankCardPayload;
 import com.cloudflow.hr.domain.dto.HrFamilyMemberPayload;
+import com.cloudflow.hr.domain.dto.ess.HrEssCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrBankCard;
 import com.cloudflow.hr.domain.entity.HrBenefitPayment;
 import com.cloudflow.hr.domain.entity.HrFamilyMember;
@@ -13,9 +15,12 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.service.HrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -24,9 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -47,12 +50,13 @@ class HrSalarySlipController {
     private final HrTypedCrudService crudService;
     private final HrEssService essService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:ess:slip:view")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
-        if (!normalized.containsKey("employeeId")) {
+    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
+        if (normalized.get("employeeId") == null) {
             normalized.put("employeeId", essSupport.currentEmployeeId());
         }
         return R.ok(crudService.page(HrSalarySlip.class, normalized));
@@ -98,11 +102,12 @@ class HrBankCardController {
     private final HrTypedCrudService crudService;
     private final HrEssService essService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:ess:bankcard:view")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
         return R.ok(crudService.list(HrBankCard.class, normalized));
     }
@@ -148,11 +153,12 @@ class HrFamilyMemberController {
 
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:ess:family:view")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
         return R.ok(crudService.list(HrFamilyMember.class, normalized));
     }
@@ -203,12 +209,13 @@ class HrBenefitPaymentController {
     private final HrTypedCrudService crudService;
     private final HrEssService essService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:ess:benefit:view")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
-        if (!normalized.containsKey("employeeId")) {
+    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
+        if (normalized.get("employeeId") == null) {
             normalized.put("employeeId", essSupport.currentEmployeeId());
         }
         return R.ok(crudService.list(HrBenefitPayment.class, normalized));

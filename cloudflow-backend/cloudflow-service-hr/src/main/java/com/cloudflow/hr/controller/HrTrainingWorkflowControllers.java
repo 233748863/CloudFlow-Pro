@@ -2,9 +2,17 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrExamPaperPayload;
 import com.cloudflow.hr.domain.dto.HrExamQuestionBankPayload;
+import com.cloudflow.hr.domain.dto.training.HrExamAnswerDTO;
+import com.cloudflow.hr.domain.dto.training.HrExamAttemptGradeDTO;
+import com.cloudflow.hr.domain.dto.training.HrExamAttemptStartDTO;
+import com.cloudflow.hr.domain.dto.training.HrExamAttemptSubmitDTO;
+import com.cloudflow.hr.domain.dto.training.HrTrainingCommonQueryDTO;
+import com.cloudflow.hr.domain.dto.training.HrTrainingEnrollDTO;
+import com.cloudflow.hr.domain.dto.training.HrTrainingEnrollmentCompleteDTO;
 import com.cloudflow.hr.domain.entity.HrExamAttempt;
 import com.cloudflow.hr.domain.entity.HrExamPaper;
 import com.cloudflow.hr.domain.entity.HrExamQuestionBank;
@@ -13,19 +21,20 @@ import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrExamService;
 import com.cloudflow.hr.service.HrTrainingEnrollmentService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.math.BigDecimal;
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,17 +53,19 @@ class HrTrainingEnrollmentController {
     private final HrTrainingEnrollmentService enrollmentService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:enroll:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrTrainingEnrollment.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrTrainingEnrollment.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:enroll:list")
-    public R<?> mine(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
         return R.ok(crudService.page(HrTrainingEnrollment.class, normalized));
     }
@@ -62,11 +73,8 @@ class HrTrainingEnrollmentController {
     @SysLog("发起HR培训报名")
     @PostMapping
     @SaCheckPermission("hr:training:enroll:add")
-    public R<Long> enroll(@RequestBody Map<String, Object> body) {
-        Long sessionId = toLong(body.get("sessionId"));
-        String enrollType = body.get("enrollType") == null ? null : String.valueOf(body.get("enrollType"));
-        String comment = body.get("comment") == null ? null : String.valueOf(body.get("comment"));
-        return R.ok(enrollmentService.enroll(sessionId, enrollType, comment));
+    public R<Long> enroll(@Validated @RequestBody HrTrainingEnrollDTO dto) {
+        return R.ok(enrollmentService.enroll(dto.getSessionId(), dto.getEnrollType(), dto.getComment()));
     }
 
     @SysLog("HR培训签到")
@@ -80,11 +88,8 @@ class HrTrainingEnrollmentController {
     @SysLog("HR培训结业登记")
     @PostMapping("/{id}/complete")
     @SaCheckPermission("hr:training:enroll:edit")
-    public R<Void> complete(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        String completionStatus = body.get("completionStatus") == null ? null : String.valueOf(body.get("completionStatus"));
-        BigDecimal score = toBigDecimal(body.get("score"));
-        String comment = body.get("comment") == null ? null : String.valueOf(body.get("comment"));
-        enrollmentService.complete(id, completionStatus, score, comment);
+    public R<Void> complete(@PathVariable Long id, @Validated @RequestBody HrTrainingEnrollmentCompleteDTO dto) {
+        enrollmentService.complete(id, dto.getCompletionStatus(), dto.getScore(), dto.getComment());
         return R.ok();
     }
 
@@ -95,37 +100,6 @@ class HrTrainingEnrollmentController {
         enrollmentService.cancel(id);
         return R.ok();
     }
-
-    private Long toLong(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number num) {
-            return num.longValue();
-        }
-        try {
-            return Long.parseLong(String.valueOf(value));
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    private BigDecimal toBigDecimal(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof BigDecimal bd) {
-            return bd;
-        }
-        if (value instanceof Number num) {
-            return BigDecimal.valueOf(num.doubleValue());
-        }
-        try {
-            return new BigDecimal(String.valueOf(value));
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
 }
 
 @RestController
@@ -134,11 +108,13 @@ class HrTrainingEnrollmentController {
 class HrExamQuestionBankController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:exam:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrExamQuestionBank.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrExamQuestionBank.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -178,11 +154,13 @@ class HrExamPaperController {
 
     private final HrExamService examService;
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:exam:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrExamPaper.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrExamPaper.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -218,26 +196,12 @@ class HrExamPaperController {
     @PostMapping("/{id}/attempts")
     @SaCheckPermission("hr:training:exam:attempt")
     public R<Map<String, Object>> startAttempt(@PathVariable Long id,
-                                                @RequestBody(required = false) Map<String, Object> body) {
-        Long sessionId = body == null ? null : toLong(body.get("sessionId"));
+                                                @RequestBody(required = false) HrExamAttemptStartDTO dto) {
+        Long sessionId = dto == null ? null : dto.getSessionId();
         Long attemptId = examService.startAttempt(id, sessionId);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("attemptId", attemptId);
         return R.ok(data);
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number num) {
-            return num.longValue();
-        }
-        try {
-            return Long.parseLong(String.valueOf(value));
-        } catch (NumberFormatException ex) {
-            return null;
-        }
     }
 }
 
@@ -249,17 +213,19 @@ class HrExamAttemptController {
     private final HrExamService examService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:exam:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrExamAttempt.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrExamAttempt.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:exam:attempt")
-    public R<?> mine(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
         return R.ok(crudService.page(HrExamAttempt.class, normalized));
     }
@@ -274,54 +240,24 @@ class HrExamAttemptController {
     @PostMapping("/{id}/submit")
     @SaCheckPermission("hr:training:exam:attempt")
     public R<Map<String, Object>> submit(@PathVariable Long id,
-                                          @RequestBody(required = false) Map<String, Object> body) {
-        @SuppressWarnings("unchecked")
-        List<Map<String, Object>> answers = body == null
-                ? List.of()
-                : (List<Map<String, Object>>) body.getOrDefault("answers", List.of());
+                                          @Validated @RequestBody(required = false) HrExamAttemptSubmitDTO dto) {
+        List<Map<String, Object>> answers;
+        if (dto == null || dto.getAnswers() == null || dto.getAnswers().isEmpty()) {
+            answers = List.of();
+        } else {
+            answers = new ArrayList<>(dto.getAnswers().size());
+            for (HrExamAnswerDTO ans : dto.getAnswers()) {
+                answers.add(MapConverters.toMap(ans, objectMapper));
+            }
+        }
         return R.ok(examService.submit(id, answers));
     }
 
     @SysLog("HR考试主观题批改")
     @PostMapping("/{id}/grade")
     @SaCheckPermission("hr:training:exam:grade")
-    public R<Void> grade(@PathVariable Long id, @RequestBody Map<String, Object> body) {
-        BigDecimal score = toBigDecimal(body.get("score"));
-        Boolean passFlag = toBoolean(body.get("passFlag"));
-        String comment = body.get("comment") == null ? null : String.valueOf(body.get("comment"));
-        examService.grade(id, score, passFlag, comment);
+    public R<Void> grade(@PathVariable Long id, @Validated @RequestBody HrExamAttemptGradeDTO dto) {
+        examService.grade(id, dto.getScore(), dto.getPassFlag(), dto.getComment());
         return R.ok();
-    }
-
-    private BigDecimal toBigDecimal(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof BigDecimal bd) {
-            return bd;
-        }
-        if (value instanceof Number num) {
-            return BigDecimal.valueOf(num.doubleValue());
-        }
-        try {
-            return new BigDecimal(String.valueOf(value));
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
-
-    private Boolean toBoolean(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Boolean b) {
-            return b;
-        }
-        String s = String.valueOf(value).trim().toLowerCase();
-        return switch (s) {
-            case "true", "1", "yes", "y" -> Boolean.TRUE;
-            case "false", "0", "no", "n" -> Boolean.FALSE;
-            default -> null;
-        };
     }
 }

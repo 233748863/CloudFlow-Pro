@@ -1,20 +1,23 @@
 package com.cloudflow.crm.controller;
 
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.crm.domain.CrmApproval;
+import com.cloudflow.crm.domain.dto.approval.CrmCustomerClaimSubmitDTO;
+import com.cloudflow.crm.domain.dto.approval.CrmCustomerLevelChangeSubmitDTO;
+import com.cloudflow.crm.domain.dto.approval.CrmOpportunityDowngradeSubmitDTO;
+import com.cloudflow.crm.domain.dto.approval.CrmRefundSubmitDTO;
+import com.cloudflow.crm.domain.vo.CrmApprovalVO;
 import com.cloudflow.crm.service.CrmApprovalService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.math.BigDecimal;
-import java.util.Map;
 
 /**
  * CRM 通用审批入口：客户领取/公海释放、商机降级关闭、客户分级变更、退款。
@@ -26,15 +29,13 @@ import java.util.Map;
 public class CrmApprovalController {
 
     private final CrmApprovalService approvalService;
+    private final ObjectMapper objectMapper;
 
     @PostMapping("/customer-claim")
     @SaCheckPermission("crm:approval:customer-claim")
-    public R<Long> submitCustomerClaim(@RequestBody Map<String, Object> body) {
+    public R<Long> submitCustomerClaim(@Validated @RequestBody CrmCustomerClaimSubmitDTO dto) {
         try {
-            Long customerId = toLong(body.get("customerId"));
-            String action = String.valueOf(body.getOrDefault("action", ""));
-            String remark = body.get("remark") == null ? null : String.valueOf(body.get("remark"));
-            return R.ok(approvalService.submitCustomerClaim(customerId, action, remark));
+            return R.ok(approvalService.submitCustomerClaim(dto.getCustomerId(), dto.getAction(), dto.getRemark()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -42,13 +43,10 @@ public class CrmApprovalController {
 
     @PostMapping("/customer-level")
     @SaCheckPermission("crm:approval:customer-level")
-    public R<Long> submitCustomerLevelChange(@RequestBody Map<String, Object> body) {
+    public R<Long> submitCustomerLevelChange(@Validated @RequestBody CrmCustomerLevelChangeSubmitDTO dto) {
         try {
-            Long customerId = toLong(body.get("customerId"));
-            String action = String.valueOf(body.getOrDefault("action", ""));
-            String targetLevel = body.get("targetLevel") == null ? null : String.valueOf(body.get("targetLevel"));
-            String remark = body.get("remark") == null ? null : String.valueOf(body.get("remark"));
-            return R.ok(approvalService.submitCustomerLevelChange(customerId, action, targetLevel, remark));
+            return R.ok(approvalService.submitCustomerLevelChange(dto.getCustomerId(), dto.getAction(),
+                    dto.getTargetLevel(), dto.getRemark()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -56,13 +54,10 @@ public class CrmApprovalController {
 
     @PostMapping("/opportunity-downgrade")
     @SaCheckPermission("crm:approval:opportunity-downgrade")
-    public R<Long> submitOpportunityDowngrade(@RequestBody Map<String, Object> body) {
+    public R<Long> submitOpportunityDowngrade(@Validated @RequestBody CrmOpportunityDowngradeSubmitDTO dto) {
         try {
-            Long opportunityId = toLong(body.get("opportunityId"));
-            String action = String.valueOf(body.getOrDefault("action", ""));
-            String targetStage = body.get("targetStage") == null ? null : String.valueOf(body.get("targetStage"));
-            String lostReason = body.get("lostReason") == null ? null : String.valueOf(body.get("lostReason"));
-            return R.ok(approvalService.submitOpportunityDowngrade(opportunityId, action, targetStage, lostReason));
+            return R.ok(approvalService.submitOpportunityDowngrade(dto.getOpportunityId(), dto.getAction(),
+                    dto.getTargetStage(), dto.getLostReason()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -70,12 +65,9 @@ public class CrmApprovalController {
 
     @PostMapping("/refund")
     @SaCheckPermission("crm:approval:refund")
-    public R<Long> submitRefund(@RequestBody Map<String, Object> body) {
+    public R<Long> submitRefund(@Validated @RequestBody CrmRefundSubmitDTO dto) {
         try {
-            Long receivableId = toLong(body.get("receivableId"));
-            BigDecimal refundAmount = body.get("refundAmount") == null ? null : new BigDecimal(String.valueOf(body.get("refundAmount")));
-            String reason = body.get("reason") == null ? null : String.valueOf(body.get("reason"));
-            return R.ok(approvalService.submitRefund(receivableId, refundAmount, reason));
+            return R.ok(approvalService.submitRefund(dto.getReceivableId(), dto.getRefundAmount(), dto.getReason()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -83,12 +75,7 @@ public class CrmApprovalController {
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:approval:query")
-    public R<CrmApproval> getInfo(@PathVariable("id") Long id) {
-        return R.ok(approvalService.getById(id));
-    }
-
-    private Long toLong(Object value) {
-        if (value == null) return null;
-        return Long.valueOf(String.valueOf(value));
+    public R<CrmApprovalVO> getInfo(@PathVariable("id") Long id) {
+        return R.ok(objectMapper.convertValue(approvalService.getById(id), CrmApprovalVO.class));
     }
 }

@@ -2,6 +2,7 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrBenefitSchemePayload;
 import com.cloudflow.hr.domain.dto.HrCompChangePayload;
@@ -12,6 +13,7 @@ import com.cloudflow.hr.domain.dto.HrEmployeeBenefitPayload;
 import com.cloudflow.hr.domain.dto.HrEmployeeCompPayload;
 import com.cloudflow.hr.domain.dto.HrTaxDeductionPayload;
 import com.cloudflow.hr.domain.dto.HrTaxProfilePayload;
+import com.cloudflow.hr.domain.dto.compensation.HrCompCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrBenefitScheme;
 import com.cloudflow.hr.domain.entity.HrCompChange;
 import com.cloudflow.hr.domain.entity.HrCompComponent;
@@ -22,18 +24,18 @@ import com.cloudflow.hr.domain.entity.HrEmployeeComp;
 import com.cloudflow.hr.domain.entity.HrTaxDeduction;
 import com.cloudflow.hr.domain.entity.HrTaxProfile;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/compensation")
@@ -41,11 +43,12 @@ import java.util.Map;
 class HrCompComponentController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/components")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listComponents(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrCompComponent.class, query));
+    public R<?> listComponents(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrCompComponent.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR薪酬项")
@@ -78,11 +81,12 @@ class HrCompComponentController {
 class HrCompStructureController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/structures")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listStructures(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrCompStructure.class, query));
+    public R<?> listStructures(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrCompStructure.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR薪酬结构")
@@ -115,11 +119,12 @@ class HrCompStructureController {
 class HrCompGradeController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/grades")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listGrades(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrCompGrade.class, query));
+    public R<?> listGrades(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrCompGrade.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR薪级")
@@ -144,11 +149,12 @@ class HrCompGradeController {
 class HrEmployeeCompController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/employee-compensations")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listEmployeeComps(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrEmployeeComp.class, query));
+    public R<?> listEmployeeComps(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrEmployeeComp.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR员工薪酬")
@@ -173,11 +179,12 @@ class HrEmployeeCompController {
 class HrCompChangeController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/changes")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listCompChanges(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrCompChange.class, query));
+    public R<?> listCompChanges(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.page(HrCompChange.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR调薪变更")
@@ -202,11 +209,12 @@ class HrCompChangeController {
 class HrBenefitSchemeController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/benefits")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listBenefits(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrBenefitScheme.class, query));
+    public R<?> listBenefits(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrBenefitScheme.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR福利方案")
@@ -231,11 +239,12 @@ class HrBenefitSchemeController {
 class HrEmployeeBenefitController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/employee-benefits")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listEmployeeBenefits(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrEmployeeBenefit.class, query));
+    public R<?> listEmployeeBenefits(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrEmployeeBenefit.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR员工福利")
@@ -252,11 +261,12 @@ class HrEmployeeBenefitController {
 class HrTaxProfileController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/tax-profiles")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listTaxProfiles(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrTaxProfile.class, query));
+    public R<?> listTaxProfiles(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrTaxProfile.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR个税档案")
@@ -281,11 +291,12 @@ class HrTaxProfileController {
 class HrTaxDeductionController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/tax-deductions")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listTaxDeductions(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrTaxDeduction.class, query));
+    public R<?> listTaxDeductions(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(crudService.list(HrTaxDeduction.class, MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR个税扣除")

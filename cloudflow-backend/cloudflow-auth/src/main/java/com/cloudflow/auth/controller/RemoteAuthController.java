@@ -5,6 +5,7 @@ import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.domain.SysPost;
 import com.cloudflow.auth.domain.SysTenant;
 import com.cloudflow.auth.domain.SysUser;
+import com.cloudflow.auth.domain.vo.SysTenantStatusVO;
 import com.cloudflow.auth.mapper.SysDeptMapper;
 import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
@@ -27,7 +28,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -65,27 +65,18 @@ public class RemoteAuthController {
      */
     @Inner(allowedServices = {GATEWAY_CALLERS})
     @GetMapping("/tenant/status/{tenantId}")
-    public R<Map<String, Object>> getTenantStatus(@PathVariable Long tenantId) {
-        Map<String, Object> result = new HashMap<>();
+    public R<SysTenantStatusVO> getTenantStatus(@PathVariable Long tenantId) {
         SysTenant tenant = TenantBroker.applyWithoutTenant(ignored -> sysTenantMapper.selectById(tenantId));
         if (tenant == null) {
-            result.put("available", false);
-            result.put("reason", "NOT_FOUND");
-            return R.ok(result);
+            return R.ok(SysTenantStatusVO.of(false, "NOT_FOUND"));
         }
         if (!"0".equals(tenant.getStatus())) {
-            result.put("available", false);
-            result.put("reason", "DISABLED");
-            return R.ok(result);
+            return R.ok(SysTenantStatusVO.of(false, "DISABLED"));
         }
         if (tenant.getExpireTime() != null && LocalDateTime.now().isAfter(tenant.getExpireTime())) {
-            result.put("available", false);
-            result.put("reason", "EXPIRED");
-            return R.ok(result);
+            return R.ok(SysTenantStatusVO.of(false, "EXPIRED"));
         }
-        result.put("available", true);
-        result.put("reason", "OK");
-        return R.ok(result);
+        return R.ok(SysTenantStatusVO.of(true, "OK"));
     }
 
     @Inner(allowedServices = {HR_CALLERS})

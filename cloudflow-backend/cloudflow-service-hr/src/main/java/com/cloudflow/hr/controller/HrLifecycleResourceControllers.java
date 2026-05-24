@@ -2,13 +2,18 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrLifecycleApplicationPayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleStatusChangePayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleTaskPayload;
+import com.cloudflow.hr.domain.dto.lifecycle.HrLifecycleCommonQueryDTO;
 import com.cloudflow.hr.service.HrLifecycleService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,11 +30,12 @@ import java.util.Map;
 class HrLifecycleApplicationController {
 
     private final HrLifecycleService lifecycleService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/applications")
     @SaCheckPermission("hr:lifecycle:list")
-    public R<?> listLifecycleApplications(@RequestParam Map<String, Object> query) {
-        return R.ok(lifecycleService.listApplications(query));
+    public R<?> listLifecycleApplications(@Validated @ModelAttribute HrLifecycleCommonQueryDTO query) {
+        return R.ok(lifecycleService.listApplications(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR生命周期申请")

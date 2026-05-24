@@ -2,20 +2,27 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrAttendanceAppealPayload;
 import com.cloudflow.hr.domain.dto.HrCompensationSimulateRequest;
 import com.cloudflow.hr.domain.dto.HrPerformanceInterviewPayload;
 import com.cloudflow.hr.domain.dto.HrResumeParsedFieldsPayload;
+import com.cloudflow.hr.domain.dto.attendance.HrAttendanceCommonQueryDTO;
+import com.cloudflow.hr.domain.dto.performance.HrPerformanceCommonQueryDTO;
+import com.cloudflow.hr.domain.dto.recruitment.HrResumeParseDTO;
 import com.cloudflow.hr.domain.entity.HrAttendanceAppeal;
 import com.cloudflow.hr.domain.entity.HrPerformanceInterview;
 import com.cloudflow.hr.service.HrAttendanceAppealService;
 import com.cloudflow.hr.service.HrCompensationSimulationService;
 import com.cloudflow.hr.service.HrResumeParserService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -40,12 +47,9 @@ class HrResumeParseController {
     @SysLog("触发HR简历解析")
     @PostMapping("/parse")
     @SaCheckPermission("hr:recruitment:edit")
-    public R<Long> parseResume(@RequestBody Map<String, Object> body) {
-        Long candidateId = body.get("candidateId") == null
-                ? null : Long.valueOf(String.valueOf(body.get("candidateId")));
-        String resumeUrl = body.get("resumeUrl") == null ? null : String.valueOf(body.get("resumeUrl"));
-        String rawText = body.get("rawText") == null ? "" : String.valueOf(body.get("rawText"));
-        return R.ok(parserService.parseResume(candidateId, resumeUrl, rawText));
+    public R<Long> parseResume(@Validated @RequestBody HrResumeParseDTO dto) {
+        return R.ok(parserService.parseResume(dto.getCandidateId(), dto.getResumeUrl(),
+                dto.getRawText() == null ? "" : dto.getRawText()));
     }
 
     @GetMapping("/parsed")
@@ -105,11 +109,13 @@ class HrCompensationSimulateController {
 class HrPerformanceInterviewController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:performance:view")
-    public R<?> listInterviews(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrPerformanceInterview.class, query));
+    public R<?> listInterviews(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(crudService.list(HrPerformanceInterview.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增HR绩效面谈记录")
@@ -154,11 +160,13 @@ class HrAttendanceAppealController {
 
     private final HrTypedCrudService crudService;
     private final HrAttendanceAppealService appealService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listAppeals(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrAttendanceAppeal.class, query));
+    public R<?> listAppeals(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(crudService.page(HrAttendanceAppeal.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")

@@ -2,12 +2,21 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeArbitrationDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeEvidenceDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeMediationDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeQueryDTO;
 import com.cloudflow.hr.service.HrDisputeArbitrationService;
 import com.cloudflow.hr.service.HrDisputeMediationService;
 import com.cloudflow.hr.service.HrLaborDisputeService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -15,8 +24,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 /**
  * HR 劳动争议多 Controller 聚合文件。
@@ -30,11 +37,12 @@ import java.util.Map;
 class HrLaborDisputeController {
 
     private final HrLaborDisputeService disputeService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:dispute:list")
-    public R<?> page(@RequestParam Map<String, Object> query) {
-        return R.ok(disputeService.page(query));
+    public R<?> page(@Validated @ModelAttribute HrLaborDisputeQueryDTO query) {
+        return R.ok(disputeService.page(MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/{id}")
@@ -46,15 +54,15 @@ class HrLaborDisputeController {
     @SysLog("登记劳动争议")
     @PostMapping
     @SaCheckPermission("hr:dispute:register")
-    public R<Long> register(@RequestBody Map<String, Object> payload) {
-        return R.ok(disputeService.registerDispute(payload));
+    public R<Long> register(@Validated @RequestBody HrLaborDisputeDTO dto) {
+        return R.ok(disputeService.registerDispute(MapConverters.toMap(dto, objectMapper)));
     }
 
     @SysLog("修改劳动争议")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:dispute:register")
-    public R<Void> update(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        disputeService.updateDispute(id, payload);
+    public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrLaborDisputeDTO dto) {
+        disputeService.updateDispute(id, MapConverters.toMap(dto, objectMapper));
         return R.ok();
     }
 
@@ -83,8 +91,8 @@ class HrLaborDisputeController {
     @SysLog("上传争议证据")
     @PostMapping("/{id}/evidence")
     @SaCheckPermission("hr:dispute:upload-evidence")
-    public R<Long> uploadEvidence(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
-        return R.ok(disputeService.attachEvidence(id, payload));
+    public R<Long> uploadEvidence(@PathVariable Long id, @Validated @RequestBody HrDisputeEvidenceDTO dto) {
+        return R.ok(disputeService.attachEvidence(id, MapConverters.toMap(dto, objectMapper)));
     }
 }
 
@@ -94,6 +102,7 @@ class HrLaborDisputeController {
 class HrDisputeMediationController {
 
     private final HrDisputeMediationService mediationService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:dispute:mediation")
@@ -104,15 +113,15 @@ class HrDisputeMediationController {
     @SysLog("新增争议调解记录")
     @PostMapping
     @SaCheckPermission("hr:dispute:mediation")
-    public R<Long> create(@PathVariable Long disputeId, @RequestBody Map<String, Object> payload) {
-        return R.ok(mediationService.createMediation(disputeId, payload));
+    public R<Long> create(@PathVariable Long disputeId, @Validated @RequestBody HrDisputeMediationDTO dto) {
+        return R.ok(mediationService.createMediation(disputeId, MapConverters.toMap(dto, objectMapper)));
     }
 
     @SysLog("修改争议调解记录")
     @PutMapping("/{mediationId}")
     @SaCheckPermission("hr:dispute:mediation")
-    public R<Void> update(@PathVariable Long mediationId, @RequestBody Map<String, Object> payload) {
-        mediationService.updateMediation(mediationId, payload);
+    public R<Void> update(@PathVariable Long mediationId, @Validated @RequestBody HrDisputeMediationDTO dto) {
+        mediationService.updateMediation(mediationId, MapConverters.toMap(dto, objectMapper));
         return R.ok();
     }
 }
@@ -123,6 +132,7 @@ class HrDisputeMediationController {
 class HrDisputeArbitrationController {
 
     private final HrDisputeArbitrationService arbitrationService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:dispute:arbitration")
@@ -133,15 +143,15 @@ class HrDisputeArbitrationController {
     @SysLog("新增争议仲裁记录")
     @PostMapping
     @SaCheckPermission("hr:dispute:arbitration")
-    public R<Long> create(@PathVariable Long disputeId, @RequestBody Map<String, Object> payload) {
-        return R.ok(arbitrationService.createArbitration(disputeId, payload));
+    public R<Long> create(@PathVariable Long disputeId, @Validated @RequestBody HrDisputeArbitrationDTO dto) {
+        return R.ok(arbitrationService.createArbitration(disputeId, MapConverters.toMap(dto, objectMapper)));
     }
 
     @SysLog("修改争议仲裁记录")
     @PutMapping("/{arbitrationId}")
     @SaCheckPermission("hr:dispute:arbitration")
-    public R<Void> update(@PathVariable Long arbitrationId, @RequestBody Map<String, Object> payload) {
-        arbitrationService.updateArbitration(arbitrationId, payload);
+    public R<Void> update(@PathVariable Long arbitrationId, @Validated @RequestBody HrDisputeArbitrationDTO dto) {
+        arbitrationService.updateArbitration(arbitrationId, MapConverters.toMap(dto, objectMapper));
         return R.ok();
     }
 }

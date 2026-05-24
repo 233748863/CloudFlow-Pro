@@ -2,8 +2,12 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrTrainingCertificateTemplatePayload;
+import com.cloudflow.hr.domain.dto.training.HrTrainingCertificateIssueDTO;
+import com.cloudflow.hr.domain.dto.training.HrTrainingCertificateRevokeDTO;
+import com.cloudflow.hr.domain.dto.training.HrTrainingCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrTrainingCertificate;
 import com.cloudflow.hr.domain.entity.HrTrainingCertificateTemplate;
 import com.cloudflow.hr.exception.HrBusinessException;
@@ -13,23 +17,24 @@ import com.cloudflow.hr.service.HrFileStorage;
 import com.cloudflow.hr.service.HrTrainingArchiveService;
 import com.cloudflow.hr.service.HrTrainingCertificateService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -45,17 +50,19 @@ class HrTrainingCertificateController {
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
     private final HrFileStorage fileStorage;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:cert:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.page(HrTrainingCertificate.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.page(HrTrainingCertificate.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:cert:view")
-    public R<?> mine(@RequestParam Map<String, Object> query) {
-        Map<String, Object> normalized = new HashMap<>(query);
+    public R<?> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
         return R.ok(crudService.page(HrTrainingCertificate.class, normalized));
     }
@@ -69,20 +76,17 @@ class HrTrainingCertificateController {
     @SysLog("颁发HR培训证书")
     @PostMapping("/issue")
     @SaCheckPermission("hr:training:cert:issue")
-    public R<Long> issue(@RequestBody Map<String, Object> body) {
-        Long employeeId = toLong(body.get("employeeId"));
-        Long courseId = toLong(body.get("courseId"));
-        Long sessionId = toLong(body.get("sessionId"));
-        Long templateId = toLong(body.get("templateId"));
-        return R.ok(certificateService.issue(employeeId, courseId, sessionId, templateId));
+    public R<Long> issue(@Validated @RequestBody HrTrainingCertificateIssueDTO dto) {
+        return R.ok(certificateService.issue(dto.getEmployeeId(), dto.getCourseId(),
+                dto.getSessionId(), dto.getTemplateId()));
     }
 
     @SysLog("撤销HR培训证书")
     @PostMapping("/{id}/revoke")
     @SaCheckPermission("hr:training:cert:issue")
-    public R<Void> revoke(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
-        String reason = body == null || body.get("reason") == null ? null : String.valueOf(body.get("reason"));
-        certificateService.revoke(id, reason);
+    public R<Void> revoke(@PathVariable Long id,
+                          @RequestBody(required = false) HrTrainingCertificateRevokeDTO dto) {
+        certificateService.revoke(id, dto == null ? null : dto.getReason());
         return R.ok();
     }
 
@@ -114,20 +118,6 @@ class HrTrainingCertificateController {
                 "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encoded);
         return new ResponseEntity<>(bytes, headers, 200);
     }
-
-    private Long toLong(Object value) {
-        if (value == null) {
-            return null;
-        }
-        if (value instanceof Number num) {
-            return num.longValue();
-        }
-        try {
-            return Long.parseLong(String.valueOf(value));
-        } catch (NumberFormatException ex) {
-            return null;
-        }
-    }
 }
 
 @RestController
@@ -136,11 +126,13 @@ class HrTrainingCertificateController {
 class HrTrainingCertificateTemplateController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:training:cert:list")
-    public R<?> list(@RequestParam Map<String, Object> query) {
-        return R.ok(crudService.list(HrTrainingCertificateTemplate.class, query));
+    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(crudService.list(HrTrainingCertificateTemplate.class,
+                MapConverters.toServiceQuery(query, objectMapper)));
     }
 
     @SysLog("新增培训证书模板")
