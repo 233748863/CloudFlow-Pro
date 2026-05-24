@@ -7,6 +7,11 @@
       windowMinutes: 只检查最近 N 分钟内完成的流程（避免全表扫描）。
       businessTypes: 由 BusinessTypeRegistry 提供的业务类型定义集合，运行期组装 UNION ALL 子查询。
       新增业务模块只需在 WorkflowBusinessTypeContributor 中追加 register 调用即可，无需修改本 XML。
+
+      跨租户对账：本查询由 ProcessBusinessReconcileJob 通过 TenantBroker.runWithoutTenant 触发，
+      不能依赖 MP 自动追加 tenant_id 条件。改为每个子查询带出业务表自身 tenant_id，
+      主 JOIN 追加 pi.tenant_id = biz.tenant_id 防止跨租户撞 instance_id 误报，
+      外层把 biz.tenant_id 选回 WfReconcileAlert.tenantId（Stage 2 给 wf_reconcile_alert 加列后入库）。
     -->
     <select id="selectInconsistentRecords" resultType="com.cloudflow.workflow.domain.WfReconcileAlert">
         SELECT
@@ -14,7 +19,8 @@
             biz.business_type AS businessType,
             biz.business_id AS businessId,
             'COMPLETED' AS expectedStatus,
-            biz.actual_status AS actualStatus
+            biz.actual_status AS actualStatus,
+            biz.tenant_id AS tenantId
         FROM wf_process_instance pi
         JOIN (
         <foreach collection="businessTypes" item="bt" separator=" UNION ALL ">
@@ -22,12 +28,14 @@
                 ${bt.processInstanceIdField} AS process_instance_id,
                 '${bt.code}' AS business_type,
                 ${bt.idField} AS business_id,
-                ${bt.statusField} AS actual_status
+                ${bt.statusField} AS actual_status,
+                ${bt.businessTable}.tenant_id AS tenant_id
             FROM ${bt.businessTable}
             WHERE ${bt.statusField} IN ('PENDING','APPROVING')
               AND ${bt.processInstanceIdField} IS NOT NULL
         </foreach>
         ) biz ON pi.instance_id = biz.process_instance_id
+              AND pi.tenant_id = biz.tenant_id
         WHERE pi.status = 'COMPLETED'
           AND pi.end_time >= DATE_SUB(NOW(), INTERVAL #{windowMinutes} MINUTE)
     </select>

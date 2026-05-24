@@ -38,9 +38,9 @@ CREATE TABLE crm_lead (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (lead_id),
   UNIQUE KEY uk_crm_lead_no (tenant_id, lead_no),
-  KEY idx_crm_lead_owner (owner_id),
-  KEY idx_crm_lead_status (status),
-  KEY idx_crm_lead_company (company_name)
+  KEY idx_crm_lead_owner (tenant_id, owner_id),
+  KEY idx_crm_lead_status (tenant_id, status),
+  KEY idx_crm_lead_company (tenant_id, company_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM线索表';
 
 DROP TABLE IF EXISTS crm_product;
@@ -65,8 +65,8 @@ CREATE TABLE crm_product (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (product_id),
   UNIQUE KEY uk_crm_product_no (tenant_id, product_no),
-  KEY idx_crm_product_name (product_name),
-  KEY idx_crm_product_status (status)
+  KEY idx_crm_product_name (tenant_id, product_name),
+  KEY idx_crm_product_status (tenant_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM产品表';
 
 DROP TABLE IF EXISTS crm_price_book;
@@ -89,8 +89,8 @@ CREATE TABLE crm_price_book (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (price_book_id),
   UNIQUE KEY uk_crm_price_book_no (tenant_id, price_book_no),
-  KEY idx_crm_price_book_name (price_book_name),
-  KEY idx_crm_price_book_status (status)
+  KEY idx_crm_price_book_name (tenant_id, price_book_name),
+  KEY idx_crm_price_book_status (tenant_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM价目表';
 
 DROP TABLE IF EXISTS crm_quote_line;
@@ -118,8 +118,8 @@ CREATE TABLE crm_quote_line (
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (quote_line_id),
-  KEY idx_crm_quote_line_quote (quote_id),
-  KEY idx_crm_quote_line_product (product_id)
+  KEY idx_crm_quote_line_quote (tenant_id, quote_id),
+  KEY idx_crm_quote_line_product (tenant_id, product_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM报价行项目表';
 
 DROP TABLE IF EXISTS crm_sales_target;
@@ -146,11 +146,11 @@ CREATE TABLE crm_sales_target (
   update_time         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (sales_target_id),
   UNIQUE KEY uk_crm_sales_target_no (tenant_id, target_no),
-  KEY idx_crm_sales_target_dimension (dimension_type),
-  KEY idx_crm_sales_target_period (period_type, target_year, target_period),
-  KEY idx_crm_sales_target_owner (owner_id),
-  KEY idx_crm_sales_target_dept (dept_id),
-  KEY idx_crm_sales_target_status (status)
+  KEY idx_crm_sales_target_dimension (tenant_id, dimension_type),
+  KEY idx_crm_sales_target_period (tenant_id, period_type, target_year, target_period),
+  KEY idx_crm_sales_target_owner (tenant_id, owner_id),
+  KEY idx_crm_sales_target_dept (tenant_id, dept_id),
+  KEY idx_crm_sales_target_status (tenant_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM销售目标与配额表';
 
 DROP TABLE IF EXISTS crm_customer;
@@ -192,10 +192,10 @@ CREATE TABLE crm_customer (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (customer_id),
   UNIQUE KEY uk_crm_customer_code (tenant_id, customer_code),
-  KEY idx_crm_customer_owner (owner_id),
-  KEY idx_crm_customer_health (health_level),
-  KEY idx_crm_customer_name (customer_name),
-  KEY idx_crm_customer_pool (pool_flag, last_follow_up_time)
+  KEY idx_crm_customer_owner (tenant_id, owner_id),
+  KEY idx_crm_customer_health (tenant_id, health_level),
+  KEY idx_crm_customer_name (tenant_id, customer_name),
+  KEY idx_crm_customer_pool (tenant_id, pool_flag, last_follow_up_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM客户表';
 
 DROP TABLE IF EXISTS crm_contact;
@@ -222,8 +222,8 @@ CREATE TABLE crm_contact (
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (contact_id),
-  KEY idx_crm_contact_customer (customer_id),
-  KEY idx_crm_contact_name (contact_name)
+  KEY idx_crm_contact_customer (tenant_id, customer_id),
+  KEY idx_crm_contact_name (tenant_id, contact_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM联系人表';
 
 DROP TABLE IF EXISTS crm_follow_up;
@@ -246,9 +246,9 @@ CREATE TABLE crm_follow_up (
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (follow_up_id),
-  KEY idx_crm_follow_customer (customer_id),
-  KEY idx_crm_follow_opportunity (opportunity_id),
-  KEY idx_crm_follow_time (follow_up_time)
+  KEY idx_crm_follow_customer (tenant_id, customer_id),
+  KEY idx_crm_follow_opportunity (tenant_id, opportunity_id),
+  KEY idx_crm_follow_time (tenant_id, follow_up_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM跟进记录表';
 
 DROP TABLE IF EXISTS crm_opportunity;
@@ -280,9 +280,9 @@ CREATE TABLE crm_opportunity (
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (opportunity_id),
-  KEY idx_crm_opportunity_customer (customer_id),
-  KEY idx_crm_opportunity_stage (stage),
-  KEY idx_crm_opportunity_owner (owner_id)
+  KEY idx_crm_opportunity_customer (tenant_id, customer_id),
+  KEY idx_crm_opportunity_stage (tenant_id, stage),
+  KEY idx_crm_opportunity_owner (tenant_id, owner_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM商机表';
 
 DROP TABLE IF EXISTS crm_quote;
@@ -314,9 +314,9 @@ CREATE TABLE crm_quote (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (quote_id),
   UNIQUE KEY uk_crm_quote_no (tenant_id, quote_no),
-  KEY idx_crm_quote_customer (customer_id),
-  KEY idx_crm_quote_opportunity (opportunity_id),
-  KEY idx_crm_quote_status (status)
+  KEY idx_crm_quote_customer (tenant_id, customer_id),
+  KEY idx_crm_quote_opportunity (tenant_id, opportunity_id),
+  KEY idx_crm_quote_status (tenant_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM报价单表';
 
 DROP TABLE IF EXISTS crm_receivable;
@@ -347,9 +347,9 @@ CREATE TABLE crm_receivable (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (receivable_id),
   UNIQUE KEY uk_crm_receivable_no (tenant_id, receivable_no),
-  KEY idx_crm_receivable_customer (customer_id),
-  KEY idx_crm_receivable_contract (contract_id),
-  KEY idx_crm_receivable_due (due_date)
+  KEY idx_crm_receivable_customer (tenant_id, customer_id),
+  KEY idx_crm_receivable_contract (tenant_id, contract_id),
+  KEY idx_crm_receivable_due (tenant_id, due_date)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM回款计划表';
 
 DROP TABLE IF EXISTS crm_renewal;
@@ -379,9 +379,9 @@ CREATE TABLE crm_renewal (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (renewal_id),
   UNIQUE KEY uk_crm_renewal_no (tenant_id, renewal_no),
-  KEY idx_crm_renewal_customer (customer_id),
-  KEY idx_crm_renewal_contract (contract_id),
-  KEY idx_crm_renewal_status (status)
+  KEY idx_crm_renewal_customer (tenant_id, customer_id),
+  KEY idx_crm_renewal_contract (tenant_id, contract_id),
+  KEY idx_crm_renewal_status (tenant_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM续约表';
 
 DROP TABLE IF EXISTS crm_service_ticket;
@@ -410,9 +410,9 @@ CREATE TABLE crm_service_ticket (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (ticket_id),
   UNIQUE KEY uk_crm_ticket_no (tenant_id, ticket_no),
-  KEY idx_crm_ticket_customer (customer_id),
-  KEY idx_crm_ticket_status (status),
-  KEY idx_crm_ticket_severity (severity)
+  KEY idx_crm_ticket_customer (tenant_id, customer_id),
+  KEY idx_crm_ticket_status (tenant_id, status),
+  KEY idx_crm_ticket_severity (tenant_id, severity)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM服务工单表';
 
 -- ============================================================================
@@ -441,8 +441,8 @@ CREATE TABLE crm_handover_task (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (handover_id),
   UNIQUE KEY uk_crm_handover_biz (tenant_id, business_type, business_id, from_owner_id, status),
-  KEY idx_crm_handover_owner (from_owner_id),
-  KEY idx_crm_handover_status (status)
+  KEY idx_crm_handover_owner (tenant_id, from_owner_id),
+  KEY idx_crm_handover_status (tenant_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 交接待办';
 
 -- ============================================================================
@@ -474,8 +474,8 @@ CREATE TABLE crm_approval (
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (approval_id),
   UNIQUE KEY uk_crm_approval_no (tenant_id, approval_no),
-  KEY idx_crm_approval_business (business_type, business_ref_id),
-  KEY idx_crm_approval_status (status)
+  KEY idx_crm_approval_business (tenant_id, business_type, business_ref_id),
+  KEY idx_crm_approval_status (tenant_id, status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 通用审批流水';
 
 -- ============================================================================
@@ -500,8 +500,8 @@ CREATE TABLE crm_customer_pool_log (
   update_by           VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (log_id),
-  KEY idx_crm_pool_log_customer (customer_id),
-  KEY idx_crm_pool_log_action (action_type)
+  KEY idx_crm_pool_log_customer (tenant_id, customer_id),
+  KEY idx_crm_pool_log_action (tenant_id, action_type)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 客户公海操作日志';
 
 -- ============================================================================
@@ -530,8 +530,8 @@ CREATE TABLE crm_assignment_rule (
   update_by           VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time         DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (rule_id),
-  KEY idx_crm_assign_rule_type (rule_type, status),
-  KEY idx_crm_assign_rule_priority (priority)
+  KEY idx_crm_assign_rule_type (tenant_id, rule_type, status),
+  KEY idx_crm_assign_rule_priority (tenant_id, priority)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='CRM 客户分配规则';
 
 SET FOREIGN_KEY_CHECKS = 1;

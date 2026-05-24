@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.callback;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.listener.DefaultDeadLetterHandler;
 import com.cloudflow.workflow.domain.WfCallbackDeadLetter;
 import com.cloudflow.workflow.mapper.WfCallbackDeadLetterMapper;
@@ -62,23 +63,35 @@ public class CallbackDlqStreamConsumer implements StreamListener<String, MapReco
             String processInstanceId = strip(body.remove("__processInstanceId"));
             int retryCount = parseInt(strip(body.remove("__retryCount")));
             String lastError = strip(body.remove("__lastError"));
+            Long tenantId = parseLong(strip(body.get("tenantId")));
 
-            WfCallbackDeadLetter dlq = new WfCallbackDeadLetter();
-            dlq.setStreamKey(streamKey);
-            dlq.setProcessInstanceId(processInstanceId);
-            dlq.setBusinessType(strip(body.get("businessType")));
-            dlq.setBusinessId(parseLong(strip(body.get("businessId"))));
-            dlq.setPayloadJson(objectMapper.writeValueAsString(body));
-            dlq.setRetryCount(retryCount);
-            dlq.setLastError(lastError);
-            dlq.setStatus("PENDING");
-            dlq.setCreateTime(LocalDateTime.now());
-            dlq.setUpdateTime(LocalDateTime.now());
-            deadLetterMapper.insert(dlq);
+            // DLQ 表已在 ignore-tables 中（MP 不强制 WHERE tenant_id），
+            // 但仍走 TenantBroker 包裹消费线程，确保任何下游 SQL（如同事务里
+            // 其他业务表 JOIN）继承租户上下文，且符合"所有 Stream 消费者入口走 broker"红线。
+            TenantBroker.runAs(tenantId, tid -> {
+                try {
+                    WfCallbackDeadLetter dlq = new WfCallbackDeadLetter();
+                    dlq.setTenantId(tenantId);
+                    dlq.setStreamKey(streamKey);
+                    dlq.setProcessInstanceId(processInstanceId);
+                    dlq.setBusinessType(strip(body.get("businessType")));
+                    dlq.setBusinessId(parseLong(strip(body.get("businessId"))));
+                    dlq.setPayloadJson(objectMapper.writeValueAsString(body));
+                    dlq.setRetryCount(retryCount);
+                    dlq.setLastError(lastError);
+                    dlq.setStatus("PENDING");
+                    dlq.setCreateTime(LocalDateTime.now());
+                    dlq.setUpdateTime(LocalDateTime.now());
+                    deadLetterMapper.insert(dlq);
+                } catch (com.fasterxml.jackson.core.JsonProcessingException jpe) {
+                    throw new IllegalStateException("DLQ payload 序列化失败", jpe);
+                }
+            });
 
             redisStreamUtil.ackGlobal(DefaultDeadLetterHandler.DLQ_STREAM_KEY, DLQ_GROUP, msgId);
             redisStreamUtil.deleteGlobal(DefaultDeadLetterHandler.DLQ_STREAM_KEY, msgId);
-            log.warn("[DLQ] 死信入库: processInstanceId={}, streamKey={}", processInstanceId, streamKey);
+            log.warn("[DLQ] 死信入库: processInstanceId={}, streamKey={}, tenantId={}",
+                    processInstanceId, streamKey, tenantId);
         } catch (Exception e) {
             log.error("[DLQ] 死信消费失败: msgId={}", msgId, e);
         }

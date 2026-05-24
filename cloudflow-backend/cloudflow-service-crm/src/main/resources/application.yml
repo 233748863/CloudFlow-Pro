@@ -140,7 +140,7 @@ cloudflow:
     ignore-tables:
       - sys_tenant
       - sys_menu
-      - sys_dict_type
-      - sys_dict_data
       - sys_config
+      - workflow_template
+      - template_category
     default-tenant-id: 100000

@@ -3,6 +3,8 @@
  * 用于在离线状态下缓存数据，在线时同步到服务器
  */
 
+// TODO(SAAS): 启用前需把 DB 名改成 `cloudflow_offline_${tenantId}` 或 stores 加 tenantId 复合索引，
+// 否则多租户切换后离线队列会串。当前 useOffline 全仓零业务调用方，暂不实施。
 const DB_NAME = 'cloudflow_offline';
 const DB_VERSION = 1;
 

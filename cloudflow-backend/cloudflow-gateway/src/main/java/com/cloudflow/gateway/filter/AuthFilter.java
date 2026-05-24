@@ -35,6 +35,9 @@ import java.util.Map;
 @Component
 public class AuthFilter implements GlobalFilter, Ordered {
 
+    /** 租户停用/过期时返回的业务码（前端拦截到该码强制登出） */
+    public static final int TENANT_DISABLED_CODE = 4030;
+
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     @Autowired
@@ -42,6 +45,9 @@ public class AuthFilter implements GlobalFilter, Ordered {
 
     @Autowired
     private GatewayAuthProperties authProperties;
+
+    @Autowired
+    private TenantStatusChecker tenantStatusChecker;
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
@@ -66,28 +72,53 @@ public class AuthFilter implements GlobalFilter, Ordered {
             return unauthorized(exchange);
         }
 
-        ServerHttpRequest mutableReq = request.mutate()
-                .headers(headers -> {
-                    headers.set("Authorization", "Bearer " + rawToken);
-                    headers.remove("X-Auth-Token");
-                    headers.remove("X-User-Id");
-                    headers.remove("X-User-Name");
-                    headers.remove("X-User-Roles");
-                    headers.remove("X-User-Dept-Name");
-                    headers.remove("X-User-Tenant-Id");
-                    // 防伪造内部调用：外部请求不允许携带 X-Inner-Call / X-From-Service 头穿透到下游
-                    headers.remove(SecurityConstants.INNER_CALL_HEADER);
-                    headers.remove(SecurityConstants.FROM_SERVICE_HEADER);
-                    String tenantId = resolveTenantId(loginUser);
-                    if (tenantId != null) {
-                        headers.set(SecurityConstants.TENANT_ID_HEADER, tenantId);
-                    } else {
-                        headers.remove(SecurityConstants.TENANT_ID_HEADER);
-                    }
-                })
-                .build();
+        String tenantIdStr = resolveTenantId(loginUser);
+        Long tenantId = parseTenantId(tenantIdStr);
 
-        return chain.filter(exchange.mutate().request(mutableReq).build());
+        return tenantStatusChecker.isAvailable(tenantId)
+                .flatMap(ok -> {
+                    if (!Boolean.TRUE.equals(ok)) {
+                        return tenantDisabled(exchange);
+                    }
+                    ServerHttpRequest mutableReq = request.mutate()
+                            .headers(headers -> {
+                                headers.set("Authorization", "Bearer " + rawToken);
+                                headers.remove("X-Auth-Token");
+                                headers.remove("X-User-Id");
+                                headers.remove("X-User-Name");
+                                headers.remove("X-User-Roles");
+                                headers.remove("X-User-Dept-Name");
+                                headers.remove("X-User-Tenant-Id");
+                                // 防伪造内部调用：外部请求不允许携带 X-Inner-Call / X-From-Service 头穿透到下游
+                                headers.remove(SecurityConstants.INNER_CALL_HEADER);
+                                headers.remove(SecurityConstants.FROM_SERVICE_HEADER);
+                                if (tenantIdStr != null) {
+                                    headers.set(SecurityConstants.TENANT_ID_HEADER, tenantIdStr);
+                                } else {
+                                    headers.remove(SecurityConstants.TENANT_ID_HEADER);
+                                }
+                            })
+                            .build();
+                    return chain.filter(exchange.mutate().request(mutableReq).build());
+                });
+    }
+
+    private Long parseTenantId(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
+    private Mono<Void> tenantDisabled(ServerWebExchange exchange) {
+        ServerHttpResponse response = exchange.getResponse();
+        response.setStatusCode(HttpStatus.FORBIDDEN);
+        response.getHeaders().setContentType(new MediaType("application", "json", StandardCharsets.UTF_8));
+        String body = "{\"code\":" + TENANT_DISABLED_CODE + ",\"msg\":\"租户已停用或已过期，请联系运营\"}";
+        DataBuffer buffer = response.bufferFactory().wrap(body.getBytes(StandardCharsets.UTF_8));
+        return response.writeWith(Mono.just(buffer));
     }
 
     private Mono<Void> unauthorized(ServerWebExchange exchange) {

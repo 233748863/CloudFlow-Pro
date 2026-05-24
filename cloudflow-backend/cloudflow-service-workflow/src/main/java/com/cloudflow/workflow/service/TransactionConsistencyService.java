@@ -3,6 +3,7 @@ package com.cloudflow.workflow.service;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.workflow.domain.WfTransactionMessage;
 import com.cloudflow.workflow.mapper.WfTransactionMessageMapper;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -216,13 +217,17 @@ public class TransactionConsistencyService {
             // 尝试获取锁，最多等待1秒，锁定50秒后自动释放
             if (lock.tryLock(1, 50, TimeUnit.SECONDS)) {
                 try {
-                    List<WfTransactionMessage> pendingMessages = messageMapper.selectList(
-                        new LambdaQueryWrapper<WfTransactionMessage>()
-                            .eq(WfTransactionMessage::getStatus, "PENDING")
-                            .le(WfTransactionMessage::getNextRetryTime, LocalDateTime.now())
-                            .lt(WfTransactionMessage::getRetryCount, DEFAULT_MAX_RETRY)
-                            .orderByAsc(WfTransactionMessage::getCreateTime)
-                            .last("LIMIT 100")
+                    // 平台级跨租户扫描：wf_transaction_message 全表扫待重试，
+                    // 单条重试根据消息自带 tenantId 再切租户上下文。
+                    List<WfTransactionMessage> pendingMessages = TenantBroker.applyWithoutTenant(v ->
+                        messageMapper.selectList(
+                            new LambdaQueryWrapper<WfTransactionMessage>()
+                                .eq(WfTransactionMessage::getStatus, "PENDING")
+                                .le(WfTransactionMessage::getNextRetryTime, LocalDateTime.now())
+                                .lt(WfTransactionMessage::getRetryCount, DEFAULT_MAX_RETRY)
+                                .orderByAsc(WfTransactionMessage::getCreateTime)
+                                .last("LIMIT 100")
+                        )
                     );
 
                     if (pendingMessages.isEmpty()) {
@@ -254,6 +259,11 @@ public class TransactionConsistencyService {
      */
     @Async("workflowExecutor")
     public void retryMessage(WfTransactionMessage msg) {
+        // @Async 线程无 HTTP/Sa-Token 上下文；按消息自身 tenantId 切租户后再执行。
+        TenantBroker.runAs(msg.getTenantId(), tid -> doRetryMessage(msg));
+    }
+
+    private void doRetryMessage(WfTransactionMessage msg) {
         String lockKey = "lock:txn:retry:" + msg.getMessageId();
         
         try {
@@ -462,13 +472,16 @@ public class TransactionConsistencyService {
             if (lock.tryLock(1, 60, TimeUnit.SECONDS)) {
                 try {
                     LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-                    
-                    int deleted = messageMapper.delete(
-                        new LambdaQueryWrapper<WfTransactionMessage>()
-                            .eq(WfTransactionMessage::getStatus, "SUCCESS")
-                            .lt(WfTransactionMessage::getUpdateTime, sevenDaysAgo)
+
+                    // 平台级跨租户清理 wf_transaction_message
+                    int deleted = TenantBroker.applyWithoutTenant(v ->
+                        messageMapper.delete(
+                            new LambdaQueryWrapper<WfTransactionMessage>()
+                                .eq(WfTransactionMessage::getStatus, "SUCCESS")
+                                .lt(WfTransactionMessage::getUpdateTime, sevenDaysAgo)
+                        )
                     );
-                    
+
                     if (deleted > 0) {
                         log.info("[cleanupSuccessMessages] 清理了 {} 条历史成功消息", deleted);
                     }

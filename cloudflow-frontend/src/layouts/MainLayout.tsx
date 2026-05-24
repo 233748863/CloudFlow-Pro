@@ -17,6 +17,7 @@ import { useWebSocket } from '@/hooks/useWebSocket';
 import { getRouters, type MenuItem as ApiMenuItem } from '@/services/api/menu';
 import { getIcon } from '@/utils/iconMapper';
 import { cn } from '@/utils/cn';
+import { tenantStorage } from '@/utils/tenantStorage';
 
 interface MenuTreeItem {
   id: string;
@@ -34,7 +35,7 @@ function readStoredSidebarState(): boolean {
     return false;
   }
 
-  return window.localStorage.getItem(SIDEBAR_STORAGE_KEY) === '1';
+  return tenantStorage.get(SIDEBAR_STORAGE_KEY) === '1';
 }
 
 export const MainLayout = () => {
@@ -115,7 +116,7 @@ export const MainLayout = () => {
       return;
     }
 
-    window.localStorage.setItem(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? '1' : '0');
+    tenantStorage.set(SIDEBAR_STORAGE_KEY, sidebarCollapsed ? '1' : '0');
   }, [sidebarCollapsed]);
 
   useEffect(() => {

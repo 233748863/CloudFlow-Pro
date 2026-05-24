@@ -25,10 +25,14 @@ public class CallbackDlqAdminController {
     public R<Page<WfCallbackDeadLetter>> list(
             @RequestParam(defaultValue = "1") long current,
             @RequestParam(defaultValue = "20") long size,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) Long tenantId) {
         LambdaQueryWrapper<WfCallbackDeadLetter> q = new LambdaQueryWrapper<>();
         if (status != null && !status.isBlank()) {
             q.eq(WfCallbackDeadLetter::getStatus, status);
+        }
+        if (tenantId != null) {
+            q.eq(WfCallbackDeadLetter::getTenantId, tenantId);
         }
         q.orderByDesc(WfCallbackDeadLetter::getId);
         return R.ok(deadLetterMapper.selectPage(new Page<>(current, size), q));

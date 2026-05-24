@@ -1,6 +1,7 @@
 package com.cloudflow.crm.listener;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.crm.config.HrEventStreamConstants;
 import com.cloudflow.crm.service.CrmHandoverTaskService;
 import lombok.RequiredArgsConstructor;
@@ -30,10 +31,13 @@ public class HrEmployeeLeftStreamConsumer implements StreamListener<String, MapR
             Long userId = parseLong(body.get("userId"));
             String employeeName = normalize(body.get("employeeName"));
             Long deptId = parseLong(body.get("deptId"));
+            Long tenantId = parseLong(body.get("tenantId"));
             if (userId == null) {
                 log.warn("跳过离职事件（userId 为空）: msgId={}, body={}", msgId, body);
             } else {
-                handoverTaskService.generateForEmployeeLeft(userId, employeeName, deptId, msgId);
+                // Stream 消费线程必须显式补租户上下文，避免 generateForEmployeeLeft 内部 SQL 跨租户裸跑。
+                TenantBroker.runAs(tenantId, tid ->
+                        handoverTaskService.generateForEmployeeLeft(userId, employeeName, deptId, msgId));
             }
             redisStreamUtil.ackGlobal(
                     HrEventStreamConstants.EMPLOYEE_LEFT_STREAM_KEY,

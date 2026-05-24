@@ -14,6 +14,7 @@ public class WfCallbackDeadLetter {
     @TableId(type = IdType.AUTO)
     private Long id;
 
+    private Long tenantId;
     private String streamKey;
     private String processInstanceId;
     private String businessType;

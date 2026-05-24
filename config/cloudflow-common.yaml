@@ -88,6 +88,14 @@ cloudflow:
   encrypt:
     enabled: false
 
+  # ==================== 网关层运营管控 ====================
+  # 网关侧每请求校验"租户运营状态"（停用 / 过期）
+  # 缓存命中走 Caffeine 本地，未命中回 auth 服务 /inner/auth/tenant/status/{id}
+  gateway:
+    tenant:
+      status-cache-seconds: 60
+      status-cache-max-size: 1024
+
   # ==================== 多租户配置 ====================
   # 对应 TenantConfigProperties 类
   # 所有服务共享此配置，控制 SQL 自动追加 tenant_id 条件
@@ -99,14 +107,23 @@ cloudflow:
     # 默认租户ID（未登录或上下文无租户时使用）
     default-tenant-id: 100000
     # 忽略租户过滤的表（这些表不追加 WHERE tenant_id = ? 条件）
+    # 取舍说明：
+    # - sys_tenant：租户主数据本身，按主键直接路由。
+    # - sys_menu / sys_config：平台级配置，全租户共享。
+    # - workflow_template / template_category：跨租户共享的流程模板库。
+    # - wf_callback_dead_letter / wf_reconcile_alert：平台运维跨租户排障表，DDL 已加 tenant_id 列
+    #   仅用于筛选展示，不参与 MP 自动过滤。
+    # 字典表（sys_dict_type/sys_dict_data）已移除：DDL 含 (dict_type, tenant_id) 唯一键，
+    # 本就按租户隔离；如需"全租户共享字典"语义，请在调用方用 TenantBroker.applyWithoutTenant 显式跨租户读。
+    # sys_log / sys_audit_log 未列入：DDL 已含 tenant_id 列与索引，按租户隔离查询语义更安全。
     ignore-tables:
       - sys_tenant
       - sys_menu
-      - sys_dict_type
-      - sys_dict_data
       - sys_config
       - workflow_template
       - template_category
+      - wf_callback_dead_letter
+      - wf_reconcile_alert
 
   security:
     token:

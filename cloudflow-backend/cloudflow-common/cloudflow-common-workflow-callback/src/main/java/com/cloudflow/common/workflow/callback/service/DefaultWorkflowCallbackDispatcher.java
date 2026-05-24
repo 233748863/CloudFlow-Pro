@@ -1,6 +1,7 @@
 package com.cloudflow.common.workflow.callback.service;
 
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.handler.ApprovalResultHandler;
@@ -44,24 +45,28 @@ public class DefaultWorkflowCallbackDispatcher implements WorkflowCallbackServic
     @Transactional(rollbackFor = Exception.class)
     public void handleApprovalResult(ApprovalResultDTO dto) {
         validate(dto);
-        UserContext.setTenantId(dto.getTenantId());
-        try {
-            ApprovalResultHandler handler = handlerMap.get(dto.getBusinessType());
-            if (handler == null) {
-                throw new IllegalStateException("未找到业务类型对应的处理器: " + dto.getBusinessType());
+        // MP TenantLineInnerInterceptor 仅读 TenantContext，业务侧另有依赖 UserContext，
+        // 此处双写并由 TenantBroker 保证 finally 恢复，避免 Stream/异步线程跨租户裸跑。
+        TenantBroker.runAs(dto.getTenantId(), tid -> {
+            UserContext.setTenantId(tid);
+            try {
+                ApprovalResultHandler handler = handlerMap.get(dto.getBusinessType());
+                if (handler == null) {
+                    throw new IllegalStateException("未找到业务类型对应的处理器: " + dto.getBusinessType());
+                }
+                if (WorkflowCallbackConstants.RESULT_APPROVED.equals(dto.getApprovalResult())) {
+                    handler.handleApproved(dto);
+                    return;
+                }
+                if (WorkflowCallbackConstants.RESULT_REJECTED.equals(dto.getApprovalResult())) {
+                    handler.handleRejected(dto);
+                    return;
+                }
+                throw new IllegalArgumentException("不支持的审批结果: " + dto.getApprovalResult());
+            } finally {
+                UserContext.setTenantId(null);
             }
-            if (WorkflowCallbackConstants.RESULT_APPROVED.equals(dto.getApprovalResult())) {
-                handler.handleApproved(dto);
-                return;
-            }
-            if (WorkflowCallbackConstants.RESULT_REJECTED.equals(dto.getApprovalResult())) {
-                handler.handleRejected(dto);
-                return;
-            }
-            throw new IllegalArgumentException("不支持的审批结果: " + dto.getApprovalResult());
-        } finally {
-            UserContext.setTenantId(null);
-        }
+        });
     }
 
     private void validate(ApprovalResultDTO dto) {

@@ -4,6 +4,10 @@ import type { HrEmployee } from './types';
 
 const employeeResolverMap = new Map<string, Promise<HrEmployee>>();
 
+export const clearEmployeeResolverCache = () => {
+  employeeResolverMap.clear();
+};
+
 const readStoredUser = () => getCurrentUserSnapshot();
 
 const readStoredUserId = () => {

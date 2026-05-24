@@ -1,8 +1,8 @@
 package com.cloudflow.workflow.service.monitor.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
@@ -34,6 +34,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     private final ProcessMonitorMapper processMonitorMapper;
     private final WfTaskMapper taskMapper;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
+    private final TenantIterator tenantIterator;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -88,11 +89,12 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     @Scheduled(cron = "0 */10 * * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectDeadlock() {
-        try {
-            log.info("开始检测死锁");
-            // P2-fix-6: 定时任务无 SecurityContext，安全获取租户ID
-            Long tenantId = getScheduledTenantId();
+        log.info("开始检测死锁");
+        tenantIterator.forEachActiveTenant(tid -> detectDeadlockForTenant(tid));
+    }
 
+    private void detectDeadlockForTenant(Long tenantId) {
+        try {
             // 查询长时间运行的流程
             List<ProcessMonitor> runningProcesses = processMonitorMapper.selectRunningProcesses(tenantId);
 
@@ -120,9 +122,9 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
                 }
             }
 
-            log.info("死锁检测完成: 检测数量={}, 新增告警={}", runningProcesses.size(), alertCount);
+            log.info("死锁检测完成: tenantId={}, 检测数量={}, 新增告警={}", tenantId, runningProcesses.size(), alertCount);
         } catch (Exception e) {
-            log.error("检测死锁失败", e);
+            log.error("检测死锁失败, tenantId={}", tenantId, e);
         }
     }
 
@@ -179,11 +181,12 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     @Scheduled(cron = "0 0 */6 * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectDataInconsistency() {
-        try {
-            log.info("开始检测数据不一致");
-            // P2-fix-6: 定时任务无 SecurityContext，安全获取租户ID
-            Long tenantId = getScheduledTenantId();
+        log.info("开始检测数据不一致");
+        tenantIterator.forEachActiveTenant(tid -> detectDataInconsistencyForTenant(tid));
+    }
 
+    private void detectDataInconsistencyForTenant(Long tenantId) {
+        try {
             // 检查流程监控数据与实际流程状态的一致性
             List<ProcessMonitor> runningMonitors = processMonitorMapper.selectRunningProcesses(tenantId);
 
@@ -202,9 +205,9 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
                 }
             }
 
-            log.info("数据不一致检测完成: 检测数量={}, 新增告警={}", runningMonitors.size(), alertCount);
+            log.info("数据不一致检测完成: tenantId={}, 检测数量={}, 新增告警={}", tenantId, runningMonitors.size(), alertCount);
         } catch (Exception e) {
-            log.error("检测数据不一致失败", e);
+            log.error("检测数据不一致失败, tenantId={}", tenantId, e);
         }
     }
 
@@ -332,19 +335,6 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
             sendAnomalyAlert(alert);
         } catch (Exception e) {
             log.error("创建数据不一致告警失败: instanceId={}", process.getInstanceId(), e);
-        }
-    }
-
-    /**
-     * P2-fix-6: 定时任务安全获取租户ID
-     * @Scheduled 方法没有 SecurityContext，直接调用 SecurityUtils 会 NPE
-     */
-    private Long getScheduledTenantId() {
-        try {
-            Long tenantId = SecurityUtils.getTenantId();
-            return tenantId != null ? tenantId : 100000L;
-        } catch (Exception e) {
-            return 100000L; // 默认租户ID
         }
     }
 

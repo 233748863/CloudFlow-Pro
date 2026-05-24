@@ -8,6 +8,7 @@ import com.cloudflow.common.oss.entity.UploadResult;
 import com.cloudflow.common.oss.enums.AccessPolicyType;
 import com.cloudflow.common.oss.exception.OssException;
 import com.cloudflow.common.oss.properties.OssProperties;
+import com.cloudflow.common.tenant.TenantContext;
 import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.http.nio.netty.NettyNioAsyncHttpClient;
@@ -276,7 +277,10 @@ public class OssClient {
 
     /**
      * 生成唯一的文件存储路径
-     * 格式：prefix/yyyy/MM/dd/uuid + suffix
+     * 格式：tenant-{tenantId}/prefix/yyyy/MM/dd/uuid + suffix
+     *
+     * tenant 段作为最外层目录，将不同租户的文件物理隔离在 OSS 上。
+     * 若上传时不在租户上下文中（如平台级共享资源），降级为 "shared" 桶。
      *
      * @param prefix 路径前缀
      * @param suffix 文件后缀
@@ -285,10 +289,15 @@ public class OssClient {
     public String getPath(String prefix, String suffix) {
         String uuid = IdUtil.fastSimpleUUID();
         String datePath = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy/MM/dd"));
-        String path = (prefix != null && !prefix.isEmpty())
-                ? prefix + "/" + datePath + "/" + uuid
-                : datePath + "/" + uuid;
-        return path + suffix;
+        Long tenantId = TenantContext.getTenantId();
+        String tenantSeg = (tenantId != null) ? ("tenant-" + tenantId) : "shared";
+        StringBuilder sb = new StringBuilder();
+        sb.append(tenantSeg).append('/');
+        if (prefix != null && !prefix.isEmpty()) {
+            sb.append(prefix).append('/');
+        }
+        sb.append(datePath).append('/').append(uuid).append(suffix);
+        return sb.toString();
     }
 
     /**

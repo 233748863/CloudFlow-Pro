@@ -37,6 +37,12 @@
             <artifactId>spring-cloud-starter-loadbalancer</artifactId>
         </dependency>
 
+        <!-- Caffeine：租户状态本地缓存（spring-cloud-starter-gateway 已含 WebFlux/WebClient） -->
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+
         <!-- 公共安全模块（TokenService 用于 AuthFilter 校验 Token） -->
         <!-- 传递依赖：common-security -> common-redis -> common-core -->
         <dependency>

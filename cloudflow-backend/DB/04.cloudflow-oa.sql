@@ -49,7 +49,7 @@ CREATE TABLE oa_announcement_read (
   user_id           BIGINT(20)      NOT NULL COMMENT '用户ID',
   read_time         DATETIME        DEFAULT NULL COMMENT '阅读时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_announcement_user (announcement_id, user_id)
+  UNIQUE KEY uk_announcement_read_tenant (tenant_id, announcement_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公告阅读记录表';
 
 -- =========================================================
@@ -71,7 +71,8 @@ CREATE TABLE oa_meeting_room (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
   deleted           TINYINT(1)      NOT NULL DEFAULT 0 COMMENT '逻辑删除(0=未删除 1=已删除)',
-  PRIMARY KEY (room_id)
+  PRIMARY KEY (room_id),
+  KEY idx_meeting_room_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COMMENT='会议室资源表';
 
 -- 4. 日程事件表
@@ -188,7 +189,8 @@ CREATE TABLE oa_consumable (
   create_time       DATETIME        DEFAULT NULL COMMENT '创建时间',
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL COMMENT '更新时间',
-  PRIMARY KEY (consumable_id)
+  PRIMARY KEY (consumable_id),
+  KEY idx_consumable_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='耗材库存表';
 
 -- 10. 供应商主数据表
@@ -226,7 +228,8 @@ CREATE TABLE oa_asset_log (
   remark            VARCHAR(255)    DEFAULT NULL COMMENT '备注',
   create_time       DATETIME        DEFAULT NULL COMMENT '操作时间',
   PRIMARY KEY (log_id),
-  KEY idx_log_ref (ref_id, ref_type)
+  KEY idx_log_ref (ref_id, ref_type),
+  KEY idx_asset_log_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='资产变动日志表';
 
 -- =========================================================
@@ -446,7 +449,7 @@ CREATE TABLE oa_knowledge_read (
   user_name         VARCHAR(64)     DEFAULT NULL COMMENT '用户姓名',
   read_time         DATETIME        DEFAULT NULL COMMENT '阅读时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_knowledge_user (document_id, user_id),
+  UNIQUE KEY uk_knowledge_read_tenant (tenant_id, document_id, user_id),
   KEY idx_knowledge_read_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA知识库阅读记录表';
 
@@ -487,7 +490,7 @@ CREATE TABLE biz_expense_claim (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_claim_no (claim_no),
+  UNIQUE KEY uk_expense_claim_tenant_no (tenant_id, claim_no),
   KEY idx_claim_user (user_id),
   KEY idx_claim_status (status),
   KEY idx_claim_tenant (tenant_id)
@@ -545,7 +548,7 @@ CREATE TABLE biz_payment_request (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_payment_no (payment_no),
+  UNIQUE KEY uk_payment_request_tenant_no (tenant_id, payment_no),
   KEY idx_payment_user (user_id),
   KEY idx_payment_status (status),
   KEY idx_payment_tenant (tenant_id)
@@ -587,7 +590,7 @@ CREATE TABLE biz_purchase_request (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_purchase_no (purchase_no),
+  UNIQUE KEY uk_purchase_request_tenant_no (tenant_id, purchase_no),
   KEY idx_purchase_user (user_id),
   KEY idx_purchase_status (status),
   KEY idx_purchase_payment_status (payment_status),
@@ -682,7 +685,7 @@ CREATE TABLE biz_business_trip (
   update_by         VARCHAR(64)     DEFAULT NULL COMMENT '更新者',
   update_time       DATETIME        DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_trip_no (trip_no),
+  UNIQUE KEY uk_trip_tenant_no (tenant_id, trip_no),
   KEY idx_trip_user (user_id),
   KEY idx_trip_tenant (tenant_id),
   KEY idx_trip_status (status),
@@ -805,7 +808,7 @@ CREATE TABLE oa_project_member (
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_project_member (project_id, user_id),
+  UNIQUE KEY uk_project_member_tenant (tenant_id, project_id, user_id),
   KEY idx_project_member_project (project_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目成员表';
 
@@ -831,7 +834,8 @@ CREATE TABLE oa_project_milestone (
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (milestone_id),
-  KEY idx_project_milestone_project (project_id)
+  KEY idx_project_milestone_project (project_id),
+  KEY idx_project_milestone_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目里程碑表';
 
 DROP TABLE IF EXISTS oa_project_risk;
@@ -855,7 +859,7 @@ CREATE TABLE oa_project_risk (
   update_by          VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time        DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (risk_id),
-  UNIQUE KEY uk_project_risk_code (project_id, risk_code),
+  UNIQUE KEY uk_project_risk_tenant (tenant_id, project_id, risk_code),
   KEY idx_project_risk_project (project_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目风险表';
 
@@ -879,7 +883,8 @@ CREATE TABLE oa_project_dependency (
   PRIMARY KEY (dependency_id),
   KEY idx_project_dependency_project (project_id),
   KEY idx_project_dependency_predecessor (predecessor_type, predecessor_id),
-  KEY idx_project_dependency_successor (successor_type, successor_id)
+  KEY idx_project_dependency_successor (successor_type, successor_id),
+  KEY idx_project_dependency_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='项目依赖表';
 
 DROP TABLE IF EXISTS oa_budget_subject;
@@ -955,7 +960,7 @@ CREATE TABLE oa_budget_line (
   sort_order         INT(11)         DEFAULT 0 COMMENT '排序',
   remark             VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (line_id),
-  UNIQUE KEY uk_budget_line_subject (budget_id, subject_code),
+  UNIQUE KEY uk_budget_line_tenant_subject (tenant_id, budget_id, subject_code),
   KEY idx_budget_line_budget (budget_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预算明细表';
 
@@ -1004,7 +1009,8 @@ CREATE TABLE oa_budget_ledger (
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (ledger_id),
   KEY idx_budget_ledger_budget (budget_id),
-  KEY idx_budget_ledger_business (business_type, business_id)
+  KEY idx_budget_ledger_business (business_type, business_id),
+  KEY idx_budget_ledger_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='预算执行台账表';
 
 DROP TABLE IF EXISTS oa_invoice;
@@ -1059,7 +1065,8 @@ CREATE TABLE oa_invoice_writeoff (
   create_time        DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (writeoff_id),
   KEY idx_invoice_writeoff_invoice (invoice_id),
-  KEY idx_invoice_writeoff_business (business_type, business_id)
+  KEY idx_invoice_writeoff_business (business_type, business_id),
+  KEY idx_invoice_writeoff_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='发票核销表';
 
 -- 19.1 OA统一链路事件表
@@ -1182,7 +1189,7 @@ CREATE TABLE oa_seal_application (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_seal_application_no (application_no),
+  UNIQUE KEY uk_seal_app_tenant_no (tenant_id, application_no),
   KEY idx_seal_app_tenant (tenant_id),
   KEY idx_seal_app_seal (seal_id),
   KEY idx_seal_app_contract (contract_id),
@@ -1239,7 +1246,7 @@ CREATE TABLE oa_seal_renewal (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_seal_renewal_no (renewal_no),
+  UNIQUE KEY uk_seal_renewal_tenant_no (tenant_id, renewal_no),
   KEY idx_seal_renewal_seal (seal_id),
   KEY idx_seal_renewal_status (status),
   KEY idx_seal_renewal_tenant (tenant_id)
@@ -1264,7 +1271,7 @@ CREATE TABLE oa_seal_expiry_reminder_log (
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_seal_expiry_round (seal_id, expire_date, days_before, recipient_id),
+  UNIQUE KEY uk_seal_expiry_tenant (tenant_id, seal_id, expire_date, days_before, recipient_id),
   KEY idx_seal_expiry_log_tenant (tenant_id),
   KEY idx_seal_expiry_log_seal (seal_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='印章到期提醒日志表';
@@ -1327,7 +1334,7 @@ CREATE TABLE oa_license_borrow (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_license_borrow_no (borrow_no),
+  UNIQUE KEY uk_license_borrow_tenant_no (tenant_id, borrow_no),
   KEY idx_license_borrow_tenant (tenant_id),
   KEY idx_license_borrow_license (license_id),
   KEY idx_license_borrow_user (user_id),
@@ -1383,7 +1390,7 @@ CREATE TABLE oa_license_renewal (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_license_renewal_no (renewal_no),
+  UNIQUE KEY uk_license_renewal_tenant_no (tenant_id, renewal_no),
   KEY idx_license_renewal_license (license_id),
   KEY idx_license_renewal_status (status),
   KEY idx_license_renewal_tenant (tenant_id)
@@ -1408,7 +1415,7 @@ CREATE TABLE oa_license_expiry_reminder_log (
   create_by         VARCHAR(64)     DEFAULT '' COMMENT '创建者',
   create_time       DATETIME        DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_license_expiry_round (license_id, expire_date, days_before, recipient_id),
+  UNIQUE KEY uk_license_expiry_tenant (tenant_id, license_id, expire_date, days_before, recipient_id),
   KEY idx_license_expiry_log_tenant (tenant_id),
   KEY idx_license_expiry_log_license (license_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COMMENT='证照到期提醒日志表';
@@ -1591,7 +1598,7 @@ CREATE TABLE oa_knowledge_doc_version (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_knowledge_version (document_id, version_no),
+  UNIQUE KEY uk_knowledge_version_tenant (tenant_id, document_id, version_no),
   KEY idx_knowledge_version_doc (tenant_id, document_id, version_no)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA知识库文档版本快照';
 
@@ -1753,7 +1760,7 @@ CREATE TABLE oa_meeting_attendance (
   update_by         VARCHAR(64)     DEFAULT '' COMMENT '更新者',
   update_time       DATETIME        DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (id),
-  UNIQUE KEY uk_meeting_attendance_minutes_user (minutes_id, user_id),
+  UNIQUE KEY uk_meeting_attendance_tenant (tenant_id, minutes_id, user_id),
   KEY idx_meeting_attendance_user (tenant_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='OA会议出席记录';
 

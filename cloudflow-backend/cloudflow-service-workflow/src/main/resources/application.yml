@@ -89,12 +89,13 @@ cloudflow:
     enabled: true
     column: tenant_id
     # workflow 服务的跨租户系统表（DLQ / 对账告警 / 平台级系统表）
+    # 与 config/cloudflow-common.yaml 保持一致；Nacos 不可用时本地兜底
     ignore-tables:
       - sys_tenant
       - sys_menu
-      - sys_dict_type
-      - sys_dict_data
       - sys_config
+      - workflow_template
+      - template_category
       - wf_callback_dead_letter
       - wf_reconcile_alert
     default-tenant-id: 100000

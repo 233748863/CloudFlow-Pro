@@ -1,7 +1,7 @@
 package com.cloudflow.hr.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
-import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackConstants;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.service.WorkflowCallbackService;
@@ -83,28 +83,29 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
 
         validateApprovalResult(dto);
 
-        // 回调线程没有登录态，显式补租户上下文，保证异步回写仍然走租户隔离。
-        UserContext.setTenantId(dto.getTenantId());
-        TenantContext.setTenantId(dto.getTenantId());
-        try {
-            CallbackTarget target = resolveTarget(dto.getBusinessType());
-            String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
-            crudService.updateProperties(
-                    target.entityClass(),
-                    dto.getBusinessId(),
-                    Map.of(target.statusField(), status));
-            applySideEffects(dto, target, status);
-            log.info("审批回调已写入 HR 表，businessType: {}, businessId: {}, entity: {}, statusField: {}, status: {}",
-                    dto.getBusinessType(), dto.getBusinessId(),
-                    target.entityClass().getSimpleName(), target.statusField(), status);
-        } catch (Exception e) {
-            log.error("处理审批结果失败，businessType: {}, businessId: {}",
-                    dto.getBusinessType(), dto.getBusinessId(), e);
-            throw e;
-        } finally {
-            UserContext.setTenantId(null);
-            TenantContext.clear();
-        }
+        // MP TenantLineInnerInterceptor 仅读 TenantContext；HR 历史代码另写 UserContext，
+        // 改由 TenantBroker.runAs 包裹保证 finally 恢复，避免 Stream/异步线程跨租户裸跑。
+        TenantBroker.runAs(dto.getTenantId(), tid -> {
+            UserContext.setTenantId(tid);
+            try {
+                CallbackTarget target = resolveTarget(dto.getBusinessType());
+                String status = resolveStatus(dto.getBusinessType(), dto.getApprovalResult());
+                crudService.updateProperties(
+                        target.entityClass(),
+                        dto.getBusinessId(),
+                        Map.of(target.statusField(), status));
+                applySideEffects(dto, target, status);
+                log.info("审批回调已写入 HR 表，businessType: {}, businessId: {}, entity: {}, statusField: {}, status: {}",
+                        dto.getBusinessType(), dto.getBusinessId(),
+                        target.entityClass().getSimpleName(), target.statusField(), status);
+            } catch (Exception e) {
+                log.error("处理审批结果失败，businessType: {}, businessId: {}",
+                        dto.getBusinessType(), dto.getBusinessId(), e);
+                throw e;
+            } finally {
+                UserContext.setTenantId(null);
+            }
+        });
     }
 
     private CallbackTarget resolveTarget(String businessType) {

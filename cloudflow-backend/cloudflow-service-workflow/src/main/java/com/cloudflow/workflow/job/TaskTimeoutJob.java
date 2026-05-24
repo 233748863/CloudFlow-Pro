@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
@@ -133,43 +134,50 @@ public class TaskTimeoutJob {
      */
     @Transactional(rollbackFor = Exception.class)
     public void handleTimeoutTask(String taskId) {
-        WfTask task = taskMapper.selectById(taskId);
+        // Job 线程无 HTTP 上下文：先跨租户读 task 拿 tenantId，再用 broker 包租户敏感分支。
+        WfTask task = TenantBroker.applyWithoutTenant(v -> taskMapper.selectById(taskId));
         if (task == null) {
             log.warn("[TaskTimeoutJob] 超时任务不存在（可能已被处理）, taskId={}", taskId);
             return;
         }
-        
+
         // 检查任务是否仍在待办状态
         if (!WfTaskStatus.TODO.getCode().equals(task.getStatus())) {
             log.info("[TaskTimeoutJob] 任务已被处理，跳过, taskId={}, status={}", taskId, task.getStatus());
             return;
         }
-        
-        log.info("[TaskTimeoutJob] 开始自动处理超时任务, taskId={}, nodeName={}", taskId, task.getNodeName());
-        
+
+        log.info("[TaskTimeoutJob] 开始自动处理超时任务, taskId={}, nodeName={}, tenantId={}",
+                taskId, task.getNodeName(), task.getTenantId());
+
+        TenantBroker.runAs(task.getTenantId(), tid -> doHandleTimeoutTask(task));
+    }
+
+    private void doHandleTimeoutTask(WfTask task) {
+        String taskId = task.getTaskId();
         // 查找流程实例
         WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
         if (instance == null) {
             log.warn("[TaskTimeoutJob] 流程实例不存在, instanceId={}", task.getInstanceId());
             return;
         }
-        
+
         try {
             // 设置系统用户上下文（用于权限校验和审计日志）
             // 使用任务的处理人ID作为操作者，如果没有则使用系统ID(0)
             Long operatorId = task.getAssignee() != null ? task.getAssignee() : 0L;
             String operatorName = "系统自动处理";
-            
+
             // 临时设置用户上下文
             UserContext.setUserId(operatorId);
             UserContext.setUserName(operatorName);
-            
+
             // 准备流程变量（可以根据需要添加超时标记）
             Map<String, Object> variables = new HashMap<>();
             variables.put("_autoProcessed", true);
             variables.put("_autoProcessReason", "任务超时自动通过");
             variables.put("_autoProcessTime", LocalDateTime.now());
-            
+
             // 调用完整的流程引擎进行任务完成和流转
             // 这将触发完整的流程流转逻辑，包括：
             // 1. 保存历史记录
@@ -184,21 +192,22 @@ public class TaskTimeoutJob {
                 variables,
                 null  // delegateUserId: 非转办操作
             );
-            
+
             log.info("[TaskTimeoutJob] 超时任务处理完成，流程已继续流转, taskId={}", taskId);
-            
+
         } catch (Exception e) {
             log.error("[TaskTimeoutJob] 调用流程引擎处理超时任务失败, taskId={}, error={}", taskId, e.getMessage(), e);
-            
+
             // 如果调用流程引擎失败，回退到简化处理逻辑
             log.warn("[TaskTimeoutJob] 回退到简化处理逻辑");
             handleTimeoutTaskFallback(task, instance);
-            
+
         } finally {
-            // 清理用户上下文
-            UserContext.clear();
+            // 清理用户上下文（broker 自动恢复 tenantId，此处只清 userId/userName）
+            UserContext.setUserId(null);
+            UserContext.setUserName(null);
         }
-        
+
         // 发送通知
         sendTimeoutNotifications(task, instance);
     }

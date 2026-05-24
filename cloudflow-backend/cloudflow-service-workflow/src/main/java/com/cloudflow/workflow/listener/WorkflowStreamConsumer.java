@@ -1,7 +1,10 @@
 package com.cloudflow.workflow.listener;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.workflow.config.properties.WorkflowProperties;
+import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.mapper.WfTaskMapper;
 import com.cloudflow.workflow.service.IWfTaskService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,6 +30,9 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
     @Autowired
     private WorkflowProperties workflowProperties;
 
+    @Autowired
+    private WfTaskMapper taskMapper;
+
     @Override
     public void onMessage(MapRecord<String, String, String> message) {
         String msgId = message.getId().getValue();
@@ -36,9 +42,19 @@ public class WorkflowStreamConsumer implements StreamListener<String, MapRecord<
         log.info("Stream收到超时任务: {}, msgId: {}", taskId, msgId);
 
         try {
-            // 执行业务逻辑 (自动通过)
-            // 幂等性依赖 taskService 内部判断（如果任务非 pending 状态应抛错或忽略）
-            taskService.completeTask(taskId, "PASS", "系统 SLA 自动通过 (Stream)", Collections.<String, Object>emptyMap(), null);
+            // Stream 消费线程无 HTTP/Sa-Token 上下文：先跨租户读 task 拿 tenantId，
+            // 再用 TenantBroker.runAs 包裹 completeTask，确保后续 SQL 走对租户。
+            Long tenantId = TenantBroker.applyWithoutTenant(v -> {
+                WfTask task = taskMapper.selectById(taskId);
+                return task != null ? task.getTenantId() : null;
+            });
+            if (tenantId == null) {
+                log.warn("Stream 超时任务对应 task 不存在或缺 tenantId, taskId={}, msgId={}", taskId, msgId);
+            }
+            TenantBroker.runAs(tenantId, tid -> {
+                taskService.completeTask(taskId, "PASS", "系统 SLA 自动通过 (Stream)",
+                        Collections.<String, Object>emptyMap(), null);
+            });
 
             // 手动确认
             redisStreamUtil.ack(workflowProperties.getStream().getKey(), workflowProperties.getStream().getGroup(), msgId);

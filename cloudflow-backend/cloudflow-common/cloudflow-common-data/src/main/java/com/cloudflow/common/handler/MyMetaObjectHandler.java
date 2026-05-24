@@ -2,6 +2,7 @@ package com.cloudflow.common.handler;
 
 import com.baomidou.mybatisplus.core.handlers.MetaObjectHandler;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.common.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.ibatis.reflection.MetaObject;
 import org.springframework.stereotype.Component;
@@ -43,6 +44,14 @@ public class MyMetaObjectHandler implements MetaObjectHandler {
         
         // 填充逻辑删除标志（默认为0，表示未删除）
         this.strictInsertFill(metaObject, "deleted", Integer.class, 0);
+
+        // 兜底填充 tenant_id：MP TenantLineInnerInterceptor 走 SQL parse 注入，
+        // 自定义 XML 已成 SQL / entity 显式 setTenantId(null) 等场景可能绕过；
+        // 此处仅在实体有 tenantId 字段且当前值为 null 时补齐，避免覆盖业务显式赋值。
+        Long tenantId = TenantContext.getTenantId();
+        if (tenantId != null && metaObject.hasGetter("tenantId") && metaObject.getValue("tenantId") == null) {
+            this.strictInsertFill(metaObject, "tenantId", Long.class, tenantId);
+        }
     }
 
     /**

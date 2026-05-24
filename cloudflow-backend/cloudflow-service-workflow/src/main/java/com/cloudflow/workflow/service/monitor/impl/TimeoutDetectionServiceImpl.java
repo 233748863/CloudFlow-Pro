@@ -1,8 +1,8 @@
 package com.cloudflow.workflow.service.monitor.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.workflow.domain.monitor.ProcessMonitor;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.monitor.TimeoutAlert;
@@ -38,6 +38,7 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     private final ProcessMonitorMapper processMonitorMapper;
     private final TimeoutAlertMapper timeoutAlertMapper;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
+    private final TenantIterator tenantIterator;
 
     @Value("${workflow.timeout.remind.threshold:3600000}")
     private Long remindThreshold;
@@ -56,10 +57,12 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     @Scheduled(cron = "0 */5 * * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectTimeoutTasks() {
-        try {
-            log.info("开始检测超时任务");
-            Long tenantId = getScheduledTenantId();
+        log.info("开始检测超时任务");
+        tenantIterator.forEachActiveTenant(tid -> detectTimeoutTasksForTenant(tid));
+    }
 
+    private void detectTimeoutTasksForTenant(Long tenantId) {
+        try {
             List<TaskMonitor> timeoutTasks = taskMonitorMapper.selectTimeoutTasks(tenantId, criticalThreshold);
 
             int alertCount = 0;
@@ -99,9 +102,9 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                 sendTimeoutAlert(alert);
             }
 
-            log.info("超时任务检测完成: 检测数量={}, 新增告警={}", timeoutTasks.size(), alertCount);
+            log.info("超时任务检测完成: tenantId={}, 检测数量={}, 新增告警={}", tenantId, timeoutTasks.size(), alertCount);
         } catch (Exception e) {
-            log.error("检测超时任务失败", e);
+            log.error("检测超时任务失败, tenantId={}", tenantId, e);
         }
     }
 
@@ -113,11 +116,18 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
     @Scheduled(cron = "0 */5 * * * ?")
     @Transactional(rollbackFor = Exception.class)
     public void detectTimeoutProcesses() {
-        try {
-            log.info("开始检测超时流程");
-            Long tenantId = getScheduledTenantId();
-            cleanupDuplicateActiveAlerts();
+        log.info("开始检测超时流程");
+        // 重复告警全量收敛跨租户进行一次即可（无 tenantId 过滤，依赖 MP 行级隔离）
+        tenantIterator.forEachActiveTenant(tid -> {
+            try { cleanupDuplicateActiveAlerts(); } catch (Exception e) {
+                log.error("超时告警收敛失败, tenantId={}", tid, e);
+            }
+            detectTimeoutProcessesForTenant(tid);
+        });
+    }
 
+    private void detectTimeoutProcessesForTenant(Long tenantId) {
+        try {
             List<ProcessMonitor> runningProcesses = processMonitorMapper.selectRunningProcesses(tenantId);
 
             int alertCount = 0;
@@ -157,9 +167,9 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
                 sendTimeoutAlert(alert);
             }
 
-            log.info("超时流程检测完成: 检测数量={}, 新增告警={}", runningProcesses.size(), alertCount);
+            log.info("超时流程检测完成: tenantId={}, 检测数量={}, 新增告警={}", tenantId, runningProcesses.size(), alertCount);
         } catch (Exception e) {
-            log.error("检测超时流程失败", e);
+            log.error("检测超时流程失败, tenantId={}", tenantId, e);
         }
     }
 
@@ -227,18 +237,6 @@ public class TimeoutDetectionServiceImpl implements ITimeoutDetectionService {
         } catch (Exception e) {
             log.error("解决超时告警失败: alertId={}", alertId, e);
             throw e;
-        }
-    }
-
-    /**
-     * 定时任务里没有 SecurityContext，需要回退到默认租户。
-     */
-    private Long getScheduledTenantId() {
-        try {
-            Long tenantId = SecurityUtils.getTenantId();
-            return tenantId != null ? tenantId : 100000L;
-        } catch (Exception e) {
-            return 100000L;
         }
     }
 

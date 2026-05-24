@@ -20,6 +20,10 @@ export function unsubscribeWsTopic(topic: string) {
     topicHandlers.delete(topic);
 }
 
+export function resetWsTopicHandlers() {
+    topicHandlers.clear();
+}
+
 /**
  * WebSocket 连接 Hook
  * 用于接收服务端实时通知推送

@@ -3,6 +3,7 @@ package com.cloudflow.workflow.job;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
@@ -133,8 +134,9 @@ public class TaskReminderJob {
             return;
         }
 
-        // 查询任务是否仍在待办状态
-        WfTask task = taskMapper.selectById(taskId);
+        // 查询任务是否仍在待办状态：Job 线程无 HTTP 上下文，跨租户读 task 拿 tenantId，
+        // 再用 broker 包后续提醒发送，确保 SysNotice insert 走对租户。
+        WfTask task = TenantBroker.applyWithoutTenant(v -> taskMapper.selectById(taskId));
         if (task == null) {
             log.debug("[TaskReminderJob] 任务已不存在（可能已完成），跳过提醒, taskId={}", taskId);
             return;
@@ -150,32 +152,35 @@ public class TaskReminderJob {
             return;
         }
 
-        // 查询流程实例，获取流程标题
-        String processTitle = "未知流程";
-        WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
-        if (instance != null) {
-            processTitle = instance.getTitle();
-        }
+        int minutesBeforeFinal = minutesBefore;
+        TenantBroker.runAs(task.getTenantId(), tid -> {
+            // 查询流程实例，获取流程标题
+            String processTitle = "未知流程";
+            WfProcessInstance instance = processInstanceMapper.selectById(task.getInstanceId());
+            if (instance != null) {
+                processTitle = instance.getTitle();
+            }
 
-        // 构建提醒内容
-        String timeDesc = formatMinutes(minutesBefore);
-        String title = "⏰ 任务即将到期提醒";
-        String content = String.format(
-                "您的待办任务「%s」（流程: %s）将在 %s 后到期，请尽快处理！",
-                task.getNodeName(), processTitle, timeDesc);
+            // 构建提醒内容
+            String timeDesc = formatMinutes(minutesBeforeFinal);
+            String title = "⏰ 任务即将到期提醒";
+            String content = String.format(
+                    "您的待办任务「%s」（流程: %s）将在 %s 后到期，请尽快处理！",
+                    task.getNodeName(), processTitle, timeDesc);
 
-        // 发送通知
-        sysNoticeService.sendNotice(
-                task.getAssignee(),
-                title,
-                content,
-                "2", // 类型 2 = 提醒
-                0L,  // 系统发送
-                "系统"
-        );
+            // 发送通知
+            sysNoticeService.sendNotice(
+                    task.getAssignee(),
+                    title,
+                    content,
+                    "2", // 类型 2 = 提醒
+                    0L,  // 系统发送
+                    "系统"
+            );
 
-        log.info("[TaskReminderJob] 到期提醒已发送, taskId={}, assignee={}, minutesBefore={}",
-                taskId, task.getAssignee(), minutesBefore);
+            log.info("[TaskReminderJob] 到期提醒已发送, taskId={}, assignee={}, minutesBefore={}, tenantId={}",
+                    taskId, task.getAssignee(), minutesBeforeFinal, tid);
+        });
     }
 
     /**

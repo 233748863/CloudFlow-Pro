@@ -33,6 +33,13 @@ let workflowDesignContextPromise: Promise<WorkflowDesignContextPayload> | null =
 const processDefinitionPromiseCache = new Map<string, Promise<any | null>>();
 let processDefinitionsListPromise: Promise<any[]> | null = null;
 
+export const resetWorkflowDesignCaches = () => {
+  workflowDesignContextCache = null;
+  workflowDesignContextPromise = null;
+  processDefinitionPromiseCache.clear();
+  processDefinitionsListPromise = null;
+};
+
 const StatusPanel: React.FC<{
   icon: React.ReactNode;
   title: string;

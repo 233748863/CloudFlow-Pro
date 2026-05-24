@@ -11,6 +11,8 @@ import {
   Flag,
 } from "lucide-react";
 import { NodeType, WorkflowGraphNode } from "../../types";
+import { getCurrentUserSnapshot } from "@/utils/authStorage";
+import { tenantStorage } from "@/utils/tenantStorage";
 import {
   APPROVER_CACHE_PREFIX,
   APPROVER_CACHE_TTL_MS,
@@ -143,30 +145,21 @@ export const buildQuickAddOptions = (
   return items;
 };
 
-// 按租户+用户隔离缓存，避免跨租户/跨账号复用审批候选数据
+// 按用户隔离缓存（租户隔离由 tenantStorage 自动加前缀）
 const getApproverCacheKey = (type: ApproverCacheType): string => {
-  try {
-    const rawUser = localStorage.getItem("user");
-    if (!rawUser) return `${APPROVER_CACHE_PREFIX}anonymous_${type}`;
-    const user = JSON.parse(rawUser) as Record<string, unknown>;
-    const tenantId = String(user.tenantId ?? "default");
-    const userId = String(
-      user.id ?? user.userId ?? user.username ?? "anonymous",
-    );
-    return `${APPROVER_CACHE_PREFIX}${tenantId}_${userId}_${type}`;
-  } catch {
-    return `${APPROVER_CACHE_PREFIX}anonymous_${type}`;
-  }
+  const user = getCurrentUserSnapshot();
+  const userId = String(user?.id ?? user?.userId ?? "anonymous");
+  return `${APPROVER_CACHE_PREFIX}${userId}_${type}`;
 };
 
 export const readApproverCache = (type: ApproverCacheType): any[] | null => {
   try {
     const cacheKey = getApproverCacheKey(type);
-    const raw = localStorage.getItem(cacheKey);
+    const raw = tenantStorage.get(cacheKey);
     if (!raw) return null;
     const parsed = JSON.parse(raw) as ApproverCacheEntry;
     if (!parsed?.expiresAt || Date.now() > parsed.expiresAt) {
-      localStorage.removeItem(cacheKey);
+      tenantStorage.remove(cacheKey);
       return null;
     }
     return Array.isArray(parsed.data) ? parsed.data : null;
@@ -182,7 +175,7 @@ export const writeApproverCache = (type: ApproverCacheType, data: any[]) => {
       data: Array.isArray(data) ? data : [],
       expiresAt: Date.now() + APPROVER_CACHE_TTL_MS,
     };
-    localStorage.setItem(cacheKey, JSON.stringify(payload));
+    tenantStorage.set(cacheKey, JSON.stringify(payload));
   } catch {
     // 忽略缓存写入失败，保持选择器功能可用
   }

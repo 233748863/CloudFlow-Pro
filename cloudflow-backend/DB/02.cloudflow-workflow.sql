@@ -1023,9 +1023,12 @@ CREATE TABLE wf_audit_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='工作流审计日志表';
 
 -- P0-2: 回调死信队列
+-- tenant_id 用于运维侧按租户筛选死信，但本表纳入 cloudflow.tenant.ignore-tables，
+-- 由消费者从消息载荷显式取 tenantId 写入；MP 不会自动追加 WHERE 条件，跨租户排障可直接列出。
 DROP TABLE IF EXISTS wf_callback_dead_letter;
 CREATE TABLE wf_callback_dead_letter (
   id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id           BIGINT DEFAULT 100000 COMMENT '租户ID（运维筛选用，本表不参与 MP 自动租户过滤）',
   stream_key          VARCHAR(128) NOT NULL COMMENT 'Redis Stream 键名',
   process_instance_id VARCHAR(64) COMMENT '流程实例ID',
   business_type       VARCHAR(64) COMMENT '业务类型',
@@ -1036,19 +1039,24 @@ CREATE TABLE wf_callback_dead_letter (
   status              VARCHAR(16) DEFAULT 'PENDING' COMMENT '处理状态(PENDING/REPLAYED/DISCARDED)',
   create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '入队时间',
   update_time         DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '最近更新时间',
-  UNIQUE KEY uk_process_instance (process_instance_id)
+  UNIQUE KEY uk_process_instance (process_instance_id),
+  KEY idx_dlq_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='回调死信队列';
 
 -- P0-3: 流程-业务状态对账告警
+-- tenant_id 由对账 Job 跨租户扫描后从业务行的 tenant_id 回写；本表纳入 cloudflow.tenant.ignore-tables，
+-- MP 不会自动追加 WHERE 条件，平台运维侧可直接看到所有租户告警。
 DROP TABLE IF EXISTS wf_reconcile_alert;
 CREATE TABLE wf_reconcile_alert (
   id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键ID',
+  tenant_id           BIGINT DEFAULT 100000 COMMENT '租户ID（来自业务行；本表不参与 MP 自动租户过滤）',
   process_instance_id VARCHAR(64) NOT NULL COMMENT '流程实例ID',
   business_type       VARCHAR(64) NOT NULL COMMENT '业务类型',
   business_id         BIGINT NOT NULL COMMENT '业务主键ID',
   expected_status     VARCHAR(32) COMMENT '业务期望状态(对账基准)',
   actual_status       VARCHAR(32) COMMENT '业务实际状态',
   create_time         DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '告警生成时间',
-  UNIQUE KEY uk_instance (process_instance_id)
+  UNIQUE KEY uk_instance (process_instance_id),
+  KEY idx_alert_tenant (tenant_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='流程业务状态对账告警';
 

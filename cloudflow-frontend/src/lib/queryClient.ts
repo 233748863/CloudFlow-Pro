@@ -1,4 +1,18 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, hashKey } from '@tanstack/react-query';
+import { getCurrentUserSnapshot } from '@/utils/authStorage';
+
+/**
+ * 全局 queryKey 哈希函数（多租户改造 P3.1）。
+ *
+ * - 把当前登录用户的 tenantId 拼到 hashKey 的前缀
+ * - 所有 useQuery / useMutation 不需要任何改动，自动按租户隔离缓存
+ * - 切换租户时只要 queryClient.clear() 旧的缓存即可彻底清空（见 AuthContext.switchTenant）
+ * - 未登录或 SSR 场景 tenantId 为空字符串，等价于"全局缓存"
+ */
+const tenantAwareQueryKeyHashFn = (queryKey: readonly unknown[]): string => {
+  const tenantId = getCurrentUserSnapshot()?.tenantId ?? '';
+  return `t${tenantId}|${hashKey(queryKey)}`;
+};
 
 /**
  * React Query 全局配置
@@ -7,6 +21,8 @@ import { QueryClient } from '@tanstack/react-query';
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // queryKey 自动按租户隔离
+      queryKeyHashFn: tenantAwareQueryKeyHashFn,
       // 数据缓存时间 (5 分钟)
       staleTime: 5 * 60 * 1000,
       // 缓存保留时间 (10 分钟)

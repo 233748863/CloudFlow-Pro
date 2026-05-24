@@ -1786,6 +1786,8 @@ CREATE TABLE hr_dispute_evidence (
 -- =========================================================
 -- HR-P0-1 绩效 360 度评估：评估关系 + 多源打分
 -- =========================================================
+DROP TABLE IF EXISTS hr_perf_evaluator_response;
+DROP TABLE IF EXISTS hr_perf_evaluator;
 CREATE TABLE hr_perf_evaluator (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
@@ -1836,6 +1838,7 @@ CREATE TABLE hr_perf_evaluator_response (
 -- =========================================================
 -- HR-P0-2 绩效强制分布规则
 -- =========================================================
+DROP TABLE IF EXISTS hr_perf_distribution_rule;
 CREATE TABLE hr_perf_distribution_rule (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
@@ -1858,6 +1861,7 @@ CREATE TABLE hr_perf_distribution_rule (
 -- =========================================================
 -- HR-P0-3 招聘渠道管理
 -- =========================================================
+DROP TABLE IF EXISTS hr_recruitment_channel;
 CREATE TABLE hr_recruitment_channel (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
@@ -1886,6 +1890,7 @@ CREATE TABLE hr_recruitment_channel (
 -- =========================================================
 -- HR-P1-1 简历解析字段(候选人附件解析回填)
 -- =========================================================
+DROP TABLE IF EXISTS hr_resume_parsed_fields;
 CREATE TABLE hr_resume_parsed_fields (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
@@ -1917,6 +1922,7 @@ CREATE TABLE hr_resume_parsed_fields (
 -- =========================================================
 -- HR-P1-3 绩效面谈记录
 -- =========================================================
+DROP TABLE IF EXISTS hr_performance_interview;
 CREATE TABLE hr_performance_interview (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',
@@ -1950,6 +1956,7 @@ CREATE TABLE hr_performance_interview (
 -- =========================================================
 -- HR-P1-4 考勤异常申诉
 -- =========================================================
+DROP TABLE IF EXISTS hr_attendance_appeal;
 CREATE TABLE hr_attendance_appeal (
   id BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   tenant_id BIGINT NOT NULL COMMENT '租户ID',

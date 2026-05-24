@@ -1,6 +1,7 @@
 package com.cloudflow.common.workflow.callback.listener;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.workflow.callback.config.WorkflowCallbackProperties;
 import com.cloudflow.common.workflow.callback.domain.ApprovalResultDTO;
 import com.cloudflow.common.workflow.callback.service.CallbackIdempotentStore;
@@ -44,7 +45,11 @@ public class WorkflowApprovalCallbackStreamConsumer
 
         try {
             ApprovalResultDTO dto = buildDto(body);
-            workflowCallbackService.handleApprovalResult(dto);
+            // Stream 消费线程没有 HTTP/Sa-Token 上下文，必须显式补租户，
+            // 否则 MP TenantLineInnerInterceptor 拿到 null 直接 ignoreTable 跨租户裸跑。
+            TenantBroker.runAs(dto.getTenantId(), tid -> {
+                workflowCallbackService.handleApprovalResult(dto);
+            });
             redisStreamUtil.ackGlobal(properties.getStreamKey(), properties.getGroup(), msgId);
             redisStreamUtil.deleteGlobal(properties.getStreamKey(), msgId);
             retryCounters.remove(processInstanceId);

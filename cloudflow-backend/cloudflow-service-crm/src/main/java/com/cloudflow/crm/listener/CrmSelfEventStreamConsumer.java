@@ -1,6 +1,7 @@
 package com.cloudflow.crm.listener;
 
 import com.cloudflow.common.redis.core.RedisStreamUtil;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.crm.config.CrmEventStreamConstants;
 import com.cloudflow.crm.service.impl.CrmContractApprovedEventHandler;
 import com.cloudflow.crm.service.impl.CrmReceivableConfirmedEventHandler;
@@ -35,13 +36,17 @@ public class CrmSelfEventStreamConsumer implements StreamListener<String, MapRec
         Map<String, String> body = message.getValue();
         try {
             String eventType = normalize(body.get("eventType"));
-            if (CrmEventStreamConstants.EVENT_CONTRACT_APPROVED.equalsIgnoreCase(eventType)) {
-                contractApprovedEventHandler.handle(body);
-            } else if (CrmEventStreamConstants.EVENT_RECEIVABLE_CONFIRMED.equalsIgnoreCase(eventType)) {
-                receivableConfirmedEventHandler.handle(body);
-            } else {
-                log.debug("忽略 CRM 事件: msgId={}, eventType={}", msgId, eventType);
-            }
+            Long tenantId = parseLong(normalize(body.get("tenantId")));
+            // Stream 消费线程必须显式补租户上下文，否则 MP 拦截器拿到 null 整张表跳过过滤。
+            TenantBroker.runAs(tenantId, tid -> {
+                if (CrmEventStreamConstants.EVENT_CONTRACT_APPROVED.equalsIgnoreCase(eventType)) {
+                    contractApprovedEventHandler.handle(body);
+                } else if (CrmEventStreamConstants.EVENT_RECEIVABLE_CONFIRMED.equalsIgnoreCase(eventType)) {
+                    receivableConfirmedEventHandler.handle(body);
+                } else {
+                    log.debug("忽略 CRM 事件: msgId={}, eventType={}", msgId, eventType);
+                }
+            });
             redisStreamUtil.ackGlobal(
                     CrmEventStreamConstants.CRM_EVENTS_STREAM_KEY,
                     CrmEventStreamConstants.SELF_CONSUMER_GROUP,
@@ -50,6 +55,11 @@ public class CrmSelfEventStreamConsumer implements StreamListener<String, MapRec
         } catch (Exception ex) {
             log.error("CRM 事件处理失败: msgId={}, body={}", msgId, body, ex);
         }
+    }
+
+    private Long parseLong(String value) {
+        if (value == null || value.isBlank()) return null;
+        try { return Long.parseLong(value); } catch (NumberFormatException e) { return null; }
     }
 
     private String normalize(String value) {

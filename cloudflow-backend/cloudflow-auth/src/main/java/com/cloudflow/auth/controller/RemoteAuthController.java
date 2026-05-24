@@ -3,13 +3,16 @@ package com.cloudflow.auth.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.auth.domain.SysDept;
 import com.cloudflow.auth.domain.SysPost;
+import com.cloudflow.auth.domain.SysTenant;
 import com.cloudflow.auth.domain.SysUser;
 import com.cloudflow.auth.mapper.SysDeptMapper;
+import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.auth.service.ISysPostService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.security.annotation.Inner;
+import com.cloudflow.common.tenant.TenantBroker;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -22,9 +25,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Auth 对外提供的内部远程调用接口。
@@ -37,11 +43,50 @@ public class RemoteAuthController {
 
     private static final String HR_CALLERS = "${cloudflow.security.inner.auth.hr-callers:cloudflow-service-hr}";
     private static final String WORKFLOW_CALLERS = "${cloudflow.security.inner.auth.workflow-callers:cloudflow-service-workflow}";
+    private static final String GATEWAY_CALLERS = "${cloudflow.security.inner.auth.gateway-callers:cloudflow-gateway}";
 
     private final SysDeptMapper sysDeptMapper;
+    private final SysTenantMapper sysTenantMapper;
     private final ISysPostService postService;
     private final ISysUserService userService;
     private final ForcePasswordChangeService forcePasswordChangeService;
+
+    /**
+     * 网关侧轻量级租户状态查询。
+     *
+     * 仅校验"是否停用"和"是否过期"两项硬性禁用条件，不做用户数上限等软性校验
+     * （这些由登录流程兜底）。网关只用它做"已登录用户能否继续访问业务接口"的判断。
+     *
+     * 返回 {@code reason}：
+     * - {@code OK}：可正常使用
+     * - {@code NOT_FOUND}：租户不存在（运营误删/数据异常）
+     * - {@code DISABLED}：sys_tenant.status='1' 已停用
+     * - {@code EXPIRED}：expire_time < now() 已过期
+     */
+    @Inner(allowedServices = {GATEWAY_CALLERS})
+    @GetMapping("/tenant/status/{tenantId}")
+    public R<Map<String, Object>> getTenantStatus(@PathVariable Long tenantId) {
+        Map<String, Object> result = new HashMap<>();
+        SysTenant tenant = TenantBroker.applyWithoutTenant(ignored -> sysTenantMapper.selectById(tenantId));
+        if (tenant == null) {
+            result.put("available", false);
+            result.put("reason", "NOT_FOUND");
+            return R.ok(result);
+        }
+        if (!"0".equals(tenant.getStatus())) {
+            result.put("available", false);
+            result.put("reason", "DISABLED");
+            return R.ok(result);
+        }
+        if (tenant.getExpireTime() != null && LocalDateTime.now().isAfter(tenant.getExpireTime())) {
+            result.put("available", false);
+            result.put("reason", "EXPIRED");
+            return R.ok(result);
+        }
+        result.put("available", true);
+        result.put("reason", "OK");
+        return R.ok(result);
+    }
 
     @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/dept/tree")

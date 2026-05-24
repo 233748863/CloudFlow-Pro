@@ -2,6 +2,7 @@ package com.cloudflow.workflow.job;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
@@ -82,30 +83,27 @@ public class TimerScanJob {
 
                     List<Long> tenantIds = resolveTimerTenantIds();
                     for (Long tenantId : tenantIds) {
-                        try {
-                            UserContext.setTenantId(tenantId);
+                        // MP TenantLineInnerInterceptor 只读 TenantContext，
+                        // 历史代码错写 UserContext 导致定时任务跨租户裸跑，统一切到 broker。
+                        TenantBroker.runAs(tenantId, tid -> {
                             Set<Object> expiredTimerKeys = redisCache.getCacheZSetByScoreRange(TIMER_ZSET_KEY, 0, (double) now);
                             if (expiredTimerKeys == null || expiredTimerKeys.isEmpty()) {
-                                continue;
+                                return;
                             }
 
-                            log.info("[TimerScanJob] 发现 {} 个到期的定时任务, tenantId={}", expiredTimerKeys.size(), tenantId);
+                            log.info("[TimerScanJob] 发现 {} 个到期的定时任务, tenantId={}", expiredTimerKeys.size(), tid);
 
                             for (Object timerKeyObj : expiredTimerKeys) {
-                                UserContext.setTenantId(tenantId);
                                 String timerKey = normalizeTimerKey(timerKeyObj);
                                 try {
                                     handleExpiredTimer(timerKey);
                                 } catch (Exception e) {
                                     log.error("[TimerScanJob] 处理定时任务失败, tenantId={}, timerKey={}, error={}",
-                                            tenantId, timerKey, e.getMessage(), e);
+                                            tid, timerKey, e.getMessage(), e);
                                 }
-                                UserContext.setTenantId(tenantId);
                                 redisCache.removeCacheZSet(TIMER_ZSET_KEY, timerKey);
                             }
-                        } finally {
-                            UserContext.clear();
-                        }
+                        });
                     }
                 } finally {
                     lock.unlock();

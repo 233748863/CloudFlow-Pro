@@ -189,6 +189,7 @@ CREATE TABLE sys_post (
   update_time       DATETIME        COMMENT '更新时间',
   remark            VARCHAR(500)    DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (post_id),
+  UNIQUE KEY uk_post_tenant_code (tenant_id, post_code),
   KEY idx_post_tenant (tenant_id)
 ) ENGINE=InnoDB AUTO_INCREMENT=100 DEFAULT CHARSET=utf8mb4 COMMENT='岗位信息表';
 
@@ -308,7 +309,8 @@ CREATE TABLE `sys_dict_data` (
     `update_by`   VARCHAR(64)  DEFAULT NULL COMMENT '更新者',
     `update_time` DATETIME     DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`dict_code`),
-    KEY `idx_dict_type` (`dict_type`)
+    KEY `idx_dict_type` (`dict_type`),
+    KEY `idx_dict_data_tenant_type` (`tenant_id`, `dict_type`, `dict_value`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='字典数据表';
 
 -- =========================================================

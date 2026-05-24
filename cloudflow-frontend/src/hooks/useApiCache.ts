@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { tenantStorage } from '@/utils/tenantStorage';
 
 interface CacheEntry<T> {
   data: T;
@@ -37,14 +38,14 @@ export const useApiCache = <T>(
   // 从缓存中获取数据
   const getCachedData = useCallback((): CacheEntry<T> | null => {
     try {
-      const cached = localStorage.getItem(`api_cache_${key}`);
+      const cached = tenantStorage.get(`api_cache_${key}`);
       if (!cached) return null;
 
       const entry: CacheEntry<T> = JSON.parse(cached);
-      
+
       // 检查缓存是否过期
       if (Date.now() > entry.expiresAt) {
-        localStorage.removeItem(`api_cache_${key}`);
+        tenantStorage.remove(`api_cache_${key}`);
         return null;
       }
 
@@ -63,7 +64,7 @@ export const useApiCache = <T>(
     };
 
     try {
-      localStorage.setItem(`api_cache_${key}`, JSON.stringify(entry));
+      tenantStorage.set(`api_cache_${key}`, JSON.stringify(entry));
     } catch (error) {
       console.warn('Failed to cache data:', error);
     }
@@ -118,7 +119,7 @@ export const useApiCache = <T>(
 
   // 清除缓存
   const clearCache = useCallback(() => {
-    localStorage.removeItem(`api_cache_${key}`);
+    tenantStorage.remove(`api_cache_${key}`);
     setData(null);
   }, [key]);
 
@@ -161,13 +162,20 @@ export const useApiCache = <T>(
 };
 
 /**
- * 清除所有 API 缓存
+ * 清除所有 API 缓存（跨所有租户桶）
+ * 通常在登出/会话清理时调用，需要兜底清干净
  */
 export const clearAllApiCache = () => {
-  const keys = Object.keys(localStorage);
-  keys.forEach(key => {
-    if (key.startsWith('api_cache_')) {
-      localStorage.removeItem(key);
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.includes('api_cache_')) {
+        keys.push(k);
+      }
     }
-  });
+    keys.forEach((k) => localStorage.removeItem(k));
+  } catch {
+    // ignore
+  }
 };

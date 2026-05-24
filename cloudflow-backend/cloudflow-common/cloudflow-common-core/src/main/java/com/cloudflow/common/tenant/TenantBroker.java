@@ -86,9 +86,10 @@ public class TenantBroker {
 
     /**
      * 临时跳过租户过滤执行操作（无返回值）
-     * 执行完毕后自动恢复租户过滤
+     * 执行完毕后仅清除"跳过标识"，保留外层调用方设置的 tenantId，
+     * 避免嵌套场景下把外层真实 tenantId 一并擦除（修复历史旁路 bug）。
      * 适用于需要查询所有租户数据的场景（如租户管理、数据迁移等）
-     * 
+     *
      * @param runnable 要执行的操作
      */
     public void runWithoutTenant(Runnable runnable) {
@@ -97,15 +98,15 @@ public class TenantBroker {
             log.debug("临时跳过租户过滤");
             runnable.run();
         } finally {
-            TenantContext.clear();
+            TenantContext.clearTenantSkip();
             log.debug("恢复租户过滤");
         }
     }
 
     /**
      * 临时跳过租户过滤执行操作（有返回值）
-     * 执行完毕后自动恢复租户过滤
-     * 
+     * 执行完毕后仅清除"跳过标识"，保留外层调用方设置的 tenantId。
+     *
      * @param function 要执行的操作
      * @param <T> 返回值类型
      * @return 操作结果
@@ -116,7 +117,7 @@ public class TenantBroker {
             log.debug("临时跳过租户过滤");
             return function.apply(null);
         } finally {
-            TenantContext.clear();
+            TenantContext.clearTenantSkip();
             log.debug("恢复租户过滤");
         }
     }

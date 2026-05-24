@@ -2,6 +2,7 @@ package com.cloudflow.crm.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmOpportunity;
@@ -29,6 +30,7 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     private final CrmReceivableMapper receivableMapper;
     private final CrmOpportunityMapper opportunityMapper;
     private final RemoteOaService remoteOaService;
+    private final TenantIterator tenantIterator;
 
     @Value("${cloudflow.crm.notification.follow-up-inactive-days:14}")
     private int followUpInactiveDays;
@@ -42,23 +44,28 @@ public class CrmNotificationServiceImpl implements ICrmNotificationService {
     public CrmNotificationServiceImpl(CrmCustomerMapper customerMapper,
                                       CrmReceivableMapper receivableMapper,
                                       CrmOpportunityMapper opportunityMapper,
-                                      RemoteOaService remoteOaService) {
+                                      RemoteOaService remoteOaService,
+                                      TenantIterator tenantIterator) {
         this.customerMapper = customerMapper;
         this.receivableMapper = receivableMapper;
         this.opportunityMapper = opportunityMapper;
         this.remoteOaService = remoteOaService;
+        this.tenantIterator = tenantIterator;
     }
 
     /** 每天 09:00 触发跟进逾期 / 回款到期 / 商机停滞通知。 */
     @Scheduled(cron = "0 0 9 * * ?")
     public void scheduledDispatch() {
         log.info("CRM notification scheduled dispatch start");
-        try {
-            int total = dispatchAll();
-            log.info("CRM notification scheduled dispatch end, published={}", total);
-        } catch (Exception e) {
-            log.error("CRM notification scheduled dispatch failed", e);
-        }
+        java.util.concurrent.atomic.AtomicInteger total = new java.util.concurrent.atomic.AtomicInteger();
+        tenantIterator.forEachActiveTenant(tid -> {
+            try {
+                total.addAndGet(dispatchAll());
+            } catch (Exception e) {
+                log.error("CRM notification dispatch failed, tenantId={}", tid, e);
+            }
+        });
+        log.info("CRM notification scheduled dispatch end, published={}", total.get());
     }
 
     @Override
