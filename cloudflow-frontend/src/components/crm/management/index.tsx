@@ -1,5 +1,5 @@
 import React from 'react';
-import { BaseDialog, Button, ConfirmDialog } from '@/components/common';
+import { BaseDialog, Button, ConfirmDialog, PageLoading } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { CrmManagementProvider, useCrmManagement } from './store';
 import { DashboardTab } from './DashboardTab';
@@ -109,7 +109,12 @@ const DialogShell: React.FC = () => {
 };
 
 const CrmManagementShell: React.FC = () => {
-  const { tab, confirm, setConfirm, executeConfirm } = useCrmManagement();
+  const { tab, confirm, setConfirm, executeConfirm, loading, dashboard } = useCrmManagement();
+
+  // 首屏加载（仅在 dashboard 数据尚未到达且正在加载时显示，避免切换 tab 时反复闪烁）
+  if (loading && !dashboard) {
+    return <PageLoading tip="销售数据加载中…" />;
+  }
 
   return (
     <div className="space-y-4 animate-fade-in">

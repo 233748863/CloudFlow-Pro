@@ -1,7 +1,8 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import { RefreshCw, Home } from 'lucide-react';
 import { errorReporter } from '@/services/errorReporter';
 import { Button } from './button';
+import { Result500 } from './result';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -23,7 +24,7 @@ interface ErrorBoundaryState {
 
 /**
  * 错误边界组件 - 捕获子组件树中的 JavaScript 错误
- * 防止整个应用崩溃，显示友好的错误界面
+ * 防止整个应用崩溃，统一渲染 <Result500 /> 错误页。
  */
 export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
   constructor(props: ErrorBoundaryProps) {
@@ -37,11 +38,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
-    
-    // 调用外部错误处理回调
+
     this.props.onError?.(error, errorInfo);
-    
-    // 上报错误到错误收集服务
+
     errorReporter.captureError(error, {
       componentStack: errorInfo.componentStack || undefined,
       context: `ErrorBoundary: ${this.props.title || '未知组件'}`,
@@ -58,42 +57,19 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   render() {
     if (this.state.hasError) {
-      // 使用自定义 fallback
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
-      const { showRetry = true, showHome = true, title = '页面出现了问题' } = this.props;
+      const { showRetry = true, showHome = true, title } = this.props;
 
       return (
-        <div className="flex min-h-[400px] items-center justify-center bg-slate-50/80 p-6 dark:bg-slate-950/70">
-          <div className="w-full max-w-md rounded-[28px] border border-slate-200 bg-white p-6 text-center shadow-[0_18px_36px_rgba(15,23,42,0.08)] ring-1 ring-slate-200/70 dark:border-slate-800 dark:bg-slate-950 dark:ring-slate-800/80">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-cyan-200 bg-cyan-50/80 dark:border-cyan-900/70 dark:bg-cyan-950/30">
-              <AlertTriangle className="text-cyan-600 dark:text-cyan-300" size={32} />
-            </div>
-            <h2 className="mb-2 text-xl font-bold text-slate-800 dark:text-slate-100">{title}</h2>
-            <p className="mb-6 text-sm text-slate-500 dark:text-slate-400">
-              {this.state.error?.message || '发生了未知错误，请稍后重试'}
-            </p>
-            
-            {/* 开发环境显示错误堆栈 */}
-            {import.meta.env.DEV && this.state.error && (
-              <details className="mb-6 text-left">
-                <summary className="cursor-pointer text-xs text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300">
-                  查看错误详情
-                </summary>
-                <pre className="mt-2 max-h-48 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300">
-                  {this.state.error.stack}
-                </pre>
-                {this.state.errorInfo?.componentStack && (
-                  <pre className="mt-2 max-h-32 overflow-auto rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-                    {this.state.errorInfo.componentStack}
-                  </pre>
-                )}
-              </details>
-            )}
-
-            <div className="flex items-center justify-center gap-3">
+        <Result500
+          title={title}
+          error={this.state.error}
+          showStack={import.meta.env.DEV}
+          extra={
+            <>
               {showRetry && (
                 <Button onClick={this.handleRetry}>
                   <RefreshCw size={14} />
@@ -106,9 +82,9 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
                   返回首页
                 </Button>
               )}
-            </div>
-          </div>
-        </div>
+            </>
+          }
+        />
       );
     }
 

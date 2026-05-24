@@ -74,6 +74,8 @@ export interface CrmManagementContextValue {
   // Dialog / confirm state
   dialog: DialogState;
   confirm: ConfirmState;
+  /** 首屏加载中 */
+  loading: boolean;
   saving: boolean;
   setConfirm: (next: ConfirmState) => void;
   openDialog: (next: DialogState) => void;
@@ -159,6 +161,7 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
   const [board, setBoard] = useState<CrmOpportunityBoardColumn[]>([]);
   const [dialog, setDialog] = useState<DialogState>(null);
   const [confirm, setConfirm] = useState<ConfirmState>(null);
+  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [invoiceCandidates, setInvoiceCandidates] = useState<Invoice[]>([]);
 
@@ -202,6 +205,7 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
   );
 
   const load = useCallback(async () => {
+    setLoading(true);
     try {
       const [c, cRef, ct, fu, o, oRef, q, r, n, t, contractResult, dashboardResult, boardResult, productResult] = await Promise.all([
         crmApi.listCustomers({ pageNum: 1, pageSize: 50, customerName: keyword || undefined, customerTags: keyword || undefined }),
@@ -235,6 +239,8 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
       setBoard(boardResult);
     } catch (error) {
       toast.error(getErrorMessage(error, '加载 CRM 失败'));
+    } finally {
+      setLoading(false);
     }
   }, [keyword]);
 
@@ -574,6 +580,7 @@ export const CrmManagementProvider: React.FC<{ children: React.ReactNode }> = ({
     productOptions,
     dialog,
     confirm,
+    loading,
     saving,
     setConfirm,
     openDialog,

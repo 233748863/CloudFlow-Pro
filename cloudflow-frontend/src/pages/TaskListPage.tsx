@@ -13,7 +13,7 @@ import {
   Button,
   DatePicker,
   Input,
-  LoadingSpinner,
+  PageLoading,
   SegmentedControl,
   SegmentedControlItem,
   Select,
@@ -664,17 +664,10 @@ export const TaskListPage = ({ type }: { type: TaskListPageMode }) => {
 
   if (loading) {
     return (
-      <div className="px-4 py-4 md:px-6">
-        <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center shadow-sm dark:border-slate-800 dark:bg-slate-950/88">
-          <LoadingSpinner size="lg" className="mx-auto mb-3" />
-          <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
-            正在加载{pageTitle}
-          </div>
-          <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">
-            正在同步当前用户可见的任务与申请记录。
-          </div>
-        </div>
-      </div>
+      <PageLoading
+        tip={`正在加载${pageTitle}`}
+        description="正在同步当前用户可见的任务与申请记录。"
+      />
     );
   }
 

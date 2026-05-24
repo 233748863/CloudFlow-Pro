@@ -2,7 +2,8 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Role } from '../../types';
-import { Button } from './button';
+import { PageLoading } from './PageLoading';
+import { Result403 } from './result';
 
 interface RouteGuardProps {
   children: React.ReactNode;
@@ -15,6 +16,7 @@ interface RouteGuardProps {
 /**
  * 路由守卫组件
  * 权限源单一化（P0-5）：统一从 AuthContext 取 user.role / user.permissions。
+ * 加载态与权限不足态统一走 PageLoading / Result403。
  */
 export const RouteGuard: React.FC<RouteGuardProps> = ({
   children,
@@ -26,7 +28,7 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
   const { user, loading, hasPermission } = useAuth();
 
   if (loading) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return <PageLoading tip="正在验证身份…" />;
   }
 
   if (requireAuth && !user) {
@@ -39,18 +41,10 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
     const ok = hasPermission(requiredPermissions, true);
     if (!ok) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m0 0v2m0-2h2m-2 0H10m4-6V7a4 4 0 00-8 0v4h8z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-semibold text-slate-800">权限不足</h2>
-          <p className="text-sm text-slate-500">您没有访问此页面的权限</p>
-          <Button onClick={() => window.history.back()}>
-            返回上一页
-          </Button>
-        </div>
+        <Result403
+          title="权限不足"
+          subTitle="您没有访问此页面的权限"
+        />
       );
     }
   }
@@ -59,18 +53,10 @@ export const RouteGuard: React.FC<RouteGuardProps> = ({
     const hasRequiredRole = requiredRoles.some((r) => user?.role === r);
     if (!hasRequiredRole) {
       return (
-        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-          <div className="w-16 h-16 rounded-full bg-amber-100 flex items-center justify-center">
-            <svg className="w-8 h-8 text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <h2 className="text-lg font-semibold text-slate-800">角色不匹配</h2>
-          <p className="text-sm text-slate-500">此页面需要特定角色才能访问</p>
-          <Button onClick={() => window.history.back()}>
-            返回上一页
-          </Button>
-        </div>
+        <Result403
+          title="角色不匹配"
+          subTitle="此页面需要特定角色才能访问"
+        />
       );
     }
   }

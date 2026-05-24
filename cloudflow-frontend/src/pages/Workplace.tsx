@@ -23,7 +23,7 @@ import {
   getWorkflowCategoryLabel,
   normalizeWorkflowCategory,
 } from '@/utils/workflowCategory';
-import { Button, EmptyState, FilterChip, Input, LoadingSpinner, SideNavItem } from '@/components/common';
+import { Button, EmptyState, FilterChip, Input, PageLoading, SideNavItem } from '@/components/common';
 import { cn } from '@/utils/cn';
 
 const parseWorkflowGraph = (
@@ -258,11 +258,7 @@ export const Workplace = () => {
 
   const renderResultContent = () => {
     if (loading) {
-      return (
-        <div className="flex min-h-[24rem] items-center justify-center">
-          <LoadingSpinner size="lg" />
-        </div>
-      );
+      return <PageLoading tip="流程列表加载中…" minHeight="min-h-[24rem]" />;
     }
 
     if (filteredWorkflows.length === 0) {

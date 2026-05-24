@@ -10,7 +10,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { Announcement, SysScheduleEvent } from '@/types';
-import { LoadingSpinner } from '@/components/common';
+import { PageLoading } from '@/components/common';
 import { useAuth } from '@/context/AuthContext';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 import {
@@ -38,6 +38,7 @@ import {
   UserDashboardTodoPanel,
 } from '@/components/user/dashboard';
 import { getWorkplaceSummary, RiskItem, TodayItem } from '@/services/api/workplace';
+import { tenantStorage } from '@/utils/tenantStorage';
 
 type DashboardGranularity = 'day' | 'hour';
 
@@ -279,7 +280,7 @@ export const Dashboard = () => {
   const [loadingPanels, setLoadingPanels] = useState(true);
   const [readAnnouncementIds, setReadAnnouncementIds] = useState<Set<string>>(() => {
     try {
-      const stored = localStorage.getItem('read_announcements');
+      const stored = tenantStorage.get('read_announcements');
       return stored ? new Set<string>(JSON.parse(stored)) : new Set<string>();
     } catch {
       return new Set<string>();
@@ -580,7 +581,7 @@ export const Dashboard = () => {
             const next = new Set(current);
             next.add(announcementId);
             try {
-              localStorage.setItem('read_announcements', JSON.stringify([...next]));
+              tenantStorage.set('read_announcements', JSON.stringify([...next]));
             } catch {
               // 本地阅读状态只做即时反馈，存储失败不影响主流程。
             }
@@ -646,11 +647,7 @@ export const Dashboard = () => {
   }
 
   if (loadingOverview && !statsData) {
-    return (
-      <div className="flex items-center justify-center py-16">
-        <LoadingSpinner size="lg" />
-      </div>
-    );
+    return <PageLoading tip="工作台数据加载中…" />;
   }
 
   return (
