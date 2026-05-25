@@ -155,7 +155,7 @@ const ensureExactlyOneDefault = (
 /**
  * 判断节点是否是「多分支决策节点」（真正的路由角色）：
  * - 决策类型节点：CONDITION / GATEWAY / PARALLEL 非会签模式
- *   且未被"上游为真路由"的标签模式吸收
+ *   且出边数 ≥ 2（出边数 < 2 时降级为普通顺序节点，无"分支"语义）
  *
  * 这类节点的出边均视为分支边（含 default 边作为默认分支），无"主干后继"概念，
  * 禁止 insertSubgraphAfter 在其后断边重连。
@@ -163,9 +163,8 @@ const ensureExactlyOneDefault = (
  * 普通业务节点（APPROVAL/CC/...）即使 outgoing ≥ 2（如挂载了条件分支），
  * 仍保留 default 边作为主干，非默认边作为条件分支。
  *
- * 例外：CONDITION/GATEWAY 单出边且上游已是多出边路由——视为"分支标签节点"
- *      （历史模板常见模式：APPROVAL+EXCLUSIVE 路由 → CONDITION 标签 → 业务节点），
- *      此时保持 handleAddNext 的"分支内追加顺序节点"语义。
+ * 单出边降级（CONDITION/GATEWAY 出边 < 2）同时覆盖"上游已是多出边路由 → 当前作为分支标签节点"
+ * 的历史模板模式（APPROVAL+EXCLUSIVE 路由 → CONDITION 标签 → 业务节点），让其按普通串行节点渲染。
  */
 export const isMultiBranchDecisionNode = (
   node: WorkflowGraphNode | null | undefined,
@@ -179,16 +178,14 @@ export const isMultiBranchDecisionNode = (
     (type === NodeType.PARALLEL && !isParallelInSignMode(node));
   if (!isDecisionType) return false;
 
-  // CONDITION/GATEWAY 单出边场景：若上游为真路由，则本节点为分支标签而非独立路由
+  // CONDITION/GATEWAY 单出边场景：降级为普通节点（无分支语义），
+  // 由 resolveGraphMainEdge 把唯一出边作为主干渲染。
+  // 同时覆盖"上游已是多出边路由 → 当前是分支标签节点"的历史模式，
+  // 标签节点同样是单出边，被本规则统一收敛。
   if (type === NodeType.CONDITION || type === 'GATEWAY') {
     const outgoingCount = getWorkflowGraphOutgoingEdges(graph, node.id).length;
     if (outgoingCount < 2) {
-      const incomingEdges = graph.edges.filter((edge) => edge.target === node.id);
-      if (incomingEdges.length === 1) {
-        const upstreamId = incomingEdges[0].source;
-        const upstreamOutCount = getWorkflowGraphOutgoingEdges(graph, upstreamId).length;
-        if (upstreamOutCount >= 2) return false; // 标签节点
-      }
+      return false;
     }
   }
   return true;
@@ -199,14 +196,17 @@ const isBranchEdge = (
   nodeMap: Map<string, WorkflowGraphNode>,
   graph?: WorkflowGraphDefinition,
 ): boolean => {
-  if (isDefaultEdge(edge)) {
-    return false;
-  }
-
-  // 源节点是多分支决策节点时，其任何非默认出边强制视为分支边，避免旧数据缺 condition 字段导致漏判
+  // 优先判定：源节点是多分支决策节点 → 所有出边均视为分支边（含 isDefault 边作为"默认分支"），
+  // 与 L155-168 注释"多分支决策节点的出边均视为分支边"对齐。此判定必须先于 isDefaultEdge，
+  // 否则 CONDITION/GATEWAY 的默认分支会被错误排除（payment_request seed: gw1→b1 isDefault 漏渲染）。
   const sourceNode = nodeMap.get(edge.source);
   if (graph && isMultiBranchDecisionNode(sourceNode, graph)) {
     return true;
+  }
+
+  // 普通业务节点：isDefault 边代表主干，非分支
+  if (isDefaultEdge(edge)) {
+    return false;
   }
 
   const targetNode = nodeMap.get(edge.target);
@@ -349,6 +349,54 @@ const resolveLinearEndNodeId = (
 };
 
 /**
+ * 嵌套子流程语义版：沿单出边链下探，遇到 END 或"多入边汇合点"即停止并返回该节点 ID。
+ * 与 resolveLinearEndNodeId 的差异：后者只在 END 节点处停止；本函数额外把"任意 ≥2 入边的节点"
+ * 视为合法汇合点，用于支持 appendWorkflowGraphBranch 生成的"分流 → 业务节点 → end"嵌套结构。
+ *
+ * 注意：startId 自身不算"汇合点"（它是分支根，入边只有 1 条从父节点指来）。
+ */
+const resolveLinearEndOrMergeNodeId = (
+  graph: WorkflowGraphDefinition,
+  startId: string,
+): string | null => {
+  const nodeMap = new Map(graph.nodes.map((node) => [node.id, node] as const));
+  const visited = new Set<string>();
+  let currentId: string | null = startId;
+  let isStart = true;
+
+  while (currentId) {
+    if (visited.has(currentId)) {
+      return null;
+    }
+    visited.add(currentId);
+
+    const currentNode = nodeMap.get(currentId);
+    if (!currentNode) {
+      return null;
+    }
+    if (isEndNode(currentNode)) {
+      return currentId;
+    }
+    // 非起点节点若有 ≥2 入边，视为分支汇合点
+    if (!isStart) {
+      const incomingCount = graph.edges.filter((edge) => edge.target === currentId).length;
+      if (incomingCount >= 2) {
+        return currentId;
+      }
+    }
+    isStart = false;
+
+    const outgoingEdges = graph.edges.filter((edge) => edge.source === currentId);
+    if (outgoingEdges.length !== 1) {
+      return null;
+    }
+    currentId = outgoingEdges[0].target;
+  }
+
+  return null;
+};
+
+/**
  * 纯图模型结构校验，供设计器在切换状态前快速兜底。
  */
 export const assertWorkflowGraphIntegrity = (
@@ -425,10 +473,9 @@ export const assertWorkflowGraphIntegrity = (
     if (nodeId === startNode.id || count <= 1) {
       return;
     }
-    const node = nodeMap.get(nodeId);
-    if (!isEndNode(node)) {
-      throw new Error(`暂不支持多入边汇聚节点，请先拆分节点: ${nodeId}`);
-    }
+    // 嵌套子流程语义：任意非 START 节点都可以作为多分支汇合点（含普通业务节点）。
+    // appendWorkflowGraphBranch / insertWorkflowGraphNodeBeforeMergeEnd 依赖这一放宽，
+    // 仅保留 END 出边为 0 的强约束（在下方 outgoing 遍历中校验）。
   });
 
   outgoing.forEach((edges, nodeId) => {
@@ -501,6 +548,12 @@ export const patchWorkflowGraphNode = (
 
 /**
  * 在图模型中给指定父节点追加条件分支，并在首次分支化时保留默认主干。
+ *
+ * BPMN 风格"分流-汇合"语义：新分支末尾自动回流到 parent 原主干后继 (mergeNodeId)，
+ * 让"父节点 → 新分支 → 原主干后继"形成嵌套子流程闭环。
+ * 例：金额校验 → 总经理审批  追加新分支  ⇒  金额校验 ─┬─ 默认 → 总经理审批 ─┐
+ *                                                    └─ 新分支 ─────────┤
+ *                                                                       ↓ end
  */
 export const appendWorkflowGraphBranch = (
   graph: WorkflowGraphDefinition,
@@ -512,6 +565,22 @@ export const appendWorkflowGraphBranch = (
   if (!parentNode) {
     return graph;
   }
+
+  // 在分支化之前先识别本次嵌套子流程的汇合点 mergeNodeId（沿主干下探到 END 或多入边节点）：
+  //  - 出边 = 0 → null（无可汇合点，如分支根挂空 condition 节点）
+  //  - 否则取 "主干 anchor"（default 边 target，或首条出边 target），沿单出边链下探，
+  //    遇 END 或 ≥2 入边节点即停止。anchor 自身作为分支 root，不算汇合点。
+  //
+  // 注意：mergeNodeId ≠ anchor 是关键设计 — 让 anchor 成为"默认分支 root"，
+  // 让其下游的真正汇合点（END 或共享 merge）成为各分支末尾的回流目标，
+  // 避免 FlowNode 把同一节点同时作为 branch root 与 sharedMerge 双重渲染。
+  const outgoingBefore = getWorkflowGraphOutgoingEdges(graph, parentId);
+  const mergeNodeId: string | null = (() => {
+    if (outgoingBefore.length === 0) return null;
+    const defaultEdge = outgoingBefore.find(isDefaultEdge);
+    const anchor = defaultEdge?.target ?? outgoingBefore[0].target;
+    return resolveLinearEndOrMergeNodeId(graph, anchor);
+  })();
 
   const normalizedCondition =
     typeof branchNode.condition === "string" ? branchNode.condition.trim() : "";
@@ -534,6 +603,16 @@ export const appendWorkflowGraphBranch = (
     target: branchNode.id,
     condition: normalizedCondition || undefined,
   }];
+
+  // 嵌套子流程语义：新分支末尾自动回流到 mergeNode，让"分流-汇合"闭合
+  if (mergeNodeId && mergeNodeId !== branchNode.id) {
+    edges = [...edges, {
+      id: generateUniqueEdgeId(edges, branchNode.id, mergeNodeId),
+      source: branchNode.id,
+      target: mergeNodeId,
+    }];
+  }
+
   // P2-5: 由 ensureExactlyOneDefault 统一收尾——之前"出边数=1 时提升原边为 default"的手写逻辑
   // 等价于"加入新分支后，原边自动成为该 source 的首条 default 候选"。
   edges = ensureExactlyOneDefault(edges, parentId);
@@ -681,6 +760,38 @@ export const findWorkflowGraphBranchSharedEndId = (
   }
 
   return isWorkflowGraphSharedEndNode(graph, firstEndId) ? firstEndId : null;
+};
+
+/**
+ * 把"分支汇合到 END"泛化为"分支汇合到任意节点"（含 END 与普通业务节点）。
+ * 渲染层走本函数，appendWorkflowGraphBranch 生成的"金额校验 ─┬─→ 总经理审批 ─┐
+ *                                                          └─→ 新分支 ─────┤
+ *                                                                          ↓ end"
+ * 嵌套结构中，"总经理审批"会被识别为各分支的共享汇合点。
+ *
+ * 旧函数 findWorkflowGraphBranchSharedEndId 保留不动，仅供需要"END 专属汇合"语义的旧调用方使用。
+ */
+export const findWorkflowGraphBranchSharedMergeId = (
+  graph: WorkflowGraphDefinition,
+  nodeId: string,
+): string | null => {
+  const branchChildIds = getWorkflowGraphBranchChildIds(graph, nodeId);
+  if (branchChildIds.length < 2) {
+    return null;
+  }
+
+  const mergeIds = branchChildIds.map((branchId) =>
+    resolveLinearEndOrMergeNodeId(graph, branchId),
+  );
+  const [firstMergeId] = mergeIds;
+  if (!firstMergeId || mergeIds.some((id) => id !== firstMergeId)) {
+    return null;
+  }
+
+  // 汇合点必须有 ≥2 条入边（来自各分支末尾），END 节点天然满足；普通节点经 appendBranch 后亦满足
+  return getWorkflowGraphIncomingEdges(graph, firstMergeId).length >= 2
+    ? firstMergeId
+    : null;
 };
 /**
  * 在指定节点后插入一段新的子图，并保留原有主干后继。
@@ -864,6 +975,45 @@ export const insertWorkflowGraphNodeAfter = (
     { nodes: [newNode], edges: [] },
     newNode.id,
   );
+};
+
+/**
+ * 在共享 END（多入边汇合的结束节点）之前插入一个新节点：
+ *  - 把所有原来指向 endNodeId 的边重定向到 newNode.id（保留 condition/isDefault 元数据）
+ *  - 新增 newNode → endNodeId 一条边
+ *  - 节点本身追加到 graph.nodes
+ *
+ * 语义：让多条分支先汇合到 newNode，再由 newNode 单边走向 endNode。
+ * 用于"在共享 END 前追加公共节点"场景；单入边 END 调用此函数效果等价于
+ * insertWorkflowGraphNodeAfter(anchor=入边 source)，因此调用方可以无差别使用。
+ */
+export const insertWorkflowGraphNodeBeforeMergeEnd = (
+  graph: WorkflowGraphDefinition,
+  endNodeId: string,
+  newNode: WorkflowGraphNode,
+): WorkflowGraphDefinition => {
+  const endNode = graph.nodes.find((node) => node.id === endNodeId);
+  if (!endNode) {
+    return graph;
+  }
+  if (graph.nodes.some((node) => node.id === newNode.id)) {
+    return graph;
+  }
+
+  const nodes = [...graph.nodes, newNode];
+  const redirected = graph.edges.map((edge) =>
+    edge.target === endNodeId ? { ...edge, target: newNode.id } : edge,
+  );
+  const edges = [
+    ...redirected,
+    {
+      id: generateUniqueEdgeId(redirected, newNode.id, endNodeId),
+      source: newNode.id,
+      target: endNodeId,
+    },
+  ];
+
+  return { nodes, edges };
 };
 
 /**
