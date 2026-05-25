@@ -181,7 +181,7 @@ const FlowNodeInner = ({
           </div>
         </div>
 
-        {/* END节点的添加按钮 - P1-5: 共享 END 时显示禁用态而非隐藏 */}
+        {/* END节点的添加按钮 */}
         {displayNode.type === NodeType.END && (
           <div
             className="absolute -top-6 left-1/2 -translate-x-1/2 z-30"
@@ -191,10 +191,8 @@ const FlowNodeInner = ({
               className={`relative transition-opacity duration-200 ${hoveredNodeId === nodeId || showQuickAdd ? "opacity-100" : "opacity-0"}`}
             >
               <button
-                disabled={isSharedEndNode}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (isSharedEndNode) return;
                   ui.setActiveQuickAddId(showQuickAdd ? null : nodeId);
                 }}
                 onMouseEnter={() => canShowHover && ui.setHoveredNodeId(nodeId)}
@@ -202,19 +200,11 @@ const FlowNodeInner = ({
                   canShowHover && !showQuickAdd && ui.setHoveredNodeId(null)
                 }
                 className={`flex h-7 w-7 items-center justify-center rounded-md border transition-colors ${
-                  isSharedEndNode
-                    ? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-300 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-700"
-                    : showQuickAdd
-                      ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500 dark:text-white"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
+                  showQuickAdd
+                    ? "border-cyan-600 bg-cyan-600 text-white dark:border-cyan-400 dark:bg-cyan-500 dark:text-white"
+                    : "border-slate-200 bg-white text-slate-500 hover:border-cyan-200 hover:text-cyan-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-cyan-800 dark:hover:text-cyan-200"
                 }`}
-                title={
-                  isSharedEndNode
-                    ? "多分支汇聚点，不能在此处插入节点"
-                    : showQuickAdd
-                      ? "关闭菜单"
-                      : "在此之前添加节点"
-                }
+                title={showQuickAdd ? "关闭菜单" : "在此之前添加节点"}
               >
                 <Plus size={16} />
               </button>

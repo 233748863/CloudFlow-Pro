@@ -37,7 +37,7 @@ import {
   findWorkflowGraphMainTargetId,
   findWorkflowGraphNode,
   findWorkflowGraphParentNodeId,
-  findWorkflowGraphBranchSharedEndId,
+  findWorkflowGraphBranchSharedMergeId,
   getWorkflowGraphIncomingEdges,
   getWorkflowGraphBranchChildIds,
   isWorkflowGraphNodeInsideBranchScope,
@@ -46,6 +46,7 @@ import {
   isWorkflowGraphBranchRoot,
   isWorkflowGraphSharedEndNode,
   insertWorkflowGraphNodeAfter,
+  insertWorkflowGraphNodeBeforeMergeEnd,
   insertWorkflowGraphSubgraphAfter,
   moveWorkflowGraphNode,
   parseWorkflowGraphDefinition,
@@ -689,15 +690,22 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
           return;
         }
 
-        const nextGraph =
+        const isSharedEnd =
           anchorNode?.type === NodeType.END &&
-          isWorkflowGraphSharedEndNode(graph, anchorId)
-            ? graph
-            : nodeType === NodeType.END
-              ? replaceWorkflowGraphNextNode(graph, anchorId, buildNewNode())
+          isWorkflowGraphSharedEndNode(graph, anchorId);
+
+        const nextGraph =
+          nodeType === NodeType.END
+            ? replaceWorkflowGraphNextNode(graph, anchorId, buildNewNode())
+            : isSharedEnd
+              ? insertWorkflowGraphNodeBeforeMergeEnd(
+                  graph,
+                  anchorId,
+                  buildNewNode(),
+                )
               : insertWorkflowGraphNodeAfter(graph, anchorId, buildNewNode());
         if (nextGraph === graph) {
-          toast.error("共享结束节点前不能直接添加公共节点");
+          toast.error("无法在当前位置添加节点");
           return;
         }
         applyGraphChange(
@@ -1167,7 +1175,7 @@ export const WorkflowBuilder: React.FC<WorkflowBuilderProps> = ({
       getBranchChildIds: (nodeId) =>
         getWorkflowGraphBranchChildIds(graphModelRef.current, nodeId),
       getBranchSharedEndId: (nodeId) =>
-        findWorkflowGraphBranchSharedEndId(graphModelRef.current, nodeId),
+        findWorkflowGraphBranchSharedMergeId(graphModelRef.current, nodeId),
       getMainTargetId: (nodeId) =>
         findWorkflowGraphMainTargetId(graphModelRef.current, nodeId),
       isSharedEndNode: (nodeId) =>
