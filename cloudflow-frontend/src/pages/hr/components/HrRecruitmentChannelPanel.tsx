@@ -23,6 +23,7 @@ import {
   type RecruitmentChannel,
   type RecruitmentChannelStat,
 } from '@/services/api/hr/recruitment';
+import { getRecruitChannelStatusLabel } from '@/utils/enumLabels';
 import { getErrorMessage } from '@/utils/errorMessage';
 
 const TYPE_OPTIONS = [
@@ -181,7 +182,7 @@ export const HrRecruitmentChannelPanel = ({ onClose }: Props) => {
                   <TableCell>{stat?.hiredCount ?? 0}</TableCell>
                   <TableCell>{stat?.hireRate != null ? `${(stat.hireRate * 100).toFixed(1)}%` : '-'}</TableCell>
                   <TableCell>{stat?.costPerHire != null ? stat.costPerHire.toLocaleString() : '-'}</TableCell>
-                  <TableCell>{channel.status}</TableCell>
+                  <TableCell>{getRecruitChannelStatusLabel(channel.status)}</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
                       <Button variant="soft" size="sm" onClick={() => setEditing(channel)}>

@@ -1,4 +1,5 @@
 import request from "../request";
+import type { PageResult, ProcessInstance } from "@/types/workflow";
 import { logApiCall, normalizeArchiveDateTime } from "./internals";
 import type { BatchOperationResult, SafetyCheckResult } from "./types";
 
@@ -32,9 +33,9 @@ export async function getArchivedWorkflows(params?: {
   keyword?: string;
   archivedAfter?: string;
   archivedBefore?: string;
-}): Promise<any> {
+}): Promise<PageResult<ProcessInstance>> {
   logApiCall("GET", "/workflow/batch/archived", params);
-  const query: Record<string, any> = {
+  const query: Record<string, unknown> = {
     pageNum: params?.pageNum || 1,
     pageSize: params?.pageSize || 20,
   };

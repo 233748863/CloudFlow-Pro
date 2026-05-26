@@ -23,6 +23,7 @@ import {
 } from '@/components/common';
 import { TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { BaseDialog } from '@/components/common/BaseDialog';
+import { getExamPaperStatusLabel } from '@/utils/enumLabels';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
   HrExamAttempt,
@@ -190,7 +191,7 @@ const PaperTab: React.FC = () => {
                 <TableCell>{row.durationMinutes ?? '-'}</TableCell>
                 <TableCell>{row.questionCount ?? (row.questionIds?.length ?? 0)}</TableCell>
                 <TableCell>{row.generateMode === 'RANDOM' ? '随机' : '手动'}</TableCell>
-                <TableCell>{row.status}</TableCell>
+                <TableCell>{getExamPaperStatusLabel(row.status)}</TableCell>
                 <TableCell>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" onClick={() => void handleStartAttempt(row.id)}>开始作答</Button>

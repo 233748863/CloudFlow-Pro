@@ -16,7 +16,7 @@ export async function getProcessDefinitions(params?: {
   status?: "DRAFT" | "PUBLISHED" | "ARCHIVED";
   latestOnly?: boolean;
 }): Promise<ProcessDefinitionListItem[]> {
-  const query: Record<string, any> = {
+  const query: Record<string, unknown> = {
     pageNum: params?.pageNum || 1,
     pageSize: params?.pageSize || 500,
   };

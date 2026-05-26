@@ -132,7 +132,7 @@ export interface CacheKeyDetail {
   key: string;
   type: string;
   ttl: number;
-  value: any;
+  value: unknown;
   size?: number;
 }
 

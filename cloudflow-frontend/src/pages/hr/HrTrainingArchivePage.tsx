@@ -19,6 +19,7 @@ import {
   getEmployeeTrainingArchive,
 } from '@/services/api/hr';
 import { formatDateValue } from './hrShared';
+import { getTrainingEnrollmentStatusLabel } from '@/utils/enumLabels';
 
 const StatCard: React.FC<{ label: string; value: React.ReactNode; tone?: string }> = ({ label, value, tone }) => (
   <div className={`rounded-2xl border border-slate-200 bg-gradient-to-br p-5 shadow-sm dark:border-slate-800 ${tone ?? 'from-sky-500/15 to-sky-500/5'}`}>
@@ -87,8 +88,8 @@ export const HrTrainingArchivePage: React.FC = () => {
                   <TableRow key={row.id}>
                     <TableCell>{row.sessionNo || `#${row.sessionId}`}</TableCell>
                     <TableCell>{row.courseName || `#${row.courseId}`}</TableCell>
-                    <TableCell>{row.status}</TableCell>
-                    <TableCell>{row.completionStatus || '-'}</TableCell>
+                    <TableCell>{getTrainingEnrollmentStatusLabel(row.status)}</TableCell>
+                    <TableCell>{getTrainingEnrollmentStatusLabel(row.completionStatus) || '-'}</TableCell>
                     <TableCell>{row.score ?? '-'}</TableCell>
                     <TableCell>{formatDateValue(row.checkInTime)}</TableCell>
                   </TableRow>

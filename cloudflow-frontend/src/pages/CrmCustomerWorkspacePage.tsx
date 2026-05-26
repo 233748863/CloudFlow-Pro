@@ -8,6 +8,7 @@ import { crmApi, CrmCustomerWorkspace, CrmRemoteProjectLink } from '@/services/a
 import { invoiceApi, Invoice } from '@/services/api/invoice';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
+import { getSeverityLabel, getThresholdStatusLabel } from '@/utils/enumLabels';
 
 type WorkspaceTab = 'overview' | 'contact' | 'opportunity' | 'quote' | 'cashflow' | 'renewal' | 'ticket' | 'project';
 
@@ -70,13 +71,6 @@ const invoiceStatusLabelMap: Record<string, string> = {
   VOID: '已作废',
 };
 
-const severityLabelMap: Record<string, string> = {
-  LOW: '低',
-  MEDIUM: '中',
-  HIGH: '高',
-  CRITICAL: '严重',
-};
-
 const renderHealthBadge = (level?: string) => (
   <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${healthToneMap[level || 'GREEN'] || healthToneMap.GREEN}`}>
     {healthLabelMap[level || 'GREEN'] || level || '健康'}
@@ -85,7 +79,7 @@ const renderHealthBadge = (level?: string) => (
 
 const renderStatus = (status?: string) => statusLabelMap[status || ''] || status || '-';
 const renderInvoiceStatus = (status?: string) => invoiceStatusLabelMap[status || ''] || status || '-';
-const renderSeverity = (severity?: string) => severityLabelMap[severity || ''] || severity || '-';
+const renderSeverity = (severity?: string) => getSeverityLabel(severity);
 const renderHealthLabel = (level?: string) => healthLabelMap[level || ''] || level || '-';
 
 const renderProjectCard = (item: CrmRemoteProjectLink, onOpen: (projectId: number) => void) => (
@@ -95,7 +89,7 @@ const renderProjectCard = (item: CrmRemoteProjectLink, onOpen: (projectId: numbe
       <div className="text-xs text-slate-500">{item.projectNo || '-'} / {renderStatus(item.status)}</div>
     </CardHeader>
     <CardContent className="space-y-2 text-sm">
-      <div>风险等级：{item.riskLevel || '-'}</div>
+      <div>风险等级：{getSeverityLabel(item.riskLevel)}</div>
       <div>预算 / 成本：{item.budgetAmount || 0} / {item.actualCostAmount || 0}</div>
       <div>来源：{item.sourceName || item.sourceType || '-'}</div>
       {item.projectId ? <Button size="sm" variant="outline" onClick={() => onOpen(item.projectId!)}>查看项目工作区</Button> : null}
@@ -668,7 +662,7 @@ export default function CrmCustomerWorkspacePage() {
                 <Card key={item.budgetId}>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">{item.budgetName}</CardTitle>
-                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 阈值 {item.thresholdStatus || 'NORMAL'}</div>
+                    <div className="text-xs text-slate-500">{renderStatus(item.status)} / 阈值 {getThresholdStatusLabel(item.thresholdStatus || 'NORMAL')}</div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <div>预算总额：{item.totalAmount || 0}</div>

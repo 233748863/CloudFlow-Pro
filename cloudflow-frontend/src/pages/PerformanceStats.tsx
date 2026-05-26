@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAnomalyTypeLabel } from '@/utils/enumLabels';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
   Button,
@@ -1023,7 +1024,7 @@ const AnomalyTypeRankingCard: React.FC<{
       {rows.map((item, index) => (
         <div key={item.type} className="space-y-1.5">
           <div className="flex items-center justify-between gap-3">
-            <div className="truncate text-sm text-slate-700 dark:text-slate-200">{item.label}</div>
+            <div className="truncate text-sm text-slate-700 dark:text-slate-200">{getAnomalyTypeLabel(item.type) || item.label}</div>
             <div className="text-right">
               <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 {formatCount(item.count)}

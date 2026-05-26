@@ -1,5 +1,5 @@
 import request from "../request";
-import type { ProcessInstance, ProcessTrace, StartProcessRequest } from "@/types/workflow";
+import type { PageResult, ProcessInstance, ProcessTrace, StartProcessRequest } from "@/types/workflow";
 import { logApiCall } from "./internals";
 import type { InstanceIdRequest, InvalidateProcessRequest, TerminateProcessRequest } from "./types";
 
@@ -9,7 +9,7 @@ import type { InstanceIdRequest, InvalidateProcessRequest, TerminateProcessReque
 export async function startProcess(
   data: StartProcessRequest,
 ): Promise<ProcessInstance> {
-  const variables: Record<string, any> = { ...(data.variables || {}) };
+  const variables: Record<string, unknown> = { ...(data.variables || {}) };
   if (data.title && !Object.prototype.hasOwnProperty.call(variables, "_title")) {
     variables._title = data.title;
   }
@@ -58,9 +58,9 @@ export async function getMyInstances(params?: {
   priority?: string;
   processNo?: string;
   startUserName?: string;
-}): Promise<any> {
+}): Promise<PageResult<ProcessInstance>> {
   logApiCall("GET", "/workflow/wf/my-instances", params);
-  const query: Record<string, any> = {
+  const query: Record<string, unknown> = {
     pageNum: params?.pageNum || 1,
     pageSize: params?.pageSize || 20,
   };

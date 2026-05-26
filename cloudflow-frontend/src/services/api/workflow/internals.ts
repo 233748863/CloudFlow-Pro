@@ -2,7 +2,7 @@
  * 从 PageResult 或数组中提取列表
  * 兼容后端返回的不同格式
  */
-export function extractList<T = any>(res: unknown): T[] {
+export function extractList<T = unknown>(res: unknown): T[] {
   if (res && typeof res === "object") {
     const obj = res as Record<string, unknown>;
     if (Array.isArray(obj.records)) {
@@ -49,7 +49,7 @@ export function extractPageMeta(res: unknown): {
 /**
  * 开发环境日志记录
  */
-export function logApiCall(method: string, endpoint: string, data?: any) {
+export function logApiCall(method: string, endpoint: string, data?: unknown) {
   if (import.meta.env.DEV) {
     console.log(`[API] ${method} ${endpoint}`, data || "");
   }

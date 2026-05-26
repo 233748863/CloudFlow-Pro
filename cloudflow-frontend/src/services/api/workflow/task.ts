@@ -1,5 +1,6 @@
 import request from "../request";
-import type { CompleteTaskRequest, TasksCount, UrgeTaskRequest } from "@/types/workflow";
+import type { CompleteTaskRequest, PageResult, TasksCount, UrgeTaskRequest } from "@/types/workflow";
+import type { Task } from "@/types";
 import { logApiCall } from "./internals";
 import type {
   AddSignRequest,
@@ -21,9 +22,9 @@ export async function getTodoTasks(params?: {
   startTimeFrom?: string;
   startTimeTo?: string;
   startUserName?: string;
-}): Promise<any> {
+}): Promise<PageResult<Task>> {
   logApiCall("GET", "/workflow/wf/todo", params);
-  const query: Record<string, any> = {
+  const query: Record<string, unknown> = {
     pageNum: params?.pageNum || 1,
     pageSize: params?.pageSize || 999,
   };
@@ -46,9 +47,9 @@ export async function getDoneTasks(params?: {
   startTimeFrom?: string;
   startTimeTo?: string;
   startUserName?: string;
-}): Promise<any> {
+}): Promise<PageResult<Task>> {
   logApiCall("GET", "/workflow/wf/done", params);
-  const query: Record<string, any> = {
+  const query: Record<string, unknown> = {
     pageNum: params?.pageNum || 1,
     pageSize: params?.pageSize || 20,
   };
@@ -114,7 +115,7 @@ export async function getTaskStatistics(params?: {
   userId?: number;
   startTime?: string;
   endTime?: string;
-}): Promise<Record<string, any>> {
+}): Promise<Record<string, unknown>> {
   logApiCall("GET", "/workflow/wf/tasks/statistics", params);
   return request.get("/workflow/wf/tasks/statistics", { params });
 }
@@ -125,7 +126,7 @@ export async function getTaskStatistics(params?: {
  */
 export async function getTaskGroups(
   userId?: number,
-): Promise<Record<string, any>> {
+): Promise<Record<string, unknown>> {
   logApiCall("GET", "/workflow/wf/tasks/groups", { userId });
   return request.get("/workflow/wf/tasks/groups", { params: { userId } });
 }

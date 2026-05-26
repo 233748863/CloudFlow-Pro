@@ -1,6 +1,7 @@
 import React from 'react';
 import { ArrowRight, CircleAlert, ListTodo } from 'lucide-react';
 import { EmptyState, LoadingSpinner } from '@/components/common';
+import { getTodoStatusLabel } from '@/utils/enumLabels';
 
 export interface UserDashboardTodoItem {
   id: string;
@@ -46,7 +47,7 @@ export const UserDashboardTodoPanel: React.FC<UserDashboardTodoPanelProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="badge badge-cyan">{item.sourceLabel || '联动待办'}</span>
-                  {item.status ? <span className="text-xs text-slate-500 dark:text-slate-400">{item.status}</span> : null}
+                  {item.status ? <span className="text-xs text-slate-500 dark:text-slate-400">{getTodoStatusLabel(item.status)}</span> : null}
                 </div>
                 <p className="mt-2 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.description || '待继续推进'}</p>

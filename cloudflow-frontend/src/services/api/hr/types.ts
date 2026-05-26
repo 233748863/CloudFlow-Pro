@@ -1,4 +1,4 @@
-export type HrRecord = Record<string, any>;
+export type HrRecord = Record<string, unknown>;
 
 export type HrPagedResult<T> = {
   total: number;
@@ -684,7 +684,7 @@ export interface AttendanceRuleConfig {
   shiftId?: number;
   workDays?: number[];
   checkMethods?: string[];
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface AttendanceRuleAssignment extends HrRecord {
@@ -1238,7 +1238,7 @@ export interface HrBenefitRequest extends HrRecord {
   amount?: number | string;
   pointAmount?: number;
   reason?: string;
-  attachments?: any[];
+  attachments?: unknown[];
   status: 'DRAFT' | 'SUBMITTED' | 'APPROVING' | 'APPROVED' | 'REJECTED' | 'PAID' | 'CANCELLED' | string;
   processInstanceId?: string;
   approverId?: number;

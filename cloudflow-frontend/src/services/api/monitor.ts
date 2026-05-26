@@ -7,6 +7,7 @@
  */
 
 import request from './request';
+import type { PageResult } from '@/types/workflow';
 
 // ==================== 类型定义 ====================
 
@@ -231,7 +232,7 @@ export async function getProcessMonitors(params?: {
   status?: string;
   startTimeFrom?: string;
   startTimeTo?: string;
-}): Promise<any> {
+}): Promise<PageResult<ProcessMonitor>> {
   return request.get('/workflow/monitor/process/list', { params });
 }
 
@@ -253,7 +254,7 @@ export async function getTimeoutAlerts(params?: {
   alertType?: 'TASK' | 'PROCESS';
   alertLevel?: 'REMIND' | 'WARNING' | 'CRITICAL';
   resolved?: boolean;
-}): Promise<any> {
+}): Promise<PageResult<TimeoutAlert>> {
   return request.get('/workflow/monitor/timeout/list', { params });
 }
 
@@ -273,7 +274,7 @@ export async function handleTimeoutAlert(
 export async function getTimeoutEscalationTasks(params?: {
   pageNum?: number;
   pageSize?: number;
-}): Promise<any> {
+}): Promise<PageResult<TimeoutAlert>> {
   return request.get('/workflow/monitor/timeout/escalation-tasks', { params });
 }
 
@@ -295,7 +296,7 @@ export async function getAnomalyAlerts(params?: {
   anomalyType?: string;
   severity?: string;
   resolved?: boolean;
-}): Promise<any> {
+}): Promise<PageResult<AnomalyAlert>> {
   return request.get('/workflow/monitor/anomaly/list', { params });
 }
 

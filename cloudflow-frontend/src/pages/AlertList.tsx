@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { getAnomalyTypeLabel } from '@/utils/enumLabels';
 import { BaseDialog } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, Input, SegmentedControl, SegmentedControlItem, Textarea } from '@/components/common';
@@ -145,7 +146,7 @@ const AnomalyDetailDialog: React.FC<{
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
             <div className="text-xs text-slate-400 dark:text-slate-500">异常类型</div>
             <div className="mt-1 text-sm font-medium text-slate-900 dark:text-slate-100">
-              {alert.anomalyType}
+              {getAnomalyTypeLabel(alert.anomalyType)}
             </div>
           </div>
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/70">
@@ -780,7 +781,7 @@ const AlertList: React.FC = () => {
                                 {severityMeta.label}
                               </span>
                               <span className="text-sm text-slate-500 dark:text-slate-400">
-                                {alert.anomalyType}
+                                {getAnomalyTypeLabel(alert.anomalyType)}
                               </span>
                               {alert.resolved === 'Y' ? (
                                 <span className="text-xs text-emerald-600 dark:text-emerald-300">
@@ -804,7 +805,7 @@ const AlertList: React.FC = () => {
 
                           <div className="space-y-1 text-sm text-slate-600 dark:text-slate-300">
                             <div>流程 Key: {alert.processDefKey}</div>
-                            <div>异常类型: {alert.anomalyType}</div>
+                            <div>异常类型: {getAnomalyTypeLabel(alert.anomalyType)}</div>
                             <div>通知状态: {alert.notificationSent === 'Y' ? '已通知' : '未通知'}</div>
                           </div>
 

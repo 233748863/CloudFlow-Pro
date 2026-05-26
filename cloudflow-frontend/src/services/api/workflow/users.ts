@@ -10,13 +10,13 @@ import { extractList, logApiCall } from "./internals";
 export async function getUsers(): Promise<UserBrief[]> {
   logApiCall("GET", "/auth/system/user/list");
   return request.get("/auth/system/user/list").then((response) =>
-    extractList<Record<string, any>>(response).map((user) => ({
+    extractList<Record<string, unknown>>(response).map((user) => ({
       id: String(user.id ?? user.userId ?? ""),
       name: String(user.name ?? user.nickName ?? user.userName ?? ""),
-      email: user.email,
-      avatar: user.avatar,
+      email: user.email as string | undefined,
+      avatar: user.avatar as string | undefined,
       deptId: user.deptId ? String(user.deptId) : undefined,
-      deptName: user.deptName ?? user.dept?.deptName,
+      deptName: (user.deptName ?? (user.dept as { deptName?: string } | undefined)?.deptName) as string | undefined,
     })).filter((user) => user.id && user.name),
   );
 }
