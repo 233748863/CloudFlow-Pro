@@ -3,9 +3,9 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.VehicleFuelLog;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * OA-P0-1 车辆油耗服务。
@@ -21,5 +21,5 @@ public interface IVehicleFuelLogService extends IService<VehicleFuelLog> {
 
     boolean updateFuelLog(VehicleFuelLog log);
 
-    Map<String, Object> statsByVehicle(Long vehicleId, Integer recentDays);
+    DynamicMapVO statsByVehicle(Long vehicleId, Integer recentDays);
 }

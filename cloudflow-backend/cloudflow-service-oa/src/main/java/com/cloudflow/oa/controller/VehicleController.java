@@ -112,7 +112,7 @@ public class VehicleController {
     @GetMapping("/stats")
     @SaCheckPermission("oa:vehicle:list")
     public R<DynamicMapVO> getVehicleStats() {
-        return R.ok(DynamicMapVO.from(vehicleService.getVehicleStats()));
+        return R.ok(vehicleService.getVehicleStats());
     }
 
     // ==================== 用车申请 ====================
@@ -198,7 +198,7 @@ public class VehicleController {
     @SaCheckPermission("oa:vehicle:usage")
     public R<DynamicMapVO> getExpenseStats(@RequestParam(value = "startDate", required = false) String startDate,
                                            @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(DynamicMapVO.from(expenseService.getExpenseStats(startDate, endDate)));
+        return R.ok(expenseService.getExpenseStats(startDate, endDate));
     }
 
     /** 维保列表 */
@@ -274,8 +274,7 @@ public class VehicleController {
     @SaCheckPermission("oa:vehicle:list")
     public R<DynamicMapVO> fuelStats(@RequestParam("vehicleId") Long vehicleId,
                                      @RequestParam(value = "recentDays", required = false) Integer recentDays) {
-        Map<String, Object> stats = fuelLogService.statsByVehicle(vehicleId, recentDays);
-        return R.ok(DynamicMapVO.from(stats));
+        return R.ok(fuelLogService.statsByVehicle(vehicleId, recentDays));
     }
 }
 

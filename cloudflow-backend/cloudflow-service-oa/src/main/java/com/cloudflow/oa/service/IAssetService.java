@@ -2,10 +2,10 @@ package com.cloudflow.oa.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysAsset;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 
 import java.io.OutputStream;
 import java.util.List;
-import java.util.Map;
 
 public interface IAssetService extends IService<SysAsset> {
     
@@ -37,7 +37,7 @@ public interface IAssetService extends IService<SysAsset> {
     /**
      * 资产统计（按状态、分类、总价值等）
      */
-    Map<String, Object> getStatistics();
+    DynamicMapVO getStatistics();
 
     /**
      * 获取所有分类列表

@@ -3,9 +3,9 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.KnowledgeDocument;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 
 import java.util.List;
-import java.util.Map;
 
 public interface IKnowledgeService extends IService<KnowledgeDocument> {
 
@@ -31,5 +31,5 @@ public interface IKnowledgeService extends IService<KnowledgeDocument> {
 
     boolean read(Long documentId);
 
-    Map<String, Object> getReadStats(Long documentId);
+    DynamicMapVO getReadStats(Long documentId);
 }

@@ -8,6 +8,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.SysAnnouncementRead;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysAnnouncementMapper;
 import com.cloudflow.oa.mapper.SysAnnouncementReadMapper;
 import com.cloudflow.oa.service.ISysAnnouncementService;
@@ -82,7 +83,7 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     }
     
     @Override
-    public Map<String, Object> getManageList(String title, String type, String status, Integer page, Integer size) {
+    public DynamicMapVO getManageList(String title, String type, String status, Integer page, Integer size) {
         Page<SysAnnouncement> pageParam = new Page<>(page, size);
         LambdaQueryWrapper<SysAnnouncement> wrapper = new LambdaQueryWrapper<>();
         
@@ -106,8 +107,8 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
         response.put("total", result.getTotal());
         response.put("page", result.getCurrent());
         response.put("size", result.getSize());
-        
-        return response;
+
+        return DynamicMapVO.from(response);
     }
     
     @Override
@@ -145,16 +146,16 @@ public class SysAnnouncementServiceImpl extends ServiceImpl<SysAnnouncementMappe
     }
     
     @Override
-    public Map<String, Object> getReadStats(Long announcementId) {
+    public DynamicMapVO getReadStats(Long announcementId) {
         // 获取已读记录
         LambdaQueryWrapper<SysAnnouncementRead> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysAnnouncementRead::getAnnouncementId, announcementId);
         List<SysAnnouncementRead> readRecords = readMapper.selectList(wrapper);
-        
+
         Map<String, Object> stats = new HashMap<>();
         stats.put("readCount", readRecords.size());
         stats.put("readUsers", readRecords);
-        
-        return stats;
+
+        return DynamicMapVO.from(stats);
     }
 }

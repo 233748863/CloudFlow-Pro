@@ -4,8 +4,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
-
-import java.util.Map;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 
 /**
  * 流程定义管理服务接口
@@ -64,5 +63,5 @@ public interface IWfDefinitionService {
      * @param definitionId 流程定义ID
      * @return 流程图结构 { nodes: [...], edges: [...] }
      */
-    Map<String, Object> getFlowchartStructure(String definitionId);
+    DynamicMapVO getFlowchartStructure(String definitionId);
 }

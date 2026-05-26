@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.VehicleFuelLog;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.OaRiskAlertMapper;
 import com.cloudflow.oa.mapper.VehicleFuelLogMapper;
 import com.cloudflow.oa.service.IVehicleFuelLogService;
@@ -189,10 +190,10 @@ public class VehicleFuelLogServiceImpl extends ServiceImpl<VehicleFuelLogMapper,
     }
 
     @Override
-    public Map<String, Object> statsByVehicle(Long vehicleId, Integer recentDays) {
+    public DynamicMapVO statsByVehicle(Long vehicleId, Integer recentDays) {
         Map<String, Object> result = new HashMap<>();
         if (vehicleId == null) {
-            return result;
+            return DynamicMapVO.from(result);
         }
         LambdaQueryWrapper<VehicleFuelLog> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(VehicleFuelLog::getVehicleId, vehicleId);
@@ -246,6 +247,6 @@ public class VehicleFuelLogServiceImpl extends ServiceImpl<VehicleFuelLogMapper,
                                 monthlyConsumptionCount.get(e.getKey()), 1)), 2, RoundingMode.HALF_UP),
                         (a, b) -> a, TreeMap::new));
         result.put("monthlyFuelPer100km", monthlyAvg);
-        return result;
+        return DynamicMapVO.from(result);
     }
 }

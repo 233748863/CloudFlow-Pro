@@ -1,6 +1,6 @@
 package com.cloudflow.workflow.service;
 
-import java.util.Map;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 
 /**
  * 流程引擎健康检查服务接口
@@ -8,5 +8,5 @@ import java.util.Map;
 public interface IWorkflowHealthCheckService {
 
     /** 执行全面健康检查 */
-    Map<String, Object> performHealthCheck();
+    DynamicMapVO performHealthCheck();
 }

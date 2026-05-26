@@ -3,6 +3,7 @@ package com.cloudflow.oa.service.impl;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.oa.domain.SysScheduleEvent;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysScheduleEventMapper;
 import com.cloudflow.oa.service.ISysScheduleService;
 import org.springframework.cache.annotation.CacheEvict;
@@ -139,10 +140,10 @@ public class SysScheduleServiceImpl extends ServiceImpl<SysScheduleEventMapper, 
     }
 
     @Override
-    public List<java.util.Map<String, Object>> getRoomUsageStats(String startDate, String endDate) {
-        LocalDateTime start = StringUtils.hasText(startDate) ? parseDate(startDate) : 
+    public List<DynamicMapVO> getRoomUsageStats(String startDate, String endDate) {
+        LocalDateTime start = StringUtils.hasText(startDate) ? parseDate(startDate) :
             LocalDate.now().withDayOfMonth(1).atStartOfDay();
         LocalDateTime end = StringUtils.hasText(endDate) ? parseDate(endDate) : LocalDateTime.now();
-        return baseMapper.getRoomUsageStats(start, end);
+        return baseMapper.getRoomUsageStats(start, end).stream().map(DynamicMapVO::from).toList();
     }
 }

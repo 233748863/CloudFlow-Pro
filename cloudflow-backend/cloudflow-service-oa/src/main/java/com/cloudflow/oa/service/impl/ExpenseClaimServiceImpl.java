@@ -15,6 +15,9 @@ import com.cloudflow.oa.domain.VehicleExpense;
 import com.cloudflow.oa.domain.dto.BusinessRuleDTO;
 import com.cloudflow.oa.domain.dto.BusinessRuleHitRecordDTO;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
+import com.cloudflow.oa.domain.vo.OaExpenseExceedDetailVO;
+import com.cloudflow.oa.domain.vo.OaExpenseExceedResultVO;
 import com.cloudflow.oa.mapper.BizExpenseClaimMapper;
 import com.cloudflow.oa.mapper.BizExpenseItemMapper;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
@@ -179,7 +182,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
         evaluateExpenseAmountRule(claim);
         // OA-P0-3 超标校验, 命中后落表用于流程 CONDITION 分支
-        Map<String, Object> exceedResult = evaluateExpenseStandard(claim);
+        OaExpenseExceedResultVO exceedResult = evaluateExpenseStandard(claim);
         reserveBudget(claim);
 
         // 更新状态为审批中
@@ -202,8 +205,8 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             variables.put("deptName", claim.getDeptName());
             // OA-P0-3 超标变量(供工作流 CONDITION 分支路由到上级节点)
             if (exceedResult != null) {
-                variables.put("exceededStandard", Boolean.TRUE.equals(exceedResult.get("exceeded")));
-                variables.put("exceededAmount", exceedResult.get("totalExceededAmount"));
+                variables.put("exceededStandard", exceedResult.isExceeded());
+                variables.put("exceededAmount", exceedResult.getTotalExceededAmount());
             } else {
                 variables.put("exceededStandard", false);
             }
@@ -353,13 +356,13 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     }
 
     @Override
-    public List<Map<String, Object>> getMonthlyExpenseByDept(String month) {
-        return baseMapper.selectMonthlyExpenseByDept(month);
+    public List<DynamicMapVO> getMonthlyExpenseByDept(String month) {
+        return baseMapper.selectMonthlyExpenseByDept(month).stream().map(DynamicMapVO::from).toList();
     }
 
     @Override
-    public List<Map<String, Object>> getMonthlyExpenseByCategory(String month) {
-        return baseMapper.selectMonthlyExpenseByCategory(month);
+    public List<DynamicMapVO> getMonthlyExpenseByCategory(String month) {
+        return baseMapper.selectMonthlyExpenseByCategory(month).stream().map(DynamicMapVO::from).toList();
     }
     
     /**
@@ -401,7 +404,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     /**
      * OA-P0-3 超标校验, 返回 standard 服务结果, 同时把超标标记写入 claim 字段。
      */
-    private Map<String, Object> evaluateExpenseStandard(BizExpenseClaim claim) {
+    private OaExpenseExceedResultVO evaluateExpenseStandard(BizExpenseClaim claim) {
         if (claim == null) {
             return null;
         }
@@ -414,15 +417,15 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         // 当前 UserContext 未携带职级/城市, 先按通用规则匹配; 后续可扩展为远程取员工档案
         String applicantLevel = null;
         String city = null;
-        Map<String, Object> result = expenseStandardService.validateExceed(claim, applicantLevel, city);
-        boolean exceeded = Boolean.TRUE.equals(result.get("exceeded"));
+        OaExpenseExceedResultVO result = expenseStandardService.validateExceed(claim, applicantLevel, city);
+        boolean exceeded = result.isExceeded();
         claim.setExceededStandard(exceeded ? 1 : 0);
-        Object total = result.get("totalExceededAmount");
-        if (total instanceof BigDecimal) {
-            claim.setExceededAmount((BigDecimal) total);
+        BigDecimal total = result.getTotalExceededAmount();
+        if (total != null) {
+            claim.setExceededAmount(total);
         }
-        Object details = result.get("details");
-        if (exceeded && details instanceof List) {
+        List<OaExpenseExceedDetailVO> details = result.getDetails();
+        if (exceeded && details != null && !details.isEmpty()) {
             try {
                 claim.setExceededDetail(OBJECT_MAPPER.writeValueAsString(details));
             } catch (Exception e) {

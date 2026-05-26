@@ -6,6 +6,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.dto.*;
 import com.cloudflow.workflow.domain.enums.DeployEnums.*;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.service.IDeployEnhancementService;
@@ -77,7 +78,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     // ==================== 发布窗口管理 ====================
 
     @Override
-    public R<Map<String, Object>> checkDeployWindow() {
+    public R<DynamicMapVO> checkDeployWindow() {
         LocalDateTime now = LocalDateTime.now();
         Long currentTenantId = UserContext.getTenantId();
         List<WfDeployWindow> windows = deployWindowMapper.checkDeployWindow(now).stream()
@@ -97,7 +98,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
                     .collect(Collectors.toList());
             result.put("availableWindows", enabledWindows);
         }
-        return R.ok(result);
+        return R.ok(DynamicMapVO.from(result));
     }
 
     @Override
@@ -730,7 +731,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     }
 
     @Override
-    public R<Map<String, Object>> getApprovalDetail(Long approvalId) {
+    public R<DynamicMapVO> getApprovalDetail(Long approvalId) {
         WfDeployApproval approval = deployApprovalMapper.selectById(approvalId);
         if (approval == null) {
             return R.fail("审批记录不存在");
@@ -754,7 +755,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
             detail.put("processKey", definition.getProcessKey());
         }
 
-        return R.ok(detail);
+        return R.ok(DynamicMapVO.from(detail));
     }
 
     @Override
@@ -790,7 +791,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     }
 
     @Override
-    public R<Map<String, Object>> getDeployStatistics(String processDefId) {
+    public R<DynamicMapVO> getDeployStatistics(String processDefId) {
         WfProcessDefinition definition = processDefinitionMapper.selectById(processDefId);
         if (definition == null) {
             return R.fail("流程定义不存在");
@@ -842,7 +843,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
         }
         stats.put("latestVersion", latest != null ? latest.getVersion() : 0);
 
-        return R.ok(stats);
+        return R.ok(DynamicMapVO.from(stats));
     }
 
     private void assertTenantAccess(Long resourceTenantId, String operation) {

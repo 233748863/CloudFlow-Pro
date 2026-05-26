@@ -2,8 +2,8 @@ package com.cloudflow.oa.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysAnnouncement;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import java.util.List;
-import java.util.Map;
 
 public interface ISysAnnouncementService extends IService<SysAnnouncement> {
     
@@ -30,7 +30,7 @@ public interface ISysAnnouncementService extends IService<SysAnnouncement> {
     /**
      * 获取管理列表（分页）
      */
-    Map<String, Object> getManageList(String title, String type, String status, Integer page, Integer size);
+    DynamicMapVO getManageList(String title, String type, String status, Integer page, Integer size);
     
     /**
      * 编辑公告
@@ -50,5 +50,5 @@ public interface ISysAnnouncementService extends IService<SysAnnouncement> {
     /**
      * 获取阅读统计
      */
-    Map<String, Object> getReadStats(Long announcementId);
+    DynamicMapVO getReadStats(Long announcementId);
 }

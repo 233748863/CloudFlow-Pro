@@ -127,7 +127,7 @@ public class WorkflowController {
     @GetMapping("/instance/{instanceId}/trace")
     @SaCheckPermission("workflow:process:view")
     public R<DynamicMapVO> getProcessTrace(@PathVariable("instanceId") String instanceId) {
-        return R.ok(DynamicMapVO.from(instanceService.getProcessTrace(instanceId)));
+        return R.ok(instanceService.getProcessTrace(instanceId));
     }
 
     /**
@@ -261,7 +261,7 @@ public class WorkflowController {
         try {
             java.time.LocalDateTime start = parseDateTimeParam(startTime, false);
             java.time.LocalDateTime end = parseDateTimeParam(endTime, true);
-            return R.ok(DynamicMapVO.from(taskStatisticsService.getTaskStatistics(userId, start, end)));
+            return R.ok(taskStatisticsService.getTaskStatistics(userId, start, end));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -274,7 +274,7 @@ public class WorkflowController {
     @GetMapping("/tasks/groups")
     @SaCheckPermission("workflow:task:groups")
     public R<DynamicMapVO> getTaskGroups(@RequestParam(required = false) Long userId) {
-        return R.ok(DynamicMapVO.from(taskStatisticsService.getTaskGroups(userId)));
+        return R.ok(taskStatisticsService.getTaskGroups(userId));
     }
 
     /**

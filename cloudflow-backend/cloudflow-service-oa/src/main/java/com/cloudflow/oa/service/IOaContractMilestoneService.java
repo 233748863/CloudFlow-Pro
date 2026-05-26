@@ -3,9 +3,9 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.oa.domain.OaContractMilestone;
 import com.cloudflow.oa.domain.OaContractPaymentSchedule;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * OA-P1-1 合同履约里程碑 + 付款计划。
@@ -48,5 +48,5 @@ public interface IOaContractMilestoneService {
      * - id: milestone:{milestoneId} 或 payment:{paymentId}
      * - title, description, level (HIGH/MEDIUM), businessType=CONTRACT_MILESTONE/CONTRACT_PAYMENT, businessId=contractId
      */
-    List<Map<String, Object>> loadOverdueRiskItems(int limit);
+    List<DynamicMapVO> loadOverdueRiskItems(int limit);
 }

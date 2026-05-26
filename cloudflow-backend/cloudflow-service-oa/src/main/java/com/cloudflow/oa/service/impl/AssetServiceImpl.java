@@ -11,6 +11,7 @@ import com.cloudflow.common.core.exception.ServiceException;
 import com.cloudflow.common.core.utils.SecurityUtils;
 import com.cloudflow.oa.domain.SysAsset;
 import com.cloudflow.oa.domain.SysAssetLog;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysAssetMapper;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.oa.service.IAssetService;
@@ -144,7 +145,7 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
     }
 
     @Override
-    public Map<String, Object> getStatistics() {
+    public DynamicMapVO getStatistics() {
         List<SysAsset> allAssets = list();
         Map<String, Object> stats = new HashMap<>();
         
@@ -180,8 +181,8 @@ public class AssetServiceImpl extends ServiceImpl<SysAssetMapper, SysAsset> impl
                 Collectors.reducing(BigDecimal.ZERO, SysAsset::getPrice, BigDecimal::add)
             ));
         stats.put("categoryValue", categoryValue);
-        
-        return stats;
+
+        return DynamicMapVO.from(stats);
     }
 
     @Override

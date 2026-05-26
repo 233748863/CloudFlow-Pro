@@ -12,6 +12,7 @@ import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.WfDeployRecordMapper;
@@ -407,7 +408,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     // ==================== P1-6: 流程图结构（定义级别） ====================
 
     @Override
-    public Map<String, Object> getFlowchartStructure(String definitionId) {
+    public DynamicMapVO getFlowchartStructure(String definitionId) {
         log.info("[getFlowchartStructure] 获取流程定义流程图结构, definitionId={}", definitionId);
 
         WfProcessDefinition def = processDefinitionMapper.selectById(definitionId);
@@ -496,7 +497,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
         result.put("version", def.getVersion());
         result.put("nodes", nodes);
         result.put("edges", edges);
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     // ==================== P0-5: modelJson XSS 过滤 ====================

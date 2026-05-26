@@ -6,6 +6,7 @@ import com.cloudflow.workflow.domain.dto.AddSignReq;
 import com.cloudflow.workflow.domain.dto.RemoveSignReq;
 import com.cloudflow.workflow.domain.dto.DelegateTaskReq;
 import com.cloudflow.workflow.domain.dto.ProcessInvalidateRequest;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.service.IWorkflowP4Service;
 import com.cloudflow.workflow.service.IWfInstanceService;
 import com.cloudflow.workflow.service.IWfDefinitionService;
@@ -87,7 +88,7 @@ public class WorkflowEnhanceController {
      */
     @GetMapping("/flowchart/{instanceId}")
     @SaCheckPermission("workflow:process:view")
-    public R<?> getFlowchartData(@PathVariable("instanceId") String instanceId) {
+    public R<DynamicMapVO> getFlowchartData(@PathVariable("instanceId") String instanceId) {
         return R.ok(instanceService.getFlowchartData(instanceId));
     }
 
@@ -97,7 +98,7 @@ public class WorkflowEnhanceController {
      */
     @GetMapping("/flowchart/definition/{definitionId}")
     @SaCheckPermission("workflow:definition:view")
-    public R<?> getDefinitionFlowchart(@PathVariable("definitionId") String definitionId) {
+    public R<DynamicMapVO> getDefinitionFlowchart(@PathVariable("definitionId") String definitionId) {
         return R.ok(definitionService.getFlowchartStructure(definitionId));
     }
 

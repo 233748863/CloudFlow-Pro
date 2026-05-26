@@ -130,7 +130,7 @@ public class KnowledgeController {
     @SaCheckPermission("oa:knowledge:manage")
     public R<DynamicMapVO> getReadStats(@PathVariable("id") Long id) {
         try {
-            return R.ok(DynamicMapVO.from(knowledgeService.getReadStats(id)));
+            return R.ok(knowledgeService.getReadStats(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

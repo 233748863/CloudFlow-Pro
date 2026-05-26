@@ -2,6 +2,7 @@ package com.cloudflow.oa.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysScheduleEvent;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import java.util.List;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -46,5 +47,5 @@ public interface ISysScheduleService extends IService<SysScheduleEvent> {
     /**
      * 会议室使用统计
      */
-    List<java.util.Map<String, Object>> getRoomUsageStats(String startDate, String endDate);
+    List<DynamicMapVO> getRoomUsageStats(String startDate, String endDate);
 }

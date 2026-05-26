@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.OaContractMilestone;
 import com.cloudflow.oa.domain.OaContractPaymentSchedule;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.OaContractMilestoneMapper;
 import com.cloudflow.oa.mapper.OaContractPaymentScheduleMapper;
 import com.cloudflow.oa.service.IOaContractMilestoneService;
@@ -228,7 +229,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
     }
 
     @Override
-    public List<Map<String, Object>> loadOverdueRiskItems(int limit) {
+    public List<DynamicMapVO> loadOverdueRiskItems(int limit) {
         if (limit <= 0) {
             limit = 8;
         }
@@ -274,6 +275,6 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
             item.put("ownerName", p.getPayeeName());
             risks.add(item);
         }
-        return risks.stream().limit(limit).toList();
+        return risks.stream().limit(limit).map(DynamicMapVO::from).toList();
     }
 }

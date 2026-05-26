@@ -8,6 +8,7 @@ import com.cloudflow.workflow.domain.WfTaskHistory;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
 import com.cloudflow.workflow.domain.system.SysUser;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskHistoryMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
@@ -43,7 +44,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
     private final WorkflowPermissionService permissionService;
 
     @Override
-    public Map<String, Object> getTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
+    public DynamicMapVO getTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime) {
         log.info("[getTaskStatistics] 查询任务统计, userId={}, startTime={}, endTime={}", userId, startTime, endTime);
 
         Map<String, Object> stats = new HashMap<>();
@@ -212,11 +213,11 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         stats.put("myInstanceCount", myInstanceCount != null ? myInstanceCount : 0);
 
         log.info("[getTaskStatistics] 统计完成, userId={}, 待办={}, 已办={}", userId, todoCount, doneCount);
-        return stats;
+        return DynamicMapVO.from(stats);
     }
 
     @Override
-    public Map<String, Object> getTaskGroups(Long userId) {
+    public DynamicMapVO getTaskGroups(Long userId) {
         log.info("[getTaskGroups] 查询任务分组, userId={}", userId);
 
         if (userId == null) {
@@ -239,7 +240,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
             groups.put("byProcessType", new HashMap<>());
             groups.put("byStatus", new HashMap<>());
             groups.put("byPriority", new HashMap<>());
-            return groups;
+            return DynamicMapVO.from(groups);
         }
 
         // 1. 按流程类型分组
@@ -297,7 +298,7 @@ public class TaskStatisticsServiceImpl implements ITaskStatisticsService {
         }
 
         log.info("[getTaskGroups] 分组完成, userId={}, total={}", userId, tasks.size());
-        return groups;
+        return DynamicMapVO.from(groups);
     }
 
     @Override

@@ -6,6 +6,8 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.BizExpenseItem;
 import com.cloudflow.oa.domain.OaExpenseStandard;
+import com.cloudflow.oa.domain.vo.OaExpenseExceedDetailVO;
+import com.cloudflow.oa.domain.vo.OaExpenseExceedResultVO;
 import com.cloudflow.oa.mapper.OaExpenseStandardMapper;
 import com.cloudflow.oa.service.IOaExpenseStandardService;
 import lombok.RequiredArgsConstructor;
@@ -116,22 +118,22 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
     }
 
     @Override
-    public Map<String, Object> validateExceed(BizExpenseClaim claim, String applicantPositionLevel,
-                                              String applicantCity) {
-        Map<String, Object> result = new LinkedHashMap<>();
-        List<Map<String, Object>> details = new ArrayList<>();
+    public OaExpenseExceedResultVO validateExceed(BizExpenseClaim claim, String applicantPositionLevel,
+                                                  String applicantCity) {
+        OaExpenseExceedResultVO result = new OaExpenseExceedResultVO();
+        List<OaExpenseExceedDetailVO> details = new ArrayList<>();
         BigDecimal totalExceeded = BigDecimal.ZERO;
         if (claim == null || claim.getItems() == null || claim.getItems().isEmpty()) {
-            result.put("exceeded", false);
-            result.put("totalExceededAmount", totalExceeded);
-            result.put("details", details);
+            result.setExceeded(false);
+            result.setTotalExceededAmount(totalExceeded);
+            result.setDetails(details);
             return result;
         }
         List<OaExpenseStandard> activeStandards = listActive();
         if (activeStandards.isEmpty()) {
-            result.put("exceeded", false);
-            result.put("totalExceededAmount", totalExceeded);
-            result.put("details", details);
+            result.setExceeded(false);
+            result.setTotalExceededAmount(totalExceeded);
+            result.setDetails(details);
             return result;
         }
         for (BizExpenseItem item : claim.getItems()) {
@@ -147,21 +149,21 @@ public class OaExpenseStandardServiceImpl implements IOaExpenseStandardService {
             if (item.getAmount().compareTo(limit) > 0) {
                 BigDecimal exceeded = item.getAmount().subtract(limit);
                 totalExceeded = totalExceeded.add(exceeded);
-                Map<String, Object> detail = new LinkedHashMap<>();
-                detail.put("itemId", item.getId());
-                detail.put("expenseType", category);
-                detail.put("standardId", matched.getStandardId());
-                detail.put("standardLimit", limit);
-                detail.put("actualAmount", item.getAmount());
-                detail.put("exceededAmount", exceeded);
-                detail.put("city", matched.getCity());
-                detail.put("limitType", matched.getLimitType());
+                OaExpenseExceedDetailVO detail = new OaExpenseExceedDetailVO();
+                detail.setItemId(item.getId());
+                detail.setExpenseType(category);
+                detail.setStandardId(matched.getStandardId());
+                detail.setStandardLimit(limit);
+                detail.setActualAmount(item.getAmount());
+                detail.setExceededAmount(exceeded);
+                detail.setCity(matched.getCity());
+                detail.setLimitType(matched.getLimitType());
                 details.add(detail);
             }
         }
-        result.put("exceeded", !details.isEmpty());
-        result.put("totalExceededAmount", totalExceeded);
-        result.put("details", details);
+        result.setExceeded(!details.isEmpty());
+        result.setTotalExceededAmount(totalExceeded);
+        result.setDetails(details);
         return result;
     }
 

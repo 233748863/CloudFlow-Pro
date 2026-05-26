@@ -8,6 +8,7 @@ import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.dto.WorkplaceSummaryDTO;
 import com.cloudflow.oa.domain.dto.RecentTaskDTO;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IOaContractMilestoneService;
 import com.cloudflow.oa.service.IOaRiskAlertService;
 import com.cloudflow.oa.service.IOaTraceEventService;
@@ -545,11 +546,12 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
 
     private List<WorkplaceSummaryDTO.RiskItem> loadContractMilestoneRisks() {
         try {
-            List<Map<String, Object>> overdueItems = contractMilestoneService.loadOverdueRiskItems(8);
+            List<DynamicMapVO> overdueItems = contractMilestoneService.loadOverdueRiskItems(8);
             if (overdueItems == null || overdueItems.isEmpty()) {
                 return new ArrayList<>();
             }
-            return overdueItems.stream().map(item -> {
+            return overdueItems.stream().map(vo -> {
+                Map<String, Object> item = vo.values();
                 WorkplaceSummaryDTO.RiskItem mapped = new WorkplaceSummaryDTO.RiskItem();
                 String idStr = String.valueOf(item.get("id"));
                 mapped.setId(parseLongId(idStr));

@@ -133,7 +133,7 @@ public class SysScheduleController {
     public R<List<DynamicMapVO>> getRoomUsageStats(
             @RequestParam(value = "startDate", required = false) String startDate,
             @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(scheduleService.getRoomUsageStats(startDate, endDate).stream().map(DynamicMapVO::from).toList());
+        return R.ok(scheduleService.getRoomUsageStats(startDate, endDate));
     }
 }
 

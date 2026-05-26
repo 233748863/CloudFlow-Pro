@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.redis.core.RedisCache;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.mapper.WfProcessInstanceMapper;
 import com.cloudflow.workflow.mapper.WfTaskMapper;
 import org.redisson.api.RedissonClient;
@@ -44,7 +45,7 @@ public class WorkflowHealthCheckServiceImpl implements IWorkflowHealthCheckServi
     /**
      * 执行全面健康检查
      */
-    public Map<String, Object> performHealthCheck() {
+    public DynamicMapVO performHealthCheck() {
         Map<String, Object> health = new HashMap<>();
         health.put("status", "UP");
         health.put("timestamp", System.currentTimeMillis());
@@ -129,6 +130,6 @@ public class WorkflowHealthCheckServiceImpl implements IWorkflowHealthCheckServi
         }
 
         log.info("[performHealthCheck] 健康检查完成, status={}", health.get("status"));
-        return health;
+        return DynamicMapVO.from(health);
     }
 }

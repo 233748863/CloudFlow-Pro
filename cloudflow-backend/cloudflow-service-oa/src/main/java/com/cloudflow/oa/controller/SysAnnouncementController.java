@@ -76,7 +76,7 @@ public class SysAnnouncementController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        return R.ok(DynamicMapVO.from(announcementService.getManageList(title, type, status, page, size)));
+        return R.ok(announcementService.getManageList(title, type, status, page, size));
     }
     
     /**
@@ -125,7 +125,7 @@ public class SysAnnouncementController {
     @GetMapping("/read-stats/{id}")
     @SaCheckPermission("oa:announcement:manage")
     public R<DynamicMapVO> getReadStats(@PathVariable("id") Long id) {
-        return R.ok(DynamicMapVO.from(announcementService.getReadStats(id)));
+        return R.ok(announcementService.getReadStats(id));
     }
 }
 

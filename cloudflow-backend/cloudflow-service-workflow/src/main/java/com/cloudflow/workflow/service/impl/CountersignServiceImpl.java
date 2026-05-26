@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.monitor.TaskMonitor;
 import com.cloudflow.workflow.domain.system.SysUser;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.exception.WorkflowException;
 import com.cloudflow.workflow.mapper.*;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
@@ -480,7 +481,7 @@ public class CountersignServiceImpl implements ICountersignService {
      * @param countersignId 会签任务ID
      * @return 会签进度信息
      */
-    public Map<String, Object> getCountersignProgress(String countersignId) {
+    public DynamicMapVO getCountersignProgress(String countersignId) {
         WfCountersignTask csTask = countersignTaskMapper.selectById(countersignId);
         if (csTask == null) {
             throw WorkflowException.validationError("会签任务不存在: " + countersignId);
@@ -526,7 +527,7 @@ public class CountersignServiceImpl implements ICountersignService {
             progress.put("approveRate", Math.round(approveRate * 100.0) / 100.0);
         }
 
-        return progress;
+        return DynamicMapVO.from(progress);
     }
 
     /**

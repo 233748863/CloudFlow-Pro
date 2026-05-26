@@ -4,6 +4,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.WfProcessInstance;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 
 import java.util.Map;
 
@@ -65,7 +66,7 @@ public interface IWfInstanceService {
      * @param instanceId 实例ID
      * @return 追踪信息 { finished, active, historyDetails, activeDetails, parallelBranches }
      */
-    Map<String, Object> getProcessTrace(String instanceId);
+    DynamicMapVO getProcessTrace(String instanceId);
 
     /**
      * 查询我的发起（分页）
@@ -92,7 +93,7 @@ public interface IWfInstanceService {
      * @param instanceId 流程实例ID
      * @return 流程图数据 { nodes: [...], edges: [...] }
      */
-    Map<String, Object> getFlowchartData(String instanceId);
+    DynamicMapVO getFlowchartData(String instanceId);
 
     /**
      * P1-7: 作废流程实例

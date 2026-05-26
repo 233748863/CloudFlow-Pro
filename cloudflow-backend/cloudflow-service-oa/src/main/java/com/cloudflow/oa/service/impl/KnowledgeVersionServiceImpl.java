@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.KnowledgeDocVersion;
 import com.cloudflow.oa.domain.KnowledgeDocument;
+import com.cloudflow.oa.domain.vo.knowledge.KnowledgeVersionDiffVO;
 import com.cloudflow.oa.mapper.KnowledgeDocVersionMapper;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
 import com.cloudflow.oa.service.IKnowledgeVersionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -31,6 +33,7 @@ public class KnowledgeVersionServiceImpl implements IKnowledgeVersionService {
 
     private final KnowledgeDocVersionMapper versionMapper;
     private final KnowledgeDocumentMapper documentMapper;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -83,7 +86,7 @@ public class KnowledgeVersionServiceImpl implements IKnowledgeVersionService {
     }
 
     @Override
-    public Map<String, Object> diff(Long documentId, Integer fromVersion, Integer toVersion) {
+    public KnowledgeVersionDiffVO diff(Long documentId, Integer fromVersion, Integer toVersion) {
         KnowledgeDocVersion from = getVersion(documentId, fromVersion);
         KnowledgeDocVersion to = getVersion(documentId, toVersion);
         if (from == null || to == null) {
@@ -96,7 +99,7 @@ public class KnowledgeVersionServiceImpl implements IKnowledgeVersionService {
         result.put("summaryChanged", !Objects.equals(from.getSummary(), to.getSummary()));
         result.put("attachmentChanged", !Objects.equals(from.getAttachmentUrl(), to.getAttachmentUrl()));
         result.put("contentDiff", lineDiff(from.getContent(), to.getContent()));
-        return result;
+        return objectMapper.convertValue(result, KnowledgeVersionDiffVO.class);
     }
 
     @Override

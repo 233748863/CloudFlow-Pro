@@ -154,7 +154,7 @@ public class ExpenseClaimController {
     @GetMapping("/stats/dept")
     @SaCheckPermission("oa:expense:list")
     public R<List<DynamicMapVO>> getMonthlyExpenseByDept(@RequestParam String month) {
-        return R.ok(expenseClaimService.getMonthlyExpenseByDept(month).stream().map(DynamicMapVO::from).toList());
+        return R.ok(expenseClaimService.getMonthlyExpenseByDept(month));
     }
 
     /**
@@ -163,7 +163,7 @@ public class ExpenseClaimController {
     @GetMapping("/stats/category")
     @SaCheckPermission("oa:expense:list")
     public R<List<DynamicMapVO>> getMonthlyExpenseByCategory(@RequestParam String month) {
-        return R.ok(expenseClaimService.getMonthlyExpenseByCategory(month).stream().map(DynamicMapVO::from).toList());
+        return R.ok(expenseClaimService.getMonthlyExpenseByCategory(month));
     }
 }
 

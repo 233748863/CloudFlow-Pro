@@ -4,12 +4,12 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysVehicle;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.domain.vo.VehicleProfileVO;
 import com.cloudflow.oa.domain.vo.VehicleScheduleItemVO;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 
 /**
  * 车辆服务接口
@@ -29,7 +29,7 @@ public interface IVehicleService extends IService<SysVehicle> {
     /**
      * 获取车辆统计概览（各状态数量、保险即将到期等）
      */
-    Map<String, Object> getVehicleStats();
+    DynamicMapVO getVehicleStats();
 
     VehicleProfileVO getVehicleProfile(Long vehicleId);
 

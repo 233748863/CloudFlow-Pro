@@ -3,9 +3,9 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.BizExpenseClaim;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 报销申请Service接口
@@ -60,10 +60,10 @@ public interface IExpenseClaimService extends IService<BizExpenseClaim> {
     /**
      * 按部门统计月度报销费用
      */
-    List<Map<String, Object>> getMonthlyExpenseByDept(String month);
+    List<DynamicMapVO> getMonthlyExpenseByDept(String month);
 
     /**
      * 按类别统计月度报销费用
      */
-    List<Map<String, Object>> getMonthlyExpenseByCategory(String month);
+    List<DynamicMapVO> getMonthlyExpenseByCategory(String month);
 }

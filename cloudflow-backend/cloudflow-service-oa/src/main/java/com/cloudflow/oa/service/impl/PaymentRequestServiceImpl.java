@@ -12,6 +12,7 @@ import com.cloudflow.oa.constant.OaBusinessTypes;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.BizPaymentRequestMapper;
 import com.cloudflow.oa.mapper.BizPurchaseRequestMapper;
 import com.cloudflow.oa.service.IOaBudgetService;
@@ -192,8 +193,8 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     @Override
-    public List<Map<String, Object>> getMonthlyPaymentByDept(String month) {
-        return baseMapper.selectMonthlyPaymentByDept(month);
+    public List<DynamicMapVO> getMonthlyPaymentByDept(String month) {
+        return baseMapper.selectMonthlyPaymentByDept(month).stream().map(DynamicMapVO::from).toList();
     }
     
     /**

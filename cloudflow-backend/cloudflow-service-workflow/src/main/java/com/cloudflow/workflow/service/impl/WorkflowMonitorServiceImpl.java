@@ -184,11 +184,17 @@ public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
             "WARNING", "警告",
             "CRITICAL", "严重"
     );
-    private static final Map<String, String> ANOMALY_TYPE_LABELS = Map.of(
-            "EXECUTION_FAILED", "执行失败",
-            "NO_ASSIGNEE", "无人认领",
-            "DEADLOCK", "死锁",
-            "DATA_INCONSISTENCY", "数据不一致"
+    private static final Map<String, String> ANOMALY_TYPE_LABELS = Map.ofEntries(
+            Map.entry("EXECUTION_FAILED",     "执行失败"),
+            Map.entry("NO_ASSIGNEE",          "无人认领"),
+            Map.entry("DEADLOCK",             "死锁"),
+            Map.entry("DATA_INCONSISTENCY",   "数据不一致"),
+            Map.entry("BUSINESS_EXCEPTION",   "业务异常"),
+            Map.entry("CALLBACK_FAILED",      "回调失败"),
+            Map.entry("NODE_TIMEOUT",         "节点超时"),
+            Map.entry("APPROVER_UNAVAILABLE", "审批人不可用"),
+            Map.entry("APPROVER_INVALID",     "审批人无效"),
+            Map.entry("APPROVAL_NODE_TIMEOUT","审批节点超时")
     );
 
     @Override

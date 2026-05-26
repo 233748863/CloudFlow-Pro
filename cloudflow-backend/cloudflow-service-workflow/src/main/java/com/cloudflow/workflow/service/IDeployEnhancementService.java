@@ -3,9 +3,9 @@ package com.cloudflow.workflow.service;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.dto.*;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 流程发布增强服务接口
@@ -18,7 +18,7 @@ public interface IDeployEnhancementService {
     /**
      * 检查当前时间是否在发布窗口内
      */
-    R<Map<String, Object>> checkDeployWindow();
+    R<DynamicMapVO> checkDeployWindow();
 
     /**
      * 获取所有发布窗口配置
@@ -109,7 +109,7 @@ public interface IDeployEnhancementService {
     /**
      * 查询审批详情
      */
-    R<Map<String, Object>> getApprovalDetail(Long approvalId);
+    R<DynamicMapVO> getApprovalDetail(Long approvalId);
 
     /**
      * 取消发布审批
@@ -124,5 +124,5 @@ public interface IDeployEnhancementService {
     /**
      * 获取发布统计信息
      */
-    R<Map<String, Object>> getDeployStatistics(String processDefId);
+    R<DynamicMapVO> getDeployStatistics(String processDefId);
 }

@@ -188,8 +188,7 @@ public class AssetController {
     @GetMapping("/statistics")
     @SaCheckPermission("oa:asset:list")
     public R<DynamicMapVO> statistics() {
-        Map<String, Object> stats = assetService.getStatistics();
-        return R.ok(DynamicMapVO.from(stats));
+        return R.ok(assetService.getStatistics());
     }
 
     /**

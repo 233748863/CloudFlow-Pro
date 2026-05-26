@@ -11,6 +11,7 @@ import com.cloudflow.oa.domain.VehicleExpense;
 import com.cloudflow.oa.domain.VehicleMaintenance;
 import com.cloudflow.oa.domain.VehicleUsage;
 import com.cloudflow.oa.domain.VehicleViolation;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.domain.vo.VehicleProfileVO;
 import com.cloudflow.oa.domain.vo.VehicleScheduleItemVO;
 import com.cloudflow.oa.mapper.OaRiskAlertMapper;
@@ -55,7 +56,7 @@ public class VehicleServiceImpl extends ServiceImpl<SysVehicleMapper, SysVehicle
     }
 
     @Override
-    public Map<String, Object> getVehicleStats() {
+    public DynamicMapVO getVehicleStats() {
         List<SysVehicle> allVehicles = list();
         long available = allVehicles.stream().filter(v -> VehicleConstants.VEHICLE_STATUS_AVAILABLE.equals(v.getStatus())).count();
         long maintenance = allVehicles.stream().filter(v -> VehicleConstants.VEHICLE_STATUS_MAINTENANCE.equals(v.getStatus())).count();
@@ -98,7 +99,7 @@ public class VehicleServiceImpl extends ServiceImpl<SysVehicleMapper, SysVehicle
         stats.put("overdueRiskCount", openRiskCount);
         stats.put("expenseAmount30d", expense30d);
         stats.put("usageCount30d", usage30d);
-        return stats;
+        return DynamicMapVO.from(stats);
     }
 
     @Override

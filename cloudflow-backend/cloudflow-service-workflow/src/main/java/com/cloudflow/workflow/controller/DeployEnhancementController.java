@@ -32,8 +32,7 @@ public class DeployEnhancementController {
     @GetMapping("/window/check")
     @SaCheckPermission("workflow:deploy:list")
     public R<DynamicMapVO> checkDeployWindow() {
-        R<java.util.Map<String, Object>> result = deployEnhancementService.checkDeployWindow();
-        return toDynamicMapResult(result);
+        return deployEnhancementService.checkDeployWindow();
     }
 
     @Operation(summary = "获取所有发布窗口配置")
@@ -165,8 +164,7 @@ public class DeployEnhancementController {
     @GetMapping("/approval/detail/{approvalId}")
     @SaCheckPermission("workflow:deploy:list")
     public R<DynamicMapVO> getApprovalDetail(@PathVariable("approvalId") Long approvalId) {
-        R<java.util.Map<String, Object>> result = deployEnhancementService.getApprovalDetail(approvalId);
-        return toDynamicMapResult(result);
+        return deployEnhancementService.getApprovalDetail(approvalId);
     }
 
     @Operation(summary = "取消发布审批")
@@ -188,15 +186,6 @@ public class DeployEnhancementController {
     @GetMapping("/statistics/{processDefId}")
     @SaCheckPermission("workflow:deploy:list")
     public R<DynamicMapVO> getDeployStatistics(@PathVariable("processDefId") String processDefId) {
-        R<java.util.Map<String, Object>> result = deployEnhancementService.getDeployStatistics(processDefId);
-        return toDynamicMapResult(result);
-    }
-
-    private R<DynamicMapVO> toDynamicMapResult(R<java.util.Map<String, Object>> source) {
-        R<DynamicMapVO> result = new R<>();
-        result.setCode(source.getCode());
-        result.setMsg(source.getMsg());
-        result.setData(DynamicMapVO.from(source.getData()));
-        return result;
+        return deployEnhancementService.getDeployStatistics(processDefId);
     }
 }

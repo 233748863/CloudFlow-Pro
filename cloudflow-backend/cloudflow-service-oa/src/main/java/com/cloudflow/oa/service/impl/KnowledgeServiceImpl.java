@@ -12,6 +12,7 @@ import com.cloudflow.oa.domain.KnowledgeDocument;
 import com.cloudflow.oa.domain.KnowledgeRead;
 import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.domain.dto.WorkflowRecallDTO;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.KnowledgeDocumentMapper;
 import com.cloudflow.oa.mapper.KnowledgeReadMapper;
 import com.cloudflow.oa.service.IKnowledgeService;
@@ -290,7 +291,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     }
 
     @Override
-    public Map<String, Object> getReadStats(Long documentId) {
+    public DynamicMapVO getReadStats(Long documentId) {
         KnowledgeDocument document = requireDocument(documentId);
         LambdaQueryWrapper<KnowledgeRead> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(KnowledgeRead::getDocumentId, documentId)
@@ -313,7 +314,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
         stats.put("unreadCount", unreadUsers.size());
         stats.put("readUsers", reads);
         stats.put("unreadUsers", unreadUsers);
-        return stats;
+        return DynamicMapVO.from(stats);
     }
 
     private KnowledgeDocument requireDocument(Long documentId) {

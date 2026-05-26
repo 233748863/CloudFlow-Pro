@@ -3,9 +3,9 @@ package com.cloudflow.oa.service;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.BizPaymentRequest;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 付款申请Service接口
@@ -50,5 +50,5 @@ public interface IPaymentRequestService extends IService<BizPaymentRequest> {
     /**
      * 按部门统计月度付款费用
      */
-    List<Map<String, Object>> getMonthlyPaymentByDept(String month);
+    List<DynamicMapVO> getMonthlyPaymentByDept(String month);
 }

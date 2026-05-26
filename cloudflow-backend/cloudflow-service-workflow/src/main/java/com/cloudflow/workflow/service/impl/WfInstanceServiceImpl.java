@@ -11,6 +11,8 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.enums.WfProcessStatus;
 import com.cloudflow.workflow.domain.enums.WfTaskStatus;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 import com.cloudflow.workflow.event.WorkflowEventPublisher;
 import com.cloudflow.workflow.exception.PermissionDeniedException;
 import com.cloudflow.workflow.exception.WorkflowException;
@@ -335,7 +337,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     }
 
     @Override
-    public Map<String, Object> getProcessTrace(String instanceId) {
+    public DynamicMapVO getProcessTrace(String instanceId) {
         log.info("[getProcessTrace] 查询流程追踪, instanceId={}", instanceId);
 
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
@@ -445,7 +447,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         if (stepsDetail != null) {
             result.put("stepsDetail", stepsDetail);
         }
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     private Set<String> collectFinishedNodeKeys(String processStatus,
@@ -796,7 +798,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
     // ==================== P1-6: 流程图渲染数据 ====================
 
     @Override
-    public Map<String, Object> getFlowchartData(String instanceId) {
+    public DynamicMapVO getFlowchartData(String instanceId) {
         log.info("[getFlowchartData] 获取流程图数据, instanceId={}", instanceId);
 
         WfProcessInstance instance = processInstanceMapper.selectById(instanceId);
@@ -919,7 +921,7 @@ public class WfInstanceServiceImpl implements IWfInstanceService {
         result.put("processStatus", instance.getStatus());
         result.put("nodes", nodes);
         result.put("edges", edges);
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     private String resolveNodeRuntimeStatus(String nodeId, String nodeType,

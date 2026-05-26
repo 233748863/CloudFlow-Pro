@@ -2,9 +2,9 @@ package com.cloudflow.oa.service;
 
 import com.cloudflow.oa.domain.KnowledgeDocVersion;
 import com.cloudflow.oa.domain.KnowledgeDocument;
+import com.cloudflow.oa.domain.vo.knowledge.KnowledgeVersionDiffVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * OA-P0-1 知识库版本管理。
@@ -27,7 +27,7 @@ public interface IKnowledgeVersionService {
      * 版本对比：返回 {fromVersion,toVersion,titleDiff,summaryDiff,contentDiff}。
      * contentDiff 为简单文本差异行(naive line diff)，前端可二次美化。
      */
-    Map<String, Object> diff(Long documentId, Integer fromVersion, Integer toVersion);
+    KnowledgeVersionDiffVO diff(Long documentId, Integer fromVersion, Integer toVersion);
 
     /**
      * 回滚到某个历史版本：将历史版本的内容覆盖到 oa_knowledge_document 主表，

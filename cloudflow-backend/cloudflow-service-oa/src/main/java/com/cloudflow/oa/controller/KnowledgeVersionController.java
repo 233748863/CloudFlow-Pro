@@ -48,9 +48,7 @@ public class KnowledgeVersionController {
                                           @RequestParam("from") Integer fromVersion,
                                           @RequestParam("to") Integer toVersion) {
         try {
-            return R.ok(objectMapper.convertValue(
-                    knowledgeVersionService.diff(documentId, fromVersion, toVersion),
-                    KnowledgeVersionDiffVO.class));
+            return R.ok(knowledgeVersionService.diff(documentId, fromVersion, toVersion));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

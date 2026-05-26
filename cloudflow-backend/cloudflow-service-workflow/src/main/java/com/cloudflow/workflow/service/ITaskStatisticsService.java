@@ -1,5 +1,7 @@
 package com.cloudflow.workflow.service;
 
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
+
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -20,7 +22,7 @@ public interface ITaskStatisticsService {
      * @param endTime   结束时间（可选）
      * @return 统计结果 Map
      */
-    Map<String, Object> getTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime);
+    DynamicMapVO getTaskStatistics(Long userId, LocalDateTime startTime, LocalDateTime endTime);
 
     /**
      * 获取任务分组
@@ -29,7 +31,7 @@ public interface ITaskStatisticsService {
      * @param userId 用户ID
      * @return 分组结果 Map
      */
-    Map<String, Object> getTaskGroups(Long userId);
+    DynamicMapVO getTaskGroups(Long userId);
 
     /**
      * 获取用户任务统计数量（轻量级）

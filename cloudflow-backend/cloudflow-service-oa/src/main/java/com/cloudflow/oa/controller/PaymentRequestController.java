@@ -157,7 +157,7 @@ public class PaymentRequestController {
     @GetMapping("/stats/dept")
     @SaCheckPermission("oa:payment:list")
     public R<List<DynamicMapVO>> getMonthlyPaymentByDept(@RequestParam String month) {
-        return R.ok(paymentRequestService.getMonthlyPaymentByDept(month).stream().map(DynamicMapVO::from).toList());
+        return R.ok(paymentRequestService.getMonthlyPaymentByDept(month));
     }
 }
 

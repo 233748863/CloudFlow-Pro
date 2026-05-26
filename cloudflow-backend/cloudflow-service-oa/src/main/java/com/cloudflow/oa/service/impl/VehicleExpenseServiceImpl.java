@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.oa.domain.VehicleExpense;
+import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.VehicleExpenseMapper;
 import com.cloudflow.oa.service.IVehicleExpenseService;
 import org.springframework.stereotype.Service;
@@ -25,7 +26,7 @@ public class VehicleExpenseServiceImpl extends ServiceImpl<VehicleExpenseMapper,
     }
 
     @Override
-    public Map<String, Object> getExpenseStats(String startDate, String endDate) {
+    public DynamicMapVO getExpenseStats(String startDate, String endDate) {
         Map<String, Object> result = new HashMap<>();
         Map<String, Object> summary = baseMapper.selectExpenseStats(startDate, endDate);
         if (summary != null) {
@@ -47,7 +48,7 @@ public class VehicleExpenseServiceImpl extends ServiceImpl<VehicleExpenseMapper,
         result.putIfAbsent("count", 0L);
         result.putIfAbsent("monthlyAmount", BigDecimal.ZERO);
         result.putIfAbsent("lastMonthAmount", BigDecimal.ZERO);
-        return result;
+        return DynamicMapVO.from(result);
     }
 
     @Override

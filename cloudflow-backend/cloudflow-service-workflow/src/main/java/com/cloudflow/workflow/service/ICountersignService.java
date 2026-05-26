@@ -2,9 +2,9 @@ package com.cloudflow.workflow.service;
 
 import com.cloudflow.workflow.domain.WfCountersignTask;
 import com.cloudflow.workflow.domain.WfTask;
+import com.cloudflow.workflow.domain.vo.DynamicMapVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 会签服务接口
@@ -20,7 +20,7 @@ public interface ICountersignService {
     String vote(String taskId, Long voterId, String voterName, String voteResult, String comment);
 
     /** 查询会签进度 */
-    Map<String, Object> getCountersignProgress(String countersignId);
+    DynamicMapVO getCountersignProgress(String countersignId);
 
     /** 判断任务是否为会签任务 */
     boolean isCountersignTask(WfTask task);
