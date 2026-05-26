@@ -71,15 +71,18 @@ public class HrTypedCrudService {
             "admin", "hr_admin", "hr_manager", "hr_specialist"
     );
     private static final Set<String> MASK_COLUMNS = Set.of(
-            "id_card", "id_number", "identity_card", "identity_no",
-            "bank_account", "bank_card", "bank_no", "card_no",
+            "id_card", "id_number", "id_card_no", "identity_card", "identity_no",
+            "bank_account", "bank_card", "bank_no", "card_no", "account_no",
             "salary", "base_salary", "monthly_salary", "actual_salary",
             "min_salary", "max_salary", "mid_salary", "total_salary",
+            "salary_min", "salary_max",
             "salary_amount", "gross_salary", "net_salary",
             "bonus", "subsidy", "performance_pay",
             "tax_amount", "social_security_amount", "housing_fund_amount",
-            "phone", "mobile", "telephone",
-            "email", "home_address", "address"
+            "phone", "mobile", "telephone", "contact_phone", "receiver_phone", "applicant_external_phone",
+            "email", "contact_email",
+            "home_address", "address", "receiver_address",
+            "base_amount", "amount"
     );
 
     private final ApplicationContext applicationContext;

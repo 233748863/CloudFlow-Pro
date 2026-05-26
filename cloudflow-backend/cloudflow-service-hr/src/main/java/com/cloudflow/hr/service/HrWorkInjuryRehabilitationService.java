@@ -1,12 +1,15 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryRehabilitationDTO;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryRehabilitationVO;
+
+import java.util.List;
 
 public interface HrWorkInjuryRehabilitationService {
 
-    Long createRehabilitation(Long injuryId, Map<String, Object> payload);
+    Long createRehabilitation(Long injuryId, HrWorkInjuryRehabilitationDTO dto);
 
-    void updateRehabilitation(Long rehabilitationId, Map<String, Object> payload);
+    void updateRehabilitation(Long rehabilitationId, HrWorkInjuryRehabilitationDTO dto);
 
-    Map<String, Object> listByInjury(Long injuryId);
+    List<HrWorkInjuryRehabilitationVO> listByInjury(Long injuryId);
 }

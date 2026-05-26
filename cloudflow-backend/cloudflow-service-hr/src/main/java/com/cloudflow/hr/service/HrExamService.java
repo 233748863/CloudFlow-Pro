@@ -1,9 +1,10 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.hr.domain.dto.HrExamPaperPayload;
+import com.cloudflow.hr.domain.dto.training.HrExamAnswerDTO;
+import com.cloudflow.hr.domain.vo.training.HrExamAttemptSubmitVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * 考试服务：组卷 + 答题 + 自动判分 + 主观题人工批改。
@@ -26,7 +27,7 @@ public interface HrExamService {
     /**
      * 员工提交答案。对客观题做自动判分写 score，全卷无主观题时切到 GRADED 否则 SUBMITTED。
      */
-    Map<String, Object> submit(Long attemptId, List<Map<String, Object>> answers);
+    HrExamAttemptSubmitVO submit(Long attemptId, List<HrExamAnswerDTO> answers);
 
     /**
      * HR 批改主观题：覆盖 score / passFlag，切 status=GRADED。

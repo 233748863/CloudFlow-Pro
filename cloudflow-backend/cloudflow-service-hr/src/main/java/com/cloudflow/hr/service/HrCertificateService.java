@@ -1,8 +1,7 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.hr.domain.dto.HrCertificateRequestPayload;
-
-import java.util.Map;
+import com.cloudflow.hr.service.dto.HrFileDownload;
 
 /**
  * 证明开具服务。员工提交申请后由审批流走 wf_hr_certificate_request；批准后即时生成 PDF
@@ -22,5 +21,5 @@ public interface HrCertificateService {
     /**
      * 读取证明 PDF 字节流，包含权限校验：仅可下载本人的 ISSUED 证明（HR 管理员视角通过其它端点）。
      */
-    Map<String, Object> downloadPdf(Long id);
+    HrFileDownload downloadPdf(Long id);
 }

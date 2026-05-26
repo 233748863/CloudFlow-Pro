@@ -1,6 +1,7 @@
 package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -11,6 +12,11 @@ import com.cloudflow.hr.domain.entity.HrBankCard;
 import com.cloudflow.hr.domain.entity.HrBenefitPayment;
 import com.cloudflow.hr.domain.entity.HrFamilyMember;
 import com.cloudflow.hr.domain.entity.HrSalarySlip;
+import com.cloudflow.hr.domain.vo.ess.HrBankCardVO;
+import com.cloudflow.hr.domain.vo.ess.HrBenefitPaymentVO;
+import com.cloudflow.hr.domain.vo.ess.HrEssGenerateVO;
+import com.cloudflow.hr.domain.vo.ess.HrFamilyMemberVO;
+import com.cloudflow.hr.domain.vo.ess.HrSalarySlipVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.service.HrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
@@ -29,7 +35,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -54,35 +60,34 @@ class HrSalarySlipController {
 
     @GetMapping
     @SaCheckPermission("hr:ess:slip:view")
-    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+    public R<PageResult<HrSalarySlipVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         if (normalized.get("employeeId") == null) {
             normalized.put("employeeId", essSupport.currentEmployeeId());
         }
-        return R.ok(crudService.page(HrSalarySlip.class, normalized));
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrSalarySlip.class, normalized),
+                HrSalarySlipVO.class, objectMapper));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:ess:slip:view")
-    public R<Map<String, Object>> get(@PathVariable Long id) {
+    public R<HrSalarySlipVO> get(@PathVariable Long id) {
         Map<String, Object> row = crudService.get(HrSalarySlip.class, id);
         Object employeeId = row == null ? null : row.get("employeeId");
         if (employeeId instanceof Number num) {
             essSupport.assertOwner(num.longValue());
         }
-        return R.ok(row);
+        return R.ok(MapConverters.toVO(row, HrSalarySlipVO.class, objectMapper));
     }
 
     @SysLog("生成HR月度工资条")
     @PostMapping("/generate")
     @SaCheckPermission("hr:ess:slip:generate")
-    public R<Map<String, Object>> generate(@RequestParam String periodMonth,
-                                            @RequestParam(required = false) Long employeeId) {
+    public R<HrEssGenerateVO> generate(@RequestParam String periodMonth,
+                                        @RequestParam(required = false) Long employeeId) {
         int created = essService.generateSalarySlips(periodMonth, employeeId);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("periodMonth", periodMonth);
-        data.put("created", created);
-        return R.ok(data);
+        return R.ok(new HrEssGenerateVO(periodMonth, created));
     }
 
     @SysLog("员工确认HR工资条")
@@ -106,10 +111,12 @@ class HrBankCardController {
 
     @GetMapping
     @SaCheckPermission("hr:ess:bankcard:view")
-    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+    public R<List<HrBankCardVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(crudService.list(HrBankCard.class, normalized));
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrBankCard.class, normalized),
+                HrBankCardVO.class, objectMapper));
     }
 
     @SysLog("新增HR员工银行卡")
@@ -157,10 +164,12 @@ class HrFamilyMemberController {
 
     @GetMapping
     @SaCheckPermission("hr:ess:family:view")
-    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+    public R<List<HrFamilyMemberVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(crudService.list(HrFamilyMember.class, normalized));
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrFamilyMember.class, normalized),
+                HrFamilyMemberVO.class, objectMapper));
     }
 
     @SysLog("新增HR员工家属")
@@ -213,23 +222,22 @@ class HrBenefitPaymentController {
 
     @GetMapping
     @SaCheckPermission("hr:ess:benefit:view")
-    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+    public R<List<HrBenefitPaymentVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         if (normalized.get("employeeId") == null) {
             normalized.put("employeeId", essSupport.currentEmployeeId());
         }
-        return R.ok(crudService.list(HrBenefitPayment.class, normalized));
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrBenefitPayment.class, normalized),
+                HrBenefitPaymentVO.class, objectMapper));
     }
 
     @SysLog("生成HR月度福利明细")
     @PostMapping("/generate")
     @SaCheckPermission("hr:ess:benefit:generate")
-    public R<Map<String, Object>> generate(@RequestParam String periodMonth,
-                                            @RequestParam(required = false) Long employeeId) {
+    public R<HrEssGenerateVO> generate(@RequestParam String periodMonth,
+                                        @RequestParam(required = false) Long employeeId) {
         int created = essService.generateBenefitPayments(periodMonth, employeeId);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("periodMonth", periodMonth);
-        data.put("created", created);
-        return R.ok(data);
+        return R.ok(new HrEssGenerateVO(periodMonth, created));
     }
 }

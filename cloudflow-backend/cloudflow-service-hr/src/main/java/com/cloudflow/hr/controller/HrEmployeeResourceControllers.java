@@ -14,6 +14,10 @@ import com.cloudflow.hr.domain.entity.HrEmergencyContact;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.domain.entity.HrEmployeeDocument;
+import com.cloudflow.hr.domain.vo.employee.HrEmergencyContactVO;
+import com.cloudflow.hr.domain.vo.employee.HrEmployeeContractVO;
+import com.cloudflow.hr.domain.vo.employee.HrEmployeeDocumentVO;
+import com.cloudflow.hr.domain.vo.employee.HrEmployeeVO;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,9 +30,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -41,17 +45,19 @@ class HrEmployeeController {
 
     @GetMapping("/current")
     @SaCheckPermission("hr:employees:view")
-    public R<Map<String, Object>> currentEmployee() {
+    public R<HrEmployeeVO> currentEmployee() {
         Long userId = UserContext.getUserId();
         Map<String, Object> query = userId == null ? Map.of() : Map.of("userId", userId);
-        return R.ok(crudService.list(HrEmployee.class, query).stream().findFirst().orElse(Map.of()));
+        Map<String, Object> row = crudService.list(HrEmployee.class, query).stream().findFirst().orElse(null);
+        return R.ok(row == null ? null : MapConverters.toVO(row, HrEmployeeVO.class, objectMapper));
     }
 
     @GetMapping
     @SaCheckPermission("hr:employees:list")
-    public R<?> listEmployees(@Validated @ModelAttribute HrEmployeeCommonQueryDTO query) {
-        return R.ok(crudService.list(HrEmployee.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrEmployeeVO>> listEmployees(@Validated @ModelAttribute HrEmployeeCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrEmployee.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrEmployeeVO.class, objectMapper));
     }
 
     @SysLog("新增HR员工")
@@ -63,8 +69,8 @@ class HrEmployeeController {
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:employees:view")
-    public R<Map<String, Object>> getEmployee(@PathVariable Long id) {
-        return R.ok(crudService.get(HrEmployee.class, id));
+    public R<HrEmployeeVO> getEmployee(@PathVariable Long id) {
+        return R.ok(MapConverters.toVO(crudService.get(HrEmployee.class, id), HrEmployeeVO.class, objectMapper));
     }
 
     @SysLog("修改HR员工")
@@ -90,11 +96,14 @@ class HrEmployeeController {
 class HrEmployeeContractController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/{employeeId}/contracts")
     @SaCheckPermission("hr:employees:view")
-    public R<?> listContracts(@PathVariable Long employeeId) {
-        return R.ok(crudService.list(HrEmployeeContract.class, Map.of("employeeId", employeeId)));
+    public R<List<HrEmployeeContractVO>> listContracts(@PathVariable Long employeeId) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrEmployeeContract.class, Map.of("employeeId", employeeId)),
+                HrEmployeeContractVO.class, objectMapper));
     }
 
     @SysLog("新增HR员工合同")
@@ -127,11 +136,14 @@ class HrEmployeeContractController {
 class HrEmployeeDocumentController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/{employeeId}/documents")
     @SaCheckPermission("hr:employees:view")
-    public R<?> listDocuments(@PathVariable Long employeeId) {
-        return R.ok(crudService.list(HrEmployeeDocument.class, Map.of("employeeId", employeeId)));
+    public R<List<HrEmployeeDocumentVO>> listDocuments(@PathVariable Long employeeId) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrEmployeeDocument.class, Map.of("employeeId", employeeId)),
+                HrEmployeeDocumentVO.class, objectMapper));
     }
 
     @SysLog("新增HR员工证件")
@@ -164,11 +176,14 @@ class HrEmployeeDocumentController {
 class HrEmergencyContactController {
 
     private final HrTypedCrudService crudService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/{employeeId}/emergency-contacts")
     @SaCheckPermission("hr:employees:view")
-    public R<?> listContacts(@PathVariable Long employeeId) {
-        return R.ok(crudService.list(HrEmergencyContact.class, Map.of("employeeId", employeeId)));
+    public R<List<HrEmergencyContactVO>> listContacts(@PathVariable Long employeeId) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrEmergencyContact.class, Map.of("employeeId", employeeId)),
+                HrEmergencyContactVO.class, objectMapper));
     }
 
     @SysLog("新增HR紧急联系人")

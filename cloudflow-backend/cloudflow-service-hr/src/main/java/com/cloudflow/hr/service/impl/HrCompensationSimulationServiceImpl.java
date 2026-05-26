@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.hr.domain.dto.HrCompensationSimulateRequest;
 import com.cloudflow.hr.domain.entity.HrCompComponent;
 import com.cloudflow.hr.domain.entity.HrCompGrade;
+import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateBreakdownItemVO;
+import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateVO;
 import com.cloudflow.hr.mapper.HrCompComponentMapper;
 import com.cloudflow.hr.mapper.HrCompGradeMapper;
 import com.cloudflow.hr.service.HrCompensationSimulationService;
@@ -56,18 +58,16 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
     private final HrCompGradeMapper compGradeMapper;
 
     @Override
-    public Map<String, Object> simulate(HrCompensationSimulateRequest request) {
+    public HrCompensationSimulateVO simulate(HrCompensationSimulateRequest request) {
         if (request == null || request.getStructureId() == null) {
             throw new IllegalArgumentException("structureId 不能为空");
         }
-        // 1) 查询结构关联的薪酬项
         List<HrCompComponent> components = compComponentMapper.selectList(
                 new LambdaQueryWrapper<HrCompComponent>()
                         .eq(HrCompComponent::getTenantId, TENANT_ID)
                         .eq(HrCompComponent::getStatus, 1)
                         .orderByAsc(HrCompComponent::getSortOrder)
                         .orderByAsc(HrCompComponent::getId));
-        // 2) 查询 grade 中位值（mid_salary 加密存储，实体 getter 自动解密）
         BigDecimal gradeMid = BigDecimal.ZERO;
         if (request.getGradeId() != null) {
             HrCompGrade grade = compGradeMapper.selectOne(
@@ -84,7 +84,7 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
 
         BigDecimal gross = BigDecimal.ZERO;
         BigDecimal taxableGross = BigDecimal.ZERO;
-        List<Map<String, Object>> breakdown = new ArrayList<>();
+        List<HrCompensationSimulateBreakdownItemVO> breakdown = new ArrayList<>();
         for (HrCompComponent comp : components) {
             String code = comp.getComponentCode();
             String type = comp.getComponentType();
@@ -96,15 +96,14 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
             if (amount.signum() == 0) {
                 continue;
             }
-            Map<String, Object> item = new LinkedHashMap<>();
-            item.put("componentId", comp.getId());
-            item.put("componentCode", code);
-            item.put("componentName", comp.getComponentName());
-            item.put("componentType", type);
-            item.put("amount", amount);
-            item.put("taxable", taxable);
+            HrCompensationSimulateBreakdownItemVO item = new HrCompensationSimulateBreakdownItemVO();
+            item.setComponentId(comp.getId());
+            item.setComponentCode(code);
+            item.setComponentName(comp.getComponentName());
+            item.setComponentType(type);
+            item.setAmount(amount);
+            item.setTaxable(taxable);
             breakdown.add(item);
-            // ALLOWANCE/BONUS 视作正项；DEDUCTION 视作减项
             if ("DEDUCTION".equalsIgnoreCase(type)) {
                 gross = gross.subtract(amount);
                 if (taxable == 1) {
@@ -137,23 +136,23 @@ public class HrCompensationSimulationServiceImpl implements HrCompensationSimula
         BigDecimal personalTax = calculateMonthlyTax(taxableIncome);
         BigDecimal netSalary = gross.subtract(socialPersonal).subtract(personalTax).setScale(2, RoundingMode.HALF_UP);
 
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("employeeId", request.getEmployeeId());
-        result.put("structureId", request.getStructureId());
-        result.put("gradeId", request.getGradeId());
-        result.put("city", request.getCity());
-        result.put("gross", gross.setScale(2, RoundingMode.HALF_UP));
-        result.put("taxableGross", taxableGross.setScale(2, RoundingMode.HALF_UP));
-        result.put("socialBase", socialBase.setScale(2, RoundingMode.HALF_UP));
-        result.put("socialPersonalRate", socialRate);
-        result.put("socialPersonal", socialPersonal);
-        result.put("specialDeductions", specialDeductions);
-        result.put("threshold", MONTHLY_THRESHOLD);
-        result.put("taxableIncome", taxableIncome.setScale(2, RoundingMode.HALF_UP));
-        result.put("personalTax", personalTax);
-        result.put("netSalary", netSalary);
-        result.put("breakdown", breakdown);
-        return result;
+        HrCompensationSimulateVO vo = new HrCompensationSimulateVO();
+        vo.setEmployeeId(request.getEmployeeId());
+        vo.setStructureId(request.getStructureId());
+        vo.setGradeId(request.getGradeId());
+        vo.setCity(request.getCity());
+        vo.setGross(gross.setScale(2, RoundingMode.HALF_UP));
+        vo.setTaxableGross(taxableGross.setScale(2, RoundingMode.HALF_UP));
+        vo.setSocialBase(socialBase.setScale(2, RoundingMode.HALF_UP));
+        vo.setSocialPersonalRate(socialRate);
+        vo.setSocialPersonal(socialPersonal);
+        vo.setSpecialDeductions(specialDeductions);
+        vo.setThreshold(MONTHLY_THRESHOLD);
+        vo.setTaxableIncome(taxableIncome.setScale(2, RoundingMode.HALF_UP));
+        vo.setPersonalTax(personalTax);
+        vo.setNetSalary(netSalary);
+        vo.setBreakdown(breakdown);
+        return vo;
     }
 
     private BigDecimal calculateMonthlyTax(BigDecimal taxableIncome) {

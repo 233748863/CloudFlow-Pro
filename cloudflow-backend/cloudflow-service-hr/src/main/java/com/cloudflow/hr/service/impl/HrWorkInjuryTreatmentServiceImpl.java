@@ -2,8 +2,11 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryTreatmentDTO;
 import com.cloudflow.hr.domain.entity.HrWorkInjuryTreatment;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryTreatmentVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
 import com.cloudflow.hr.mapper.HrWorkInjuryTreatmentMapper;
@@ -16,10 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -35,11 +36,11 @@ public class HrWorkInjuryTreatmentServiceImpl implements HrWorkInjuryTreatmentSe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createTreatment(Long injuryId, Map<String, Object> payload) {
+    public Long createTreatment(Long injuryId, HrWorkInjuryTreatmentDTO dto) {
         if (injuryMapper.selectById(injuryId) == null) {
             throw new HrBusinessException("WORK_INJURY_NOT_FOUND", "工伤记录不存在：" + injuryId);
         }
-        HrWorkInjuryTreatment treatment = objectMapper.convertValue(payload, HrWorkInjuryTreatment.class);
+        HrWorkInjuryTreatment treatment = objectMapper.convertValue(dto, HrWorkInjuryTreatment.class);
         treatment.setInjuryId(injuryId);
         treatment.setTenantId(currentTenantId());
         treatment.setDeleted(0);
@@ -51,20 +52,21 @@ public class HrWorkInjuryTreatmentServiceImpl implements HrWorkInjuryTreatmentSe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateTreatment(Long treatmentId, Map<String, Object> payload) {
-        crudService.updateProperties(HrWorkInjuryTreatment.class, treatmentId, payload);
+    public void updateTreatment(Long treatmentId, HrWorkInjuryTreatmentDTO dto) {
+        crudService.updateProperties(HrWorkInjuryTreatment.class, treatmentId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> listByInjury(Long injuryId) {
+    public List<HrWorkInjuryTreatmentVO> listByInjury(Long injuryId) {
         QueryWrapper<HrWorkInjuryTreatment> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("injury_id", injuryId).eq("deleted", 0)
                 .orderByDesc("create_time");
         List<HrWorkInjuryTreatment> rows = treatmentMapper.selectList(qw);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("rows", rows == null ? new LinkedList<>() : rows);
-        result.put("total", rows == null ? 0 : rows.size());
-        return result;
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return MapConverters.toVOList(rows, HrWorkInjuryTreatmentVO.class, objectMapper);
     }
 
     private long currentTenantId() {

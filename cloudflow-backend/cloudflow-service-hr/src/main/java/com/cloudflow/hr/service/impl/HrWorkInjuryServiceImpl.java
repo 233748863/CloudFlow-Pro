@@ -2,11 +2,17 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryDTO;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryQueryDTO;
 import com.cloudflow.hr.domain.entity.HrWorkInjury;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryListVO;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
@@ -40,8 +46,8 @@ public class HrWorkInjuryServiceImpl implements HrWorkInjuryService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createInjury(Map<String, Object> payload) {
-        HrWorkInjury injury = objectMapper.convertValue(payload, HrWorkInjury.class);
+    public Long createInjury(HrWorkInjuryDTO dto) {
+        HrWorkInjury injury = objectMapper.convertValue(dto, HrWorkInjury.class);
         injury.setTenantId(currentTenantId());
         if (!StringUtils.hasText(injury.getInjuryNo())) {
             injury.setInjuryNo("WI-" + System.currentTimeMillis());
@@ -58,28 +64,36 @@ public class HrWorkInjuryServiceImpl implements HrWorkInjuryService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateInjury(Long injuryId, Map<String, Object> payload) {
-        crudService.updateProperties(HrWorkInjury.class, injuryId, payload);
+    public void updateInjury(Long injuryId, HrWorkInjuryDTO dto) {
+        crudService.updateProperties(HrWorkInjury.class, injuryId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> page(Map<String, Object> query) {
-        return crudService.page(HrWorkInjury.class, query);
+    public PageResult<HrWorkInjuryListVO> page(HrWorkInjuryQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrWorkInjury.class,
+                MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrWorkInjuryListVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> listMine(Map<String, Object> query) {
-        Map<String, Object> q = new LinkedHashMap<>(query == null ? Map.of() : query);
+    public PageResult<HrWorkInjuryListVO> listMine(HrWorkInjuryQueryDTO query) {
+        Map<String, Object> q = new LinkedHashMap<>(MapConverters.toServiceQuery(query, objectMapper));
         Long userId = UserContext.getUserId();
         if (userId != null) {
             q.put("employeeId", userId);
         }
-        return crudService.page(HrWorkInjury.class, q);
+        Map<String, Object> raw = crudService.page(HrWorkInjury.class, q);
+        return MapConverters.toPageResult(raw, HrWorkInjuryListVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> get(Long injuryId) {
-        return crudService.get(HrWorkInjury.class, injuryId);
+    public HrWorkInjuryVO get(Long injuryId) {
+        Map<String, Object> row = crudService.get(HrWorkInjury.class, injuryId);
+        if (row.isEmpty()) {
+            return null;
+        }
+        return objectMapper.convertValue(row, HrWorkInjuryVO.class);
     }
 
     @Override

@@ -1,8 +1,8 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.hr.domain.vo.benefit.HrBenefitMineVO;
 
 public interface HrBenefitMineService {
 
-    Map<String, Object> loadMineSummary();
+    HrBenefitMineVO loadMineSummary();
 }

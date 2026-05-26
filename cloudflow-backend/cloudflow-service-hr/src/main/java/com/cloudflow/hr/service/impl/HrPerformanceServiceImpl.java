@@ -5,16 +5,22 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.hr.domain.dto.HrPerformanceObjectiveTreePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceResultUpdatePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
 import com.cloudflow.hr.domain.dto.HrPerformanceSplitPayload;
+import com.cloudflow.hr.domain.dto.performance.HrPerformanceCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrCompChange;
 import com.cloudflow.hr.domain.entity.HrEmployeeComp;
 import com.cloudflow.hr.domain.entity.HrPerformanceAssignment;
 import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
 import com.cloudflow.hr.domain.entity.HrPerformanceResult;
 import com.cloudflow.hr.domain.entity.HrPerformanceSalaryAdjustment;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceObjectiveTreeVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceObjectiveVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceOverviewVO;
 import com.cloudflow.hr.mapper.HrAuditLogMapper;
 import com.cloudflow.hr.mapper.HrCompChangeMapper;
 import com.cloudflow.hr.mapper.HrEmployeeCompMapper;
@@ -63,7 +69,8 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
     private final HrAuditLogMapper auditLogMapper;
 
     @Override
-    public Map<String, Object> listObjectives(Map<String, Object> query) {
+    public PageResult<HrPerformanceObjectiveVO> listObjectives(HrPerformanceCommonQueryDTO queryDTO) {
+        Map<String, Object> query = MapConverters.toServiceQuery(queryDTO, objectMapper);
         String keyword = text(query.get("keyword"));
         String status = text(query.get("status"));
         int pageNum = Math.max(1, toInt(query.get("pageNum"), toInt(query.get("current"), 1)));
@@ -95,14 +102,14 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         result.put("total", page.getTotal());
         result.put("current", pageNum);
         result.put("size", pageSize);
-        return result;
+        return MapConverters.toPageResult(result, HrPerformanceObjectiveVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> getObjectiveTree(Long id) {
+    public HrPerformanceObjectiveTreeVO getObjectiveTree(Long id) {
         Map<String, Object> objective = getObjective(id);
         if (objective.isEmpty()) {
-            return Map.of();
+            return new HrPerformanceObjectiveTreeVO();
         }
         List<Map<String, Object>> salaryAdjustments = performanceSalaryAdjustmentMapper.selectList(
                         new LambdaQueryWrapper<HrPerformanceSalaryAdjustment>()
@@ -114,11 +121,11 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
 
         Map<String, Object> result = new LinkedHashMap<>(objective);
         result.put("salaryAdjustments", salaryAdjustments);
-        return result;
+        return objectMapper.convertValue(result, HrPerformanceObjectiveTreeVO.class);
     }
 
     @Override
-    public Map<String, Object> getOverview() {
+    public HrPerformanceOverviewVO getOverview() {
         List<HrPerformanceObjective> rows = objectiveMapper.selectList(
                 new LambdaQueryWrapper<HrPerformanceObjective>()
                         .select(HrPerformanceObjective::getStatus)
@@ -150,7 +157,7 @@ public class HrPerformanceServiceImpl implements HrPerformanceService {
         overview.put("objectiveCount", rows.size());
         overview.put("activeObjectiveCount", runningCount);
         overview.put("completedObjectiveCount", completedCount);
-        return overview;
+        return objectMapper.convertValue(overview, HrPerformanceOverviewVO.class);
     }
 
     @Override

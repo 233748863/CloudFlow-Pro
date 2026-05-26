@@ -1,16 +1,19 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.benefit.HrMallItemDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallItemQueryDTO;
+import com.cloudflow.hr.domain.vo.benefit.HrMallItemVO;
 
 public interface HrMallItemService {
 
-    Long createItem(Map<String, Object> payload);
+    Long createItem(HrMallItemDTO dto);
 
-    void updateItem(Long itemId, Map<String, Object> payload);
+    void updateItem(Long itemId, HrMallItemDTO dto);
 
-    Map<String, Object> page(Map<String, Object> query);
+    PageResult<HrMallItemVO> page(HrMallItemQueryDTO query);
 
-    Map<String, Object> get(Long itemId);
+    HrMallItemVO get(Long itemId);
 
     void onShelf(Long itemId);
 

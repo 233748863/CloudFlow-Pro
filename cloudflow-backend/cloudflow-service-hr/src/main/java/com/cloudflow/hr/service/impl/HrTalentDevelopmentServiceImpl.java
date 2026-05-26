@@ -2,8 +2,13 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.dto.talent.HrTalentDevelopmentActionDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentDevelopmentActionQueryDTO;
 import com.cloudflow.hr.domain.entity.HrTalentDevelopmentAction;
+import com.cloudflow.hr.domain.vo.talent.HrTalentDevelopmentActionVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentDevelopmentActionMapper;
 import com.cloudflow.hr.service.HrTalentDevelopmentService;
@@ -32,8 +37,8 @@ public class HrTalentDevelopmentServiceImpl implements HrTalentDevelopmentServic
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createAction(Map<String, Object> payload) {
-        HrTalentDevelopmentAction action = objectMapper.convertValue(payload, HrTalentDevelopmentAction.class);
+    public Long createAction(HrTalentDevelopmentActionDTO dto) {
+        HrTalentDevelopmentAction action = objectMapper.convertValue(dto, HrTalentDevelopmentAction.class);
         action.setTenantId(currentTenantId());
         action.setStatus(StringUtils.hasText(action.getStatus()) ? action.getStatus() : "PLANNED");
         action.setDeleted(0);
@@ -45,13 +50,16 @@ public class HrTalentDevelopmentServiceImpl implements HrTalentDevelopmentServic
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateAction(Long actionId, Map<String, Object> payload) {
-        crudService.updateProperties(HrTalentDevelopmentAction.class, actionId, payload);
+    public void updateAction(Long actionId, HrTalentDevelopmentActionDTO dto) {
+        crudService.updateProperties(HrTalentDevelopmentAction.class, actionId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> pageActions(Map<String, Object> query) {
-        return crudService.page(HrTalentDevelopmentAction.class, query);
+    public PageResult<HrTalentDevelopmentActionVO> pageActions(HrTalentDevelopmentActionQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrTalentDevelopmentAction.class,
+                MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrTalentDevelopmentActionVO.class, objectMapper);
     }
 
     @Override

@@ -1,6 +1,11 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessionPlanDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessionPlanQueryDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessorDTO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanListVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanVO;
 
 /**
  * HR 继任计划业务接口。
@@ -9,15 +14,15 @@ import java.util.Map;
  */
 public interface HrTalentSuccessionService {
 
-    Long createPlan(Map<String, Object> payload);
+    Long createPlan(HrTalentSuccessionPlanDTO dto);
 
-    void updatePlan(Long planId, Map<String, Object> payload);
+    void updatePlan(Long planId, HrTalentSuccessionPlanDTO dto);
 
-    Map<String, Object> pagePlans(Map<String, Object> query);
+    PageResult<HrTalentSuccessionPlanListVO> pagePlans(HrTalentSuccessionPlanQueryDTO query);
 
-    Map<String, Object> getPlan(Long planId);
+    HrTalentSuccessionPlanVO getPlan(Long planId);
 
-    Long addSuccessor(Long planId, Map<String, Object> payload);
+    Long addSuccessor(Long planId, HrTalentSuccessorDTO dto);
 
     void removeSuccessor(Long successorId);
 

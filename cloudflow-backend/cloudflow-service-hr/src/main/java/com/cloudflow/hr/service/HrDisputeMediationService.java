@@ -1,12 +1,14 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeMediationDTO;
+import com.cloudflow.hr.domain.vo.dispute.HrDisputeMediationVO;
 
 public interface HrDisputeMediationService {
 
-    Long createMediation(Long disputeId, Map<String, Object> payload);
+    Long createMediation(Long disputeId, HrDisputeMediationDTO dto);
 
-    void updateMediation(Long mediationId, Map<String, Object> payload);
+    void updateMediation(Long mediationId, HrDisputeMediationDTO dto);
 
-    Map<String, Object> listByDispute(Long disputeId);
+    PageResult<HrDisputeMediationVO> listByDispute(Long disputeId);
 }

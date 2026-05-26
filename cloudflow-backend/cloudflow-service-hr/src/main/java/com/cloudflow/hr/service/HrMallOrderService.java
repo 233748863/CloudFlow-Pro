@@ -1,16 +1,19 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.benefit.HrMallOrderPlaceDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallOrderQueryDTO;
+import com.cloudflow.hr.domain.vo.benefit.HrMallOrderVO;
 
 public interface HrMallOrderService {
 
-    Long placeOrder(Map<String, Object> payload);
+    Long placeOrder(HrMallOrderPlaceDTO dto);
 
-    Map<String, Object> page(Map<String, Object> query);
+    PageResult<HrMallOrderVO> page(HrMallOrderQueryDTO query);
 
-    Map<String, Object> listMine(Map<String, Object> query);
+    PageResult<HrMallOrderVO> listMine(HrMallOrderQueryDTO query);
 
-    Map<String, Object> get(Long orderId);
+    HrMallOrderVO get(Long orderId);
 
     void ship(Long orderId, String expressNo);
 

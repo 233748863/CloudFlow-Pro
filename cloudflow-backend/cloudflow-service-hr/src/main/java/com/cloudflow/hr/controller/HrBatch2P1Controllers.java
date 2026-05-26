@@ -11,8 +11,13 @@ import com.cloudflow.hr.domain.dto.HrResumeParsedFieldsPayload;
 import com.cloudflow.hr.domain.dto.attendance.HrAttendanceCommonQueryDTO;
 import com.cloudflow.hr.domain.dto.performance.HrPerformanceCommonQueryDTO;
 import com.cloudflow.hr.domain.dto.recruitment.HrResumeParseDTO;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.hr.domain.entity.HrAttendanceAppeal;
 import com.cloudflow.hr.domain.entity.HrPerformanceInterview;
+import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
+import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceInterviewVO;
+import com.cloudflow.hr.domain.vo.recruitment.HrResumeParsedFieldVO;
 import com.cloudflow.hr.service.HrAttendanceAppealService;
 import com.cloudflow.hr.service.HrCompensationSimulationService;
 import com.cloudflow.hr.service.HrResumeParserService;
@@ -43,6 +48,7 @@ import java.util.Map;
 class HrResumeParseController {
 
     private final HrResumeParserService parserService;
+    private final ObjectMapper objectMapper;
 
     @SysLog("触发HR简历解析")
     @PostMapping("/parse")
@@ -54,7 +60,7 @@ class HrResumeParseController {
 
     @GetMapping("/parsed")
     @SaCheckPermission("hr:recruitment:view")
-    public R<List<Map<String, Object>>> listParsed(@RequestParam Long candidateId) {
+    public R<List<HrResumeParsedFieldVO>> listParsed(@RequestParam Long candidateId) {
         return R.ok(parserService.listParsed(candidateId));
     }
 
@@ -95,7 +101,7 @@ class HrCompensationSimulateController {
     @SysLog("HR薪酬模拟")
     @PostMapping("/simulate")
     @SaCheckPermission("hr:compensation:view")
-    public R<Map<String, Object>> simulate(@RequestBody HrCompensationSimulateRequest request) {
+    public R<HrCompensationSimulateVO> simulate(@RequestBody HrCompensationSimulateRequest request) {
         return R.ok(simulationService.simulate(request));
     }
 }
@@ -113,9 +119,10 @@ class HrPerformanceInterviewController {
 
     @GetMapping
     @SaCheckPermission("hr:performance:view")
-    public R<?> listInterviews(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrPerformanceInterview.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrPerformanceInterviewVO>> listInterviews(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrPerformanceInterview.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrPerformanceInterviewVO.class, objectMapper));
     }
 
     @SysLog("新增HR绩效面谈记录")
@@ -164,14 +171,15 @@ class HrAttendanceAppealController {
 
     @GetMapping
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listAppeals(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.page(HrAttendanceAppeal.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrAttendanceAppealVO>> listAppeals(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrAttendanceAppeal.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrAttendanceAppealVO.class, objectMapper));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:attendance:list")
-    public R<Map<String, Object>> getAppeal(@PathVariable Long id) {
+    public R<HrAttendanceAppealVO> getAppeal(@PathVariable Long id) {
         return R.ok(appealService.getDetail(id));
     }
 

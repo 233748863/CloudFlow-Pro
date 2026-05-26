@@ -1,6 +1,7 @@
 package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -10,6 +11,9 @@ import com.cloudflow.hr.domain.dto.training.HrTrainingCertificateRevokeDTO;
 import com.cloudflow.hr.domain.dto.training.HrTrainingCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrTrainingCertificate;
 import com.cloudflow.hr.domain.entity.HrTrainingCertificateTemplate;
+import com.cloudflow.hr.domain.vo.training.HrTrainingArchiveVO;
+import com.cloudflow.hr.domain.vo.training.HrTrainingCertificateTemplateVO;
+import com.cloudflow.hr.domain.vo.training.HrTrainingCertificateVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingCertificateMapper;
 import com.cloudflow.hr.service.HrEssSupport;
@@ -35,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -54,23 +59,27 @@ class HrTrainingCertificateController {
 
     @GetMapping
     @SaCheckPermission("hr:training:cert:list")
-    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(crudService.page(HrTrainingCertificate.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrTrainingCertificateVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrTrainingCertificate.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrTrainingCertificateVO.class, objectMapper));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:cert:view")
-    public R<?> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+    public R<PageResult<HrTrainingCertificateVO>> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(crudService.page(HrTrainingCertificate.class, normalized));
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrTrainingCertificate.class, normalized),
+                HrTrainingCertificateVO.class, objectMapper));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:training:cert:view")
-    public R<Map<String, Object>> get(@PathVariable Long id) {
-        return R.ok(crudService.get(HrTrainingCertificate.class, id));
+    public R<HrTrainingCertificateVO> get(@PathVariable Long id) {
+        return R.ok(MapConverters.toVO(crudService.get(HrTrainingCertificate.class, id),
+                HrTrainingCertificateVO.class, objectMapper));
     }
 
     @SysLog("颁发HR培训证书")
@@ -130,9 +139,10 @@ class HrTrainingCertificateTemplateController {
 
     @GetMapping
     @SaCheckPermission("hr:training:cert:list")
-    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(crudService.list(HrTrainingCertificateTemplate.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrTrainingCertificateTemplateVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrTrainingCertificateTemplate.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrTrainingCertificateTemplateVO.class, objectMapper));
     }
 
     @SysLog("新增培训证书模板")
@@ -165,16 +175,19 @@ class HrTrainingCertificateTemplateController {
 class HrTrainingArchiveController {
 
     private final HrTrainingArchiveService archiveService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:archive:view")
-    public R<Map<String, Object>> mine() {
-        return R.ok(archiveService.mine());
+    public R<HrTrainingArchiveVO> mine() {
+        return R.ok(MapConverters.toVO(archiveService.mine(),
+                HrTrainingArchiveVO.class, objectMapper));
     }
 
     @GetMapping("/employees/{employeeId}")
     @SaCheckPermission("hr:training:archive:view")
-    public R<Map<String, Object>> forEmployee(@PathVariable Long employeeId) {
-        return R.ok(archiveService.forEmployee(employeeId));
+    public R<HrTrainingArchiveVO> forEmployee(@PathVariable Long employeeId) {
+        return R.ok(MapConverters.toVO(archiveService.forEmployee(employeeId),
+                HrTrainingArchiveVO.class, objectMapper));
     }
 }

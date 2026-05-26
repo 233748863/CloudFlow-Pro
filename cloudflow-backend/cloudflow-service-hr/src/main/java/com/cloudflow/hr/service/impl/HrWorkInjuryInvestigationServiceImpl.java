@@ -2,8 +2,11 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryInvestigationDTO;
 import com.cloudflow.hr.domain.entity.HrWorkInjuryInvestigation;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryInvestigationVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryInvestigationMapper;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
@@ -16,10 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
+import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Service
@@ -35,11 +36,11 @@ public class HrWorkInjuryInvestigationServiceImpl implements HrWorkInjuryInvesti
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createInvestigation(Long injuryId, Map<String, Object> payload) {
+    public Long createInvestigation(Long injuryId, HrWorkInjuryInvestigationDTO dto) {
         if (injuryMapper.selectById(injuryId) == null) {
             throw new HrBusinessException("WORK_INJURY_NOT_FOUND", "工伤记录不存在：" + injuryId);
         }
-        HrWorkInjuryInvestigation investigation = objectMapper.convertValue(payload, HrWorkInjuryInvestigation.class);
+        HrWorkInjuryInvestigation investigation = objectMapper.convertValue(dto, HrWorkInjuryInvestigation.class);
         investigation.setInjuryId(injuryId);
         investigation.setTenantId(currentTenantId());
         investigation.setDeleted(0);
@@ -51,20 +52,21 @@ public class HrWorkInjuryInvestigationServiceImpl implements HrWorkInjuryInvesti
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateInvestigation(Long investigationId, Map<String, Object> payload) {
-        crudService.updateProperties(HrWorkInjuryInvestigation.class, investigationId, payload);
+    public void updateInvestigation(Long investigationId, HrWorkInjuryInvestigationDTO dto) {
+        crudService.updateProperties(HrWorkInjuryInvestigation.class, investigationId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> listByInjury(Long injuryId) {
+    public List<HrWorkInjuryInvestigationVO> listByInjury(Long injuryId) {
         QueryWrapper<HrWorkInjuryInvestigation> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("injury_id", injuryId).eq("deleted", 0)
                 .orderByDesc("create_time");
         List<HrWorkInjuryInvestigation> rows = investigationMapper.selectList(qw);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("rows", rows == null ? new LinkedList<>() : rows);
-        result.put("total", rows == null ? 0 : rows.size());
-        return result;
+        if (rows == null || rows.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return MapConverters.toVOList(rows, HrWorkInjuryInvestigationVO.class, objectMapper);
     }
 
     private long currentTenantId() {

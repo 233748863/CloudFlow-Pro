@@ -2,14 +2,15 @@ package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.HrLifecycleApplicationPayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleStatusChangePayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleTaskPayload;
 import com.cloudflow.hr.domain.dto.lifecycle.HrLifecycleCommonQueryDTO;
+import com.cloudflow.hr.domain.vo.lifecycle.HrLifecycleApplicationVO;
+import com.cloudflow.hr.domain.vo.lifecycle.HrLifecycleDetailVO;
+import com.cloudflow.hr.domain.vo.lifecycle.HrLifecycleTaskVO;
 import com.cloudflow.hr.service.HrLifecycleService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -19,10 +20,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.Map;
+import java.util.List;
 
 @RestController
 @RequestMapping("/lifecycle")
@@ -30,12 +30,11 @@ import java.util.Map;
 class HrLifecycleApplicationController {
 
     private final HrLifecycleService lifecycleService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/applications")
     @SaCheckPermission("hr:lifecycle:list")
-    public R<?> listLifecycleApplications(@Validated @ModelAttribute HrLifecycleCommonQueryDTO query) {
-        return R.ok(lifecycleService.listApplications(MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrLifecycleApplicationVO>> listLifecycleApplications(@Validated @ModelAttribute HrLifecycleCommonQueryDTO query) {
+        return R.ok(lifecycleService.listApplications(query));
     }
 
     @SysLog("新增HR生命周期申请")
@@ -65,13 +64,13 @@ class HrLifecycleApplicationController {
 
     @GetMapping("/applications/{id}/details")
     @SaCheckPermission("hr:lifecycle:view")
-    public R<?> listLifecycleDetails(@PathVariable Long id) {
+    public R<List<HrLifecycleDetailVO>> listLifecycleDetails(@PathVariable Long id) {
         return R.ok(lifecycleService.listDetails(id));
     }
 
     @GetMapping("/applications/{id}/tasks")
     @SaCheckPermission("hr:lifecycle:view")
-    public R<?> listLifecycleTasks(@PathVariable Long id) {
+    public R<List<HrLifecycleTaskVO>> listLifecycleTasks(@PathVariable Long id) {
         return R.ok(lifecycleService.listTasks(id));
     }
 }

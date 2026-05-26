@@ -1,6 +1,11 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.talent.HrTalentDevelopmentActionDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentDevelopmentActionQueryDTO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentDevelopmentActionVO;
+
+import java.math.BigDecimal;
 
 /**
  * HR 培养行动业务接口。
@@ -9,11 +14,11 @@ import java.util.Map;
  */
 public interface HrTalentDevelopmentService {
 
-    Long createAction(Map<String, Object> payload);
+    Long createAction(HrTalentDevelopmentActionDTO dto);
 
-    void updateAction(Long actionId, Map<String, Object> payload);
+    void updateAction(Long actionId, HrTalentDevelopmentActionDTO dto);
 
-    Map<String, Object> pageActions(Map<String, Object> query);
+    PageResult<HrTalentDevelopmentActionVO> pageActions(HrTalentDevelopmentActionQueryDTO query);
 
-    void completeAction(Long actionId, java.math.BigDecimal evaluationScore, String evaluationNotes);
+    void completeAction(Long actionId, BigDecimal evaluationScore, String evaluationNotes);
 }

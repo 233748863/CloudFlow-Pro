@@ -2,10 +2,12 @@ package com.cloudflow.hr.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.vo.talent.HrTalentArchiveVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentArchiveMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrTalentArchiveService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,9 +26,10 @@ public class HrTalentArchiveServiceImpl implements HrTalentArchiveService {
 
     private final HrTalentArchiveMapper archiveMapper;
     private final HrEssSupport essSupport;
+    private final ObjectMapper objectMapper;
 
     @Override
-    public Map<String, Object> getArchive(Long employeeId) {
+    public HrTalentArchiveVO getArchive(Long employeeId) {
         if (employeeId == null) {
             throw new HrBusinessException("INVALID_PARAMETER", "employeeId 不能为空");
         }
@@ -45,11 +48,11 @@ public class HrTalentArchiveServiceImpl implements HrTalentArchiveService {
         result.put("pools", pools);
         result.put("developmentActions", developmentActions);
         result.put("successorOf", successorOf);
-        return result;
+        return objectMapper.convertValue(result, HrTalentArchiveVO.class);
     }
 
     @Override
-    public Map<String, Object> getMyArchive() {
+    public HrTalentArchiveVO getMyArchive() {
         Long employeeId = essSupport.currentEmployeeId();
         return getArchive(employeeId);
     }

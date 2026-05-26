@@ -3,7 +3,6 @@ package com.cloudflow.hr.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.talent.HrTalentCalibrationSessionDTO;
 import com.cloudflow.hr.domain.dto.talent.HrTalentDevelopmentActionDTO;
@@ -21,24 +20,23 @@ import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessorDTO;
 import com.cloudflow.hr.domain.entity.HrTalentDevelopmentAction;
 import com.cloudflow.hr.domain.entity.HrTalentPool;
 import com.cloudflow.hr.domain.entity.HrTalentSuccessionPlan;
+import com.cloudflow.hr.domain.vo.talent.HrTalentArchiveVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentCalibrationSessionVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentDevelopmentActionVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentNineGridVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentParticipantVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentPoolListVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentPoolMemberVO;
-import com.cloudflow.hr.domain.vo.talent.HrTalentPoolVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentReviewListVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentReviewVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanListVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanVO;
-import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessorVO;
 import com.cloudflow.hr.service.HrTalentArchiveService;
 import com.cloudflow.hr.service.HrTalentDevelopmentService;
 import com.cloudflow.hr.service.HrTalentPoolService;
 import com.cloudflow.hr.service.HrTalentReviewService;
 import com.cloudflow.hr.service.HrTalentSuccessionService;
 import com.cloudflow.hr.service.HrTypedCrudService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -53,10 +51,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 /**
  * HR 人才盘点（Talent Review）多 Controller 聚合文件。
@@ -71,33 +67,31 @@ import java.util.TreeMap;
 class HrTalentReviewController {
 
     private final HrTalentReviewService reviewService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/reviews")
     @SaCheckPermission("hr:talent:review:list")
     public R<PageResult<HrTalentReviewListVO>> page(@Validated @ModelAttribute HrTalentReviewQueryDTO query) {
-        Map<String, Object> raw = reviewService.page(MapConverters.toServiceQuery(query, objectMapper));
-        return R.ok(MapConverters.toPageResult(raw, HrTalentReviewListVO.class, objectMapper));
+        return R.ok(reviewService.page(query));
     }
 
     @GetMapping("/reviews/{id}")
     @SaCheckPermission("hr:talent:review:list")
     public R<HrTalentReviewVO> get(@PathVariable Long id) {
-        return R.ok(MapConverters.toVO(reviewService.getReview(id), HrTalentReviewVO.class, objectMapper));
+        return R.ok(reviewService.getReview(id));
     }
 
     @SysLog("新增人才盘点活动")
     @PostMapping("/reviews")
     @SaCheckPermission("hr:talent:review:add")
     public R<Long> create(@Validated @RequestBody HrTalentReviewDTO dto) {
-        return R.ok(reviewService.createReview(MapConverters.toMap(dto, objectMapper)));
+        return R.ok(reviewService.createReview(dto));
     }
 
     @SysLog("修改人才盘点活动")
     @PutMapping("/reviews/{id}")
     @SaCheckPermission("hr:talent:review:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentReviewDTO dto) {
-        reviewService.updateReview(id, MapConverters.toMap(dto, objectMapper));
+        reviewService.updateReview(id, dto);
         return R.ok();
     }
 
@@ -114,7 +108,7 @@ class HrTalentReviewController {
     public R<Void> upsertParticipant(@PathVariable Long id,
                                      @PathVariable Long employeeId,
                                      @Validated @RequestBody HrTalentParticipantDTO dto) {
-        reviewService.upsertParticipant(id, employeeId, MapConverters.toMap(dto, objectMapper));
+        reviewService.upsertParticipant(id, employeeId, dto);
         return R.ok();
     }
 
@@ -130,17 +124,11 @@ class HrTalentReviewController {
 
     @GetMapping("/reviews/{id}/grid")
     @SaCheckPermission("hr:talent:review:list")
-    public R<Map<Integer, List<HrTalentParticipantVO>>> grid(@PathVariable Long id) {
-        Map<Integer, List<Map<String, Object>>> raw = reviewService.loadNineBox(id);
-        Map<Integer, List<HrTalentParticipantVO>> result = new TreeMap<>();
-        raw.forEach((cell, rows) -> {
-            List<HrTalentParticipantVO> vos = new ArrayList<>(rows.size());
-            for (Map<String, Object> row : rows) {
-                vos.add(objectMapper.convertValue(row, HrTalentParticipantVO.class));
-            }
-            result.put(cell, vos);
-        });
-        return R.ok(result);
+    public R<HrTalentNineGridVO> grid(@PathVariable Long id) {
+        Map<Integer, List<HrTalentParticipantVO>> cells = reviewService.loadNineBox(id);
+        HrTalentNineGridVO vo = new HrTalentNineGridVO();
+        vo.setCells(cells);
+        return R.ok(vo);
     }
 
     @SysLog("发起人才盘点发布")
@@ -155,14 +143,13 @@ class HrTalentReviewController {
     @SaCheckPermission("hr:talent:review:session")
     public R<Long> createCalibration(@PathVariable Long id,
                                      @Validated @RequestBody HrTalentCalibrationSessionDTO dto) {
-        return R.ok(reviewService.createCalibrationSession(id, MapConverters.toMap(dto, objectMapper)));
+        return R.ok(reviewService.createCalibrationSession(id, dto));
     }
 
     @GetMapping("/reviews/{id}/calibration-sessions")
     @SaCheckPermission("hr:talent:review:session")
     public R<PageResult<HrTalentCalibrationSessionVO>> listCalibrations(@PathVariable Long id) {
-        Map<String, Object> raw = reviewService.listCalibrationSessions(id);
-        return R.ok(MapConverters.toPageResult(raw, HrTalentCalibrationSessionVO.class, objectMapper));
+        return R.ok(reviewService.listCalibrationSessions(id));
     }
 
     @SysLog("修改校准会议")
@@ -170,7 +157,7 @@ class HrTalentReviewController {
     @SaCheckPermission("hr:talent:review:session")
     public R<Void> updateCalibration(@PathVariable Long sessionId,
                                      @Validated @RequestBody HrTalentCalibrationSessionDTO dto) {
-        reviewService.updateCalibrationSession(sessionId, MapConverters.toMap(dto, objectMapper));
+        reviewService.updateCalibrationSession(sessionId, dto);
         return R.ok();
     }
 }
@@ -182,33 +169,31 @@ class HrTalentSuccessionController {
 
     private final HrTalentSuccessionService successionService;
     private final HrTypedCrudService crudService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/succession-plans")
     @SaCheckPermission("hr:talent:succession:list")
     public R<PageResult<HrTalentSuccessionPlanListVO>> page(@Validated @ModelAttribute HrTalentSuccessionPlanQueryDTO query) {
-        Map<String, Object> raw = successionService.pagePlans(MapConverters.toServiceQuery(query, objectMapper));
-        return R.ok(MapConverters.toPageResult(raw, HrTalentSuccessionPlanListVO.class, objectMapper));
+        return R.ok(successionService.pagePlans(query));
     }
 
     @GetMapping("/succession-plans/{id}")
     @SaCheckPermission("hr:talent:succession:list")
     public R<HrTalentSuccessionPlanVO> get(@PathVariable Long id) {
-        return R.ok(MapConverters.toVO(successionService.getPlan(id), HrTalentSuccessionPlanVO.class, objectMapper));
+        return R.ok(successionService.getPlan(id));
     }
 
     @SysLog("新增继任计划")
     @PostMapping("/succession-plans")
     @SaCheckPermission("hr:talent:succession:add")
     public R<Long> create(@Validated @RequestBody HrTalentSuccessionPlanDTO dto) {
-        return R.ok(successionService.createPlan(MapConverters.toMap(dto, objectMapper)));
+        return R.ok(successionService.createPlan(dto));
     }
 
     @SysLog("修改继任计划")
     @PutMapping("/succession-plans/{id}")
     @SaCheckPermission("hr:talent:succession:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentSuccessionPlanDTO dto) {
-        successionService.updatePlan(id, MapConverters.toMap(dto, objectMapper));
+        successionService.updatePlan(id, dto);
         return R.ok();
     }
 
@@ -224,7 +209,7 @@ class HrTalentSuccessionController {
     @PostMapping("/succession-plans/{id}/successors")
     @SaCheckPermission("hr:talent:succession:nominate")
     public R<Long> addSuccessor(@PathVariable Long id, @Validated @RequestBody HrTalentSuccessorDTO dto) {
-        return R.ok(successionService.addSuccessor(id, MapConverters.toMap(dto, objectMapper)));
+        return R.ok(successionService.addSuccessor(id, dto));
     }
 
     @SysLog("移除继任人")
@@ -250,27 +235,25 @@ class HrTalentPoolController {
 
     private final HrTalentPoolService poolService;
     private final HrTypedCrudService crudService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/pools")
     @SaCheckPermission("hr:talent:pool:list")
     public R<PageResult<HrTalentPoolListVO>> page(@Validated @ModelAttribute HrTalentPoolQueryDTO query) {
-        Map<String, Object> raw = poolService.pagePools(MapConverters.toServiceQuery(query, objectMapper));
-        return R.ok(MapConverters.toPageResult(raw, HrTalentPoolListVO.class, objectMapper));
+        return R.ok(poolService.pagePools(query));
     }
 
     @SysLog("新增人才池")
     @PostMapping("/pools")
     @SaCheckPermission("hr:talent:pool:add")
     public R<Long> create(@Validated @RequestBody HrTalentPoolDTO dto) {
-        return R.ok(poolService.createPool(MapConverters.toMap(dto, objectMapper)));
+        return R.ok(poolService.createPool(dto));
     }
 
     @SysLog("修改人才池")
     @PutMapping("/pools/{id}")
     @SaCheckPermission("hr:talent:pool:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentPoolDTO dto) {
-        poolService.updatePool(id, MapConverters.toMap(dto, objectMapper));
+        poolService.updatePool(id, dto);
         return R.ok();
     }
 
@@ -285,7 +268,7 @@ class HrTalentPoolController {
     @GetMapping("/pools/{id}/members")
     @SaCheckPermission("hr:talent:pool:list")
     public R<List<HrTalentPoolMemberVO>> listMembers(@PathVariable Long id) {
-        return R.ok(MapConverters.toVOList(poolService.listMembers(id), HrTalentPoolMemberVO.class, objectMapper));
+        return R.ok(poolService.listMembers(id));
     }
 
     @SysLog("加入人才池")
@@ -314,27 +297,25 @@ class HrTalentDevelopmentController {
 
     private final HrTalentDevelopmentService developmentService;
     private final HrTypedCrudService crudService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/development")
     @SaCheckPermission("hr:talent:dev:list")
     public R<PageResult<HrTalentDevelopmentActionVO>> page(@Validated @ModelAttribute HrTalentDevelopmentActionQueryDTO query) {
-        Map<String, Object> raw = developmentService.pageActions(MapConverters.toServiceQuery(query, objectMapper));
-        return R.ok(MapConverters.toPageResult(raw, HrTalentDevelopmentActionVO.class, objectMapper));
+        return R.ok(developmentService.pageActions(query));
     }
 
     @SysLog("新增培养行动")
     @PostMapping("/development")
     @SaCheckPermission("hr:talent:dev:add")
     public R<Long> create(@Validated @RequestBody HrTalentDevelopmentActionDTO dto) {
-        return R.ok(developmentService.createAction(MapConverters.toMap(dto, objectMapper)));
+        return R.ok(developmentService.createAction(dto));
     }
 
     @SysLog("修改培养行动")
     @PutMapping("/development/{id}")
     @SaCheckPermission("hr:talent:dev:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentDevelopmentActionDTO dto) {
-        developmentService.updateAction(id, MapConverters.toMap(dto, objectMapper));
+        developmentService.updateAction(id, dto);
         return R.ok();
     }
 
@@ -364,13 +345,13 @@ class HrTalentArchiveController {
 
     @GetMapping("/archive/mine")
     @SaCheckPermission("hr:talent:archive:mine")
-    public R<?> mine() {
+    public R<HrTalentArchiveVO> mine() {
         return R.ok(archiveService.getMyArchive());
     }
 
     @GetMapping("/archive/employees/{employeeId}")
     @SaCheckPermission("hr:talent:archive:view")
-    public R<?> archive(@PathVariable Long employeeId) {
+    public R<HrTalentArchiveVO> archive(@PathVariable Long employeeId) {
         return R.ok(archiveService.getArchive(employeeId));
     }
 }

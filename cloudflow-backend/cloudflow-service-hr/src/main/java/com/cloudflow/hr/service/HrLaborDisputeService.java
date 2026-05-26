@@ -1,22 +1,27 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeEvidenceDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeQueryDTO;
+import com.cloudflow.hr.domain.vo.dispute.HrDisputeEvidenceVO;
+import com.cloudflow.hr.domain.vo.dispute.HrLaborDisputeVO;
 
 public interface HrLaborDisputeService {
 
-    Long registerDispute(Map<String, Object> payload);
+    Long registerDispute(HrLaborDisputeDTO dto);
 
-    void updateDispute(Long disputeId, Map<String, Object> payload);
+    void updateDispute(Long disputeId, HrLaborDisputeDTO dto);
 
-    Map<String, Object> page(Map<String, Object> query);
+    PageResult<HrLaborDisputeVO> page(HrLaborDisputeQueryDTO query);
 
-    Map<String, Object> get(Long disputeId);
+    HrLaborDisputeVO get(Long disputeId);
 
     String submitWorkflow(Long disputeId);
 
     void close(Long disputeId, String reason);
 
-    Long attachEvidence(Long disputeId, Map<String, Object> payload);
+    Long attachEvidence(Long disputeId, HrDisputeEvidenceDTO dto);
 
-    Map<String, Object> listEvidence(Long disputeId);
+    PageResult<HrDisputeEvidenceVO> listEvidence(Long disputeId);
 }

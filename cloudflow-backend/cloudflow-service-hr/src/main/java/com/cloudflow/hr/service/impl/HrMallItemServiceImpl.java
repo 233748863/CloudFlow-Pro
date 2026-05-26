@@ -2,8 +2,13 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.dto.benefit.HrMallItemDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallItemQueryDTO;
 import com.cloudflow.hr.domain.entity.HrMallItem;
+import com.cloudflow.hr.domain.vo.benefit.HrMallItemVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrMallItemMapper;
 import com.cloudflow.hr.service.HrMallItemService;
@@ -31,8 +36,8 @@ public class HrMallItemServiceImpl implements HrMallItemService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createItem(Map<String, Object> payload) {
-        HrMallItem item = objectMapper.convertValue(payload, HrMallItem.class);
+    public Long createItem(HrMallItemDTO dto) {
+        HrMallItem item = objectMapper.convertValue(dto, HrMallItem.class);
         item.setTenantId(currentTenantId());
         if (!StringUtils.hasText(item.getItemNo())) {
             item.setItemNo("MI-" + System.currentTimeMillis());
@@ -55,18 +60,22 @@ public class HrMallItemServiceImpl implements HrMallItemService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateItem(Long itemId, Map<String, Object> payload) {
-        crudService.updateProperties(HrMallItem.class, itemId, payload);
+    public void updateItem(Long itemId, HrMallItemDTO dto) {
+        crudService.updateProperties(HrMallItem.class, itemId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> page(Map<String, Object> query) {
-        return crudService.page(HrMallItem.class, query);
+    public PageResult<HrMallItemVO> page(HrMallItemQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrMallItem.class,
+                MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrMallItemVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> get(Long itemId) {
-        return crudService.get(HrMallItem.class, itemId);
+    public HrMallItemVO get(Long itemId) {
+        Map<String, Object> raw = crudService.get(HrMallItem.class, itemId);
+        return MapConverters.toVO(raw, HrMallItemVO.class, objectMapper);
     }
 
     @Override

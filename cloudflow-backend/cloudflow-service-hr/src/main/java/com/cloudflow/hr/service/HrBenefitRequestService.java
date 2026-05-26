@@ -1,18 +1,21 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestQueryDTO;
+import com.cloudflow.hr.domain.vo.benefit.HrBenefitRequestVO;
 
 public interface HrBenefitRequestService {
 
-    Long createRequest(Map<String, Object> payload);
+    Long createRequest(HrBenefitRequestDTO dto);
 
-    void updateRequest(Long requestId, Map<String, Object> payload);
+    void updateRequest(Long requestId, HrBenefitRequestDTO dto);
 
-    Map<String, Object> page(Map<String, Object> query);
+    PageResult<HrBenefitRequestVO> page(HrBenefitRequestQueryDTO query);
 
-    Map<String, Object> get(Long requestId);
+    HrBenefitRequestVO get(Long requestId);
 
-    Map<String, Object> listMine(Map<String, Object> query);
+    PageResult<HrBenefitRequestVO> listMine(HrBenefitRequestQueryDTO query);
 
     String submitWorkflow(Long requestId);
 

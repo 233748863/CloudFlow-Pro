@@ -1,6 +1,6 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.hr.domain.vo.talent.HrTalentArchiveVO;
 
 /**
  * HR 人才档案聚合查询接口。
@@ -10,7 +10,7 @@ import java.util.Map;
  */
 public interface HrTalentArchiveService {
 
-    Map<String, Object> getArchive(Long employeeId);
+    HrTalentArchiveVO getArchive(Long employeeId);
 
-    Map<String, Object> getMyArchive();
+    HrTalentArchiveVO getMyArchive();
 }

@@ -2,11 +2,16 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestQueryDTO;
 import com.cloudflow.hr.domain.entity.HrBenefitRequest;
+import com.cloudflow.hr.domain.vo.benefit.HrBenefitRequestVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrBenefitRequestMapper;
 import com.cloudflow.hr.service.HrBenefitRequestService;
@@ -40,8 +45,8 @@ public class HrBenefitRequestServiceImpl implements HrBenefitRequestService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createRequest(Map<String, Object> payload) {
-        HrBenefitRequest request = objectMapper.convertValue(payload, HrBenefitRequest.class);
+    public Long createRequest(HrBenefitRequestDTO dto) {
+        HrBenefitRequest request = objectMapper.convertValue(dto, HrBenefitRequest.class);
         request.setTenantId(currentTenantId());
         request.setStatus(StringUtils.hasText(request.getStatus()) ? request.getStatus() : "DRAFT");
         request.setDeleted(0);
@@ -56,28 +61,33 @@ public class HrBenefitRequestServiceImpl implements HrBenefitRequestService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateRequest(Long requestId, Map<String, Object> payload) {
-        crudService.updateProperties(HrBenefitRequest.class, requestId, payload);
+    public void updateRequest(Long requestId, HrBenefitRequestDTO dto) {
+        crudService.updateProperties(HrBenefitRequest.class, requestId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> page(Map<String, Object> query) {
-        return crudService.page(HrBenefitRequest.class, query);
+    public PageResult<HrBenefitRequestVO> page(HrBenefitRequestQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrBenefitRequest.class,
+                MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrBenefitRequestVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> get(Long requestId) {
-        return crudService.get(HrBenefitRequest.class, requestId);
+    public HrBenefitRequestVO get(Long requestId) {
+        Map<String, Object> raw = crudService.get(HrBenefitRequest.class, requestId);
+        return MapConverters.toVO(raw, HrBenefitRequestVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> listMine(Map<String, Object> query) {
-        Map<String, Object> q = new LinkedHashMap<>(query == null ? Map.of() : query);
+    public PageResult<HrBenefitRequestVO> listMine(HrBenefitRequestQueryDTO query) {
+        Map<String, Object> q = new LinkedHashMap<>(MapConverters.toServiceQuery(query, objectMapper));
         Long userId = UserContext.getUserId();
         if (userId != null) {
             q.put("createBy", currentUserName());
         }
-        return crudService.page(HrBenefitRequest.class, q);
+        Map<String, Object> raw = crudService.page(HrBenefitRequest.class, q);
+        return MapConverters.toPageResult(raw, HrBenefitRequestVO.class, objectMapper);
     }
 
     @Override

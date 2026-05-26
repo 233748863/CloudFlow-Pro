@@ -1,6 +1,7 @@
 package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -21,6 +22,16 @@ import com.cloudflow.hr.domain.entity.HrPerformanceAssignment;
 import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
 import com.cloudflow.hr.domain.entity.HrPerformanceResult;
 import com.cloudflow.hr.domain.entity.HrPerformanceSalaryAdjustment;
+import com.cloudflow.hr.domain.vo.performance.Hr360AggregateVO;
+import com.cloudflow.hr.domain.vo.performance.Hr360EvaluatorRowVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionRuleVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionValidateVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceAssignmentVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceObjectiveTreeVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceObjectiveVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceOverviewVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceResultVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceSalaryAdjustmentVO;
 import com.cloudflow.hr.service.HrPerformance360Service;
 import com.cloudflow.hr.service.HrPerformanceDistributionService;
 import com.cloudflow.hr.service.HrPerformanceService;
@@ -39,7 +50,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
 
 @RestController
 @RequestMapping("/performance")
@@ -51,9 +61,10 @@ class HrPerformanceObjectiveCrudController {
 
     @GetMapping("/objectives")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceObjectives(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
-        return R.ok(crudService.page(HrPerformanceObjective.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrPerformanceObjectiveVO>> listPerformanceObjectives(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrPerformanceObjective.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrPerformanceObjectiveVO.class, objectMapper));
     }
 
     @SysLog("新增HR绩效目标")
@@ -83,9 +94,10 @@ class HrPerformanceAssignmentController {
 
     @GetMapping("/assignments")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceAssignments(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrPerformanceAssignment.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrPerformanceAssignmentVO>> listPerformanceAssignments(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrPerformanceAssignment.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrPerformanceAssignmentVO.class, objectMapper));
     }
 
     @SysLog("新增HR绩效分解")
@@ -115,9 +127,10 @@ class HrPerformanceResultController {
 
     @GetMapping("/results")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceResults(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrPerformanceResult.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrPerformanceResultVO>> listPerformanceResults(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrPerformanceResult.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrPerformanceResultVO.class, objectMapper));
     }
 
     @SysLog("新增HR绩效结果")
@@ -147,9 +160,10 @@ class HrPerformanceSalaryAdjustmentController {
 
     @GetMapping("/salary-adjustments")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceSalaryAdjustments(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrPerformanceSalaryAdjustment.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrPerformanceSalaryAdjustmentVO>> listPerformanceSalaryAdjustments(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrPerformanceSalaryAdjustment.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrPerformanceSalaryAdjustmentVO.class, objectMapper));
     }
 
     @SysLog("新增HR绩效调薪记录")
@@ -173,7 +187,6 @@ class HrPerformanceSalaryAdjustmentController {
 class HrPerformanceObjectiveController {
 
     private final HrPerformanceService performanceService;
-    private final ObjectMapper objectMapper;
 
     @SysLog("新增HR绩效目标树")
     @PostMapping("/objective")
@@ -184,25 +197,25 @@ class HrPerformanceObjectiveController {
 
     @GetMapping("/objective/list")
     @SaCheckPermission("hr:performance:list")
-    public R<?> listPerformanceObjectiveV2(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
-        return R.ok(performanceService.listObjectives(MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrPerformanceObjectiveVO>> listPerformanceObjectiveV2(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
+        return R.ok(performanceService.listObjectives(query));
     }
 
     @GetMapping("/objective/{id}")
     @SaCheckPermission("hr:performance:view")
-    public R<?> getPerformanceObjective(@PathVariable Long id) {
+    public R<HrPerformanceObjectiveTreeVO> getPerformanceObjective(@PathVariable Long id) {
         return R.ok(performanceService.getObjectiveTree(id));
     }
 
     @GetMapping("/objective/{id}/tree")
     @SaCheckPermission("hr:performance:view")
-    public R<?> getPerformanceObjectiveTree(@PathVariable Long id) {
+    public R<HrPerformanceObjectiveTreeVO> getPerformanceObjectiveTree(@PathVariable Long id) {
         return R.ok(performanceService.getObjectiveTree(id));
     }
 
     @GetMapping("/overview")
     @SaCheckPermission("hr:performance:view")
-    public R<?> getPerformanceOverview() {
+    public R<HrPerformanceOverviewVO> getPerformanceOverview() {
         return R.ok(performanceService.getOverview());
     }
 
@@ -258,7 +271,7 @@ class HrPerformance360Controller {
 
     @GetMapping("/evaluators")
     @SaCheckPermission("hr:performance:view")
-    public R<List<Map<String, Object>>> list360Evaluators(
+    public R<List<Hr360EvaluatorRowVO>> list360Evaluators(
             @RequestParam Long objectiveId,
             @RequestParam(required = false) Long evaluateeId) {
         return R.ok(service.listEvaluators(objectiveId, evaluateeId));
@@ -266,14 +279,14 @@ class HrPerformance360Controller {
 
     @GetMapping("/pending")
     @SaCheckPermission("hr:performance:view")
-    public R<List<Map<String, Object>>> list360Pending(@RequestParam Long evaluatorId) {
+    public R<List<Hr360EvaluatorRowVO>> list360Pending(@RequestParam Long evaluatorId) {
         return R.ok(service.listPendingForEvaluator(evaluatorId));
     }
 
     @SysLog("聚合HR绩效360评估结果")
     @PostMapping("/aggregate")
     @SaCheckPermission("hr:performance:edit")
-    public R<Map<String, Object>> aggregate360(@RequestParam Long objectiveId, @RequestParam Long evaluateeId) {
+    public R<Hr360AggregateVO> aggregate360(@RequestParam Long objectiveId, @RequestParam Long evaluateeId) {
         return R.ok(service.aggregate(objectiveId, evaluateeId));
     }
 }
@@ -290,7 +303,7 @@ class HrPerformanceDistributionController {
 
     @GetMapping("/rules")
     @SaCheckPermission("hr:performance:view")
-    public R<List<Map<String, Object>>> listDistributionRules(@RequestParam(required = false) Long objectiveId) {
+    public R<List<HrPerfDistributionRuleVO>> listDistributionRules(@RequestParam(required = false) Long objectiveId) {
         return R.ok(service.listRules(objectiveId));
     }
 
@@ -311,7 +324,7 @@ class HrPerformanceDistributionController {
 
     @PostMapping("/validate")
     @SaCheckPermission("hr:performance:view")
-    public R<Map<String, Object>> validateDistribution(@RequestBody HrPerfDistributionCheckPayload payload) {
+    public R<HrPerfDistributionValidateVO> validateDistribution(@RequestBody HrPerfDistributionCheckPayload payload) {
         return R.ok(service.validate(payload));
     }
 }

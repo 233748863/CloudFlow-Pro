@@ -2,9 +2,14 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.dto.benefit.HrPointTransactionQueryDTO;
 import com.cloudflow.hr.domain.entity.HrPointAccount;
 import com.cloudflow.hr.domain.entity.HrPointTransaction;
+import com.cloudflow.hr.domain.vo.benefit.HrPointAccountVO;
+import com.cloudflow.hr.domain.vo.benefit.HrPointTransactionVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrPointAccountMapper;
 import com.cloudflow.hr.mapper.HrPointTransactionMapper;
@@ -58,7 +63,7 @@ public class HrPointAccountServiceImpl implements HrPointAccountService {
     }
 
     @Override
-    public Map<String, Object> getMyAccount() {
+    public HrPointAccountVO getMyAccount() {
         Long userId = UserContext.getUserId();
         if (userId == null) {
             throw new HrBusinessException("UNAUTHORIZED", "未登录用户");
@@ -67,22 +72,22 @@ public class HrPointAccountServiceImpl implements HrPointAccountService {
     }
 
     @Override
-    public Map<String, Object> getEmployeeAccount(Long employeeId) {
+    public HrPointAccountVO getEmployeeAccount(Long employeeId) {
         QueryWrapper<HrPointAccount> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("employee_id", employeeId).eq("deleted", 0);
         HrPointAccount account = accountMapper.selectOne(qw);
         if (account == null) {
             account = findOrCreateAccount(employeeId);
         }
-        return objectMapper.convertValue(account,
-                new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String, Object>>() {});
+        return objectMapper.convertValue(account, HrPointAccountVO.class);
     }
 
     @Override
-    public Map<String, Object> listTransactions(Long accountId, Map<String, Object> query) {
-        Map<String, Object> q = new LinkedHashMap<>(query == null ? Map.of() : query);
+    public PageResult<HrPointTransactionVO> listTransactions(Long accountId, HrPointTransactionQueryDTO query) {
+        Map<String, Object> q = new LinkedHashMap<>(MapConverters.toServiceQuery(query, objectMapper));
         q.put("accountId", accountId);
-        return crudService.page(HrPointTransaction.class, q);
+        Map<String, Object> raw = crudService.page(HrPointTransaction.class, q);
+        return MapConverters.toPageResult(raw, HrPointTransactionVO.class, objectMapper);
     }
 
     @Override

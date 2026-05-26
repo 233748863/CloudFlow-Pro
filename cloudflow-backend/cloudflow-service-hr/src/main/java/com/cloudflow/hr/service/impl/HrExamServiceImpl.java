@@ -5,9 +5,11 @@ import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.domain.dto.HrExamPaperPayload;
+import com.cloudflow.hr.domain.dto.training.HrExamAnswerDTO;
 import com.cloudflow.hr.domain.entity.HrExamAttempt;
 import com.cloudflow.hr.domain.entity.HrExamPaper;
 import com.cloudflow.hr.domain.entity.HrExamQuestionBank;
+import com.cloudflow.hr.domain.vo.training.HrExamAttemptSubmitVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrExamAttemptMapper;
 import com.cloudflow.hr.mapper.HrExamPaperMapper;
@@ -94,7 +96,7 @@ public class HrExamServiceImpl implements HrExamService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Map<String, Object> submit(Long attemptId, List<Map<String, Object>> answers) {
+    public HrExamAttemptSubmitVO submit(Long attemptId, List<HrExamAnswerDTO> answers) {
         HrExamAttempt attempt = loadAttempt(attemptId);
         essSupport.assertOwner(attempt.getEmployeeId());
         if (!"IN_PROGRESS".equalsIgnoreCase(attempt.getStatus())) {
@@ -105,7 +107,7 @@ public class HrExamServiceImpl implements HrExamService {
         if (paper == null) {
             throw new HrBusinessException("PAPER_NOT_FOUND", "试卷不存在：" + attempt.getPaperId());
         }
-        List<Map<String, Object>> finalAnswers = answers == null ? List.of() : answers;
+        List<HrExamAnswerDTO> finalAnswers = answers == null ? List.of() : answers;
         GradeResult result = autoGrade(paper, finalAnswers);
 
         String finalStatus = result.hasSubjective() ? "SUBMITTED" : "GRADED";
@@ -124,13 +126,7 @@ public class HrExamServiceImpl implements HrExamService {
         attempt.setAnswers(result.gradedAnswers());
         attemptMapper.update(attempt, wrapper);
 
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("attemptId", attemptId);
-        response.put("status", finalStatus);
-        response.put("score", result.totalScore());
-        response.put("passFlag", passFlag);
-        response.put("hasSubjective", result.hasSubjective());
-        return response;
+        return new HrExamAttemptSubmitVO(attemptId, finalStatus, result.totalScore(), passFlag, result.hasSubjective());
     }
 
     @Override
@@ -170,17 +166,19 @@ public class HrExamServiceImpl implements HrExamService {
         return ids;
     }
 
-    private GradeResult autoGrade(HrExamPaper paper, List<Map<String, Object>> answers) {
+    private GradeResult autoGrade(HrExamPaper paper, List<HrExamAnswerDTO> answers) {
         List<Long> questionIds = paper.getQuestionIds() == null ? List.of() : paper.getQuestionIds();
         Map<Long, HrExamQuestionBank> bank = loadQuestions(questionIds);
         BigDecimal total = BigDecimal.ZERO;
         boolean hasSubjective = false;
         List<Map<String, Object>> graded = new ArrayList<>(answers.size());
-        for (Map<String, Object> ans : answers) {
-            Long qid = toLong(ans.get("questionId"));
+        for (HrExamAnswerDTO ans : answers) {
+            Long qid = ans.getQuestionId();
+            String answer = ans.getAnswer();
             HrExamQuestionBank q = qid == null ? null : bank.get(qid);
-            Map<String, Object> row = new LinkedHashMap<>(ans);
-            row.putIfAbsent("questionId", qid);
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("questionId", qid);
+            row.put("answer", answer);
             if (q == null) {
                 row.put("autoGraded", false);
                 graded.add(row);
@@ -195,7 +193,7 @@ public class HrExamServiceImpl implements HrExamService {
                 graded.add(row);
                 continue;
             }
-            boolean correct = compareAnswer(q.getAnswer(), ans.get("answer"));
+            boolean correct = compareAnswer(q.getAnswer(), answer);
             BigDecimal awarded = correct ? questionScore : BigDecimal.ZERO;
             row.put("autoGraded", true);
             row.put("correct", correct);
@@ -206,22 +204,21 @@ public class HrExamServiceImpl implements HrExamService {
         return new GradeResult(total.setScale(2, RoundingMode.HALF_UP), hasSubjective, graded);
     }
 
-    private boolean compareAnswer(List<Object> reference, Object submitted) {
+    private boolean compareAnswer(List<Object> reference, String submitted) {
         if (reference == null || reference.isEmpty() || submitted == null) {
             return false;
         }
-        if (submitted instanceof List<?> list) {
-            if (list.size() != reference.size()) {
-                return false;
-            }
-            List<String> ref = reference.stream().map(this::normalize).sorted().toList();
-            List<String> sub = list.stream().map(this::normalize).sorted().toList();
-            return ref.equals(sub);
+        String trimmed = submitted.trim();
+        if (trimmed.isEmpty()) {
+            return false;
         }
         if (reference.size() == 1) {
-            return Objects.equals(normalize(reference.get(0)), normalize(submitted));
+            return Objects.equals(normalize(reference.get(0)), normalize(trimmed));
         }
-        return false;
+        List<String> ref = reference.stream().map(this::normalize).sorted().toList();
+        List<String> sub = java.util.Arrays.stream(trimmed.split(","))
+                .map(this::normalize).sorted().toList();
+        return ref.equals(sub);
     }
 
     private String normalize(Object value) {

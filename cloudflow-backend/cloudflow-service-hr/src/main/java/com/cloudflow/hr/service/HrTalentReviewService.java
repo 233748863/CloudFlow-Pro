@@ -1,5 +1,15 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.talent.HrTalentCalibrationSessionDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentParticipantDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentReviewDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentReviewQueryDTO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentCalibrationSessionVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentParticipantVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentReviewListVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentReviewVO;
+
 import java.util.List;
 import java.util.Map;
 
@@ -16,27 +26,27 @@ import java.util.Map;
  */
 public interface HrTalentReviewService {
 
-    Long createReview(Map<String, Object> payload);
+    Long createReview(HrTalentReviewDTO dto);
 
-    void updateReview(Long reviewId, Map<String, Object> payload);
+    void updateReview(Long reviewId, HrTalentReviewDTO dto);
 
-    Map<String, Object> page(Map<String, Object> query);
+    PageResult<HrTalentReviewListVO> page(HrTalentReviewQueryDTO query);
 
-    Map<String, Object> getReview(Long reviewId);
+    HrTalentReviewVO getReview(Long reviewId);
 
     int snapshotPerformance(Long reviewId, Long objectiveId);
 
-    void upsertParticipant(Long reviewId, Long employeeId, Map<String, Object> payload);
+    void upsertParticipant(Long reviewId, Long employeeId, HrTalentParticipantDTO dto);
 
     void moveGridCell(Long reviewId, Long employeeId, Integer gridCell);
 
     String publish(Long reviewId);
 
-    Map<Integer, List<Map<String, Object>>> loadNineBox(Long reviewId);
+    Map<Integer, List<HrTalentParticipantVO>> loadNineBox(Long reviewId);
 
-    Long createCalibrationSession(Long reviewId, Map<String, Object> payload);
+    Long createCalibrationSession(Long reviewId, HrTalentCalibrationSessionDTO dto);
 
-    Map<String, Object> listCalibrationSessions(Long reviewId);
+    PageResult<HrTalentCalibrationSessionVO> listCalibrationSessions(Long reviewId);
 
-    void updateCalibrationSession(Long sessionId, Map<String, Object> payload);
+    void updateCalibrationSession(Long sessionId, HrTalentCalibrationSessionDTO dto);
 }

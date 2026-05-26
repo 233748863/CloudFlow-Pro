@@ -1,14 +1,17 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryCompensationDTO;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryCompensationVO;
+
+import java.util.List;
 
 public interface HrWorkInjuryCompensationService {
 
-    Long createCompensation(Long injuryId, Map<String, Object> payload);
+    Long createCompensation(Long injuryId, HrWorkInjuryCompensationDTO dto);
 
-    void updateCompensation(Long compensationId, Map<String, Object> payload);
+    void updateCompensation(Long compensationId, HrWorkInjuryCompensationDTO dto);
 
-    Map<String, Object> listByInjury(Long injuryId);
+    List<HrWorkInjuryCompensationVO> listByInjury(Long injuryId);
 
     void markPaid(Long compensationId);
 }

@@ -81,7 +81,13 @@ public final class MapConverters {
         Object total = raw.get("total");
         result.setTotal(total instanceof Number n ? n.longValue() : 0L);
         Object pageNum = raw.get("pageNum");
+        if (pageNum == null) {
+            pageNum = raw.get("current");
+        }
         Object pageSize = raw.get("pageSize");
+        if (pageSize == null) {
+            pageSize = raw.get("size");
+        }
         result.setPageNum(pageNum instanceof Number n ? n.longValue() : 1L);
         result.setPageSize(pageSize instanceof Number n ? n.longValue() : (long) rows.size());
         return result;

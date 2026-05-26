@@ -4,11 +4,14 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.entity.HrSelfServiceMessage;
+import com.cloudflow.hr.domain.vo.ess.HrEssPortalSummaryVO;
 import com.cloudflow.hr.mapper.HrSelfServiceMessageMapper;
 import com.cloudflow.hr.service.HrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
-import java.util.Map;
 
 /**
  * ESS（员工自助）门户聚合控制器 + 自助消息已读切换。
@@ -32,11 +34,13 @@ import java.util.Map;
 class HrEssPortalController {
 
     private final HrEssService essService;
+    private final ObjectMapper objectMapper;
 
     @GetMapping("/summary")
     @SaCheckPermission("hr:ess:view")
-    public R<Map<String, Object>> summary() {
-        return R.ok(essService.portalSummary());
+    public R<HrEssPortalSummaryVO> summary() {
+        return R.ok(MapConverters.toVO(essService.portalSummary(),
+                HrEssPortalSummaryVO.class, objectMapper));
     }
 }
 

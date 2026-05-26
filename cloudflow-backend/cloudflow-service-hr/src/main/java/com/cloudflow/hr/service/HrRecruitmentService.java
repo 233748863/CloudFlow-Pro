@@ -1,10 +1,18 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.hr.domain.dto.HrLifecycleApplicationPayload;
+import com.cloudflow.hr.domain.dto.recruitment.HrRecruitmentCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrCandidate;
 import com.cloudflow.hr.domain.entity.HrInterview;
 import com.cloudflow.hr.domain.entity.HrOffer;
 import com.cloudflow.hr.domain.entity.HrRecruitmentRequisition;
+import com.cloudflow.hr.domain.vo.recruitment.HrCandidateVO;
+import com.cloudflow.hr.domain.vo.recruitment.HrInterviewVO;
+import com.cloudflow.hr.domain.vo.recruitment.HrOfferVO;
+import com.cloudflow.hr.domain.vo.recruitment.HrRecruitmentRequisitionVO;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -19,9 +27,14 @@ public class HrRecruitmentService {
     private final HrTypedCrudService crudService;
     private final HrLifecycleService lifecycleService;
     private final HrViewSupport viewSupport;
+    private final ObjectMapper objectMapper;
 
-    public Map<String, Object> pageRequisitions(Map<String, Object> query) {
-        return viewSupport.mapPage(crudService.page(HrRecruitmentRequisition.class, query), this::enrichRecruitmentRequisition);
+    public PageResult<HrRecruitmentRequisitionVO> pageRequisitions(HrRecruitmentCommonQueryDTO query) {
+        Map<String, Object> raw = MapConverters.toServiceQuery(query, objectMapper);
+        Map<String, Object> mapPage = viewSupport.mapPage(
+                crudService.page(HrRecruitmentRequisition.class, raw),
+                this::enrichRecruitmentRequisition);
+        return MapConverters.toPageResult(mapPage, HrRecruitmentRequisitionVO.class, objectMapper);
     }
 
     public void changeRequisitionStatus(Long id, String action) {
@@ -36,12 +49,12 @@ public class HrRecruitmentService {
         crudService.updateProperties(HrRecruitmentRequisition.class, id, Map.of("status", status));
     }
 
-    public Map<String, Object> pageCandidates(Map<String, Object> query) {
-        Map<String, Object> normalized = new LinkedHashMap<>(query);
-        if (!normalized.containsKey("requisitionId") && normalized.containsKey("requestId")) {
-            normalized.put("requisitionId", normalized.get("requestId"));
-        }
-        return viewSupport.mapPage(crudService.page(HrCandidate.class, normalized), this::enrichCandidate);
+    public PageResult<HrCandidateVO> pageCandidates(HrRecruitmentCommonQueryDTO query) {
+        Map<String, Object> raw = MapConverters.toServiceQuery(query, objectMapper);
+        Map<String, Object> mapPage = viewSupport.mapPage(
+                crudService.page(HrCandidate.class, raw),
+                this::enrichCandidate);
+        return MapConverters.toPageResult(mapPage, HrCandidateVO.class, objectMapper);
     }
 
     public void updateCandidateStatus(Long id, String status, String rejectReason) {
@@ -51,12 +64,20 @@ public class HrRecruitmentService {
         crudService.updateProperties(HrCandidate.class, id, updates);
     }
 
-    public List<Map<String, Object>> listInterviews(Map<String, Object> query) {
-        return crudService.list(HrInterview.class, query).stream().map(this::enrichInterview).toList();
+    public List<HrInterviewVO> listInterviews(HrRecruitmentCommonQueryDTO query) {
+        Map<String, Object> raw = MapConverters.toServiceQuery(query, objectMapper);
+        return crudService.list(HrInterview.class, raw).stream()
+                .map(this::enrichInterview)
+                .map(row -> objectMapper.convertValue(row, HrInterviewVO.class))
+                .toList();
     }
 
-    public List<Map<String, Object>> listOffers(Map<String, Object> query) {
-        return crudService.list(HrOffer.class, query).stream().map(this::enrichOffer).toList();
+    public List<HrOfferVO> listOffers(HrRecruitmentCommonQueryDTO query) {
+        Map<String, Object> raw = MapConverters.toServiceQuery(query, objectMapper);
+        return crudService.list(HrOffer.class, raw).stream()
+                .map(this::enrichOffer)
+                .map(row -> objectMapper.convertValue(row, HrOfferVO.class))
+                .toList();
     }
 
     public Long convertOfferToOnboarding(Long offerId) {
@@ -67,9 +88,9 @@ public class HrRecruitmentService {
 
         Long candidateId = viewSupport.toLong(offer.get("candidateId"));
         if (candidateId != null) {
-            List<Map<String, Object>> existed = lifecycleService.listApplications(Map.of("type", "ONBOARDING", "candidateId", candidateId));
-            if (!existed.isEmpty()) {
-                return viewSupport.toLong(existed.get(0).get("id"));
+            Long existedId = lifecycleService.findApplicationIdByCandidate(candidateId, "ONBOARDING");
+            if (existedId != null) {
+                return existedId;
             }
         }
 
@@ -86,7 +107,7 @@ public class HrRecruitmentService {
         return lifecycleService.createApplication(payload);
     }
 
-    public Map<String, Object> enrichRecruitmentRequisition(Map<String, Object> row) {
+    private Map<String, Object> enrichRecruitmentRequisition(Map<String, Object> row) {
         if (row.isEmpty()) {
             return row;
         }
@@ -100,7 +121,7 @@ public class HrRecruitmentService {
         return result;
     }
 
-    public Map<String, Object> enrichCandidate(Map<String, Object> row) {
+    private Map<String, Object> enrichCandidate(Map<String, Object> row) {
         if (row.isEmpty()) {
             return row;
         }
@@ -122,7 +143,7 @@ public class HrRecruitmentService {
         return result;
     }
 
-    public Map<String, Object> enrichInterview(Map<String, Object> row) {
+    private Map<String, Object> enrichInterview(Map<String, Object> row) {
         if (row.isEmpty()) {
             return row;
         }
@@ -140,7 +161,7 @@ public class HrRecruitmentService {
         return result;
     }
 
-    public Map<String, Object> enrichOffer(Map<String, Object> row) {
+    private Map<String, Object> enrichOffer(Map<String, Object> row) {
         if (row.isEmpty()) {
             return row;
         }

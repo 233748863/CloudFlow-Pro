@@ -1,18 +1,22 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryDTO;
+import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryQueryDTO;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryListVO;
+import com.cloudflow.hr.domain.vo.labor.HrWorkInjuryVO;
 
 public interface HrWorkInjuryService {
 
-    Long createInjury(Map<String, Object> payload);
+    Long createInjury(HrWorkInjuryDTO dto);
 
-    void updateInjury(Long injuryId, Map<String, Object> payload);
+    void updateInjury(Long injuryId, HrWorkInjuryDTO dto);
 
-    Map<String, Object> page(Map<String, Object> query);
+    PageResult<HrWorkInjuryListVO> page(HrWorkInjuryQueryDTO query);
 
-    Map<String, Object> listMine(Map<String, Object> query);
+    PageResult<HrWorkInjuryListVO> listMine(HrWorkInjuryQueryDTO query);
 
-    Map<String, Object> get(Long injuryId);
+    HrWorkInjuryVO get(Long injuryId);
 
     String submitDetermination(Long injuryId);
 

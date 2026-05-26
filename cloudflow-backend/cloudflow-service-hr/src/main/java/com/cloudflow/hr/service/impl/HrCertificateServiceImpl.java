@@ -18,6 +18,7 @@ import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrFileStorage;
 import com.cloudflow.hr.service.HrIntegrationQueryService;
 import com.cloudflow.hr.service.HrPdfRenderer;
+import com.cloudflow.hr.service.dto.HrFileDownload;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -181,7 +182,7 @@ public class HrCertificateServiceImpl implements HrCertificateService {
     }
 
     @Override
-    public Map<String, Object> downloadPdf(Long id) {
+    public HrFileDownload downloadPdf(Long id) {
         HrCertificateRequest request = loadRequest(id);
         essSupport.assertOwner(request.getEmployeeId());
         if (!"ISSUED".equalsIgnoreCase(request.getStatus()) || request.getPdfFileId() == null) {
@@ -189,11 +190,11 @@ public class HrCertificateServiceImpl implements HrCertificateService {
                     "证明尚未生成 PDF，当前状态：" + request.getStatus());
         }
         byte[] bytes = fileStorage.load(request.getPdfFileId());
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("fileName", "certificate-" + request.getRequestNo() + ".pdf");
-        result.put("contentType", "application/pdf");
-        result.put("bytes", bytes);
-        result.put("requestNo", request.getRequestNo());
+        HrFileDownload result = new HrFileDownload();
+        result.setFileName("certificate-" + request.getRequestNo() + ".pdf");
+        result.setContentType("application/pdf");
+        result.setBytes(bytes);
+        result.setBusinessNo(request.getRequestNo());
         return result;
     }
 

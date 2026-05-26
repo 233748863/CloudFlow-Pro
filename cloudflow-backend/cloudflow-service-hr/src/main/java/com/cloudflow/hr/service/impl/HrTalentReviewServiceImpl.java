@@ -4,15 +4,25 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentCalibrationSessionDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentParticipantDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentReviewDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentReviewQueryDTO;
 import com.cloudflow.hr.domain.entity.HrPerformanceObjective;
 import com.cloudflow.hr.domain.entity.HrPerformanceResult;
 import com.cloudflow.hr.domain.entity.HrTalentCalibrationSession;
 import com.cloudflow.hr.domain.entity.HrTalentReview;
 import com.cloudflow.hr.domain.entity.HrTalentReviewParticipant;
+import com.cloudflow.hr.domain.vo.talent.HrTalentCalibrationSessionVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentParticipantVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentReviewListVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentReviewVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrPerformanceObjectiveMapper;
 import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
@@ -21,7 +31,6 @@ import com.cloudflow.hr.mapper.HrTalentReviewMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewParticipantMapper;
 import com.cloudflow.hr.service.HrTalentReviewService;
 import com.cloudflow.hr.service.HrTypedCrudService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,7 +53,6 @@ import java.util.TreeMap;
 public class HrTalentReviewServiceImpl implements HrTalentReviewService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
-    private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     private final HrTalentReviewMapper reviewMapper;
     private final HrTalentReviewParticipantMapper participantMapper;
@@ -60,8 +68,8 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createReview(Map<String, Object> payload) {
-        HrTalentReview review = objectMapper.convertValue(payload, HrTalentReview.class);
+    public Long createReview(HrTalentReviewDTO dto) {
+        HrTalentReview review = objectMapper.convertValue(dto, HrTalentReview.class);
         review.setTenantId(currentTenantId());
         review.setStatus(StringUtils.hasText(review.getStatus()) ? review.getStatus() : "DRAFT");
         review.setDeleted(0);
@@ -76,18 +84,23 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateReview(Long reviewId, Map<String, Object> payload) {
-        crudService.updateProperties(HrTalentReview.class, reviewId, payload);
+    public void updateReview(Long reviewId, HrTalentReviewDTO dto) {
+        crudService.updateProperties(HrTalentReview.class, reviewId, MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> page(Map<String, Object> query) {
-        return crudService.page(HrTalentReview.class, query);
+    public PageResult<HrTalentReviewListVO> page(HrTalentReviewQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrTalentReview.class, MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrTalentReviewListVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> getReview(Long reviewId) {
-        return crudService.get(HrTalentReview.class, reviewId);
+    public HrTalentReviewVO getReview(Long reviewId) {
+        Map<String, Object> row = crudService.get(HrTalentReview.class, reviewId);
+        if (row.isEmpty()) {
+            return null;
+        }
+        return objectMapper.convertValue(row, HrTalentReviewVO.class);
     }
 
     @Override
@@ -152,7 +165,7 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void upsertParticipant(Long reviewId, Long employeeId, Map<String, Object> payload) {
+    public void upsertParticipant(Long reviewId, Long employeeId, HrTalentParticipantDTO dto) {
         QueryWrapper<HrTalentReviewParticipant> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("review_id", reviewId).eq("employee_id", employeeId).eq("deleted", 0);
         HrTalentReviewParticipant existing = participantMapper.selectOne(qw);
@@ -163,13 +176,13 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
             existing.setEmployeeId(employeeId);
             existing.setDeleted(0);
             existing.setCreateBy(currentUserName());
-            applyParticipantPayload(existing, payload);
+            applyParticipantPayload(existing, dto);
             existing.setGridCell(computeGridCell(existing.getPerformanceBand(), existing.getPotentialBand()));
             existing.setUpdateBy(currentUserName());
             participantMapper.insert(existing);
             return;
         }
-        applyParticipantPayload(existing, payload);
+        applyParticipantPayload(existing, dto);
         existing.setGridCell(computeGridCell(existing.getPerformanceBand(), existing.getPotentialBand()));
         existing.setDecidedBy(UserContext.getUserId());
         existing.setDecidedAt(LocalDateTime.now());
@@ -242,11 +255,11 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
     }
 
     @Override
-    public Map<Integer, List<Map<String, Object>>> loadNineBox(Long reviewId) {
+    public Map<Integer, List<HrTalentParticipantVO>> loadNineBox(Long reviewId) {
         QueryWrapper<HrTalentReviewParticipant> qw = new QueryWrapper<>();
         qw.eq("review_id", reviewId).eq("tenant_id", currentTenantId()).eq("deleted", 0);
         List<HrTalentReviewParticipant> participants = participantMapper.selectList(qw);
-        Map<Integer, List<Map<String, Object>>> result = new TreeMap<>();
+        Map<Integer, List<HrTalentParticipantVO>> result = new TreeMap<>();
         for (int i = 1; i <= 9; i++) {
             result.put(i, new ArrayList<>());
         }
@@ -255,15 +268,15 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
             if (cell == null || cell < 1 || cell > 9) {
                 continue;
             }
-            result.get(cell).add(objectMapper.convertValue(p, MAP_TYPE));
+            result.get(cell).add(objectMapper.convertValue(p, HrTalentParticipantVO.class));
         }
         return result;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createCalibrationSession(Long reviewId, Map<String, Object> payload) {
-        HrTalentCalibrationSession session = objectMapper.convertValue(payload, HrTalentCalibrationSession.class);
+    public Long createCalibrationSession(Long reviewId, HrTalentCalibrationSessionDTO dto) {
+        HrTalentCalibrationSession session = objectMapper.convertValue(dto, HrTalentCalibrationSession.class);
         session.setTenantId(currentTenantId());
         session.setReviewId(reviewId);
         session.setStatus(StringUtils.hasText(session.getStatus()) ? session.getStatus() : "PLANNED");
@@ -278,40 +291,40 @@ public class HrTalentReviewServiceImpl implements HrTalentReviewService {
     }
 
     @Override
-    public Map<String, Object> listCalibrationSessions(Long reviewId) {
+    public PageResult<HrTalentCalibrationSessionVO> listCalibrationSessions(Long reviewId) {
         Map<String, Object> q = new LinkedHashMap<>();
         q.put("reviewId", reviewId);
-        return crudService.page(HrTalentCalibrationSession.class, q);
+        Map<String, Object> raw = crudService.page(HrTalentCalibrationSession.class, q);
+        return MapConverters.toPageResult(raw, HrTalentCalibrationSessionVO.class, objectMapper);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateCalibrationSession(Long sessionId, Map<String, Object> payload) {
-        crudService.updateProperties(HrTalentCalibrationSession.class, sessionId, payload);
+    public void updateCalibrationSession(Long sessionId, HrTalentCalibrationSessionDTO dto) {
+        crudService.updateProperties(HrTalentCalibrationSession.class, sessionId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
-    private void applyParticipantPayload(HrTalentReviewParticipant target, Map<String, Object> payload) {
-        if (payload.containsKey("performanceScore")) {
-            Object v = payload.get("performanceScore");
-            target.setPerformanceScore(v == null ? null : new BigDecimal(v.toString()));
+    private void applyParticipantPayload(HrTalentReviewParticipant target, HrTalentParticipantDTO dto) {
+        if (dto.getPerformanceScore() != null) {
+            target.setPerformanceScore(dto.getPerformanceScore());
             target.setPerformanceBand(performanceBand(target.getPerformanceScore()));
         }
-        if (payload.containsKey("performanceBand")) {
-            target.setPerformanceBand((String) payload.get("performanceBand"));
+        if (StringUtils.hasText(dto.getPerformanceBand())) {
+            target.setPerformanceBand(dto.getPerformanceBand());
         }
-        if (payload.containsKey("potentialScore")) {
-            Object v = payload.get("potentialScore");
-            target.setPotentialScore(v == null ? null : Integer.valueOf(v.toString()));
+        if (dto.getPotentialScore() != null) {
+            target.setPotentialScore(dto.getPotentialScore());
             target.setPotentialBand(potentialBand(target.getPotentialScore()));
         }
-        if (payload.containsKey("potentialBand")) {
-            target.setPotentialBand((String) payload.get("potentialBand"));
+        if (StringUtils.hasText(dto.getPotentialBand())) {
+            target.setPotentialBand(dto.getPotentialBand());
         }
-        if (payload.containsKey("calibrationNotes")) {
-            target.setCalibrationNotes((String) payload.get("calibrationNotes"));
+        if (dto.getCalibrationNotes() != null) {
+            target.setCalibrationNotes(dto.getCalibrationNotes());
         }
-        if (payload.containsKey("developActionSummary")) {
-            target.setDevelopActionSummary((String) payload.get("developActionSummary"));
+        if (dto.getDevelopActionSummary() != null) {
+            target.setDevelopActionSummary(dto.getDevelopActionSummary());
         }
     }
 

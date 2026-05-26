@@ -20,6 +20,14 @@ import com.cloudflow.hr.domain.entity.HrLeaveType;
 import com.cloudflow.hr.domain.entity.HrScheduleAssignment;
 import com.cloudflow.hr.domain.entity.HrShift;
 import com.cloudflow.hr.domain.entity.HrTimeRequest;
+import com.cloudflow.hr.domain.vo.attendance.HrAttendanceMonthlyVO;
+import com.cloudflow.hr.domain.vo.attendance.HrAttendanceRecordVO;
+import com.cloudflow.hr.domain.vo.attendance.HrAttendanceRuleVO;
+import com.cloudflow.hr.domain.vo.attendance.HrLeaveQuotaVO;
+import com.cloudflow.hr.domain.vo.attendance.HrLeaveTypeVO;
+import com.cloudflow.hr.domain.vo.attendance.HrScheduleAssignmentVO;
+import com.cloudflow.hr.domain.vo.attendance.HrShiftVO;
+import com.cloudflow.hr.domain.vo.attendance.HrTimeRequestVO;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +42,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/attendance")
 @RequiredArgsConstructor
@@ -44,8 +54,10 @@ class HrShiftController {
 
     @GetMapping("/shifts")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listShifts(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrShift.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrShiftVO>> listShifts(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrShift.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrShiftVO.class, objectMapper));
     }
 
     @SysLog("新增HR班次")
@@ -82,8 +94,10 @@ class HrAttendanceRuleController {
 
     @GetMapping("/rules")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listRules(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrAttendanceRule.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrAttendanceRuleVO>> listRules(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrAttendanceRule.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrAttendanceRuleVO.class, objectMapper));
     }
 
     @SysLog("新增HR考勤规则")
@@ -120,8 +134,10 @@ class HrScheduleAssignmentController {
 
     @GetMapping("/schedules")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listSchedules(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrScheduleAssignment.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrScheduleAssignmentVO>> listSchedules(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrScheduleAssignment.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrScheduleAssignmentVO.class, objectMapper));
     }
 
     @SysLog("新增HR排班")
@@ -158,8 +174,10 @@ class HrAttendanceRecordController {
 
     @GetMapping("/records")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listRecords(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrAttendanceRecord.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrAttendanceRecordVO>> listRecords(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrAttendanceRecord.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrAttendanceRecordVO.class, objectMapper));
     }
 
     @SysLog("新增HR考勤记录")
@@ -180,8 +198,10 @@ class HrAttendanceMonthlyController {
 
     @GetMapping("/monthly")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listMonthly(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrAttendanceMonthly.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrAttendanceMonthlyVO>> listMonthly(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrAttendanceMonthly.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrAttendanceMonthlyVO.class, objectMapper));
     }
 }
 
@@ -195,8 +215,10 @@ class HrLeaveTypeController {
 
     @GetMapping("/leave-types")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listLeaveTypes(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrLeaveType.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrLeaveTypeVO>> listLeaveTypes(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrLeaveType.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrLeaveTypeVO.class, objectMapper));
     }
 
     @SysLog("新增HR假期类型")
@@ -217,8 +239,10 @@ class HrLeaveQuotaController {
 
     @GetMapping("/leave-quotas")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listLeaveQuotas(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrLeaveQuota.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrLeaveQuotaVO>> listLeaveQuotas(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrLeaveQuota.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrLeaveQuotaVO.class, objectMapper));
     }
 
     @SysLog("新增HR假期额度")
@@ -247,8 +271,10 @@ class HrTimeRequestController {
 
     @GetMapping("/time-requests")
     @SaCheckPermission("hr:attendance:list")
-    public R<?> listTimeRequests(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
-        return R.ok(crudService.list(HrTimeRequest.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrTimeRequestVO>> listTimeRequests(@Validated @ModelAttribute HrAttendanceCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrTimeRequest.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrTimeRequestVO.class, objectMapper));
     }
 
     @SysLog("新增HR时间申请")

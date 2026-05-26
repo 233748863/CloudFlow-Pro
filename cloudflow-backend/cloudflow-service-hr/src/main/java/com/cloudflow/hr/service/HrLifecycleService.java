@@ -1,13 +1,18 @@
 package com.cloudflow.hr.service;
 
-import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.hr.domain.dto.HrLifecycleApplicationPayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleStatusChangePayload;
 import com.cloudflow.hr.domain.dto.HrLifecycleTaskPayload;
+import com.cloudflow.hr.domain.dto.lifecycle.HrLifecycleCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrEmployee;
 import com.cloudflow.hr.domain.entity.HrLifecycleApplication;
 import com.cloudflow.hr.domain.entity.HrLifecycleDetail;
 import com.cloudflow.hr.domain.entity.HrLifecycleTask;
+import com.cloudflow.hr.domain.vo.lifecycle.HrLifecycleApplicationVO;
+import com.cloudflow.hr.domain.vo.lifecycle.HrLifecycleDetailVO;
+import com.cloudflow.hr.domain.vo.lifecycle.HrLifecycleTaskVO;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -27,9 +32,29 @@ public class HrLifecycleService {
     private final HrTypedCrudService crudService;
     private final HrViewSupport viewSupport;
     private final HrEventPublisher hrEventPublisher;
+    private final ObjectMapper objectMapper;
 
-    public List<Map<String, Object>> listApplications(Map<String, Object> query) {
-        return crudService.list(HrLifecycleApplication.class, query).stream().map(this::enrichLifecycleApplication).toList();
+    public List<HrLifecycleApplicationVO> listApplications(HrLifecycleCommonQueryDTO query) {
+        Map<String, Object> raw = MapConverters.toServiceQuery(query, objectMapper);
+        return crudService.list(HrLifecycleApplication.class, raw).stream()
+                .map(this::enrichLifecycleApplication)
+                .map(row -> objectMapper.convertValue(row, HrLifecycleApplicationVO.class))
+                .toList();
+    }
+
+    /**
+     * 按候选人 + 类型查询首条生命周期申请 ID（HR 招聘 Offer → 入职转换内部使用）。
+     */
+    public Long findApplicationIdByCandidate(Long candidateId, String type) {
+        if (candidateId == null) {
+            return null;
+        }
+        List<Map<String, Object>> existed = crudService.list(HrLifecycleApplication.class,
+                Map.of("type", type, "candidateId", candidateId));
+        if (existed.isEmpty()) {
+            return null;
+        }
+        return viewSupport.toLong(existed.get(0).get("id"));
     }
 
     public Long createApplication(HrLifecycleApplicationPayload payload) {
@@ -66,12 +91,16 @@ public class HrLifecycleService {
         maybePublishEmployeeLeftEvent(id);
     }
 
-    public List<Map<String, Object>> listDetails(Long applicationId) {
-        return crudService.list(HrLifecycleDetail.class, Map.of("applicationId", applicationId));
+    public List<HrLifecycleDetailVO> listDetails(Long applicationId) {
+        return crudService.list(HrLifecycleDetail.class, Map.of("applicationId", applicationId)).stream()
+                .map(row -> objectMapper.convertValue(row, HrLifecycleDetailVO.class))
+                .toList();
     }
 
-    public List<Map<String, Object>> listTasks(Long applicationId) {
-        return crudService.list(HrLifecycleTask.class, Map.of("applicationId", applicationId));
+    public List<HrLifecycleTaskVO> listTasks(Long applicationId) {
+        return crudService.list(HrLifecycleTask.class, Map.of("applicationId", applicationId)).stream()
+                .map(row -> objectMapper.convertValue(row, HrLifecycleTaskVO.class))
+                .toList();
     }
 
     public void completeTask(Long id, HrLifecycleTaskPayload payload) {
@@ -84,7 +113,7 @@ public class HrLifecycleService {
         crudService.updateProperties(HrLifecycleTask.class, id, updates);
     }
 
-    public Map<String, Object> enrichLifecycleApplication(Map<String, Object> row) {
+    private Map<String, Object> enrichLifecycleApplication(Map<String, Object> row) {
         if (row.isEmpty()) {
             return row;
         }

@@ -1,7 +1,8 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.hr.domain.vo.recruitment.HrChannelStatVO;
+
 import java.util.List;
-import java.util.Map;
 
 /**
  * HR-P0-3 招聘渠道服务。
@@ -15,5 +16,5 @@ public interface HrRecruitmentChannelService {
      * - 入职率 = 入职数 / 候选人量
      * - 单位招聘成本 = cost_amount / 入职数（入职数=0 时为 cost_amount）
      */
-    List<Map<String, Object>> channelStats();
+    List<HrChannelStatVO> channelStats();
 }

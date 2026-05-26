@@ -1,8 +1,8 @@
 package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
-import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestQueryDTO;
@@ -11,12 +11,17 @@ import com.cloudflow.hr.domain.dto.benefit.HrMallItemQueryDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrMallOrderPlaceDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrMallOrderQueryDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrPointTransactionQueryDTO;
+import com.cloudflow.hr.domain.vo.benefit.HrBenefitMineVO;
+import com.cloudflow.hr.domain.vo.benefit.HrBenefitRequestVO;
+import com.cloudflow.hr.domain.vo.benefit.HrMallItemVO;
+import com.cloudflow.hr.domain.vo.benefit.HrMallOrderVO;
+import com.cloudflow.hr.domain.vo.benefit.HrPointAccountVO;
+import com.cloudflow.hr.domain.vo.benefit.HrPointTransactionVO;
 import com.cloudflow.hr.service.HrBenefitMineService;
 import com.cloudflow.hr.service.HrBenefitRequestService;
 import com.cloudflow.hr.service.HrMallItemService;
 import com.cloudflow.hr.service.HrMallOrderService;
 import com.cloudflow.hr.service.HrPointAccountService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -44,7 +49,7 @@ class HrBenefitMineController {
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:mine")
-    public R<?> mine() {
+    public R<HrBenefitMineVO> mine() {
         return R.ok(benefitMineService.loadMineSummary());
     }
 }
@@ -55,38 +60,37 @@ class HrBenefitMineController {
 class HrBenefitRequestController {
 
     private final HrBenefitRequestService requestService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:request:list")
-    public R<?> page(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
-        return R.ok(requestService.page(MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrBenefitRequestVO>> page(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
+        return R.ok(requestService.page(query));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:benefit:request:list")
-    public R<?> get(@PathVariable Long id) {
+    public R<HrBenefitRequestVO> get(@PathVariable Long id) {
         return R.ok(requestService.get(id));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:mine")
-    public R<?> mine(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
-        return R.ok(requestService.listMine(MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrBenefitRequestVO>> mine(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
+        return R.ok(requestService.listMine(query));
     }
 
     @SysLog("新增福利申领")
     @PostMapping
     @SaCheckPermission("hr:benefit:request:add")
     public R<Long> create(@Validated @RequestBody HrBenefitRequestDTO dto) {
-        return R.ok(requestService.createRequest(MapConverters.toMap(dto, objectMapper)));
+        return R.ok(requestService.createRequest(dto));
     }
 
     @SysLog("修改福利申领")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:benefit:request:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrBenefitRequestDTO dto) {
-        requestService.updateRequest(id, MapConverters.toMap(dto, objectMapper));
+        requestService.updateRequest(id, dto);
         return R.ok();
     }
 
@@ -113,26 +117,24 @@ class HrBenefitRequestController {
 class HrPointAccountController {
 
     private final HrPointAccountService pointAccountService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:point:view")
-    public R<?> mine() {
+    public R<HrPointAccountVO> mine() {
         return R.ok(pointAccountService.getMyAccount());
     }
 
     @GetMapping("/employees/{employeeId}")
     @SaCheckPermission("hr:benefit:point:view")
-    public R<?> getByEmployee(@PathVariable Long employeeId) {
+    public R<HrPointAccountVO> getByEmployee(@PathVariable Long employeeId) {
         return R.ok(pointAccountService.getEmployeeAccount(employeeId));
     }
 
     @GetMapping("/{accountId}/transactions")
     @SaCheckPermission("hr:benefit:point:view")
-    public R<?> transactions(@PathVariable Long accountId,
-                             @Validated @ModelAttribute HrPointTransactionQueryDTO query) {
-        return R.ok(pointAccountService.listTransactions(accountId,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrPointTransactionVO>> transactions(@PathVariable Long accountId,
+                                                            @Validated @ModelAttribute HrPointTransactionQueryDTO query) {
+        return R.ok(pointAccountService.listTransactions(accountId, query));
     }
 
     @SysLog("积分手动调整")
@@ -152,17 +154,16 @@ class HrPointAccountController {
 class HrMallItemController {
 
     private final HrMallItemService mallItemService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:mall:browse")
-    public R<?> page(@Validated @ModelAttribute HrMallItemQueryDTO query) {
-        return R.ok(mallItemService.page(MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrMallItemVO>> page(@Validated @ModelAttribute HrMallItemQueryDTO query) {
+        return R.ok(mallItemService.page(query));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:benefit:mall:browse")
-    public R<?> get(@PathVariable Long id) {
+    public R<HrMallItemVO> get(@PathVariable Long id) {
         return R.ok(mallItemService.get(id));
     }
 
@@ -170,14 +171,14 @@ class HrMallItemController {
     @PostMapping
     @SaCheckPermission("hr:benefit:mall:item:manage")
     public R<Long> create(@Validated @RequestBody HrMallItemDTO dto) {
-        return R.ok(mallItemService.createItem(MapConverters.toMap(dto, objectMapper)));
+        return R.ok(mallItemService.createItem(dto));
     }
 
     @SysLog("修改积分商品")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:benefit:mall:item:manage")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrMallItemDTO dto) {
-        mallItemService.updateItem(id, MapConverters.toMap(dto, objectMapper));
+        mallItemService.updateItem(id, dto);
         return R.ok();
     }
 
@@ -204,23 +205,22 @@ class HrMallItemController {
 class HrMallOrderController {
 
     private final HrMallOrderService mallOrderService;
-    private final ObjectMapper objectMapper;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:order:list")
-    public R<?> page(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
-        return R.ok(mallOrderService.page(MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrMallOrderVO>> page(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
+        return R.ok(mallOrderService.page(query));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:order:my")
-    public R<?> mine(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
-        return R.ok(mallOrderService.listMine(MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrMallOrderVO>> mine(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
+        return R.ok(mallOrderService.listMine(query));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:benefit:order:list")
-    public R<?> get(@PathVariable Long id) {
+    public R<HrMallOrderVO> get(@PathVariable Long id) {
         return R.ok(mallOrderService.get(id));
     }
 
@@ -228,7 +228,7 @@ class HrMallOrderController {
     @PostMapping
     @SaCheckPermission("hr:benefit:order:place")
     public R<Long> placeOrder(@Validated @RequestBody HrMallOrderPlaceDTO dto) {
-        return R.ok(mallOrderService.placeOrder(MapConverters.toMap(dto, objectMapper)));
+        return R.ok(mallOrderService.placeOrder(dto));
     }
 
     @SysLog("订单发货")

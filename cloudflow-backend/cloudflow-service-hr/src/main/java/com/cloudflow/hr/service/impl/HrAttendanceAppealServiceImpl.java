@@ -3,6 +3,7 @@ package com.cloudflow.hr.service.impl;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrAttendanceAppealPayload;
 import com.cloudflow.hr.domain.entity.HrAttendanceAppeal;
+import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
 import com.cloudflow.hr.mapper.HrAttendanceAppealMapper;
 import com.cloudflow.hr.mapper.HrAttendanceRecordMapper;
 import com.cloudflow.hr.mapper.HrAuditLogMapper;
@@ -117,8 +118,12 @@ public class HrAttendanceAppealServiceImpl implements HrAttendanceAppealService 
     }
 
     @Override
-    public Map<String, Object> getDetail(Long id) {
-        return crudService.get(HrAttendanceAppeal.class, id);
+    public HrAttendanceAppealVO getDetail(Long id) {
+        Map<String, Object> row = crudService.get(HrAttendanceAppeal.class, id);
+        if (row == null || row.isEmpty()) {
+            return null;
+        }
+        return objectMapper.convertValue(row, HrAttendanceAppealVO.class);
     }
 
     private void rewriteAttendanceRecord(HrAttendanceAppeal appeal) {

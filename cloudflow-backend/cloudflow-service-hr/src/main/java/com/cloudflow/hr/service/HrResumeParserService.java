@@ -1,9 +1,9 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.hr.domain.dto.HrResumeParsedFieldsPayload;
+import com.cloudflow.hr.domain.vo.recruitment.HrResumeParsedFieldVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * HR-P1-1 简历解析服务。
@@ -17,7 +17,7 @@ public interface HrResumeParserService {
     Long parseResume(Long candidateId, String resumeUrl, String rawText);
 
     /** 列出某候选人的解析结果。 */
-    List<Map<String, Object>> listParsed(Long candidateId);
+    List<HrResumeParsedFieldVO> listParsed(Long candidateId);
 
     /** HR 复核确认 → 回填到 hr_candidate。 */
     void confirmParsed(Long parsedId);

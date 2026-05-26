@@ -2,9 +2,10 @@ package com.cloudflow.hr.service;
 
 import com.cloudflow.hr.domain.dto.HrPerfDistributionCheckPayload;
 import com.cloudflow.hr.domain.dto.HrPerfDistributionRulePayload;
+import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionRuleVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionValidateVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * HR-P0-2 绩效强制分布服务。
@@ -12,7 +13,7 @@ import java.util.Map;
 public interface HrPerformanceDistributionService {
 
     /** 列出规则(全局规则 + 指定目标规则)。 */
-    List<Map<String, Object>> listRules(Long objectiveId);
+    List<HrPerfDistributionRuleVO> listRules(Long objectiveId);
 
     /** 新增/更新规则。 */
     Long saveRule(HrPerfDistributionRulePayload payload);
@@ -25,5 +26,5 @@ public interface HrPerformanceDistributionService {
      * 返回字段：valid / total / countsByGrade / quotaByGrade / violations。
      * BLOCK 模式下 valid=false 表示拦截；WARN 模式仅给出 violations 提醒。
      */
-    Map<String, Object> validate(HrPerfDistributionCheckPayload payload);
+    HrPerfDistributionValidateVO validate(HrPerfDistributionCheckPayload payload);
 }

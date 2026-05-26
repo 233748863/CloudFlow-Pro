@@ -3,11 +3,14 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorInvitePayload;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorResponsePayload;
 import com.cloudflow.hr.domain.entity.HrPerfEvaluator;
 import com.cloudflow.hr.domain.entity.HrPerfEvaluatorResponse;
 import com.cloudflow.hr.domain.entity.HrPerformanceResult;
+import com.cloudflow.hr.domain.vo.performance.Hr360AggregateVO;
+import com.cloudflow.hr.domain.vo.performance.Hr360EvaluatorRowVO;
 import com.cloudflow.hr.mapper.HrAuditLogMapper;
 import com.cloudflow.hr.mapper.HrPerfEvaluatorMapper;
 import com.cloudflow.hr.mapper.HrPerfEvaluatorResponseMapper;
@@ -180,18 +183,20 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
     }
 
     @Override
-    public List<Map<String, Object>> listEvaluators(Long objectiveId, Long evaluateeId) {
-        return evaluatorMapper.selectEvaluatorsWithResponse(TENANT_ID, objectiveId, evaluateeId);
+    public List<Hr360EvaluatorRowVO> listEvaluators(Long objectiveId, Long evaluateeId) {
+        List<Map<String, Object>> rows = evaluatorMapper.selectEvaluatorsWithResponse(TENANT_ID, objectiveId, evaluateeId);
+        return MapConverters.toVOList(rows, Hr360EvaluatorRowVO.class, objectMapper);
     }
 
     @Override
-    public List<Map<String, Object>> listPendingForEvaluator(Long evaluatorId) {
-        return evaluatorMapper.selectPendingForEvaluator(TENANT_ID, evaluatorId);
+    public List<Hr360EvaluatorRowVO> listPendingForEvaluator(Long evaluatorId) {
+        List<Map<String, Object>> rows = evaluatorMapper.selectPendingForEvaluator(TENANT_ID, evaluatorId);
+        return MapConverters.toVOList(rows, Hr360EvaluatorRowVO.class, objectMapper);
     }
 
     @Override
     @Transactional
-    public Map<String, Object> aggregate(Long objectiveId, Long evaluateeId) {
+    public Hr360AggregateVO aggregate(Long objectiveId, Long evaluateeId) {
         List<Map<String, Object>> rows = evaluatorMapper.selectAggregationRows(TENANT_ID, objectiveId, evaluateeId);
         if (rows.isEmpty()) {
             throw new IllegalStateException("尚无任何评估人提交打分，无法聚合");
@@ -267,7 +272,7 @@ public class HrPerformance360ServiceImpl implements HrPerformance360Service {
 
         writeAuditLog("hr_performance_result", resultId, "AGGREGATE_360",
                 Map.of(), result);
-        return result;
+        return objectMapper.convertValue(result, Hr360AggregateVO.class);
     }
 
     // ============= helpers =============

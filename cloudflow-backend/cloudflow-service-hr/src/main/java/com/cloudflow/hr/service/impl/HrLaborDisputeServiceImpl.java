@@ -3,12 +3,19 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeEvidenceDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeDTO;
+import com.cloudflow.hr.domain.dto.dispute.HrLaborDisputeQueryDTO;
 import com.cloudflow.hr.domain.entity.HrDisputeEvidence;
 import com.cloudflow.hr.domain.entity.HrLaborDispute;
+import com.cloudflow.hr.domain.vo.dispute.HrDisputeEvidenceVO;
+import com.cloudflow.hr.domain.vo.dispute.HrLaborDisputeVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrDisputeEvidenceMapper;
 import com.cloudflow.hr.mapper.HrLaborDisputeMapper;
@@ -47,8 +54,8 @@ public class HrLaborDisputeServiceImpl implements HrLaborDisputeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long registerDispute(Map<String, Object> payload) {
-        HrLaborDispute dispute = objectMapper.convertValue(payload, HrLaborDispute.class);
+    public Long registerDispute(HrLaborDisputeDTO dto) {
+        HrLaborDispute dispute = objectMapper.convertValue(dto, HrLaborDispute.class);
         dispute.setTenantId(currentTenantId());
         if (!StringUtils.hasText(dispute.getDisputeNo())) {
             dispute.setDisputeNo("LD-" + System.currentTimeMillis());
@@ -68,18 +75,25 @@ public class HrLaborDisputeServiceImpl implements HrLaborDisputeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateDispute(Long disputeId, Map<String, Object> payload) {
-        crudService.updateProperties(HrLaborDispute.class, disputeId, payload);
+    public void updateDispute(Long disputeId, HrLaborDisputeDTO dto) {
+        crudService.updateProperties(HrLaborDispute.class, disputeId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> page(Map<String, Object> query) {
-        return crudService.page(HrLaborDispute.class, query);
+    public PageResult<HrLaborDisputeVO> page(HrLaborDisputeQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrLaborDispute.class,
+                MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrLaborDisputeVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> get(Long disputeId) {
-        return crudService.get(HrLaborDispute.class, disputeId);
+    public HrLaborDisputeVO get(Long disputeId) {
+        Map<String, Object> row = crudService.get(HrLaborDispute.class, disputeId);
+        if (row.isEmpty()) {
+            return null;
+        }
+        return objectMapper.convertValue(row, HrLaborDisputeVO.class);
     }
 
     @Override
@@ -140,11 +154,11 @@ public class HrLaborDisputeServiceImpl implements HrLaborDisputeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long attachEvidence(Long disputeId, Map<String, Object> payload) {
+    public Long attachEvidence(Long disputeId, HrDisputeEvidenceDTO dto) {
         if (disputeMapper.selectById(disputeId) == null) {
             throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
         }
-        HrDisputeEvidence evidence = objectMapper.convertValue(payload, HrDisputeEvidence.class);
+        HrDisputeEvidence evidence = objectMapper.convertValue(dto, HrDisputeEvidence.class);
         evidence.setDisputeId(disputeId);
         evidence.setTenantId(currentTenantId());
         if (evidence.getUploadedAt() == null) {
@@ -161,15 +175,15 @@ public class HrLaborDisputeServiceImpl implements HrLaborDisputeService {
     }
 
     @Override
-    public Map<String, Object> listEvidence(Long disputeId) {
+    public PageResult<HrDisputeEvidenceVO> listEvidence(Long disputeId) {
         QueryWrapper<HrDisputeEvidence> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("dispute_id", disputeId).eq("deleted", 0)
                 .orderByDesc("create_time");
         List<HrDisputeEvidence> rows = evidenceMapper.selectList(qw);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("rows", rows == null ? new LinkedList<>() : rows);
-        result.put("total", rows == null ? 0 : rows.size());
-        return result;
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("rows", rows == null ? new LinkedList<>() : rows);
+        raw.put("total", rows == null ? 0 : rows.size());
+        return MapConverters.toPageResult(raw, HrDisputeEvidenceVO.class, objectMapper);
     }
 
     private long currentTenantId() {

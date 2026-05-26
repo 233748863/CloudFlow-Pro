@@ -3,23 +3,29 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallOrderPlaceDTO;
+import com.cloudflow.hr.domain.dto.benefit.HrMallOrderQueryDTO;
 import com.cloudflow.hr.domain.entity.HrMallItem;
 import com.cloudflow.hr.domain.entity.HrMallOrder;
 import com.cloudflow.hr.domain.entity.HrMallOrderItem;
 import com.cloudflow.hr.domain.entity.HrPointAccount;
+import com.cloudflow.hr.domain.vo.benefit.HrMallOrderItemVO;
+import com.cloudflow.hr.domain.vo.benefit.HrMallOrderVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrMallItemMapper;
 import com.cloudflow.hr.mapper.HrMallOrderItemMapper;
 import com.cloudflow.hr.mapper.HrMallOrderMapper;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.hr.service.HrMallItemService;
 import com.cloudflow.hr.service.HrMallOrderService;
 import com.cloudflow.hr.service.HrPointAccountService;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -57,53 +63,27 @@ public class HrMallOrderServiceImpl implements HrMallOrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @SuppressWarnings("unchecked")
-    public Long placeOrder(Map<String, Object> payload) {
-        if (payload == null) {
+    public Long placeOrder(HrMallOrderPlaceDTO dto) {
+        if (dto == null) {
             throw new HrBusinessException("INVALID_PAYLOAD", "下单参数不能为空");
         }
-        Long employeeId = payload.get("employeeId") == null
-                ? UserContext.getUserId()
-                : Long.valueOf(payload.get("employeeId").toString());
+        Long employeeId = UserContext.getUserId();
         if (employeeId == null) {
             throw new HrBusinessException("UNAUTHORIZED", "未登录用户无法下单");
         }
-        List<Map<String, Object>> items = (List<Map<String, Object>>) payload.get("items");
-        if (items == null || items.isEmpty()) {
-            throw new HrBusinessException("EMPTY_ORDER", "订单明细不能为空");
+        Integer quantity = dto.getQuantity();
+        if (quantity == null || quantity <= 0) {
+            throw new HrBusinessException("INVALID_QUANTITY", "商品数量必须为正数");
         }
 
-        int totalPoints = 0;
-        List<HrMallOrderItem> orderItems = new ArrayList<>();
-        List<HrMallItem> snapshots = new ArrayList<>();
-        for (Map<String, Object> entry : items) {
-            Long itemId = Long.valueOf(entry.get("itemId").toString());
-            Integer quantity = Integer.valueOf(entry.get("quantity").toString());
-            if (quantity == null || quantity <= 0) {
-                throw new HrBusinessException("INVALID_QUANTITY", "商品数量必须为正数");
-            }
-            HrMallItem item = itemMapper.selectById(itemId);
-            if (item == null || Integer.valueOf(1).equals(item.getDeleted())) {
-                throw new HrBusinessException("MALL_ITEM_NOT_FOUND", "商品不存在：" + itemId);
-            }
-            if (!"ON_SHELF".equals(item.getStatus())) {
-                throw new HrBusinessException("MALL_ITEM_OFF_SHELF", "商品已下架：" + item.getItemName());
-            }
-            int subtotal = item.getPointPrice() * quantity;
-            totalPoints += subtotal;
-            snapshots.add(item);
-            HrMallOrderItem oi = new HrMallOrderItem();
-            oi.setTenantId(currentTenantId());
-            oi.setItemId(itemId);
-            oi.setItemName(item.getItemName());
-            oi.setPointPrice(item.getPointPrice());
-            oi.setQuantity(quantity);
-            oi.setSubtotal(subtotal);
-            oi.setDeleted(0);
-            oi.setCreateBy(currentUserName());
-            oi.setUpdateBy(currentUserName());
-            orderItems.add(oi);
+        HrMallItem item = itemMapper.selectById(dto.getItemId());
+        if (item == null || Integer.valueOf(1).equals(item.getDeleted())) {
+            throw new HrBusinessException("MALL_ITEM_NOT_FOUND", "商品不存在：" + dto.getItemId());
         }
+        if (!"ON_SHELF".equals(item.getStatus())) {
+            throw new HrBusinessException("MALL_ITEM_OFF_SHELF", "商品已下架：" + item.getItemName());
+        }
+        int totalPoints = item.getPointPrice() * quantity;
 
         HrPointAccount account = pointAccountService.findOrCreateAccount(employeeId);
         HrMallOrder order = new HrMallOrder();
@@ -111,41 +91,48 @@ public class HrMallOrderServiceImpl implements HrMallOrderService {
         order.setOrderNo("MO-" + System.currentTimeMillis() + "-" + employeeId);
         order.setEmployeeId(employeeId);
         order.setTotalPoints(totalPoints);
-        order.setReceiverName((String) payload.get("receiverName"));
-        order.setReceiverPhone((String) payload.get("receiverPhone"));
-        order.setReceiverAddress((String) payload.get("receiverAddress"));
+        order.setReceiverName(dto.getReceiverName());
+        order.setReceiverPhone(dto.getReceiverPhone());
+        order.setReceiverAddress(dto.getReceiverAddress());
         order.setStatus("PENDING");
-        order.setRemark((String) payload.get("remark"));
+        order.setRemark(dto.getRemark());
         order.setDeleted(0);
         order.setCreateBy(currentUserName());
         order.setUpdateBy(currentUserName());
         orderMapper.insert(order);
 
-        for (int i = 0; i < orderItems.size(); i++) {
-            HrMallOrderItem oi = orderItems.get(i);
-            oi.setOrderId(order.getId());
-            orderItemMapper.insert(oi);
-            mallItemService.deductStock(snapshots.get(i).getId(), oi.getQuantity());
-        }
+        HrMallOrderItem oi = new HrMallOrderItem();
+        oi.setTenantId(currentTenantId());
+        oi.setOrderId(order.getId());
+        oi.setItemId(item.getId());
+        oi.setItemName(item.getItemName());
+        oi.setPointPrice(item.getPointPrice());
+        oi.setQuantity(quantity);
+        oi.setSubtotal(totalPoints);
+        oi.setDeleted(0);
+        oi.setCreateBy(currentUserName());
+        oi.setUpdateBy(currentUserName());
+        orderItemMapper.insert(oi);
+        mallItemService.deductStock(item.getId(), quantity);
 
         pointAccountService.debit(account.getId(), totalPoints, "MALL_ORDER", order.getId(),
                 "积分商城兑换-" + order.getOrderNo());
 
         if (totalPoints >= approvalThreshold) {
-            ProcessStartDTO dto = new ProcessStartDTO();
-            dto.setTenantId(currentTenantId());
-            dto.setProcessDefinitionKey(mallOrderProcessKey);
-            dto.setBusinessType("HR_MALL_ORDER");
-            dto.setBusinessId(order.getId());
-            dto.setBusinessNo(order.getOrderNo());
-            dto.setProcessTitle("积分商城兑换-" + order.getOrderNo());
-            dto.setStartUserId(UserContext.getUserId());
+            ProcessStartDTO processStartDTO = new ProcessStartDTO();
+            processStartDTO.setTenantId(currentTenantId());
+            processStartDTO.setProcessDefinitionKey(mallOrderProcessKey);
+            processStartDTO.setBusinessType("HR_MALL_ORDER");
+            processStartDTO.setBusinessId(order.getId());
+            processStartDTO.setBusinessNo(order.getOrderNo());
+            processStartDTO.setProcessTitle("积分商城兑换-" + order.getOrderNo());
+            processStartDTO.setStartUserId(UserContext.getUserId());
             Map<String, Object> vars = new LinkedHashMap<>();
             vars.put("orderId", order.getId());
             vars.put("totalPoints", totalPoints);
             vars.put("employeeId", employeeId);
-            dto.setVariables(vars);
-            R<String> response = workflowServiceClient.startProcess(dto);
+            processStartDTO.setVariables(vars);
+            R<String> response = workflowServiceClient.startProcess(processStartDTO);
             if (response == null || !response.isSuccess() || !StringUtils.hasText(response.getData())) {
                 String msg = response == null ? "Workflow 服务无响应" : response.getMsg();
                 throw new HrBusinessException("WORKFLOW_START_FAILED", "积分商城订单审批启动失败：" + msg);
@@ -168,32 +155,41 @@ public class HrMallOrderServiceImpl implements HrMallOrderService {
     }
 
     @Override
-    public Map<String, Object> page(Map<String, Object> query) {
-        return crudService.page(HrMallOrder.class, query);
+    public PageResult<HrMallOrderVO> page(HrMallOrderQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrMallOrder.class,
+                MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrMallOrderVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> listMine(Map<String, Object> query) {
-        Map<String, Object> q = new LinkedHashMap<>(query == null ? Map.of() : query);
+    public PageResult<HrMallOrderVO> listMine(HrMallOrderQueryDTO query) {
+        Map<String, Object> q = new LinkedHashMap<>(MapConverters.toServiceQuery(query, objectMapper));
         Long userId = UserContext.getUserId();
         if (userId != null) {
             q.put("employeeId", userId);
         }
-        return crudService.page(HrMallOrder.class, q);
+        Map<String, Object> raw = crudService.page(HrMallOrder.class, q);
+        return MapConverters.toPageResult(raw, HrMallOrderVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> get(Long orderId) {
+    public HrMallOrderVO get(Long orderId) {
         HrMallOrder order = orderMapper.selectById(orderId);
         if (order == null) {
             throw new HrBusinessException("MALL_ORDER_NOT_FOUND", "订单不存在：" + orderId);
         }
-        Map<String, Object> result = objectMapper.convertValue(order,
-                new com.fasterxml.jackson.core.type.TypeReference<LinkedHashMap<String, Object>>() {});
+        HrMallOrderVO vo = objectMapper.convertValue(order, HrMallOrderVO.class);
         QueryWrapper<HrMallOrderItem> qw = new QueryWrapper<>();
         qw.eq("order_id", orderId).eq("deleted", 0);
-        result.put("items", orderItemMapper.selectList(qw));
-        return result;
+        List<HrMallOrderItem> items = orderItemMapper.selectList(qw);
+        List<HrMallOrderItemVO> itemVOs = new ArrayList<>(items == null ? 0 : items.size());
+        if (items != null) {
+            for (HrMallOrderItem oi : items) {
+                itemVOs.add(objectMapper.convertValue(oi, HrMallOrderItemVO.class));
+            }
+        }
+        vo.setItems(itemVOs);
+        return vo;
     }
 
     @Override

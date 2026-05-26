@@ -1,6 +1,7 @@
 package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -17,6 +18,12 @@ import com.cloudflow.hr.domain.entity.HrExamAttempt;
 import com.cloudflow.hr.domain.entity.HrExamPaper;
 import com.cloudflow.hr.domain.entity.HrExamQuestionBank;
 import com.cloudflow.hr.domain.entity.HrTrainingEnrollment;
+import com.cloudflow.hr.domain.vo.training.HrExamAttemptStartVO;
+import com.cloudflow.hr.domain.vo.training.HrExamAttemptSubmitVO;
+import com.cloudflow.hr.domain.vo.training.HrExamAttemptVO;
+import com.cloudflow.hr.domain.vo.training.HrExamPaperVO;
+import com.cloudflow.hr.domain.vo.training.HrExamQuestionBankVO;
+import com.cloudflow.hr.domain.vo.training.HrTrainingEnrollmentVO;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrExamService;
 import com.cloudflow.hr.service.HrTrainingEnrollmentService;
@@ -34,8 +41,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -57,17 +62,20 @@ class HrTrainingEnrollmentController {
 
     @GetMapping
     @SaCheckPermission("hr:training:enroll:list")
-    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(crudService.page(HrTrainingEnrollment.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrTrainingEnrollmentVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrTrainingEnrollment.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrTrainingEnrollmentVO.class, objectMapper));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:enroll:list")
-    public R<?> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+    public R<PageResult<HrTrainingEnrollmentVO>> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(crudService.page(HrTrainingEnrollment.class, normalized));
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrTrainingEnrollment.class, normalized),
+                HrTrainingEnrollmentVO.class, objectMapper));
     }
 
     @SysLog("发起HR培训报名")
@@ -112,15 +120,17 @@ class HrExamQuestionBankController {
 
     @GetMapping
     @SaCheckPermission("hr:training:exam:list")
-    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(crudService.page(HrExamQuestionBank.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrExamQuestionBankVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrExamQuestionBank.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrExamQuestionBankVO.class, objectMapper));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:training:exam:list")
-    public R<Map<String, Object>> get(@PathVariable Long id) {
-        return R.ok(crudService.get(HrExamQuestionBank.class, id));
+    public R<HrExamQuestionBankVO> get(@PathVariable Long id) {
+        return R.ok(MapConverters.toVO(crudService.get(HrExamQuestionBank.class, id),
+                HrExamQuestionBankVO.class, objectMapper));
     }
 
     @SysLog("新增HR考试题目")
@@ -158,15 +168,17 @@ class HrExamPaperController {
 
     @GetMapping
     @SaCheckPermission("hr:training:exam:list")
-    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(crudService.page(HrExamPaper.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrExamPaperVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrExamPaper.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrExamPaperVO.class, objectMapper));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:training:exam:list")
-    public R<Map<String, Object>> get(@PathVariable Long id) {
-        return R.ok(crudService.get(HrExamPaper.class, id));
+    public R<HrExamPaperVO> get(@PathVariable Long id) {
+        return R.ok(MapConverters.toVO(crudService.get(HrExamPaper.class, id),
+                HrExamPaperVO.class, objectMapper));
     }
 
     @SysLog("保存HR考试试卷")
@@ -195,13 +207,11 @@ class HrExamPaperController {
     @SysLog("HR考试开始作答")
     @PostMapping("/{id}/attempts")
     @SaCheckPermission("hr:training:exam:attempt")
-    public R<Map<String, Object>> startAttempt(@PathVariable Long id,
+    public R<HrExamAttemptStartVO> startAttempt(@PathVariable Long id,
                                                 @RequestBody(required = false) HrExamAttemptStartDTO dto) {
         Long sessionId = dto == null ? null : dto.getSessionId();
         Long attemptId = examService.startAttempt(id, sessionId);
-        Map<String, Object> data = new LinkedHashMap<>();
-        data.put("attemptId", attemptId);
-        return R.ok(data);
+        return R.ok(new HrExamAttemptStartVO(attemptId));
     }
 }
 
@@ -217,39 +227,36 @@ class HrExamAttemptController {
 
     @GetMapping
     @SaCheckPermission("hr:training:exam:list")
-    public R<?> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
-        return R.ok(crudService.page(HrExamAttempt.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrExamAttemptVO>> list(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrExamAttempt.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrExamAttemptVO.class, objectMapper));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:exam:attempt")
-    public R<?> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
+    public R<PageResult<HrExamAttemptVO>> mine(@Validated @ModelAttribute HrTrainingCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(crudService.page(HrExamAttempt.class, normalized));
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrExamAttempt.class, normalized),
+                HrExamAttemptVO.class, objectMapper));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:training:exam:list")
-    public R<Map<String, Object>> get(@PathVariable Long id) {
-        return R.ok(crudService.get(HrExamAttempt.class, id));
+    public R<HrExamAttemptVO> get(@PathVariable Long id) {
+        return R.ok(MapConverters.toVO(crudService.get(HrExamAttempt.class, id),
+                HrExamAttemptVO.class, objectMapper));
     }
 
     @SysLog("HR考试提交答卷")
     @PostMapping("/{id}/submit")
     @SaCheckPermission("hr:training:exam:attempt")
-    public R<Map<String, Object>> submit(@PathVariable Long id,
-                                          @Validated @RequestBody(required = false) HrExamAttemptSubmitDTO dto) {
-        List<Map<String, Object>> answers;
-        if (dto == null || dto.getAnswers() == null || dto.getAnswers().isEmpty()) {
-            answers = List.of();
-        } else {
-            answers = new ArrayList<>(dto.getAnswers().size());
-            for (HrExamAnswerDTO ans : dto.getAnswers()) {
-                answers.add(MapConverters.toMap(ans, objectMapper));
-            }
-        }
+    public R<HrExamAttemptSubmitVO> submit(@PathVariable Long id,
+                                            @Validated @RequestBody(required = false) HrExamAttemptSubmitDTO dto) {
+        List<HrExamAnswerDTO> answers = (dto == null || dto.getAnswers() == null)
+                ? List.of() : dto.getAnswers();
         return R.ok(examService.submit(id, answers));
     }
 

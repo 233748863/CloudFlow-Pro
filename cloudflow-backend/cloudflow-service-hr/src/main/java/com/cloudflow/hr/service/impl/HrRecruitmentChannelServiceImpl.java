@@ -2,6 +2,7 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.hr.domain.entity.HrRecruitmentChannel;
+import com.cloudflow.hr.domain.vo.recruitment.HrChannelStatVO;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrRecruitmentChannelMapper;
 import com.cloudflow.hr.service.HrRecruitmentChannelService;
@@ -25,7 +26,7 @@ public class HrRecruitmentChannelServiceImpl implements HrRecruitmentChannelServ
     private final HrCandidateMapper candidateMapper;
 
     @Override
-    public List<Map<String, Object>> channelStats() {
+    public List<HrChannelStatVO> channelStats() {
         List<HrRecruitmentChannel> channels = channelMapper.selectList(
                 new LambdaQueryWrapper<HrRecruitmentChannel>()
                         .eq(HrRecruitmentChannel::getTenantId, TENANT_ID)
@@ -41,35 +42,35 @@ public class HrRecruitmentChannelServiceImpl implements HrRecruitmentChannelServ
             statByChannel.put(channelId, s);
         }
 
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<HrChannelStatVO> result = new ArrayList<>(channels.size());
         for (HrRecruitmentChannel ch : channels) {
-            Map<String, Object> row = new LinkedHashMap<>();
-            row.put("id", ch.getId());
-            row.put("channelCode", ch.getChannelCode());
-            row.put("channelName", ch.getChannelName());
-            row.put("channelType", ch.getChannelType());
-            row.put("status", ch.getStatus());
-            row.put("contractStart", ch.getContractStart());
-            row.put("contractEnd", ch.getContractEnd());
+            HrChannelStatVO vo = new HrChannelStatVO();
+            vo.setId(ch.getId());
+            vo.setChannelCode(ch.getChannelCode());
+            vo.setChannelName(ch.getChannelName());
+            vo.setChannelType(ch.getChannelType());
+            vo.setStatus(ch.getStatus());
+            vo.setContractStart(ch.getContractStart());
+            vo.setContractEnd(ch.getContractEnd());
             BigDecimal cost = ch.getCostAmount() == null ? BigDecimal.ZERO : ch.getCostAmount();
-            row.put("costAmount", cost);
-            row.put("costCurrency", ch.getCostCurrency());
+            vo.setCostAmount(cost);
+            vo.setCostCurrency(ch.getCostCurrency());
 
             Map<String, Object> s = statByChannel.get(ch.getId());
             long total = s == null ? 0 : ((Number) s.get("total")).longValue();
             long hired = s == null || s.get("hired") == null ? 0 : ((Number) s.get("hired")).longValue();
-            row.put("totalCandidates", total);
-            row.put("hiredCount", hired);
+            vo.setTotalCandidates(total);
+            vo.setHiredCount(hired);
             BigDecimal hireRate = total > 0
                     ? BigDecimal.valueOf(hired).multiply(BigDecimal.valueOf(100))
                             .divide(BigDecimal.valueOf(total), 2, RoundingMode.HALF_UP)
                     : BigDecimal.ZERO;
-            row.put("hireRate", hireRate);
+            vo.setHireRate(hireRate);
             BigDecimal costPerHire = hired > 0
                     ? cost.divide(BigDecimal.valueOf(hired), 2, RoundingMode.HALF_UP)
                     : cost;
-            row.put("costPerHire", costPerHire);
-            result.add(row);
+            vo.setCostPerHire(costPerHire);
+            result.add(vo);
         }
         return result;
     }

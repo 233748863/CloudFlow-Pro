@@ -1,12 +1,14 @@
 package com.cloudflow.hr.service;
 
-import java.util.Map;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeArbitrationDTO;
+import com.cloudflow.hr.domain.vo.dispute.HrDisputeArbitrationVO;
 
 public interface HrDisputeArbitrationService {
 
-    Long createArbitration(Long disputeId, Map<String, Object> payload);
+    Long createArbitration(Long disputeId, HrDisputeArbitrationDTO dto);
 
-    void updateArbitration(Long arbitrationId, Map<String, Object> payload);
+    void updateArbitration(Long arbitrationId, HrDisputeArbitrationDTO dto);
 
-    Map<String, Object> listByDispute(Long disputeId);
+    PageResult<HrDisputeArbitrationVO> listByDispute(Long disputeId);
 }

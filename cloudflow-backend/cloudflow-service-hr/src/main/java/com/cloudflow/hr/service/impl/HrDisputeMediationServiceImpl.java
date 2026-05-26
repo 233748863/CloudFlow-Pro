@@ -2,8 +2,12 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.dto.dispute.HrDisputeMediationDTO;
 import com.cloudflow.hr.domain.entity.HrDisputeMediation;
+import com.cloudflow.hr.domain.vo.dispute.HrDisputeMediationVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrDisputeMediationMapper;
 import com.cloudflow.hr.mapper.HrLaborDisputeMapper;
@@ -35,11 +39,11 @@ public class HrDisputeMediationServiceImpl implements HrDisputeMediationService 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createMediation(Long disputeId, Map<String, Object> payload) {
+    public Long createMediation(Long disputeId, HrDisputeMediationDTO dto) {
         if (disputeMapper.selectById(disputeId) == null) {
             throw new HrBusinessException("LABOR_DISPUTE_NOT_FOUND", "争议不存在：" + disputeId);
         }
-        HrDisputeMediation mediation = objectMapper.convertValue(payload, HrDisputeMediation.class);
+        HrDisputeMediation mediation = objectMapper.convertValue(dto, HrDisputeMediation.class);
         mediation.setDisputeId(disputeId);
         mediation.setTenantId(currentTenantId());
         mediation.setDeleted(0);
@@ -51,20 +55,21 @@ public class HrDisputeMediationServiceImpl implements HrDisputeMediationService 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updateMediation(Long mediationId, Map<String, Object> payload) {
-        crudService.updateProperties(HrDisputeMediation.class, mediationId, payload);
+    public void updateMediation(Long mediationId, HrDisputeMediationDTO dto) {
+        crudService.updateProperties(HrDisputeMediation.class, mediationId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> listByDispute(Long disputeId) {
+    public PageResult<HrDisputeMediationVO> listByDispute(Long disputeId) {
         QueryWrapper<HrDisputeMediation> qw = new QueryWrapper<>();
         qw.eq("tenant_id", currentTenantId()).eq("dispute_id", disputeId).eq("deleted", 0)
                 .orderByDesc("create_time");
         List<HrDisputeMediation> rows = mediationMapper.selectList(qw);
-        Map<String, Object> result = new LinkedHashMap<>();
-        result.put("rows", rows == null ? new LinkedList<>() : rows);
-        result.put("total", rows == null ? 0 : rows.size());
-        return result;
+        Map<String, Object> raw = new LinkedHashMap<>();
+        raw.put("rows", rows == null ? new LinkedList<>() : rows);
+        raw.put("total", rows == null ? 0 : rows.size());
+        return MapConverters.toPageResult(raw, HrDisputeMediationVO.class, objectMapper);
     }
 
     private long currentTenantId() {

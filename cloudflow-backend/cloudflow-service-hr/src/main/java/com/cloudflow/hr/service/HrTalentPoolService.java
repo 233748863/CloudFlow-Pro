@@ -1,9 +1,13 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.hr.domain.dto.talent.HrTalentPoolDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentPoolQueryDTO;
 import com.cloudflow.hr.domain.entity.HrTalentPool;
+import com.cloudflow.hr.domain.vo.talent.HrTalentPoolListVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentPoolMemberVO;
 
 import java.util.List;
-import java.util.Map;
 
 /**
  * HR 人才池业务接口。
@@ -13,11 +17,11 @@ import java.util.Map;
  */
 public interface HrTalentPoolService {
 
-    Long createPool(Map<String, Object> payload);
+    Long createPool(HrTalentPoolDTO dto);
 
-    void updatePool(Long poolId, Map<String, Object> payload);
+    void updatePool(Long poolId, HrTalentPoolDTO dto);
 
-    Map<String, Object> pagePools(Map<String, Object> query);
+    PageResult<HrTalentPoolListVO> pagePools(HrTalentPoolQueryDTO query);
 
     HrTalentPool getOrCreateDefaultHipoPool(Long tenantId);
 
@@ -25,7 +29,7 @@ public interface HrTalentPoolService {
 
     void exitPool(Long poolId, Long employeeId, String reason);
 
-    List<Map<String, Object>> listMembers(Long poolId);
+    List<HrTalentPoolMemberVO> listMembers(Long poolId);
 
     void joinDefaultHipoPool(Long tenantId, Long employeeId, Long sourceReviewId);
 }

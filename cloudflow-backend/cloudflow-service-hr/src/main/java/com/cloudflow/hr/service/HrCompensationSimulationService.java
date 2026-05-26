@@ -1,8 +1,7 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.hr.domain.dto.HrCompensationSimulateRequest;
-
-import java.util.Map;
+import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateVO;
 
 /**
  * HR-P1-2 薪酬模拟服务（不持久化）。
@@ -15,7 +14,7 @@ public interface HrCompensationSimulationService {
     /**
      * 模拟计算薪酬。
      *
-     * @return gross/socialPersonal/taxableIncome/personalTax/netSalary + breakdown.
+     * @return 包含 gross/socialPersonal/taxableIncome/personalTax/netSalary + breakdown 的类型化 VO。
      */
-    Map<String, Object> simulate(HrCompensationSimulateRequest request);
+    HrCompensationSimulateVO simulate(HrCompensationSimulateRequest request);
 }

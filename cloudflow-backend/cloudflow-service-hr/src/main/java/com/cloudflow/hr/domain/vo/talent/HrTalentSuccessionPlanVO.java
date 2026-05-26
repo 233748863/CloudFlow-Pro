@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 继任计划详情视图。
@@ -56,4 +57,7 @@ public class HrTalentSuccessionPlanVO {
 
     @Schema(description = "更新时间")
     private LocalDateTime updateTime;
+
+    @Schema(description = "继任人列表（详情接口下挂返回）")
+    private List<HrTalentSuccessorVO> successors;
 }

@@ -3,12 +3,20 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
 import com.cloudflow.hr.client.WorkflowServiceClient;
 import com.cloudflow.hr.client.dto.ProcessStartDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessionPlanDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessionPlanQueryDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentSuccessorDTO;
 import com.cloudflow.hr.domain.entity.HrTalentSuccessionPlan;
 import com.cloudflow.hr.domain.entity.HrTalentSuccessor;
+import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanListVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessorVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentSuccessionPlanMapper;
 import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
@@ -24,6 +32,7 @@ import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -44,8 +53,8 @@ public class HrTalentSuccessionServiceImpl implements HrTalentSuccessionService 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createPlan(Map<String, Object> payload) {
-        HrTalentSuccessionPlan plan = objectMapper.convertValue(payload, HrTalentSuccessionPlan.class);
+    public Long createPlan(HrTalentSuccessionPlanDTO dto) {
+        HrTalentSuccessionPlan plan = objectMapper.convertValue(dto, HrTalentSuccessionPlan.class);
         plan.setTenantId(currentTenantId());
         plan.setStatus(StringUtils.hasText(plan.getStatus()) ? plan.getStatus() : "DRAFT");
         plan.setDeleted(0);
@@ -60,43 +69,47 @@ public class HrTalentSuccessionServiceImpl implements HrTalentSuccessionService 
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updatePlan(Long planId, Map<String, Object> payload) {
-        crudService.updateProperties(HrTalentSuccessionPlan.class, planId, payload);
+    public void updatePlan(Long planId, HrTalentSuccessionPlanDTO dto) {
+        crudService.updateProperties(HrTalentSuccessionPlan.class, planId,
+                MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> pagePlans(Map<String, Object> query) {
-        return crudService.page(HrTalentSuccessionPlan.class, query);
+    public PageResult<HrTalentSuccessionPlanListVO> pagePlans(HrTalentSuccessionPlanQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrTalentSuccessionPlan.class,
+                MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrTalentSuccessionPlanListVO.class, objectMapper);
     }
 
     @Override
-    public Map<String, Object> getPlan(Long planId) {
+    public HrTalentSuccessionPlanVO getPlan(Long planId) {
         Map<String, Object> plan = crudService.get(HrTalentSuccessionPlan.class, planId);
         if (plan.isEmpty()) {
-            return plan;
+            return null;
         }
         Map<String, Object> q = new LinkedHashMap<>();
         q.put("planId", planId);
-        Map<String, Object> result = new LinkedHashMap<>(plan);
-        result.put("successors", crudService.list(HrTalentSuccessor.class, q));
-        return result;
+        List<Map<String, Object>> successorRows = crudService.list(HrTalentSuccessor.class, q);
+        HrTalentSuccessionPlanVO vo = objectMapper.convertValue(plan, HrTalentSuccessionPlanVO.class);
+        vo.setSuccessors(MapConverters.toVOList(successorRows, HrTalentSuccessorVO.class, objectMapper));
+        return vo;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long addSuccessor(Long planId, Map<String, Object> payload) {
+    public Long addSuccessor(Long planId, HrTalentSuccessorDTO dto) {
         HrTalentSuccessionPlan plan = planMapper.selectById(planId);
         if (plan == null) {
             throw new HrBusinessException("PLAN_NOT_FOUND", "继任计划不存在：" + planId);
         }
-        Long employeeId = ((Number) payload.get("employeeId")).longValue();
+        Long employeeId = dto.getEmployeeId();
         QueryWrapper<HrTalentSuccessor> dup = new QueryWrapper<>();
         dup.eq("tenant_id", currentTenantId()).eq("plan_id", planId).eq("employee_id", employeeId).eq("deleted", 0);
         if (successorMapper.selectCount(dup) > 0) {
             throw new HrBusinessException("DUPLICATE_SUCCESSOR",
                     "该员工已是本计划继任人：" + employeeId);
         }
-        HrTalentSuccessor s = objectMapper.convertValue(payload, HrTalentSuccessor.class);
+        HrTalentSuccessor s = objectMapper.convertValue(dto, HrTalentSuccessor.class);
         s.setTenantId(currentTenantId());
         s.setPlanId(planId);
         s.setStatus(StringUtils.hasText(s.getStatus()) ? s.getStatus() : "ACTIVE");

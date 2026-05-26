@@ -5,10 +5,10 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.hr.domain.dto.HrResumeParsedFieldsPayload;
 import com.cloudflow.hr.domain.entity.HrCandidate;
 import com.cloudflow.hr.domain.entity.HrResumeParsedFields;
+import com.cloudflow.hr.domain.vo.recruitment.HrResumeParsedFieldVO;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrResumeParsedFieldsMapper;
 import com.cloudflow.hr.service.HrResumeParserService;
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import lombok.RequiredArgsConstructor;
@@ -42,7 +42,6 @@ import java.util.regex.Pattern;
 public class HrResumeParserServiceImpl implements HrResumeParserService {
 
     private static final long TENANT_ID = 100000L;
-    private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};
 
     // 11 位中国手机号
     private static final Pattern PHONE_PATTERN = Pattern.compile("(?<![\\d])(1[3-9]\\d{9})(?![\\d])");
@@ -145,16 +144,16 @@ public class HrResumeParserServiceImpl implements HrResumeParserService {
     }
 
     @Override
-    public List<Map<String, Object>> listParsed(Long candidateId) {
+    public List<HrResumeParsedFieldVO> listParsed(Long candidateId) {
         List<HrResumeParsedFields> rows = parsedFieldsMapper.selectList(
                 new LambdaQueryWrapper<HrResumeParsedFields>()
                         .eq(HrResumeParsedFields::getTenantId, TENANT_ID)
                         .eq(HrResumeParsedFields::getCandidateId, candidateId)
                         .eq(HrResumeParsedFields::getDeleted, 0)
                         .orderByDesc(HrResumeParsedFields::getId));
-        List<Map<String, Object>> result = new ArrayList<>();
+        List<HrResumeParsedFieldVO> result = new ArrayList<>(rows.size());
         for (HrResumeParsedFields row : rows) {
-            result.add(objectMapper.convertValue(row, MAP_TYPE));
+            result.add(objectMapper.convertValue(row, HrResumeParsedFieldVO.class));
         }
         return result;
     }

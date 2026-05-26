@@ -1,6 +1,7 @@
 package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -10,10 +11,14 @@ import com.cloudflow.hr.domain.dto.ess.HrEssCommonQueryDTO;
 import com.cloudflow.hr.domain.entity.HrCertificateRequest;
 import com.cloudflow.hr.domain.entity.HrContractSignature;
 import com.cloudflow.hr.domain.entity.HrEmployeeContract;
+import com.cloudflow.hr.domain.vo.ess.HrCertificateRequestVO;
+import com.cloudflow.hr.domain.vo.ess.HrContractSignatureVO;
+import com.cloudflow.hr.domain.vo.ess.HrEmployeeContractVO;
 import com.cloudflow.hr.service.HrCertificateService;
 import com.cloudflow.hr.service.HrContractSignatureService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrTypedCrudService;
+import com.cloudflow.hr.service.dto.HrFileDownload;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -30,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -50,21 +56,23 @@ class HrCertificateRequestController {
 
     @GetMapping
     @SaCheckPermission("hr:ess:cert:view")
-    public R<?> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+    public R<PageResult<HrCertificateRequestVO>> list(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(crudService.page(HrCertificateRequest.class, normalized));
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrCertificateRequest.class, normalized),
+                HrCertificateRequestVO.class, objectMapper));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:ess:cert:view")
-    public R<Map<String, Object>> get(@PathVariable Long id) {
+    public R<HrCertificateRequestVO> get(@PathVariable Long id) {
         Map<String, Object> row = crudService.get(HrCertificateRequest.class, id);
         Object employeeId = row == null ? null : row.get("employeeId");
         if (employeeId instanceof Number num) {
             essSupport.assertOwner(num.longValue());
         }
-        return R.ok(row);
+        return R.ok(MapConverters.toVO(row, HrCertificateRequestVO.class, objectMapper));
     }
 
     @SysLog("发起HR证明开具")
@@ -85,15 +93,14 @@ class HrCertificateRequestController {
     @GetMapping("/{id}/pdf")
     @SaCheckPermission("hr:ess:cert:view")
     public ResponseEntity<byte[]> download(@PathVariable Long id) {
-        Map<String, Object> result = certificateService.downloadPdf(id);
-        byte[] bytes = (byte[]) result.get("bytes");
-        String fileName = String.valueOf(result.get("fileName"));
+        HrFileDownload result = certificateService.downloadPdf(id);
+        String fileName = result.getFileName();
         String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_PDF);
         headers.set(HttpHeaders.CONTENT_DISPOSITION,
                 "attachment; filename=\"" + fileName + "\"; filename*=UTF-8''" + encoded);
-        return new ResponseEntity<>(bytes, headers, 200);
+        return new ResponseEntity<>(result.getBytes(), headers, 200);
     }
 }
 
@@ -109,18 +116,22 @@ class HrEssContractController {
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:ess:contract:view")
-    public R<?> mine(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+    public R<List<HrEmployeeContractVO>> mine(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(crudService.list(HrEmployeeContract.class, normalized));
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrEmployeeContract.class, normalized),
+                HrEmployeeContractVO.class, objectMapper));
     }
 
     @GetMapping("/signatures")
     @SaCheckPermission("hr:ess:contract:view")
-    public R<?> signatures(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
+    public R<List<HrContractSignatureVO>> signatures(@Validated @ModelAttribute HrEssCommonQueryDTO query) {
         Map<String, Object> normalized = MapConverters.toServiceQuery(query, objectMapper);
         normalized.put("signerId", essSupport.currentEmployeeId());
-        return R.ok(crudService.list(HrContractSignature.class, normalized));
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrContractSignature.class, normalized),
+                HrContractSignatureVO.class, objectMapper));
     }
 
     @SysLog("发起HR电子合同签署")

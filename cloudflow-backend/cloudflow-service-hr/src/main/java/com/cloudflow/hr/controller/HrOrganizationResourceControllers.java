@@ -13,6 +13,11 @@ import com.cloudflow.hr.domain.entity.HrHeadcount;
 import com.cloudflow.hr.domain.entity.HrJobLevel;
 import com.cloudflow.hr.domain.entity.HrPosition;
 import com.cloudflow.hr.domain.entity.HrPositionFamily;
+import com.cloudflow.hr.domain.vo.organization.HrHeadcountStatisticsVO;
+import com.cloudflow.hr.domain.vo.organization.HrHeadcountVO;
+import com.cloudflow.hr.domain.vo.organization.HrJobLevelVO;
+import com.cloudflow.hr.domain.vo.organization.HrPositionFamilyVO;
+import com.cloudflow.hr.domain.vo.organization.HrPositionVO;
 import com.cloudflow.hr.service.HrOrganizationService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,6 +34,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/organization")
 @RequiredArgsConstructor
@@ -39,9 +46,10 @@ class HrPositionFamilyController {
 
     @GetMapping("/families")
     @SaCheckPermission("hr:organization:list")
-    public R<?> listFamilies(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
-        return R.ok(crudService.list(HrPositionFamily.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrPositionFamilyVO>> listFamilies(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrPositionFamily.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrPositionFamilyVO.class, objectMapper));
     }
 
     @SysLog("新增HR职族")
@@ -78,9 +86,10 @@ class HrJobLevelController {
 
     @GetMapping("/levels")
     @SaCheckPermission("hr:organization:list")
-    public R<?> listLevels(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
-        return R.ok(crudService.list(HrJobLevel.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrJobLevelVO>> listLevels(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrJobLevel.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrJobLevelVO.class, objectMapper));
     }
 
     @SysLog("新增HR职级")
@@ -117,9 +126,10 @@ class HrPositionController {
 
     @GetMapping("/positions")
     @SaCheckPermission("hr:organization:list")
-    public R<?> listPositions(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
-        return R.ok(crudService.list(HrPosition.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrPositionVO>> listPositions(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrPosition.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrPositionVO.class, objectMapper));
     }
 
     @SysLog("新增HR岗位")
@@ -157,9 +167,10 @@ class HrHeadcountController {
 
     @GetMapping("/headcounts")
     @SaCheckPermission("hr:organization:list")
-    public R<?> listHeadcounts(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
-        return R.ok(crudService.list(HrHeadcount.class,
-                MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrHeadcountVO>> listHeadcounts(@Validated @ModelAttribute HrOrganizationCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrHeadcount.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrHeadcountVO.class, objectMapper));
     }
 
     @SysLog("新增HR编制")
@@ -187,7 +198,8 @@ class HrHeadcountController {
 
     @GetMapping("/headcounts/{id}/statistics")
     @SaCheckPermission("hr:organization:view")
-    public R<?> getHeadcountStatistics(@PathVariable Long id) {
-        return R.ok(organizationService.getHeadcountStatistics(id));
+    public R<HrHeadcountStatisticsVO> getHeadcountStatistics(@PathVariable Long id) {
+        return R.ok(MapConverters.toVO(organizationService.getHeadcountStatistics(id),
+                HrHeadcountStatisticsVO.class, objectMapper));
     }
 }

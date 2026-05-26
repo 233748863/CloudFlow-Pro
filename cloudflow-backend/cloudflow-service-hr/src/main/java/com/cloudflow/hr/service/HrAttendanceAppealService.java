@@ -1,8 +1,7 @@
 package com.cloudflow.hr.service;
 
 import com.cloudflow.hr.domain.dto.HrAttendanceAppealPayload;
-
-import java.util.Map;
+import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
 
 /**
  * HR-P1-4 考勤异常申诉服务。
@@ -24,5 +23,5 @@ public interface HrAttendanceAppealService {
     /** 申请人撤回（仅 DRAFT/PENDING 可撤回）。 */
     void cancel(Long id);
 
-    Map<String, Object> getDetail(Long id);
+    HrAttendanceAppealVO getDetail(Long id);
 }

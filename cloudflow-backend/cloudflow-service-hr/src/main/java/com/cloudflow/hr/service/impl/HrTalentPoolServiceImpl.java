@@ -3,9 +3,15 @@ package com.cloudflow.hr.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.UpdateWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.tenant.TenantContext;
+import com.cloudflow.hr.domain.dto.talent.HrTalentPoolDTO;
+import com.cloudflow.hr.domain.dto.talent.HrTalentPoolQueryDTO;
 import com.cloudflow.hr.domain.entity.HrTalentPool;
 import com.cloudflow.hr.domain.entity.HrTalentPoolMember;
+import com.cloudflow.hr.domain.vo.talent.HrTalentPoolListVO;
+import com.cloudflow.hr.domain.vo.talent.HrTalentPoolMemberVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentPoolMapper;
 import com.cloudflow.hr.mapper.HrTalentPoolMemberMapper;
@@ -38,8 +44,8 @@ public class HrTalentPoolServiceImpl implements HrTalentPoolService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public Long createPool(Map<String, Object> payload) {
-        HrTalentPool pool = objectMapper.convertValue(payload, HrTalentPool.class);
+    public Long createPool(HrTalentPoolDTO dto) {
+        HrTalentPool pool = objectMapper.convertValue(dto, HrTalentPool.class);
         pool.setTenantId(currentTenantId());
         pool.setStatus(StringUtils.hasText(pool.getStatus()) ? pool.getStatus() : "ACTIVE");
         pool.setDeleted(0);
@@ -54,13 +60,14 @@ public class HrTalentPoolServiceImpl implements HrTalentPoolService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void updatePool(Long poolId, Map<String, Object> payload) {
-        crudService.updateProperties(HrTalentPool.class, poolId, payload);
+    public void updatePool(Long poolId, HrTalentPoolDTO dto) {
+        crudService.updateProperties(HrTalentPool.class, poolId, MapConverters.toMap(dto, objectMapper));
     }
 
     @Override
-    public Map<String, Object> pagePools(Map<String, Object> query) {
-        return crudService.page(HrTalentPool.class, query);
+    public PageResult<HrTalentPoolListVO> pagePools(HrTalentPoolQueryDTO query) {
+        Map<String, Object> raw = crudService.page(HrTalentPool.class, MapConverters.toServiceQuery(query, objectMapper));
+        return MapConverters.toPageResult(raw, HrTalentPoolListVO.class, objectMapper);
     }
 
     @Override
@@ -142,11 +149,12 @@ public class HrTalentPoolServiceImpl implements HrTalentPoolService {
     }
 
     @Override
-    public List<Map<String, Object>> listMembers(Long poolId) {
+    public List<HrTalentPoolMemberVO> listMembers(Long poolId) {
         Map<String, Object> q = new LinkedHashMap<>();
         q.put("poolId", poolId);
         q.put("status", "IN");
-        return crudService.list(HrTalentPoolMember.class, q);
+        return MapConverters.toVOList(crudService.list(HrTalentPoolMember.class, q),
+                HrTalentPoolMemberVO.class, objectMapper);
     }
 
     @Override

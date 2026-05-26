@@ -2,9 +2,12 @@ package com.cloudflow.hr.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.hr.domain.dto.HrPerfDistributionCheckPayload;
 import com.cloudflow.hr.domain.dto.HrPerfDistributionRulePayload;
 import com.cloudflow.hr.domain.entity.HrPerfDistributionRule;
+import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionRuleVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionValidateVO;
 import com.cloudflow.hr.mapper.HrPerfDistributionRuleMapper;
 import com.cloudflow.hr.service.HrPerformanceDistributionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -38,7 +41,7 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
     private final ObjectMapper objectMapper;
 
     @Override
-    public List<Map<String, Object>> listRules(Long objectiveId) {
+    public List<HrPerfDistributionRuleVO> listRules(Long objectiveId) {
         LambdaQueryWrapper<HrPerfDistributionRule> qw = new LambdaQueryWrapper<HrPerfDistributionRule>()
                 .eq(HrPerfDistributionRule::getTenantId, TENANT_ID)
                 .eq(HrPerfDistributionRule::getDeleted, 0);
@@ -58,7 +61,7 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
             camel.put("distribution", row.getDistribution() == null ? List.of() : row.getDistribution());
             result.add(camel);
         }
-        return result;
+        return MapConverters.toVOList(result, HrPerfDistributionRuleVO.class, objectMapper);
     }
 
     @Override
@@ -126,7 +129,7 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
     }
 
     @Override
-    public Map<String, Object> validate(HrPerfDistributionCheckPayload payload) {
+    public HrPerfDistributionValidateVO validate(HrPerfDistributionCheckPayload payload) {
         if (payload == null || payload.getObjectiveId() == null) {
             throw new IllegalArgumentException("objectiveId 不能为空");
         }
@@ -164,7 +167,7 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
         if (rule == null) {
             response.put("valid", true);
             response.put("hasRule", false);
-            return response;
+            return objectMapper.convertValue(response, HrPerfDistributionValidateVO.class);
         }
         List<Map<String, Object>> distribution = rule.getDistribution() == null ? List.of() : rule.getDistribution();
         String enforceMode = String.valueOf(rule.getEnforceMode() == null ? "BLOCK" : rule.getEnforceMode()).toUpperCase(Locale.ROOT);
@@ -216,7 +219,7 @@ public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistri
         response.put("enforceMode", enforceMode);
         response.put("quotaByGrade", quotaByGrade);
         response.put("violations", violations);
-        return response;
+        return objectMapper.convertValue(response, HrPerfDistributionValidateVO.class);
     }
 
     // ============= helpers =============

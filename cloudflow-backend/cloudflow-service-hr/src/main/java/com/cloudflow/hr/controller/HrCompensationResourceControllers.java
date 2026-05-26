@@ -1,6 +1,7 @@
 package com.cloudflow.hr.controller;
 
 import cn.dev33.satoken.annotation.SaCheckPermission;
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
@@ -23,6 +24,15 @@ import com.cloudflow.hr.domain.entity.HrEmployeeBenefit;
 import com.cloudflow.hr.domain.entity.HrEmployeeComp;
 import com.cloudflow.hr.domain.entity.HrTaxDeduction;
 import com.cloudflow.hr.domain.entity.HrTaxProfile;
+import com.cloudflow.hr.domain.vo.compensation.HrBenefitSchemeVO;
+import com.cloudflow.hr.domain.vo.compensation.HrCompChangeVO;
+import com.cloudflow.hr.domain.vo.compensation.HrCompComponentVO;
+import com.cloudflow.hr.domain.vo.compensation.HrCompGradeVO;
+import com.cloudflow.hr.domain.vo.compensation.HrCompStructureVO;
+import com.cloudflow.hr.domain.vo.compensation.HrEmployeeBenefitVO;
+import com.cloudflow.hr.domain.vo.compensation.HrEmployeeCompVO;
+import com.cloudflow.hr.domain.vo.compensation.HrTaxDeductionVO;
+import com.cloudflow.hr.domain.vo.compensation.HrTaxProfileVO;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +47,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/compensation")
 @RequiredArgsConstructor
@@ -47,8 +59,10 @@ class HrCompComponentController {
 
     @GetMapping("/components")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listComponents(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrCompComponent.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrCompComponentVO>> listComponents(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrCompComponent.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrCompComponentVO.class, objectMapper));
     }
 
     @SysLog("新增HR薪酬项")
@@ -85,8 +99,10 @@ class HrCompStructureController {
 
     @GetMapping("/structures")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listStructures(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrCompStructure.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrCompStructureVO>> listStructures(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrCompStructure.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrCompStructureVO.class, objectMapper));
     }
 
     @SysLog("新增HR薪酬结构")
@@ -123,8 +139,10 @@ class HrCompGradeController {
 
     @GetMapping("/grades")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listGrades(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrCompGrade.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrCompGradeVO>> listGrades(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrCompGrade.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrCompGradeVO.class, objectMapper));
     }
 
     @SysLog("新增HR薪级")
@@ -153,8 +171,10 @@ class HrEmployeeCompController {
 
     @GetMapping("/employee-compensations")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listEmployeeComps(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrEmployeeComp.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrEmployeeCompVO>> listEmployeeComps(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrEmployeeComp.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrEmployeeCompVO.class, objectMapper));
     }
 
     @SysLog("新增HR员工薪酬")
@@ -183,8 +203,10 @@ class HrCompChangeController {
 
     @GetMapping("/changes")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listCompChanges(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.page(HrCompChange.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<PageResult<HrCompChangeVO>> listCompChanges(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toPageResult(
+                crudService.page(HrCompChange.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrCompChangeVO.class, objectMapper));
     }
 
     @SysLog("新增HR调薪变更")
@@ -213,8 +235,10 @@ class HrBenefitSchemeController {
 
     @GetMapping("/benefits")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listBenefits(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrBenefitScheme.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrBenefitSchemeVO>> listBenefits(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrBenefitScheme.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrBenefitSchemeVO.class, objectMapper));
     }
 
     @SysLog("新增HR福利方案")
@@ -243,8 +267,10 @@ class HrEmployeeBenefitController {
 
     @GetMapping("/employee-benefits")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listEmployeeBenefits(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrEmployeeBenefit.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrEmployeeBenefitVO>> listEmployeeBenefits(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrEmployeeBenefit.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrEmployeeBenefitVO.class, objectMapper));
     }
 
     @SysLog("新增HR员工福利")
@@ -265,8 +291,10 @@ class HrTaxProfileController {
 
     @GetMapping("/tax-profiles")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listTaxProfiles(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrTaxProfile.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrTaxProfileVO>> listTaxProfiles(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrTaxProfile.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrTaxProfileVO.class, objectMapper));
     }
 
     @SysLog("新增HR个税档案")
@@ -295,8 +323,10 @@ class HrTaxDeductionController {
 
     @GetMapping("/tax-deductions")
     @SaCheckPermission("hr:compensation:list")
-    public R<?> listTaxDeductions(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
-        return R.ok(crudService.list(HrTaxDeduction.class, MapConverters.toServiceQuery(query, objectMapper)));
+    public R<List<HrTaxDeductionVO>> listTaxDeductions(@Validated @ModelAttribute HrCompCommonQueryDTO query) {
+        return R.ok(MapConverters.toVOList(
+                crudService.list(HrTaxDeduction.class, MapConverters.toServiceQuery(query, objectMapper)),
+                HrTaxDeductionVO.class, objectMapper));
     }
 
     @SysLog("新增HR个税扣除")

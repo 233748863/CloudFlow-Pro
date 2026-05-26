@@ -1,19 +1,22 @@
 package com.cloudflow.hr.service;
 
+import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.hr.domain.dto.HrPerformanceObjectiveTreePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceResultUpdatePayload;
 import com.cloudflow.hr.domain.dto.HrPerformanceSalaryAdjustmentRequest;
 import com.cloudflow.hr.domain.dto.HrPerformanceSplitPayload;
-
-import java.util.Map;
+import com.cloudflow.hr.domain.dto.performance.HrPerformanceCommonQueryDTO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceObjectiveTreeVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceObjectiveVO;
+import com.cloudflow.hr.domain.vo.performance.HrPerformanceOverviewVO;
 
 public interface HrPerformanceService {
 
-    Map<String, Object> listObjectives(Map<String, Object> query);
+    PageResult<HrPerformanceObjectiveVO> listObjectives(HrPerformanceCommonQueryDTO query);
 
-    Map<String, Object> getObjectiveTree(Long id);
+    HrPerformanceObjectiveTreeVO getObjectiveTree(Long id);
 
-    Map<String, Object> getOverview();
+    HrPerformanceOverviewVO getOverview();
 
     Long createObjective(HrPerformanceObjectiveTreePayload payload);
 
