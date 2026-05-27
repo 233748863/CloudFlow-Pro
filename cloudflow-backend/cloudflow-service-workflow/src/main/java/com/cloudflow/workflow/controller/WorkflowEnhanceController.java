@@ -23,13 +23,13 @@ import org.springframework.web.bind.annotation.*;
 public class WorkflowEnhanceController {
 
     @Autowired
-    private IWorkflowP4Service p4Service;
+    private IWorkflowP4Service workflowP4Service;
 
     @Autowired
-    private IWfInstanceService instanceService;
+    private IWfInstanceService wfInstanceService;
 
     @Autowired
-    private IWfDefinitionService definitionService;
+    private IWfDefinitionService wfDefinitionService;
 
     // ==================== P1-4: 加签/减签 ====================
 
@@ -40,7 +40,7 @@ public class WorkflowEnhanceController {
     @PostMapping("/task/addSign")
     @SaCheckPermission("workflow:task:add-sign")
     public R<?> addSign(@RequestBody AddSignReq req) {
-        return p4Service.addSign(req.getTaskId(), req.getUserIds(), req.getUserNames(),
+        return workflowP4Service.addSign(req.getTaskId(), req.getUserIds(), req.getUserNames(),
                 req.getSignType(), req.getReason());
     }
 
@@ -51,7 +51,7 @@ public class WorkflowEnhanceController {
     @PostMapping("/task/removeSign")
     @SaCheckPermission("workflow:task:reduce-sign")
     public R<?> removeSign(@RequestBody RemoveSignReq req) {
-        return p4Service.removeSign(req.getTaskId(), req.getUserIds(), req.getReason());
+        return workflowP4Service.removeSign(req.getTaskId(), req.getUserIds(), req.getReason());
     }
 
     // ==================== P1-5: 委派功能优化 ====================
@@ -71,11 +71,11 @@ public class WorkflowEnhanceController {
 
         if ("DELEGATE".equals(mode)) {
             // 委派模式：目标用户处理后任务自动回到委派人
-            return p4Service.delegateWithReturn(req.getTaskId(), req.getToUserId(),
+            return workflowP4Service.delegateWithReturn(req.getTaskId(), req.getToUserId(),
                     req.getToUserName(), req.getReason());
         } else {
             // 转办模式：直接移交
-            return p4Service.delegateTask(req.getTaskId(), req.getToUserId(),
+            return workflowP4Service.delegateTask(req.getTaskId(), req.getToUserId(),
                     req.getToUserName(), req.getReason());
         }
     }
@@ -89,7 +89,7 @@ public class WorkflowEnhanceController {
     @GetMapping("/flowchart/{instanceId}")
     @SaCheckPermission("workflow:process:view")
     public R<DynamicMapVO> getFlowchartData(@PathVariable("instanceId") String instanceId) {
-        return R.ok(instanceService.getFlowchartData(instanceId));
+        return R.ok(wfInstanceService.getFlowchartData(instanceId));
     }
 
     /**
@@ -99,7 +99,7 @@ public class WorkflowEnhanceController {
     @GetMapping("/flowchart/definition/{definitionId}")
     @SaCheckPermission("workflow:definition:view")
     public R<DynamicMapVO> getDefinitionFlowchart(@PathVariable("definitionId") String definitionId) {
-        return R.ok(definitionService.getFlowchartStructure(definitionId));
+        return R.ok(wfDefinitionService.getFlowchartStructure(definitionId));
     }
 
     // ==================== P1-7: 作废流程 ====================
@@ -119,6 +119,6 @@ public class WorkflowEnhanceController {
         if (reason == null || reason.isBlank()) {
             return R.fail("作废原因不能为空");
         }
-        return instanceService.invalidateProcess(instanceId, reason);
+        return wfInstanceService.invalidateProcess(instanceId, reason);
     }
 }

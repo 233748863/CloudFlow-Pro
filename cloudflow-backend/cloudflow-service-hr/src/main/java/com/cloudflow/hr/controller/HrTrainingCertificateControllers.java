@@ -18,8 +18,8 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingCertificateMapper;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrFileStorage;
-import com.cloudflow.hr.service.HrTrainingArchiveService;
-import com.cloudflow.hr.service.HrTrainingCertificateService;
+import com.cloudflow.hr.service.IHrTrainingArchiveService;
+import com.cloudflow.hr.service.IHrTrainingCertificateService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +50,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 class HrTrainingCertificateController {
 
-    private final HrTrainingCertificateService certificateService;
+    private final IHrTrainingCertificateService hrTrainingCertificateService;
     private final HrTrainingCertificateMapper certificateMapper;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
@@ -86,7 +86,7 @@ class HrTrainingCertificateController {
     @PostMapping("/issue")
     @SaCheckPermission("hr:training:cert:issue")
     public R<Long> issue(@Validated @RequestBody HrTrainingCertificateIssueDTO dto) {
-        return R.ok(certificateService.issue(dto.getEmployeeId(), dto.getCourseId(),
+        return R.ok(hrTrainingCertificateService.issue(dto.getEmployeeId(), dto.getCourseId(),
                 dto.getSessionId(), dto.getTemplateId()));
     }
 
@@ -95,7 +95,7 @@ class HrTrainingCertificateController {
     @SaCheckPermission("hr:training:cert:issue")
     public R<Void> revoke(@PathVariable Long id,
                           @RequestBody(required = false) HrTrainingCertificateRevokeDTO dto) {
-        certificateService.revoke(id, dto == null ? null : dto.getReason());
+        hrTrainingCertificateService.revoke(id, dto == null ? null : dto.getReason());
         return R.ok();
     }
 
@@ -103,7 +103,7 @@ class HrTrainingCertificateController {
     @PostMapping("/{id}/regenerate")
     @SaCheckPermission("hr:training:cert:issue")
     public R<Void> regenerate(@PathVariable Long id) {
-        certificateService.regeneratePdf(id);
+        hrTrainingCertificateService.regeneratePdf(id);
         return R.ok();
     }
 
@@ -174,20 +174,20 @@ class HrTrainingCertificateTemplateController {
 @RequiredArgsConstructor
 class HrTrainingArchiveController {
 
-    private final HrTrainingArchiveService archiveService;
+    private final IHrTrainingArchiveService hrTrainingArchiveService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:training:archive:view")
     public R<HrTrainingArchiveVO> mine() {
-        return R.ok(MapConverters.toVO(archiveService.mine(),
+        return R.ok(MapConverters.toVO(hrTrainingArchiveService.mine(),
                 HrTrainingArchiveVO.class, objectMapper));
     }
 
     @GetMapping("/employees/{employeeId}")
     @SaCheckPermission("hr:training:archive:view")
     public R<HrTrainingArchiveVO> forEmployee(@PathVariable Long employeeId) {
-        return R.ok(MapConverters.toVO(archiveService.forEmployee(employeeId),
+        return R.ok(MapConverters.toVO(hrTrainingArchiveService.forEmployee(employeeId),
                 HrTrainingArchiveVO.class, objectMapper));
     }
 }

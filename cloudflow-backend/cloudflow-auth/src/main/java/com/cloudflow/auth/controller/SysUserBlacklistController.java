@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class SysUserBlacklistController {
 
-    private final ISysUserBlacklistService blacklistService;
+    private final ISysUserBlacklistService sysUserBlacklistService;
 
     @GetMapping("/page")
     @SaCheckPermission("system:userBlacklist:list")
@@ -33,13 +33,13 @@ public class SysUserBlacklistController {
                                           @RequestParam(required = false) String status,
                                           @RequestParam(defaultValue = "1") Integer pageNum,
                                           @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(blacklistService.page(keyword, status, pageNum, pageSize));
+        return R.ok(sysUserBlacklistService.page(keyword, status, pageNum, pageSize));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("system:userBlacklist:list")
     public R<SysUserBlacklist> detail(@PathVariable Long id) {
-        return R.ok(blacklistService.getById(id));
+        return R.ok(sysUserBlacklistService.getById(id));
     }
 
     @SysLog("拉黑用户")
@@ -47,7 +47,7 @@ public class SysUserBlacklistController {
     @SaCheckPermission("system:userBlacklist:add")
     public R<Void> ban(@RequestBody SysUserBlacklist rule) {
         try {
-            return blacklistService.ban(rule) ? R.ok() : R.fail("拉黑失败");
+            return sysUserBlacklistService.ban(rule) ? R.ok() : R.fail("拉黑失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -58,7 +58,7 @@ public class SysUserBlacklistController {
     @SaCheckPermission("system:userBlacklist:edit")
     public R<Void> edit(@RequestBody SysUserBlacklist rule) {
         try {
-            return blacklistService.update(rule) ? R.ok() : R.fail("更新失败");
+            return sysUserBlacklistService.update(rule) ? R.ok() : R.fail("更新失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -68,13 +68,13 @@ public class SysUserBlacklistController {
     @PostMapping("/{id}/unban")
     @SaCheckPermission("system:userBlacklist:edit")
     public R<Void> unban(@PathVariable Long id) {
-        return blacklistService.unban(id) ? R.ok() : R.fail("解除失败");
+        return sysUserBlacklistService.unban(id) ? R.ok() : R.fail("解除失败");
     }
 
     @SysLog("删除用户黑名单")
     @DeleteMapping("/{id}")
     @SaCheckPermission("system:userBlacklist:remove")
     public R<Void> remove(@PathVariable Long id) {
-        return blacklistService.remove(id) ? R.ok() : R.fail("删除失败");
+        return sysUserBlacklistService.remove(id) ? R.ok() : R.fail("删除失败");
     }
 }

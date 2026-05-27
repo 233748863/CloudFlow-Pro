@@ -20,7 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class OaContractTemplateController {
 
-    private final IOaContractTemplateService templateService;
+    private final IOaContractTemplateService oaContractTemplateService;
 
     @GetMapping("/page")
     @SaCheckPermission("oa:contract:template:list")
@@ -29,19 +29,19 @@ public class OaContractTemplateController {
                                             @RequestParam(required = false) String status,
                                             @RequestParam(defaultValue = "1") Integer pageNum,
                                             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(templateService.page(keyword, category, status, pageNum, pageSize));
+        return R.ok(oaContractTemplateService.page(keyword, category, status, pageNum, pageSize));
     }
 
     @GetMapping("/active")
     @SaCheckPermission("oa:contract:add")
     public R<List<OaContractTemplate>> listActive(@RequestParam(required = false) String category) {
-        return R.ok(templateService.listActive(category));
+        return R.ok(oaContractTemplateService.listActive(category));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("oa:contract:template:list")
     public R<OaContractTemplate> getInfo(@PathVariable("id") Long id) {
-        return R.ok(templateService.getById(id));
+        return R.ok(oaContractTemplateService.getById(id));
     }
 
     @SysLog("新增合同模板")
@@ -49,7 +49,7 @@ public class OaContractTemplateController {
     @SaCheckPermission("oa:contract:template:add")
     public R<Void> add(@RequestBody OaContractTemplate template) {
         try {
-            return templateService.save(template) ? R.ok() : R.fail("新增失败");
+            return oaContractTemplateService.save(template) ? R.ok() : R.fail("新增失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -60,7 +60,7 @@ public class OaContractTemplateController {
     @SaCheckPermission("oa:contract:template:edit")
     public R<Void> edit(@RequestBody OaContractTemplate template) {
         try {
-            return templateService.update(template) ? R.ok() : R.fail("更新失败");
+            return oaContractTemplateService.update(template) ? R.ok() : R.fail("更新失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -70,13 +70,13 @@ public class OaContractTemplateController {
     @DeleteMapping("/{id}")
     @SaCheckPermission("oa:contract:template:remove")
     public R<Void> remove(@PathVariable("id") Long id) {
-        return templateService.remove(id) ? R.ok() : R.fail("删除失败");
+        return oaContractTemplateService.remove(id) ? R.ok() : R.fail("删除失败");
     }
 
     @PostMapping("/{id}/render")
     @SaCheckPermission("oa:contract:add")
     public R<String> render(@PathVariable("id") Long id,
                             @RequestBody(required = false) Map<String, Object> variables) {
-        return R.ok(templateService.renderContent(id, variables));
+        return R.ok(oaContractTemplateService.renderContent(id, variables));
     }
 }

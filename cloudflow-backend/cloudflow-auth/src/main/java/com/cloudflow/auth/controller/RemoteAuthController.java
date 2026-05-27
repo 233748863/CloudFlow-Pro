@@ -47,8 +47,8 @@ public class RemoteAuthController {
 
     private final SysDeptMapper sysDeptMapper;
     private final SysTenantMapper sysTenantMapper;
-    private final ISysPostService postService;
-    private final ISysUserService userService;
+    private final ISysPostService sysPostService;
+    private final ISysUserService sysUserService;
     private final ForcePasswordChangeService forcePasswordChangeService;
 
     /**
@@ -115,7 +115,7 @@ public class RemoteAuthController {
     @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/post/list")
     public R<List<SysPost>> getPostList(@RequestParam(value = "tenantId", required = false) Long tenantId) {
-        List<SysPost> posts = postService.list(new LambdaQueryWrapper<SysPost>()
+        List<SysPost> posts = sysPostService.list(new LambdaQueryWrapper<SysPost>()
                 .orderByAsc(SysPost::getPostSort));
         return R.ok(posts);
     }
@@ -123,38 +123,38 @@ public class RemoteAuthController {
     @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/post/{postId}")
     public R<SysPost> getPostById(@PathVariable Long postId) {
-        return R.ok(postService.getById(postId));
+        return R.ok(sysPostService.getById(postId));
     }
 
     @Inner(allowedServices = {HR_CALLERS})
     @PostMapping("/post")
     public R<Long> createPost(@RequestBody SysPost post) {
-        if (!postService.checkPostCodeUnique(post)) {
+        if (!sysPostService.checkPostCodeUnique(post)) {
             return R.fail("岗位编码已存在");
         }
         if (!StringUtils.hasText(post.getStatus())) {
             post.setStatus("0");
         }
-        postService.save(post);
+        sysPostService.save(post);
         return R.ok(post.getPostId());
     }
 
     @Inner(allowedServices = {HR_CALLERS, WORKFLOW_CALLERS})
     @GetMapping("/user/{userId}")
     public R<SysUser> getUser(@PathVariable Long userId) {
-        return R.ok(userService.selectUserById(userId));
+        return R.ok(sysUserService.selectUserById(userId));
     }
 
     @Inner(allowedServices = {HR_CALLERS})
     @GetMapping("/user/by-username")
     public R<SysUser> getUserByUserName(@RequestParam String userName) {
-        return R.ok(userService.selectUserByUserName(userName));
+        return R.ok(sysUserService.selectUserByUserName(userName));
     }
 
     @Inner(allowedServices = {HR_CALLERS, WORKFLOW_CALLERS})
     @PostMapping("/user/batch")
     public R<List<SysUser>> batchGetUsers(@RequestBody List<Long> userIds) {
-        return R.ok(userService.selectUserByIds(userIds));
+        return R.ok(sysUserService.selectUserByIds(userIds));
     }
 
     @Inner(allowedServices = {HR_CALLERS})
@@ -164,14 +164,14 @@ public class RemoteAuthController {
             user.setStatus("0");
         }
         user.setPwdResetRequired(ForcePasswordChangeService.REQUIRED);
-        userService.insertUser(user);
+        sysUserService.insertUser(user);
         return R.ok(user.getUserId());
     }
 
     @Inner(allowedServices = {HR_CALLERS})
     @PutMapping("/user/{userId}")
     public R<Void> updateUser(@PathVariable Long userId, @RequestBody SysUser request) {
-        SysUser existing = userService.selectUserById(userId);
+        SysUser existing = sysUserService.selectUserById(userId);
         if (existing == null) {
             return R.fail("用户不存在");
         }
@@ -206,20 +206,20 @@ public class RemoteAuthController {
             existing.setPassword(request.getPassword());
         }
 
-        userService.updateUser(existing);
+        sysUserService.updateUser(existing);
         return R.ok();
     }
 
     @Inner(allowedServices = {HR_CALLERS})
     @DeleteMapping("/user/{userId}")
     public R<Void> disableUser(@PathVariable Long userId) {
-        SysUser existing = userService.selectUserById(userId);
+        SysUser existing = sysUserService.selectUserById(userId);
         if (existing == null) {
             return R.fail("用户不存在");
         }
 
         existing.setStatus("1");
-        userService.updateUser(existing);
+        sysUserService.updateUser(existing);
         return R.ok();
     }
 

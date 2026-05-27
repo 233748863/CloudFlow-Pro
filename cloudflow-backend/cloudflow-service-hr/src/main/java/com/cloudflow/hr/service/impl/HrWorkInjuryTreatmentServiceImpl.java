@@ -11,7 +11,7 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
 import com.cloudflow.hr.mapper.HrWorkInjuryTreatmentMapper;
 import com.cloudflow.hr.service.HrTypedCrudService;
-import com.cloudflow.hr.service.HrWorkInjuryTreatmentService;
+import com.cloudflow.hr.service.IHrWorkInjuryTreatmentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +25,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrWorkInjuryTreatmentServiceImpl implements HrWorkInjuryTreatmentService {
+public class HrWorkInjuryTreatmentServiceImpl implements IHrWorkInjuryTreatmentService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

@@ -3,7 +3,7 @@ package com.cloudflow.hr.controller;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.security.annotation.Inner;
 import com.cloudflow.hr.domain.vo.HrWorkplaceReminderVO;
-import com.cloudflow.hr.service.HrWorkplaceReminderQueryService;
+import com.cloudflow.hr.service.IHrWorkplaceReminderQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +24,7 @@ public class HrInnerWorkplaceController {
     private static final String WORKPLACE_CALLERS =
             "${cloudflow.security.inner.hr.workplace-callers:cloudflow-service-oa}";
 
-    private final HrWorkplaceReminderQueryService reminderQueryService;
+    private final IHrWorkplaceReminderQueryService hrWorkplaceReminderQueryService;
 
     @Inner(allowedServices = WORKPLACE_CALLERS)
     @GetMapping("/reminders")
@@ -32,6 +32,6 @@ public class HrInnerWorkplaceController {
             @RequestParam(value = "userId", required = false) Long userId,
             @RequestParam(value = "expiringDays", defaultValue = "30") Integer expiringDays,
             @RequestParam(value = "limit", defaultValue = "10") Integer limit) {
-        return R.ok(reminderQueryService.listReminders(userId, expiringDays, limit));
+        return R.ok(hrWorkplaceReminderQueryService.listReminders(userId, expiringDays, limit));
     }
 }

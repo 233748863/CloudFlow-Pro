@@ -21,18 +21,18 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class RiskAlertController {
 
-    private final IOaRiskAlertService riskAlertService;
+    private final IOaRiskAlertService oaRiskAlertService;
 
     @GetMapping("/list")
     @SaCheckPermission("oa:risk:list")
     public R<PageResult<OaRiskAlert>> list(OaRiskAlert query, PageQuery pageQuery) {
-        return R.ok(riskAlertService.queryPage(query, pageQuery));
+        return R.ok(oaRiskAlertService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/stats")
     @SaCheckPermission("oa:risk:list")
     public R<OaRiskStatsDTO> stats() {
-        return R.ok(riskAlertService.getStats());
+        return R.ok(oaRiskAlertService.getStats());
     }
 
     @SysLog("人工标记风险")
@@ -40,7 +40,7 @@ public class RiskAlertController {
     @SaCheckPermission("oa:risk:add")
     public R<Void> manual(@RequestBody OaRiskAlert risk) {
         try {
-            return R.result(riskAlertService.createManualRisk(risk));
+            return R.result(oaRiskAlertService.createManualRisk(risk));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -51,7 +51,7 @@ public class RiskAlertController {
     @SaCheckPermission("oa:risk:status")
     public R<Void> updateStatus(@PathVariable("id") Long id, @RequestBody OaRiskStatusDTO dto) {
         try {
-            return R.result(riskAlertService.updateRiskStatus(id, dto));
+            return R.result(oaRiskAlertService.updateRiskStatus(id, dto));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -62,7 +62,7 @@ public class RiskAlertController {
     @SaCheckPermission("oa:risk:assign")
     public R<Void> assign(@PathVariable("id") Long id, @RequestBody OaRiskAssignDTO dto) {
         try {
-            return R.result(riskAlertService.assignRisk(id, dto));
+            return R.result(oaRiskAlertService.assignRisk(id, dto));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

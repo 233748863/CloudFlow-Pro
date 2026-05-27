@@ -7,7 +7,7 @@ import com.cloudflow.hr.domain.dto.HrTrainingSessionPayload;
 import com.cloudflow.hr.domain.entity.HrTrainingSession;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
-import com.cloudflow.hr.service.HrTrainingService;
+import com.cloudflow.hr.service.IHrTrainingService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +26,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTrainingServiceImpl implements HrTrainingService {
+public class HrTrainingServiceImpl implements IHrTrainingService {
 
     private static final Set<String> SESSION_STATUSES = Set.of(
             "PLANNED", "REGISTERING", "ONGOING", "COMPLETED", "CANCELLED");

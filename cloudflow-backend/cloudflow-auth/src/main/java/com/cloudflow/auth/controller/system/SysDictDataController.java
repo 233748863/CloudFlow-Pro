@@ -25,13 +25,13 @@ public class SysDictDataController {
     private SysDictDataMapper dictDataMapper;
 
     @Autowired
-    private ISysDictTypeService dictTypeService;
+    private ISysDictTypeService sysDictTypeService;
 
     /** 根据字典类型查询字典数据列表 */
     @GetMapping("/type/{dictType}")
     @SaCheckPermission("system:dict:list")
     public R<List<SysDictData>> dictType(@PathVariable("dictType") String dictType) {
-        return R.ok(dictTypeService.selectDictDataByType(dictType));
+        return R.ok(sysDictTypeService.selectDictDataByType(dictType));
     }
 
     /** 查询字典数据列表（管理页面用，包含停用的） */

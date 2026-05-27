@@ -19,18 +19,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmContactController {
 
-    private final ICrmContactService contactService;
+    private final ICrmContactService crmContactService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:contact:list")
     public R<PageResult<CrmContact>> list(CrmContact query, PageQuery pageQuery) {
-        return R.ok(contactService.queryPage(query, pageQuery));
+        return R.ok(crmContactService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:contact:list")
     public R<CrmContact> getInfo(@PathVariable("id") Long id) {
-        CrmContact contact = contactService.getById(id);
+        CrmContact contact = crmContactService.getById(id);
         return contact == null || !Integer.valueOf(0).equals(contact.getDeleted()) ? R.fail("联系人不存在") : R.ok(contact);
     }
 
@@ -39,7 +39,7 @@ public class CrmContactController {
     @SaCheckPermission("crm:contact:add")
     public R<Void> add(@RequestBody CrmContact contact) {
         try {
-            return R.result(contactService.createContact(contact));
+            return R.result(crmContactService.createContact(contact));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -50,7 +50,7 @@ public class CrmContactController {
     @SaCheckPermission("crm:contact:edit")
     public R<Void> edit(@RequestBody CrmContact contact) {
         try {
-            return R.result(contactService.updateContact(contact));
+            return R.result(crmContactService.updateContact(contact));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -64,7 +64,7 @@ public class CrmContactController {
             CrmContact contact = new CrmContact();
             contact.setContactId(id);
             contact.setDeleted(1);
-            contactService.updateById(contact);
+            crmContactService.updateById(contact);
         }
         return R.ok();
     }

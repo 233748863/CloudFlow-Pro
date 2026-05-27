@@ -13,7 +13,7 @@ import com.cloudflow.hr.domain.vo.benefit.HrPointTransactionVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrPointAccountMapper;
 import com.cloudflow.hr.mapper.HrPointTransactionMapper;
-import com.cloudflow.hr.service.HrPointAccountService;
+import com.cloudflow.hr.service.IHrPointAccountService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -29,7 +29,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrPointAccountServiceImpl implements HrPointAccountService {
+public class HrPointAccountServiceImpl implements IHrPointAccountService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

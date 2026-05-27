@@ -8,7 +8,7 @@ import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmSalesTarget;
 import com.cloudflow.crm.domain.vo.CrmPerformanceSummaryVO;
 import com.cloudflow.crm.mapper.CrmSalesTargetMapper;
-import com.cloudflow.crm.service.CrmPerformanceQueryService;
+import com.cloudflow.crm.service.ICrmPerformanceQueryService;
 import com.cloudflow.crm.service.ICrmSalesTargetService;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -25,9 +25,9 @@ import java.util.stream.Collectors;
 public class CrmSalesTargetServiceImpl extends CrmServiceSupport<CrmSalesTargetMapper, CrmSalesTarget>
         implements ICrmSalesTargetService {
 
-    private final CrmPerformanceQueryService performanceQueryService;
+    private final ICrmPerformanceQueryService performanceQueryService;
 
-    public CrmSalesTargetServiceImpl(CrmPerformanceQueryService performanceQueryService) {
+    public CrmSalesTargetServiceImpl(ICrmPerformanceQueryService performanceQueryService) {
         this.performanceQueryService = performanceQueryService;
     }
 

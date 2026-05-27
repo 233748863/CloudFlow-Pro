@@ -8,7 +8,7 @@ import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateBreakdownIt
 import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateVO;
 import com.cloudflow.hr.mapper.HrCompComponentMapper;
 import com.cloudflow.hr.mapper.HrCompGradeMapper;
-import com.cloudflow.hr.service.HrCompensationSimulationService;
+import com.cloudflow.hr.service.IHrCompensationSimulationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -37,7 +37,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrCompensationSimulationServiceImpl implements HrCompensationSimulationService {
+public class HrCompensationSimulationServiceImpl implements IHrCompensationSimulationService {
 
     private static final long TENANT_ID = 100000L;
     private static final BigDecimal MONTHLY_THRESHOLD = BigDecimal.valueOf(5000);

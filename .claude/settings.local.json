@@ -1,7 +1,26 @@
 {
-  "skipAutoPermissionPrompt": true,
   "permissions": {
+    "allow": [
+      "Bash(mvn -pl cloudflow-service-hr -am compile -DskipTests)",
+      "Bash(mvn -pl cloudflow-service-crm,cloudflow-service-workflow -am compile -DskipTests)",
+      "Bash(mvn -pl cloudflow-service-oa,cloudflow-auth -am compile -DskipTests)",
+      "Bash(mvn -pl cloudflow-service-crm -am compile -DskipTests)",
+      "Bash(git add *)",
+      "Bash(git restore *)",
+      "Bash(mvn -pl cloudflow-auth,cloudflow-service-hr,cloudflow-service-crm,cloudflow-service-oa,cloudflow-service-workflow -am compile -DskipTests)",
+      "Bash(rtk git *)",
+      "Bash(rtk ls *)",
+      "Bash(rtk grep *)",
+      "Bash(python -c \"import re, os; print\\('ok'\\)\")",
+      "Bash(rtk read *)",
+      "Bash(python *)",
+      "Bash(mvn -version)",
+      "Bash(mvn -q -T 1C -DskipTests -pl cloudflow-service-hr,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-workflow,cloudflow-auth -am compile)",
+      "Bash(mvn -T 1C -DskipTests -pl cloudflow-service-hr,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-workflow,cloudflow-auth -am compile)",
+      "Bash(rtk wc *)"
+    ],
     "defaultMode": "auto"
   },
-  "effortLevel": "xhigh"
+  "effortLevel": "xhigh",
+  "skipAutoPermissionPrompt": true
 }

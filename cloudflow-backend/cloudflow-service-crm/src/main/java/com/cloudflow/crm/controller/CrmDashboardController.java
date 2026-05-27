@@ -17,17 +17,17 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CrmDashboardController {
 
-    private final ICrmCustomerWorkspaceService workspaceService;
+    private final ICrmCustomerWorkspaceService crmCustomerWorkspaceService;
 
     @GetMapping("/summary")
     @SaCheckPermission("crm:dashboard:view")
     public R<CrmDashboardSummaryVO> summary() {
-        return R.ok(workspaceService.getDashboardSummary());
+        return R.ok(crmCustomerWorkspaceService.getDashboardSummary());
     }
 
     @GetMapping("/workplace")
     @SaCheckPermission("crm:dashboard:view")
     public R<CrmDashboardWorkplaceVO> workplace() {
-        return R.ok(workspaceService.getDashboardWorkplace());
+        return R.ok(crmCustomerWorkspaceService.getDashboardWorkplace());
     }
 }

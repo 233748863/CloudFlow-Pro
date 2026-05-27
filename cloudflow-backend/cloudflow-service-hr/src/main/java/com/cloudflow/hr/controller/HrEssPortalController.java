@@ -9,7 +9,7 @@ import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.hr.domain.entity.HrSelfServiceMessage;
 import com.cloudflow.hr.domain.vo.ess.HrEssPortalSummaryVO;
 import com.cloudflow.hr.mapper.HrSelfServiceMessageMapper;
-import com.cloudflow.hr.service.HrEssService;
+import com.cloudflow.hr.service.IHrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -33,13 +33,13 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 class HrEssPortalController {
 
-    private final HrEssService essService;
+    private final IHrEssService hrEssService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/summary")
     @SaCheckPermission("hr:ess:view")
     public R<HrEssPortalSummaryVO> summary() {
-        return R.ok(MapConverters.toVO(essService.portalSummary(),
+        return R.ok(MapConverters.toVO(hrEssService.portalSummary(),
                 HrEssPortalSummaryVO.class, objectMapper));
     }
 }

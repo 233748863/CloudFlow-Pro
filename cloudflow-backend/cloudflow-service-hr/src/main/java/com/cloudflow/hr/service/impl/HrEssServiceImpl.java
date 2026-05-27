@@ -31,9 +31,9 @@ import com.cloudflow.hr.mapper.HrLeaveQuotaMapper;
 import com.cloudflow.hr.mapper.HrLeaveTypeMapper;
 import com.cloudflow.hr.mapper.HrSalarySlipMapper;
 import com.cloudflow.hr.mapper.HrSelfServiceMessageMapper;
-import com.cloudflow.hr.service.HrEssService;
+import com.cloudflow.hr.service.IHrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
-import com.cloudflow.hr.service.HrIntegrationQueryService;
+import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
@@ -57,7 +57,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrEssServiceImpl implements HrEssService {
+public class HrEssServiceImpl implements IHrEssService {
 
     private static final BigDecimal DEFAULT_PERSONAL_RATE = new BigDecimal("0.105");
     private static final BigDecimal DEFAULT_COMPANY_RATE = new BigDecimal("0.245");
@@ -66,7 +66,7 @@ public class HrEssServiceImpl implements HrEssService {
 
     private final HrEssSupport essSupport;
     private final HrTypedCrudService crudService;
-    private final HrIntegrationQueryService integrationQueryService;
+    private final IHrIntegrationQueryService integrationQueryService;
     private final HrSalarySlipMapper salarySlipMapper;
     private final HrEmployeeMapper employeeMapper;
     private final HrEmployeeCompMapper employeeCompMapper;

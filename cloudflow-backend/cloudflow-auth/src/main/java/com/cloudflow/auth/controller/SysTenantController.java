@@ -7,7 +7,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.SysTenant;
 import com.cloudflow.auth.domain.dto.TenantStatisticsDTO;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
-import com.cloudflow.auth.service.SysTenantService;
+import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.domain.R;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysTenantController {
 
-    private final SysTenantService tenantService;
+    private final ISysTenantService sysTenantService;
 
     @GetMapping("/list")
     @SaCheckPermission("system:tenant:list")
@@ -33,14 +33,14 @@ public class SysTenantController {
         wrapper.eq(StringUtils.isNotBlank(tenant.getStatus()), SysTenant::getStatus, tenant.getStatus());
         wrapper.orderByDesc(SysTenant::getCreateTime);
 
-        IPage<SysTenant> result = tenantService.page(page, wrapper);
+        IPage<SysTenant> result = sysTenantService.page(page, wrapper);
         return R.ok(result);
     }
 
     @GetMapping("/{tenantId}")
     @SaCheckPermission("system:tenant:query")
     public R<SysTenant> getInfo(@PathVariable Long tenantId) {
-        SysTenant tenant = tenantService.getById(tenantId);
+        SysTenant tenant = sysTenantService.getById(tenantId);
         if (tenant == null) {
             return R.fail("租户不存在");
         }
@@ -57,11 +57,11 @@ public class SysTenantController {
 
         LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysTenant::getTenantName, tenant.getTenantName());
-        if (tenantService.count(wrapper) > 0) {
+        if (sysTenantService.count(wrapper) > 0) {
             return R.fail("租户名称已存在");
         }
 
-        if (tenantService.count(new LambdaQueryWrapper<SysTenant>()
+        if (sysTenantService.count(new LambdaQueryWrapper<SysTenant>()
                 .eq(SysTenant::getTenantCode, tenant.getTenantCode())) > 0) {
             return R.fail("租户编码已存在");
         }
@@ -79,7 +79,7 @@ public class SysTenantController {
             tenant.setStorageUsed(0L);
         }
 
-        boolean result = tenantService.save(tenant);
+        boolean result = sysTenantService.save(tenant);
         return result ? R.ok() : R.fail("新增租户失败");
     }
 
@@ -90,7 +90,7 @@ public class SysTenantController {
             return R.fail("租户ID不能为空");
         }
 
-        SysTenant existTenant = tenantService.getById(tenant.getTenantId());
+        SysTenant existTenant = sysTenantService.getById(tenant.getTenantId());
         if (existTenant == null) {
             return R.fail("租户不存在");
         }
@@ -103,7 +103,7 @@ public class SysTenantController {
             LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(SysTenant::getTenantName, tenant.getTenantName());
             wrapper.ne(SysTenant::getTenantId, tenant.getTenantId());
-            if (tenantService.count(wrapper) > 0) {
+            if (sysTenantService.count(wrapper) > 0) {
                 return R.fail("租户名称已存在");
             }
         }
@@ -112,12 +112,12 @@ public class SysTenantController {
             LambdaQueryWrapper<SysTenant> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(SysTenant::getTenantCode, tenant.getTenantCode());
             wrapper.ne(SysTenant::getTenantId, tenant.getTenantId());
-            if (tenantService.count(wrapper) > 0) {
+            if (sysTenantService.count(wrapper) > 0) {
                 return R.fail("租户编码已存在");
             }
         }
 
-        boolean result = tenantService.updateById(tenant);
+        boolean result = sysTenantService.updateById(tenant);
         return result ? R.ok() : R.fail("修改租户失败");
     }
 
@@ -128,17 +128,17 @@ public class SysTenantController {
             return R.fail("默认租户不能删除");
         }
 
-        SysTenant tenant = tenantService.getById(tenantId);
+        SysTenant tenant = sysTenantService.getById(tenantId);
         if (tenant == null) {
             return R.fail("租户不存在");
         }
 
-        long activeUserCount = tenantService.countActiveUsers(tenantId);
+        long activeUserCount = sysTenantService.countActiveUsers(tenantId);
         if (activeUserCount > 0) {
             return R.fail("租户下仍有 " + activeUserCount + " 个有效用户，无法删除");
         }
 
-        boolean result = tenantService.removeById(tenantId);
+        boolean result = sysTenantService.removeById(tenantId);
         return result ? R.ok() : R.fail("删除租户失败");
     }
 
@@ -149,13 +149,13 @@ public class SysTenantController {
             return R.fail("默认租户状态不能修改");
         }
 
-        SysTenant tenant = tenantService.getById(tenantId);
+        SysTenant tenant = sysTenantService.getById(tenantId);
         if (tenant == null) {
             return R.fail("租户不存在");
         }
 
         tenant.setStatus(status);
-        boolean result = tenantService.updateById(tenant);
+        boolean result = sysTenantService.updateById(tenant);
         return result ? R.ok() : R.fail("更新租户状态失败");
     }
 
@@ -165,23 +165,23 @@ public class SysTenantController {
         if (tenantIds == null || tenantIds.isEmpty()) {
             return R.ok(Collections.emptyList());
         }
-        return R.ok(tenantService.getTenantStatisticsBatch(tenantIds));
+        return R.ok(sysTenantService.getTenantStatisticsBatch(tenantIds));
     }
 
     @PostMapping("/{tenantId}/storage/refresh")
     @SaCheckPermission("system:tenant:edit")
     public R<TenantStorageSummaryDTO> refreshTenantStorage(@PathVariable Long tenantId) {
-        SysTenant tenant = tenantService.getById(tenantId);
+        SysTenant tenant = sysTenantService.getById(tenantId);
         if (tenant == null) {
             return R.fail("租户不存在");
         }
-        return R.ok(tenantService.refreshTenantStorageSummary(tenantId));
+        return R.ok(sysTenantService.refreshTenantStorageSummary(tenantId));
     }
 
     @GetMapping("/{tenantId}/check")
     @SaCheckPermission("system:tenant:query")
     public R<TenantStatisticsDTO> checkTenantStatus(@PathVariable Long tenantId) {
-        return R.ok(tenantService.getTenantStatistics(tenantId));
+        return R.ok(sysTenantService.getTenantStatistics(tenantId));
     }
 
     private void normalizeTenantCode(SysTenant tenant) {

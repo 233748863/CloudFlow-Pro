@@ -25,7 +25,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
 
     private final BizExpenseClaimMapper expenseClaimMapper;
     private final IExpenseClaimService expenseClaimService;
-    private final IOaBudgetService budgetService;
+    private final IOaBudgetService oaBudgetService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -65,7 +65,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
             return;
         }
         if (claim.getItems() == null || claim.getItems().isEmpty()) {
-            budgetService.releaseBudget(
+            oaBudgetService.releaseBudget(
                     OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
@@ -80,7 +80,7 @@ public class ExpenseClaimApprovalHandler implements ApprovalResultHandler {
             );
             return;
         }
-        claim.getItems().forEach(item -> budgetService.releaseBudget(
+        claim.getItems().forEach(item -> oaBudgetService.releaseBudget(
                 OaBusinessTypes.EXPENSE_CLAIM,
                 claim.getId(),
                 claim.getClaimNo(),

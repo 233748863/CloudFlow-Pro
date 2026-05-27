@@ -65,13 +65,13 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     private RemoteBusinessRuleService remoteBusinessRuleService;
 
     @Autowired
-    private IOaTraceEventService traceEventService;
+    private IOaTraceEventService oaTraceEventService;
 
     @Autowired
-    private IOaBudgetService budgetService;
+    private IOaBudgetService oaBudgetService;
 
     @Autowired
-    private IOaExpenseStandardService expenseStandardService;
+    private IOaExpenseStandardService oaExpenseStandardService;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -417,7 +417,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         // 当前 UserContext 未携带职级/城市, 先按通用规则匹配; 后续可扩展为远程取员工档案
         String applicantLevel = null;
         String city = null;
-        OaExpenseExceedResultVO result = expenseStandardService.validateExceed(claim, applicantLevel, city);
+        OaExpenseExceedResultVO result = oaExpenseStandardService.validateExceed(claim, applicantLevel, city);
         boolean exceeded = result.isExceeded();
         claim.setExceededStandard(exceeded ? 1 : 0);
         BigDecimal total = result.getTotalExceededAmount();
@@ -454,7 +454,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             throw new IllegalArgumentException(message);
         }
         if ("WARN".equals(effect)) {
-            traceEventService.record(null, "EXPENSE_CLAIM", claim.getId(), "BUSINESS_RULE", null,
+            oaTraceEventService.record(null, "EXPENSE_CLAIM", claim.getId(), "BUSINESS_RULE", null,
                     "RULE_WARN", "报销规则预警", message,
                     UserContext.getUserId(), UserContext.getUserName(), null);
             log.warn("报销申请触发规则预警，claimId={}, {}", claim.getId(), message);
@@ -501,7 +501,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
         List<BizExpenseItem> items = claim.getItems();
         if (items == null || items.isEmpty()) {
-            BudgetReserveResult r = budgetService.reserveBudgetWithFallback(
+            BudgetReserveResult r = oaBudgetService.reserveBudgetWithFallback(
                     OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
@@ -522,7 +522,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             }
         } else {
             for (BizExpenseItem item : items) {
-                BudgetReserveResult r = budgetService.reserveBudgetWithFallback(
+                BudgetReserveResult r = oaBudgetService.reserveBudgetWithFallback(
                         OaBusinessTypes.EXPENSE_CLAIM,
                         claim.getId(),
                         claim.getClaimNo(),
@@ -560,7 +560,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         BizExpenseClaim detail = getClaimWithItems(claim.getId());
         List<BizExpenseItem> items = detail == null ? null : detail.getItems();
         if (items == null || items.isEmpty()) {
-            budgetService.writeoffBudget(
+            oaBudgetService.writeoffBudget(
                     OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),
@@ -576,7 +576,7 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
             return;
         }
         for (BizExpenseItem item : items) {
-            budgetService.writeoffBudget(
+            oaBudgetService.writeoffBudget(
                     OaBusinessTypes.EXPENSE_CLAIM,
                     claim.getId(),
                     claim.getClaimNo(),

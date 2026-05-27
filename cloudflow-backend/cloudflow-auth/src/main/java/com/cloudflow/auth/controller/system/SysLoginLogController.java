@@ -5,7 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.vo.DynamicMapVO;
-import com.cloudflow.auth.service.LoginLogService;
+import com.cloudflow.auth.service.ILoginLogService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.domain.SysLogEntity;
 import com.cloudflow.common.log.mapper.SysLogMapper;
@@ -34,7 +34,7 @@ import java.util.stream.Collectors;
 public class SysLoginLogController {
 
     private final SysLogMapper sysLogMapper;
-    private final LoginLogService loginLogService;
+    private final ILoginLogService loginLogService;
 
     @GetMapping("/page")
     @SaCheckPermission("system:login-log:list")

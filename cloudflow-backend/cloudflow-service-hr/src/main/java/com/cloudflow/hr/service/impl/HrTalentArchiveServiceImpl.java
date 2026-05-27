@@ -6,7 +6,7 @@ import com.cloudflow.hr.domain.vo.talent.HrTalentArchiveVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentArchiveMapper;
 import com.cloudflow.hr.service.HrEssSupport;
-import com.cloudflow.hr.service.HrTalentArchiveService;
+import com.cloudflow.hr.service.IHrTalentArchiveService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,7 +20,7 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
-public class HrTalentArchiveServiceImpl implements HrTalentArchiveService {
+public class HrTalentArchiveServiceImpl implements IHrTalentArchiveService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

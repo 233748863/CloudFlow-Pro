@@ -21,19 +21,19 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CrmCustomerPoolController {
 
-    private final ICrmCustomerPoolService customerPoolService;
+    private final ICrmCustomerPoolService crmCustomerPoolService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:customer-pool:list")
     public R<PageResult<CrmCustomer>> list(CrmCustomer query, PageQuery pageQuery) {
-        return R.ok(customerPoolService.queryPool(query, pageQuery));
+        return R.ok(crmCustomerPoolService.queryPool(query, pageQuery));
     }
 
     @GetMapping("/logs")
     @SaCheckPermission("crm:customer-pool:list")
     public R<PageResult<CrmCustomerPoolLog>> logs(@RequestParam(value = "customerId", required = false) Long customerId,
                                                    PageQuery pageQuery) {
-        return R.ok(customerPoolService.listLogs(customerId, pageQuery));
+        return R.ok(crmCustomerPoolService.listLogs(customerId, pageQuery));
     }
 
     @SysLog("释放客户到公海")
@@ -43,7 +43,7 @@ public class CrmCustomerPoolController {
                            @RequestBody(required = false) Map<String, String> body) {
         try {
             String reason = body == null ? null : body.get("reason");
-            return R.result(customerPoolService.releaseToPool(customerId, reason));
+            return R.result(crmCustomerPoolService.releaseToPool(customerId, reason));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -56,7 +56,7 @@ public class CrmCustomerPoolController {
                          @RequestBody(required = false) Map<String, String> body) {
         try {
             String reason = body == null ? null : body.get("reason");
-            return R.result(customerPoolService.claimFromPool(customerId, reason));
+            return R.result(crmCustomerPoolService.claimFromPool(customerId, reason));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -67,7 +67,7 @@ public class CrmCustomerPoolController {
     @SaCheckPermission("crm:customer-pool:assign")
     public R<Void> assign(@RequestBody CrmCustomerAssignDTO assignDTO) {
         try {
-            return R.result(customerPoolService.assignFromPool(assignDTO));
+            return R.result(crmCustomerPoolService.assignFromPool(assignDTO));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -77,6 +77,6 @@ public class CrmCustomerPoolController {
     @PostMapping("/auto-release")
     @SaCheckPermission("crm:customer-pool:auto-release")
     public R<Integer> autoRelease() {
-        return R.ok(customerPoolService.triggerAutoRelease());
+        return R.ok(crmCustomerPoolService.triggerAutoRelease());
     }
 }

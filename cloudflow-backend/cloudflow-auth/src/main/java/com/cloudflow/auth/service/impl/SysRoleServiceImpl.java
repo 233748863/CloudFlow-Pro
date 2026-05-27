@@ -33,7 +33,7 @@ public class SysRoleServiceImpl implements ISysRoleService {
     private SysRoleMenuMapper roleMenuMapper;
 
     @Autowired
-    private ISysMenuService menuService;
+    private ISysMenuService sysMenuService;
 
     @Override
     public List<SysRole> selectRoleList(SysRole role) {

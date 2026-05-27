@@ -32,9 +32,9 @@ import com.cloudflow.hr.domain.vo.performance.HrPerformanceObjectiveVO;
 import com.cloudflow.hr.domain.vo.performance.HrPerformanceOverviewVO;
 import com.cloudflow.hr.domain.vo.performance.HrPerformanceResultVO;
 import com.cloudflow.hr.domain.vo.performance.HrPerformanceSalaryAdjustmentVO;
-import com.cloudflow.hr.service.HrPerformance360Service;
-import com.cloudflow.hr.service.HrPerformanceDistributionService;
-import com.cloudflow.hr.service.HrPerformanceService;
+import com.cloudflow.hr.service.IHrPerformance360Service;
+import com.cloudflow.hr.service.IHrPerformanceDistributionService;
+import com.cloudflow.hr.service.IHrPerformanceService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -89,7 +89,7 @@ class HrPerformanceObjectiveCrudController {
 class HrPerformanceAssignmentController {
 
     private final HrTypedCrudService crudService;
-    private final HrPerformanceService performanceService;
+    private final IHrPerformanceService hrPerformanceService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/assignments")
@@ -111,7 +111,7 @@ class HrPerformanceAssignmentController {
     @PostMapping("/assignment/{parentId}/children")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> savePerformanceAssignmentChildren(@PathVariable Long parentId, @RequestBody HrPerformanceSplitPayload payload) {
-        performanceService.saveAssignmentChildren(parentId, payload);
+        hrPerformanceService.saveAssignmentChildren(parentId, payload);
         return R.ok();
     }
 }
@@ -122,7 +122,7 @@ class HrPerformanceAssignmentController {
 class HrPerformanceResultController {
 
     private final HrTypedCrudService crudService;
-    private final HrPerformanceService performanceService;
+    private final IHrPerformanceService hrPerformanceService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/results")
@@ -144,7 +144,7 @@ class HrPerformanceResultController {
     @PostMapping("/result")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> updatePerformanceResultV2(@RequestBody HrPerformanceResultUpdatePayload payload) {
-        performanceService.updateResult(payload);
+        hrPerformanceService.updateResult(payload);
         return R.ok();
     }
 }
@@ -155,7 +155,7 @@ class HrPerformanceResultController {
 class HrPerformanceSalaryAdjustmentController {
 
     private final HrTypedCrudService crudService;
-    private final HrPerformanceService performanceService;
+    private final IHrPerformanceService hrPerformanceService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/salary-adjustments")
@@ -177,7 +177,7 @@ class HrPerformanceSalaryAdjustmentController {
     @PostMapping("/objective/{id}/salary-adjustment")
     @SaCheckPermission("hr:performance:edit")
     public R<Long> createPerformanceSalaryAdjustmentV2(@PathVariable Long id, @RequestBody HrPerformanceSalaryAdjustmentRequest payload) {
-        return R.ok(performanceService.createSalaryAdjustment(id, payload));
+        return R.ok(hrPerformanceService.createSalaryAdjustment(id, payload));
     }
 }
 
@@ -186,44 +186,44 @@ class HrPerformanceSalaryAdjustmentController {
 @RequiredArgsConstructor
 class HrPerformanceObjectiveController {
 
-    private final HrPerformanceService performanceService;
+    private final IHrPerformanceService hrPerformanceService;
 
     @SysLog("新增HR绩效目标树")
     @PostMapping("/objective")
     @SaCheckPermission("hr:performance:add")
     public R<Long> createPerformanceObjectiveV2(@RequestBody HrPerformanceObjectiveTreePayload payload) {
-        return R.ok(performanceService.createObjective(payload));
+        return R.ok(hrPerformanceService.createObjective(payload));
     }
 
     @GetMapping("/objective/list")
     @SaCheckPermission("hr:performance:list")
     public R<PageResult<HrPerformanceObjectiveVO>> listPerformanceObjectiveV2(@Validated @ModelAttribute HrPerformanceCommonQueryDTO query) {
-        return R.ok(performanceService.listObjectives(query));
+        return R.ok(hrPerformanceService.listObjectives(query));
     }
 
     @GetMapping("/objective/{id}")
     @SaCheckPermission("hr:performance:view")
     public R<HrPerformanceObjectiveTreeVO> getPerformanceObjective(@PathVariable Long id) {
-        return R.ok(performanceService.getObjectiveTree(id));
+        return R.ok(hrPerformanceService.getObjectiveTree(id));
     }
 
     @GetMapping("/objective/{id}/tree")
     @SaCheckPermission("hr:performance:view")
     public R<HrPerformanceObjectiveTreeVO> getPerformanceObjectiveTree(@PathVariable Long id) {
-        return R.ok(performanceService.getObjectiveTree(id));
+        return R.ok(hrPerformanceService.getObjectiveTree(id));
     }
 
     @GetMapping("/overview")
     @SaCheckPermission("hr:performance:view")
     public R<HrPerformanceOverviewVO> getPerformanceOverview() {
-        return R.ok(performanceService.getOverview());
+        return R.ok(hrPerformanceService.getOverview());
     }
 
     @SysLog("提交HR绩效计划")
     @PostMapping("/objective/{id}/submit-plan")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> submitPerformancePlan(@PathVariable Long id) {
-        performanceService.submitPlan(id);
+        hrPerformanceService.submitPlan(id);
         return R.ok();
     }
 
@@ -231,7 +231,7 @@ class HrPerformanceObjectiveController {
     @PostMapping("/objective/{id}/submit-result")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> submitPerformanceResultV2(@PathVariable Long id) {
-        performanceService.submitResult(id);
+        hrPerformanceService.submitResult(id);
         return R.ok();
     }
 }
@@ -244,20 +244,20 @@ class HrPerformanceObjectiveController {
 @RequiredArgsConstructor
 class HrPerformance360Controller {
 
-    private final HrPerformance360Service service;
+    private final IHrPerformance360Service hrPerformance360Service;
 
     @SysLog("发起HR绩效360评估邀请")
     @PostMapping("/invite")
     @SaCheckPermission("hr:performance:edit")
     public R<List<Long>> invite360(@RequestBody Hr360EvaluatorInvitePayload payload) {
-        return R.ok(service.inviteEvaluators(payload));
+        return R.ok(hrPerformance360Service.inviteEvaluators(payload));
     }
 
     @SysLog("提交HR绩效360评估打分")
     @PostMapping("/response")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> submit360Response(@RequestBody Hr360EvaluatorResponsePayload payload) {
-        service.submitResponse(payload);
+        hrPerformance360Service.submitResponse(payload);
         return R.ok();
     }
 
@@ -265,7 +265,7 @@ class HrPerformance360Controller {
     @PostMapping("/evaluator/{id}/cancel")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> cancel360Evaluator(@PathVariable Long id) {
-        service.cancelEvaluator(id);
+        hrPerformance360Service.cancelEvaluator(id);
         return R.ok();
     }
 
@@ -274,20 +274,20 @@ class HrPerformance360Controller {
     public R<List<Hr360EvaluatorRowVO>> list360Evaluators(
             @RequestParam Long objectiveId,
             @RequestParam(required = false) Long evaluateeId) {
-        return R.ok(service.listEvaluators(objectiveId, evaluateeId));
+        return R.ok(hrPerformance360Service.listEvaluators(objectiveId, evaluateeId));
     }
 
     @GetMapping("/pending")
     @SaCheckPermission("hr:performance:view")
     public R<List<Hr360EvaluatorRowVO>> list360Pending(@RequestParam Long evaluatorId) {
-        return R.ok(service.listPendingForEvaluator(evaluatorId));
+        return R.ok(hrPerformance360Service.listPendingForEvaluator(evaluatorId));
     }
 
     @SysLog("聚合HR绩效360评估结果")
     @PostMapping("/aggregate")
     @SaCheckPermission("hr:performance:edit")
     public R<Hr360AggregateVO> aggregate360(@RequestParam Long objectiveId, @RequestParam Long evaluateeId) {
-        return R.ok(service.aggregate(objectiveId, evaluateeId));
+        return R.ok(hrPerformance360Service.aggregate(objectiveId, evaluateeId));
     }
 }
 
@@ -299,32 +299,32 @@ class HrPerformance360Controller {
 @RequiredArgsConstructor
 class HrPerformanceDistributionController {
 
-    private final HrPerformanceDistributionService service;
+    private final IHrPerformanceDistributionService hrPerformanceDistributionService;
 
     @GetMapping("/rules")
     @SaCheckPermission("hr:performance:view")
     public R<List<HrPerfDistributionRuleVO>> listDistributionRules(@RequestParam(required = false) Long objectiveId) {
-        return R.ok(service.listRules(objectiveId));
+        return R.ok(hrPerformanceDistributionService.listRules(objectiveId));
     }
 
     @SysLog("保存HR绩效强制分布规则")
     @PostMapping("/rules")
     @SaCheckPermission("hr:performance:edit")
     public R<Long> saveDistributionRule(@RequestBody HrPerfDistributionRulePayload payload) {
-        return R.ok(service.saveRule(payload));
+        return R.ok(hrPerformanceDistributionService.saveRule(payload));
     }
 
     @SysLog("删除HR绩效强制分布规则")
     @DeleteMapping("/rules/{id}")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> deleteDistributionRule(@PathVariable Long id) {
-        service.deleteRule(id);
+        hrPerformanceDistributionService.deleteRule(id);
         return R.ok();
     }
 
     @PostMapping("/validate")
     @SaCheckPermission("hr:performance:view")
     public R<HrPerfDistributionValidateVO> validateDistribution(@RequestBody HrPerfDistributionCheckPayload payload) {
-        return R.ok(service.validate(payload));
+        return R.ok(hrPerformanceDistributionService.validate(payload));
     }
 }

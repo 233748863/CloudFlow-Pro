@@ -25,15 +25,15 @@ import java.util.Map;
 public class CrmOpportunityDowngradeApprovalHandler extends AbstractCrmApprovalHandler implements ApprovalResultHandler {
 
     private final CrmOpportunityMapper opportunityMapper;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
 
     public CrmOpportunityDowngradeApprovalHandler(CrmApprovalMapper approvalMapper,
                                                   ObjectMapper objectMapper,
                                                   CrmOpportunityMapper opportunityMapper,
-                                                  ICrmCustomerService customerService) {
+                                                  ICrmCustomerService crmCustomerService) {
         super(approvalMapper, objectMapper);
         this.opportunityMapper = opportunityMapper;
-        this.customerService = customerService;
+        this.crmCustomerService = crmCustomerService;
     }
 
     @Override
@@ -74,7 +74,7 @@ public class CrmOpportunityDowngradeApprovalHandler extends AbstractCrmApprovalH
         }
         opportunityMapper.update(null, wrapper);
         if (opportunity.getCustomerId() != null) {
-            customerService.refreshHealth(opportunity.getCustomerId());
+            crmCustomerService.refreshHealth(opportunity.getCustomerId());
         }
     }
 

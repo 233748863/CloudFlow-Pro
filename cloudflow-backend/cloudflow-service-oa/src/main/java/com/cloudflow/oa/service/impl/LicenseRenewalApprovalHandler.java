@@ -14,7 +14,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class LicenseRenewalApprovalHandler implements ApprovalResultHandler {
 
-    private final IOaLicenseRenewalService renewalService;
+    private final IOaLicenseRenewalService oaLicenseRenewalService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -23,11 +23,11 @@ public class LicenseRenewalApprovalHandler implements ApprovalResultHandler {
 
     @Override
     public void handleApproved(ApprovalResultDTO dto) {
-        renewalService.approveRenewal(dto.getBusinessId(), dto.getProcessInstanceId());
+        oaLicenseRenewalService.approveRenewal(dto.getBusinessId(), dto.getProcessInstanceId());
     }
 
     @Override
     public void handleRejected(ApprovalResultDTO dto) {
-        renewalService.rejectRenewal(dto.getBusinessId(), dto.getProcessInstanceId());
+        oaLicenseRenewalService.rejectRenewal(dto.getBusinessId(), dto.getProcessInstanceId());
     }
 }

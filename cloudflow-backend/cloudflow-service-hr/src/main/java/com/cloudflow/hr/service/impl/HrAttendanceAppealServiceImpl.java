@@ -7,7 +7,7 @@ import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
 import com.cloudflow.hr.mapper.HrAttendanceAppealMapper;
 import com.cloudflow.hr.mapper.HrAttendanceRecordMapper;
 import com.cloudflow.hr.mapper.HrAuditLogMapper;
-import com.cloudflow.hr.service.HrAttendanceAppealService;
+import com.cloudflow.hr.service.IHrAttendanceAppealService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrAttendanceAppealServiceImpl implements HrAttendanceAppealService {
+public class HrAttendanceAppealServiceImpl implements IHrAttendanceAppealService {
 
     private static final long TENANT_ID = 100000L;
 

@@ -8,7 +8,7 @@ import com.cloudflow.hr.domain.entity.HrResumeParsedFields;
 import com.cloudflow.hr.domain.vo.recruitment.HrResumeParsedFieldVO;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrResumeParsedFieldsMapper;
-import com.cloudflow.hr.service.HrResumeParserService;
+import com.cloudflow.hr.service.IHrResumeParserService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +39,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrResumeParserServiceImpl implements HrResumeParserService {
+public class HrResumeParserServiceImpl implements IHrResumeParserService {
 
     private static final long TENANT_ID = 100000L;
 

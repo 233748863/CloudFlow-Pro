@@ -19,20 +19,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmRenewalController {
 
-    private final ICrmRenewalService renewalService;
+    private final ICrmRenewalService crmRenewalService;
     private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:renewal:list")
     public R<PageResult<CrmRenewal>> list(CrmRenewal query, PageQuery pageQuery) {
-        return R.ok(renewalService.queryPage(query, pageQuery));
+        return R.ok(crmRenewalService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:renewal:list")
     public R<CrmRenewal> getInfo(@PathVariable("id") Long id) {
         try {
-            return R.ok(renewalService.getRenewalInfo(id));
+            return R.ok(crmRenewalService.getRenewalInfo(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -43,7 +43,7 @@ public class CrmRenewalController {
     @SaCheckPermission("crm:renewal:add")
     public R<Void> add(@RequestBody CrmRenewal renewal) {
         try {
-            return R.result(renewalService.createRenewal(renewal));
+            return R.result(crmRenewalService.createRenewal(renewal));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -54,7 +54,7 @@ public class CrmRenewalController {
     @SaCheckPermission("crm:renewal:edit")
     public R<Void> edit(@RequestBody CrmRenewal renewal) {
         try {
-            return R.result(renewalService.updateRenewal(renewal));
+            return R.result(crmRenewalService.updateRenewal(renewal));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -65,7 +65,7 @@ public class CrmRenewalController {
     @SaCheckPermission("crm:renewal:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
         try {
-            return R.result(renewalService.submitRenewal(id));
+            return R.result(crmRenewalService.submitRenewal(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -78,14 +78,14 @@ public class CrmRenewalController {
         for (Long id : ids) {
             CrmRenewal persisted;
             try {
-                persisted = renewalService.getAccessibleRenewal(id);
+                persisted = crmRenewalService.getAccessibleRenewal(id);
             } catch (IllegalArgumentException e) {
                 return R.fail(e.getMessage());
             }
             CrmRenewal renewal = new CrmRenewal();
             renewal.setRenewalId(id);
             renewal.setDeleted(1);
-            renewalService.updateById(renewal);
+            crmRenewalService.updateById(renewal);
             customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();

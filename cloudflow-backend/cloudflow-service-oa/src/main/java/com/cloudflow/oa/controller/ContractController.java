@@ -22,19 +22,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ContractController {
 
-    private final IOaContractService contractService;
+    private final IOaContractService oaContractService;
 
     @GetMapping("/list")
     @SaCheckPermission("oa:contract:list")
     public R<PageResult<OaContract>> list(OaContract query, PageQuery pageQuery) {
-        return R.ok(contractService.queryPage(query, pageQuery));
+        return R.ok(oaContractService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("oa:contract:list")
     public R<OaContract> getInfo(@PathVariable("id") Long id) {
         try {
-            return R.ok(contractService.getContractInfo(id));
+            return R.ok(oaContractService.getContractInfo(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -45,7 +45,7 @@ public class ContractController {
     @SaCheckPermission("oa:contract:add")
     public R<Long> add(@RequestBody OaContract contract) {
         try {
-            return R.ok(contractService.createContract(contract));
+            return R.ok(oaContractService.createContract(contract));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -56,7 +56,7 @@ public class ContractController {
     @SaCheckPermission("oa:contract:edit")
     public R<Void> edit(@RequestBody OaContract contract) {
         try {
-            return R.result(contractService.updateContract(contract));
+            return R.result(oaContractService.updateContract(contract));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -67,7 +67,7 @@ public class ContractController {
     @SaCheckPermission("oa:contract:remove")
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         try {
-            return R.result(contractService.removeContracts(ids));
+            return R.result(oaContractService.removeContracts(ids));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -78,7 +78,7 @@ public class ContractController {
     @SaCheckPermission("oa:contract:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
         try {
-            return R.result(contractService.submitContract(id));
+            return R.result(oaContractService.submitContract(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -89,7 +89,7 @@ public class ContractController {
     @SaCheckPermission("oa:contract:cancel")
     public R<Void> cancel(@PathVariable("id") Long id) {
         try {
-            return R.result(contractService.cancelContract(id));
+            return R.result(oaContractService.cancelContract(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -101,7 +101,7 @@ public class ContractController {
     public R<Void> linkSeal(@PathVariable("id") Long id,
                             @PathVariable("sealApplicationId") Long sealApplicationId) {
         try {
-            return R.result(contractService.linkSeal(id, sealApplicationId));
+            return R.result(oaContractService.linkSeal(id, sealApplicationId));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -111,7 +111,7 @@ public class ContractController {
     @SaCheckPermission("oa:contract:list")
     public R<List<OaTraceEvent>> timeline(@PathVariable("id") Long id) {
         try {
-            return R.ok(contractService.listTimeline(id));
+            return R.ok(oaContractService.listTimeline(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -121,7 +121,7 @@ public class ContractController {
     @SaCheckPermission("oa:contract:list")
     public R<List<OaRiskAlert>> risks(@PathVariable("id") Long id) {
         try {
-            return R.ok(contractService.listRisks(id));
+            return R.ok(oaContractService.listRisks(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

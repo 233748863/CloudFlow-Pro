@@ -3,7 +3,7 @@ package com.cloudflow.auth.controller.system;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.auth.domain.dto.OnlineUserDTO;
 import com.cloudflow.auth.domain.dto.OnlineUserQuery;
-import com.cloudflow.auth.service.OnlineUserService;
+import com.cloudflow.auth.service.IOnlineUserService;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
@@ -25,7 +25,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysOnlineUserController {
 
-    private final OnlineUserService onlineUserService;
+    private final IOnlineUserService onlineUserService;
 
     /**
      * 分页查询在线用户。

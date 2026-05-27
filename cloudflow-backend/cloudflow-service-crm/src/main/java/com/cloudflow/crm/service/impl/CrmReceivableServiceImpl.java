@@ -34,7 +34,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
     private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
 
     @Override
@@ -75,7 +75,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         Localize.fillCommonAudit(receivable, currentTenantId(), currentUserName(), now());
         boolean saved = save(receivable);
         if (saved) {
-            customerService.refreshHealth(receivable.getCustomerId());
+            crmCustomerService.refreshHealth(receivable.getCustomerId());
         }
         return saved;
     }
@@ -102,7 +102,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         receivable.setUpdateTime(now());
         boolean updated = updateById(receivable);
         if (updated) {
-            customerService.refreshHealth(receivable.getCustomerId());
+            crmCustomerService.refreshHealth(receivable.getCustomerId());
         }
         return updated;
     }
@@ -118,7 +118,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         receivable.setUpdateTime(now());
         boolean updated = updateById(receivable);
         if (updated) {
-            customerService.refreshHealth(receivable.getCustomerId());
+            crmCustomerService.refreshHealth(receivable.getCustomerId());
         }
         return updated;
     }
@@ -170,7 +170,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
         receivable.setUpdateTime(now());
         boolean updated = updateById(receivable);
         if (updated) {
-            customerService.refreshHealth(receivable.getCustomerId());
+            crmCustomerService.refreshHealth(receivable.getCustomerId());
         }
         return updated;
     }
@@ -332,7 +332,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
             }
         }
         if (receivable.getCustomerId() != null && !StringUtils.hasText(receivable.getCustomerName())) {
-            CrmCustomer customer = customerService.getAccessibleCustomer(receivable.getCustomerId());
+            CrmCustomer customer = crmCustomerService.getAccessibleCustomer(receivable.getCustomerId());
             receivable.setCustomerName(customer.getCustomerName());
         }
     }

@@ -1,6 +1,6 @@
 package com.cloudflow.auth.service.impl;
 
-import com.cloudflow.auth.service.LoginLogService;
+import com.cloudflow.auth.service.ILoginLogService;
 import com.cloudflow.common.log.domain.SysLogEntity;
 import com.cloudflow.common.log.enums.LogTypeEnum;
 import com.cloudflow.common.log.event.SysLogEvent;
@@ -27,7 +27,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class LoginLogServiceImpl implements LoginLogService {
+public class LoginLogServiceImpl implements ILoginLogService {
 
     private static final String LOGIN_URI = "/login";
     private static final String LOGIN_SUCCESS_TITLE = "用户登录";

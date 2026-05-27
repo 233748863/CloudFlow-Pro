@@ -10,7 +10,7 @@ import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
 import com.cloudflow.auth.mapper.SysFileMapper;
 import com.cloudflow.auth.mapper.SysTenantMapper;
 import com.cloudflow.auth.mapper.SysUserMapper;
-import com.cloudflow.auth.service.SysTenantService;
+import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.tenant.TenantContext;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  */
 @Slf4j
 @Service
-public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant> implements SysTenantService {
+public class SysTenantServiceImpl extends ServiceImpl<SysTenantMapper, SysTenant> implements ISysTenantService {
 
     private static final long MB_BYTES = 1024L * 1024L;
 

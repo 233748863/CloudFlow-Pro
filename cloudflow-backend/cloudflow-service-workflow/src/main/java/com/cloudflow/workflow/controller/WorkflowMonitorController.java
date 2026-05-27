@@ -4,7 +4,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.workflow.domain.monitor.*;
-import com.cloudflow.workflow.service.WorkflowMonitorService;
+import com.cloudflow.workflow.service.IWorkflowMonitorService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class WorkflowMonitorController {
 
-    private final WorkflowMonitorService monitorService;
+    private final IWorkflowMonitorService workflowMonitorService;
 
     // ==================== 监控概览 ====================
 
@@ -40,7 +40,7 @@ public class WorkflowMonitorController {
     @SaCheckPermission("workflow:monitor:list")
     @GetMapping("/overview")
     public R<MonitorOverview> getMonitorOverview() {
-        MonitorOverview overview = monitorService.getMonitorOverview();
+        MonitorOverview overview = workflowMonitorService.getMonitorOverview();
         return R.ok(overview);
     }
 
@@ -54,7 +54,7 @@ public class WorkflowMonitorController {
     public R<List<ProcessTrend>> getProcessTrend(
             @RequestParam(defaultValue = "7") Integer days,
             @RequestParam(required = false) String processDefKey) {
-        List<ProcessTrend> trend = monitorService.getProcessTrend(days, processDefKey);
+        List<ProcessTrend> trend = workflowMonitorService.getProcessTrend(days, processDefKey);
         return R.ok(trend);
     }
 
@@ -75,7 +75,7 @@ public class WorkflowMonitorController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         
-        return R.ok(monitorService.getProcessMonitors(
+        return R.ok(workflowMonitorService.getProcessMonitors(
                 processDefKey, status, startTimeFrom, startTimeTo, pageNum, pageSize));
     }
 
@@ -86,7 +86,7 @@ public class WorkflowMonitorController {
     @SaCheckPermission("workflow:monitor:list")
     @GetMapping("/process/{instanceId}")
     public R<ProcessMonitor> getProcessMonitor(@PathVariable String instanceId) {
-        ProcessMonitor monitor = monitorService.getProcessMonitor(instanceId);
+        ProcessMonitor monitor = workflowMonitorService.getProcessMonitor(instanceId);
         return R.ok(monitor);
     }
 
@@ -105,7 +105,7 @@ public class WorkflowMonitorController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         
-        return R.ok(monitorService.getTimeoutAlerts(
+        return R.ok(workflowMonitorService.getTimeoutAlerts(
                 alertType, alertLevel, resolved, pageNum, pageSize));
     }
 
@@ -118,7 +118,7 @@ public class WorkflowMonitorController {
     public R<TimeoutAlertHandleResult> handleTimeoutAlert(
             @PathVariable Long alertId,
             @RequestBody HandleAlertRequest request) {
-        return R.ok(monitorService.handleTimeoutAlert(alertId, request.getAction()));
+        return R.ok(workflowMonitorService.handleTimeoutAlert(alertId, request.getAction()));
     }
 
     /**
@@ -130,7 +130,7 @@ public class WorkflowMonitorController {
     public R<PageResult<TimeoutAlert>> getTimeoutEscalationTasks(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(monitorService.getTimeoutEscalationTasks(pageNum, pageSize));
+        return R.ok(workflowMonitorService.getTimeoutEscalationTasks(pageNum, pageSize));
     }
 
     /**
@@ -142,7 +142,7 @@ public class WorkflowMonitorController {
     public R<TimeoutAlert> resolveTimeoutAlert(
             @PathVariable Long alertId,
             @RequestBody ResolveAlertRequest request) {
-        return R.ok(monitorService.resolveTimeoutAlert(alertId, request.getResolveNote()));
+        return R.ok(workflowMonitorService.resolveTimeoutAlert(alertId, request.getResolveNote()));
     }
 
     // ==================== 异常告警 ====================
@@ -160,7 +160,7 @@ public class WorkflowMonitorController {
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize) {
         
-        return R.ok(monitorService.getAnomalyAlerts(
+        return R.ok(workflowMonitorService.getAnomalyAlerts(
                 anomalyType, severity, resolved, pageNum, pageSize));
     }
 
@@ -173,7 +173,7 @@ public class WorkflowMonitorController {
     public R<?> resolveAnomalyAlert(
             @PathVariable Long alertId,
             @RequestBody ResolveAlertRequest request) {
-        monitorService.resolveAnomalyAlert(alertId, request.getResolveNote());
+        workflowMonitorService.resolveAnomalyAlert(alertId, request.getResolveNote());
         return R.ok("解决成功");
     }
 
@@ -190,7 +190,7 @@ public class WorkflowMonitorController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @RequestParam(required = false) String processDefKey) {
 
-        return R.ok(monitorService.getPerformanceDashboard(startDate, endDate, processDefKey));
+        return R.ok(workflowMonitorService.getPerformanceDashboard(startDate, endDate, processDefKey));
     }
 
     /**
@@ -204,7 +204,7 @@ public class WorkflowMonitorController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @RequestParam(required = false) String processDefKey) {
 
-        return R.ok(monitorService.getPerformanceRiskBreakdown(startDate, endDate, processDefKey));
+        return R.ok(workflowMonitorService.getPerformanceRiskBreakdown(startDate, endDate, processDefKey));
     }
 
     /**
@@ -218,7 +218,7 @@ public class WorkflowMonitorController {
             @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate endDate,
             @RequestParam(required = false) String processDefKey) {
         
-        List<PerformanceStats> stats = monitorService.getPerformanceStats(
+        List<PerformanceStats> stats = workflowMonitorService.getPerformanceStats(
                 startDate, endDate, processDefKey);
         return R.ok(stats);
     }

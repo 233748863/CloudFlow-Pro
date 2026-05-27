@@ -23,7 +23,7 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 @RequiredArgsConstructor
 public class SysConfigController {
 
-    private final ISysConfigService configService;
+    private final ISysConfigService sysConfigService;
 
     /**
      * 分页查询参数配置列表
@@ -41,7 +41,7 @@ public class SysConfigController {
                 .like(configKey != null, SysConfig::getConfigKey, configKey)
                 .eq(configType != null, SysConfig::getConfigType, configType)
                 .orderByAsc(SysConfig::getConfigId);
-        Page<SysConfig> page = configService.page(new Page<>(pageNum, pageSize), wrapper);
+        Page<SysConfig> page = sysConfigService.page(new Page<>(pageNum, pageSize), wrapper);
         return R.ok(page);
     }
 
@@ -51,7 +51,7 @@ public class SysConfigController {
     @GetMapping("/{configId}")
     @SaCheckPermission("system:config:query")
     public R<SysConfig> getInfo(@PathVariable Long configId) {
-        return R.ok(configService.getById(configId));
+        return R.ok(sysConfigService.getById(configId));
     }
 
     /**
@@ -60,7 +60,7 @@ public class SysConfigController {
     @GetMapping("/configKey/{configKey}")
     @SaCheckPermission("system:config:query")
     public R<String> getConfigKey(@PathVariable String configKey) {
-        return R.ok(configService.selectConfigByKey(configKey));
+        return R.ok(sysConfigService.selectConfigByKey(configKey));
     }
 
     /**
@@ -69,11 +69,11 @@ public class SysConfigController {
     @PostMapping
     @SaCheckPermission("system:config:add")
     public R<Void> add(@RequestBody SysConfig config) {
-        if (!configService.checkConfigKeyUnique(config)) {
+        if (!sysConfigService.checkConfigKeyUnique(config)) {
             return R.fail("新增参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
         config.setCreateTime(LocalDateTime.now());
-        configService.save(config);
+        sysConfigService.save(config);
         return R.ok();
     }
 
@@ -83,11 +83,11 @@ public class SysConfigController {
     @PutMapping
     @SaCheckPermission("system:config:edit")
     public R<Void> edit(@RequestBody SysConfig config) {
-        if (!configService.checkConfigKeyUnique(config)) {
+        if (!sysConfigService.checkConfigKeyUnique(config)) {
             return R.fail("修改参数'" + config.getConfigName() + "'失败，参数键名已存在");
         }
         config.setUpdateTime(LocalDateTime.now());
-        configService.updateById(config);
+        sysConfigService.updateById(config);
         return R.ok();
     }
 
@@ -99,12 +99,12 @@ public class SysConfigController {
     @SaCheckPermission("system:config:remove")
     public R<Void> remove(@PathVariable Long[] configIds) {
         for (Long configId : configIds) {
-            SysConfig config = configService.getById(configId);
+            SysConfig config = sysConfigService.getById(configId);
             if (config != null && "Y".equals(config.getConfigType())) {
                 return R.fail("内置参数'" + config.getConfigKey() + "'不允许删除");
             }
         }
-        configService.removeByIds(Arrays.asList(configIds));
+        sysConfigService.removeByIds(Arrays.asList(configIds));
         return R.ok();
     }
 }

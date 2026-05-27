@@ -25,21 +25,21 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class CrmCustomerController {
 
-    private final ICrmCustomerService customerService;
-    private final ICrmCustomerWorkspaceService workspaceService;
-    private final ICrmCrossModuleDraftService crossModuleDraftService;
+    private final ICrmCustomerService crmCustomerService;
+    private final ICrmCustomerWorkspaceService crmCustomerWorkspaceService;
+    private final ICrmCrossModuleDraftService crmCrossModuleDraftService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:customer:list")
     public R<PageResult<CrmCustomer>> list(CrmCustomer query, PageQuery pageQuery) {
-        return R.ok(customerService.queryPage(query, pageQuery));
+        return R.ok(crmCustomerService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:customer:list")
     public R<CrmCustomer> getInfo(@PathVariable("id") Long id) {
         try {
-            return R.ok(customerService.getAccessibleCustomer(id));
+            return R.ok(crmCustomerService.getAccessibleCustomer(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -49,7 +49,7 @@ public class CrmCustomerController {
     @SaCheckPermission("crm:customer:list")
     public R<CrmCustomerWorkspaceVO> workspace(@PathVariable("id") Long id) {
         try {
-            return R.ok(workspaceService.getWorkspace(id));
+            return R.ok(crmCustomerWorkspaceService.getWorkspace(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -58,7 +58,7 @@ public class CrmCustomerController {
     @GetMapping("/dashboard/summary")
     @SaCheckPermission("crm:dashboard:view")
     public R<CrmDashboardSummaryVO> dashboardSummary() {
-        return R.ok(workspaceService.getDashboardSummary());
+        return R.ok(crmCustomerWorkspaceService.getDashboardSummary());
     }
 
     @PostMapping("/{id}/workspace/contract-draft")
@@ -66,7 +66,7 @@ public class CrmCustomerController {
     public R<Long> createWorkspaceContractDraft(@PathVariable("id") Long id,
                                                 @RequestBody RemoteOaService.ContractDraftRequest request) {
         try {
-            return R.ok(crossModuleDraftService.createContractDraft(id, request));
+            return R.ok(crmCrossModuleDraftService.createContractDraft(id, request));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -77,7 +77,7 @@ public class CrmCustomerController {
     public R<Long> createWorkspaceProjectDraft(@PathVariable("id") Long id,
                                                @RequestBody RemoteOaService.ProjectDraftRequest request) {
         try {
-            return R.ok(crossModuleDraftService.createProjectDraft(id, request));
+            return R.ok(crmCrossModuleDraftService.createProjectDraft(id, request));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -88,7 +88,7 @@ public class CrmCustomerController {
     public R<Void> createWorkspaceBudgetDraft(@PathVariable("id") Long id,
                                               @RequestBody RemoteOaService.BudgetDraftRequest request) {
         try {
-            return R.result(crossModuleDraftService.createBudgetDraft(id, request));
+            return R.result(crmCrossModuleDraftService.createBudgetDraft(id, request));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -99,7 +99,7 @@ public class CrmCustomerController {
     public R<Void> createWorkspaceInvoiceDraft(@PathVariable("id") Long id,
                                                @RequestBody RemoteOaService.InvoiceDraftRequest request) {
         try {
-            return R.result(crossModuleDraftService.createInvoiceDraft(id, request));
+            return R.result(crmCrossModuleDraftService.createInvoiceDraft(id, request));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -111,7 +111,7 @@ public class CrmCustomerController {
                                         @PathVariable("invoiceId") Long invoiceId,
                                         @RequestBody RemoteOaService.InvoiceBindRequest request) {
         try {
-            return R.result(crossModuleDraftService.bindInvoice(id, invoiceId, request));
+            return R.result(crmCrossModuleDraftService.bindInvoice(id, invoiceId, request));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -123,7 +123,7 @@ public class CrmCustomerController {
                                         @PathVariable("invoiceId") Long invoiceId,
                                         @RequestBody(required = false) Map<String, String> body) {
         try {
-            return R.result(crossModuleDraftService.voidInvoice(id, invoiceId, body == null ? null : body.get("remark")));
+            return R.result(crmCrossModuleDraftService.voidInvoice(id, invoiceId, body == null ? null : body.get("remark")));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -134,7 +134,7 @@ public class CrmCustomerController {
     public R<Void> confirmWorkspaceReceivable(@PathVariable("id") Long id,
                                               @PathVariable("receivableId") Long receivableId) {
         try {
-            return R.result(crossModuleDraftService.confirmReceivable(id, receivableId));
+            return R.result(crmCrossModuleDraftService.confirmReceivable(id, receivableId));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -145,7 +145,7 @@ public class CrmCustomerController {
     @SaCheckPermission("crm:customer:add")
     public R<Void> add(@RequestBody CrmCustomer customer) {
         try {
-            return R.result(customerService.createCustomer(customer));
+            return R.result(crmCustomerService.createCustomer(customer));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -156,7 +156,7 @@ public class CrmCustomerController {
     @SaCheckPermission("crm:customer:edit")
     public R<Void> edit(@RequestBody CrmCustomer customer) {
         try {
-            return R.result(customerService.updateCustomer(customer));
+            return R.result(crmCustomerService.updateCustomer(customer));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -170,7 +170,7 @@ public class CrmCustomerController {
             CrmCustomer customer = new CrmCustomer();
             customer.setCustomerId(id);
             customer.setDeleted(1);
-            customerService.updateById(customer);
+            crmCustomerService.updateById(customer);
         }
         return R.ok();
     }

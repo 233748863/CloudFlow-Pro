@@ -39,7 +39,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
 
     private final OaSealApplicationMapper sealApplicationMapper;
     private final OaSealExpiryReminderLogMapper expiryReminderLogMapper;
-    private final ISysNoticeService noticeService;
+    private final ISysNoticeService sysNoticeService;
     private final SysConfigHelper sysConfigHelper;
 
     private static final String EXPIRY_REMINDER_DAYS_CONFIG = "sys.oa.seal.expiryReminderDays";
@@ -315,7 +315,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         expiryReminderLogMapper.insert(log);
-        noticeService.sendNotice(recipientId, "印章到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
+        sysNoticeService.sendNotice(recipientId, "印章到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
         return true;
     }
 

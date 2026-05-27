@@ -48,7 +48,7 @@ public class VersionController {
     private IVersionService versionService;
 
     @Autowired
-    private IVersionComparisonService comparisonService;
+    private IVersionComparisonService versionComparisonService;
 
     @Autowired
     private WfProcessDefinitionMapper definitionMapper;
@@ -104,7 +104,7 @@ public class VersionController {
         }
 
         ensureWorkflowOwnerOrAdmin(fromVersion.getWorkflowId());
-        VersionComparisonDTO comparison = comparisonService.compareVersions(fromVersionId, toVersionId);
+        VersionComparisonDTO comparison = versionComparisonService.compareVersions(fromVersionId, toVersionId);
         return R.ok(comparison);
     }
 

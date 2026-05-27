@@ -50,19 +50,19 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     private RemoteWorkflowService remoteWorkflowService;
 
     @Autowired
-    private ISysScheduleService scheduleService;
+    private ISysScheduleService sysScheduleService;
 
     @Autowired
-    private ISysNoticeService noticeService;
+    private ISysNoticeService sysNoticeService;
 
     @Autowired
-    private ISysAnnouncementService announcementService;
+    private ISysAnnouncementService sysAnnouncementService;
 
     @Autowired
-    private IOaRiskAlertService riskAlertService;
+    private IOaRiskAlertService oaRiskAlertService;
 
     @Autowired
-    private IOaTraceEventService traceEventService;
+    private IOaTraceEventService oaTraceEventService;
 
     @Autowired
     private RemoteCrmWorkplaceService remoteCrmWorkplaceService;
@@ -71,7 +71,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     private RemoteHrWorkplaceService remoteHrWorkplaceService;
 
     @Autowired
-    private IOaContractMilestoneService contractMilestoneService;
+    private IOaContractMilestoneService oaContractMilestoneService;
 
     @Override
     @Cacheable(cacheNames = WORKPLACE_SUMMARY_CACHE, key = "#userId")
@@ -128,7 +128,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             String todayStr = today.format(DateTimeFormatter.ISO_LOCAL_DATE);
             List<SysScheduleEvent> todayEvents = new ArrayList<>();
             try {
-                todayEvents = scheduleService.getMyEvents(
+                todayEvents = sysScheduleService.getMyEvents(
                     userId, 
                     todayStr, 
                     todayStr
@@ -145,7 +145,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             
             // 未读消息数量
             try {
-                long unreadCount = noticeService.getUnreadCount(userId);
+                long unreadCount = sysNoticeService.getUnreadCount(userId);
                 statistics.setUnreadMessages((int) unreadCount);
                 stats.setUnreadMessages((int) unreadCount);
                 log.debug("未读消息数量: {}", statistics.getUnreadMessages());
@@ -191,7 +191,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
             // 4. 最新公告 (最多3条)
             List<WorkplaceSummaryDTO.AnnouncementItem> announcements = new ArrayList<>();
             try {
-                List<SysAnnouncement> allAnnouncements = announcementService.getMyAnnouncements(userId);
+                List<SysAnnouncement> allAnnouncements = sysAnnouncementService.getMyAnnouncements(userId);
                 
                 if (allAnnouncements != null && !allAnnouncements.isEmpty()) {
                     announcements = allAnnouncements.stream()
@@ -305,7 +305,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
     public List<WorkplaceSummaryDTO.ActivityItem> getTimeline(Long userId, Integer limit) {
         int safeLimit = normalizeLimit(limit, 20);
         try {
-            List<WorkplaceSummaryDTO.ActivityItem> oaActivities = traceEventService.listRecent(safeLimit).stream()
+            List<WorkplaceSummaryDTO.ActivityItem> oaActivities = oaTraceEventService.listRecent(safeLimit).stream()
                     .map(this::toActivityItem)
                     .collect(Collectors.toList());
             List<WorkplaceSummaryDTO.ActivityItem> crmActivities = loadCrmActivities();
@@ -363,7 +363,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
                                                              WorkplaceSummaryDTO.Stats stats,
                                                              Long userId) {
         try {
-            List<OaRiskAlert> risks = riskAlertService.list(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaRiskAlert>()
+            List<OaRiskAlert> risks = oaRiskAlertService.list(new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OaRiskAlert>()
                     .in(OaRiskAlert::getRiskStatus, OaContractConstants.RISK_STATUS_OPEN, OaContractConstants.RISK_STATUS_HANDLING)
                     .orderByDesc(OaRiskAlert::getDetectedTime)
                     .orderByDesc(OaRiskAlert::getId)
@@ -546,7 +546,7 @@ public class WorkplaceServiceImpl implements IWorkplaceService {
 
     private List<WorkplaceSummaryDTO.RiskItem> loadContractMilestoneRisks() {
         try {
-            List<DynamicMapVO> overdueItems = contractMilestoneService.loadOverdueRiskItems(8);
+            List<DynamicMapVO> overdueItems = oaContractMilestoneService.loadOverdueRiskItems(8);
             if (overdueItems == null || overdueItems.isEmpty()) {
                 return new ArrayList<>();
             }

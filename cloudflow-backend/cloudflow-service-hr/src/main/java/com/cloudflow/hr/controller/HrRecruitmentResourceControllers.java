@@ -22,7 +22,7 @@ import com.cloudflow.hr.domain.vo.recruitment.HrInterviewVO;
 import com.cloudflow.hr.domain.vo.recruitment.HrOfferVO;
 import com.cloudflow.hr.domain.vo.recruitment.HrRecruitmentChannelVO;
 import com.cloudflow.hr.domain.vo.recruitment.HrRecruitmentRequisitionVO;
-import com.cloudflow.hr.service.HrRecruitmentChannelService;
+import com.cloudflow.hr.service.IHrRecruitmentChannelService;
 import com.cloudflow.hr.service.HrRecruitmentService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -211,7 +211,7 @@ class HrOfferController {
 class HrRecruitmentChannelController {
 
     private final HrTypedCrudService crudService;
-    private final HrRecruitmentChannelService channelService;
+    private final IHrRecruitmentChannelService hrRecruitmentChannelService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/channels")
@@ -248,6 +248,6 @@ class HrRecruitmentChannelController {
     @GetMapping("/channels/stats")
     @SaCheckPermission("hr:recruitment:list")
     public R<List<HrChannelStatVO>> channelStats() {
-        return R.ok(channelService.channelStats());
+        return R.ok(hrRecruitmentChannelService.channelStats());
     }
 }

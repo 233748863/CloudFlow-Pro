@@ -32,7 +32,7 @@ public class AuditEventController {
 
     private static final int EXPORT_LIMIT = 5000;
 
-    private final IOaTraceEventService traceEventService;
+    private final IOaTraceEventService oaTraceEventService;
 
     @GetMapping
     @SaCheckPermission("system:audit:events")
@@ -44,7 +44,7 @@ public class AuditEventController {
                                           @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
                                           @RequestParam(defaultValue = "1") Integer pageNum,
                                           @RequestParam(defaultValue = "10") Integer pageSize) {
-        Page<OaTraceEvent> page = traceEventService.queryAuditEvents(buildQuery(businessType, businessId, eventType,
+        Page<OaTraceEvent> page = oaTraceEventService.queryAuditEvents(buildQuery(businessType, businessId, eventType,
                 operatorName, beginTime, endTime, pageNum, pageSize));
         Page<TimelineEventDTO> result = new Page<>(page.getCurrent(), page.getSize(), page.getTotal());
         result.setRecords(page.getRecords().stream().map(TimelineEventDTO::from).toList());
@@ -61,7 +61,7 @@ public class AuditEventController {
                        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
                        HttpServletResponse response) throws IOException {
         AuditEventQueryDTO query = buildQuery(businessType, businessId, eventType, operatorName, beginTime, endTime, 1, EXPORT_LIMIT + 1);
-        Page<OaTraceEvent> page = traceEventService.queryAuditEvents(query);
+        Page<OaTraceEvent> page = oaTraceEventService.queryAuditEvents(query);
         if (page.getTotal() > EXPORT_LIMIT || page.getRecords().size() > EXPORT_LIMIT) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.setContentType("application/json;charset=UTF-8");

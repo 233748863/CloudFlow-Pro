@@ -6,7 +6,7 @@ import com.cloudflow.crm.domain.dto.approval.CrmCustomerLevelChangeSubmitDTO;
 import com.cloudflow.crm.domain.dto.approval.CrmOpportunityDowngradeSubmitDTO;
 import com.cloudflow.crm.domain.dto.approval.CrmRefundSubmitDTO;
 import com.cloudflow.crm.domain.vo.CrmApprovalVO;
-import com.cloudflow.crm.service.CrmApprovalService;
+import com.cloudflow.crm.service.ICrmApprovalService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
@@ -28,14 +28,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CrmApprovalController {
 
-    private final CrmApprovalService approvalService;
+    private final ICrmApprovalService crmApprovalService;
     private final ObjectMapper objectMapper;
 
     @PostMapping("/customer-claim")
     @SaCheckPermission("crm:approval:customer-claim")
     public R<Long> submitCustomerClaim(@Validated @RequestBody CrmCustomerClaimSubmitDTO dto) {
         try {
-            return R.ok(approvalService.submitCustomerClaim(dto.getCustomerId(), dto.getAction(), dto.getRemark()));
+            return R.ok(crmApprovalService.submitCustomerClaim(dto.getCustomerId(), dto.getAction(), dto.getRemark()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -45,7 +45,7 @@ public class CrmApprovalController {
     @SaCheckPermission("crm:approval:customer-level")
     public R<Long> submitCustomerLevelChange(@Validated @RequestBody CrmCustomerLevelChangeSubmitDTO dto) {
         try {
-            return R.ok(approvalService.submitCustomerLevelChange(dto.getCustomerId(), dto.getAction(),
+            return R.ok(crmApprovalService.submitCustomerLevelChange(dto.getCustomerId(), dto.getAction(),
                     dto.getTargetLevel(), dto.getRemark()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
@@ -56,7 +56,7 @@ public class CrmApprovalController {
     @SaCheckPermission("crm:approval:opportunity-downgrade")
     public R<Long> submitOpportunityDowngrade(@Validated @RequestBody CrmOpportunityDowngradeSubmitDTO dto) {
         try {
-            return R.ok(approvalService.submitOpportunityDowngrade(dto.getOpportunityId(), dto.getAction(),
+            return R.ok(crmApprovalService.submitOpportunityDowngrade(dto.getOpportunityId(), dto.getAction(),
                     dto.getTargetStage(), dto.getLostReason()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
@@ -67,7 +67,7 @@ public class CrmApprovalController {
     @SaCheckPermission("crm:approval:refund")
     public R<Long> submitRefund(@Validated @RequestBody CrmRefundSubmitDTO dto) {
         try {
-            return R.ok(approvalService.submitRefund(dto.getReceivableId(), dto.getRefundAmount(), dto.getReason()));
+            return R.ok(crmApprovalService.submitRefund(dto.getReceivableId(), dto.getRefundAmount(), dto.getReason()));
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
         }
@@ -76,6 +76,6 @@ public class CrmApprovalController {
     @GetMapping("/{id}")
     @SaCheckPermission("crm:approval:query")
     public R<CrmApprovalVO> getInfo(@PathVariable("id") Long id) {
-        return R.ok(objectMapper.convertValue(approvalService.getById(id), CrmApprovalVO.class));
+        return R.ok(objectMapper.convertValue(crmApprovalService.getById(id), CrmApprovalVO.class));
     }
 }

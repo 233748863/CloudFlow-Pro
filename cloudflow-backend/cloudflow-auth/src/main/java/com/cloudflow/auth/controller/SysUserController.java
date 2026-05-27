@@ -18,7 +18,7 @@ import java.util.List;
 public class SysUserController {
 
     @Autowired
-    private ISysUserService userService;
+    private ISysUserService sysUserService;
 
     /**
      * 获取用户列表
@@ -26,7 +26,7 @@ public class SysUserController {
     @GetMapping("/list")
     @SaCheckPermission("system:user:list")
     public R<List<SysUser>> list(SysUser user) {
-        List<SysUser> list = userService.selectUserList(user);
+        List<SysUser> list = sysUserService.selectUserList(user);
         return R.ok(list);
     }
 
@@ -36,7 +36,7 @@ public class SysUserController {
     @GetMapping("/{userId}")
     @SaCheckPermission("system:user:query")
     public R<SysUser> getInfo(@PathVariable("userId") Long userId) {
-        return R.ok(userService.selectUserById(userId));
+        return R.ok(sysUserService.selectUserById(userId));
     }
 
     /**
@@ -47,7 +47,7 @@ public class SysUserController {
     public R<?> add(@RequestBody SysUser user) {
         try {
             user.setPwdResetRequired("1");
-            return R.ok(userService.insertUser(user));
+            return R.ok(sysUserService.insertUser(user));
         } catch (IllegalStateException ex) {
             return R.fail(ex.getMessage());
         }
@@ -59,7 +59,7 @@ public class SysUserController {
     @PutMapping
     @SaCheckPermission("system:user:edit")
     public R<?> edit(@RequestBody SysUser user) {
-        return R.ok(userService.updateUser(user));
+        return R.ok(sysUserService.updateUser(user));
     }
 
     /**
@@ -72,7 +72,7 @@ public class SysUserController {
         if (!StringUtils.hasText(password)) {
             return R.fail("密码不能为空");
         }
-        return R.ok(userService.resetPwd(userId, password));
+        return R.ok(sysUserService.resetPwd(userId, password));
     }
 
     /**
@@ -81,7 +81,7 @@ public class SysUserController {
     @DeleteMapping("/{userIds}")
     @SaCheckPermission("system:user:remove")
     public R<?> remove(@PathVariable("userIds") Long[] userIds) {
-        return R.ok(userService.deleteUserByIds(userIds));
+        return R.ok(sysUserService.deleteUserByIds(userIds));
     }
 
     /**
@@ -97,7 +97,7 @@ public class SysUserController {
             return R.ok(Collections.emptyList());
         }
 
-        List<SysUser> users = userService.selectUserByIds(userIds);
+        List<SysUser> users = sysUserService.selectUserByIds(userIds);
         return R.ok(users);
     }
 }

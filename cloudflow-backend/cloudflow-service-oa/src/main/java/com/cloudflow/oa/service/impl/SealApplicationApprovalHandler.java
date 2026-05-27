@@ -29,8 +29,8 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
 
     private final OaSealApplicationMapper sealApplicationMapper;
     private final OaSealMapper sealMapper;
-    private final IOaTraceEventService traceEventService;
-    private final ISysNoticeService noticeService;
+    private final IOaTraceEventService oaTraceEventService;
+    private final ISysNoticeService sysNoticeService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -71,7 +71,7 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
         if (application == null || application.getContractId() == null) {
             return;
         }
-        traceEventService.record(application.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT,
+        oaTraceEventService.record(application.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT,
                 application.getContractId(), OaContractConstants.BUSINESS_TYPE_SEAL, application.getId(),
                 eventType, title, application.getApplicationNo(), dto.getApproverId(), dto.getApproverName(), null);
     }
@@ -86,7 +86,7 @@ public class SealApplicationApprovalHandler implements ApprovalResultHandler {
             return;
         }
         String content = "用印申请已审批通过，请处理借出：" + application.getApplicationNo() + " / " + application.getSealName();
-        noticeService.sendNotice(seal.getKeeperId(), "用印待借出处理", content, "2",
+        sysNoticeService.sendNotice(seal.getKeeperId(), "用印待借出处理", content, "2",
                 null, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
     }
 }

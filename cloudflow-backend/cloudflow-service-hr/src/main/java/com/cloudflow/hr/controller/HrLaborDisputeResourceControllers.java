@@ -13,9 +13,9 @@ import com.cloudflow.hr.domain.vo.dispute.HrDisputeArbitrationVO;
 import com.cloudflow.hr.domain.vo.dispute.HrDisputeEvidenceVO;
 import com.cloudflow.hr.domain.vo.dispute.HrDisputeMediationVO;
 import com.cloudflow.hr.domain.vo.dispute.HrLaborDisputeVO;
-import com.cloudflow.hr.service.HrDisputeArbitrationService;
-import com.cloudflow.hr.service.HrDisputeMediationService;
-import com.cloudflow.hr.service.HrLaborDisputeService;
+import com.cloudflow.hr.service.IHrDisputeArbitrationService;
+import com.cloudflow.hr.service.IHrDisputeMediationService;
+import com.cloudflow.hr.service.IHrLaborDisputeService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -39,32 +39,32 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 class HrLaborDisputeController {
 
-    private final HrLaborDisputeService disputeService;
+    private final IHrLaborDisputeService hrLaborDisputeService;
 
     @GetMapping
     @SaCheckPermission("hr:dispute:list")
     public R<PageResult<HrLaborDisputeVO>> page(@Validated @ModelAttribute HrLaborDisputeQueryDTO query) {
-        return R.ok(disputeService.page(query));
+        return R.ok(hrLaborDisputeService.page(query));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:dispute:list")
     public R<HrLaborDisputeVO> get(@PathVariable Long id) {
-        return R.ok(disputeService.get(id));
+        return R.ok(hrLaborDisputeService.get(id));
     }
 
     @SysLog("登记劳动争议")
     @PostMapping
     @SaCheckPermission("hr:dispute:register")
     public R<Long> register(@Validated @RequestBody HrLaborDisputeDTO dto) {
-        return R.ok(disputeService.registerDispute(dto));
+        return R.ok(hrLaborDisputeService.registerDispute(dto));
     }
 
     @SysLog("修改劳动争议")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:dispute:register")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrLaborDisputeDTO dto) {
-        disputeService.updateDispute(id, dto);
+        hrLaborDisputeService.updateDispute(id, dto);
         return R.ok();
     }
 
@@ -72,7 +72,7 @@ class HrLaborDisputeController {
     @PostMapping("/{id}/submit")
     @SaCheckPermission("hr:dispute:register")
     public R<String> submit(@PathVariable Long id) {
-        return R.ok(disputeService.submitWorkflow(id));
+        return R.ok(hrLaborDisputeService.submitWorkflow(id));
     }
 
     @SysLog("关闭劳动争议")
@@ -80,21 +80,21 @@ class HrLaborDisputeController {
     @SaCheckPermission("hr:dispute:close")
     public R<Void> close(@PathVariable Long id,
                          @RequestParam(required = false) String reason) {
-        disputeService.close(id, reason);
+        hrLaborDisputeService.close(id, reason);
         return R.ok();
     }
 
     @GetMapping("/{id}/evidence")
     @SaCheckPermission("hr:dispute:list")
     public R<PageResult<HrDisputeEvidenceVO>> listEvidence(@PathVariable Long id) {
-        return R.ok(disputeService.listEvidence(id));
+        return R.ok(hrLaborDisputeService.listEvidence(id));
     }
 
     @SysLog("上传争议证据")
     @PostMapping("/{id}/evidence")
     @SaCheckPermission("hr:dispute:upload-evidence")
     public R<Long> uploadEvidence(@PathVariable Long id, @Validated @RequestBody HrDisputeEvidenceDTO dto) {
-        return R.ok(disputeService.attachEvidence(id, dto));
+        return R.ok(hrLaborDisputeService.attachEvidence(id, dto));
     }
 }
 
@@ -103,26 +103,26 @@ class HrLaborDisputeController {
 @RequiredArgsConstructor
 class HrDisputeMediationController {
 
-    private final HrDisputeMediationService mediationService;
+    private final IHrDisputeMediationService hrDisputeMediationService;
 
     @GetMapping
     @SaCheckPermission("hr:dispute:mediation")
     public R<PageResult<HrDisputeMediationVO>> list(@PathVariable Long disputeId) {
-        return R.ok(mediationService.listByDispute(disputeId));
+        return R.ok(hrDisputeMediationService.listByDispute(disputeId));
     }
 
     @SysLog("新增争议调解记录")
     @PostMapping
     @SaCheckPermission("hr:dispute:mediation")
     public R<Long> create(@PathVariable Long disputeId, @Validated @RequestBody HrDisputeMediationDTO dto) {
-        return R.ok(mediationService.createMediation(disputeId, dto));
+        return R.ok(hrDisputeMediationService.createMediation(disputeId, dto));
     }
 
     @SysLog("修改争议调解记录")
     @PutMapping("/{mediationId}")
     @SaCheckPermission("hr:dispute:mediation")
     public R<Void> update(@PathVariable Long mediationId, @Validated @RequestBody HrDisputeMediationDTO dto) {
-        mediationService.updateMediation(mediationId, dto);
+        hrDisputeMediationService.updateMediation(mediationId, dto);
         return R.ok();
     }
 }
@@ -132,26 +132,26 @@ class HrDisputeMediationController {
 @RequiredArgsConstructor
 class HrDisputeArbitrationController {
 
-    private final HrDisputeArbitrationService arbitrationService;
+    private final IHrDisputeArbitrationService hrDisputeArbitrationService;
 
     @GetMapping
     @SaCheckPermission("hr:dispute:arbitration")
     public R<PageResult<HrDisputeArbitrationVO>> list(@PathVariable Long disputeId) {
-        return R.ok(arbitrationService.listByDispute(disputeId));
+        return R.ok(hrDisputeArbitrationService.listByDispute(disputeId));
     }
 
     @SysLog("新增争议仲裁记录")
     @PostMapping
     @SaCheckPermission("hr:dispute:arbitration")
     public R<Long> create(@PathVariable Long disputeId, @Validated @RequestBody HrDisputeArbitrationDTO dto) {
-        return R.ok(arbitrationService.createArbitration(disputeId, dto));
+        return R.ok(hrDisputeArbitrationService.createArbitration(disputeId, dto));
     }
 
     @SysLog("修改争议仲裁记录")
     @PutMapping("/{arbitrationId}")
     @SaCheckPermission("hr:dispute:arbitration")
     public R<Void> update(@PathVariable Long arbitrationId, @Validated @RequestBody HrDisputeArbitrationDTO dto) {
-        arbitrationService.updateArbitration(arbitrationId, dto);
+        hrDisputeArbitrationService.updateArbitration(arbitrationId, dto);
         return R.ok();
     }
 }

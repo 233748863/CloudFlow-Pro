@@ -12,7 +12,7 @@ import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrContractSignatureMapper;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
-import com.cloudflow.hr.service.HrContractSignatureService;
+import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.HrEssSupport;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +32,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrContractSignatureServiceImpl implements HrContractSignatureService {
+public class HrContractSignatureServiceImpl implements IHrContractSignatureService {
 
     private static final Set<String> CANCELABLE_STATUS = Set.of("PENDING", "APPROVING");
 

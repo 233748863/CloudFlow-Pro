@@ -15,25 +15,25 @@ import org.springframework.web.bind.annotation.*;
 public class SysNoticeController {
 
     @Autowired
-    private ISysNoticeService noticeService;
+    private ISysNoticeService sysNoticeService;
 
     @GetMapping("/list")
     @SaCheckPermission("oa:notice:list")
     public R<PageResult<SysNotice>> list(PageQuery pageQuery) {
-        return R.ok(noticeService.getMyNotices(UserContext.getUserId(), pageQuery));
+        return R.ok(sysNoticeService.getMyNotices(UserContext.getUserId(), pageQuery));
     }
 
     @PostMapping("/read/{noticeId}")
     @SaCheckPermission("oa:notice:read")
     public R<?> read(@PathVariable("noticeId") Long noticeId) {
-        noticeService.readNotice(noticeId);
+        sysNoticeService.readNotice(noticeId);
         return R.ok();
     }
 
     @GetMapping("/unread-count")
     @SaCheckPermission("oa:notice:list")
     public R<Long> getUnreadCount() {
-        return R.ok(noticeService.getUnreadCount(UserContext.getUserId()));
+        return R.ok(sysNoticeService.getUnreadCount(UserContext.getUserId()));
     }
 
     /**
@@ -42,7 +42,7 @@ public class SysNoticeController {
     @GetMapping("/{noticeId}")
     @SaCheckPermission("oa:notice:read")
     public R<SysNotice> getNoticeDetail(@PathVariable("noticeId") Long noticeId) {
-        return R.ok(noticeService.getNoticeById(noticeId));
+        return R.ok(sysNoticeService.getNoticeById(noticeId));
     }
 
     /**
@@ -51,7 +51,7 @@ public class SysNoticeController {
     @DeleteMapping("/{noticeId}")
     @SaCheckPermission("oa:notice:remove")
     public R<?> deleteNotice(@PathVariable("noticeId") Long noticeId) {
-        noticeService.deleteNotice(noticeId);
+        sysNoticeService.deleteNotice(noticeId);
         return R.ok();
     }
 }

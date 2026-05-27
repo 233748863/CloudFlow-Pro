@@ -17,8 +17,8 @@ import com.cloudflow.hr.mapper.HrTrainingCourseMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrFileStorage;
 import com.cloudflow.hr.service.HrPdfRenderer;
-import com.cloudflow.hr.service.HrTrainingArchiveService;
-import com.cloudflow.hr.service.HrTrainingCertificateService;
+import com.cloudflow.hr.service.IHrTrainingArchiveService;
+import com.cloudflow.hr.service.IHrTrainingCertificateService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +44,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTrainingCertificateServiceImpl implements HrTrainingCertificateService {
+public class HrTrainingCertificateServiceImpl implements IHrTrainingCertificateService {
 
     private static final DateTimeFormatter ISSUE_DATE_DISPLAY = DateTimeFormatter.ofPattern("yyyy 年 MM 月 dd 日");
     private static final DateTimeFormatter PERIOD_DATE_DISPLAY = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -57,7 +57,7 @@ public class HrTrainingCertificateServiceImpl implements HrTrainingCertificateSe
     private final HrEmployeeMapper employeeMapper;
     private final HrPdfRenderer pdfRenderer;
     private final HrFileStorage fileStorage;
-    private final HrTrainingArchiveService archiveService;
+    private final IHrTrainingArchiveService archiveService;
 
     @Value("${cloudflow.hr.certificate.company-name:CloudFlow 科技有限公司}")
     private String companyName;

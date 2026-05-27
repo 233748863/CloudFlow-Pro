@@ -41,8 +41,8 @@ public class VehicleServiceImpl extends ServiceImpl<SysVehicleMapper, SysVehicle
     private final VehicleUsageMapper usageMapper;
     private final VehicleExpenseMapper expenseMapper;
     private final OaRiskAlertMapper riskAlertMapper;
-    private final IVehicleMaintenanceService maintenanceService;
-    private final IVehicleViolationService violationService;
+    private final IVehicleMaintenanceService vehicleMaintenanceService;
+    private final IVehicleViolationService vehicleViolationService;
 
     @Override
     public PageResult<SysVehicle> queryPage(SysVehicle vehicle, PageQuery pageQuery) {
@@ -72,7 +72,7 @@ public class VehicleServiceImpl extends ServiceImpl<SysVehicleMapper, SysVehicle
         long insuranceExpiring = allVehicles.stream().filter(v -> isDateWithinDays(v.getInsuranceExpiry(), 30)).count();
         long annualInspectionExpiring = allVehicles.stream().filter(v -> isDateWithinDays(v.getAnnualInspectionExpiry(), 30)).count();
         long maintenanceDue = allVehicles.stream().filter(this::isMaintenanceDue).count();
-        long pendingViolation = violationService.count(new LambdaQueryWrapper<VehicleViolation>()
+        long pendingViolation = vehicleViolationService.count(new LambdaQueryWrapper<VehicleViolation>()
                 .in(VehicleViolation::getStatus, "PENDING", "PROCESSING"));
         long openRiskCount = riskAlertMapper.selectCount(new LambdaQueryWrapper<OaRiskAlert>()
                 .eq(OaRiskAlert::getBusinessType, VehicleConstants.BUSINESS_TYPE_VEHICLE)
@@ -116,8 +116,8 @@ public class VehicleServiceImpl extends ServiceImpl<SysVehicleMapper, SysVehicle
         profile.setRecentUsages(usageMapper.selectRecentUsagesByVehicleId(vehicleId, 5));
         profile.setRecentExpenses(expenseMapper.selectRecentExpensesByVehicleId(vehicleId, 10));
 
-        List<VehicleMaintenance> maintenances = maintenanceService.listByVehicleId(vehicleId, 5);
-        List<VehicleViolation> violations = violationService.listByVehicleId(vehicleId, 5);
+        List<VehicleMaintenance> maintenances = vehicleMaintenanceService.listByVehicleId(vehicleId, 5);
+        List<VehicleViolation> violations = vehicleViolationService.listByVehicleId(vehicleId, 5);
         List<OaRiskAlert> risks = riskAlertMapper.selectList(new LambdaQueryWrapper<OaRiskAlert>()
                 .eq(OaRiskAlert::getBusinessType, VehicleConstants.BUSINESS_TYPE_VEHICLE)
                 .eq(OaRiskAlert::getBusinessId, vehicleId)

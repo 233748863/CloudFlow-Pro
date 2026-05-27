@@ -19,18 +19,18 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class InvoiceController {
 
-    private final IOaInvoiceService invoiceService;
+    private final IOaInvoiceService oaInvoiceService;
 
     @GetMapping("/list")
     @SaCheckPermission("oa:invoice:list")
     public R<PageResult<OaInvoice>> list(OaInvoice query, PageQuery pageQuery) {
-        return R.ok(invoiceService.queryPage(query, pageQuery));
+        return R.ok(oaInvoiceService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("oa:invoice:list")
     public R<OaInvoice> getInfo(@PathVariable("id") Long id) {
-        OaInvoice invoice = invoiceService.getById(id);
+        OaInvoice invoice = oaInvoiceService.getById(id);
         return invoice == null || !Integer.valueOf(0).equals(invoice.getDeleted()) ? R.fail("发票不存在") : R.ok(invoice);
     }
 
@@ -38,7 +38,7 @@ public class InvoiceController {
     @SaCheckPermission("oa:invoice:list")
     public R<List<OaInvoiceWriteoff>> writeoffList(@PathVariable("id") Long id) {
         try {
-            return R.ok(invoiceService.listWriteoffHistory(id));
+            return R.ok(oaInvoiceService.listWriteoffHistory(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -49,7 +49,7 @@ public class InvoiceController {
     @SaCheckPermission("oa:invoice:add")
     public R<Void> add(@RequestBody OaInvoice invoice) {
         try {
-            return R.result(invoiceService.createInvoice(invoice));
+            return R.result(oaInvoiceService.createInvoice(invoice));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -60,7 +60,7 @@ public class InvoiceController {
     @SaCheckPermission("oa:invoice:edit")
     public R<Void> edit(@RequestBody OaInvoice invoice) {
         try {
-            return R.result(invoiceService.updateInvoice(invoice));
+            return R.result(oaInvoiceService.updateInvoice(invoice));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -71,7 +71,7 @@ public class InvoiceController {
     @SaCheckPermission("oa:invoice:bind")
     public R<Void> bind(@PathVariable("id") Long id, @RequestBody OaInvoice invoice) {
         try {
-            return R.result(invoiceService.bindInvoice(id, invoice));
+            return R.result(oaInvoiceService.bindInvoice(id, invoice));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -83,7 +83,7 @@ public class InvoiceController {
     public R<Void> writeoff(@PathVariable("id") Long id, @RequestBody OaInvoiceWriteoff writeoff) {
         try {
             writeoff.setInvoiceId(id);
-            return R.result(invoiceService.writeoffInvoice(writeoff));
+            return R.result(oaInvoiceService.writeoffInvoice(writeoff));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -94,7 +94,7 @@ public class InvoiceController {
     @SaCheckPermission("oa:invoice:void")
     public R<Void> voidInvoice(@PathVariable("id") Long id, @RequestBody(required = false) Map<String, String> body) {
         try {
-            return R.result(invoiceService.voidInvoice(id, body == null ? null : body.get("remark")));
+            return R.result(oaInvoiceService.voidInvoice(id, body == null ? null : body.get("remark")));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -108,7 +108,7 @@ public class InvoiceController {
             OaInvoice invoice = new OaInvoice();
             invoice.setInvoiceId(id);
             invoice.setDeleted(1);
-            invoiceService.updateById(invoice);
+            oaInvoiceService.updateById(invoice);
         }
         return R.ok();
     }

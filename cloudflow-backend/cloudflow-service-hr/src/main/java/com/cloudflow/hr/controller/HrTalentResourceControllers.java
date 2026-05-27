@@ -31,11 +31,11 @@ import com.cloudflow.hr.domain.vo.talent.HrTalentReviewListVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentReviewVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanListVO;
 import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessionPlanVO;
-import com.cloudflow.hr.service.HrTalentArchiveService;
-import com.cloudflow.hr.service.HrTalentDevelopmentService;
-import com.cloudflow.hr.service.HrTalentPoolService;
-import com.cloudflow.hr.service.HrTalentReviewService;
-import com.cloudflow.hr.service.HrTalentSuccessionService;
+import com.cloudflow.hr.service.IHrTalentArchiveService;
+import com.cloudflow.hr.service.IHrTalentDevelopmentService;
+import com.cloudflow.hr.service.IHrTalentPoolService;
+import com.cloudflow.hr.service.IHrTalentReviewService;
+import com.cloudflow.hr.service.IHrTalentSuccessionService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -66,32 +66,32 @@ import java.util.Map;
 @RequiredArgsConstructor
 class HrTalentReviewController {
 
-    private final HrTalentReviewService reviewService;
+    private final IHrTalentReviewService hrTalentReviewService;
 
     @GetMapping("/reviews")
     @SaCheckPermission("hr:talent:review:list")
     public R<PageResult<HrTalentReviewListVO>> page(@Validated @ModelAttribute HrTalentReviewQueryDTO query) {
-        return R.ok(reviewService.page(query));
+        return R.ok(hrTalentReviewService.page(query));
     }
 
     @GetMapping("/reviews/{id}")
     @SaCheckPermission("hr:talent:review:list")
     public R<HrTalentReviewVO> get(@PathVariable Long id) {
-        return R.ok(reviewService.getReview(id));
+        return R.ok(hrTalentReviewService.getReview(id));
     }
 
     @SysLog("新增人才盘点活动")
     @PostMapping("/reviews")
     @SaCheckPermission("hr:talent:review:add")
     public R<Long> create(@Validated @RequestBody HrTalentReviewDTO dto) {
-        return R.ok(reviewService.createReview(dto));
+        return R.ok(hrTalentReviewService.createReview(dto));
     }
 
     @SysLog("修改人才盘点活动")
     @PutMapping("/reviews/{id}")
     @SaCheckPermission("hr:talent:review:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentReviewDTO dto) {
-        reviewService.updateReview(id, dto);
+        hrTalentReviewService.updateReview(id, dto);
         return R.ok();
     }
 
@@ -99,7 +99,7 @@ class HrTalentReviewController {
     @PostMapping("/reviews/{id}/snapshot-performance")
     @SaCheckPermission("hr:talent:review:snapshot")
     public R<Integer> snapshot(@PathVariable Long id, @RequestParam Long objectiveId) {
-        return R.ok(reviewService.snapshotPerformance(id, objectiveId));
+        return R.ok(hrTalentReviewService.snapshotPerformance(id, objectiveId));
     }
 
     @SysLog("校准盘点参与人")
@@ -108,7 +108,7 @@ class HrTalentReviewController {
     public R<Void> upsertParticipant(@PathVariable Long id,
                                      @PathVariable Long employeeId,
                                      @Validated @RequestBody HrTalentParticipantDTO dto) {
-        reviewService.upsertParticipant(id, employeeId, dto);
+        hrTalentReviewService.upsertParticipant(id, employeeId, dto);
         return R.ok();
     }
 
@@ -118,14 +118,14 @@ class HrTalentReviewController {
     public R<Void> moveGridCell(@PathVariable Long id,
                                 @PathVariable Long employeeId,
                                 @RequestParam Integer gridCell) {
-        reviewService.moveGridCell(id, employeeId, gridCell);
+        hrTalentReviewService.moveGridCell(id, employeeId, gridCell);
         return R.ok();
     }
 
     @GetMapping("/reviews/{id}/grid")
     @SaCheckPermission("hr:talent:review:list")
     public R<HrTalentNineGridVO> grid(@PathVariable Long id) {
-        Map<Integer, List<HrTalentParticipantVO>> cells = reviewService.loadNineBox(id);
+        Map<Integer, List<HrTalentParticipantVO>> cells = hrTalentReviewService.loadNineBox(id);
         HrTalentNineGridVO vo = new HrTalentNineGridVO();
         vo.setCells(cells);
         return R.ok(vo);
@@ -135,7 +135,7 @@ class HrTalentReviewController {
     @PostMapping("/reviews/{id}/publish")
     @SaCheckPermission("hr:talent:review:publish")
     public R<String> publish(@PathVariable Long id) {
-        return R.ok(reviewService.publish(id));
+        return R.ok(hrTalentReviewService.publish(id));
     }
 
     @SysLog("创建校准会议")
@@ -143,13 +143,13 @@ class HrTalentReviewController {
     @SaCheckPermission("hr:talent:review:session")
     public R<Long> createCalibration(@PathVariable Long id,
                                      @Validated @RequestBody HrTalentCalibrationSessionDTO dto) {
-        return R.ok(reviewService.createCalibrationSession(id, dto));
+        return R.ok(hrTalentReviewService.createCalibrationSession(id, dto));
     }
 
     @GetMapping("/reviews/{id}/calibration-sessions")
     @SaCheckPermission("hr:talent:review:session")
     public R<PageResult<HrTalentCalibrationSessionVO>> listCalibrations(@PathVariable Long id) {
-        return R.ok(reviewService.listCalibrationSessions(id));
+        return R.ok(hrTalentReviewService.listCalibrationSessions(id));
     }
 
     @SysLog("修改校准会议")
@@ -157,7 +157,7 @@ class HrTalentReviewController {
     @SaCheckPermission("hr:talent:review:session")
     public R<Void> updateCalibration(@PathVariable Long sessionId,
                                      @Validated @RequestBody HrTalentCalibrationSessionDTO dto) {
-        reviewService.updateCalibrationSession(sessionId, dto);
+        hrTalentReviewService.updateCalibrationSession(sessionId, dto);
         return R.ok();
     }
 }
@@ -167,33 +167,33 @@ class HrTalentReviewController {
 @RequiredArgsConstructor
 class HrTalentSuccessionController {
 
-    private final HrTalentSuccessionService successionService;
+    private final IHrTalentSuccessionService hrTalentSuccessionService;
     private final HrTypedCrudService crudService;
 
     @GetMapping("/succession-plans")
     @SaCheckPermission("hr:talent:succession:list")
     public R<PageResult<HrTalentSuccessionPlanListVO>> page(@Validated @ModelAttribute HrTalentSuccessionPlanQueryDTO query) {
-        return R.ok(successionService.pagePlans(query));
+        return R.ok(hrTalentSuccessionService.pagePlans(query));
     }
 
     @GetMapping("/succession-plans/{id}")
     @SaCheckPermission("hr:talent:succession:list")
     public R<HrTalentSuccessionPlanVO> get(@PathVariable Long id) {
-        return R.ok(successionService.getPlan(id));
+        return R.ok(hrTalentSuccessionService.getPlan(id));
     }
 
     @SysLog("新增继任计划")
     @PostMapping("/succession-plans")
     @SaCheckPermission("hr:talent:succession:add")
     public R<Long> create(@Validated @RequestBody HrTalentSuccessionPlanDTO dto) {
-        return R.ok(successionService.createPlan(dto));
+        return R.ok(hrTalentSuccessionService.createPlan(dto));
     }
 
     @SysLog("修改继任计划")
     @PutMapping("/succession-plans/{id}")
     @SaCheckPermission("hr:talent:succession:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentSuccessionPlanDTO dto) {
-        successionService.updatePlan(id, dto);
+        hrTalentSuccessionService.updatePlan(id, dto);
         return R.ok();
     }
 
@@ -209,14 +209,14 @@ class HrTalentSuccessionController {
     @PostMapping("/succession-plans/{id}/successors")
     @SaCheckPermission("hr:talent:succession:nominate")
     public R<Long> addSuccessor(@PathVariable Long id, @Validated @RequestBody HrTalentSuccessorDTO dto) {
-        return R.ok(successionService.addSuccessor(id, dto));
+        return R.ok(hrTalentSuccessionService.addSuccessor(id, dto));
     }
 
     @SysLog("移除继任人")
     @DeleteMapping("/succession-plans/successors/{successorId}")
     @SaCheckPermission("hr:talent:succession:nominate")
     public R<Void> removeSuccessor(@PathVariable Long successorId) {
-        successionService.removeSuccessor(successorId);
+        hrTalentSuccessionService.removeSuccessor(successorId);
         return R.ok();
     }
 
@@ -224,7 +224,7 @@ class HrTalentSuccessionController {
     @PostMapping("/succession-plans/{id}/publish")
     @SaCheckPermission("hr:talent:succession:publish")
     public R<String> publish(@PathVariable Long id) {
-        return R.ok(successionService.publish(id));
+        return R.ok(hrTalentSuccessionService.publish(id));
     }
 }
 
@@ -233,27 +233,27 @@ class HrTalentSuccessionController {
 @RequiredArgsConstructor
 class HrTalentPoolController {
 
-    private final HrTalentPoolService poolService;
+    private final IHrTalentPoolService hrTalentPoolService;
     private final HrTypedCrudService crudService;
 
     @GetMapping("/pools")
     @SaCheckPermission("hr:talent:pool:list")
     public R<PageResult<HrTalentPoolListVO>> page(@Validated @ModelAttribute HrTalentPoolQueryDTO query) {
-        return R.ok(poolService.pagePools(query));
+        return R.ok(hrTalentPoolService.pagePools(query));
     }
 
     @SysLog("新增人才池")
     @PostMapping("/pools")
     @SaCheckPermission("hr:talent:pool:add")
     public R<Long> create(@Validated @RequestBody HrTalentPoolDTO dto) {
-        return R.ok(poolService.createPool(dto));
+        return R.ok(hrTalentPoolService.createPool(dto));
     }
 
     @SysLog("修改人才池")
     @PutMapping("/pools/{id}")
     @SaCheckPermission("hr:talent:pool:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentPoolDTO dto) {
-        poolService.updatePool(id, dto);
+        hrTalentPoolService.updatePool(id, dto);
         return R.ok();
     }
 
@@ -268,14 +268,14 @@ class HrTalentPoolController {
     @GetMapping("/pools/{id}/members")
     @SaCheckPermission("hr:talent:pool:list")
     public R<List<HrTalentPoolMemberVO>> listMembers(@PathVariable Long id) {
-        return R.ok(poolService.listMembers(id));
+        return R.ok(hrTalentPoolService.listMembers(id));
     }
 
     @SysLog("加入人才池")
     @PostMapping("/pools/{id}/members")
     @SaCheckPermission("hr:talent:pool:join")
     public R<Void> joinPool(@PathVariable Long id, @Validated @RequestBody HrTalentPoolJoinDTO dto) {
-        poolService.joinPool(id, dto.getEmployeeId(), dto.getSourceReviewId());
+        hrTalentPoolService.joinPool(id, dto.getEmployeeId(), dto.getSourceReviewId());
         return R.ok();
     }
 
@@ -285,7 +285,7 @@ class HrTalentPoolController {
     public R<Void> exitPool(@PathVariable Long id,
                             @PathVariable Long employeeId,
                             @RequestParam(required = false) String reason) {
-        poolService.exitPool(id, employeeId, reason);
+        hrTalentPoolService.exitPool(id, employeeId, reason);
         return R.ok();
     }
 }
@@ -295,27 +295,27 @@ class HrTalentPoolController {
 @RequiredArgsConstructor
 class HrTalentDevelopmentController {
 
-    private final HrTalentDevelopmentService developmentService;
+    private final IHrTalentDevelopmentService hrTalentDevelopmentService;
     private final HrTypedCrudService crudService;
 
     @GetMapping("/development")
     @SaCheckPermission("hr:talent:dev:list")
     public R<PageResult<HrTalentDevelopmentActionVO>> page(@Validated @ModelAttribute HrTalentDevelopmentActionQueryDTO query) {
-        return R.ok(developmentService.pageActions(query));
+        return R.ok(hrTalentDevelopmentService.pageActions(query));
     }
 
     @SysLog("新增培养行动")
     @PostMapping("/development")
     @SaCheckPermission("hr:talent:dev:add")
     public R<Long> create(@Validated @RequestBody HrTalentDevelopmentActionDTO dto) {
-        return R.ok(developmentService.createAction(dto));
+        return R.ok(hrTalentDevelopmentService.createAction(dto));
     }
 
     @SysLog("修改培养行动")
     @PutMapping("/development/{id}")
     @SaCheckPermission("hr:talent:dev:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrTalentDevelopmentActionDTO dto) {
-        developmentService.updateAction(id, dto);
+        hrTalentDevelopmentService.updateAction(id, dto);
         return R.ok();
     }
 
@@ -331,7 +331,7 @@ class HrTalentDevelopmentController {
     @PostMapping("/development/{id}/complete")
     @SaCheckPermission("hr:talent:dev:complete")
     public R<Void> complete(@PathVariable Long id, @Validated @RequestBody HrTalentDevelopmentCompleteDTO dto) {
-        developmentService.completeAction(id, dto.getEvaluationScore(), dto.getEvaluationNotes());
+        hrTalentDevelopmentService.completeAction(id, dto.getEvaluationScore(), dto.getEvaluationNotes());
         return R.ok();
     }
 }
@@ -341,17 +341,17 @@ class HrTalentDevelopmentController {
 @RequiredArgsConstructor
 class HrTalentArchiveController {
 
-    private final HrTalentArchiveService archiveService;
+    private final IHrTalentArchiveService hrTalentArchiveService;
 
     @GetMapping("/archive/mine")
     @SaCheckPermission("hr:talent:archive:mine")
     public R<HrTalentArchiveVO> mine() {
-        return R.ok(archiveService.getMyArchive());
+        return R.ok(hrTalentArchiveService.getMyArchive());
     }
 
     @GetMapping("/archive/employees/{employeeId}")
     @SaCheckPermission("hr:talent:archive:view")
     public R<HrTalentArchiveVO> archive(@PathVariable Long employeeId) {
-        return R.ok(archiveService.getArchive(employeeId));
+        return R.ok(hrTalentArchiveService.getArchive(employeeId));
     }
 }

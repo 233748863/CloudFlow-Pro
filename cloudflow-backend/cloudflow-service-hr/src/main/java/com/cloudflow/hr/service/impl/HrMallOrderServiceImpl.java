@@ -21,9 +21,9 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrMallItemMapper;
 import com.cloudflow.hr.mapper.HrMallOrderItemMapper;
 import com.cloudflow.hr.mapper.HrMallOrderMapper;
-import com.cloudflow.hr.service.HrMallItemService;
-import com.cloudflow.hr.service.HrMallOrderService;
-import com.cloudflow.hr.service.HrPointAccountService;
+import com.cloudflow.hr.service.IHrMallItemService;
+import com.cloudflow.hr.service.IHrMallOrderService;
+import com.cloudflow.hr.service.IHrPointAccountService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -42,15 +42,15 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrMallOrderServiceImpl implements HrMallOrderService {
+public class HrMallOrderServiceImpl implements IHrMallOrderService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 
     private final HrMallOrderMapper orderMapper;
     private final HrMallOrderItemMapper orderItemMapper;
     private final HrMallItemMapper itemMapper;
-    private final HrPointAccountService pointAccountService;
-    private final HrMallItemService mallItemService;
+    private final IHrPointAccountService pointAccountService;
+    private final IHrMallItemService mallItemService;
     private final HrTypedCrudService crudService;
     private final WorkflowServiceClient workflowServiceClient;
     private final ObjectMapper objectMapper;

@@ -16,8 +16,8 @@ import com.cloudflow.auth.mapper.SysUserMapper;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordService;
-import com.cloudflow.auth.service.LoginLogService;
-import com.cloudflow.auth.service.SysTenantService;
+import com.cloudflow.auth.service.ILoginLogService;
+import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.auth.service.ForcePasswordChangeService;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.tenant.TenantBroker;
@@ -57,13 +57,13 @@ public class AuthController {
     private SysTenantMapper sysTenantMapper;
 
     @Autowired
-    private ISysMenuService menuService;
+    private ISysMenuService sysMenuService;
 
     @Autowired
     private ISysUserService sysUserService;
 
     @Autowired
-    private SysTenantService tenantService;
+    private ISysTenantService sysTenantService;
 
     @Autowired
     private com.cloudflow.auth.service.CaptchaService captchaService;
@@ -81,7 +81,7 @@ public class AuthController {
     private TenantConfigProperties tenantConfigProperties;
 
     @Autowired
-    private LoginLogService loginLogService;
+    private ILoginLogService loginLogService;
 
     @Autowired
     private com.cloudflow.auth.service.LoginLockService loginLockService;
@@ -311,7 +311,7 @@ public class AuthController {
     @GetMapping("/tenant/options")
     public R<List<TenantOption>> tenantOptions() {
         List<SysTenant> tenants = TenantBroker.applyWithoutTenant(ignored ->
-                tenantService.list(
+                sysTenantService.list(
                         new LambdaQueryWrapper<SysTenant>()
                                 .eq(SysTenant::getStatus, "0")
                                 .isNotNull(SysTenant::getTenantCode)
@@ -488,7 +488,7 @@ public class AuthController {
         }
 
         List<SysMenu> menus = TenantBroker.applyWithoutTenant(ignored ->
-                menuService.selectMenuTreeByUserId(userId)
+                sysMenuService.selectMenuTreeByUserId(userId)
         );
         return R.ok(menus);
     }
@@ -517,7 +517,7 @@ public class AuthController {
             }
 
             if (userId != null) {
-                menuService.evictUserMenuCache(userId);
+                sysMenuService.evictUserMenuCache(userId);
             }
         }
 
@@ -642,7 +642,7 @@ public class AuthController {
         if (tenant.getExpireTime() != null && LocalDateTime.now().isAfter(tenant.getExpireTime())) {
             return "租户已过期";
         }
-        if (checkUserLimit && tenantService.isUserLimitReached(tenant.getTenantId())) {
+        if (checkUserLimit && sysTenantService.isUserLimitReached(tenant.getTenantId())) {
             return "租户用户数量已达上限";
         }
         return null;

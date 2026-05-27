@@ -14,7 +14,7 @@ import com.cloudflow.crm.mapper.CrmApprovalMapper;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
-import com.cloudflow.crm.service.CrmApprovalService;
+import com.cloudflow.crm.service.ICrmApprovalService;
 import com.cloudflow.crm.service.remote.RemoteWorkflowService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -33,7 +33,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CrmApprovalServiceImpl implements CrmApprovalService {
+public class CrmApprovalServiceImpl implements ICrmApprovalService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

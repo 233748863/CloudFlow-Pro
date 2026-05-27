@@ -13,8 +13,8 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrEssSupport;
-import com.cloudflow.hr.service.HrTrainingArchiveService;
-import com.cloudflow.hr.service.HrTrainingEnrollmentService;
+import com.cloudflow.hr.service.IHrTrainingArchiveService;
+import com.cloudflow.hr.service.IHrTrainingEnrollmentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +32,7 @@ import java.util.Set;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTrainingEnrollmentServiceImpl implements HrTrainingEnrollmentService {
+public class HrTrainingEnrollmentServiceImpl implements IHrTrainingEnrollmentService {
 
     private static final Set<String> ENROLLABLE_SESSION_STATUS = Set.of("PLANNED", "REGISTERING", "ONGOING");
     private static final Set<String> CHECK_IN_ALLOWED_STATUS = Set.of("APPROVED");
@@ -42,7 +42,7 @@ public class HrTrainingEnrollmentServiceImpl implements HrTrainingEnrollmentServ
     private final HrTrainingSessionMapper sessionMapper;
     private final HrEssSupport essSupport;
     private final WorkflowServiceClient workflowServiceClient;
-    private final HrTrainingArchiveService archiveService;
+    private final IHrTrainingArchiveService archiveService;
 
     @Value("${cloudflow.hr.training.enrollment-process-key:wf_hr_training_enrollment}")
     private String processDefinitionKey;

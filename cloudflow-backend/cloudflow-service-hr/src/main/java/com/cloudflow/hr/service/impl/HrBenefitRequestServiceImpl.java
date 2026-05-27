@@ -14,7 +14,7 @@ import com.cloudflow.hr.domain.entity.HrBenefitRequest;
 import com.cloudflow.hr.domain.vo.benefit.HrBenefitRequestVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrBenefitRequestMapper;
-import com.cloudflow.hr.service.HrBenefitRequestService;
+import com.cloudflow.hr.service.IHrBenefitRequestService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -31,7 +31,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrBenefitRequestServiceImpl implements HrBenefitRequestService {
+public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

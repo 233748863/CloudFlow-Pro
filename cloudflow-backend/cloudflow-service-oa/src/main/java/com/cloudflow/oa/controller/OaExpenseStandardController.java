@@ -19,7 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OaExpenseStandardController {
 
-    private final IOaExpenseStandardService standardService;
+    private final IOaExpenseStandardService oaExpenseStandardService;
 
     @GetMapping("/page")
     @SaCheckPermission("oa:expense:standard:list")
@@ -30,19 +30,19 @@ public class OaExpenseStandardController {
                                            @RequestParam(required = false) String status,
                                            @RequestParam(defaultValue = "1") Integer pageNum,
                                            @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(standardService.page(keyword, positionLevel, category, city, status, pageNum, pageSize));
+        return R.ok(oaExpenseStandardService.page(keyword, positionLevel, category, city, status, pageNum, pageSize));
     }
 
     @GetMapping("/active")
     @SaCheckPermission("oa:expense:claim:list")
     public R<List<OaExpenseStandard>> listActive() {
-        return R.ok(standardService.listActive());
+        return R.ok(oaExpenseStandardService.listActive());
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("oa:expense:standard:list")
     public R<OaExpenseStandard> getInfo(@PathVariable("id") Long standardId) {
-        return R.ok(standardService.getById(standardId));
+        return R.ok(oaExpenseStandardService.getById(standardId));
     }
 
     @SysLog("新增费用标准")
@@ -50,7 +50,7 @@ public class OaExpenseStandardController {
     @SaCheckPermission("oa:expense:standard:add")
     public R<Void> add(@RequestBody OaExpenseStandard standard) {
         try {
-            return standardService.save(standard) ? R.ok() : R.fail("新增失败");
+            return oaExpenseStandardService.save(standard) ? R.ok() : R.fail("新增失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -61,7 +61,7 @@ public class OaExpenseStandardController {
     @SaCheckPermission("oa:expense:standard:edit")
     public R<Void> edit(@RequestBody OaExpenseStandard standard) {
         try {
-            return standardService.update(standard) ? R.ok() : R.fail("更新失败");
+            return oaExpenseStandardService.update(standard) ? R.ok() : R.fail("更新失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -71,6 +71,6 @@ public class OaExpenseStandardController {
     @DeleteMapping("/{id}")
     @SaCheckPermission("oa:expense:standard:remove")
     public R<Void> remove(@PathVariable("id") Long standardId) {
-        return standardService.remove(standardId) ? R.ok() : R.fail("删除失败");
+        return oaExpenseStandardService.remove(standardId) ? R.ok() : R.fail("删除失败");
     }
 }

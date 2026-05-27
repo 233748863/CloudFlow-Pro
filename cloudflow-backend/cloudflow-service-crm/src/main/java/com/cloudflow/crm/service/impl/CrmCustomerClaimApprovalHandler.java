@@ -28,17 +28,17 @@ import java.util.Map;
 public class CrmCustomerClaimApprovalHandler extends AbstractCrmApprovalHandler implements ApprovalResultHandler {
 
     private final CrmCustomerMapper customerMapper;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final CrmEventPublisher crmEventPublisher;
 
     public CrmCustomerClaimApprovalHandler(CrmApprovalMapper approvalMapper,
                                            ObjectMapper objectMapper,
                                            CrmCustomerMapper customerMapper,
-                                           ICrmCustomerService customerService,
+                                           ICrmCustomerService crmCustomerService,
                                            CrmEventPublisher crmEventPublisher) {
         super(approvalMapper, objectMapper);
         this.customerMapper = customerMapper;
-        this.customerService = customerService;
+        this.crmCustomerService = crmCustomerService;
         this.crmEventPublisher = crmEventPublisher;
     }
 
@@ -80,7 +80,7 @@ public class CrmCustomerClaimApprovalHandler extends AbstractCrmApprovalHandler 
                     .set(CrmCustomer::getStatus, "POOL");
         }
         customerMapper.update(null, wrapper);
-        customerService.refreshHealth(customerId);
+        crmCustomerService.refreshHealth(customerId);
 
         Map<String, Object> fields = new LinkedHashMap<>();
         fields.put("customerId", customer.getCustomerId());

@@ -20,7 +20,7 @@ import com.cloudflow.hr.domain.vo.talent.HrTalentSuccessorVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentSuccessionPlanMapper;
 import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
-import com.cloudflow.hr.service.HrTalentSuccessionService;
+import com.cloudflow.hr.service.IHrTalentSuccessionService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -38,7 +38,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTalentSuccessionServiceImpl implements HrTalentSuccessionService {
+public class HrTalentSuccessionServiceImpl implements IHrTalentSuccessionService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

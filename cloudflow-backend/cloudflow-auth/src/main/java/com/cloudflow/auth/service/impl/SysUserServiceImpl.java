@@ -17,7 +17,7 @@ import com.cloudflow.auth.service.InitialPasswordService;
 import com.cloudflow.auth.service.ISysMenuService;
 import com.cloudflow.auth.service.ISysUserService;
 import com.cloudflow.auth.service.PasswordService;
-import com.cloudflow.auth.service.SysTenantService;
+import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.constant.CacheConstants;
 import com.cloudflow.common.core.context.UserContext;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,10 +60,10 @@ public class SysUserServiceImpl implements ISysUserService {
     private SysDeptMapper sysDeptMapper;
 
     @Autowired
-    private ISysMenuService menuService;
+    private ISysMenuService sysMenuService;
 
     @Autowired
-    private SysTenantService tenantService;
+    private ISysTenantService tenantService;
 
     @Autowired
     private PasswordService passwordService;
@@ -102,7 +102,7 @@ public class SysUserServiceImpl implements ISysUserService {
         // 通过角色查询权限（利用菜单缓存）
         Set<String> permissions = new HashSet<>();
         for (Long roleId : roleIds) {
-            List<String> permList = menuService.findPermsByRoleId(roleId);
+            List<String> permList = sysMenuService.findPermsByRoleId(roleId);
             for (String perm : permList) {
                 if (StringUtils.hasText(perm)) {
                     for (String p : perm.trim().split(",")) {
@@ -301,7 +301,7 @@ public class SysUserServiceImpl implements ISysUserService {
         replaceUserPostIfSpecified(user);
 
         // 同时清除用户菜单树缓存
-        menuService.evictUserMenuCache(user.getUserId());
+        sysMenuService.evictUserMenuCache(user.getUserId());
 
         return rows;
     }
@@ -359,7 +359,7 @@ public class SysUserServiceImpl implements ISysUserService {
             SysUser existingUser = sysUserMapper.selectById(userId);
             if (existingUser != null) {
                 evictUserInfoCache(existingUser.getUserName(), existingUser.getTenantId());
-                menuService.evictUserMenuCache(userId);
+                sysMenuService.evictUserMenuCache(userId);
             }
 
             LambdaQueryWrapper<SysUser> userWrapper = new LambdaQueryWrapper<>();

@@ -35,7 +35,7 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
 
     private final CrmCustomerMapper customerMapper;
     private final CrmReceivableMapper receivableMapper;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
     private final CrmEventPublisher crmEventPublisher;
 
@@ -215,7 +215,7 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
         receivable.setUpdateTime(LocalDateTime.now());
         boolean updated = receivableMapper.updateById(receivable) > 0;
         if (updated) {
-            customerService.refreshHealth(customer.getCustomerId());
+            crmCustomerService.refreshHealth(customer.getCustomerId());
             publishReceivableConfirmed(customer, receivable);
         }
         return updated;
@@ -239,6 +239,6 @@ public class CrmCrossModuleDraftServiceImpl implements ICrmCrossModuleDraftServi
     }
 
     private CrmCustomer requireCustomer(Long customerId) {
-        return customerService.getAccessibleCustomer(customerId);
+        return crmCustomerService.getAccessibleCustomer(customerId);
     }
 }

@@ -20,20 +20,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmReceivableController {
 
-    private final ICrmReceivableService receivableService;
+    private final ICrmReceivableService crmReceivableService;
     private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:receivable:list")
     public R<PageResult<CrmReceivable>> list(CrmReceivable query, PageQuery pageQuery) {
-        return R.ok(receivableService.queryPage(query, pageQuery));
+        return R.ok(crmReceivableService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:receivable:list")
     public R<CrmReceivable> getInfo(@PathVariable("id") Long id) {
         try {
-            return R.ok(receivableService.getAccessibleReceivable(id));
+            return R.ok(crmReceivableService.getAccessibleReceivable(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -42,7 +42,7 @@ public class CrmReceivableController {
     @GetMapping("/aging")
     @SaCheckPermission("crm:receivable:list")
     public R<List<CrmReceivableAgingBucketVO>> aging() {
-        return R.ok(receivableService.getAgingBuckets());
+        return R.ok(crmReceivableService.getAgingBuckets());
     }
 
     @SysLog("新增CRM回款计划")
@@ -50,7 +50,7 @@ public class CrmReceivableController {
     @SaCheckPermission("crm:receivable:add")
     public R<Void> add(@RequestBody CrmReceivable receivable) {
         try {
-            return R.result(receivableService.createReceivable(receivable));
+            return R.result(crmReceivableService.createReceivable(receivable));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -61,7 +61,7 @@ public class CrmReceivableController {
     @SaCheckPermission("crm:receivable:edit")
     public R<Void> edit(@RequestBody CrmReceivable receivable) {
         try {
-            return R.result(receivableService.updateReceivable(receivable));
+            return R.result(crmReceivableService.updateReceivable(receivable));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -72,7 +72,7 @@ public class CrmReceivableController {
     @SaCheckPermission("crm:receivable:confirm")
     public R<Void> confirm(@PathVariable("id") Long id) {
         try {
-            return R.result(receivableService.confirmReceipt(id));
+            return R.result(crmReceivableService.confirmReceipt(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -83,7 +83,7 @@ public class CrmReceivableController {
     @SaCheckPermission("crm:receivable:bind-invoice")
     public R<Void> bindInvoice(@PathVariable("id") Long id, @PathVariable("invoiceId") Long invoiceId) {
         try {
-            return R.result(receivableService.bindInvoice(id, invoiceId));
+            return R.result(crmReceivableService.bindInvoice(id, invoiceId));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -96,14 +96,14 @@ public class CrmReceivableController {
         for (Long id : ids) {
             CrmReceivable persisted;
             try {
-                persisted = receivableService.getAccessibleReceivable(id);
+                persisted = crmReceivableService.getAccessibleReceivable(id);
             } catch (IllegalArgumentException e) {
                 return R.fail(e.getMessage());
             }
             CrmReceivable receivable = new CrmReceivable();
             receivable.setReceivableId(id);
             receivable.setDeleted(1);
-            receivableService.updateById(receivable);
+            crmReceivableService.updateById(receivable);
             customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();

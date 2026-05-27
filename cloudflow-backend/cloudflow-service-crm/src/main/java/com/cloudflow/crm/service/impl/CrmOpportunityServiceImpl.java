@@ -42,7 +42,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
     private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final CrmQuoteMapper quoteMapper;
     private final RemoteOaService remoteOaService;
     private final CrmEventPublisher crmEventPublisher;
@@ -111,7 +111,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         if (updated) {
             Long contractId = ensureContractDraft(opportunity);
             publishOpportunityWon(opportunity, contractId);
-            customerService.refreshHealth(opportunity.getCustomerId());
+            crmCustomerService.refreshHealth(opportunity.getCustomerId());
         }
         return updated;
     }
@@ -207,7 +207,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         opportunity.setUpdateTime(now());
         boolean updated = updateById(opportunity);
         if (updated) {
-            customerService.refreshHealth(opportunity.getCustomerId());
+            crmCustomerService.refreshHealth(opportunity.getCustomerId());
         }
         return updated;
     }
@@ -342,7 +342,7 @@ public class CrmOpportunityServiceImpl extends CrmServiceSupport<CrmOpportunityM
         if (opportunity == null || opportunity.getCustomerId() == null) {
             return;
         }
-        CrmCustomer customer = customerService.getAccessibleCustomer(opportunity.getCustomerId());
+        CrmCustomer customer = crmCustomerService.getAccessibleCustomer(opportunity.getCustomerId());
         opportunity.setCustomerName(customer.getCustomerName());
         if (opportunity.getDeptId() == null) {
             opportunity.setDeptId(customer.getDeptId());

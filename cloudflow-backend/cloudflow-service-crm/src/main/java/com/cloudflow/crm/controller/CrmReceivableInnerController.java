@@ -19,14 +19,14 @@ public class CrmReceivableInnerController {
     private static final String OA_CALLERS =
             "${cloudflow.security.inner.crm.receivable-callers:cloudflow-service-oa}";
 
-    private final ICrmReceivableService receivableService;
+    private final ICrmReceivableService crmReceivableService;
 
     @Inner(allowedServices = {OA_CALLERS})
     @PostMapping("/{id}/invoice-status")
     public R<Void> syncInvoiceStatus(@PathVariable("id") Long id,
                                      @RequestBody(required = false) ReceivableInvoiceSyncDTO syncDTO) {
         try {
-            return R.result(receivableService.syncInvoiceStatus(id, syncDTO));
+            return R.result(crmReceivableService.syncInvoiceStatus(id, syncDTO));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }

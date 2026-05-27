@@ -13,10 +13,10 @@ import com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrCertificateRequestMapper;
 import com.cloudflow.hr.mapper.HrEmployeeMapper;
-import com.cloudflow.hr.service.HrCertificateService;
+import com.cloudflow.hr.service.IHrCertificateService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrFileStorage;
-import com.cloudflow.hr.service.HrIntegrationQueryService;
+import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import com.cloudflow.hr.service.HrPdfRenderer;
 import com.cloudflow.hr.service.dto.HrFileDownload;
 import lombok.RequiredArgsConstructor;
@@ -48,7 +48,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrCertificateServiceImpl implements HrCertificateService {
+public class HrCertificateServiceImpl implements IHrCertificateService {
 
     private static final DateTimeFormatter REQUEST_NO_DAY = DateTimeFormatter.ofPattern("yyyyMMdd");
     private static final DateTimeFormatter ISSUE_DATE = DateTimeFormatter.ofPattern("yyyy 年 MM 月 dd 日");
@@ -57,7 +57,7 @@ public class HrCertificateServiceImpl implements HrCertificateService {
     private final HrCertificateRequestMapper certificateRequestMapper;
     private final HrEmployeeMapper employeeMapper;
     private final HrEssSupport essSupport;
-    private final HrIntegrationQueryService integrationQueryService;
+    private final IHrIntegrationQueryService integrationQueryService;
     private final HrPdfRenderer pdfRenderer;
     private final HrFileStorage fileStorage;
     private final WorkflowServiceClient workflowServiceClient;

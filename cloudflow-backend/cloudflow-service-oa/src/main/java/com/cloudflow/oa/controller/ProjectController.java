@@ -25,18 +25,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProjectController {
 
-    private final IOaProjectService projectService;
+    private final IOaProjectService oaProjectService;
 
     @GetMapping("/list")
     @SaCheckPermission("oa:project:list")
     public R<PageResult<OaProject>> list(OaProject query, PageQuery pageQuery) {
-        return R.ok(projectService.queryPage(query, pageQuery));
+        return R.ok(oaProjectService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("oa:project:list")
     public R<OaProject> getInfo(@PathVariable("id") Long id) {
-        OaProject project = projectService.getById(id);
+        OaProject project = oaProjectService.getById(id);
         return project == null || !Integer.valueOf(0).equals(project.getDeleted()) ? R.fail("项目不存在") : R.ok(project);
     }
 
@@ -44,7 +44,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<ProjectDetailVO> getDetail(@PathVariable("id") Long id) {
         try {
-            return R.ok(projectService.getProjectDetail(id));
+            return R.ok(oaProjectService.getProjectDetail(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -54,7 +54,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<List<OaProjectMember>> members(@PathVariable("id") Long id) {
         try {
-            return R.ok(projectService.listMembers(id));
+            return R.ok(oaProjectService.listMembers(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -64,7 +64,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<List<OaProjectMilestone>> milestones(@PathVariable("id") Long id) {
         try {
-            return R.ok(projectService.listMilestones(id));
+            return R.ok(oaProjectService.listMilestones(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -74,7 +74,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<List<WorkTask>> wbs(@PathVariable("id") Long id) {
         try {
-            return R.ok(projectService.listWbsTasks(id));
+            return R.ok(oaProjectService.listWbsTasks(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -84,7 +84,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<List<OaProjectDependency>> dependencies(@PathVariable("id") Long id) {
         try {
-            return R.ok(projectService.listDependencies(id));
+            return R.ok(oaProjectService.listDependencies(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -94,7 +94,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<List<OaProjectRisk>> risks(@PathVariable("id") Long id) {
         try {
-            return R.ok(projectService.listRisks(id));
+            return R.ok(oaProjectService.listRisks(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -104,7 +104,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:list")
     public R<ProjectCostSummaryVO> costSummary(@PathVariable("id") Long id) {
         try {
-            return R.ok(projectService.getCostSummary(id));
+            return R.ok(oaProjectService.getCostSummary(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -115,7 +115,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:add")
     public R<Long> add(@RequestBody OaProject project) {
         try {
-            return R.ok(projectService.createProject(project));
+            return R.ok(oaProjectService.createProject(project));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -126,7 +126,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> addMember(@RequestBody OaProjectMember member) {
         try {
-            return R.result(projectService.addMember(member));
+            return R.result(oaProjectService.addMember(member));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -137,7 +137,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> editMember(@RequestBody OaProjectMember member) {
         try {
-            return R.result(projectService.updateMember(member));
+            return R.result(oaProjectService.updateMember(member));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -148,7 +148,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> removeMember(@PathVariable("ids") List<Long> ids) {
         try {
-            return R.result(projectService.removeMembers(ids));
+            return R.result(oaProjectService.removeMembers(ids));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -159,7 +159,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> addMilestone(@RequestBody OaProjectMilestone milestone) {
         try {
-            return R.result(projectService.addMilestone(milestone));
+            return R.result(oaProjectService.addMilestone(milestone));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -170,7 +170,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> editMilestone(@RequestBody OaProjectMilestone milestone) {
         try {
-            return R.result(projectService.updateMilestone(milestone));
+            return R.result(oaProjectService.updateMilestone(milestone));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -181,7 +181,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> removeMilestone(@PathVariable("ids") List<Long> ids) {
         try {
-            return R.result(projectService.removeMilestones(ids));
+            return R.result(oaProjectService.removeMilestones(ids));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -192,7 +192,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> addRisk(@RequestBody OaProjectRisk risk) {
         try {
-            return R.result(projectService.addRisk(risk));
+            return R.result(oaProjectService.addRisk(risk));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -203,7 +203,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> editRisk(@RequestBody OaProjectRisk risk) {
         try {
-            return R.result(projectService.updateRisk(risk));
+            return R.result(oaProjectService.updateRisk(risk));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -214,7 +214,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> removeRisk(@PathVariable("ids") List<Long> ids) {
         try {
-            return R.result(projectService.removeRisks(ids));
+            return R.result(oaProjectService.removeRisks(ids));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -225,7 +225,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:wbs")
     public R<Void> addWbs(@RequestBody WorkTask task) {
         try {
-            return R.result(projectService.addWbsTask(task));
+            return R.result(oaProjectService.addWbsTask(task));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -236,7 +236,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:wbs")
     public R<Void> editWbs(@RequestBody WorkTask task) {
         try {
-            return R.result(projectService.updateWbsTask(task));
+            return R.result(oaProjectService.updateWbsTask(task));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -248,7 +248,7 @@ public class ProjectController {
     public R<Void> updateWbsTree(@RequestParam("projectId") Long projectId,
                                  @RequestBody List<ProjectWbsTreeNodeDTO> nodes) {
         try {
-            return R.result(projectService.updateWbsTree(projectId, nodes));
+            return R.result(oaProjectService.updateWbsTree(projectId, nodes));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -259,7 +259,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:wbs")
     public R<Void> removeWbs(@PathVariable("ids") List<Long> ids) {
         try {
-            return R.result(projectService.removeWbsTasks(ids));
+            return R.result(oaProjectService.removeWbsTasks(ids));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -270,7 +270,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:wbs")
     public R<Void> addDependency(@RequestBody OaProjectDependency dependency) {
         try {
-            return R.result(projectService.addDependency(dependency));
+            return R.result(oaProjectService.addDependency(dependency));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -281,7 +281,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:wbs")
     public R<Void> editDependency(@RequestBody OaProjectDependency dependency) {
         try {
-            return R.result(projectService.updateDependency(dependency));
+            return R.result(oaProjectService.updateDependency(dependency));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -292,7 +292,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:wbs")
     public R<Void> removeDependency(@PathVariable("ids") List<Long> ids) {
         try {
-            return R.result(projectService.removeDependencies(ids));
+            return R.result(oaProjectService.removeDependencies(ids));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -303,7 +303,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:edit")
     public R<Void> edit(@RequestBody OaProject project) {
         try {
-            return R.result(projectService.updateProject(project));
+            return R.result(oaProjectService.updateProject(project));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -314,7 +314,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
         try {
-            return R.result(projectService.submitProject(id));
+            return R.result(oaProjectService.submitProject(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -325,7 +325,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:archive")
     public R<Void> archive(@PathVariable("id") Long id) {
         try {
-            return R.result(projectService.archiveProject(id));
+            return R.result(oaProjectService.archiveProject(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -336,7 +336,7 @@ public class ProjectController {
     @SaCheckPermission("oa:project:baseline")
     public R<Void> snapshotBaseline(@PathVariable("id") Long id) {
         try {
-            return R.result(projectService.snapshotBaseline(id));
+            return R.result(oaProjectService.snapshotBaseline(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -350,7 +350,7 @@ public class ProjectController {
             OaProject project = new OaProject();
             project.setProjectId(id);
             project.setDeleted(1);
-            projectService.updateById(project);
+            oaProjectService.updateById(project);
         }
         return R.ok();
     }

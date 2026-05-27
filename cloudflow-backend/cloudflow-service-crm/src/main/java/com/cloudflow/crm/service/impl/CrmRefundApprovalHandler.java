@@ -26,15 +26,15 @@ import java.util.Map;
 public class CrmRefundApprovalHandler extends AbstractCrmApprovalHandler implements ApprovalResultHandler {
 
     private final CrmReceivableMapper receivableMapper;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
 
     public CrmRefundApprovalHandler(CrmApprovalMapper approvalMapper,
                                     ObjectMapper objectMapper,
                                     CrmReceivableMapper receivableMapper,
-                                    ICrmCustomerService customerService) {
+                                    ICrmCustomerService crmCustomerService) {
         super(approvalMapper, objectMapper);
         this.receivableMapper = receivableMapper;
-        this.customerService = customerService;
+        this.crmCustomerService = crmCustomerService;
     }
 
     @Override
@@ -85,7 +85,7 @@ public class CrmRefundApprovalHandler extends AbstractCrmApprovalHandler impleme
                 .set(CrmReceivable::getRemark, newRemark);
         receivableMapper.update(null, wrapper);
         if (receivable.getCustomerId() != null) {
-            customerService.refreshHealth(receivable.getCustomerId());
+            crmCustomerService.refreshHealth(receivable.getCustomerId());
         }
     }
 

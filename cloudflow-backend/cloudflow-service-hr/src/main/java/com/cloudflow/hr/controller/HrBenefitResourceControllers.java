@@ -17,11 +17,11 @@ import com.cloudflow.hr.domain.vo.benefit.HrMallItemVO;
 import com.cloudflow.hr.domain.vo.benefit.HrMallOrderVO;
 import com.cloudflow.hr.domain.vo.benefit.HrPointAccountVO;
 import com.cloudflow.hr.domain.vo.benefit.HrPointTransactionVO;
-import com.cloudflow.hr.service.HrBenefitMineService;
-import com.cloudflow.hr.service.HrBenefitRequestService;
-import com.cloudflow.hr.service.HrMallItemService;
-import com.cloudflow.hr.service.HrMallOrderService;
-import com.cloudflow.hr.service.HrPointAccountService;
+import com.cloudflow.hr.service.IHrBenefitMineService;
+import com.cloudflow.hr.service.IHrBenefitRequestService;
+import com.cloudflow.hr.service.IHrMallItemService;
+import com.cloudflow.hr.service.IHrMallOrderService;
+import com.cloudflow.hr.service.IHrPointAccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -45,12 +45,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 class HrBenefitMineController {
 
-    private final HrBenefitMineService benefitMineService;
+    private final IHrBenefitMineService hrBenefitMineService;
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:mine")
     public R<HrBenefitMineVO> mine() {
-        return R.ok(benefitMineService.loadMineSummary());
+        return R.ok(hrBenefitMineService.loadMineSummary());
     }
 }
 
@@ -59,38 +59,38 @@ class HrBenefitMineController {
 @RequiredArgsConstructor
 class HrBenefitRequestController {
 
-    private final HrBenefitRequestService requestService;
+    private final IHrBenefitRequestService hrBenefitRequestService;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:request:list")
     public R<PageResult<HrBenefitRequestVO>> page(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
-        return R.ok(requestService.page(query));
+        return R.ok(hrBenefitRequestService.page(query));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:benefit:request:list")
     public R<HrBenefitRequestVO> get(@PathVariable Long id) {
-        return R.ok(requestService.get(id));
+        return R.ok(hrBenefitRequestService.get(id));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:mine")
     public R<PageResult<HrBenefitRequestVO>> mine(@Validated @ModelAttribute HrBenefitRequestQueryDTO query) {
-        return R.ok(requestService.listMine(query));
+        return R.ok(hrBenefitRequestService.listMine(query));
     }
 
     @SysLog("新增福利申领")
     @PostMapping
     @SaCheckPermission("hr:benefit:request:add")
     public R<Long> create(@Validated @RequestBody HrBenefitRequestDTO dto) {
-        return R.ok(requestService.createRequest(dto));
+        return R.ok(hrBenefitRequestService.createRequest(dto));
     }
 
     @SysLog("修改福利申领")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:benefit:request:edit")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrBenefitRequestDTO dto) {
-        requestService.updateRequest(id, dto);
+        hrBenefitRequestService.updateRequest(id, dto);
         return R.ok();
     }
 
@@ -98,7 +98,7 @@ class HrBenefitRequestController {
     @PostMapping("/{id}/submit")
     @SaCheckPermission("hr:benefit:request:submit")
     public R<String> submit(@PathVariable Long id) {
-        return R.ok(requestService.submitWorkflow(id));
+        return R.ok(hrBenefitRequestService.submitWorkflow(id));
     }
 
     @SysLog("撤销福利申领")
@@ -106,7 +106,7 @@ class HrBenefitRequestController {
     @SaCheckPermission("hr:benefit:request:cancel")
     public R<Void> cancel(@PathVariable Long id,
                           @RequestParam(required = false) String reason) {
-        requestService.cancelRequest(id, reason);
+        hrBenefitRequestService.cancelRequest(id, reason);
         return R.ok();
     }
 }
@@ -116,25 +116,25 @@ class HrBenefitRequestController {
 @RequiredArgsConstructor
 class HrPointAccountController {
 
-    private final HrPointAccountService pointAccountService;
+    private final IHrPointAccountService hrPointAccountService;
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:point:view")
     public R<HrPointAccountVO> mine() {
-        return R.ok(pointAccountService.getMyAccount());
+        return R.ok(hrPointAccountService.getMyAccount());
     }
 
     @GetMapping("/employees/{employeeId}")
     @SaCheckPermission("hr:benefit:point:view")
     public R<HrPointAccountVO> getByEmployee(@PathVariable Long employeeId) {
-        return R.ok(pointAccountService.getEmployeeAccount(employeeId));
+        return R.ok(hrPointAccountService.getEmployeeAccount(employeeId));
     }
 
     @GetMapping("/{accountId}/transactions")
     @SaCheckPermission("hr:benefit:point:view")
     public R<PageResult<HrPointTransactionVO>> transactions(@PathVariable Long accountId,
                                                             @Validated @ModelAttribute HrPointTransactionQueryDTO query) {
-        return R.ok(pointAccountService.listTransactions(accountId, query));
+        return R.ok(hrPointAccountService.listTransactions(accountId, query));
     }
 
     @SysLog("积分手动调整")
@@ -144,7 +144,7 @@ class HrPointAccountController {
                                 @RequestParam Integer points,
                                 @RequestParam String direction,
                                 @RequestParam(required = false) String remark) {
-        return R.ok(pointAccountService.manualAdjust(employeeId, points, direction, remark));
+        return R.ok(hrPointAccountService.manualAdjust(employeeId, points, direction, remark));
     }
 }
 
@@ -153,32 +153,32 @@ class HrPointAccountController {
 @RequiredArgsConstructor
 class HrMallItemController {
 
-    private final HrMallItemService mallItemService;
+    private final IHrMallItemService hrMallItemService;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:mall:browse")
     public R<PageResult<HrMallItemVO>> page(@Validated @ModelAttribute HrMallItemQueryDTO query) {
-        return R.ok(mallItemService.page(query));
+        return R.ok(hrMallItemService.page(query));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:benefit:mall:browse")
     public R<HrMallItemVO> get(@PathVariable Long id) {
-        return R.ok(mallItemService.get(id));
+        return R.ok(hrMallItemService.get(id));
     }
 
     @SysLog("新增积分商品")
     @PostMapping
     @SaCheckPermission("hr:benefit:mall:item:manage")
     public R<Long> create(@Validated @RequestBody HrMallItemDTO dto) {
-        return R.ok(mallItemService.createItem(dto));
+        return R.ok(hrMallItemService.createItem(dto));
     }
 
     @SysLog("修改积分商品")
     @PutMapping("/{id}")
     @SaCheckPermission("hr:benefit:mall:item:manage")
     public R<Void> update(@PathVariable Long id, @Validated @RequestBody HrMallItemDTO dto) {
-        mallItemService.updateItem(id, dto);
+        hrMallItemService.updateItem(id, dto);
         return R.ok();
     }
 
@@ -186,7 +186,7 @@ class HrMallItemController {
     @PostMapping("/{id}/on-shelf")
     @SaCheckPermission("hr:benefit:mall:item:manage")
     public R<Void> onShelf(@PathVariable Long id) {
-        mallItemService.onShelf(id);
+        hrMallItemService.onShelf(id);
         return R.ok();
     }
 
@@ -194,7 +194,7 @@ class HrMallItemController {
     @PostMapping("/{id}/off-shelf")
     @SaCheckPermission("hr:benefit:mall:item:manage")
     public R<Void> offShelf(@PathVariable Long id) {
-        mallItemService.offShelf(id);
+        hrMallItemService.offShelf(id);
         return R.ok();
     }
 }
@@ -204,38 +204,38 @@ class HrMallItemController {
 @RequiredArgsConstructor
 class HrMallOrderController {
 
-    private final HrMallOrderService mallOrderService;
+    private final IHrMallOrderService hrMallOrderService;
 
     @GetMapping
     @SaCheckPermission("hr:benefit:order:list")
     public R<PageResult<HrMallOrderVO>> page(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
-        return R.ok(mallOrderService.page(query));
+        return R.ok(hrMallOrderService.page(query));
     }
 
     @GetMapping("/mine")
     @SaCheckPermission("hr:benefit:order:my")
     public R<PageResult<HrMallOrderVO>> mine(@Validated @ModelAttribute HrMallOrderQueryDTO query) {
-        return R.ok(mallOrderService.listMine(query));
+        return R.ok(hrMallOrderService.listMine(query));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("hr:benefit:order:list")
     public R<HrMallOrderVO> get(@PathVariable Long id) {
-        return R.ok(mallOrderService.get(id));
+        return R.ok(hrMallOrderService.get(id));
     }
 
     @SysLog("积分商城下单")
     @PostMapping
     @SaCheckPermission("hr:benefit:order:place")
     public R<Long> placeOrder(@Validated @RequestBody HrMallOrderPlaceDTO dto) {
-        return R.ok(mallOrderService.placeOrder(dto));
+        return R.ok(hrMallOrderService.placeOrder(dto));
     }
 
     @SysLog("订单发货")
     @PostMapping("/{id}/ship")
     @SaCheckPermission("hr:benefit:order:ship")
     public R<Void> ship(@PathVariable Long id, @RequestParam String expressNo) {
-        mallOrderService.ship(id, expressNo);
+        hrMallOrderService.ship(id, expressNo);
         return R.ok();
     }
 
@@ -244,7 +244,7 @@ class HrMallOrderController {
     @SaCheckPermission("hr:benefit:order:cancel")
     public R<Void> cancel(@PathVariable Long id,
                           @RequestParam(required = false) String reason) {
-        mallOrderService.cancel(id, reason);
+        hrMallOrderService.cancel(id, reason);
         return R.ok();
     }
 
@@ -252,7 +252,7 @@ class HrMallOrderController {
     @PostMapping("/{id}/complete")
     @SaCheckPermission("hr:benefit:order:my")
     public R<Void> complete(@PathVariable Long id) {
-        mallOrderService.complete(id);
+        hrMallOrderService.complete(id);
         return R.ok();
     }
 }

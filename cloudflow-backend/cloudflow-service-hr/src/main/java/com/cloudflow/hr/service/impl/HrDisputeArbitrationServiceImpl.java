@@ -11,7 +11,7 @@ import com.cloudflow.hr.domain.vo.dispute.HrDisputeArbitrationVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrDisputeArbitrationMapper;
 import com.cloudflow.hr.mapper.HrLaborDisputeMapper;
-import com.cloudflow.hr.service.HrDisputeArbitrationService;
+import com.cloudflow.hr.service.IHrDisputeArbitrationService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -28,7 +28,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrDisputeArbitrationServiceImpl implements HrDisputeArbitrationService {
+public class HrDisputeArbitrationServiceImpl implements IHrDisputeArbitrationService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

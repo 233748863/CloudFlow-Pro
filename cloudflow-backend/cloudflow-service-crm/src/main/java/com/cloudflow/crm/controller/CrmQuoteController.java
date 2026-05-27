@@ -19,19 +19,19 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmQuoteController {
 
-    private final ICrmQuoteService quoteService;
+    private final ICrmQuoteService crmQuoteService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:quote:list")
     public R<PageResult<CrmQuote>> list(CrmQuote query, PageQuery pageQuery) {
-        return R.ok(quoteService.queryPage(query, pageQuery));
+        return R.ok(crmQuoteService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:quote:list")
     public R<CrmQuote> getInfo(@PathVariable("id") Long id) {
         try {
-            return R.ok(quoteService.getQuoteDetail(id));
+            return R.ok(crmQuoteService.getQuoteDetail(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -42,7 +42,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:add")
     public R<Void> add(@RequestBody CrmQuote quote) {
         try {
-            return R.result(quoteService.createQuote(quote));
+            return R.result(crmQuoteService.createQuote(quote));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -53,7 +53,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:edit")
     public R<Void> edit(@RequestBody CrmQuote quote) {
         try {
-            return R.result(quoteService.updateQuote(quote));
+            return R.result(crmQuoteService.updateQuote(quote));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -64,7 +64,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
         try {
-            return R.result(quoteService.submitQuote(id));
+            return R.result(crmQuoteService.submitQuote(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -75,7 +75,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:send")
     public R<Void> send(@PathVariable("id") Long id) {
         try {
-            return R.result(quoteService.sendQuote(id));
+            return R.result(crmQuoteService.sendQuote(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -86,7 +86,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:accept")
     public R<Void> accept(@PathVariable("id") Long id) {
         try {
-            return R.result(quoteService.acceptQuote(id));
+            return R.result(crmQuoteService.acceptQuote(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -97,7 +97,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:quote:expire")
     public R<Void> expire(@PathVariable("id") Long id) {
         try {
-            return R.result(quoteService.expireQuote(id));
+            return R.result(crmQuoteService.expireQuote(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -108,7 +108,7 @@ public class CrmQuoteController {
     @SaCheckPermission("crm:contract:draft")
     public R<Long> createContractDraft(@PathVariable("id") Long id) {
         try {
-            return R.ok(quoteService.createContractDraft(id));
+            return R.ok(crmQuoteService.createContractDraft(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -120,14 +120,14 @@ public class CrmQuoteController {
     public R<Void> remove(@PathVariable("ids") List<Long> ids) {
         for (Long id : ids) {
             try {
-                quoteService.getAccessibleQuote(id);
+                crmQuoteService.getAccessibleQuote(id);
             } catch (IllegalArgumentException e) {
                 return R.fail(e.getMessage());
             }
             CrmQuote quote = new CrmQuote();
             quote.setQuoteId(id);
             quote.setDeleted(1);
-            quoteService.updateById(quote);
+            crmQuoteService.updateById(quote);
         }
         return R.ok();
     }

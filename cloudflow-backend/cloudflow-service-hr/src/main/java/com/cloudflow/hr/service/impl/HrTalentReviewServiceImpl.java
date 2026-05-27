@@ -29,7 +29,7 @@ import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrTalentCalibrationSessionMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewMapper;
 import com.cloudflow.hr.mapper.HrTalentReviewParticipantMapper;
-import com.cloudflow.hr.service.HrTalentReviewService;
+import com.cloudflow.hr.service.IHrTalentReviewService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +50,7 @@ import java.util.TreeMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTalentReviewServiceImpl implements HrTalentReviewService {
+public class HrTalentReviewServiceImpl implements IHrTalentReviewService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

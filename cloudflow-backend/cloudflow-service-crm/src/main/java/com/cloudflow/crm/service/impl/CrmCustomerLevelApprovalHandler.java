@@ -24,15 +24,15 @@ import java.util.Map;
 public class CrmCustomerLevelApprovalHandler extends AbstractCrmApprovalHandler implements ApprovalResultHandler {
 
     private final CrmCustomerMapper customerMapper;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
 
     public CrmCustomerLevelApprovalHandler(CrmApprovalMapper approvalMapper,
                                            ObjectMapper objectMapper,
                                            CrmCustomerMapper customerMapper,
-                                           ICrmCustomerService customerService) {
+                                           ICrmCustomerService crmCustomerService) {
         super(approvalMapper, objectMapper);
         this.customerMapper = customerMapper;
-        this.customerService = customerService;
+        this.crmCustomerService = crmCustomerService;
     }
 
     @Override
@@ -61,7 +61,7 @@ public class CrmCustomerLevelApprovalHandler extends AbstractCrmApprovalHandler 
                 .set(CrmCustomer::getUpdateBy, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY)
                 .set(CrmCustomer::getUpdateTime, LocalDateTime.now());
         customerMapper.update(null, wrapper);
-        customerService.refreshHealth(customerId);
+        crmCustomerService.refreshHealth(customerId);
     }
 
     @Override

@@ -61,7 +61,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceService {
 
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final CrmCustomerMapper customerMapper;
     private final CrmContactMapper contactMapper;
     private final CrmFollowUpMapper followUpMapper;
@@ -75,7 +75,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     @Override
     public CrmCustomerWorkspaceVO getWorkspace(Long customerId) {
         CrmCustomer customer = requireCustomer(customerId);
-        customerService.refreshHealth(customerId);
+        crmCustomerService.refreshHealth(customerId);
         customer = requireCustomer(customerId);
 
         CrmCustomerWorkspaceVO workspace = new CrmCustomerWorkspaceVO();
@@ -196,7 +196,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     }
 
     private CrmCustomer requireCustomer(Long customerId) {
-        return customerService.getAccessibleCustomer(customerId);
+        return crmCustomerService.getAccessibleCustomer(customerId);
     }
 
     private List<CrmHealthReasonItemVO> buildHealthReasons(Long customerId, CrmCustomer customer) {

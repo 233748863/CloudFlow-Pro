@@ -39,11 +39,11 @@ import java.util.Map;
 public class VehicleController {
 
     private final IVehicleService vehicleService;
-    private final IVehicleUsageService usageService;
-    private final IVehicleExpenseService expenseService;
-    private final IVehicleMaintenanceService maintenanceService;
-    private final IVehicleViolationService violationService;
-    private final IVehicleFuelLogService fuelLogService;
+    private final IVehicleUsageService vehicleUsageService;
+    private final IVehicleExpenseService vehicleExpenseService;
+    private final IVehicleMaintenanceService vehicleMaintenanceService;
+    private final IVehicleViolationService vehicleViolationService;
+    private final IVehicleFuelLogService vehicleFuelLogService;
 
     // ==================== 车辆管理 ====================
 
@@ -121,7 +121,7 @@ public class VehicleController {
     @GetMapping("/usage/list")
     @SaCheckPermission("oa:vehicle:usage")
     public R<PageResult<VehicleUsage>> listUsage(VehicleUsage usage, PageQuery pageQuery) {
-        return R.ok(usageService.queryPage(usage, pageQuery));
+        return R.ok(vehicleUsageService.queryPage(usage, pageQuery));
     }
 
     /** 提交用车申请 */
@@ -129,14 +129,14 @@ public class VehicleController {
     @PostMapping("/usage")
     @SaCheckPermission("oa:vehicle:booking")
     public R<Void> submitUsage(@RequestBody VehicleUsage usage) {
-        return usageService.submitUsage(usage);
+        return vehicleUsageService.submitUsage(usage);
     }
 
     /** 用车记录详情 */
     @GetMapping("/usage/{id}")
     @SaCheckPermission("oa:vehicle:usage")
     public R<VehicleUsage> getUsageInfo(@PathVariable("id") Long id) {
-        return R.ok(usageService.getUsageDetail(id));
+        return R.ok(vehicleUsageService.getUsageDetail(id));
     }
 
     /** 审批用车申请 - 仅管理员/经理 */
@@ -145,7 +145,7 @@ public class VehicleController {
     @SaCheckPermission("oa:vehicle:approve")
     public R<Void> approveUsage(@PathVariable("id") Long id, @RequestBody VehicleUsageApprovalDTO dto) {
         String remark = dto.getRemark() == null ? "" : dto.getRemark();
-        return usageService.approveUsage(id, Boolean.TRUE.equals(dto.getApproved()), remark);
+        return vehicleUsageService.approveUsage(id, Boolean.TRUE.equals(dto.getApproved()), remark);
     }
 
     /** 派车 */
@@ -153,7 +153,7 @@ public class VehicleController {
     @PutMapping("/usage/{id}/dispatch")
     @SaCheckPermission("oa:vehicle:dispatch")
     public R<Void> dispatchUsage(@PathVariable("id") Long id, @RequestBody VehicleDispatchDTO dto) {
-        return usageService.dispatchVehicle(id, dto);
+        return vehicleUsageService.dispatchVehicle(id, dto);
     }
 
     /** 归还车辆（完成用车） */
@@ -162,7 +162,7 @@ public class VehicleController {
     @SaCheckPermission("oa:vehicle:return")
     public R<Void> returnVehicle(@PathVariable("id") Long id, @RequestBody VehicleReturnDTO dto) {
         String remark = dto.getRemark() == null ? "" : dto.getRemark();
-        return usageService.returnVehicle(id, dto.getEndMileage(), remark, dto.getReturnLocation());
+        return vehicleUsageService.returnVehicle(id, dto.getEndMileage(), remark, dto.getReturnLocation());
     }
 
     /** 取消用车申请 */
@@ -170,7 +170,7 @@ public class VehicleController {
     @PutMapping("/usage/{id}/cancel")
     @SaCheckPermission("oa:vehicle:cancel")
     public R<Void> cancelUsage(@PathVariable("id") Long id) {
-        return usageService.cancelUsage(id);
+        return vehicleUsageService.cancelUsage(id);
     }
 
     // ==================== 费用管理 ====================
@@ -182,7 +182,7 @@ public class VehicleController {
                                                      PageQuery pageQuery,
                                                      @RequestParam(value = "startDate", required = false) String startDate,
                                                      @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(expenseService.queryPage(expense, pageQuery, startDate, endDate));
+        return R.ok(vehicleExpenseService.queryPage(expense, pageQuery, startDate, endDate));
     }
 
     /** 新增费用 */
@@ -190,7 +190,7 @@ public class VehicleController {
     @PostMapping("/expense")
     @SaCheckPermission("oa:vehicle:expense:add")
     public R<Void> addExpense(@RequestBody VehicleExpense expense) {
-        return R.result(expenseService.save(expense));
+        return R.result(vehicleExpenseService.save(expense));
     }
 
     /** 费用统计 */
@@ -198,14 +198,14 @@ public class VehicleController {
     @SaCheckPermission("oa:vehicle:usage")
     public R<DynamicMapVO> getExpenseStats(@RequestParam(value = "startDate", required = false) String startDate,
                                            @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(expenseService.getExpenseStats(startDate, endDate));
+        return R.ok(vehicleExpenseService.getExpenseStats(startDate, endDate));
     }
 
     /** 维保列表 */
     @GetMapping("/maintenance/list")
     @SaCheckPermission("oa:vehicle:list")
     public R<PageResult<VehicleMaintenance>> listMaintenance(VehicleMaintenance maintenance, PageQuery pageQuery) {
-        return R.ok(maintenanceService.queryPage(maintenance, pageQuery));
+        return R.ok(vehicleMaintenanceService.queryPage(maintenance, pageQuery));
     }
 
     /** 新增维保记录 */
@@ -213,14 +213,14 @@ public class VehicleController {
     @PostMapping("/maintenance")
     @SaCheckPermission("oa:vehicle:maintenance:add")
     public R<Void> addMaintenance(@RequestBody VehicleMaintenance maintenance) {
-        return R.result(maintenanceService.save(maintenance));
+        return R.result(vehicleMaintenanceService.save(maintenance));
     }
 
     /** 违章列表 */
     @GetMapping("/violation/list")
     @SaCheckPermission("oa:vehicle:list")
     public R<PageResult<VehicleViolation>> listViolation(VehicleViolation violation, PageQuery pageQuery) {
-        return R.ok(violationService.queryPage(violation, pageQuery));
+        return R.ok(vehicleViolationService.queryPage(violation, pageQuery));
     }
 
     /** 新增违章记录 */
@@ -228,7 +228,7 @@ public class VehicleController {
     @PostMapping("/violation")
     @SaCheckPermission("oa:vehicle:violation:add")
     public R<Void> addViolation(@RequestBody VehicleViolation violation) {
-        return R.result(violationService.save(violation));
+        return R.result(vehicleViolationService.save(violation));
     }
 
     // ==================== OA-P0-1 油耗记录 ====================
@@ -242,7 +242,7 @@ public class VehicleController {
             @RequestParam(value = "endDate", required = false) String endDate,
             @RequestParam(value = "pageNum", defaultValue = "1") Integer pageNum,
             @RequestParam(value = "pageSize", defaultValue = "10") Integer pageSize) {
-        return R.ok(fuelLogService.queryPage(vehicleId, startDate, endDate, pageNum, pageSize));
+        return R.ok(vehicleFuelLogService.queryPage(vehicleId, startDate, endDate, pageNum, pageSize));
     }
 
     /** 新增油耗记录 */
@@ -250,7 +250,7 @@ public class VehicleController {
     @PostMapping("/fuel")
     @SaCheckPermission("oa:vehicle:expense:add")
     public R<Void> addFuelLog(@RequestBody VehicleFuelLog log) {
-        return R.result(fuelLogService.saveFuelLog(log));
+        return R.result(vehicleFuelLogService.saveFuelLog(log));
     }
 
     /** 修改油耗记录 */
@@ -258,7 +258,7 @@ public class VehicleController {
     @PutMapping("/fuel")
     @SaCheckPermission("oa:vehicle:expense:add")
     public R<Void> updateFuelLog(@RequestBody VehicleFuelLog log) {
-        return R.result(fuelLogService.updateFuelLog(log));
+        return R.result(vehicleFuelLogService.updateFuelLog(log));
     }
 
     /** 删除油耗记录 */
@@ -266,7 +266,7 @@ public class VehicleController {
     @DeleteMapping("/fuel/{id}")
     @SaCheckPermission("oa:vehicle:expense:add")
     public R<Void> removeFuelLog(@PathVariable("id") Long id) {
-        return R.result(fuelLogService.removeById(id));
+        return R.result(vehicleFuelLogService.removeById(id));
     }
 
     /** 油耗统计 */
@@ -274,7 +274,7 @@ public class VehicleController {
     @SaCheckPermission("oa:vehicle:list")
     public R<DynamicMapVO> fuelStats(@RequestParam("vehicleId") Long vehicleId,
                                      @RequestParam(value = "recentDays", required = false) Integer recentDays) {
-        return R.ok(fuelLogService.statsByVehicle(vehicleId, recentDays));
+        return R.ok(vehicleFuelLogService.statsByVehicle(vehicleId, recentDays));
     }
 }
 

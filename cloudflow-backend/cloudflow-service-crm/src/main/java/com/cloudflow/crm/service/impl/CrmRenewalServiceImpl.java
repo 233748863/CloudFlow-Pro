@@ -33,7 +33,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
     private final RemoteWorkflowService remoteWorkflowService;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
 
     @Override
@@ -85,7 +85,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         Localize.fillCommonAudit(renewal, currentTenantId(), currentUserName(), now());
         boolean saved = save(renewal);
         if (saved) {
-            customerService.refreshHealth(renewal.getCustomerId());
+            crmCustomerService.refreshHealth(renewal.getCustomerId());
         }
         return saved;
     }
@@ -113,7 +113,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
         renewal.setUpdateTime(now());
         boolean updated = updateById(renewal);
         if (updated) {
-            customerService.refreshHealth(renewal.getCustomerId());
+            crmCustomerService.refreshHealth(renewal.getCustomerId());
         }
         return updated;
     }
@@ -160,7 +160,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
 
         boolean updated = updateById(renewal);
         if (updated) {
-            customerService.refreshHealth(renewal.getCustomerId());
+            crmCustomerService.refreshHealth(renewal.getCustomerId());
         }
         return updated;
     }
@@ -206,7 +206,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
             }
         }
         if (renewal.getCustomerId() != null && !StringUtils.hasText(renewal.getCustomerName())) {
-            CrmCustomer customer = customerService.getAccessibleCustomer(renewal.getCustomerId());
+            CrmCustomer customer = crmCustomerService.getAccessibleCustomer(renewal.getCustomerId());
             renewal.setCustomerName(customer.getCustomerName());
         }
     }

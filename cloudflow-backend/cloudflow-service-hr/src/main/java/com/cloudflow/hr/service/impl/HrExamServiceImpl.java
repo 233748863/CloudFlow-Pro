@@ -15,7 +15,7 @@ import com.cloudflow.hr.mapper.HrExamAttemptMapper;
 import com.cloudflow.hr.mapper.HrExamPaperMapper;
 import com.cloudflow.hr.mapper.HrExamQuestionBankMapper;
 import com.cloudflow.hr.service.HrEssSupport;
-import com.cloudflow.hr.service.HrExamService;
+import com.cloudflow.hr.service.IHrExamService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,7 +38,7 @@ import java.util.Objects;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrExamServiceImpl implements HrExamService {
+public class HrExamServiceImpl implements IHrExamService {
 
     private final HrExamPaperMapper paperMapper;
     private final HrExamQuestionBankMapper questionBankMapper;

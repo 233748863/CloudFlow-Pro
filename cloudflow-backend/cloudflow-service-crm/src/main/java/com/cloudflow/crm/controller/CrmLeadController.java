@@ -20,18 +20,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmLeadController {
 
-    private final ICrmLeadService leadService;
+    private final ICrmLeadService crmLeadService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:lead:list")
     public R<PageResult<CrmLead>> list(CrmLead query, PageQuery pageQuery) {
-        return R.ok(leadService.queryPage(query, pageQuery));
+        return R.ok(crmLeadService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:lead:list")
     public R<CrmLead> getInfo(@PathVariable("id") Long id) {
-        CrmLead lead = leadService.getById(id);
+        CrmLead lead = crmLeadService.getById(id);
         return lead == null || !Integer.valueOf(0).equals(lead.getDeleted()) ? R.fail("线索不存在") : R.ok(lead);
     }
 
@@ -40,7 +40,7 @@ public class CrmLeadController {
     @SaCheckPermission("crm:lead:add")
     public R<Void> add(@RequestBody CrmLead lead) {
         try {
-            return R.result(leadService.createLead(lead));
+            return R.result(crmLeadService.createLead(lead));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -51,7 +51,7 @@ public class CrmLeadController {
     @SaCheckPermission("crm:lead:edit")
     public R<Void> edit(@RequestBody CrmLead lead) {
         try {
-            return R.result(leadService.updateLead(lead));
+            return R.result(crmLeadService.updateLead(lead));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -62,7 +62,7 @@ public class CrmLeadController {
     @SaCheckPermission("crm:lead:convert")
     public R<Long> convert(@RequestBody CrmLeadConvertDTO request) {
         try {
-            return R.ok(leadService.convertLead(request));
+            return R.ok(crmLeadService.convertLead(request));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -76,7 +76,7 @@ public class CrmLeadController {
             CrmLead lead = new CrmLead();
             lead.setLeadId(id);
             lead.setDeleted(1);
-            leadService.updateById(lead);
+            crmLeadService.updateById(lead);
         }
         return R.ok();
     }

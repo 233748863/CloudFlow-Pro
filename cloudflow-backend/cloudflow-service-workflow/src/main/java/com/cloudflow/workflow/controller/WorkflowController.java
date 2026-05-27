@@ -33,16 +33,16 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 public class WorkflowController {
 
     @Autowired
-    private IWfInstanceService instanceService;
+    private IWfInstanceService wfInstanceService;
 
     @Autowired
-    private IWfTaskService taskService;
+    private IWfTaskService wfTaskService;
 
     @Autowired
-    private IWfDefinitionService definitionService;
+    private IWfDefinitionService wfDefinitionService;
 
     @Autowired
-    private IWfFormService formService;
+    private IWfFormService wfFormService;
 
     @Autowired
     private ITaskStatisticsService taskStatisticsService;
@@ -69,7 +69,7 @@ public class WorkflowController {
     @PostMapping("/start")
     @SaCheckPermission("workflow:process:start")
     public R<?> startProcess(@RequestBody ProcessStartReq req) {
-        return instanceService.startProcess(req.getProcessDefKey(), req.getBusinessKey(), req.getVariables());
+        return wfInstanceService.startProcess(req.getProcessDefKey(), req.getBusinessKey(), req.getVariables());
     }
 
     /**
@@ -79,7 +79,7 @@ public class WorkflowController {
     @PostMapping("/complete")
     @SaCheckPermission("workflow:task:complete")
     public R<?> completeTask(@RequestBody TaskCompleteReq req) {
-        return taskService.completeTask(req.getTaskId(), req.getAction(), req.getComment(), req.getVariables(), req.getDelegateUserId());
+        return wfTaskService.completeTask(req.getTaskId(), req.getAction(), req.getComment(), req.getVariables(), req.getDelegateUserId());
     }
 
     /**
@@ -89,7 +89,7 @@ public class WorkflowController {
     @SaCheckPermission("workflow:task:todo")
     public R<PageResult<WfTask>> getTodoTasks(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
-        return R.ok(taskService.getTodoTasks(userId, pageQuery));
+        return R.ok(wfTaskService.getTodoTasks(userId, pageQuery));
     }
 
     /**
@@ -99,7 +99,7 @@ public class WorkflowController {
     @SaCheckPermission("workflow:task:done")
     public R<PageResult<WfTask>> getDoneTasks(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
-        return R.ok(taskService.getDoneTasks(userId, pageQuery));
+        return R.ok(wfTaskService.getDoneTasks(userId, pageQuery));
     }
     
     /**
@@ -109,7 +109,7 @@ public class WorkflowController {
     @SaCheckPermission("workflow:process:mine")
     public R<PageResult<WfProcessInstance>> getMyInstances(@ModelAttribute PageQuery pageQuery) {
         Long userId = UserContext.getUserId();
-        return R.ok(instanceService.getMyInstances(userId, pageQuery));
+        return R.ok(wfInstanceService.getMyInstances(userId, pageQuery));
     }
 
     /**
@@ -118,7 +118,7 @@ public class WorkflowController {
     @GetMapping("/instance/{instanceId}")
     @SaCheckPermission("workflow:process:view")
     public R<WfProcessInstance> getProcessInstance(@PathVariable("instanceId") String instanceId) {
-        return R.ok(instanceService.getProcessInstance(instanceId));
+        return R.ok(wfInstanceService.getProcessInstance(instanceId));
     }
 
     /**
@@ -127,7 +127,7 @@ public class WorkflowController {
     @GetMapping("/instance/{instanceId}/trace")
     @SaCheckPermission("workflow:process:view")
     public R<DynamicMapVO> getProcessTrace(@PathVariable("instanceId") String instanceId) {
-        return R.ok(instanceService.getProcessTrace(instanceId));
+        return R.ok(wfInstanceService.getProcessTrace(instanceId));
     }
 
     /**
@@ -136,7 +136,7 @@ public class WorkflowController {
     @GetMapping("/definitions")
     @SaCheckPermission("workflow:definition:list")
     public R<PageResult<WfProcessDefinition>> listProcessDefinitions(@ModelAttribute PageQuery pageQuery) {
-        return R.ok(definitionService.listProcessDefinitions(pageQuery));
+        return R.ok(wfDefinitionService.listProcessDefinitions(pageQuery));
     }
 
     /**
@@ -145,7 +145,7 @@ public class WorkflowController {
     @GetMapping("/form/{formId}")
     @SaCheckPermission("workflow:form:view")
     public R<WfFormDefinition> getFormDefinition(@PathVariable("formId") String formId) {
-        return R.ok(formService.getFormDefinition(formId));
+        return R.ok(wfFormService.getFormDefinition(formId));
     }
 
     /**
@@ -154,7 +154,7 @@ public class WorkflowController {
     @GetMapping("/forms")
     @SaCheckPermission("workflow:form:list")
     public R<PageResult<WfFormDefinition>> listFormDefinitions(@ModelAttribute PageQuery pageQuery) {
-        return R.ok(formService.listFormDefinitions(pageQuery));
+        return R.ok(wfFormService.listFormDefinitions(pageQuery));
     }
 
     /**
@@ -164,7 +164,7 @@ public class WorkflowController {
     @PostMapping("/definition/save")
     @SaCheckPermission("workflow:definition:add")
     public R<?> saveProcessDefinition(@RequestBody WfProcessDefinition definition) {
-        return definitionService.saveProcessDefinition(definition);
+        return wfDefinitionService.saveProcessDefinition(definition);
     }
 
     /**
@@ -174,7 +174,7 @@ public class WorkflowController {
     @PostMapping("/definition/deploy/{definitionId}")
     @SaCheckPermission("workflow:definition:deploy")
     public R<?> deployProcessDefinition(@PathVariable("definitionId") String definitionId) {
-        return definitionService.deployProcessDefinition(definitionId);
+        return wfDefinitionService.deployProcessDefinition(definitionId);
     }
 
     /**
@@ -184,7 +184,7 @@ public class WorkflowController {
     @PostMapping("/form/save")
     @SaCheckPermission("workflow:form:add")
     public R<?> saveFormDefinition(@RequestBody WfFormDefinition definition) {
-        return formService.saveFormDefinition(definition);
+        return wfFormService.saveFormDefinition(definition);
     }
 
     /**
@@ -193,7 +193,7 @@ public class WorkflowController {
     @PostMapping("/task/read/{taskId}")
     @SaCheckPermission("workflow:task:read")
     public R<?> readTask(@PathVariable("taskId") String taskId) {
-        taskService.readTask(taskId, UserContext.getUserId());
+        wfTaskService.readTask(taskId, UserContext.getUserId());
         return R.ok();
     }
 
@@ -203,7 +203,7 @@ public class WorkflowController {
     @PostMapping("/task/urge")
     @SaCheckPermission("workflow:task:urge")
     public R<?> urgeTask(@RequestBody UrgeTaskRequest dto) {
-        return taskService.urgeTask(dto.getTaskId(), dto.getReason());
+        return wfTaskService.urgeTask(dto.getTaskId(), dto.getReason());
     }
 
     /**
@@ -245,7 +245,7 @@ public class WorkflowController {
     @DeleteMapping("/definition/{definitionId}")
     @SaCheckPermission("workflow:definition:remove")
     public R<?> deleteProcessDefinition(@PathVariable("definitionId") String definitionId) {
-        return definitionService.deleteProcessDefinition(definitionId);
+        return wfDefinitionService.deleteProcessDefinition(definitionId);
     }
 
     /**
@@ -288,7 +288,7 @@ public class WorkflowController {
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("instanceId不能为空");
         }
-        return instanceService.recallProcess(instanceId);
+        return wfInstanceService.recallProcess(instanceId);
     }
 
     /**
@@ -303,7 +303,7 @@ public class WorkflowController {
         if (taskId == null || taskId.isBlank()) {
             return R.fail("taskId不能为空");
         }
-        return taskService.rejectTask(taskId, targetNodeKey, comment);
+        return wfTaskService.rejectTask(taskId, targetNodeKey, comment);
     }
 
     /**
@@ -317,7 +317,7 @@ public class WorkflowController {
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("instanceId不能为空");
         }
-        return instanceService.pauseProcess(instanceId);
+        return wfInstanceService.pauseProcess(instanceId);
     }
 
     /**
@@ -331,7 +331,7 @@ public class WorkflowController {
         if (instanceId == null || instanceId.isBlank()) {
             return R.fail("instanceId不能为空");
         }
-        return instanceService.resumeProcess(instanceId);
+        return wfInstanceService.resumeProcess(instanceId);
     }
 
     /**
@@ -340,7 +340,7 @@ public class WorkflowController {
     @GetMapping("/definition/{definitionId}")
     @SaCheckPermission("workflow:definition:view")
     public R<WfProcessDefinition> getProcessDefinition(@PathVariable("definitionId") String definitionId) {
-        return R.ok(definitionService.getProcessDefinition(definitionId));
+        return R.ok(wfDefinitionService.getProcessDefinition(definitionId));
     }
 
     // ==================== 加签/减签功能 ====================
@@ -372,7 +372,7 @@ public class WorkflowController {
             return R.fail("加签说明不能为空");
         }
 
-        return taskService.addSignature(taskId, userIds, comment);
+        return wfTaskService.addSignature(taskId, userIds, comment);
     }
 
     /**
@@ -402,7 +402,7 @@ public class WorkflowController {
             return R.fail("减签说明不能为空");
         }
 
-        return taskService.reductionSignature(taskId, userIds, comment);
+        return wfTaskService.reductionSignature(taskId, userIds, comment);
     }
 
     // ==================== 流程终止功能 ====================
@@ -430,7 +430,7 @@ public class WorkflowController {
             return R.fail("终止原因不能为空");
         }
 
-        return instanceService.terminateProcess(instanceId, reason);
+        return wfInstanceService.terminateProcess(instanceId, reason);
     }
 
     private java.time.LocalDateTime parseDateTimeParam(String value, boolean endOfDay) {

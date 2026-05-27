@@ -19,18 +19,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmProductController {
 
-    private final ICrmProductService productService;
+    private final ICrmProductService crmProductService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:product:list")
     public R<PageResult<CrmProduct>> list(CrmProduct query, PageQuery pageQuery) {
-        return R.ok(productService.queryPage(query, pageQuery));
+        return R.ok(crmProductService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:product:list")
     public R<CrmProduct> getInfo(@PathVariable("id") Long id) {
-        CrmProduct product = productService.getById(id);
+        CrmProduct product = crmProductService.getById(id);
         return product == null || !Integer.valueOf(0).equals(product.getDeleted()) ? R.fail("产品不存在") : R.ok(product);
     }
 
@@ -39,7 +39,7 @@ public class CrmProductController {
     @SaCheckPermission("crm:product:add")
     public R<Void> add(@RequestBody CrmProduct product) {
         try {
-            return R.result(productService.createProduct(product));
+            return R.result(crmProductService.createProduct(product));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -50,7 +50,7 @@ public class CrmProductController {
     @SaCheckPermission("crm:product:edit")
     public R<Void> edit(@RequestBody CrmProduct product) {
         try {
-            return R.result(productService.updateProduct(product));
+            return R.result(crmProductService.updateProduct(product));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -64,7 +64,7 @@ public class CrmProductController {
             CrmProduct product = new CrmProduct();
             product.setProductId(id);
             product.setDeleted(1);
-            productService.updateById(product);
+            crmProductService.updateById(product);
         }
         return R.ok();
     }

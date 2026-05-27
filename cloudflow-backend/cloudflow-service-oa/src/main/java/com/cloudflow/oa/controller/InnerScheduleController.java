@@ -27,7 +27,7 @@ public class InnerScheduleController {
     private static final String HR_CALLERS =
             "${cloudflow.security.inner.oa.schedule-callers:cloudflow-service-hr}";
 
-    private final ISysScheduleService scheduleService;
+    private final ISysScheduleService sysScheduleService;
     private final IMeetingRoomService meetingRoomService;
 
     @Inner(allowedServices = HR_CALLERS)
@@ -61,7 +61,7 @@ public class InnerScheduleController {
         event.setDeleted(0);
 
         try {
-            boolean saved = scheduleService.createEvent(event);
+            boolean saved = sysScheduleService.createEvent(event);
             if (!saved) {
                 return R.fail("会议室预订失败");
             }

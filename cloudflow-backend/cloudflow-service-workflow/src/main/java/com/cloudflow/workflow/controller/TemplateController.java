@@ -32,7 +32,7 @@ public class TemplateController {
     private ITemplateService templateService;
 
     @Autowired
-    private ITemplateCategoryService categoryService;
+    private ITemplateCategoryService templateCategoryService;
 
     @GetMapping
     @SaCheckPermission("workflow:template:list")
@@ -135,7 +135,7 @@ public class TemplateController {
     @SaCheckPermission("workflow:template:list")
     public R<List<CategoryTreeNode>> getCategories() {
         try {
-            List<CategoryTreeNode> categories = categoryService.listCategoryTree();
+            List<CategoryTreeNode> categories = templateCategoryService.listCategoryTree();
             return R.ok(categories);
         } catch (Exception e) {
             log.error("查询模板分类树失败", e);
@@ -147,7 +147,7 @@ public class TemplateController {
     @SaCheckPermission("workflow:template:add")
     public R<TemplateCategory> getCategory(@PathVariable String id) {
         try {
-            TemplateCategory category = categoryService.getById(id);
+            TemplateCategory category = templateCategoryService.getById(id);
             return R.ok(category);
         } catch (Exception e) {
             log.error("获取模板分类详情失败, categoryId={}", id, e);
@@ -160,7 +160,7 @@ public class TemplateController {
     public R<TemplateCategory> createCategory(@RequestBody TemplateCategoryRequest request) {
         try {
             TemplateCategory category = fillCategoryFromRequest(new TemplateCategory(), request);
-            TemplateCategory saved = categoryService.add(category);
+            TemplateCategory saved = templateCategoryService.add(category);
             return R.ok(saved);
         } catch (Exception e) {
             log.error("创建模板分类失败, categoryName={}", request.getName(), e);
@@ -174,10 +174,10 @@ public class TemplateController {
             @PathVariable String id,
             @RequestBody TemplateCategoryRequest request) {
         try {
-            TemplateCategory category = categoryService.getById(id);
+            TemplateCategory category = templateCategoryService.getById(id);
             fillCategoryFromRequest(category, request);
             category.setId(id);
-            TemplateCategory updated = categoryService.update(category);
+            TemplateCategory updated = templateCategoryService.update(category);
             return R.ok(updated);
         } catch (Exception e) {
             log.error("更新模板分类失败, categoryId={}", id, e);
@@ -189,7 +189,7 @@ public class TemplateController {
     @SaCheckPermission("workflow:template:add")
     public R<Void> deleteCategory(@PathVariable String id) {
         try {
-            categoryService.delete(id);
+            templateCategoryService.delete(id);
             return R.ok();
         } catch (Exception e) {
             log.error("删除模板分类失败, categoryId={}", id, e);

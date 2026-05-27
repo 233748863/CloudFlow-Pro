@@ -21,7 +21,7 @@ import org.springframework.util.StringUtils;
 public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead>
         implements ICrmLeadService {
 
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final CrmCustomerMapper customerMapper;
 
     @Override
@@ -96,7 +96,7 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
         customer.setAddress(request.getAddress());
         customer.setCreditCode(request.getCreditCode());
         customer.setRemark(buildConvertedRemark(lead, request.getRemark()));
-        customerService.createCustomer(customer);
+        crmCustomerService.createCustomer(customer);
 
         CrmCustomer persistedCustomer = customerMapper.selectOne(new LambdaQueryWrapper<CrmCustomer>()
                 .eq(CrmCustomer::getTenantId, currentTenantId())

@@ -18,13 +18,13 @@ import java.util.List;
 public class SysScheduleController {
 
     @Autowired
-    private ISysScheduleService scheduleService;
+    private ISysScheduleService sysScheduleService;
 
     @GetMapping("/my-events")
     @SaCheckPermission("oa:schedule:list")
     public R<List<SysScheduleEvent>> getMyEvents(@RequestParam(value = "start", required = false) String start,
                                                @RequestParam(value = "end", required = false) String end) {
-        return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), start, end));
+        return R.ok(sysScheduleService.getMyEvents(UserContext.getUserId(), start, end));
     }
 
     /**
@@ -34,7 +34,7 @@ public class SysScheduleController {
     @SaCheckPermission("oa:schedule:list")
     public R<List<SysScheduleEvent>> getTodaySchedule() {
         String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        return R.ok(scheduleService.getMyEvents(UserContext.getUserId(), today, today));
+        return R.ok(sysScheduleService.getMyEvents(UserContext.getUserId(), today, today));
     }
 
     /**
@@ -47,7 +47,7 @@ public class SysScheduleController {
     public R<List<SysScheduleEvent>> getRoomEvents(@PathVariable("roomId") Long roomId,
                                                    @RequestParam(value = "date", required = false) String date) {
         String queryDate = (date != null && !date.isEmpty()) ? date : LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        return R.ok(scheduleService.getRoomEvents(roomId, queryDate));
+        return R.ok(sysScheduleService.getRoomEvents(roomId, queryDate));
     }
 
     @SysLog("新增日程")
@@ -55,7 +55,7 @@ public class SysScheduleController {
     @SaCheckPermission("oa:schedule:add")
     public R<Boolean> add(@RequestBody SysScheduleEvent event) {
         event.setCreatorId(UserContext.getUserId());
-        return R.ok(scheduleService.createEvent(event));
+        return R.ok(sysScheduleService.createEvent(event));
     }
     
     @SysLog("编辑日程")
@@ -64,14 +64,14 @@ public class SysScheduleController {
     public R<Boolean> edit(@RequestBody SysScheduleEvent event) {
         // 权限检查：只有创建者可以编辑日程
         Long currentUserId = UserContext.getUserId();
-        SysScheduleEvent existing = scheduleService.getById(event.getEventId());
+        SysScheduleEvent existing = sysScheduleService.getById(event.getEventId());
         if (existing == null) {
             return R.fail("日程不存在");
         }
         if (!currentUserId.equals(existing.getCreatorId())) {
             return R.fail("无权编辑此日程，只有创建者可以编辑");
         }
-        return R.ok(scheduleService.updateById(event));
+        return R.ok(sysScheduleService.updateById(event));
     }
 
     @SysLog("删除日程")
@@ -80,14 +80,14 @@ public class SysScheduleController {
     public R<Boolean> remove(@PathVariable("id") Long id) {
         // 权限检查：只有创建者可以删除日程
         Long currentUserId = UserContext.getUserId();
-        SysScheduleEvent existing = scheduleService.getById(id);
+        SysScheduleEvent existing = sysScheduleService.getById(id);
         if (existing == null) {
             return R.fail("日程不存在");
         }
         if (!currentUserId.equals(existing.getCreatorId())) {
             return R.fail("无权删除此日程，只有创建者可以删除");
         }
-        return R.ok(scheduleService.removeById(id));
+        return R.ok(sysScheduleService.removeById(id));
     }
 
     /**
@@ -99,7 +99,7 @@ public class SysScheduleController {
     @SaCheckPermission("oa:schedule:list")
     public R<List<SysScheduleEvent>> getRoomWeekEvents(@PathVariable("roomId") Long roomId,
                                                        @RequestParam("weekStart") String weekStart) {
-        return R.ok(scheduleService.getRoomWeekEvents(roomId, weekStart));
+        return R.ok(sysScheduleService.getRoomWeekEvents(roomId, weekStart));
     }
 
     /**
@@ -109,7 +109,7 @@ public class SysScheduleController {
     @GetMapping("/my-bookings")
     @SaCheckPermission("oa:schedule:list")
     public R<List<SysScheduleEvent>> getMyBookings(@RequestParam(value = "status", required = false) String status) {
-        return R.ok(scheduleService.getMyBookings(UserContext.getUserId(), status));
+        return R.ok(sysScheduleService.getMyBookings(UserContext.getUserId(), status));
     }
 
     /**
@@ -120,7 +120,7 @@ public class SysScheduleController {
     @PutMapping("/cancel/{id}")
     @SaCheckPermission("oa:schedule:cancel")
     public R<Boolean> cancelBooking(@PathVariable("id") Long id) {
-        return R.ok(scheduleService.cancelBooking(id, UserContext.getUserId()));
+        return R.ok(sysScheduleService.cancelBooking(id, UserContext.getUserId()));
     }
 
     /**
@@ -133,7 +133,7 @@ public class SysScheduleController {
     public R<List<DynamicMapVO>> getRoomUsageStats(
             @RequestParam(value = "startDate", required = false) String startDate,
             @RequestParam(value = "endDate", required = false) String endDate) {
-        return R.ok(scheduleService.getRoomUsageStats(startDate, endDate));
+        return R.ok(sysScheduleService.getRoomUsageStats(startDate, endDate));
     }
 }
 

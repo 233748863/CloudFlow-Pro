@@ -28,7 +28,7 @@ import com.cloudflow.hr.mapper.HrPerformanceAssignmentMapper;
 import com.cloudflow.hr.mapper.HrPerformanceObjectiveMapper;
 import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.cloudflow.hr.mapper.HrPerformanceSalaryAdjustmentMapper;
-import com.cloudflow.hr.service.HrPerformanceService;
+import com.cloudflow.hr.service.IHrPerformanceService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class HrPerformanceServiceImpl implements HrPerformanceService {
+public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
     private static final long TENANT_ID = 100000L;
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};

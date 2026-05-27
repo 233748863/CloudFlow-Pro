@@ -24,7 +24,7 @@ public class InnerAnnouncementController {
     private static final String CRM_CALLERS =
             "${cloudflow.security.inner.oa.announcement-callers:cloudflow-service-crm}";
 
-    private final ISysAnnouncementService announcementService;
+    private final ISysAnnouncementService sysAnnouncementService;
 
     @Inner(allowedServices = {CRM_CALLERS})
     @PostMapping("/publish")
@@ -49,7 +49,7 @@ public class InnerAnnouncementController {
         announcement.setExpireTime(request.getExpireTime() == null
                 ? LocalDateTime.now().plusDays(7)
                 : request.getExpireTime());
-        boolean ok = announcementService.publish(announcement);
+        boolean ok = sysAnnouncementService.publish(announcement);
         return ok ? R.ok(announcement.getAnnouncementId()) : R.fail("发布公告失败");
     }
 

@@ -20,7 +20,7 @@ import java.time.LocalDateTime;
 public class RenewalApprovalHandler implements ApprovalResultHandler {
 
     private final CrmRenewalMapper renewalMapper;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -53,7 +53,7 @@ public class RenewalApprovalHandler implements ApprovalResultHandler {
         if (updated <= 0) {
             throw new IllegalStateException("未找到续约记录，businessId=" + dto.getBusinessId());
         }
-        customerService.refreshHealth(renewal.getCustomerId());
+        crmCustomerService.refreshHealth(renewal.getCustomerId());
         log.info("CRM 续约审批结果已回写: businessId={}, status={}, instanceId={}",
                 dto.getBusinessId(), status, dto.getProcessInstanceId());
     }

@@ -19,20 +19,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmFollowUpController {
 
-    private final ICrmFollowUpService followUpService;
+    private final ICrmFollowUpService crmFollowUpService;
     private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:follow-up:list")
     public R<PageResult<CrmFollowUp>> list(CrmFollowUp query, PageQuery pageQuery) {
-        return R.ok(followUpService.queryPage(query, pageQuery));
+        return R.ok(crmFollowUpService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:follow-up:list")
     public R<CrmFollowUp> getInfo(@PathVariable("id") Long id) {
         try {
-            return R.ok(followUpService.getAccessibleFollowUp(id));
+            return R.ok(crmFollowUpService.getAccessibleFollowUp(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -43,7 +43,7 @@ public class CrmFollowUpController {
     @SaCheckPermission("crm:follow-up:add")
     public R<Void> add(@RequestBody CrmFollowUp followUp) {
         try {
-            return R.result(followUpService.createFollowUp(followUp));
+            return R.result(crmFollowUpService.createFollowUp(followUp));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -54,7 +54,7 @@ public class CrmFollowUpController {
     @SaCheckPermission("crm:follow-up:edit")
     public R<Void> edit(@RequestBody CrmFollowUp followUp) {
         try {
-            return R.result(followUpService.updateFollowUp(followUp));
+            return R.result(crmFollowUpService.updateFollowUp(followUp));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -67,14 +67,14 @@ public class CrmFollowUpController {
         for (Long id : ids) {
             CrmFollowUp persisted;
             try {
-                persisted = followUpService.getAccessibleFollowUp(id);
+                persisted = crmFollowUpService.getAccessibleFollowUp(id);
             } catch (IllegalArgumentException e) {
                 return R.fail(e.getMessage());
             }
             CrmFollowUp followUp = new CrmFollowUp();
             followUp.setFollowUpId(id);
             followUp.setDeleted(1);
-            followUpService.updateById(followUp);
+            crmFollowUpService.updateById(followUp);
             customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();

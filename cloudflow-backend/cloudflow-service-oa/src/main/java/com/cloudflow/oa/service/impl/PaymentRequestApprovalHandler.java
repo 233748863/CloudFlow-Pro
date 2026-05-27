@@ -25,7 +25,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
 
     private final BizPaymentRequestMapper paymentRequestMapper;
     private final IPurchaseRequestService purchaseRequestService;
-    private final IOaBudgetService budgetService;
+    private final IOaBudgetService oaBudgetService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -65,7 +65,7 @@ public class PaymentRequestApprovalHandler implements ApprovalResultHandler {
         if (payment == null) {
             return;
         }
-        budgetService.releaseBudget(
+        oaBudgetService.releaseBudget(
                 OaBusinessTypes.PAYMENT_REQUEST,
                 payment.getId(),
                 payment.getPaymentNo(),

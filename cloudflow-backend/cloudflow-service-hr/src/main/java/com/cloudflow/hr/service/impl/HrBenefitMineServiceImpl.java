@@ -14,8 +14,8 @@ import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrBenefitRequestMapper;
 import com.cloudflow.hr.mapper.HrEmployeeBenefitMapper;
 import com.cloudflow.hr.mapper.HrMallOrderMapper;
-import com.cloudflow.hr.service.HrBenefitMineService;
-import com.cloudflow.hr.service.HrPointAccountService;
+import com.cloudflow.hr.service.IHrBenefitMineService;
+import com.cloudflow.hr.service.IHrPointAccountService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,14 +28,14 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrBenefitMineServiceImpl implements HrBenefitMineService {
+public class HrBenefitMineServiceImpl implements IHrBenefitMineService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 
     private final HrEmployeeBenefitMapper employeeBenefitMapper;
     private final HrBenefitRequestMapper requestMapper;
     private final HrMallOrderMapper orderMapper;
-    private final HrPointAccountService pointAccountService;
+    private final IHrPointAccountService pointAccountService;
     private final ObjectMapper objectMapper;
 
     @Override

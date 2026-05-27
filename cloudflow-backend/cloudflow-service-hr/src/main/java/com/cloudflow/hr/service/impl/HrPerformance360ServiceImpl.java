@@ -17,7 +17,7 @@ import com.cloudflow.hr.mapper.HrPerfEvaluatorResponseMapper;
 import com.cloudflow.hr.mapper.HrPerformanceResultMapper;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.cloudflow.hr.service.HrPerformance360Service;
+import com.cloudflow.hr.service.IHrPerformance360Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,7 +42,7 @@ import java.util.Set;
  */
 @Service
 @RequiredArgsConstructor
-public class HrPerformance360ServiceImpl implements HrPerformance360Service {
+public class HrPerformance360ServiceImpl implements IHrPerformance360Service {
 
     private static final long TENANT_ID = 100000L;
     private static final Set<String> ALLOWED_SOURCES = Set.of(

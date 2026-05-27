@@ -9,7 +9,7 @@ import com.cloudflow.hr.domain.entity.HrPerfDistributionRule;
 import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionRuleVO;
 import com.cloudflow.hr.domain.vo.performance.HrPerfDistributionValidateVO;
 import com.cloudflow.hr.mapper.HrPerfDistributionRuleMapper;
-import com.cloudflow.hr.service.HrPerformanceDistributionService;
+import com.cloudflow.hr.service.IHrPerformanceDistributionService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,7 @@ import java.util.Map;
  */
 @Service
 @RequiredArgsConstructor
-public class HrPerformanceDistributionServiceImpl implements HrPerformanceDistributionService {
+public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistributionService {
 
     private static final long TENANT_ID = 100000L;
 

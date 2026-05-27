@@ -27,7 +27,7 @@ public class LicenseBorrowApprovalHandler implements ApprovalResultHandler {
 
     private final OaLicenseBorrowMapper licenseBorrowMapper;
     private final OaLicenseMapper licenseMapper;
-    private final ISysNoticeService noticeService;
+    private final ISysNoticeService sysNoticeService;
 
     @Override
     public String getSupportedBusinessType() {
@@ -71,7 +71,7 @@ public class LicenseBorrowApprovalHandler implements ApprovalResultHandler {
             return;
         }
         String content = "证照借用申请已审批通过，请处理借出：" + borrow.getBorrowNo() + " / " + borrow.getLicenseName();
-        noticeService.sendNotice(license.getKeeperId(), "证照待借出处理", content, "2",
+        sysNoticeService.sendNotice(license.getKeeperId(), "证照待借出处理", content, "2",
                 null, WorkflowCallbackConstants.WORKFLOW_UPDATE_BY);
     }
 }

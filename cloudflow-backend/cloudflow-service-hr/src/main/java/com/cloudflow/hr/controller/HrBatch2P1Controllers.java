@@ -18,9 +18,9 @@ import com.cloudflow.hr.domain.vo.attendance.HrAttendanceAppealVO;
 import com.cloudflow.hr.domain.vo.compensation.HrCompensationSimulateVO;
 import com.cloudflow.hr.domain.vo.performance.HrPerformanceInterviewVO;
 import com.cloudflow.hr.domain.vo.recruitment.HrResumeParsedFieldVO;
-import com.cloudflow.hr.service.HrAttendanceAppealService;
-import com.cloudflow.hr.service.HrCompensationSimulationService;
-import com.cloudflow.hr.service.HrResumeParserService;
+import com.cloudflow.hr.service.IHrAttendanceAppealService;
+import com.cloudflow.hr.service.IHrCompensationSimulationService;
+import com.cloudflow.hr.service.IHrResumeParserService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -47,27 +47,27 @@ import java.util.Map;
 @RequiredArgsConstructor
 class HrResumeParseController {
 
-    private final HrResumeParserService parserService;
+    private final IHrResumeParserService hrResumeParserService;
     private final ObjectMapper objectMapper;
 
     @SysLog("触发HR简历解析")
     @PostMapping("/parse")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Long> parseResume(@Validated @RequestBody HrResumeParseDTO dto) {
-        return R.ok(parserService.parseResume(dto.getCandidateId(), dto.getResumeUrl(),
+        return R.ok(hrResumeParserService.parseResume(dto.getCandidateId(), dto.getResumeUrl(),
                 dto.getRawText() == null ? "" : dto.getRawText()));
     }
 
     @GetMapping("/parsed")
     @SaCheckPermission("hr:recruitment:view")
     public R<List<HrResumeParsedFieldVO>> listParsed(@RequestParam Long candidateId) {
-        return R.ok(parserService.listParsed(candidateId));
+        return R.ok(hrResumeParserService.listParsed(candidateId));
     }
 
     @PutMapping("/parsed/{id}")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Void> updateParsed(@PathVariable Long id, @RequestBody HrResumeParsedFieldsPayload payload) {
-        parserService.updateParsed(id, payload);
+        hrResumeParserService.updateParsed(id, payload);
         return R.ok();
     }
 
@@ -75,7 +75,7 @@ class HrResumeParseController {
     @PostMapping("/parsed/{id}/confirm")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Void> confirmParsed(@PathVariable Long id) {
-        parserService.confirmParsed(id);
+        hrResumeParserService.confirmParsed(id);
         return R.ok();
     }
 
@@ -83,7 +83,7 @@ class HrResumeParseController {
     @PostMapping("/parsed/{id}/reject")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Void> rejectParsed(@PathVariable Long id, @RequestParam(required = false) String reason) {
-        parserService.rejectParsed(id, reason);
+        hrResumeParserService.rejectParsed(id, reason);
         return R.ok();
     }
 }
@@ -96,13 +96,13 @@ class HrResumeParseController {
 @RequiredArgsConstructor
 class HrCompensationSimulateController {
 
-    private final HrCompensationSimulationService simulationService;
+    private final IHrCompensationSimulationService hrCompensationSimulationService;
 
     @SysLog("HR薪酬模拟")
     @PostMapping("/simulate")
     @SaCheckPermission("hr:compensation:view")
     public R<HrCompensationSimulateVO> simulate(@RequestBody HrCompensationSimulateRequest request) {
-        return R.ok(simulationService.simulate(request));
+        return R.ok(hrCompensationSimulationService.simulate(request));
     }
 }
 
@@ -166,7 +166,7 @@ class HrPerformanceInterviewController {
 class HrAttendanceAppealController {
 
     private final HrTypedCrudService crudService;
-    private final HrAttendanceAppealService appealService;
+    private final IHrAttendanceAppealService hrAttendanceAppealService;
     private final ObjectMapper objectMapper;
 
     @GetMapping
@@ -180,14 +180,14 @@ class HrAttendanceAppealController {
     @GetMapping("/{id}")
     @SaCheckPermission("hr:attendance:list")
     public R<HrAttendanceAppealVO> getAppeal(@PathVariable Long id) {
-        return R.ok(appealService.getDetail(id));
+        return R.ok(hrAttendanceAppealService.getDetail(id));
     }
 
     @SysLog("提交HR考勤异常申诉")
     @PostMapping
     @SaCheckPermission("hr:attendance:add")
     public R<Long> submitAppeal(@RequestBody HrAttendanceAppealPayload payload) {
-        return R.ok(appealService.submit(payload));
+        return R.ok(hrAttendanceAppealService.submit(payload));
     }
 
     @SysLog("HR考勤申诉主管审核")
@@ -196,7 +196,7 @@ class HrAttendanceAppealController {
     public R<Void> managerReview(@PathVariable Long id,
                                   @RequestParam boolean pass,
                                   @RequestParam(required = false) String remark) {
-        appealService.managerReview(id, pass, remark);
+        hrAttendanceAppealService.managerReview(id, pass, remark);
         return R.ok();
     }
 
@@ -206,7 +206,7 @@ class HrAttendanceAppealController {
     public R<Void> hrReview(@PathVariable Long id,
                              @RequestParam String finalDecision,
                              @RequestParam(required = false) String remark) {
-        appealService.hrReview(id, finalDecision, remark);
+        hrAttendanceAppealService.hrReview(id, finalDecision, remark);
         return R.ok();
     }
 
@@ -214,7 +214,7 @@ class HrAttendanceAppealController {
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:attendance:edit")
     public R<Void> cancelAppeal(@PathVariable Long id) {
-        appealService.cancel(id);
+        hrAttendanceAppealService.cancel(id);
         return R.ok();
     }
 }

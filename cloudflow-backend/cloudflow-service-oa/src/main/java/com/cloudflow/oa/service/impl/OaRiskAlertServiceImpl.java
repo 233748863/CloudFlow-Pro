@@ -32,7 +32,7 @@ import java.util.List;
 public class OaRiskAlertServiceImpl extends ServiceImpl<OaRiskAlertMapper, OaRiskAlert>
         implements IOaRiskAlertService {
 
-    private final IOaTraceEventService traceEventService;
+    private final IOaTraceEventService oaTraceEventService;
 
     @Override
     public PageResult<OaRiskAlert> queryPage(OaRiskAlert query, PageQuery pageQuery) {
@@ -188,7 +188,7 @@ public class OaRiskAlertServiceImpl extends ServiceImpl<OaRiskAlertMapper, OaRis
     }
 
     private void traceRisk(OaRiskAlert risk, String eventType, String title, String content) {
-        traceEventService.record(risk.getTenantId(), risk.getBusinessType(), risk.getBusinessId(),
+        oaTraceEventService.record(risk.getTenantId(), risk.getBusinessType(), risk.getBusinessId(),
                 OaContractConstants.BUSINESS_TYPE_RISK, risk.getId(), eventType, title, content,
                 UserContext.getUserId(), resolveUserName(), null);
     }

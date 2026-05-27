@@ -11,7 +11,7 @@ import com.cloudflow.hr.domain.entity.HrMallItem;
 import com.cloudflow.hr.domain.vo.benefit.HrMallItemVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrMallItemMapper;
-import com.cloudflow.hr.service.HrMallItemService;
+import com.cloudflow.hr.service.IHrMallItemService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +26,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrMallItemServiceImpl implements HrMallItemService {
+public class HrMallItemServiceImpl implements IHrMallItemService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

@@ -15,7 +15,7 @@ import java.util.List;
 public class SysMenuController {
 
     @Autowired
-    private ISysMenuService menuService;
+    private ISysMenuService sysMenuService;
 
     /**
      * 获取菜单列表
@@ -24,7 +24,7 @@ public class SysMenuController {
     @SaCheckPermission("system:menu:list")
     public R<List<SysMenu>> list(SysMenu menu) {
         Long userId = SecurityUtils.getUserId();
-        List<SysMenu> menus = menuService.selectMenuList(menu, userId != null ? userId : 1L);
+        List<SysMenu> menus = sysMenuService.selectMenuList(menu, userId != null ? userId : 1L);
         return R.ok(menus);
     }
 
@@ -34,7 +34,7 @@ public class SysMenuController {
     @GetMapping("/{menuId}")
     @SaCheckPermission("system:menu:query")
     public R<SysMenu> getInfo(@PathVariable("menuId") Long menuId) {
-        return R.ok(menuService.selectMenuById(menuId));
+        return R.ok(sysMenuService.selectMenuById(menuId));
     }
 
     /**
@@ -44,7 +44,7 @@ public class SysMenuController {
     @SaCheckPermission("system:menu:list")
     public R<List<SysMenu>> treeselect(SysMenu menu) {
         Long userId = SecurityUtils.getUserId();
-        List<SysMenu> menus = menuService.selectMenuList(menu, userId != null ? userId : 1L);
+        List<SysMenu> menus = sysMenuService.selectMenuList(menu, userId != null ? userId : 1L);
         return R.ok(menus);
     }
 
@@ -54,7 +54,7 @@ public class SysMenuController {
     @PostMapping
     @SaCheckPermission("system:menu:add")
     public R<?> add(@RequestBody SysMenu menu) {
-        return R.ok(menuService.insertMenu(menu));
+        return R.ok(sysMenuService.insertMenu(menu));
     }
 
     /**
@@ -63,7 +63,7 @@ public class SysMenuController {
     @PutMapping
     @SaCheckPermission("system:menu:edit")
     public R<?> edit(@RequestBody SysMenu menu) {
-        return R.ok(menuService.updateMenu(menu));
+        return R.ok(sysMenuService.updateMenu(menu));
     }
 
     /**
@@ -72,6 +72,6 @@ public class SysMenuController {
     @DeleteMapping("/{menuId}")
     @SaCheckPermission("system:menu:remove")
     public R<?> remove(@PathVariable("menuId") Long menuId) {
-        return R.ok(menuService.deleteMenuById(menuId));
+        return R.ok(sysMenuService.deleteMenuById(menuId));
     }
 }

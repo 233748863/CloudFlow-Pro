@@ -5,7 +5,7 @@ import com.cloudflow.hr.domain.entity.HrRecruitmentChannel;
 import com.cloudflow.hr.domain.vo.recruitment.HrChannelStatVO;
 import com.cloudflow.hr.mapper.HrCandidateMapper;
 import com.cloudflow.hr.mapper.HrRecruitmentChannelMapper;
-import com.cloudflow.hr.service.HrRecruitmentChannelService;
+import com.cloudflow.hr.service.IHrRecruitmentChannelService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -18,7 +18,7 @@ import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
-public class HrRecruitmentChannelServiceImpl implements HrRecruitmentChannelService {
+public class HrRecruitmentChannelServiceImpl implements IHrRecruitmentChannelService {
 
     private static final long TENANT_ID = 100000L;
 

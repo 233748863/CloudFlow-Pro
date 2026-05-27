@@ -19,18 +19,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmAssignmentRuleController {
 
-    private final ICrmAssignmentRuleService assignmentRuleService;
+    private final ICrmAssignmentRuleService crmAssignmentRuleService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:assignment-rule:list")
     public R<PageResult<CrmAssignmentRule>> list(CrmAssignmentRule query, PageQuery pageQuery) {
-        return R.ok(assignmentRuleService.queryPage(query, pageQuery));
+        return R.ok(crmAssignmentRuleService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:assignment-rule:list")
     public R<CrmAssignmentRule> getInfo(@PathVariable("id") Long id) {
-        CrmAssignmentRule rule = assignmentRuleService.getById(id);
+        CrmAssignmentRule rule = crmAssignmentRuleService.getById(id);
         return rule == null || !Integer.valueOf(0).equals(rule.getDeleted()) ? R.fail("分配规则不存在") : R.ok(rule);
     }
 
@@ -39,7 +39,7 @@ public class CrmAssignmentRuleController {
     @SaCheckPermission("crm:assignment-rule:add")
     public R<Void> add(@RequestBody CrmAssignmentRule rule) {
         try {
-            return R.result(assignmentRuleService.createRule(rule));
+            return R.result(crmAssignmentRuleService.createRule(rule));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -50,7 +50,7 @@ public class CrmAssignmentRuleController {
     @SaCheckPermission("crm:assignment-rule:edit")
     public R<Void> edit(@RequestBody CrmAssignmentRule rule) {
         try {
-            return R.result(assignmentRuleService.updateRule(rule));
+            return R.result(crmAssignmentRuleService.updateRule(rule));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -64,7 +64,7 @@ public class CrmAssignmentRuleController {
             CrmAssignmentRule rule = new CrmAssignmentRule();
             rule.setRuleId(id);
             rule.setDeleted(1);
-            assignmentRuleService.updateById(rule);
+            crmAssignmentRuleService.updateById(rule);
         }
         return R.ok();
     }

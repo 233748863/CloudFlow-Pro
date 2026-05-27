@@ -6,7 +6,7 @@ import com.cloudflow.hr.domain.entity.HrLifecycleTask;
 import com.cloudflow.hr.domain.vo.HrWorkplaceReminderVO;
 import com.cloudflow.hr.mapper.HrEmployeeContractMapper;
 import com.cloudflow.hr.mapper.HrLifecycleTaskMapper;
-import com.cloudflow.hr.service.HrWorkplaceReminderQueryService;
+import com.cloudflow.hr.service.IHrWorkplaceReminderQueryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -19,7 +19,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrWorkplaceReminderQueryServiceImpl implements HrWorkplaceReminderQueryService {
+public class HrWorkplaceReminderQueryServiceImpl implements IHrWorkplaceReminderQueryService {
 
     private static final String TYPE_CONTRACT_EXPIRING = "CONTRACT_EXPIRING";
     private static final String TYPE_LIFECYCLE_TASK = "LIFECYCLE_TASK";

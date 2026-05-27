@@ -19,20 +19,20 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmServiceTicketController {
 
-    private final ICrmServiceTicketService ticketService;
+    private final ICrmServiceTicketService crmServiceTicketService;
     private final com.cloudflow.crm.service.ICrmCustomerService customerService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:ticket:list")
     public R<PageResult<CrmServiceTicket>> list(CrmServiceTicket query, PageQuery pageQuery) {
-        return R.ok(ticketService.queryPage(query, pageQuery));
+        return R.ok(crmServiceTicketService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:ticket:list")
     public R<CrmServiceTicket> getInfo(@PathVariable("id") Long id) {
         try {
-            return R.ok(ticketService.getAccessibleTicket(id));
+            return R.ok(crmServiceTicketService.getAccessibleTicket(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -43,7 +43,7 @@ public class CrmServiceTicketController {
     @SaCheckPermission("crm:ticket:add")
     public R<Void> add(@RequestBody CrmServiceTicket ticket) {
         try {
-            return R.result(ticketService.createTicket(ticket));
+            return R.result(crmServiceTicketService.createTicket(ticket));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -54,7 +54,7 @@ public class CrmServiceTicketController {
     @SaCheckPermission("crm:ticket:edit")
     public R<Void> edit(@RequestBody CrmServiceTicket ticket) {
         try {
-            return R.result(ticketService.updateTicket(ticket));
+            return R.result(crmServiceTicketService.updateTicket(ticket));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -65,7 +65,7 @@ public class CrmServiceTicketController {
     @SaCheckPermission("crm:ticket:resolve")
     public R<Void> resolve(@PathVariable("id") Long id, @RequestBody(required = false) CrmServiceTicket payload) {
         try {
-            return R.result(ticketService.resolveTicket(id, payload != null ? payload.getSolution() : null));
+            return R.result(crmServiceTicketService.resolveTicket(id, payload != null ? payload.getSolution() : null));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -76,7 +76,7 @@ public class CrmServiceTicketController {
     @SaCheckPermission("crm:ticket:close")
     public R<Void> close(@PathVariable("id") Long id) {
         try {
-            return R.result(ticketService.closeTicket(id));
+            return R.result(crmServiceTicketService.closeTicket(id));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -89,14 +89,14 @@ public class CrmServiceTicketController {
         for (Long id : ids) {
             CrmServiceTicket persisted;
             try {
-                persisted = ticketService.getAccessibleTicket(id);
+                persisted = crmServiceTicketService.getAccessibleTicket(id);
             } catch (IllegalArgumentException e) {
                 return R.fail(e.getMessage());
             }
             CrmServiceTicket ticket = new CrmServiceTicket();
             ticket.setTicketId(id);
             ticket.setDeleted(1);
-            ticketService.updateById(ticket);
+            crmServiceTicketService.updateById(ticket);
             customerService.refreshHealth(persisted.getCustomerId());
         }
         return R.ok();

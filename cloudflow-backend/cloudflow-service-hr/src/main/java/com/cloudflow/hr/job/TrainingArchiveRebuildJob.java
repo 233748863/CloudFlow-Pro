@@ -1,7 +1,7 @@
 package com.cloudflow.hr.job;
 
 import com.cloudflow.common.tenant.support.TenantIterator;
-import com.cloudflow.hr.service.HrTrainingArchiveService;
+import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RequiredArgsConstructor
 public class TrainingArchiveRebuildJob {
 
-    private final HrTrainingArchiveService archiveService;
+    private final IHrTrainingArchiveService archiveService;
     private final TenantIterator tenantIterator;
 
     @Scheduled(cron = "0 30 2 * * ?")

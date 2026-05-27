@@ -18,7 +18,7 @@ import java.util.List;
 public class SysAnnouncementController {
 
     @Autowired
-    private ISysAnnouncementService announcementService;
+    private ISysAnnouncementService sysAnnouncementService;
 
     @Autowired
     private OaProperties oaProperties;
@@ -29,7 +29,7 @@ public class SysAnnouncementController {
     @GetMapping("/my-list")
     @SaCheckPermission("oa:announcement:list")
     public R<List<SysAnnouncement>> getMyList() {
-        return R.ok(announcementService.getMyAnnouncements(UserContext.getUserId()));
+        return R.ok(sysAnnouncementService.getMyAnnouncements(UserContext.getUserId()));
     }
 
     /**
@@ -41,7 +41,7 @@ public class SysAnnouncementController {
         if (!Boolean.TRUE.equals(oaProperties.getAnnouncement().getAllowAnonymousRead())) {
             return R.fail("当前租户未开放匿名公告访问");
         }
-        return R.ok(announcementService.getPublicAnnouncements(limit));
+        return R.ok(sysAnnouncementService.getPublicAnnouncements(limit));
     }
 
     /**
@@ -50,7 +50,7 @@ public class SysAnnouncementController {
     @PostMapping("/read/{id}")
     @SaCheckPermission("oa:announcement:list")
     public R<Boolean> read(@PathVariable("id") Long id) {
-        return R.ok(announcementService.readAnnouncement(id, UserContext.getUserId()));
+        return R.ok(sysAnnouncementService.readAnnouncement(id, UserContext.getUserId()));
     }
 
     /**
@@ -62,7 +62,7 @@ public class SysAnnouncementController {
     public R<Boolean> publish(@RequestBody SysAnnouncement announcement) {
         announcement.setSenderId(UserContext.getUserId());
         announcement.setCreateBy(String.valueOf(UserContext.getUserId()));
-        return R.ok(announcementService.publish(announcement));
+        return R.ok(sysAnnouncementService.publish(announcement));
     }
     
     /**
@@ -76,7 +76,7 @@ public class SysAnnouncementController {
             @RequestParam(required = false) String status,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size) {
-        return R.ok(announcementService.getManageList(title, type, status, page, size));
+        return R.ok(sysAnnouncementService.getManageList(title, type, status, page, size));
     }
     
     /**
@@ -86,7 +86,7 @@ public class SysAnnouncementController {
     @PutMapping
     @SaCheckPermission("oa:announcement:edit")
     public R<Boolean> update(@RequestBody SysAnnouncement announcement) {
-        return R.ok(announcementService.updateAnnouncement(announcement));
+        return R.ok(sysAnnouncementService.updateAnnouncement(announcement));
     }
     
     /**
@@ -96,7 +96,7 @@ public class SysAnnouncementController {
     @DeleteMapping("/{id}")
     @SaCheckPermission("oa:announcement:remove")
     public R<Boolean> delete(@PathVariable("id") Long id) {
-        return R.ok(announcementService.removeById(id));
+        return R.ok(sysAnnouncementService.removeById(id));
     }
     
     /**
@@ -106,7 +106,7 @@ public class SysAnnouncementController {
     @PostMapping("/revoke/{id}")
     @SaCheckPermission("oa:announcement:revoke")
     public R<Boolean> revoke(@PathVariable("id") Long id) {
-        return R.ok(announcementService.revokeAnnouncement(id));
+        return R.ok(sysAnnouncementService.revokeAnnouncement(id));
     }
     
     /**
@@ -116,7 +116,7 @@ public class SysAnnouncementController {
     @PostMapping("/toggle-top/{id}")
     @SaCheckPermission("oa:announcement:edit")
     public R<Boolean> toggleTop(@PathVariable("id") Long id) {
-        return R.ok(announcementService.toggleTop(id));
+        return R.ok(sysAnnouncementService.toggleTop(id));
     }
     
     /**
@@ -125,7 +125,7 @@ public class SysAnnouncementController {
     @GetMapping("/read-stats/{id}")
     @SaCheckPermission("oa:announcement:manage")
     public R<DynamicMapVO> getReadStats(@PathVariable("id") Long id) {
-        return R.ok(announcementService.getReadStats(id));
+        return R.ok(sysAnnouncementService.getReadStats(id));
     }
 }
 

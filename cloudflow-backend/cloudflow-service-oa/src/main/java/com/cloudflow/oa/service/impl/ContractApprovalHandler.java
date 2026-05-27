@@ -29,7 +29,7 @@ import java.util.Map;
 public class ContractApprovalHandler implements ApprovalResultHandler {
 
     private final OaContractMapper contractMapper;
-    private final IOaTraceEventService traceEventService;
+    private final IOaTraceEventService oaTraceEventService;
     private final RedisStreamUtil redisStreamUtil;
 
     @Override
@@ -64,7 +64,7 @@ public class ContractApprovalHandler implements ApprovalResultHandler {
         if (updated <= 0) {
             throw new IllegalStateException("合同审批结果回写失败，businessId=" + dto.getBusinessId());
         }
-        traceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
+        oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_APPROVAL, contract.getContractId(), eventType, eventTitle,
                 dto.getApprovalComment(), dto.getApproverId(), dto.getApproverName(), null);
         log.info("合同审批结果已回写: businessId={}, status={}, instanceId={}",

@@ -50,7 +50,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
     private final OaLicenseHandoverLogMapper handoverLogMapper;
     private final OaBorrowReminderLogMapper reminderLogMapper;
     private final RemoteWorkflowService remoteWorkflowService;
-    private final ISysNoticeService noticeService;
+    private final ISysNoticeService sysNoticeService;
 
     @Override
     public PageResult<OaLicenseBorrow> queryPage(OaLicenseBorrow query, PageQuery pageQuery) {
@@ -449,11 +449,11 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         reminderLogMapper.insert(log);
-        noticeService.sendNotice(borrow.getUserId(), "证照归还提醒", content, "2",
+        sysNoticeService.sendNotice(borrow.getUserId(), "证照归还提醒", content, "2",
                 log.getOperatorId(), log.getOperatorName());
         OaLicense license = licenseMapper.selectById(borrow.getLicenseId());
         if (license != null && license.getKeeperId() != null && !license.getKeeperId().equals(borrow.getUserId())) {
-            noticeService.sendNotice(license.getKeeperId(), "证照逾期提醒", content, "2",
+            sysNoticeService.sendNotice(license.getKeeperId(), "证照逾期提醒", content, "2",
                     log.getOperatorId(), log.getOperatorName());
         }
     }

@@ -24,7 +24,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysPostController {
 
-    private final ISysPostService postService;
+    private final ISysPostService sysPostService;
 
     /**
      * 分页查询岗位列表
@@ -48,7 +48,7 @@ public class SysPostController {
                 .like(postName != null, SysPost::getPostName, postName)
                 .eq(status != null, SysPost::getStatus, status)
                 .orderByAsc(SysPost::getPostSort);
-        Page<SysPost> page = postService.page(new Page<>(pageNum, pageSize), wrapper);
+        Page<SysPost> page = sysPostService.page(new Page<>(pageNum, pageSize), wrapper);
         return R.ok(page);
     }
 
@@ -58,7 +58,7 @@ public class SysPostController {
     @GetMapping("/{postId}")
     @SaCheckPermission("system:post:query")
     public R<SysPost> getInfo(@PathVariable Long postId) {
-        return R.ok(postService.getById(postId));
+        return R.ok(sysPostService.getById(postId));
     }
 
     /**
@@ -67,11 +67,11 @@ public class SysPostController {
     @PostMapping
     @SaCheckPermission("system:post:add")
     public R<Void> add(@RequestBody SysPost post) {
-        if (!postService.checkPostCodeUnique(post)) {
+        if (!sysPostService.checkPostCodeUnique(post)) {
             return R.fail("新增岗位'" + post.getPostName() + "'失败，岗位编码已存在");
         }
         post.setCreateTime(LocalDateTime.now());
-        postService.save(post);
+        sysPostService.save(post);
         return R.ok();
     }
 
@@ -81,11 +81,11 @@ public class SysPostController {
     @PutMapping
     @SaCheckPermission("system:post:edit")
     public R<Void> edit(@RequestBody SysPost post) {
-        if (!postService.checkPostCodeUnique(post)) {
+        if (!sysPostService.checkPostCodeUnique(post)) {
             return R.fail("修改岗位'" + post.getPostName() + "'失败，岗位编码已存在");
         }
         post.setUpdateTime(LocalDateTime.now());
-        postService.updateById(post);
+        sysPostService.updateById(post);
         return R.ok();
     }
 
@@ -95,7 +95,7 @@ public class SysPostController {
     @DeleteMapping("/{postIds}")
     @SaCheckPermission("system:post:remove")
     public R<Void> remove(@PathVariable Long[] postIds) {
-        postService.removeByIds(Arrays.asList(postIds));
+        sysPostService.removeByIds(Arrays.asList(postIds));
         return R.ok();
     }
 
@@ -108,6 +108,6 @@ public class SysPostController {
         LambdaQueryWrapper<SysPost> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(SysPost::getStatus, "0")
                 .orderByAsc(SysPost::getPostSort);
-        return R.ok(postService.list(wrapper));
+        return R.ok(sysPostService.list(wrapper));
     }
 }

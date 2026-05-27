@@ -3,7 +3,7 @@ package com.cloudflow.auth.controller.system;
 import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
 import com.cloudflow.auth.service.ISysFileService;
-import com.cloudflow.auth.service.SysTenantService;
+import com.cloudflow.auth.service.ISysTenantService;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.context.UserContext;
@@ -24,7 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class SysFileController {
 
     private final ISysFileService sysFileService;
-    private final SysTenantService tenantService;
+    private final ISysTenantService sysTenantService;
 
     @PostMapping("/upload")
     @SaCheckPermission("system:file:upload")
@@ -55,7 +55,7 @@ public class SysFileController {
         if (tenantId == null) {
             return R.fail("当前用户未绑定租户");
         }
-        return R.ok(tenantService.getTenantStorageSummary(tenantId));
+        return R.ok(sysTenantService.getTenantStorageSummary(tenantId));
     }
 
     @PostMapping("/storage/refresh")
@@ -65,7 +65,7 @@ public class SysFileController {
         if (tenantId == null) {
             return R.fail("当前用户未绑定租户");
         }
-        return R.ok(tenantService.refreshTenantStorageSummary(tenantId));
+        return R.ok(sysTenantService.refreshTenantStorageSummary(tenantId));
     }
 
     @DeleteMapping("/{fileIds}")

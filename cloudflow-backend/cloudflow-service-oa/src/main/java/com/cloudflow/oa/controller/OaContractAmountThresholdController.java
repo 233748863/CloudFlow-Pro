@@ -19,7 +19,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OaContractAmountThresholdController {
 
-    private final IOaContractAmountThresholdService thresholdService;
+    private final IOaContractAmountThresholdService oaContractAmountThresholdService;
 
     @GetMapping("/page")
     @SaCheckPermission("oa:contract:threshold:list")
@@ -29,19 +29,19 @@ public class OaContractAmountThresholdController {
                                                    @RequestParam(required = false) String status,
                                                    @RequestParam(defaultValue = "1") Integer pageNum,
                                                    @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(thresholdService.page(keyword, businessUnit, amountTier, status, pageNum, pageSize));
+        return R.ok(oaContractAmountThresholdService.page(keyword, businessUnit, amountTier, status, pageNum, pageSize));
     }
 
     @GetMapping("/active")
     @SaCheckPermission("oa:contract:threshold:list")
     public R<List<OaContractAmountThreshold>> listActive() {
-        return R.ok(thresholdService.listActive());
+        return R.ok(oaContractAmountThresholdService.listActive());
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("oa:contract:threshold:list")
     public R<OaContractAmountThreshold> getInfo(@PathVariable("id") Long id) {
-        return R.ok(thresholdService.getById(id));
+        return R.ok(oaContractAmountThresholdService.getById(id));
     }
 
     @SysLog("新增合同金额阈值")
@@ -49,7 +49,7 @@ public class OaContractAmountThresholdController {
     @SaCheckPermission("oa:contract:threshold:add")
     public R<Void> add(@RequestBody OaContractAmountThreshold threshold) {
         try {
-            return thresholdService.save(threshold) ? R.ok() : R.fail("新增失败");
+            return oaContractAmountThresholdService.save(threshold) ? R.ok() : R.fail("新增失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -60,7 +60,7 @@ public class OaContractAmountThresholdController {
     @SaCheckPermission("oa:contract:threshold:edit")
     public R<Void> edit(@RequestBody OaContractAmountThreshold threshold) {
         try {
-            return thresholdService.update(threshold) ? R.ok() : R.fail("更新失败");
+            return oaContractAmountThresholdService.update(threshold) ? R.ok() : R.fail("更新失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -70,6 +70,6 @@ public class OaContractAmountThresholdController {
     @DeleteMapping("/{id}")
     @SaCheckPermission("oa:contract:threshold:remove")
     public R<Void> remove(@PathVariable("id") Long id) {
-        return thresholdService.remove(id) ? R.ok() : R.fail("删除失败");
+        return oaContractAmountThresholdService.remove(id) ? R.ok() : R.fail("删除失败");
     }
 }

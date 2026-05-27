@@ -11,7 +11,7 @@ import com.cloudflow.hr.domain.entity.HrTalentDevelopmentAction;
 import com.cloudflow.hr.domain.vo.talent.HrTalentDevelopmentActionVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentDevelopmentActionMapper;
-import com.cloudflow.hr.service.HrTalentDevelopmentService;
+import com.cloudflow.hr.service.IHrTalentDevelopmentService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +27,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTalentDevelopmentServiceImpl implements HrTalentDevelopmentService {
+public class HrTalentDevelopmentServiceImpl implements IHrTalentDevelopmentService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

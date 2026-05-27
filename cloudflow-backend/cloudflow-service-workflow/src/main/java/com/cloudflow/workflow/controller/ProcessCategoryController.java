@@ -19,34 +19,34 @@ import java.util.List;
 @RequiredArgsConstructor
 public class ProcessCategoryController {
 
-    private final IProcessCategoryService categoryService;
+    private final IProcessCategoryService processCategoryService;
 
     /** 查询分类树形列表（仅正常状态） */
     @GetMapping("/tree")
     @SaCheckPermission("workflow:category:list")
     public R<List<WfProcessCategory>> tree() {
-        return R.ok(categoryService.listCategoryTree());
+        return R.ok(processCategoryService.listCategoryTree());
     }
 
     /** 查询所有分类（平铺，含停用） */
     @GetMapping("/list")
     @SaCheckPermission("workflow:category:list")
     public R<List<WfProcessCategory>> list() {
-        return R.ok(categoryService.listAll());
+        return R.ok(processCategoryService.listAll());
     }
 
     /** 查询分类详情 */
     @GetMapping("/{categoryId}")
     @SaCheckPermission("workflow:category:list")
     public R<WfProcessCategory> getInfo(@PathVariable Long categoryId) {
-        return R.ok(categoryService.getById(categoryId));
+        return R.ok(processCategoryService.getById(categoryId));
     }
 
     /** 新增分类 */
     @PostMapping
     @SaCheckPermission("workflow:category:manage")
     public R<Void> add(@RequestBody WfProcessCategory category) {
-        categoryService.add(category);
+        processCategoryService.add(category);
         return R.ok();
     }
 
@@ -54,7 +54,7 @@ public class ProcessCategoryController {
     @PutMapping
     @SaCheckPermission("workflow:category:manage")
     public R<Void> edit(@RequestBody WfProcessCategory category) {
-        categoryService.update(category);
+        processCategoryService.update(category);
         return R.ok();
     }
 
@@ -62,7 +62,7 @@ public class ProcessCategoryController {
     @DeleteMapping("/{categoryId}")
     @SaCheckPermission("workflow:category:manage")
     public R<Void> remove(@PathVariable Long categoryId) {
-        categoryService.delete(categoryId);
+        processCategoryService.delete(categoryId);
         return R.ok();
     }
 }

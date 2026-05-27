@@ -19,18 +19,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmPriceBookController {
 
-    private final ICrmPriceBookService priceBookService;
+    private final ICrmPriceBookService crmPriceBookService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:price-book:list")
     public R<PageResult<CrmPriceBook>> list(CrmPriceBook query, PageQuery pageQuery) {
-        return R.ok(priceBookService.queryPage(query, pageQuery));
+        return R.ok(crmPriceBookService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:price-book:list")
     public R<CrmPriceBook> getInfo(@PathVariable("id") Long id) {
-        CrmPriceBook priceBook = priceBookService.getById(id);
+        CrmPriceBook priceBook = crmPriceBookService.getById(id);
         return priceBook == null || !Integer.valueOf(0).equals(priceBook.getDeleted()) ? R.fail("价目表不存在") : R.ok(priceBook);
     }
 
@@ -39,7 +39,7 @@ public class CrmPriceBookController {
     @SaCheckPermission("crm:price-book:add")
     public R<Void> add(@RequestBody CrmPriceBook priceBook) {
         try {
-            return R.result(priceBookService.createPriceBook(priceBook));
+            return R.result(crmPriceBookService.createPriceBook(priceBook));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -50,7 +50,7 @@ public class CrmPriceBookController {
     @SaCheckPermission("crm:price-book:edit")
     public R<Void> edit(@RequestBody CrmPriceBook priceBook) {
         try {
-            return R.result(priceBookService.updatePriceBook(priceBook));
+            return R.result(crmPriceBookService.updatePriceBook(priceBook));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -64,7 +64,7 @@ public class CrmPriceBookController {
             CrmPriceBook priceBook = new CrmPriceBook();
             priceBook.setPriceBookId(id);
             priceBook.setDeleted(1);
-            priceBookService.updateById(priceBook);
+            crmPriceBookService.updateById(priceBook);
         }
         return R.ok();
     }

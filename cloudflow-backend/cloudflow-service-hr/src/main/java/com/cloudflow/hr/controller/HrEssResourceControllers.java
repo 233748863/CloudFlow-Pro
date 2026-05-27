@@ -18,7 +18,7 @@ import com.cloudflow.hr.domain.vo.ess.HrEssGenerateVO;
 import com.cloudflow.hr.domain.vo.ess.HrFamilyMemberVO;
 import com.cloudflow.hr.domain.vo.ess.HrSalarySlipVO;
 import com.cloudflow.hr.exception.HrBusinessException;
-import com.cloudflow.hr.service.HrEssService;
+import com.cloudflow.hr.service.IHrEssService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -54,7 +54,7 @@ import java.util.Map;
 class HrSalarySlipController {
 
     private final HrTypedCrudService crudService;
-    private final HrEssService essService;
+    private final IHrEssService hrEssService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
 
@@ -86,7 +86,7 @@ class HrSalarySlipController {
     @SaCheckPermission("hr:ess:slip:generate")
     public R<HrEssGenerateVO> generate(@RequestParam String periodMonth,
                                         @RequestParam(required = false) Long employeeId) {
-        int created = essService.generateSalarySlips(periodMonth, employeeId);
+        int created = hrEssService.generateSalarySlips(periodMonth, employeeId);
         return R.ok(new HrEssGenerateVO(periodMonth, created));
     }
 
@@ -94,7 +94,7 @@ class HrSalarySlipController {
     @PostMapping("/{id}/confirm")
     @SaCheckPermission("hr:ess:slip:confirm")
     public R<Void> confirm(@PathVariable Long id) {
-        essService.confirmSalarySlip(id);
+        hrEssService.confirmSalarySlip(id);
         return R.ok();
     }
 }
@@ -105,7 +105,7 @@ class HrSalarySlipController {
 class HrBankCardController {
 
     private final HrTypedCrudService crudService;
-    private final HrEssService essService;
+    private final IHrEssService hrEssService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
 
@@ -125,7 +125,7 @@ class HrBankCardController {
     public R<Long> create(@RequestBody HrBankCardPayload payload) {
         Map<String, Object> map = crudService.toMap(payload);
         map.put("employeeId", essSupport.currentEmployeeId());
-        return R.ok(essService.createBankCard(map));
+        return R.ok(hrEssService.createBankCard(map));
     }
 
     @SysLog("修改HR员工银行卡")
@@ -134,7 +134,7 @@ class HrBankCardController {
     public R<Void> update(@PathVariable Long id, @RequestBody HrBankCardPayload payload) {
         Map<String, Object> map = crudService.toMap(payload);
         map.remove("employeeId");
-        essService.updateBankCard(id, map);
+        hrEssService.updateBankCard(id, map);
         return R.ok();
     }
 
@@ -216,7 +216,7 @@ class HrFamilyMemberController {
 class HrBenefitPaymentController {
 
     private final HrTypedCrudService crudService;
-    private final HrEssService essService;
+    private final IHrEssService hrEssService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
 
@@ -237,7 +237,7 @@ class HrBenefitPaymentController {
     @SaCheckPermission("hr:ess:benefit:generate")
     public R<HrEssGenerateVO> generate(@RequestParam String periodMonth,
                                         @RequestParam(required = false) Long employeeId) {
-        int created = essService.generateBenefitPayments(periodMonth, employeeId);
+        int created = hrEssService.generateBenefitPayments(periodMonth, employeeId);
         return R.ok(new HrEssGenerateVO(periodMonth, created));
     }
 }

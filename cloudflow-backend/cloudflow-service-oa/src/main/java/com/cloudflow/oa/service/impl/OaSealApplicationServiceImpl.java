@@ -56,8 +56,8 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
     private final OaSealHandoverLogMapper handoverLogMapper;
     private final OaBorrowReminderLogMapper reminderLogMapper;
     private final RemoteWorkflowService remoteWorkflowService;
-    private final IOaTraceEventService traceEventService;
-    private final ISysNoticeService noticeService;
+    private final IOaTraceEventService oaTraceEventService;
+    private final ISysNoticeService sysNoticeService;
 
     @Override
     public PageResult<OaSealApplication> queryPage(OaSealApplication query, PageQuery pageQuery) {
@@ -515,11 +515,11 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         reminderLogMapper.insert(log);
-        noticeService.sendNotice(application.getUserId(), "用印归还提醒", content, "2",
+        sysNoticeService.sendNotice(application.getUserId(), "用印归还提醒", content, "2",
                 log.getOperatorId(), log.getOperatorName());
         OaSeal seal = sealMapper.selectById(application.getSealId());
         if (seal != null && seal.getKeeperId() != null && !seal.getKeeperId().equals(application.getUserId())) {
-            noticeService.sendNotice(seal.getKeeperId(), "用印逾期提醒", content, "2",
+            sysNoticeService.sendNotice(seal.getKeeperId(), "用印逾期提醒", content, "2",
                     log.getOperatorId(), log.getOperatorName());
         }
     }
@@ -543,7 +543,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
         if (application == null || application.getContractId() == null) {
             return;
         }
-        traceEventService.record(application.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, application.getContractId(),
+        oaTraceEventService.record(application.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, application.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_SEAL, application.getId(), eventType, title, content,
                 UserContext.getUserId(), StringUtils.hasText(UserContext.getUserName()) ? UserContext.getUserName() : "system", null);
     }

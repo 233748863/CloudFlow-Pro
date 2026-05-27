@@ -15,7 +15,7 @@ import com.cloudflow.hr.domain.vo.talent.HrTalentPoolMemberVO;
 import com.cloudflow.hr.exception.HrBusinessException;
 import com.cloudflow.hr.mapper.HrTalentPoolMapper;
 import com.cloudflow.hr.mapper.HrTalentPoolMemberMapper;
-import com.cloudflow.hr.service.HrTalentPoolService;
+import com.cloudflow.hr.service.IHrTalentPoolService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTalentPoolServiceImpl implements HrTalentPoolService {
+public class HrTalentPoolServiceImpl implements IHrTalentPoolService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
     private static final String DEFAULT_HIPO_POOL_NO = "HIPO_DEFAULT";

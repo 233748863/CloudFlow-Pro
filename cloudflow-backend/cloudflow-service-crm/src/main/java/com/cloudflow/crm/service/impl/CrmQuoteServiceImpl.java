@@ -41,7 +41,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
     private final RemoteWorkflowService remoteWorkflowService;
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
     private final CrmProductMapper productMapper;
     private final CrmQuoteLineMapper quoteLineMapper;
@@ -183,7 +183,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         quote.setUpdateTime(now());
         boolean updated = updateById(quote);
         if (updated) {
-            customerService.refreshHealth(quote.getCustomerId());
+            crmCustomerService.refreshHealth(quote.getCustomerId());
         }
         return updated;
     }
@@ -203,7 +203,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         quote.setUpdateTime(now());
         boolean updated = updateById(quote);
         if (updated) {
-            customerService.refreshHealth(quote.getCustomerId());
+            crmCustomerService.refreshHealth(quote.getCustomerId());
         }
         return updated;
     }
@@ -260,7 +260,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         quote.setUpdateTime(now());
         boolean updated = updateById(quote);
         if (updated) {
-            customerService.refreshHealth(quote.getCustomerId());
+            crmCustomerService.refreshHealth(quote.getCustomerId());
         }
         return updated;
     }
@@ -436,7 +436,7 @@ public class CrmQuoteServiceImpl extends CrmServiceSupport<CrmQuoteMapper, CrmQu
         if (quote == null || quote.getCustomerId() == null) {
             return;
         }
-        CrmCustomer customer = customerService.getAccessibleCustomer(quote.getCustomerId());
+        CrmCustomer customer = crmCustomerService.getAccessibleCustomer(quote.getCustomerId());
         quote.setCustomerName(customer.getCustomerName());
     }
 

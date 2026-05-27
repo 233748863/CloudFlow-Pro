@@ -22,7 +22,7 @@ import com.cloudflow.hr.domain.vo.training.HrTrainingInstructorVO;
 import com.cloudflow.hr.domain.vo.training.HrTrainingPlanVO;
 import com.cloudflow.hr.domain.vo.training.HrTrainingSessionStatusVO;
 import com.cloudflow.hr.domain.vo.training.HrTrainingSessionVO;
-import com.cloudflow.hr.service.HrTrainingService;
+import com.cloudflow.hr.service.IHrTrainingService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +43,7 @@ import java.util.List;
  * 培训管理基础资源控制器：计划 / 分类 / 讲师 / 课程 / 班次。
  *
  * <p>报名 / 考试 / 证书 / 档案落在其它子文件，按业务域拆分。基础 CRUD 走泛型
- * {@link HrTypedCrudService}，少量带容量校验 / 状态机的接口下沉到 {@link HrTrainingService}。
+ * {@link HrTypedCrudService}，少量带容量校验 / 状态机的接口下沉到 {@link IHrTrainingService}。
  */
 @RestController
 @RequestMapping("/training/plans")
@@ -233,7 +233,7 @@ class HrTrainingCourseController {
 class HrTrainingSessionController {
 
     private final HrTypedCrudService crudService;
-    private final HrTrainingService trainingService;
+    private final IHrTrainingService hrTrainingService;
     private final ObjectMapper objectMapper;
 
     @GetMapping
@@ -255,7 +255,7 @@ class HrTrainingSessionController {
     @PostMapping
     @SaCheckPermission("hr:training:session:add")
     public R<Long> create(@RequestBody HrTrainingSessionPayload payload) {
-        return R.ok(trainingService.createSession(payload));
+        return R.ok(hrTrainingService.createSession(payload));
     }
 
     @SysLog("修改HR培训班次")
@@ -278,6 +278,6 @@ class HrTrainingSessionController {
     @PostMapping("/{id}/{action}")
     @SaCheckPermission("hr:training:session:edit")
     public R<HrTrainingSessionStatusVO> changeStatus(@PathVariable Long id, @PathVariable String action) {
-        return R.ok(new HrTrainingSessionStatusVO(trainingService.changeSessionStatus(id, action)));
+        return R.ok(new HrTrainingSessionStatusVO(hrTrainingService.changeSessionStatus(id, action)));
     }
 }

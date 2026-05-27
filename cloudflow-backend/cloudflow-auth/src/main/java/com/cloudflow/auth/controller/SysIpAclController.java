@@ -27,7 +27,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SysIpAclController {
 
-    private final ISysIpAclService aclService;
+    private final ISysIpAclService sysIpAclService;
 
     @GetMapping("/page")
     @SaCheckPermission("system:ipAcl:list")
@@ -36,19 +36,19 @@ public class SysIpAclController {
                                   @RequestParam(required = false) String status,
                                   @RequestParam(defaultValue = "1") Integer pageNum,
                                   @RequestParam(defaultValue = "10") Integer pageSize) {
-        return R.ok(aclService.page(keyword, mode, status, pageNum, pageSize));
+        return R.ok(sysIpAclService.page(keyword, mode, status, pageNum, pageSize));
     }
 
     @GetMapping("/active")
     @SaCheckPermission("system:ipAcl:list")
     public R<List<SysIpAcl>> listActive() {
-        return R.ok(aclService.listActive());
+        return R.ok(sysIpAclService.listActive());
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("system:ipAcl:list")
     public R<SysIpAcl> detail(@PathVariable Long id) {
-        return R.ok(aclService.getById(id));
+        return R.ok(sysIpAclService.getById(id));
     }
 
     @SysLog("新增IP黑白名单")
@@ -56,7 +56,7 @@ public class SysIpAclController {
     @SaCheckPermission("system:ipAcl:add")
     public R<Void> add(@RequestBody SysIpAcl rule) {
         try {
-            return aclService.save(rule) ? R.ok() : R.fail("新增失败");
+            return sysIpAclService.save(rule) ? R.ok() : R.fail("新增失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -67,7 +67,7 @@ public class SysIpAclController {
     @SaCheckPermission("system:ipAcl:edit")
     public R<Void> edit(@RequestBody SysIpAcl rule) {
         try {
-            return aclService.update(rule) ? R.ok() : R.fail("更新失败");
+            return sysIpAclService.update(rule) ? R.ok() : R.fail("更新失败");
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -77,21 +77,21 @@ public class SysIpAclController {
     @DeleteMapping("/{id}")
     @SaCheckPermission("system:ipAcl:remove")
     public R<Void> remove(@PathVariable Long id) {
-        return aclService.remove(id) ? R.ok() : R.fail("删除失败");
+        return sysIpAclService.remove(id) ? R.ok() : R.fail("删除失败");
     }
 
     @SysLog("启停IP黑白名单")
     @PostMapping("/{id}/status")
     @SaCheckPermission("system:ipAcl:edit")
     public R<Void> toggle(@PathVariable Long id, @RequestParam String status) {
-        return aclService.toggleStatus(id, status) ? R.ok() : R.fail("操作失败");
+        return sysIpAclService.toggleStatus(id, status) ? R.ok() : R.fail("操作失败");
     }
 
     @SysLog("手动重发IP黑白名单到网关")
     @PostMapping("/republish")
     @SaCheckPermission("system:ipAcl:edit")
     public R<Void> republish() {
-        aclService.publishAllToGateway();
+        sysIpAclService.publishAllToGateway();
         return R.ok();
     }
 }

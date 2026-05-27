@@ -22,7 +22,7 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
     private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
     private final CrmOpportunityMapper opportunityMapper;
 
     @Override
@@ -60,7 +60,7 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
         boolean saved = save(followUp);
         if (saved) {
             syncOpportunityFollowUpTime(followUp);
-            customerService.refreshHealth(followUp.getCustomerId());
+            crmCustomerService.refreshHealth(followUp.getCustomerId());
         }
         return saved;
     }
@@ -78,7 +78,7 @@ public class CrmFollowUpServiceImpl extends CrmServiceSupport<CrmFollowUpMapper,
         boolean updated = updateById(followUp);
         if (updated) {
             syncOpportunityFollowUpTime(followUp);
-            customerService.refreshHealth(followUp.getCustomerId());
+            crmCustomerService.refreshHealth(followUp.getCustomerId());
         }
         return updated;
     }

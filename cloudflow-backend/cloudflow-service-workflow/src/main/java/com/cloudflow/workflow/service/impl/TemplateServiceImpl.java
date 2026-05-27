@@ -55,7 +55,7 @@ public class TemplateServiceImpl implements ITemplateService {
     private ObjectMapper objectMapper;
 
     @Autowired
-    private IWfDefinitionService definitionService;
+    private IWfDefinitionService wfDefinitionService;
     @Autowired
     private WorkflowGraphModelResolver workflowGraphModelResolver;
 
@@ -538,7 +538,7 @@ public class TemplateServiceImpl implements ITemplateService {
 
         // 调用流程定义服务保存流程
         try {
-            definitionService.saveProcessDefinition(definition);
+            wfDefinitionService.saveProcessDefinition(definition);
 
             // 增加模板使用次数
             incrementUsageCount(templateId);

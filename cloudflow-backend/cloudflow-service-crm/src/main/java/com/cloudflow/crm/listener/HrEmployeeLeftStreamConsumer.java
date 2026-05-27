@@ -3,7 +3,7 @@ package com.cloudflow.crm.listener;
 import com.cloudflow.common.redis.core.RedisStreamUtil;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.crm.config.HrEventStreamConstants;
-import com.cloudflow.crm.service.CrmHandoverTaskService;
+import com.cloudflow.crm.service.ICrmHandoverTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.connection.stream.MapRecord;
@@ -20,7 +20,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class HrEmployeeLeftStreamConsumer implements StreamListener<String, MapRecord<String, String, String>> {
 
-    private final CrmHandoverTaskService handoverTaskService;
+    private final ICrmHandoverTaskService handoverTaskService;
     private final RedisStreamUtil redisStreamUtil;
 
     @Override

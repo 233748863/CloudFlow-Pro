@@ -11,7 +11,7 @@ import com.cloudflow.auth.domain.SysFile;
 import com.cloudflow.auth.enums.FileStorageType;
 import com.cloudflow.auth.mapper.SysFileMapper;
 import com.cloudflow.auth.service.ISysFileService;
-import com.cloudflow.auth.service.SysTenantService;
+import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.auth.storage.FileStorageRegistry;
 import com.cloudflow.auth.storage.FileStorageService;
 import com.cloudflow.auth.storage.impl.OssFileStorageService;
@@ -44,7 +44,7 @@ public class SysFileServiceImpl implements ISysFileService {
     private static final String FILE_ACCESS_PATH = "/api/auth/system/file/access?path=";
 
     private final SysFileMapper sysFileMapper;
-    private final SysTenantService sysTenantService;
+    private final ISysTenantService sysTenantService;
     private final FileStorageRegistry storageRegistry;
     private final FileUploadProperties fileUploadProperties;
     private final AuthOssProperties authOssProperties;

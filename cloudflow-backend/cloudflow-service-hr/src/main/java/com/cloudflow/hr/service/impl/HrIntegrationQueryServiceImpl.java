@@ -3,7 +3,7 @@ package com.cloudflow.hr.service.impl;
 import com.cloudflow.hr.domain.vo.HrDeptSummaryVO;
 import com.cloudflow.hr.domain.vo.HrEmployeeSummaryVO;
 import com.cloudflow.hr.mapper.HrDirectoryMapper;
-import com.cloudflow.hr.service.HrIntegrationQueryService;
+import com.cloudflow.hr.service.IHrIntegrationQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +21,7 @@ import java.util.Optional;
  */
 @Service
 @RequiredArgsConstructor
-public class HrIntegrationQueryServiceImpl implements HrIntegrationQueryService {
+public class HrIntegrationQueryServiceImpl implements IHrIntegrationQueryService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

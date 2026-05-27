@@ -25,8 +25,8 @@ import com.cloudflow.hr.domain.vo.training.HrExamPaperVO;
 import com.cloudflow.hr.domain.vo.training.HrExamQuestionBankVO;
 import com.cloudflow.hr.domain.vo.training.HrTrainingEnrollmentVO;
 import com.cloudflow.hr.service.HrEssSupport;
-import com.cloudflow.hr.service.HrExamService;
-import com.cloudflow.hr.service.HrTrainingEnrollmentService;
+import com.cloudflow.hr.service.IHrExamService;
+import com.cloudflow.hr.service.IHrTrainingEnrollmentService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -55,7 +55,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 class HrTrainingEnrollmentController {
 
-    private final HrTrainingEnrollmentService enrollmentService;
+    private final IHrTrainingEnrollmentService hrTrainingEnrollmentService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
@@ -82,14 +82,14 @@ class HrTrainingEnrollmentController {
     @PostMapping
     @SaCheckPermission("hr:training:enroll:add")
     public R<Long> enroll(@Validated @RequestBody HrTrainingEnrollDTO dto) {
-        return R.ok(enrollmentService.enroll(dto.getSessionId(), dto.getEnrollType(), dto.getComment()));
+        return R.ok(hrTrainingEnrollmentService.enroll(dto.getSessionId(), dto.getEnrollType(), dto.getComment()));
     }
 
     @SysLog("HR培训签到")
     @PostMapping("/{id}/check-in")
     @SaCheckPermission("hr:training:enroll:edit")
     public R<Void> checkIn(@PathVariable Long id) {
-        enrollmentService.checkIn(id);
+        hrTrainingEnrollmentService.checkIn(id);
         return R.ok();
     }
 
@@ -97,7 +97,7 @@ class HrTrainingEnrollmentController {
     @PostMapping("/{id}/complete")
     @SaCheckPermission("hr:training:enroll:edit")
     public R<Void> complete(@PathVariable Long id, @Validated @RequestBody HrTrainingEnrollmentCompleteDTO dto) {
-        enrollmentService.complete(id, dto.getCompletionStatus(), dto.getScore(), dto.getComment());
+        hrTrainingEnrollmentService.complete(id, dto.getCompletionStatus(), dto.getScore(), dto.getComment());
         return R.ok();
     }
 
@@ -105,7 +105,7 @@ class HrTrainingEnrollmentController {
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:training:enroll:edit")
     public R<Void> cancel(@PathVariable Long id) {
-        enrollmentService.cancel(id);
+        hrTrainingEnrollmentService.cancel(id);
         return R.ok();
     }
 }
@@ -162,7 +162,7 @@ class HrExamQuestionBankController {
 @RequiredArgsConstructor
 class HrExamPaperController {
 
-    private final HrExamService examService;
+    private final IHrExamService hrExamService;
     private final HrTypedCrudService crudService;
     private final ObjectMapper objectMapper;
 
@@ -185,7 +185,7 @@ class HrExamPaperController {
     @PostMapping
     @SaCheckPermission("hr:training:exam:add")
     public R<Long> save(@RequestBody HrExamPaperPayload payload) {
-        return R.ok(examService.savePaper(payload));
+        return R.ok(hrExamService.savePaper(payload));
     }
 
     @SysLog("修改HR考试试卷")
@@ -193,7 +193,7 @@ class HrExamPaperController {
     @SaCheckPermission("hr:training:exam:edit")
     public R<Long> update(@PathVariable Long id, @RequestBody HrExamPaperPayload payload) {
         payload.setId(id);
-        return R.ok(examService.savePaper(payload));
+        return R.ok(hrExamService.savePaper(payload));
     }
 
     @SysLog("删除HR考试试卷")
@@ -210,7 +210,7 @@ class HrExamPaperController {
     public R<HrExamAttemptStartVO> startAttempt(@PathVariable Long id,
                                                 @RequestBody(required = false) HrExamAttemptStartDTO dto) {
         Long sessionId = dto == null ? null : dto.getSessionId();
-        Long attemptId = examService.startAttempt(id, sessionId);
+        Long attemptId = hrExamService.startAttempt(id, sessionId);
         return R.ok(new HrExamAttemptStartVO(attemptId));
     }
 }
@@ -220,7 +220,7 @@ class HrExamPaperController {
 @RequiredArgsConstructor
 class HrExamAttemptController {
 
-    private final HrExamService examService;
+    private final IHrExamService hrExamService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
@@ -257,14 +257,14 @@ class HrExamAttemptController {
                                             @Validated @RequestBody(required = false) HrExamAttemptSubmitDTO dto) {
         List<HrExamAnswerDTO> answers = (dto == null || dto.getAnswers() == null)
                 ? List.of() : dto.getAnswers();
-        return R.ok(examService.submit(id, answers));
+        return R.ok(hrExamService.submit(id, answers));
     }
 
     @SysLog("HR考试主观题批改")
     @PostMapping("/{id}/grade")
     @SaCheckPermission("hr:training:exam:grade")
     public R<Void> grade(@PathVariable Long id, @Validated @RequestBody HrExamAttemptGradeDTO dto) {
-        examService.grade(id, dto.getScore(), dto.getPassFlag(), dto.getComment());
+        hrExamService.grade(id, dto.getScore(), dto.getPassFlag(), dto.getComment());
         return R.ok();
     }
 }

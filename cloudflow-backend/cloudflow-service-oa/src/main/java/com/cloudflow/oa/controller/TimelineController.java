@@ -22,7 +22,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class TimelineController {
 
-    private final IOaTraceEventService traceEventService;
+    private final IOaTraceEventService oaTraceEventService;
 
     @GetMapping
     @SaCheckPermission("system:audit:events")
@@ -31,7 +31,7 @@ public class TimelineController {
                                           @RequestParam(required = false) String relatedType,
                                           @RequestParam(required = false) Long relatedId,
                                           @RequestParam(defaultValue = "20") Integer limit) {
-        return R.ok(traceEventService
+        return R.ok(oaTraceEventService
                 .listByFilter(businessType, businessId, relatedType, relatedId, limit)
                 .stream()
                 .map(TimelineEventDTO::from)
@@ -41,7 +41,7 @@ public class TimelineController {
     @GetMapping("/{id}/diff")
     @SaCheckPermission("system:audit:events")
     public R<TimelineDiffDTO> diff(@PathVariable Long id) {
-        TimelineDiffDTO diff = traceEventService.diff(id);
+        TimelineDiffDTO diff = oaTraceEventService.diff(id);
         return diff == null ? R.fail("时间线事件不存在") : R.ok(diff);
     }
 }

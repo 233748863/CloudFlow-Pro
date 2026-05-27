@@ -38,16 +38,16 @@ import java.util.Map;
 public class SyncServiceImpl implements ISyncService {
 
     @Autowired
-    private ISysNoticeService noticeService;
+    private ISysNoticeService sysNoticeService;
 
     @Autowired
-    private ISysScheduleService scheduleService;
+    private ISysScheduleService sysScheduleService;
 
     @Autowired
-    private ISysAnnouncementService announcementService;
+    private ISysAnnouncementService sysAnnouncementService;
 
     @Autowired
-    private IOaSyncDeviceService syncDeviceService;
+    private IOaSyncDeviceService oaSyncDeviceService;
 
     @Autowired
     private OaProperties oaProperties;
@@ -58,7 +58,7 @@ public class SyncServiceImpl implements ISyncService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void registerDevice(SyncDeviceRegisterDTO registerDTO) {
-        syncDeviceService.registerDevice(
+        oaSyncDeviceService.registerDevice(
                 registerDTO == null ? null : registerDTO.getDeviceId(),
                 registerDTO == null ? null : registerDTO.getDeviceName(),
                 SecurityUtils.getUserId(),
@@ -81,11 +81,11 @@ public class SyncServiceImpl implements ISyncService {
 
         Long userId = SecurityUtils.getUserId();
         Long tenantId = UserContext.getTenantId();
-        syncDeviceService.validateDevice(uploadDTO.getDeviceId(), userId, tenantId);
+        oaSyncDeviceService.validateDevice(uploadDTO.getDeviceId(), userId, tenantId);
 
         if (uploadDTO.getData() == null || uploadDTO.getData().isEmpty()) {
             log.warn("上传数据为空，设备ID: {}", uploadDTO.getDeviceId());
-            syncDeviceService.updateLastSyncTime(uploadDTO.getDeviceId(), userId, tenantId, uploadDTO.getTimestamp());
+            oaSyncDeviceService.updateLastSyncTime(uploadDTO.getDeviceId(), userId, tenantId, uploadDTO.getTimestamp());
             return result;
         }
 
@@ -103,7 +103,7 @@ public class SyncServiceImpl implements ISyncService {
             }
         }
 
-        syncDeviceService.updateLastSyncTime(uploadDTO.getDeviceId(), userId, tenantId, uploadDTO.getTimestamp());
+        oaSyncDeviceService.updateLastSyncTime(uploadDTO.getDeviceId(), userId, tenantId, uploadDTO.getTimestamp());
         log.info("离线数据处理完成，成功: {}, 失败: {}, 冲突: {}",
                 result.getSynced(), result.getFailed(), result.getConflicts());
         return result;
@@ -120,7 +120,7 @@ public class SyncServiceImpl implements ISyncService {
             case "notice_read":
                 Long noticeId = getLongValue(payload, "noticeId");
                 if (noticeId != null) {
-                    noticeService.readNotice(noticeId);
+                    sysNoticeService.readNotice(noticeId);
                     log.debug("消息已标记为已读，ID: {}", noticeId);
                 }
                 break;
@@ -144,7 +144,7 @@ public class SyncServiceImpl implements ISyncService {
                         event.setAttendees((String) payload.get("attendees"));
                     }
 
-                    scheduleService.createEvent(event);
+                    sysScheduleService.createEvent(event);
                     log.debug("日程创建成功，标题: {}", event.getTitle());
                 } catch (Exception e) {
                     log.error("创建日程失败", e);
@@ -176,7 +176,7 @@ public class SyncServiceImpl implements ISyncService {
     public SyncDownloadDTO downloadIncrementalData(Long lastSyncTime, String deviceId) {
         Long userId = SecurityUtils.getUserId();
         Long tenantId = UserContext.getTenantId();
-        syncDeviceService.validateDevice(deviceId, userId, tenantId);
+        oaSyncDeviceService.validateDevice(deviceId, userId, tenantId);
         log.info("开始下载增量数据，用户ID: {}, 设备ID: {}, 上次同步时间: {}",
                 userId, deviceId, lastSyncTime);
 
@@ -195,7 +195,7 @@ public class SyncServiceImpl implements ISyncService {
             pageQuery.setPageSize(100);
 
             com.cloudflow.common.core.domain.PageResult<SysNotice> noticeResult =
-                    noticeService.getMyNotices(userId, pageQuery);
+                    sysNoticeService.getMyNotices(userId, pageQuery);
 
             for (SysNotice notice : noticeResult.getRows()) {
                 if (notice.getCreateTime() != null && notice.getCreateTime().isAfter(lastSync)) {
@@ -212,7 +212,7 @@ public class SyncServiceImpl implements ISyncService {
             downloadDTO.setMessages(messages);
 
             List<SyncDownloadDTO.AnnouncementData> announcements = new ArrayList<>();
-            List<SysAnnouncement> announcementList = announcementService.getMyAnnouncements(userId);
+            List<SysAnnouncement> announcementList = sysAnnouncementService.getMyAnnouncements(userId);
 
             for (SysAnnouncement announcement : announcementList) {
                 if (announcement.getCreateTime() != null && announcement.getCreateTime().isAfter(lastSync)) {
@@ -226,7 +226,7 @@ public class SyncServiceImpl implements ISyncService {
                 }
             }
             downloadDTO.setAnnouncements(announcements);
-            syncDeviceService.updateLastSyncTime(deviceId, userId, tenantId, currentSyncTime);
+            oaSyncDeviceService.updateLastSyncTime(deviceId, userId, tenantId, currentSyncTime);
 
             log.info("增量数据下载完成，任务: {}, 消息: {}, 公告: {}",
                     downloadDTO.getTasks().size(),
@@ -282,13 +282,13 @@ public class SyncServiceImpl implements ISyncService {
                     event.setDescription((String) localData.get("description"));
                     event.setStartTime(parseDateTime(localData.get("startTime")));
                     event.setEndTime(parseDateTime(localData.get("endTime")));
-                    scheduleService.updateById(event);
+                    sysScheduleService.updateById(event);
                     log.info("使用本地数据更新日程，ID: {}", event.getEventId());
                 } else if ("notice_read".equals(actionType)) {
                     Map<String, Object> localData = castObjectMap(conflict.getLocalData());
                     Long noticeId = getLongValue(localData, "noticeId");
                     if (noticeId != null) {
-                        noticeService.readNotice(noticeId);
+                        sysNoticeService.readNotice(noticeId);
                         log.info("使用本地状态标记消息已读，ID: {}", noticeId);
                     }
                 }

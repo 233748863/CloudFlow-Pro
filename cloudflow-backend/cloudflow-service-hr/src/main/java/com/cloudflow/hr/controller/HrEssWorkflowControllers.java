@@ -14,8 +14,8 @@ import com.cloudflow.hr.domain.entity.HrEmployeeContract;
 import com.cloudflow.hr.domain.vo.ess.HrCertificateRequestVO;
 import com.cloudflow.hr.domain.vo.ess.HrContractSignatureVO;
 import com.cloudflow.hr.domain.vo.ess.HrEmployeeContractVO;
-import com.cloudflow.hr.service.HrCertificateService;
-import com.cloudflow.hr.service.HrContractSignatureService;
+import com.cloudflow.hr.service.IHrCertificateService;
+import com.cloudflow.hr.service.IHrContractSignatureService;
 import com.cloudflow.hr.service.HrEssSupport;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.hr.service.dto.HrFileDownload;
@@ -49,7 +49,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 class HrCertificateRequestController {
 
-    private final HrCertificateService certificateService;
+    private final IHrCertificateService hrCertificateService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
@@ -79,21 +79,21 @@ class HrCertificateRequestController {
     @PostMapping
     @SaCheckPermission("hr:ess:cert:apply")
     public R<Long> submit(@RequestBody HrCertificateRequestPayload payload) {
-        return R.ok(certificateService.submit(payload));
+        return R.ok(hrCertificateService.submit(payload));
     }
 
     @SysLog("撤销HR证明开具")
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:ess:cert:cancel")
     public R<Void> cancel(@PathVariable Long id) {
-        certificateService.cancel(id);
+        hrCertificateService.cancel(id);
         return R.ok();
     }
 
     @GetMapping("/{id}/pdf")
     @SaCheckPermission("hr:ess:cert:view")
     public ResponseEntity<byte[]> download(@PathVariable Long id) {
-        HrFileDownload result = certificateService.downloadPdf(id);
+        HrFileDownload result = hrCertificateService.downloadPdf(id);
         String fileName = result.getFileName();
         String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8).replace("+", "%20");
         HttpHeaders headers = new HttpHeaders();
@@ -109,7 +109,7 @@ class HrCertificateRequestController {
 @RequiredArgsConstructor
 class HrEssContractController {
 
-    private final HrContractSignatureService contractSignatureService;
+    private final IHrContractSignatureService hrContractSignatureService;
     private final HrTypedCrudService crudService;
     private final HrEssSupport essSupport;
     private final ObjectMapper objectMapper;
@@ -139,14 +139,14 @@ class HrEssContractController {
     @SaCheckPermission("hr:ess:contract:sign")
     public R<Long> requestSign(@PathVariable Long contractId,
                                 @RequestBody(required = false) HrContractSignaturePayload payload) {
-        return R.ok(contractSignatureService.requestSign(contractId, payload));
+        return R.ok(hrContractSignatureService.requestSign(contractId, payload));
     }
 
     @SysLog("撤销HR电子合同签署")
     @PostMapping("/signatures/{id}/cancel")
     @SaCheckPermission("hr:ess:contract:sign")
     public R<Void> cancel(@PathVariable Long id) {
-        contractSignatureService.cancel(id);
+        hrContractSignatureService.cancel(id);
         return R.ok();
     }
 }

@@ -68,7 +68,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private final IConsumableService consumableService;
     private final IPaymentRequestService paymentRequestService;
     private final RemoteWorkflowService remoteWorkflowService;
-    private final IOaBudgetService budgetService;
+    private final IOaBudgetService oaBudgetService;
 
     @Override
     public Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId) {
@@ -544,7 +544,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
 
     private void reserveBudget(BizPurchaseRequest purchase) {
         if (purchase.getItems() == null || purchase.getItems().isEmpty()) {
-            budgetService.reserveBudget(
+            oaBudgetService.reserveBudget(
                     OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),
@@ -560,7 +560,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             return;
         }
         for (BizPurchaseItem item : purchase.getItems()) {
-            budgetService.reserveBudget(
+            oaBudgetService.reserveBudget(
                     OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),
@@ -578,7 +578,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
 
     private void releaseBudget(BizPurchaseRequest purchase) {
         if (purchase.getItems() == null || purchase.getItems().isEmpty()) {
-            budgetService.releaseBudget(
+            oaBudgetService.releaseBudget(
                     OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),
@@ -594,7 +594,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             return;
         }
         for (BizPurchaseItem item : purchase.getItems()) {
-            budgetService.releaseBudget(
+            oaBudgetService.releaseBudget(
                     OaBusinessTypes.PURCHASE_REQUEST,
                     purchase.getId(),
                     purchase.getPurchaseNo(),

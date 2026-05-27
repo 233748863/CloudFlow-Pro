@@ -38,7 +38,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
 
     private final OaLicenseBorrowMapper licenseBorrowMapper;
     private final OaLicenseExpiryReminderLogMapper expiryReminderLogMapper;
-    private final ISysNoticeService noticeService;
+    private final ISysNoticeService sysNoticeService;
     private final SysConfigHelper sysConfigHelper;
 
     private static final String EXPIRY_REMINDER_DAYS_CONFIG = "sys.oa.license.expiryReminderDays";
@@ -306,7 +306,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
         log.setCreateBy(log.getOperatorName());
         log.setCreateTime(now);
         expiryReminderLogMapper.insert(log);
-        noticeService.sendNotice(recipientId, "证照到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
+        sysNoticeService.sendNotice(recipientId, "证照到期提醒", content, "2", log.getOperatorId(), log.getOperatorName());
         return true;
     }
 

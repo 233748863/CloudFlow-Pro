@@ -16,33 +16,33 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class CrmNotificationController {
 
-    private final ICrmNotificationService notificationService;
+    private final ICrmNotificationService crmNotificationService;
 
     @SysLog("触发CRM通知扫描")
     @PostMapping("/dispatch")
     @SaCheckPermission("crm:notification:dispatch")
     public R<Integer> dispatch() {
-        return R.ok(notificationService.dispatchAll());
+        return R.ok(crmNotificationService.dispatchAll());
     }
 
     @SysLog("触发CRM跟进逾期通知")
     @PostMapping("/dispatch/follow-up")
     @SaCheckPermission("crm:notification:dispatch")
     public R<Integer> dispatchFollowUp() {
-        return R.ok(notificationService.dispatchFollowUpOverdue());
+        return R.ok(crmNotificationService.dispatchFollowUpOverdue());
     }
 
     @SysLog("触发CRM回款到期通知")
     @PostMapping("/dispatch/receivable")
     @SaCheckPermission("crm:notification:dispatch")
     public R<Integer> dispatchReceivable() {
-        return R.ok(notificationService.dispatchReceivableDue());
+        return R.ok(crmNotificationService.dispatchReceivableDue());
     }
 
     @SysLog("触发CRM商机停滞通知")
     @PostMapping("/dispatch/opportunity")
     @SaCheckPermission("crm:notification:dispatch")
     public R<Integer> dispatchOpportunity() {
-        return R.ok(notificationService.dispatchStalledOpportunity());
+        return R.ok(crmNotificationService.dispatchStalledOpportunity());
     }
 }

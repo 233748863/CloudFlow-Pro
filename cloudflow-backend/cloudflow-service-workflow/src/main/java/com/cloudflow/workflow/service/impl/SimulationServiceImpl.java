@@ -21,7 +21,7 @@ import java.util.*;
 public class SimulationServiceImpl implements ISimulationService {
 
     @Autowired
-    private IWfDefinitionService definitionService;
+    private IWfDefinitionService wfDefinitionService;
 
     @Autowired
     private WorkflowGraphModelResolver graphModelResolver;
@@ -33,7 +33,7 @@ public class SimulationServiceImpl implements ISimulationService {
     public SimulationResult simulateProcess(SimulationRequest request) {
         SimulationResult result = new SimulationResult();
 
-        WfProcessDefinition definition = definitionService.getProcessDefinition(request.getDefinitionId());
+        WfProcessDefinition definition = wfDefinitionService.getProcessDefinition(request.getDefinitionId());
         if (definition == null) {
             result.setSuccess(false);
             result.getErrors().add("流程定义不存在: " + request.getDefinitionId());
@@ -104,7 +104,7 @@ public class SimulationServiceImpl implements ISimulationService {
     public SimulationResult validateDefinition(String definitionId) {
         SimulationResult result = new SimulationResult();
 
-        WfProcessDefinition definition = definitionService.getProcessDefinition(definitionId);
+        WfProcessDefinition definition = wfDefinitionService.getProcessDefinition(definitionId);
         if (definition == null) {
             result.setSuccess(false);
             result.getErrors().add("流程定义不存在");

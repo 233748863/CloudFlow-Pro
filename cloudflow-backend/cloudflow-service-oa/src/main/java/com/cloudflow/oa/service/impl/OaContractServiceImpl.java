@@ -51,9 +51,9 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     private final OaSealApplicationMapper sealApplicationMapper;
     private final RemoteWorkflowService remoteWorkflowService;
-    private final IOaTraceEventService traceEventService;
-    private final IOaRiskAlertService riskAlertService;
-    private final IOaContractAmountThresholdService contractAmountThresholdService;
+    private final IOaTraceEventService oaTraceEventService;
+    private final IOaRiskAlertService oaRiskAlertService;
+    private final IOaContractAmountThresholdService oaContractAmountThresholdService;
 
     @Override
     public PageResult<OaContract> queryPage(OaContract query, PageQuery pageQuery) {
@@ -89,7 +89,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         if (!saved || contract.getContractId() == null) {
             throw new IllegalArgumentException("合同创建失败");
         }
-        traceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
+        oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(), "CONTRACT_CREATED",
                 "合同创建", contract.getContractNo() + " / " + contract.getContractName(),
                 UserContext.getUserId(), resolveUserName(), null);
@@ -123,7 +123,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(contract);
-        traceEventService.record(persisted.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
+        oaTraceEventService.record(persisted.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(),
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, contract.getContractId(), "CONTRACT_UPDATED",
                 "合同更新", contract.getContractName(), UserContext.getUserId(), resolveUserName(), null);
         return updated;
@@ -148,7 +148,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             update.setUpdateBy(resolveUserName());
             update.setUpdateTime(LocalDateTime.now());
             updateById(update);
-            traceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
+            oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
                     OaContractConstants.BUSINESS_TYPE_CONTRACT, id, "CONTRACT_DELETED",
                     "合同删除", contract.getContractNo(), UserContext.getUserId(), resolveUserName(), null);
         }
@@ -191,7 +191,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         }
 
         boolean updated = updateById(contract);
-        traceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
+        oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
                 OaContractConstants.BUSINESS_TYPE_APPROVAL, id, "CONTRACT_SUBMITTED",
                 "合同提交审批", contract.getContractNo() + " 已进入审批",
                 UserContext.getUserId(), resolveUserName(), null);
@@ -210,7 +210,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         contract.setUpdateBy(resolveUserName());
         contract.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(contract);
-        traceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
+        oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, id,
                 OaContractConstants.BUSINESS_TYPE_CONTRACT, id, "CONTRACT_CANCELLED",
                 "合同取消", contract.getContractNo(), UserContext.getUserId(), resolveUserName(), null);
         return updated;
@@ -239,7 +239,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         update.setUpdateBy(resolveUserName());
         update.setUpdateTime(LocalDateTime.now());
         sealApplicationMapper.updateById(update);
-        traceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contractId,
+        oaTraceEventService.record(contract.getTenantId(), OaContractConstants.BUSINESS_TYPE_CONTRACT, contractId,
                 OaContractConstants.BUSINESS_TYPE_SEAL, sealApplicationId, "SEAL_LINKED",
                 "绑定用印申请", application.getApplicationNo() + " / " + application.getSealName(),
                 UserContext.getUserId(), resolveUserName(), null);
@@ -249,13 +249,13 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
     @Override
     public List<OaTraceEvent> listTimeline(Long contractId) {
         requireContract(contractId);
-        return traceEventService.listByBusiness(OaContractConstants.BUSINESS_TYPE_CONTRACT, contractId);
+        return oaTraceEventService.listByBusiness(OaContractConstants.BUSINESS_TYPE_CONTRACT, contractId);
     }
 
     @Override
     public List<OaRiskAlert> listRisks(Long contractId) {
         requireContract(contractId);
-        return riskAlertService.listByBusiness(OaContractConstants.BUSINESS_TYPE_CONTRACT, contractId);
+        return oaRiskAlertService.listByBusiness(OaContractConstants.BUSINESS_TYPE_CONTRACT, contractId);
     }
 
     private void normalizeAndValidate(OaContract contract) {
@@ -315,7 +315,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
         // OA-P0-3 合同金额阈值: 按金额命中规则后写入 amountTier / requiredApproverRole, 供流程 CONDITION 分支路由
         OaContractAmountThreshold threshold = null;
         try {
-            threshold = contractAmountThresholdService.matchThreshold(contract.getDeptName(), contract.getAmount());
+            threshold = oaContractAmountThresholdService.matchThreshold(contract.getDeptName(), contract.getAmount());
         } catch (Exception e) {
             log.warn("合同金额阈值匹配失败, contractId={}, amount={}", contract.getContractId(), contract.getAmount(), e);
         }

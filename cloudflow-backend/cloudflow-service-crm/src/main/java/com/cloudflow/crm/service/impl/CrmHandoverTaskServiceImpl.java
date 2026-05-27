@@ -9,7 +9,7 @@ import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmHandoverTaskMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
-import com.cloudflow.crm.service.CrmHandoverTaskService;
+import com.cloudflow.crm.service.ICrmHandoverTaskService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -29,7 +29,7 @@ import java.util.List;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class CrmHandoverTaskServiceImpl implements CrmHandoverTaskService {
+public class CrmHandoverTaskServiceImpl implements ICrmHandoverTaskService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
 

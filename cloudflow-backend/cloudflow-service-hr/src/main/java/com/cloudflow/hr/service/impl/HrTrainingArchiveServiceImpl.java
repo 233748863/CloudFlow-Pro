@@ -17,7 +17,7 @@ import com.cloudflow.hr.mapper.HrTrainingCourseMapper;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.service.HrEssSupport;
-import com.cloudflow.hr.service.HrTrainingArchiveService;
+import com.cloudflow.hr.service.IHrTrainingArchiveService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,7 +53,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class HrTrainingArchiveServiceImpl implements HrTrainingArchiveService {
+public class HrTrainingArchiveServiceImpl implements IHrTrainingArchiveService {
 
     private final HrTrainingEnrollmentMapper enrollmentMapper;
     private final HrTrainingCertificateMapper certificateMapper;

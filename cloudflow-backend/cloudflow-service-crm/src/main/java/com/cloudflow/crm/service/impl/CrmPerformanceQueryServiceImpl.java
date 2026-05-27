@@ -11,7 +11,7 @@ import com.cloudflow.crm.mapper.CrmCustomerMapper;
 import com.cloudflow.crm.mapper.CrmFollowUpMapper;
 import com.cloudflow.crm.mapper.CrmOpportunityMapper;
 import com.cloudflow.crm.mapper.CrmReceivableMapper;
-import com.cloudflow.crm.service.CrmPerformanceQueryService;
+import com.cloudflow.crm.service.ICrmPerformanceQueryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -37,7 +37,7 @@ import java.util.function.Function;
  */
 @Service
 @RequiredArgsConstructor
-public class CrmPerformanceQueryServiceImpl implements CrmPerformanceQueryService {
+public class CrmPerformanceQueryServiceImpl implements ICrmPerformanceQueryService {
 
     private static final String DIM_OWNER = "OWNER";
     private static final String DIM_DEPT = "DEPT";

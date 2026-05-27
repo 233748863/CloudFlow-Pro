@@ -21,7 +21,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
     private static final String SCOPE_DEPT_COLUMN = "scope_dept_id";
     private static final String SCOPE_OWNER_COLUMN = "scope_owner_id";
 
-    private final ICrmCustomerService customerService;
+    private final ICrmCustomerService crmCustomerService;
 
     @Override
     public PageResult<CrmServiceTicket> queryPage(CrmServiceTicket query, PageQuery pageQuery) {
@@ -64,7 +64,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         Localize.fillCommonAudit(ticket, currentTenantId(), currentUserName(), now());
         boolean saved = save(ticket);
         if (saved) {
-            customerService.refreshHealth(ticket.getCustomerId());
+            crmCustomerService.refreshHealth(ticket.getCustomerId());
         }
         return saved;
     }
@@ -91,7 +91,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         ticket.setUpdateTime(now());
         boolean updated = updateById(ticket);
         if (updated) {
-            customerService.refreshHealth(ticket.getCustomerId());
+            crmCustomerService.refreshHealth(ticket.getCustomerId());
         }
         return updated;
     }
@@ -106,7 +106,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         ticket.setUpdateTime(now());
         boolean updated = updateById(ticket);
         if (updated) {
-            customerService.refreshHealth(ticket.getCustomerId());
+            crmCustomerService.refreshHealth(ticket.getCustomerId());
         }
         return updated;
     }
@@ -120,7 +120,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         ticket.setUpdateTime(now());
         boolean updated = updateById(ticket);
         if (updated) {
-            customerService.refreshHealth(ticket.getCustomerId());
+            crmCustomerService.refreshHealth(ticket.getCustomerId());
         }
         return updated;
     }
@@ -150,7 +150,7 @@ public class CrmServiceTicketServiceImpl extends CrmServiceSupport<CrmServiceTic
         if (ticket == null || ticket.getCustomerId() == null) {
             return;
         }
-        CrmCustomer customer = customerService.getAccessibleCustomer(ticket.getCustomerId());
+        CrmCustomer customer = crmCustomerService.getAccessibleCustomer(ticket.getCustomerId());
         ticket.setCustomerName(customer.getCustomerName());
     }
 }

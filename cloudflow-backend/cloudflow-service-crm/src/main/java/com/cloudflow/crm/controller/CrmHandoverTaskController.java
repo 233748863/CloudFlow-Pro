@@ -5,7 +5,7 @@ import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.crm.domain.dto.handover.CrmHandoverCloseDTO;
 import com.cloudflow.crm.domain.dto.handover.CrmHandoverReassignDTO;
 import com.cloudflow.crm.domain.vo.CrmHandoverTaskVO;
-import com.cloudflow.crm.service.CrmHandoverTaskService;
+import com.cloudflow.crm.service.ICrmHandoverTaskService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import cn.dev33.satoken.annotation.SaCheckLogin;
@@ -30,13 +30,13 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmHandoverTaskController {
 
-    private final CrmHandoverTaskService handoverTaskService;
+    private final ICrmHandoverTaskService crmHandoverTaskService;
     private final ObjectMapper objectMapper;
 
     @GetMapping("/pending")
     @SaCheckPermission("crm:handover-task:list")
     public R<List<CrmHandoverTaskVO>> pending(@RequestParam(value = "fromOwnerId", required = false) Long fromOwnerId) {
-        return R.ok(MapConverters.toVOList(handoverTaskService.listPending(fromOwnerId),
+        return R.ok(MapConverters.toVOList(crmHandoverTaskService.listPending(fromOwnerId),
                 CrmHandoverTaskVO.class, objectMapper));
     }
 
@@ -44,7 +44,7 @@ public class CrmHandoverTaskController {
     @SaCheckPermission("crm:handover-task:reassign")
     public R<Void> reassign(@PathVariable("id") Long id, @Validated @RequestBody CrmHandoverReassignDTO dto) {
         try {
-            handoverTaskService.reassign(id, dto.getToOwnerId(), dto.getToOwnerName(), dto.getRemark());
+            crmHandoverTaskService.reassign(id, dto.getToOwnerId(), dto.getToOwnerName(), dto.getRemark());
             return R.ok();
         } catch (IllegalArgumentException ex) {
             return R.fail(ex.getMessage());
@@ -54,7 +54,7 @@ public class CrmHandoverTaskController {
     @PostMapping("/{id}/close")
     @SaCheckPermission("crm:handover-task:close")
     public R<Void> close(@PathVariable("id") Long id, @RequestBody(required = false) CrmHandoverCloseDTO dto) {
-        handoverTaskService.close(id, dto == null ? null : dto.getRemark());
+        crmHandoverTaskService.close(id, dto == null ? null : dto.getRemark());
         return R.ok();
     }
 }

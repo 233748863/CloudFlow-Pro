@@ -34,8 +34,8 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
 
     private final OaContractMapper contractMapper;
     private final OaSealApplicationMapper sealApplicationMapper;
-    private final IOaRiskAlertService riskAlertService;
-    private final ISysNoticeService noticeService;
+    private final IOaRiskAlertService oaRiskAlertService;
+    private final ISysNoticeService sysNoticeService;
     private final RemoteBusinessRuleService remoteBusinessRuleService;
 
     @Override
@@ -204,9 +204,9 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
         risk.setOwnerId(contract.getOwnerId());
         risk.setOwnerName(contract.getOwnerName());
         risk.setHandleRemark(remark);
-        boolean created = riskAlertService.createRuleRiskIfAbsent(risk);
+        boolean created = oaRiskAlertService.createRuleRiskIfAbsent(risk);
         if (created && contract.getOwnerId() != null) {
-            noticeService.sendNotice(contract.getOwnerId(), "合同风险提醒",
+            sysNoticeService.sendNotice(contract.getOwnerId(), "合同风险提醒",
                     contract.getContractNo() + " / " + contract.getContractName() + "：" + name,
                     "2", null, StringUtils.hasText(contract.getOwnerName()) ? contract.getOwnerName() : "risk-scan");
         }

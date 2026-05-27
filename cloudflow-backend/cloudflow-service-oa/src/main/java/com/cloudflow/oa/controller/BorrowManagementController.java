@@ -18,18 +18,18 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class BorrowManagementController {
 
-    private final IOaBorrowManagementService borrowManagementService;
+    private final IOaBorrowManagementService oaBorrowManagementService;
 
     @GetMapping("/summary")
     @SaCheckPermission("oa:borrow:list")
     public R<OaBorrowManagementSummaryDTO> summary() {
-        return R.ok(borrowManagementService.getSummary());
+        return R.ok(oaBorrowManagementService.getSummary());
     }
 
     @GetMapping("/stats")
     @SaCheckPermission("oa:borrow:list")
     public R<OaBorrowManagementStatsDTO> stats() {
-        return R.ok(borrowManagementService.getStats());
+        return R.ok(oaBorrowManagementService.getStats());
     }
 }
 

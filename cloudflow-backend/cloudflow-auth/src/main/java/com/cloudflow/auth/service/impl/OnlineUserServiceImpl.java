@@ -2,7 +2,7 @@ package com.cloudflow.auth.service.impl;
 
 import com.cloudflow.auth.domain.dto.OnlineUserDTO;
 import com.cloudflow.auth.domain.dto.OnlineUserQuery;
-import com.cloudflow.auth.service.OnlineUserService;
+import com.cloudflow.auth.service.IOnlineUserService;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.SecurityUtils;
@@ -33,7 +33,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-public class OnlineUserServiceImpl implements OnlineUserService {
+public class OnlineUserServiceImpl implements IOnlineUserService {
 
     private static final long MILLIS_SECOND = 1000L;
 

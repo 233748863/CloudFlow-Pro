@@ -47,7 +47,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     private BizPurchaseRequestMapper purchaseRequestMapper;
 
     @Autowired
-    private IOaBudgetService budgetService;
+    private IOaBudgetService oaBudgetService;
 
     @Override
     public Page<BizPaymentRequest> queryPage(Integer pageNum, Integer pageSize, String status, String paymentType, Long userId) {
@@ -175,7 +175,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         boolean updated = updateById(payment);
         if (updated) {
             updatePurchasePaymentStatus(id, "PAID");
-            budgetService.writeoffBudget(
+            oaBudgetService.writeoffBudget(
                     OaBusinessTypes.PAYMENT_REQUEST,
                     payment.getId(),
                     payment.getPaymentNo(),
@@ -242,7 +242,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     private void reserveBudget(BizPaymentRequest payment) {
-        budgetService.reserveBudget(
+        oaBudgetService.reserveBudget(
                 OaBusinessTypes.PAYMENT_REQUEST,
                 payment.getId(),
                 payment.getPaymentNo(),

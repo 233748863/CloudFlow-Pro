@@ -30,10 +30,10 @@ import com.cloudflow.hr.mapper.HrTalentSuccessorMapper;
 import com.cloudflow.hr.mapper.HrTrainingEnrollmentMapper;
 import com.cloudflow.hr.mapper.HrTrainingSessionMapper;
 import com.cloudflow.hr.mapper.HrWorkInjuryMapper;
-import com.cloudflow.hr.service.HrCertificateService;
-import com.cloudflow.hr.service.HrContractSignatureService;
-import com.cloudflow.hr.service.HrMallOrderService;
-import com.cloudflow.hr.service.HrTalentPoolService;
+import com.cloudflow.hr.service.IHrCertificateService;
+import com.cloudflow.hr.service.IHrContractSignatureService;
+import com.cloudflow.hr.service.IHrMallOrderService;
+import com.cloudflow.hr.service.IHrTalentPoolService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,14 +65,14 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
     private final HrTypedCrudService crudService;
     private final HrTrainingEnrollmentMapper trainingEnrollmentMapper;
     private final HrTrainingSessionMapper trainingSessionMapper;
-    private final HrCertificateService certificateService;
-    private final HrContractSignatureService contractSignatureService;
+    private final IHrCertificateService certificateService;
+    private final IHrContractSignatureService contractSignatureService;
     private final HrTalentReviewParticipantMapper talentReviewParticipantMapper;
     private final HrTalentSuccessorMapper talentSuccessorMapper;
-    private final HrTalentPoolService talentPoolService;
+    private final IHrTalentPoolService talentPoolService;
     private final HrSelfServiceMessageMapper selfServiceMessageMapper;
     private final HrMallOrderMapper mallOrderMapper;
-    private final HrMallOrderService mallOrderService;
+    private final IHrMallOrderService mallOrderService;
     private final HrWorkInjuryMapper workInjuryMapper;
 
     @Override
@@ -248,7 +248,7 @@ public class HrWorkflowCallbackServiceImpl implements WorkflowCallbackService {
             return;
         }
         if (target.entityClass() == HrMallOrder.class && "REJECTED".equals(status)) {
-            // 积分商城订单驳回 → 退积分 + 还库存（HrMallOrderService.cancel 中已封装幂等逻辑）。
+            // 积分商城订单驳回 → 退积分 + 还库存（IHrMallOrderService.cancel 中已封装幂等逻辑）。
             mallOrderService.cancel(dto.getBusinessId(), "工作流驳回");
             return;
         }

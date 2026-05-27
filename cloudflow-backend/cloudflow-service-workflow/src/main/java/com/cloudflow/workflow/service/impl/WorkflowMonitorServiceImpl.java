@@ -20,7 +20,7 @@ import com.cloudflow.workflow.mapper.system.SysRoleMapper;
 import com.cloudflow.workflow.mapper.system.SysUserMapper;
 import com.cloudflow.workflow.mapper.system.SysUserRoleMapper;
 import com.cloudflow.workflow.service.INotificationService;
-import com.cloudflow.workflow.service.WorkflowMonitorService;
+import com.cloudflow.workflow.service.IWorkflowMonitorService;
 import com.cloudflow.workflow.service.monitor.impl.PerformanceStatsRefreshService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,7 +50,7 @@ import java.util.TreeMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class WorkflowMonitorServiceImpl implements WorkflowMonitorService {
+public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
 
     private final ProcessMonitorMapper processMonitorMapper;
     private final TimeoutAlertMapper timeoutAlertMapper;

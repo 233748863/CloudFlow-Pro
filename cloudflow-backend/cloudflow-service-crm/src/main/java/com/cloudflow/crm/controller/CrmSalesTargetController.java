@@ -19,18 +19,18 @@ import java.util.List;
 @RequiredArgsConstructor
 public class CrmSalesTargetController {
 
-    private final ICrmSalesTargetService salesTargetService;
+    private final ICrmSalesTargetService crmSalesTargetService;
 
     @GetMapping("/list")
     @SaCheckPermission("crm:sales-target:list")
     public R<PageResult<CrmSalesTarget>> list(CrmSalesTarget query, PageQuery pageQuery) {
-        return R.ok(salesTargetService.queryPage(query, pageQuery));
+        return R.ok(crmSalesTargetService.queryPage(query, pageQuery));
     }
 
     @GetMapping("/{id}")
     @SaCheckPermission("crm:sales-target:list")
     public R<CrmSalesTarget> getInfo(@PathVariable("id") Long id) {
-        CrmSalesTarget salesTarget = salesTargetService.getById(id);
+        CrmSalesTarget salesTarget = crmSalesTargetService.getById(id);
         return salesTarget == null || !Integer.valueOf(0).equals(salesTarget.getDeleted()) ? R.fail("销售目标不存在") : R.ok(salesTarget);
     }
 
@@ -39,7 +39,7 @@ public class CrmSalesTargetController {
     @SaCheckPermission("crm:sales-target:add")
     public R<Void> add(@RequestBody CrmSalesTarget salesTarget) {
         try {
-            return R.result(salesTargetService.createSalesTarget(salesTarget));
+            return R.result(crmSalesTargetService.createSalesTarget(salesTarget));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -50,7 +50,7 @@ public class CrmSalesTargetController {
     @SaCheckPermission("crm:sales-target:edit")
     public R<Void> edit(@RequestBody CrmSalesTarget salesTarget) {
         try {
-            return R.result(salesTargetService.updateSalesTarget(salesTarget));
+            return R.result(crmSalesTargetService.updateSalesTarget(salesTarget));
         } catch (IllegalArgumentException e) {
             return R.fail(e.getMessage());
         }
@@ -64,7 +64,7 @@ public class CrmSalesTargetController {
             CrmSalesTarget salesTarget = new CrmSalesTarget();
             salesTarget.setSalesTargetId(id);
             salesTarget.setDeleted(1);
-            salesTargetService.updateById(salesTarget);
+            crmSalesTargetService.updateById(salesTarget);
         }
         return R.ok();
     }

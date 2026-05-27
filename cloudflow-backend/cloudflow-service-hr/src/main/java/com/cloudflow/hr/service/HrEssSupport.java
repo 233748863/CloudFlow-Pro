@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class HrEssSupport {
 
-    private final HrIntegrationQueryService integrationQueryService;
+    private final IHrIntegrationQueryService integrationQueryService;
 
     public Long currentEmployeeId() {
         Long userId = UserContext.getUserId();
