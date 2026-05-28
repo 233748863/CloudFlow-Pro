@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Plus, RefreshCw, Search } from 'lucide-react';
+import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
 import {
@@ -95,8 +95,7 @@ export const ContractThresholdPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [filters, setFilters] = useState({ keyword: '', businessUnit: '', amountTier: '', status: '' });
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, ...filters });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, keyword: '', businessUnit: '', amountTier: '', status: '' });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<OaContractAmountThreshold | null>(null);
@@ -224,8 +223,8 @@ export const ContractThresholdPage: React.FC = () => {
         <TableCell className="text-right">
           <TableRowActions
             actions={[
-              { key: 'edit', label: '编辑', semantic: 'edit', onClick: () => openEdit(row) },
-              { key: 'delete', label: '删除', semantic: 'delete', onClick: () => row.id && setConfirmId(row.id) },
+              { key: 'edit', label: '编辑', semantic: 'edit', icon: <Pencil size={15} />, onClick: () => openEdit(row) },
+              { key: 'delete', label: '删除', semantic: 'delete', icon: <Trash2 size={15} />, onClick: () => row.id && setConfirmId(row.id) },
             ]}
           />
         </TableCell>
@@ -238,66 +237,60 @@ export const ContractThresholdPage: React.FC = () => {
       <TablePageLayout
         className="gap-3"
         filters={(
-          <div className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-            <div className="flex-1 min-w-[200px]">
-              <label className={fieldLabelClassName}>关键字</label>
+          <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-1 flex-wrap items-center gap-3">
               <Input
-                value={filters.keyword}
+                value={query.keyword}
                 placeholder="按备注搜索"
-                onChange={(e) => setFilters({ ...filters, keyword: e.target.value })}
+                className="max-w-sm"
+                onChange={(e) => setQuery((c) => ({ ...c, keyword: e.target.value, pageNum: 1 }))}
               />
+              <div className="w-full sm:w-[160px]">
+                <Input
+                  value={query.businessUnit}
+                  placeholder="业务单元"
+                  onChange={(e) => setQuery((c) => ({ ...c, businessUnit: e.target.value, pageNum: 1 }))}
+                />
+              </div>
+              <div className="w-full sm:w-[140px]">
+                <Select
+                  value={query.amountTier || ALL_VALUE}
+                  onValueChange={(v) => setQuery((c) => ({ ...c, amountTier: v === ALL_VALUE ? '' : v, pageNum: 1 }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="档位" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_VALUE}>全部</SelectItem>
+                    {TIER_OPTIONS.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full sm:w-[140px]">
+                <Select
+                  value={query.status || ALL_VALUE}
+                  onValueChange={(v) => setQuery((c) => ({ ...c, status: v === ALL_VALUE ? '' : v, pageNum: 1 }))}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="状态" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={ALL_VALUE}>全部</SelectItem>
+                    <SelectItem value="ACTIVE">生效</SelectItem>
+                    <SelectItem value="INACTIVE">停用</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="min-w-[160px]">
-              <label className={fieldLabelClassName}>业务单元</label>
-              <Input
-                value={filters.businessUnit}
-                placeholder="部门 / 产品线"
-                onChange={(e) => setFilters({ ...filters, businessUnit: e.target.value })}
-              />
-            </div>
-            <div className="min-w-[140px]">
-              <label className={fieldLabelClassName}>档位</label>
-              <Select
-                value={filters.amountTier || ALL_VALUE}
-                onValueChange={(v) => setFilters({ ...filters, amountTier: v === ALL_VALUE ? '' : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="全部" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_VALUE}>全部</SelectItem>
-                  {TIER_OPTIONS.map((t) => (
-                    <SelectItem key={t.value} value={t.value}>
-                      {t.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="min-w-[140px]">
-              <label className={fieldLabelClassName}>状态</label>
-              <Select
-                value={filters.status || ALL_VALUE}
-                onValueChange={(v) => setFilters({ ...filters, status: v === ALL_VALUE ? '' : v })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="全部" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_VALUE}>全部</SelectItem>
-                  <SelectItem value="ACTIVE">生效</SelectItem>
-                  <SelectItem value="INACTIVE">停用</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button onClick={() => setQuery({ ...query, ...filters, pageNum: 1 })}>
-              <Search className="mr-1.5 h-4 w-4" /> 查询
-            </Button>
-            <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" onClick={() => load()} disabled={loading}>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => load()} disabled={loading}>
                 <RefreshCw className={cn('mr-1.5 h-4 w-4', loading && 'animate-spin')} /> 刷新
               </Button>
-              <Button onClick={openCreate}>
+              <Button size="sm" onClick={openCreate}>
                 <Plus className="mr-1.5 h-4 w-4" /> 新建
               </Button>
             </div>
