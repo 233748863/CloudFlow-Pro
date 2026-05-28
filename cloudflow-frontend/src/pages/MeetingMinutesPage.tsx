@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ClipboardList,
+  Clock3,
+  FileText,
   LoaderCircle,
   Plus,
   RefreshCw,
@@ -17,6 +19,7 @@ import {
   DatePicker,
   Input,
   Label,
+  MeetingRoomSelector,
   Pagination,
   Select,
   SelectContent,
@@ -27,6 +30,7 @@ import {
   TableHead,
   TableHeader,
   Textarea,
+  UserSelector,
 } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
@@ -35,25 +39,46 @@ import {
   parseDecisions,
   stringifyDecisions,
   type MeetingAttendStatus,
-  type MeetingMinutesStatus,
   type OaMeetingAttendance,
   type OaMeetingDecision,
   type OaMeetingMinutes,
 } from '@/services/api/meetingMinutes';
 import { useAuth } from '@/context/AuthContext';
-import { formatDateTimeDisplay } from '@/utils/dateFormat';
+import { createEvent } from '@/services/api/schedule';
+import { PageResult } from '@/types';
+import { formatDateTimeDisplay, toBackendDateString } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
 
-const STATUS_LABELS: Record<MeetingMinutesStatus, { label: string; cls: string }> = {
-  DRAFT: {
-    label: '草稿',
-    cls: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
-  },
-  CONFIRMED: {
-    label: '已确认',
-    cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/30 dark:text-emerald-200',
-  },
+const normalizeRows = <T,>(result: PageResult<T>) => result.rows || result.records || [];
+
+const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading = false }) => (
+  <tr className="hover:bg-transparent">
+    <td colSpan={colSpan} className="px-4 py-16">
+      <div className="flex flex-col items-center justify-center text-center">
+        <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
+          {loading ? <Clock3 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+        </div>
+        <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
+      </div>
+    </td>
+  </tr>
+);
+
+const STATUS_LABELS: Record<string, string> = {
+  DRAFT: '草稿',
+  CONFIRMED: '已确认',
 };
+
+const toneMap: Record<string, string> = {
+  DRAFT: 'border border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+  CONFIRMED: 'border border-emerald-200 bg-emerald-50 text-emerald-600 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+};
+
+const getStatusBadge = (status?: string) => (
+  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${toneMap[status || 'DRAFT'] || toneMap.DRAFT}`}>
+    {STATUS_LABELS[status || 'DRAFT'] || status || '-'}
+  </span>
+);
 
 const ATTEND_LABELS: Record<MeetingAttendStatus, { label: string; cls: string }> = {
   ATTEND: { label: '出席', cls: 'border-emerald-200 bg-emerald-50 text-emerald-700' },
@@ -66,6 +91,7 @@ const ATTEND_LABELS: Record<MeetingAttendStatus, { label: string; cls: string }>
 const emptyForm = (): OaMeetingMinutes => ({
   meetingTitle: '',
   meetingTime: '',
+  roomId: '',
   location: '',
   organizerName: '',
   minutesContent: '',
@@ -123,7 +149,7 @@ const MeetingMinutesPage: React.FC = () => {
       if (query.keyword) params.keyword = query.keyword;
       if (query.status) params.status = query.status;
       const res = await meetingMinutesApi.page(params);
-      setRows(res.rows || []);
+      setRows(normalizeRows(res));
       setTotal(res.total || 0);
     } catch (err) {
       toast.error(getErrorMessage(err, '加载会议纪要失败'));
@@ -182,6 +208,43 @@ const MeetingMinutesPage: React.FC = () => {
     }
     try {
       const payload: OaMeetingMinutes = { ...formData, decisions: stringifyDecisions(decisions) };
+
+      // 如果选择了会议室和会议时间，自动创建会议室预约
+      let scheduleEventId = payload.scheduleEventId;
+      if (payload.roomId && payload.meetingTime) {
+        try {
+          const startDate = new Date(payload.meetingTime);
+          const endDate = new Date(startDate.getTime() + 90 * 60 * 1000); // 默认1.5小时
+          const startStr = toBackendDateString(startDate);
+          const endStr = toBackendDateString(endDate);
+          if (startStr && endStr) {
+            await createEvent({
+              title: payload.meetingTitle,
+              startTime: startStr,
+              endTime: endStr,
+              type: 'MEETING',
+              roomId: payload.roomId,
+            });
+            toast.success('会议室已自动预约');
+          }
+        } catch (bookingErr: any) {
+          const msg = bookingErr?.response?.data?.msg || bookingErr?.message || '';
+          if (msg.includes('已被预订')) {
+            // 冲突：提示用户是否仍要保存纪要（不关联预约）
+            const proceed = window.confirm(
+              `会议室预约失败：${msg}\n\n是否仍要保存会议纪要（不关联会议室预约）？`
+            );
+            if (!proceed) return;
+            scheduleEventId = undefined;
+          } else {
+            // 其他预约失败，仍保存纪要
+            console.warn('会议室预约失败，仅保存纪要:', msg);
+            scheduleEventId = undefined;
+          }
+        }
+      }
+
+      payload.scheduleEventId = scheduleEventId;
       if (payload.id) {
         await meetingMinutesApi.edit(payload);
         toast.success('已更新');
@@ -288,35 +351,37 @@ const MeetingMinutesPage: React.FC = () => {
   };
 
   const filters = (
-    <div className="flex flex-wrap items-end gap-2">
-      <div className="space-y-1">
-        <Label className="text-xs text-slate-500">关键字</Label>
-        <Input
-          value={query.keyword}
-          onChange={(e) => setQuery((q) => ({ ...q, keyword: e.target.value }))}
-          placeholder="会议标题 / 内容"
-          className="w-56"
-        />
+    <div className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm dark:border-slate-800 dark:bg-slate-950/88 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-1 flex-wrap items-center gap-3">
+        <div className="w-full sm:w-[220px]">
+          <Input
+            className="h-10"
+            value={query.keyword}
+            onChange={(e) => setQuery((q) => ({ ...q, keyword: e.target.value }))}
+            placeholder="会议标题 / 内容"
+          />
+        </div>
+        <div className="w-full sm:w-[180px]">
+          <Select value={query.status || 'ALL'} onValueChange={(v) => setQuery((q) => ({ ...q, pageNum: 1, status: v === 'ALL' ? '' : v }))}>
+            <SelectTrigger className="h-10"><SelectValue placeholder="全部状态" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">全部状态</SelectItem>
+              <SelectItem value="DRAFT">草稿</SelectItem>
+              <SelectItem value="CONFIRMED">已确认</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
-      <div className="space-y-1">
-        <Label className="text-xs text-slate-500">状态</Label>
-        <Select value={query.status} onValueChange={(v) => setQuery((q) => ({ ...q, status: v === '__all' ? '' : v }))}>
-          <SelectTrigger className="w-36"><SelectValue placeholder="全部" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all">全部</SelectItem>
-            <SelectItem value="DRAFT">草稿</SelectItem>
-            <SelectItem value="CONFIRMED">已确认</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <Button variant="outline" onClick={() => setQuery((q) => ({ ...q, pageNum: 1 }))}>
-        <RefreshCw className="mr-1 h-4 w-4" />查询
-      </Button>
-      {canEdit ? (
-        <Button onClick={openCreate}>
-          <Plus className="mr-1 h-4 w-4" />新建会议纪要
+      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <Button variant="outline" size="sm" onClick={() => setQuery({ keyword: '', status: '', pageNum: 1, pageSize: 10 })}>
+          <RefreshCw size={14} className="mr-1.5" />清空条件
         </Button>
-      ) : null}
+        {canEdit ? (
+          <Button size="sm" onClick={openCreate}>
+            <Plus size={14} className="mr-1.5" />新建会议纪要
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 
@@ -324,92 +389,87 @@ const MeetingMinutesPage: React.FC = () => {
 
   const table = (
     <TableSurfaceCard>
-      <TableHeader>
-        <tr>
-          <TableHead>会议标题</TableHead>
-          <TableHead>组织者</TableHead>
-          <TableHead>会议时间</TableHead>
-          <TableHead>地点</TableHead>
-          <TableHead>决议项</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>更新时间</TableHead>
-          <TableActionHead />
-        </tr>
-      </TableHeader>
-      <tbody>
-        {loading ? (
-          <tr>
-            <td colSpan={8} className="py-10 text-center text-sm text-slate-400">
-              <LoaderCircle className="mx-auto mb-2 h-5 w-5 animate-spin" />加载中...
-            </td>
-          </tr>
-        ) : rows.length === 0 ? (
-          <tr>
-            <td colSpan={8} className="py-10 text-center text-sm text-slate-400">暂无数据</td>
-          </tr>
-        ) : (
-          rows.map((row, idx) => {
-            const status = STATUS_LABELS[row.status || 'DRAFT'];
-            return (
-              <tr key={row.id} className="border-b border-slate-100 dark:border-slate-800">
-                <td className="px-4 py-3 text-sm font-medium text-slate-900 dark:text-slate-100">{row.meetingTitle}</td>
-                <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{row.organizerName || '-'}</td>
-                <td className="px-4 py-3 text-sm text-slate-500">{formatDateTimeDisplay(row.meetingTime)}</td>
-                <td className="px-4 py-3 text-sm text-slate-500">{row.location || '-'}</td>
-                <td className="px-4 py-3 text-sm text-slate-500">
-                  <span className="inline-flex items-center gap-1">
-                    <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
-                    {decisionCounts[idx]} 项
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-sm">
-                  <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${status.cls}`}>
-                    {status.label}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-xs text-slate-400">{formatDateTimeDisplay(row.updateTime || row.createTime)}</td>
-                <td className="px-4 py-3">
-                  <TableRowActions
-                    actions={[
-                      { key: 'detail', label: '查看', semantic: 'view', onClick: () => void openDetail(row) },
-                      ...(canEdit && row.status === 'DRAFT'
-                        ? ([
-                            { key: 'edit', label: '编辑', semantic: 'edit' as const, onClick: () => openEdit(row) },
-                            { key: 'confirm', label: '确认纪要', semantic: 'confirm' as const, onClick: () => setPendingConfirmRow(row) },
-                          ])
-                        : []),
-                      ...(canEdit
-                        ? ([
-                            { key: 'dispatch', label: '派发决议', semantic: 'send' as const, onClick: () => setPendingDispatch(row) },
-                            { key: 'delete', label: '删除', semantic: 'delete' as const, onClick: () => setPendingDelete(row) },
-                          ])
-                        : []),
-                    ]}
-                  />
-                </td>
+      <div className="flex min-h-[40rem] flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[960px]">
+            <TableHeader className="sticky top-0 z-10">
+              <tr>
+                <TableHead className="px-4 py-3 text-left">会议标题</TableHead>
+                <TableHead className="px-4 py-3 text-left">组织者</TableHead>
+                <TableHead className="px-4 py-3 text-left">会议时间</TableHead>
+                <TableHead className="px-4 py-3 text-left">地点</TableHead>
+                <TableHead className="px-4 py-3 text-left">决议项</TableHead>
+                <TableHead className="px-4 py-3 text-left">状态</TableHead>
+                <TableHead className="px-4 py-3 text-left">更新时间</TableHead>
+                <TableActionHead className="w-40 px-4 py-3 text-right">操作</TableActionHead>
               </tr>
-            );
-          })
-        )}
-      </tbody>
+            </TableHeader>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+              {loading ? (
+                <TableStateRow colSpan={8} title="正在加载会议纪要..." loading />
+              ) : rows.length === 0 ? (
+                <TableStateRow colSpan={8} title="暂无会议纪要" />
+              ) : rows.map((row, idx) => (
+                <tr key={row.id} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/60">
+                  <td className="px-4 py-3 text-sm">
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{row.meetingTitle}</div>
+                    <div className="mt-1 text-xs text-slate-400">{formatDateTimeDisplay(row.createTime)}</div>
+                  </td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{row.organizerName || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{formatDateTimeDisplay(row.meetingTime)}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600 dark:text-slate-300">{row.location || '-'}</td>
+                  <td className="px-4 py-3 text-sm text-slate-500">
+                    <span className="inline-flex items-center gap-1">
+                      <ClipboardList className="h-3.5 w-3.5 text-slate-400" />
+                      {decisionCounts[idx]} 项
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">{getStatusBadge(row.status)}</td>
+                  <td className="px-4 py-3 text-xs text-slate-400">{formatDateTimeDisplay(row.updateTime || row.createTime)}</td>
+                  <td className="px-4 py-3 text-right">
+                    <TableRowActions
+                      align="end"
+                      actions={[
+                        { key: 'detail', label: '查看', semantic: 'view', onClick: () => void openDetail(row) },
+                        ...(canEdit && row.status === 'DRAFT'
+                          ? ([
+                              { key: 'edit', label: '编辑', semantic: 'edit' as const, onClick: () => openEdit(row) },
+                              { key: 'confirm', label: '确认纪要', semantic: 'confirm' as const, onClick: () => setPendingConfirmRow(row) },
+                            ])
+                          : []),
+                        ...(canEdit
+                          ? ([
+                              { key: 'dispatch', label: '派发决议', semantic: 'send' as const, onClick: () => setPendingDispatch(row) },
+                              { key: 'delete', label: '删除', semantic: 'delete' as const, onClick: () => setPendingDelete(row) },
+                            ])
+                          : []),
+                      ]}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
     </TableSurfaceCard>
   );
 
-  const pagination = (
-    <div className="flex justify-end">
-      <Pagination
-        page={query.pageNum}
-        pageSize={query.pageSize}
-        total={total}
-        onPageChange={(pageNum) => setQuery((q) => ({ ...q, pageNum }))}
-        onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, pageSize, pageNum: 1 }))}
-      />
-    </div>
-  );
+  const pagination = total > 0 ? (
+    <Pagination
+      total={total}
+      page={query.pageNum}
+      pageSize={query.pageSize}
+      showPageSizeSelector={false}
+      showJump={false}
+      onPageChange={(pageNum) => setQuery((q) => ({ ...q, pageNum }))}
+      onPageSizeChange={(pageSize) => setQuery((q) => ({ ...q, pageSize, pageNum: 1 }))}
+    />
+  ) : null;
 
   return (
-    <>
-      <TablePageLayout filters={filters} table={table} pagination={pagination} />
+    <div className="space-y-4">
+      <TablePageLayout className="gap-4" filters={filters} table={table} pagination={pagination} />
 
       <BaseDialog
         open={formOpen}
@@ -417,48 +477,63 @@ const MeetingMinutesPage: React.FC = () => {
         onClose={() => setFormOpen(false)}
         width="wide"
         footer={(
-          <div className="flex justify-end gap-2">
+          <>
             <Button variant="outline" onClick={() => setFormOpen(false)}>取消</Button>
             <Button onClick={() => void saveForm()}>保存</Button>
-          </div>
+          </>
         )}
       >
-        <div className="grid gap-4">
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
               <Label>会议标题</Label>
               <Input
+                className="h-11"
                 value={formData.meetingTitle}
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTitle: e.target.value }))}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>组织者</Label>
-              <Input
-                value={formData.organizerName || ''}
-                onChange={(e) => setFormData((f) => ({ ...f, organizerName: e.target.value }))}
+              <UserSelector
+                single
+                allowClear
+                value={formData.organizerId ? String(formData.organizerId) : null}
+                onChange={(id, picked) => setFormData((f) => ({
+                  ...f,
+                  organizerId: id ? Number(id) : undefined,
+                  organizerName: picked?.name || '',
+                }))}
+                placeholder="选择组织者"
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>会议时间</Label>
               <DatePicker
+                className="h-11"
                 type="datetime-local"
                 value={formData.meetingTime || ''}
                 onChange={(e) => setFormData((f) => ({ ...f, meetingTime: e.target.value }))}
               />
             </div>
-            <div className="space-y-1">
+            <div className="space-y-2">
               <Label>地点</Label>
-              <Input
-                value={formData.location || ''}
-                onChange={(e) => setFormData((f) => ({ ...f, location: e.target.value }))}
+              <MeetingRoomSelector
+                value={formData.roomId || null}
+                onChange={(id, room) => setFormData((f) => ({
+                  ...f,
+                  roomId: id || '',
+                  location: room ? `${room.name} ${room.location}` : '',
+                }))}
+                placeholder="选择会议室"
+                allowClear
               />
             </div>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>纪要内容</Label>
             <Textarea
-              rows={6}
+              className="min-h-[120px] resize-none"
               value={formData.minutesContent}
               onChange={(e) => setFormData((f) => ({ ...f, minutesContent: e.target.value }))}
             />
@@ -467,7 +542,7 @@ const MeetingMinutesPage: React.FC = () => {
             <div className="flex items-center justify-between">
               <Label>决议项</Label>
               <Button size="sm" variant="outline" onClick={() => setDecisions((prev) => [...prev, emptyDecision()])}>
-                <Plus className="mr-1 h-3.5 w-3.5" />新增决议
+                <Plus size={14} className="mr-1.5" />新增决议
               </Button>
             </div>
             {decisions.length === 0 ? (
@@ -484,10 +559,15 @@ const MeetingMinutesPage: React.FC = () => {
                         value={d.title || ''}
                         onChange={(e) => updateDecisionAt(idx, { title: e.target.value })}
                       />
-                      <Input
-                        placeholder="责任人"
-                        value={d.ownerName || ''}
-                        onChange={(e) => updateDecisionAt(idx, { ownerName: e.target.value })}
+                      <UserSelector
+                        single
+                        allowClear
+                        value={d.ownerId ? String(d.ownerId) : null}
+                        onChange={(id, picked) => updateDecisionAt(idx, {
+                          ownerId: id ? Number(id) : undefined,
+                          ownerName: picked?.name || '',
+                        })}
+                        placeholder="选择责任人"
                       />
                       <DatePicker
                         value={d.dueDate || ''}
@@ -517,32 +597,36 @@ const MeetingMinutesPage: React.FC = () => {
         title={detail?.meetingTitle || '会议纪要详情'}
         onClose={() => setDetailOpen(false)}
         width="wide"
+        headerAside={detail ? getStatusBadge(detail.status) : null}
+        footer={<Button variant="outline" onClick={() => setDetailOpen(false)}>关闭</Button>}
       >
         {detail ? (
           <div className="space-y-4">
-            <div className="grid gap-3 text-sm sm:grid-cols-2">
-              <div><span className="text-slate-500">组织者：</span>{detail.organizerName || '-'}</div>
-              <div><span className="text-slate-500">会议时间：</span>{formatDateTimeDisplay(detail.meetingTime)}</div>
-              <div><span className="text-slate-500">地点：</span>{detail.location || '-'}</div>
-              <div>
-                <span className="text-slate-500">状态：</span>
-                <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${STATUS_LABELS[detail.status || 'DRAFT'].cls}`}>
-                  {STATUS_LABELS[detail.status || 'DRAFT'].label}
-                </span>
-              </div>
+            <div className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+              {[
+                ['组织者', detail.organizerName],
+                ['会议时间', formatDateTimeDisplay(detail.meetingTime)],
+                ['地点', detail.location],
+                ['创建时间', formatDateTimeDisplay(detail.createTime)],
+              ].map(([label, value]) => (
+                <div key={label} className="border-b border-slate-100 pb-3 dark:border-slate-800">
+                  <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">{label}</div>
+                  <div className="mt-1.5 text-sm leading-6 text-slate-900 dark:text-slate-100">{value || '-'}</div>
+                </div>
+              ))}
             </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
-              <div className="mb-2 text-xs font-medium text-slate-500">纪要内容</div>
-              <div className="whitespace-pre-wrap text-sm text-slate-700 dark:text-slate-200">{detail.minutesContent}</div>
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="text-sm font-medium text-slate-900 dark:text-slate-100">纪要内容</div>
+              <div className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600 dark:text-slate-300">{detail.minutesContent}</div>
             </div>
-            <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-xs font-medium text-slate-500">
-                  <ClipboardList className="mr-1 inline h-3.5 w-3.5" />决议项 ({detailDecisions.length})
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <ClipboardList className="mr-1 inline h-4 w-4" />决议项 ({detailDecisions.length})
                 </div>
                 {canEdit ? (
                   <Button size="sm" variant="outline" onClick={() => setPendingDispatch(detail)}>
-                    <Send className="mr-1 h-3.5 w-3.5" />一键派发为工作任务
+                    <Send size={14} className="mr-1.5" />一键派发为工作任务
                   </Button>
                 ) : null}
               </div>
@@ -551,16 +635,16 @@ const MeetingMinutesPage: React.FC = () => {
               ) : (
                 <ul className="space-y-2 text-sm">
                   {detailDecisions.map((d, idx) => (
-                    <li key={idx} className="rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/40">
+                    <li key={idx} className="rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-medium text-slate-800 dark:text-slate-100">{d.title || '-'}</span>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">{d.title || '-'}</span>
                         {d.workTaskId ? (
                           <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs text-emerald-700">
                             已派发 #{d.workTaskId}
                           </span>
                         ) : null}
                       </div>
-                      <div className="mt-1 text-xs text-slate-500">
+                      <div className="mt-1 text-xs text-slate-400">
                         责任人 {d.ownerName || '-'} · 截止 {d.dueDate || '-'}
                       </div>
                       {d.remark ? <div className="mt-1 text-xs text-slate-400">{d.remark}</div> : null}
@@ -570,14 +654,14 @@ const MeetingMinutesPage: React.FC = () => {
               )}
             </div>
 
-            <div className="rounded-xl border border-slate-200 px-4 py-3 dark:border-slate-700">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="text-xs font-medium text-slate-500">
-                  <Users className="mr-1 inline h-3.5 w-3.5" />出席记录 ({attendance.length})
+            <div className="rounded-xl border border-slate-200 px-4 py-4 dark:border-slate-800">
+              <div className="mb-3 flex items-center justify-between">
+                <div className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                  <Users className="mr-1 inline h-4 w-4" />出席记录 ({attendance.length})
                 </div>
                 {canEdit ? (
                   <Button size="sm" variant="outline" onClick={openAttendanceCreate}>
-                    <UserCheck className="mr-1 h-3.5 w-3.5" />登记出席
+                    <UserCheck size={14} className="mr-1.5" />登记出席
                   </Button>
                 ) : null}
               </div>
@@ -592,10 +676,10 @@ const MeetingMinutesPage: React.FC = () => {
                   {attendance.map((a) => {
                     const label = ATTEND_LABELS[a.attendStatus] || ATTEND_LABELS.NOT_CHECKED;
                     return (
-                      <li key={a.id} className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 dark:bg-slate-800/40">
+                      <li key={a.id} className="flex items-center justify-between rounded-lg border border-slate-100 px-3 py-2 dark:border-slate-800">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-slate-700 dark:text-slate-100">{a.userName || '-'}</span>
-                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs ${label.cls}`}>
+                          <span className="font-medium text-slate-900 dark:text-slate-100">{a.userName || '-'}</span>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold ${label.cls}`}>
                             {label.label}
                           </span>
                           {a.checkInTime ? (
@@ -626,27 +710,28 @@ const MeetingMinutesPage: React.FC = () => {
         title={attendanceForm.id ? '编辑出席记录' : '登记出席'}
         onClose={() => setAttendanceFormOpen(false)}
         footer={(
-          <div className="flex justify-end gap-2">
+          <>
             <Button variant="outline" onClick={() => setAttendanceFormOpen(false)}>取消</Button>
             <Button onClick={() => void saveAttendance()}>保存</Button>
-          </div>
+          </>
         )}
       >
-        <div className="grid gap-3">
-          <div className="space-y-1">
+        <div className="space-y-4">
+          <div className="space-y-2">
             <Label>参会人</Label>
             <Input
+              className="h-11"
               value={attendanceForm.userName || ''}
               onChange={(e) => setAttendanceForm((f) => ({ ...f, userName: e.target.value }))}
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>出席状态</Label>
             <Select
               value={attendanceForm.attendStatus}
               onValueChange={(v) => setAttendanceForm((f) => ({ ...f, attendStatus: v as MeetingAttendStatus }))}
             >
-              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectTrigger className="h-11"><SelectValue /></SelectTrigger>
               <SelectContent>
                 {(Object.keys(ATTEND_LABELS) as MeetingAttendStatus[]).map((k) => (
                   <SelectItem key={k} value={k}>{ATTEND_LABELS[k].label}</SelectItem>
@@ -654,18 +739,19 @@ const MeetingMinutesPage: React.FC = () => {
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>签到时间</Label>
             <DatePicker
+              className="h-11"
               type="datetime-local"
               value={attendanceForm.checkInTime || ''}
               onChange={(e) => setAttendanceForm((f) => ({ ...f, checkInTime: e.target.value }))}
             />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-2">
             <Label>备注</Label>
             <Textarea
-              rows={2}
+              className="min-h-[80px] resize-none"
               value={attendanceForm.remark || ''}
               onChange={(e) => setAttendanceForm((f) => ({ ...f, remark: e.target.value }))}
             />
@@ -706,7 +792,7 @@ const MeetingMinutesPage: React.FC = () => {
         onCancel={() => setPendingAttendDelete(null)}
         onConfirm={handleAttendDelete}
       />
-    </>
+    </div>
   );
 };
 

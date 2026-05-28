@@ -17,7 +17,10 @@
       "Bash(mvn -version)",
       "Bash(mvn -q -T 1C -DskipTests -pl cloudflow-service-hr,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-workflow,cloudflow-auth -am compile)",
       "Bash(mvn -T 1C -DskipTests -pl cloudflow-service-hr,cloudflow-service-oa,cloudflow-service-crm,cloudflow-service-workflow,cloudflow-auth -am compile)",
-      "Bash(rtk wc *)"
+      "Bash(rtk wc *)",
+      "Bash(mvn -pl cloudflow-service-oa -am compile -q)",
+      "Bash(mvn -pl cloudflow-service-oa -am compile)",
+      "Bash(rtk tsc *)"
     ],
     "defaultMode": "auto"
   },

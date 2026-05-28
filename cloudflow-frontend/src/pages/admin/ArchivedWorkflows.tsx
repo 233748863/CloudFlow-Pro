@@ -152,10 +152,10 @@ export const ArchivedWorkflows: React.FC = () => {
         archivedBefore: query.end || undefined,
       });
 
-      const records = Array.isArray(response?.records) ? response.records : [];
+      const records = (Array.isArray(response?.records) ? response.records : []) as unknown as ArchivedWorkflow[];
       setWorkflows(records);
       setTotal(Number(response?.total || 0));
-      setSelectedIds((current) => current.filter((id) => records.some((item: ArchivedWorkflow) => item.workflowId === id)));
+      setSelectedIds((current) => current.filter((id) => records.some((item) => item.workflowId === id)));
     } catch (error) {
       console.error('加载归档流程失败:', error);
       toast.error(getErrorMessage(error, '加载归档流程失败'));

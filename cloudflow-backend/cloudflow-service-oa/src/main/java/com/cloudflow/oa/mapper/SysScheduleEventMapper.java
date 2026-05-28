@@ -15,9 +15,18 @@ public interface SysScheduleEventMapper extends BaseMapper<SysScheduleEvent> {
      * 查询指定会议室在时间段内的冲突事件
      * 冲突条件: (StartTime < end) AND (EndTime > start)
      */
-    List<SysScheduleEvent> checkConflict(@Param("roomId") Long roomId, 
-                                       @Param("startTime") LocalDateTime startTime, 
+    List<SysScheduleEvent> checkConflict(@Param("roomId") Long roomId,
+                                       @Param("startTime") LocalDateTime startTime,
                                        @Param("endTime") LocalDateTime endTime);
+
+    /**
+     * 查询指定会议室在时间段内的冲突事件（排除指定事件自身）
+     * 用于更新场景：排除自身后检查是否与其他预订冲突
+     */
+    List<SysScheduleEvent> checkConflictExcluding(@Param("roomId") Long roomId,
+                                                  @Param("startTime") LocalDateTime startTime,
+                                                  @Param("endTime") LocalDateTime endTime,
+                                                  @Param("excludeEventId") Long excludeEventId);
     
     /**
      * 查询我的日程 (包括我创建的 OR 我是参与人的)

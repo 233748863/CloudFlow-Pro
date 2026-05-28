@@ -69,6 +69,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private final IPaymentRequestService paymentRequestService;
     private final RemoteWorkflowService remoteWorkflowService;
     private final IOaBudgetService oaBudgetService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
 
     @Override
     public Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId) {
@@ -193,6 +194,9 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             }
         } catch (Exception e) {
             log.error("采购申请 {} 启动工作流失败，但提交状态已更新", purchase.getPurchaseNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.PURCHASE_REQUEST, purchase.getId(), purchase.getPurchaseNo(),
+                    purchase.getUserName(), purchase.getUserId(), e);
         }
 
         return updateById(purchase);

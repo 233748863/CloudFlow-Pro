@@ -28,7 +28,7 @@ export async function getProcessDefinitions(params?: {
   }
 
   logApiCall("GET", "/workflow/wf/definitions", query);
-  return request.get("/workflow/wf/definitions", { params: query }).then(extractList);
+  return request.get("/workflow/wf/definitions", { params: query }).then(extractList<ProcessDefinitionListItem>);
 }
 
 /**

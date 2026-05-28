@@ -20,9 +20,12 @@ export interface OaMeetingMinutes {
   meetingId?: number;
   meetingTitle: string;
   meetingTime?: string;
+  roomId?: string;
   location?: string;
   organizerId?: number;
   organizerName?: string;
+  /** 关联的日程事件ID（会议室预约） */
+  scheduleEventId?: number;
   minutesContent: string;
   /** JSON string of OaMeetingDecision[] */
   decisions?: string;

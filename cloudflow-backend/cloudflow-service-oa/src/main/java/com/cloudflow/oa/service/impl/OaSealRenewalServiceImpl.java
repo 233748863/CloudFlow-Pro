@@ -42,6 +42,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
 
     private final OaSealMapper sealMapper;
     private final RemoteWorkflowService remoteWorkflowService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
 
     @Override
     public PageResult<OaSealRenewal> queryPage(OaSealRenewal query, PageQuery pageQuery) {
@@ -192,6 +193,9 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
             }
         } catch (Exception e) {
             log.error("印章续期 {} 启动工作流失败，但提交状态已更新", renewal.getRenewalNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.SEAL_RENEWAL, renewal.getId(), renewal.getRenewalNo(),
+                    renewal.getApplicantName(), renewal.getApplicantId(), e);
         }
         renewal.setUpdateBy(UserContext.getUserName());
         renewal.setUpdateTime(LocalDateTime.now());

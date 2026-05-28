@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import java.util.List;
+import java.util.Map;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
 
@@ -13,39 +14,55 @@ public interface ISysScheduleService extends IService<SysScheduleEvent> {
      * 查询指定会议室某天的所有日程（所有人可见）
      */
     List<SysScheduleEvent> getRoomEvents(Long roomId, String date);
-    
+
     /**
-     * 创建日程 (包含冲突检测)
+     * 创建日程 (包含冲突检测 + 业务配置校验)
      */
     boolean createEvent(SysScheduleEvent event);
-    
+
+    /**
+     * 更新日程 (包含冲突检测 + 业务配置校验)
+     */
+    boolean updateEvent(SysScheduleEvent event);
+
     /**
      * 获取我的日程
      */
     List<SysScheduleEvent> getMyEvents(Long userId, String startDateStr, String endDateStr);
-    
+
     /**
      * 检查冲突
      */
     boolean checkConflict(Long roomId, LocalDateTime start, LocalDateTime end);
-    
+
+    /**
+     * 检查冲突（排除指定事件自身，用于更新场景）
+     */
+    boolean checkConflictExcluding(Long roomId, LocalDateTime start, LocalDateTime end, Long excludeEventId);
+
     /**
      * 获取会议室一周的预订（周视图日历用）
      */
     List<SysScheduleEvent> getRoomWeekEvents(Long roomId, String weekStart);
-    
+
     /**
      * 获取我的会议室预订记录
      */
     List<SysScheduleEvent> getMyBookings(Long userId, String status);
-    
+
     /**
      * 取消预订
      */
     boolean cancelBooking(Long eventId, Long userId);
-    
+
     /**
      * 会议室使用统计
      */
     List<DynamicMapVO> getRoomUsageStats(String startDate, String endDate);
+
+    /**
+     * 查询指定日期的空闲时段
+     * @return 空闲时段列表 [{start, end}, ...]
+     */
+    List<Map<String, String>> getFreeSlots(Long roomId, String date);
 }

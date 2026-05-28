@@ -56,6 +56,7 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
     private final OaSealHandoverLogMapper handoverLogMapper;
     private final OaBorrowReminderLogMapper reminderLogMapper;
     private final RemoteWorkflowService remoteWorkflowService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
     private final IOaTraceEventService oaTraceEventService;
     private final ISysNoticeService sysNoticeService;
 
@@ -228,6 +229,9 @@ public class OaSealApplicationServiceImpl extends ServiceImpl<OaSealApplicationM
             }
         } catch (Exception e) {
             log.error("用印申请 {} 启动工作流失败，但提交状态已更新", application.getApplicationNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.SEAL_APPLICATION, application.getId(), application.getApplicationNo(),
+                    application.getUserName(), application.getUserId(), e);
         }
         application.setUpdateBy(UserContext.getUserName());
         application.setUpdateTime(LocalDateTime.now());

@@ -41,7 +41,7 @@ export interface UserBriefItem {
 export const getUserListForAttendees = async (): Promise<UserBriefItem[]> => {
   const result = await contactApi.list({ pageNum: 1, pageSize: 500 });
   const records = Array.isArray(result?.records) ? result.records : [];
-  return records.map((item: Record<string, unknown>) => ({
+  return records.map((item: any) => ({
     userId: Number(item.user_id ?? item.userId ?? 0),
     userName: String(item.user_name ?? item.userName ?? ''),
     nickName: String(item.nick_name ?? item.nickName ?? item.user_name ?? item.userName ?? ''),
@@ -73,7 +73,7 @@ const buildDeptTree = (items: DeptTreeItem[], parentId = 0): DeptTreeItem[] => {
 export const getDeptTree = async (): Promise<DeptTreeItem[]> => {
   const result = await contactApi.deptTree();
   const records = Array.isArray(result) ? result : [];
-  const flatItems: DeptTreeItem[] = records.map((item: Record<string, unknown>) => ({
+  const flatItems: DeptTreeItem[] = records.map((item: any) => ({
     deptId: Number(item.dept_id ?? item.deptId ?? 0),
     parentId: Number(item.parent_id ?? item.parentId ?? 0),
     deptName: String(item.dept_name ?? item.deptName ?? ''),
@@ -106,6 +106,14 @@ export const getTodaySchedule = async (): Promise<SysScheduleEvent[]> => {
  */
 export const getRoomWeekEvents = async (roomId: string, weekStart: string): Promise<SysScheduleEvent[]> => {
   return request.get(`/oa/schedule/room/${roomId}/week`, { params: { weekStart } }) as unknown as Promise<SysScheduleEvent[]>;
+};
+
+/**
+ * 查询指定日期的空闲时段
+ * @returns 空闲时段列表 [{start, end}, ...]
+ */
+export const getRoomFreeSlots = async (roomId: string, date?: string): Promise<Array<{ start: string; end: string }>> => {
+  return request.get(`/oa/schedule/room/${roomId}/free-slots`, { params: date ? { date } : {} }) as unknown as Promise<Array<{ start: string; end: string }>>;
 };
 
 /**

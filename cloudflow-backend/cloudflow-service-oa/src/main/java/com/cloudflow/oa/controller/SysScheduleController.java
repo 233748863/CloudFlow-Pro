@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/schedule")
@@ -71,7 +72,7 @@ public class SysScheduleController {
         if (!currentUserId.equals(existing.getCreatorId())) {
             return R.fail("无权编辑此日程，只有创建者可以编辑");
         }
-        return R.ok(sysScheduleService.updateById(event));
+        return R.ok(sysScheduleService.updateEvent(event));
     }
 
     @SysLog("删除日程")
@@ -100,6 +101,20 @@ public class SysScheduleController {
     public R<List<SysScheduleEvent>> getRoomWeekEvents(@PathVariable("roomId") Long roomId,
                                                        @RequestParam("weekStart") String weekStart) {
         return R.ok(sysScheduleService.getRoomWeekEvents(roomId, weekStart));
+    }
+
+    /**
+     * 查询指定日期的空闲时段
+     * @param roomId 会议室ID
+     * @param date 日期（YYYY-MM-DD格式，默认今天）
+     * @return 空闲时段列表 [{start, end}, ...]
+     */
+    @GetMapping("/room/{roomId}/free-slots")
+    @SaCheckPermission("oa:schedule:list")
+    public R<List<Map<String, String>>> getFreeSlots(@PathVariable("roomId") Long roomId,
+                                                     @RequestParam(value = "date", required = false) String date) {
+        String queryDate = (date != null && !date.isEmpty()) ? date : LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+        return R.ok(sysScheduleService.getFreeSlots(roomId, queryDate));
     }
 
     /**

@@ -119,7 +119,7 @@ export const CopyListPage: React.FC = () => {
         let totalCount = 0;
 
         if (res && typeof res === 'object' && !Array.isArray(res)) {
-          list = res.records || res.rows || [];
+          list = (res.records || res.rows || []) as unknown as CopyRecord[];
           totalCount = res.total || 0;
         } else if (Array.isArray(res)) {
           list = res;

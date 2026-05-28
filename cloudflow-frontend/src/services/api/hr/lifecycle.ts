@@ -15,7 +15,7 @@ import type {
   TransferApplicationPayload,
 } from './types';
 
-const normalizeLifecycleApplication = <T extends HrRecord>(item: T): T => ({
+const normalizeLifecycleApplication = <T extends Record<string, any>>(item: T): T => ({
   ...item,
   expectedDate: item.expectedDate || item.onboardDate || item.effectiveDate,
   onboardDate: item.onboardDate || item.expectedDate || item.effectiveDate,

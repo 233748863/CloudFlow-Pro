@@ -51,6 +51,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
     private final OaBorrowReminderLogMapper reminderLogMapper;
     private final RemoteWorkflowService remoteWorkflowService;
     private final ISysNoticeService sysNoticeService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
 
     @Override
     public PageResult<OaLicenseBorrow> queryPage(OaLicenseBorrow query, PageQuery pageQuery) {
@@ -209,6 +210,9 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
             }
         } catch (Exception e) {
             log.error("证照借用 {} 启动工作流失败，但提交状态已更新", borrow.getBorrowNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.LICENSE_BORROW, borrow.getId(), borrow.getBorrowNo(),
+                    borrow.getUserName(), borrow.getUserId(), e);
         }
         borrow.setUpdateBy(UserContext.getUserName());
         borrow.setUpdateTime(LocalDateTime.now());

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { MeetingRoom, SysScheduleEvent } from '../types';
 import {
   getMeetingRooms, createMeetingRoom, updateMeetingRoom, deleteMeetingRoom,
-  createEvent, getRoomEvents, getRoomWeekEvents, getMyBookings, cancelBooking,
+  createEvent, getRoomEvents, getRoomWeekEvents, getRoomFreeSlots, getMyBookings, cancelBooking,
   getRoomUsageStats, getUserListForAttendees, getDeptTree,
   UserBriefItem, DeptTreeItem, RoomUsageStats
 } from '../services/api/schedule';
@@ -848,13 +848,16 @@ export const MeetingRoomPage = () => {
   const [loading, setLoading] = useState(false);
   const [deptTree, setDeptTree] = useState<DeptNodeWithUsers[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<MeetingRoom | null>(null);
-  const [bookingForm, setBookingForm] = useState({ 
-    title: '', 
-    date: getLocalDateString(), 
-    startTime: '09:00', 
-    endTime: '10:00', 
-    description: '' 
+  const [bookingForm, setBookingForm] = useState({
+    title: '',
+    date: getLocalDateString(),
+    startTime: '09:00',
+    endTime: '10:00',
+    description: ''
   });
+  const [bookingDayEvents, setBookingDayEvents] = useState<SysScheduleEvent[]>([]);
+  const [bookingFreeSlots, setBookingFreeSlots] = useState<Array<{ start: string; end: string }>>([]);
+  const [bookingTimelineLoading, setBookingTimelineLoading] = useState(false);
   const [selectedAttendees, setSelectedAttendees] = useState<string[]>([]);
   const [roomFormVisible, setRoomFormVisible] = useState(false);
   const [editingRoom, setEditingRoom] = useState<Partial<MeetingRoom> | null>(null);
@@ -940,23 +943,71 @@ export const MeetingRoomPage = () => {
     return () => clearInterval(timer);
   }, []);
 
+  // 当预订弹窗打开且选择了日期时，加载该日已预订时段
+  useEffect(() => {
+    if (!selectedRoom || !bookingForm.date) {
+      setBookingDayEvents([]);
+      setBookingFreeSlots([]);
+      return;
+    }
+    let cancelled = false;
+    setBookingTimelineLoading(true);
+    Promise.all([
+      getRoomEvents(selectedRoom.roomId, bookingForm.date),
+      getRoomFreeSlots(selectedRoom.roomId, bookingForm.date),
+    ])
+      .then(([events, freeSlots]) => {
+        if (!cancelled) {
+          setBookingDayEvents(Array.isArray(events) ? events : []);
+          setBookingFreeSlots(Array.isArray(freeSlots) ? freeSlots : []);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setBookingDayEvents([]);
+          setBookingFreeSlots([]);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBookingTimelineLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, [selectedRoom, bookingForm.date]);
+
   const handleBooking = async () => {
     if (!selectedRoom) return;
-    if (!bookingForm.title || !bookingForm.date || !bookingForm.startTime || !bookingForm.endTime) { 
-      toast.error("请完善预订信息"); 
-      return; 
+    if (!bookingForm.title || !bookingForm.date || !bookingForm.startTime || !bookingForm.endTime) {
+      toast.error("请完善预订信息");
+      return;
     }
     const startDate = new Date(`${bookingForm.date}T${bookingForm.startTime}:00`);
     const endDate = new Date(`${bookingForm.date}T${bookingForm.endTime}:00`);
-    if (startDate >= endDate) { 
-      toast.error("结束时间必须晚于开始时间"); 
-      return; 
+    if (startDate >= endDate) {
+      toast.error("结束时间必须晚于开始时间");
+      return;
     }
+
+    // 前端冲突校验：检查选择的时间段是否与已预订时段重叠
+    const startMs = startDate.getTime();
+    const endMs = endDate.getTime();
+    const conflict = bookingDayEvents.find((evt) => {
+      if (!evt.startTime || !evt.endTime) return false;
+      const evtStart = new Date(evt.startTime.replace(' ', 'T')).getTime();
+      const evtEnd = new Date(evt.endTime.replace(' ', 'T')).getTime();
+      return startMs < evtEnd && endMs > evtStart;
+    });
+    if (conflict) {
+      const conflictStart = conflict.startTime?.substring(11, 16) || '';
+      const conflictEnd = conflict.endTime?.substring(11, 16) || '';
+      toast.error(`时间段冲突：${conflictStart}-${conflictEnd} 已被"${conflict.title}"预订，请选择其他时段`);
+      return;
+    }
+
     const startDateTime = toBackendDateString(startDate);
     const endDateTime = toBackendDateString(endDate);
-    if (!startDateTime || !endDateTime) { 
-      toast.error("日期格式错误"); 
-      return; 
+    if (!startDateTime || !endDateTime) {
+      toast.error("日期格式错误");
+      return;
     }
     try {
       await createEvent({
@@ -975,8 +1026,13 @@ export const MeetingRoomPage = () => {
       setSelectedAttendees([]);
       setRefreshKey(prev => prev + 1);
       setWeekCalendarRoom(null);
-    } catch (e: any) { 
-      toast.error("预订失败: " + (e.response?.data?.msg || e.message || "时间冲突")); 
+    } catch (e: any) {
+      const msg = e.response?.data?.msg || e.message || "时间冲突";
+      if (msg.includes("已被预订")) {
+        toast.error(msg + "，请查看当日预约情况选择其他时段");
+      } else {
+        toast.error("预订失败: " + msg);
+      }
     }
   };
 
@@ -1575,6 +1631,47 @@ export const MeetingRoomPage = () => {
                     onChange={e => setBookingForm({ ...bookingForm, endTime: e.target.value })}
                   />
                 </div>
+              </div>
+              {/* 当日时段展示 */}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-900/50">
+                <div className="mb-2 flex items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+                  <Clock size={13} />
+                  <span>当日预约情况</span>
+                  {bookingTimelineLoading && <LoaderCircle size={12} className="animate-spin" />}
+                </div>
+                {bookingDayEvents.length > 0 ? (
+                  <div className="space-y-1.5">
+                    {bookingDayEvents.map((evt) => {
+                      const startStr = evt.startTime ? evt.startTime.substring(11, 16) : '';
+                      const endStr = evt.endTime ? evt.endTime.substring(11, 16) : '';
+                      return (
+                        <div key={evt.eventId} className="flex items-center gap-2 text-xs">
+                          <span className="inline-block w-1.5 rounded-full bg-rose-400 h-3 shrink-0" />
+                          <span className="text-slate-600 dark:text-slate-300">{startStr} - {endStr}</span>
+                          <span className="text-slate-400 truncate">{evt.title}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-400">{bookingTimelineLoading ? '加载中...' : '当日暂无预约，全部空闲'}</div>
+                )}
+                {bookingFreeSlots.length > 0 && (
+                  <div className="mt-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+                    <div className="text-[11px] text-slate-400 mb-1">空闲时段</div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {bookingFreeSlots.map((slot, i) => {
+                        const slotStart = slot.start.substring(11, 16);
+                        const slotEnd = slot.end.substring(11, 16);
+                        return (
+                          <span key={i} className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-300">
+                            {slotStart}-{slotEnd}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">会议描述</label>

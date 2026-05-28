@@ -58,6 +58,7 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
     private final OaBudgetLedgerMapper budgetLedgerMapper;
     private final RemoteWorkflowService remoteWorkflowService;
     private final RemoteBusinessRuleService remoteBusinessRuleService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
 
     @Override
     public PageResult<OaBudgetPlan> queryBudgetPage(OaBudgetPlan query, PageQuery pageQuery) {
@@ -640,7 +641,11 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                     budget.setInstanceId(String.valueOf(instanceId));
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.error("预算 {} 启动工作流失败", businessNo, e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    businessType, businessId, businessNo,
+                    resolveUserName(), null, e);
         }
     }
 
@@ -675,7 +680,11 @@ public class OaBudgetServiceImpl extends ServiceImpl<OaBudgetPlanMapper, OaBudge
                     adjustment.setInstanceId(String.valueOf(instanceId));
                 }
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.error("预算调整 {} 启动工作流失败", adjustment.getAdjustmentNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.BUDGET_ADJUSTMENT, adjustment.getAdjustmentId(), adjustment.getAdjustmentNo(),
+                    resolveUserName(), null, e);
         }
     }
 

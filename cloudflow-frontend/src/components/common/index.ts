@@ -71,6 +71,7 @@ export * from './theme-mode-switcher';
 export { ToastViewport } from './Toast';
 export * from './UserSelector';
 export * from './EmployeeSelector';
+export * from './MeetingRoomSelector';
 export * from './DeptSelector';
 export * from './PostSelector';
 export * from './PositionSelector';

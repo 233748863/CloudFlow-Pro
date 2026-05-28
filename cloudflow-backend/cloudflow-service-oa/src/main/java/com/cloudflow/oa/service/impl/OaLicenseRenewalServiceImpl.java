@@ -42,6 +42,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
 
     private final OaLicenseMapper licenseMapper;
     private final RemoteWorkflowService remoteWorkflowService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
 
     @Override
     public PageResult<OaLicenseRenewal> queryPage(OaLicenseRenewal query, PageQuery pageQuery) {
@@ -192,6 +193,9 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
             }
         } catch (Exception e) {
             log.error("证照续期 {} 启动工作流失败，但提交状态已更新", renewal.getRenewalNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.LICENSE_RENEWAL, renewal.getId(), renewal.getRenewalNo(),
+                    renewal.getApplicantName(), renewal.getApplicantId(), e);
         }
         renewal.setUpdateBy(UserContext.getUserName());
         renewal.setUpdateTime(LocalDateTime.now());

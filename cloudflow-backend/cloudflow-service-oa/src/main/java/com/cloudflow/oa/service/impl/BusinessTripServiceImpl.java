@@ -36,6 +36,9 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
     @Autowired
     private RemoteWorkflowService remoteWorkflowService;
 
+    @Autowired
+    private OaWorkflowFailureHelper workflowFailureHelper;
+
     @Override
     public IPage<BusinessTrip> queryPage(BusinessTrip query, int pageNum, int pageSize) {
         return baseMapper.selectPageByDataScope(new Page<>(pageNum, pageSize), query, DataScopeUtils.listScope());
@@ -127,6 +130,9 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
             }
         } catch (Exception e) {
             log.error("出差申请 {} 启动工作流失败", trip.getTripNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.BUSINESS_TRIP, trip.getId(), trip.getTripNo(),
+                    trip.getUserName(), trip.getUserId(), e);
         }
 
         return updateById(trip);

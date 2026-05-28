@@ -41,6 +41,7 @@ import com.cloudflow.oa.service.IOaProjectService;
 import com.cloudflow.oa.service.IWorkTaskService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -56,11 +57,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject> implements IOaProjectService {
 
     private final RemoteWorkflowService remoteWorkflowService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
     private final OaProjectMemberMapper projectMemberMapper;
     private final OaProjectMilestoneMapper projectMilestoneMapper;
     private final OaProjectRiskMapper projectRiskMapper;
@@ -179,7 +182,11 @@ public class OaProjectServiceImpl extends ServiceImpl<OaProjectMapper, OaProject
             if (result != null && result.isSuccess() && result.getData() != null) {
                 project.setInstanceId(extractInstanceId(result.getData()));
             }
-        } catch (Exception ignored) {
+        } catch (Exception e) {
+            log.error("项目 {} 启动工作流失败: {}", project.getProjectNo(), e.getMessage(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.PROJECT, projectId, project.getProjectNo(),
+                    project.getOwnerName(), project.getOwnerId(), e);
         }
         boolean updated = updateById(project);
         if (updated) {

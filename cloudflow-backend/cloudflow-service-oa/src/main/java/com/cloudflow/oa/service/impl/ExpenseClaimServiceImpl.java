@@ -73,6 +73,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
     @Autowired
     private IOaExpenseStandardService oaExpenseStandardService;
 
+    @Autowired
+    private OaWorkflowFailureHelper workflowFailureHelper;
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     @Override
@@ -239,8 +242,11 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         } catch (Exception e) {
             // 工作流启动失败不影响提交，状态已更新为PENDING
             log.error("报销申请 {} 启动工作流失败，但提交状态已更新", claim.getClaimNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.EXPENSE_CLAIM, claim.getId(), claim.getClaimNo(),
+                    claim.getUserName(), claim.getUserId(), e);
         }
-        
+
         return updateById(claim);
     }
 

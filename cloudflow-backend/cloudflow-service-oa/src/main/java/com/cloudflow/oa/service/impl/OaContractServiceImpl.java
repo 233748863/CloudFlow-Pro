@@ -51,6 +51,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     private final OaSealApplicationMapper sealApplicationMapper;
     private final RemoteWorkflowService remoteWorkflowService;
+    private final OaWorkflowFailureHelper workflowFailureHelper;
     private final IOaTraceEventService oaTraceEventService;
     private final IOaRiskAlertService oaRiskAlertService;
     private final IOaContractAmountThresholdService oaContractAmountThresholdService;
@@ -188,6 +189,9 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
             }
         } catch (Exception e) {
             log.error("合同 {} 启动工作流失败，但提交状态已更新", contract.getContractNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.CONTRACT, contract.getContractId(), contract.getContractNo(),
+                    contract.getOwnerName(), contract.getOwnerId(), e);
         }
 
         boolean updated = updateById(contract);

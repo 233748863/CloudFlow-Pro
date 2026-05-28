@@ -49,6 +49,9 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     @Autowired
     private IOaBudgetService oaBudgetService;
 
+    @Autowired
+    private OaWorkflowFailureHelper workflowFailureHelper;
+
     @Override
     public Page<BizPaymentRequest> queryPage(Integer pageNum, Integer pageSize, String status, String paymentType, Long userId) {
         return (Page<BizPaymentRequest>) baseMapper.selectPageByDataScope(
@@ -153,8 +156,11 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
         } catch (Exception e) {
             // 工作流启动失败不影响提交，状态已更新为PENDING
             log.error("付款申请 {} 启动工作流失败，但提交状态已更新", payment.getPaymentNo(), e);
+            workflowFailureHelper.handleWorkflowStartFailure(
+                    OaBusinessTypes.PAYMENT_REQUEST, payment.getId(), payment.getPaymentNo(),
+                    payment.getUserName(), payment.getUserId(), e);
         }
-        
+
         return updateById(payment);
     }
 

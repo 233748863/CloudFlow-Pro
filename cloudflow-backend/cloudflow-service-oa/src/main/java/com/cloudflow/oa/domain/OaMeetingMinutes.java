@@ -27,9 +27,12 @@ public class OaMeetingMinutes implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime meetingTime;
 
+    private String roomId;
     private String location;
     private Long organizerId;
     private String organizerName;
+    /** 关联的日程事件ID（会议室预约） */
+    private Long scheduleEventId;
     /** 富文本 HTML 正文 */
     private String minutesContent;
     /** 决议项 JSON 字符串: [{title,owner,deadline,workTaskId}] */
