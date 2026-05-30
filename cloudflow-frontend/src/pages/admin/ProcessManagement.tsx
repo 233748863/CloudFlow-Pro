@@ -98,22 +98,10 @@ const DialogMetaRow: React.FC<{
   </div>
 );
 
-const getWorkflowStatusMeta = (status?: WorkflowDefinition['status']) => {
-  switch (status) {
-    case 'PUBLISHED':
-      return {
-        label: '已发布',
-      };
-    case 'ARCHIVED':
-      return {
-        label: '已归档',
-      };
-    default:
-      return {
-        label: '草稿',
-      };
-  }
-};
+import { getWorkflowDefinitionStatusMeta } from '@/utils/enumLabels';
+
+const getWorkflowStatusMeta = (status?: WorkflowDefinition['status']) =>
+  getWorkflowDefinitionStatusMeta(status);
 
 const formatWorkflowTags = (tags: string[]) => {
   if (tags.length === 0) {

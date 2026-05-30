@@ -48,6 +48,30 @@ export const getConfigInt = async (configKey: string, defaultValue: number): Pro
   return isNaN(num) ? defaultValue : num;
 };
 
+/**
+ * 同步读 cache 中已加载的字符串配置（仅命中已预热的 key）。
+ * 未命中时返回 defaultValue，不触发请求；适合 useState 初值场景。
+ */
+export const getConfigValueSync = (configKey: string, defaultValue: string = ''): string => {
+  return configCache.get(configKey) ?? defaultValue;
+};
+
+/** 同步读 cache 中已加载的整数配置（未命中返回 defaultValue），适合 useState 初值。 */
+export const getConfigIntSync = (configKey: string, defaultValue: number): number => {
+  const cached = configCache.get(configKey);
+  if (cached == null) return defaultValue;
+  const num = parseInt(cached, 10);
+  return isNaN(num) ? defaultValue : num;
+};
+
+/**
+ * 启动期一次性预热常用配置 key，预热完成后页面通过 getConfigIntSync 即可拿到真实值。
+ * 入参顺序无关；失败的 key 在下次访问时自动重试。
+ */
+export const preloadConfigs = async (keys: string[]): Promise<void> => {
+  await Promise.all(keys.map(k => getConfig(k)));
+};
+
 /** 清空配置缓存（配置修改后调用） */
 export const clearConfigCache = () => {
   configCache.clear();
