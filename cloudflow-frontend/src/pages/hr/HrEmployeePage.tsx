@@ -30,6 +30,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/common';
+import { DictBadge } from '@/components/common/DictBadge';
+import { DictSelect } from '@/components/common/DictSelect';
+import { useDict } from '@/hooks/useDict';
 import { cn } from '@/utils/cn';
 import {
   HrEmployee,
@@ -57,35 +60,9 @@ const defaultForm: HrEmployeePayload = {
   postId: undefined,
   positionId: undefined,
   employeeType: 'FULL_TIME',
-  employeeStatus: 'PENDING',
+  employeeStatus: 'PROBATION',
   hireDate: '',
 };
-
-const statusLabel: Record<string, string> = {
-  PENDING: '待入职',
-  PROBATION: '试用期',
-  REGULAR: '正式员工',
-  RESIGNED: '已离职',
-};
-
-const typeLabel: Record<string, string> = {
-  FULL_TIME: '全职',
-  PART_TIME: '兼职',
-  INTERN: '实习生',
-  CONTRACTOR: '外包',
-};
-
-// 状态/类型样式委托 enumLabels.ts 的 EMPLOYEE_STATUS_META / EMPLOYEE_TYPE_META；未命中保留页面历史 fallback
-import { EMPLOYEE_STATUS_META, EMPLOYEE_TYPE_META } from '@/utils/enumLabels';
-
-const STATUS_FALLBACK_TONE = 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
-const TYPE_FALLBACK_TONE = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-
-const statusTone = (status?: string | null) =>
-  (status && EMPLOYEE_STATUS_META[status]?.fullClass) || STATUS_FALLBACK_TONE;
-
-const typeTone = (type?: string | null) =>
-  (type && EMPLOYEE_TYPE_META[type]?.fullClass) || TYPE_FALLBACK_TONE;
 
 const InlineState = ({
   title,
@@ -146,6 +123,8 @@ export const HrEmployeePage: React.FC = () => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState<HrEmployeePayload>(defaultForm);
+
+  const employeeStatusDict = useDict('employee_status');
 
   const deferredKeyword = useDeferredValue(keyword.trim().toLowerCase());
 
@@ -361,10 +340,11 @@ export const HrEmployeePage: React.FC = () => {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">全部状态</SelectItem>
-                      <SelectItem value="PENDING">待入职</SelectItem>
-                      <SelectItem value="PROBATION">试用期</SelectItem>
-                      <SelectItem value="REGULAR">正式员工</SelectItem>
-                      <SelectItem value="RESIGNED">已离职</SelectItem>
+                      {employeeStatusDict.data?.map((item) => (
+                        <SelectItem key={item.value} value={item.value} label={item.label}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -469,22 +449,16 @@ export const HrEmployeePage: React.FC = () => {
                               </TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1.5">
-                                  <span
-                                    className={[
-                                      'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                                      typeTone(item.employeeType),
-                                    ].join(' ')}
-                                  >
-                                    {typeLabel[item.employeeType] || item.employeeType}
-                                  </span>
-                                  <span
-                                    className={[
-                                      'inline-flex rounded-full border px-2 py-0.5 text-xs font-medium',
-                                      statusTone(item.employeeStatus),
-                                    ].join(' ')}
-                                  >
-                                    {statusLabel[item.employeeStatus] || item.employeeStatus}
-                                  </span>
+                                  <DictBadge
+                                    dictType="employee_type"
+                                    value={item.employeeType}
+                                    className="rounded-full"
+                                  />
+                                  <DictBadge
+                                    dictType="employee_status"
+                                    value={item.employeeStatus}
+                                    className="rounded-full"
+                                  />
                                 </div>
                               </TableCell>
                               <TableCell className="whitespace-nowrap">{toDateInputValue(item.hireDate) || '-'}</TableCell>
@@ -594,41 +568,25 @@ export const HrEmployeePage: React.FC = () => {
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工状态</Label>
-                <Select
+                <DictSelect
+                  dictType="employee_status"
                   value={form.employeeStatus}
-                  onValueChange={(value) =>
+                  onChange={(value) =>
                     setForm((prev) => ({ ...prev, employeeStatus: value }))
                   }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PENDING">待入职</SelectItem>
-                    <SelectItem value="PROBATION">试用期</SelectItem>
-                    <SelectItem value="REGULAR">正式员工</SelectItem>
-                    <SelectItem value="RESIGNED">已离职</SelectItem>
-                  </SelectContent>
-                </Select>
+                  className="h-11"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">员工类型</Label>
-                <Select
+                <DictSelect
+                  dictType="employee_type"
                   value={form.employeeType}
-                  onValueChange={(value) =>
+                  onChange={(value) =>
                     setForm((prev) => ({ ...prev, employeeType: value }))
                   }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="FULL_TIME">全职</SelectItem>
-                    <SelectItem value="PART_TIME">兼职</SelectItem>
-                    <SelectItem value="INTERN">实习生</SelectItem>
-                    <SelectItem value="CONTRACTOR">外包</SelectItem>
-                  </SelectContent>
-                </Select>
+                  className="h-11"
+                />
               </div>
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-slate-700 dark:text-slate-300">出生日期</Label>

@@ -71,9 +71,10 @@ const statusPill = (
   );
 };
 
-// 状态色委托 enumLabels.ts 的通用 EMPLOYEE_STATUS_META，未命中保持页面历史 teal fallback
-// 该页面 statusPill 仅支持 teal/emerald/slate/amber 4 色，META 返回的其他色降级到 teal
-import { EMPLOYEE_STATUS_META, REQUEST_STATUS_META } from '@/utils/enumLabels';
+// 状态色委托后端字典 employee_status，未命中保持页面历史 teal fallback
+// 该页面 statusPill 仅支持 teal/emerald/slate/amber 4 色，字典返回的其他色降级到 teal
+import { REQUEST_STATUS_META } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
 
 type LocalPillTone = 'teal' | 'emerald' | 'slate' | 'amber';
 
@@ -83,9 +84,6 @@ const narrowPillTone = (color?: string | null): LocalPillTone => {
   }
   return 'teal';
 };
-
-const employeeStatusTone = (status?: string): LocalPillTone =>
-  narrowPillTone(status ? EMPLOYEE_STATUS_META[status]?.colorName : undefined);
 
 const requestStatusTone = (status?: string): LocalPillTone =>
   narrowPillTone(status ? REQUEST_STATUS_META[status]?.colorName : undefined);
@@ -277,6 +275,10 @@ export const HrDashboardPage: React.FC = () => {
   const [onboardingApplications, setOnboardingApplications] = useState<OnboardingApplication[]>([]);
   const [keyword, setKeyword] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const employeeStatusDict = useDict('employee_status');
+  const employeeStatusTone = (status?: string): LocalPillTone =>
+    narrowPillTone(status ? employeeStatusDict.getItem(status)?.colorName : undefined);
 
   const deferredKeyword = useDeferredValue(keyword.trim().toLowerCase());
 

@@ -32,6 +32,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/common';
+import { useDict } from '@/hooks/useDict';
 import { FileUpload } from '@/components/FileUpload';
 import {
   EmployeeContract,
@@ -98,20 +99,6 @@ interface ContactFormState {
   address: string;
   priority: string;
 }
-
-const employeeStatusLabel: Record<string, string> = {
-  PENDING: '待入职',
-  PROBATION: '试用期',
-  REGULAR: '正式员工',
-  RESIGNED: '已离职',
-};
-
-const employeeTypeLabel: Record<string, string> = {
-  FULL_TIME: '全职',
-  PART_TIME: '兼职',
-  INTERN: '实习生',
-  CONTRACTOR: '外包',
-};
 
 const contractTypeLabel: Record<string, string> = {
   LABOR: '劳动合同',
@@ -422,6 +409,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   const [documentForm, setDocumentForm] = useState<DocumentFormState>(defaultDocumentForm);
   const [contactForm, setContactForm] = useState<ContactFormState>(defaultContactForm);
   const [saveKind, setSaveKind] = useState<SaveKind>(null);
+
+  const employeeStatusDict = useDict('employee_status');
+  const employeeTypeDict = useDict('employee_type');
   const [pendingDelete, setPendingDelete] = useState<DeleteTarget | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
@@ -851,11 +841,11 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
     { label: '职位', value: textValue(displayEmployee?.positionName) },
     {
       label: '状态',
-      value: employeeStatusLabel[displayEmployee?.employeeStatus || ''] || textValue(displayEmployee?.employeeStatus),
+      value: employeeStatusDict.getLabel(displayEmployee?.employeeStatus || '') || textValue(displayEmployee?.employeeStatus),
     },
     {
       label: '类型',
-      value: employeeTypeLabel[displayEmployee?.employeeType || ''] || textValue(displayEmployee?.employeeType),
+      value: employeeTypeDict.getLabel(displayEmployee?.employeeType || '') || textValue(displayEmployee?.employeeType),
     },
     { label: '电话', value: textValue(displayEmployee?.phone) },
     { label: '邮箱', value: textValue(displayEmployee?.email) },

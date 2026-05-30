@@ -98,7 +98,9 @@ WHERE dict_type IN (
   'hr_leave_type',
   'hr_overtime_type',
   'oa_trip_status',
-  'oa_expense_type'
+  'oa_expense_type',
+  'employee_status',
+  'employee_type'
 );
 
 DELETE FROM cloud_flow_db.sys_dict_type
@@ -111,7 +113,9 @@ WHERE dict_type IN (
   'hr_leave_type',
   'hr_overtime_type',
   'oa_trip_status',
-  'oa_expense_type'
+  'oa_expense_type',
+  'employee_status',
+  'employee_type'
 );
 
 DELETE FROM cloud_flow_db.sys_config
@@ -2396,7 +2400,9 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('请假类型', 'hr_leave_type', '请假类型列表'),
 ('加班类型', 'hr_overtime_type', '加班类型列表'),
 ('出差状态', 'oa_trip_status', '出差状态列表'),
-('费用类型', 'oa_expense_type', '费用报销类型');
+('费用类型', 'oa_expense_type', '费用报销类型'),
+('员工状态', 'employee_status', 'HR员工状态枚举'),
+('员工类型', 'employee_type', 'HR员工类型枚举');
 
 -- 11. 初始化字典数据
 -- 用户性别
@@ -2457,6 +2463,24 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (4, '住宿费', 'ACCOMMODATION', 'oa_expense_type', 'default'),
 (5, '办公用品', 'OFFICE', 'oa_expense_type', 'default'),
 (6, '其他', 'OTHER', 'oa_expense_type', 'default');
+
+-- HR 员工状态（list_class 与前端 colorName 对应：success→emerald, warning→amber, info→sky/violet, danger→rose, default→slate）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '在职', 'ACTIVE',      'employee_status', 'success', '员工在职状态'),
+(2, '在职', 'REGULAR',     'employee_status', 'success', '员工在职状态（兼容旧状态码）'),
+(3, '试用', 'PROBATION',   'employee_status', 'warning', '员工试用期状态'),
+(4, '休假', 'ON_LEAVE',    'employee_status', 'warning', '员工休假状态'),
+(5, '停职', 'SUSPENDED',   'employee_status', 'warning', '员工停职状态'),
+(6, '调岗', 'TRANSFERRED', 'employee_status', 'info',    '员工调岗状态'),
+(7, '离职', 'RESIGNED',    'employee_status', 'default', '员工离职状态'),
+(8, '解雇', 'TERMINATED',  'employee_status', 'danger',  '员工解雇状态');
+
+-- HR 员工类型（FULL_TIME/PART_TIME/INTERN/CONTRACTOR）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '全职', 'FULL_TIME',  'employee_type', 'success', '全职员工'),
+(2, '兼职', 'PART_TIME',  'employee_type', 'info',    '兼职员工'),
+(3, '实习', 'INTERN',     'employee_type', 'info',    '实习生'),
+(4, '外包', 'CONTRACTOR', 'employee_type', 'warning', '外包人员');
 
 -- 12. 初始化系统参数数据
 -- config_scope: 0=全局（所有租户共享） 1=租户（每个租户可独立配置）
