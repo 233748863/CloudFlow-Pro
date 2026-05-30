@@ -1,4 +1,6 @@
 import React from 'react';
+import { Copy } from 'lucide-react';
+import { toast } from 'sonner';
 import { ResultPage } from '../ResultPage';
 
 /** 登录已过期（默认按钮：重新登录） */
@@ -53,13 +55,26 @@ export const Result500: React.FC<Result500Props> = ({
         </pre>
       </details>
     ) : undefined;
+  const copyButton = error ? (
+    <button
+      type="button"
+      onClick={() => {
+        const text = [error.message, error.stack].filter(Boolean).join('\n');
+        void navigator.clipboard.writeText(text).then(() => toast.success('已复制'));
+      }}
+      className="mt-3 inline-flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+    >
+      <Copy size={12} />
+      复制报错信息
+    </button>
+  ) : undefined;
 
   return (
     <ResultPage
       status="500"
       title={title}
       subTitle={effectiveSubTitle}
-      details={details}
+      details={details || copyButton ? <>{details}{copyButton}</> : undefined}
       extra={extra}
     />
   );
