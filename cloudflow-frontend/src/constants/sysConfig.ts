@@ -211,6 +211,70 @@ export const SYS_OSS_IS_HTTPS = 'sys.oss.isHttps';
 /** 默认访问策略 */
 export const SYS_OSS_ACCESS_POLICY = 'sys.oss.accessPolicy';
 
+// ================= 硬编码收口新增（GOV-CONFIG-CLEANUP，对应 sys_config 100-119） =================
+
+// Workflow
+/** 工作流通知 WS 鉴权超时（毫秒） */
+export const SYS_WORKFLOW_NOTIFICATION_AUTH_TIMEOUT_MS = 'sys.workflow.notification.authTimeoutMs';
+/** 工作流定义缓存 TTL（秒） */
+export const SYS_WORKFLOW_CACHE_DEFINITION_TTL_SECONDS = 'sys.workflow.cache.definitionTtlSeconds';
+/** 工作流表单缓存 TTL（秒） */
+export const SYS_WORKFLOW_CACHE_FORM_TTL_SECONDS = 'sys.workflow.cache.formTtlSeconds';
+/** 工作流用户缓存 TTL（秒） */
+export const SYS_WORKFLOW_CACHE_USER_TTL_SECONDS = 'sys.workflow.cache.userTtlSeconds';
+/** 工作流导入文件大小上限（MB） */
+export const SYS_WORKFLOW_IMPORT_EXPORT_MAX_FILE_SIZE_MB = 'sys.workflow.importExport.maxFileSizeMb';
+/** 工作流批量导入文件数量上限 */
+export const SYS_WORKFLOW_IMPORT_EXPORT_MAX_BATCH_FILE_COUNT = 'sys.workflow.importExport.maxBatchFileCount';
+/** 工作流异常运行时长阈值（小时） */
+export const SYS_WORKFLOW_ANOMALY_RUNNING_HOURS_THRESHOLD = 'sys.workflow.anomaly.runningHoursThreshold';
+/** 工作流审计日志保留天数 */
+export const SYS_WORKFLOW_AUDIT_DAYS_TO_KEEP = 'sys.workflow.audit.daysToKeep';
+/** 工作流审计 Redis 最近操作记录上限 */
+export const SYS_WORKFLOW_AUDIT_MAX_PAGE_COUNT = 'sys.workflow.audit.maxPageCount';
+/** 工作流防重复提交间隔下限（毫秒） */
+export const SYS_COMMON_REPEAT_SUBMIT_INTERVAL_MILLIS = 'sys.common.repeatSubmit.intervalMillis';
+/** 工作流健康度稳定档成功率阈值 */
+export const SYS_WORKFLOW_HEALTH_SUCCESS_RATE = 'sys.workflow.health.successRate';
+/** 工作流健康度稳定档超时率阈值 */
+export const SYS_WORKFLOW_HEALTH_TIMEOUT_RATE = 'sys.workflow.health.timeoutRate';
+/** 工作流健康度稳定档异常率阈值 */
+export const SYS_WORKFLOW_HEALTH_EXCEPTION_RATE = 'sys.workflow.health.exceptionRate';
+/** 工作流健康度可控档成功率下限 */
+export const SYS_WORKFLOW_HEALTH_CONTROLLABLE_SUCCESS_RATE = 'sys.workflow.health.controllable.successRate';
+/** 工作流健康度可控档超时率上限 */
+export const SYS_WORKFLOW_HEALTH_CONTROLLABLE_TIMEOUT_RATE = 'sys.workflow.health.controllable.timeoutRate';
+/** 工作流健康度可控档异常率上限 */
+export const SYS_WORKFLOW_HEALTH_CONTROLLABLE_EXCEPTION_RATE = 'sys.workflow.health.controllable.exceptionRate';
+
+// OA
+/** OA 合同高额阈值 */
+export const SYS_OA_CONTRACT_HIGH_AMOUNT_THRESHOLD = 'sys.oa.contract.highAmountThreshold';
+/** OA 审计事件导出上限 */
+export const SYS_OA_AUDIT_EXPORT_LIMIT = 'sys.oa.audit.exportLimit';
+/** OA 通讯录单页最大条数 */
+export const SYS_OA_CONTACT_MAX_PAGE_SIZE = 'sys.oa.contact.maxPageSize';
+
+// HR
+/** HR 月度个税起征点 */
+export const SYS_HR_COMPENSATION_MONTHLY_TAX_THRESHOLD = 'sys.hr.compensation.monthlyTaxThreshold';
+/** HR 个人合计社保费率 */
+export const SYS_HR_COMPENSATION_SOCIAL_PERSONAL_RATE = 'sys.hr.compensation.socialPersonalRate';
+/** HR 模块通用查询单页最大条数 */
+export const SYS_HR_MAX_PAGE_SIZE = 'sys.hr.maxPageSize';
+/** HR 工作地点合同到期预警提前天数（MEDIUM 档） */
+export const SYS_HR_WORKPLACE_REMINDER_DAYS = 'sys.hr.workplace.reminderDays';
+/** HR 工作地点合同到期紧急预警提前天数（HIGH 档） */
+export const SYS_HR_WORKPLACE_REMINDER_DAYS_HIGH = 'sys.hr.workplace.reminderDaysHigh';
+
+// 认证
+/** 默认头像 API */
+export const SYS_AUTH_AVATAR_API_URL = 'sys.auth.avatar.apiUrl';
+
+// 通用
+/** 敏感数据递归深度 */
+export const SYS_SENSITIVE_MAX_RECURSION_DEPTH = 'sys.sensitive.maxRecursionDepth';
+
 // ================= 作用域常量 =================
 
 /** 全局配置（所有租户共享） */
@@ -266,6 +330,29 @@ export const CONFIG_SCOPE_MAP: Record<string, string> = {
   [SYS_OSS_IS_HTTPS]: CONFIG_SCOPE_GLOBAL,
   [SYS_OSS_ACCESS_POLICY]: CONFIG_SCOPE_GLOBAL,
 
+  // 硬编码收口新增 - 全局
+  [SYS_WORKFLOW_NOTIFICATION_AUTH_TIMEOUT_MS]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_CACHE_DEFINITION_TTL_SECONDS]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_CACHE_FORM_TTL_SECONDS]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_CACHE_USER_TTL_SECONDS]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_IMPORT_EXPORT_MAX_FILE_SIZE_MB]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_IMPORT_EXPORT_MAX_BATCH_FILE_COUNT]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_ANOMALY_RUNNING_HOURS_THRESHOLD]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_AUDIT_DAYS_TO_KEEP]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_AUDIT_MAX_PAGE_COUNT]: CONFIG_SCOPE_GLOBAL,
+  [SYS_COMMON_REPEAT_SUBMIT_INTERVAL_MILLIS]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_HEALTH_SUCCESS_RATE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_HEALTH_TIMEOUT_RATE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_HEALTH_EXCEPTION_RATE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_HEALTH_CONTROLLABLE_SUCCESS_RATE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_HEALTH_CONTROLLABLE_TIMEOUT_RATE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_WORKFLOW_HEALTH_CONTROLLABLE_EXCEPTION_RATE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_OA_AUDIT_EXPORT_LIMIT]: CONFIG_SCOPE_GLOBAL,
+  [SYS_OA_CONTACT_MAX_PAGE_SIZE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_HR_MAX_PAGE_SIZE]: CONFIG_SCOPE_GLOBAL,
+  [SYS_AUTH_AVATAR_API_URL]: CONFIG_SCOPE_GLOBAL,
+  [SYS_SENSITIVE_MAX_RECURSION_DEPTH]: CONFIG_SCOPE_GLOBAL,
+
   // 租户配置
   [SYS_USER_INIT_PASSWORD]: CONFIG_SCOPE_TENANT,
   [SYS_USER_PASSWORD_MIN_LENGTH]: CONFIG_SCOPE_TENANT,
@@ -295,4 +382,11 @@ export const CONFIG_SCOPE_MAP: Record<string, string> = {
   [SYS_VEHICLE_FUEL_PRICE_UPDATE_CRON]: CONFIG_SCOPE_TENANT,
   [SYS_MEETING_ROOM_ADVANCE_BOOKING_HOURS]: CONFIG_SCOPE_TENANT,
   [SYS_MEETING_ROOM_ALLOW_CONCURRENT]: CONFIG_SCOPE_TENANT,
+
+  // 硬编码收口新增 - 租户级
+  [SYS_OA_CONTRACT_HIGH_AMOUNT_THRESHOLD]: CONFIG_SCOPE_TENANT,
+  [SYS_HR_COMPENSATION_MONTHLY_TAX_THRESHOLD]: CONFIG_SCOPE_TENANT,
+  [SYS_HR_COMPENSATION_SOCIAL_PERSONAL_RATE]: CONFIG_SCOPE_TENANT,
+  [SYS_HR_WORKPLACE_REMINDER_DAYS]: CONFIG_SCOPE_TENANT,
+  [SYS_HR_WORKPLACE_REMINDER_DAYS_HIGH]: CONFIG_SCOPE_TENANT,
 };

@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Search, X, Check } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
@@ -64,15 +65,36 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const triggerRef = useRef<HTMLDivElement>(null);
+  const [dropdownPos, setDropdownPos] = useState<{ top: number; left: number; width: number }>({ top: 0, left: 0, width: 0 });
+
+  const updateDropdownPos = useCallback(() => {
+    if (!triggerRef.current) return;
+    const rect = triggerRef.current.getBoundingClientRect();
+    if (dropdownPlacement === 'top') {
+      setDropdownPos({ top: rect.top, left: rect.left, width: rect.width });
+    } else {
+      setDropdownPos({ top: rect.bottom, left: rect.left, width: rect.width });
+    }
+  }, [dropdownPlacement]);
 
   useEffect(() => {
     if (isOpen) {
       const t = setTimeout(() => inputRef.current?.focus(), 0);
-      return () => clearTimeout(t);
+      updateDropdownPos();
+      const onScroll = () => updateDropdownPos();
+      const onResize = () => updateDropdownPos();
+      window.addEventListener('scroll', onScroll, true);
+      window.addEventListener('resize', onResize);
+      return () => {
+        clearTimeout(t);
+        window.removeEventListener('scroll', onScroll, true);
+        window.removeEventListener('resize', onResize);
+      };
     }
     setSearchTerm('');
     return undefined;
-  }, [isOpen]);
+  }, [isOpen, updateDropdownPos]);
 
   const selectedOptions = useMemo(
     () => value.map((id) => options.find((o) => o.id === id)).filter(Boolean) as SelectorShellOption[],
@@ -104,7 +126,7 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
   };
 
   return (
-    <div className={cn('relative', className)}>
+    <div ref={triggerRef} className={cn('relative', className)}>
       <div
         onClick={() => !disabled && setIsOpen(!isOpen)}
         className={cn(
@@ -160,13 +182,23 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
         )}
       </div>
 
-      {isOpen && !disabled && (
-        <div
-          className={cn(
-            'absolute z-[80] w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
-            dropdownPlacement === 'top' ? 'bottom-full mb-1.5' : 'top-full mt-1.5',
-          )}
-        >
+      {isOpen && !disabled && createPortal(
+        <>
+          <div
+            className="fixed inset-0 z-[79]"
+            onClick={() => setIsOpen(false)}
+          />
+          <div
+            className={cn(
+              'fixed z-[80] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_18px_36px_rgba(2,6,23,0.5)]',
+            )}
+            style={{
+              top: dropdownPlacement === 'top' ? dropdownPos.top - 6 : dropdownPos.top + 6,
+              left: dropdownPos.left,
+              width: dropdownPos.width,
+              transform: dropdownPlacement === 'top' ? 'translateY(-100%)' : undefined,
+            }}
+          >
           <div className="border-b border-slate-200 p-2 dark:border-slate-800">
             <div className="relative">
               <Search className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -224,9 +256,9 @@ export const SelectorShell: React.FC<SelectorShellProps> = ({
             )}
           </div>
         </div>
+        </>,
+        document.body,
       )}
-
-      {isOpen && <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />}
     </div>
   );
 };
