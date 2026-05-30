@@ -29,7 +29,7 @@ const fallback = (className?: string): string =>
   className ?? 'bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700';
 
 export const getAnnouncementTypeMeta = (type: AnnouncementType): AnnouncementTypeMeta => {
-  const meta = ANNOUNCEMENT_TYPE_META[type] ?? ANNOUNCEMENT_TYPE_META[AnnouncementType.NOTIFICATION];
+  const meta = ANNOUNCEMENT_TYPE_META[type] ?? ANNOUNCEMENT_TYPE_META[AnnouncementType.NOTIFICATION] ?? { label: '通知', fullClass: undefined };
   return {
     label: meta.label,
     className: fallback(meta.fullClass),

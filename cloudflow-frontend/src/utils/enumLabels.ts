@@ -397,22 +397,29 @@ export const getAnnouncementStatusMeta = (status?: string | number | null): Stat
   buildStatusMeta(ANNOUNCEMENT_STATUS_META, status == null ? null : String(status));
 
 // 公告类型（type 不带 icon——icon 由 announcementMeta.tsx 单独维护，避免 React 依赖污染 utils）
+const ANNOUNCEMENT_TYPE_ENTRY: StatusMeta = {
+  label: '公告',
+  tone: 'bg-sky-50 text-sky-600',
+  fullClass: 'bg-sky-50 text-sky-600 ring-1 ring-sky-100 dark:bg-sky-950/30 dark:text-sky-200 dark:ring-sky-900/60',
+};
+const URGENT_TYPE_ENTRY: StatusMeta = {
+  label: '紧急',
+  tone: 'bg-rose-50 text-rose-600',
+  fullClass: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100 dark:bg-rose-950/30 dark:text-rose-200 dark:ring-rose-900/60',
+};
+const NOTIFICATION_TYPE_ENTRY: StatusMeta = {
+  label: '通知',
+  tone: 'bg-cyan-50 text-cyan-600',
+  fullClass: 'bg-cyan-50 text-cyan-600 ring-1 ring-cyan-100 dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-900/60',
+};
 export const ANNOUNCEMENT_TYPE_META: Record<string, StatusMeta> = {
-  ANNOUNCEMENT: {
-    label: '公告',
-    tone: 'bg-sky-50 text-sky-600',
-    fullClass: 'bg-sky-50 text-sky-600 ring-1 ring-sky-100 dark:bg-sky-950/30 dark:text-sky-200 dark:ring-sky-900/60',
-  },
-  URGENT: {
-    label: '紧急',
-    tone: 'bg-rose-50 text-rose-600',
-    fullClass: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100 dark:bg-rose-950/30 dark:text-rose-200 dark:ring-rose-900/60',
-  },
-  NOTIFICATION: {
-    label: '通知',
-    tone: 'bg-cyan-50 text-cyan-600',
-    fullClass: 'bg-cyan-50 text-cyan-600 ring-1 ring-cyan-100 dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-900/60',
-  },
+  ANNOUNCEMENT: ANNOUNCEMENT_TYPE_ENTRY,
+  URGENT: URGENT_TYPE_ENTRY,
+  NOTIFICATION: NOTIFICATION_TYPE_ENTRY,
+  // 兼容 AnnouncementType 枚举数字字符串值（NOTIFICATION='1', ANNOUNCEMENT='2', URGENT='3'）
+  '1': NOTIFICATION_TYPE_ENTRY,
+  '2': ANNOUNCEMENT_TYPE_ENTRY,
+  '3': URGENT_TYPE_ENTRY,
 };
 
 export const getAnnouncementTypeMeta = (type?: string | null): StatusMeta =>
