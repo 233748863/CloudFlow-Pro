@@ -135,6 +135,8 @@ const request = axios.create({
 
 // 检测网络状态
 let isOnline = navigator.onLine;
+// 401 并发去重：确保多个请求同时收到 401 时只执行一次跳转
+let isRedirectingToLogin = false;
 window.addEventListener('online', () => { isOnline = true; });
 window.addEventListener('offline', () => { isOnline = false; });
 
@@ -222,7 +224,14 @@ request.interceptors.response.use(
 
     // 全局处理 401 未授权 (always show)
     if (error.response && error.response.status === 401) {
+       // 并发去重：多个请求同时 401 时只处理一次
+       if (isRedirectingToLogin) {
+         return Promise.reject(error);
+       }
+       isRedirectingToLogin = true;
+
        if (isForcePasswordChangeUser()) {
+         isRedirectingToLogin = false; // 强制改密不跳转，重置标志位
          return Promise.reject(new Error('登录态校验中，请先完成密码修改'));
        }
        toast.error('登录已过期，请重新登录');
