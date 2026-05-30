@@ -73,4 +73,8 @@ export const queryKeys = {
   users: ['users'] as const,
   roles: ['roles'] as const,
   currentUser: ['user', 'current'] as const,
+
+  // 字典相关
+  dicts: ['dicts'] as const,
+  dict: (dictType: string) => ['dict', dictType] as const,
 };

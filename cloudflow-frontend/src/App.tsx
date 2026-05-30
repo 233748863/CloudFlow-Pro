@@ -12,6 +12,9 @@ import { subscribeWsTopic, unsubscribeWsTopic } from './hooks/useWebSocket';
 import { setNavigator } from './utils/navigation';
 import { preloadConfigs } from './hooks/useSystemConfig';
 import { SYS_PAGE_DEFAULT_PAGE_SIZE } from './constants/sysConfig';
+import { dictDataApi } from './services/api/dict';
+import { transformDictData } from './utils/dictMapper';
+import { queryKeys } from './lib/queryClient';
 
 setNavigator((to, opts) => {
   void router.navigate(to, { replace: opts?.replace });
@@ -25,6 +28,26 @@ function AppInner() {
   useEffect(() => {
     // 预热常用系统配置，命中后 getConfigIntSync 可在 useState 初值场景同步返回真实值
     void preloadConfigs([SYS_PAGE_DEFAULT_PAGE_SIZE]);
+
+    // 预加载常用字典，减少首次渲染时的 loading 闪烁
+    const commonDicts = [
+      'employee_status',
+      'employee_type',
+      'request_status',
+      'contract_status',
+      'invoice_status',
+    ];
+
+    commonDicts.forEach((dictType) => {
+      queryClient.prefetchQuery({
+        queryKey: queryKeys.dict(dictType),
+        queryFn: async () => {
+          const rawData = await dictDataApi.getByType(dictType);
+          return transformDictData(rawData);
+        },
+        staleTime: 10 * 60 * 1000, // 10 分钟
+      });
+    });
   }, []);
 
   useEffect(() => {
