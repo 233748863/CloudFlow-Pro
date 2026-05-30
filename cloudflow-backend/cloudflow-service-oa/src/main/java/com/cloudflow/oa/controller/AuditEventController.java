@@ -30,9 +30,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class AuditEventController {
 
-    private static final int EXPORT_LIMIT = 5000;
+    /** 兜底默认值：审计事件导出上限（实际值从 sys.oa.audit.exportLimit 读取） */
+    private static final int DEFAULT_EXPORT_LIMIT = 5000;
 
     private final IOaTraceEventService oaTraceEventService;
+    private final com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
+
+    private int exportLimit() {
+        return sysConfigHelper.getConfigInt("sys.oa.audit.exportLimit", DEFAULT_EXPORT_LIMIT);
+    }
 
     @GetMapping
     @SaCheckPermission("system:audit:events")
@@ -60,12 +66,13 @@ public class AuditEventController {
                        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime beginTime,
                        @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd HH:mm:ss") LocalDateTime endTime,
                        HttpServletResponse response) throws IOException {
-        AuditEventQueryDTO query = buildQuery(businessType, businessId, eventType, operatorName, beginTime, endTime, 1, EXPORT_LIMIT + 1);
+        int limit = exportLimit();
+        AuditEventQueryDTO query = buildQuery(businessType, businessId, eventType, operatorName, beginTime, endTime, 1, limit + 1);
         Page<OaTraceEvent> page = oaTraceEventService.queryAuditEvents(query);
-        if (page.getTotal() > EXPORT_LIMIT || page.getRecords().size() > EXPORT_LIMIT) {
+        if (page.getTotal() > limit || page.getRecords().size() > limit) {
             response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             response.setContentType("application/json;charset=UTF-8");
-            response.getWriter().write("{\"code\":500,\"msg\":\"导出结果超过5000条，请缩小筛选范围\"}");
+            response.getWriter().write("{\"code\":500,\"msg\":\"导出结果超过" + limit + "条，请缩小筛选范围\"}");
             return;
         }
         String fileName = URLEncoder.encode("oa_audit_events.csv", StandardCharsets.UTF_8);

@@ -29,9 +29,15 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ContactController {
 
-    private static final int MAX_PAGE_SIZE = 100;
+    /** 兜底默认值：通讯录单页最大条数（实际值从 sys.oa.contact.maxPageSize 读取） */
+    private static final int DEFAULT_MAX_PAGE_SIZE = 100;
 
     private final ContactMapper contactMapper;
+    private final com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
+
+    private int maxPageSize() {
+        return sysConfigHelper.getConfigInt("sys.oa.contact.maxPageSize", DEFAULT_MAX_PAGE_SIZE);
+    }
 
     /**
      * 查询通讯录列表（支持按姓名、部门、职位搜索）。
@@ -108,7 +114,7 @@ public class ContactController {
         if (pageSize == null || pageSize < 1) {
             return 20;
         }
-        return Math.min(pageSize, MAX_PAGE_SIZE);
+        return Math.min(pageSize, maxPageSize());
     }
 }
 

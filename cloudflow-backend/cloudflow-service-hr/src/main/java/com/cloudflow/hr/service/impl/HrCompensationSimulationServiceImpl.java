@@ -40,11 +40,15 @@ import java.util.Map;
 public class HrCompensationSimulationServiceImpl implements IHrCompensationSimulationService {
 
     private static final long TENANT_ID = 100000L;
-    private static final BigDecimal MONTHLY_THRESHOLD = BigDecimal.valueOf(5000);
+
+    /** 兜底默认值：月度个税起征点（实际值从 sys.hr.compensation.monthlyTaxThreshold 读取） */
+    private static final BigDecimal DEFAULT_MONTHLY_THRESHOLD = BigDecimal.valueOf(5000);
+
+    /** 兜底默认值：个人合计社保费率（实际值从 sys.hr.compensation.socialPersonalRate 读取） */
     private static final BigDecimal DEFAULT_SOCIAL_PERSONAL_RATE = new BigDecimal("0.105");
 
-    /** 月度税率（按累计预扣预缴月度近似，下限/上限/税率/速算扣除）。 */
-    private static final BigDecimal[][] TAX_BRACKETS = new BigDecimal[][]{
+    /** 兜底默认月度税率（按累计预扣预缴月度近似，下限/上限/税率/速算扣除）。实际从字典 hr_personal_income_tax 加载。 */
+    private static final BigDecimal[][] DEFAULT_TAX_BRACKETS = new BigDecimal[][]{
             {BigDecimal.ZERO,            new BigDecimal("3000"),    new BigDecimal("0.03"), BigDecimal.ZERO},
             {new BigDecimal("3000"),     new BigDecimal("12000"),   new BigDecimal("0.10"), new BigDecimal("210")},
             {new BigDecimal("12000"),    new BigDecimal("25000"),   new BigDecimal("0.20"), new BigDecimal("1410")},
@@ -56,6 +60,76 @@ public class HrCompensationSimulationServiceImpl implements IHrCompensationSimul
 
     private final HrCompComponentMapper compComponentMapper;
     private final HrCompGradeMapper compGradeMapper;
+    private final com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
+    private final com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
+
+    private BigDecimal monthlyThreshold() {
+        return new BigDecimal(sysConfigHelper.getConfigValue(
+                "sys.hr.compensation.monthlyTaxThreshold",
+                DEFAULT_MONTHLY_THRESHOLD.toPlainString()));
+    }
+
+    private BigDecimal defaultSocialPersonalRate() {
+        return new BigDecimal(sysConfigHelper.getConfigValue(
+                "sys.hr.compensation.socialPersonalRate",
+                DEFAULT_SOCIAL_PERSONAL_RATE.toPlainString()));
+    }
+
+    /**
+     * 从字典 {@code hr_personal_income_tax} 加载税率档。
+     * <p><b>字典约定：</b>
+     * <ul>
+     *   <li>dict_value = 本档应税所得 <b>上限</b>（按月度），单位元</li>
+     *   <li>list_class = 税率，取值 0~1（如 0.10 表示 10%）</li>
+     *   <li>css_class = 速算扣除数，单位元</li>
+     *   <li>末档 dict_value &gt;= 99999999 视为不封顶（自动转为 null）</li>
+     *   <li>按 dict_value 升序排序后逐档判断 taxableIncome 是否落入 (prevHigh, currHigh] 区间</li>
+     * </ul>
+     * 字典为空或解析失败时回退到 {@link #DEFAULT_TAX_BRACKETS}。
+     */
+    private BigDecimal[][] taxBrackets() {
+        java.util.List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> items =
+                sysDictHelper.getDictData("hr_personal_income_tax");
+        if (items == null || items.isEmpty()) {
+            return DEFAULT_TAX_BRACKETS;
+        }
+        java.util.List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> sorted = new ArrayList<>(items);
+        sorted.sort(java.util.Comparator.comparing(d -> {
+            BigDecimal v = d.getValueAsDecimal();
+            return v == null ? BigDecimal.valueOf(Long.MAX_VALUE) : v;
+        }));
+        BigDecimal[][] brackets = new BigDecimal[sorted.size()][4];
+        BigDecimal prevHigh = BigDecimal.ZERO;
+        for (int i = 0; i < sorted.size(); i++) {
+            com.cloudflow.common.redis.core.SysDictHelper.DictItem item = sorted.get(i);
+            BigDecimal high = item.getValueAsDecimal();
+            BigDecimal rate;
+            BigDecimal quick;
+            try {
+                rate = item.getListClass() != null && !item.getListClass().isEmpty()
+                        ? new BigDecimal(item.getListClass()) : BigDecimal.ZERO;
+            } catch (NumberFormatException e) {
+                rate = BigDecimal.ZERO;
+            }
+            try {
+                quick = item.getCssClass() != null && !item.getCssClass().isEmpty()
+                        ? new BigDecimal(item.getCssClass()) : BigDecimal.ZERO;
+            } catch (NumberFormatException e) {
+                quick = BigDecimal.ZERO;
+            }
+            // 末档 dict_value 通常是大数（如 99999999），视为不封顶
+            BigDecimal effectiveHigh = (i == sorted.size() - 1 && high != null
+                    && high.compareTo(new BigDecimal("99999999")) >= 0) ? null : high;
+            brackets[i][0] = prevHigh;
+            brackets[i][1] = effectiveHigh;
+            brackets[i][2] = rate;
+            brackets[i][3] = quick;
+            if (high != null) {
+                prevHigh = high;
+            }
+        }
+        return brackets;
+    }
 
     @Override
     public HrCompensationSimulateVO simulate(HrCompensationSimulateRequest request) {
@@ -119,15 +193,16 @@ public class HrCompensationSimulationServiceImpl implements IHrCompensationSimul
 
         BigDecimal socialBase = request.getSocialBase() == null ? gross : request.getSocialBase();
         BigDecimal socialRate = request.getSocialPersonalRate() == null
-                ? DEFAULT_SOCIAL_PERSONAL_RATE : request.getSocialPersonalRate();
+                ? defaultSocialPersonalRate() : request.getSocialPersonalRate();
         BigDecimal socialPersonal = socialBase.multiply(socialRate).setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal specialDeductions = request.getSpecialDeductions() == null
                 ? BigDecimal.ZERO : request.getSpecialDeductions();
 
+        BigDecimal monthlyThreshold = monthlyThreshold();
         BigDecimal taxableIncome = taxableGross
                 .subtract(socialPersonal)
-                .subtract(MONTHLY_THRESHOLD)
+                .subtract(monthlyThreshold)
                 .subtract(specialDeductions);
         if (taxableIncome.signum() < 0) {
             taxableIncome = BigDecimal.ZERO;
@@ -147,7 +222,7 @@ public class HrCompensationSimulationServiceImpl implements IHrCompensationSimul
         vo.setSocialPersonalRate(socialRate);
         vo.setSocialPersonal(socialPersonal);
         vo.setSpecialDeductions(specialDeductions);
-        vo.setThreshold(MONTHLY_THRESHOLD);
+        vo.setThreshold(monthlyThreshold);
         vo.setTaxableIncome(taxableIncome.setScale(2, RoundingMode.HALF_UP));
         vo.setPersonalTax(personalTax);
         vo.setNetSalary(netSalary);
@@ -159,7 +234,7 @@ public class HrCompensationSimulationServiceImpl implements IHrCompensationSimul
         if (taxableIncome.signum() <= 0) {
             return BigDecimal.ZERO;
         }
-        for (BigDecimal[] bracket : TAX_BRACKETS) {
+        for (BigDecimal[] bracket : taxBrackets()) {
             BigDecimal low = bracket[0];
             BigDecimal high = bracket[1];
             BigDecimal rate = bracket[2];

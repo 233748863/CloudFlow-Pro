@@ -48,7 +48,8 @@ import java.util.Set;
 public class HrTypedCrudService {
 
     private static final long DEFAULT_TENANT_ID = 100000L;
-    private static final int MAX_PAGE_SIZE = 500;
+    /** 兜底默认值：HR 模块查询单页最大条数（实际值从 sys.hr.maxPageSize 读取） */
+    private static final int DEFAULT_MAX_PAGE_SIZE = 500;
     private static final TypeReference<LinkedHashMap<String, Object>> MAP_TYPE = new TypeReference<>() {};
     private static final Set<String> IGNORED_QUERY_KEYS = Set.of("pageNum", "pageSize", "current", "size", "keyword");
     private static final Set<String> AUTO_PROPERTIES = Set.of("id", "tenantId", "createTime", "updateTime", "deleted");
@@ -91,6 +92,11 @@ public class HrTypedCrudService {
     private final HrPositionMapper positionMapper;
     private final HrCompGradeMapper compGradeMapper;
     private final HrAuditLogMapper auditLogMapper;
+    private final com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
+
+    private int maxPageSize() {
+        return sysConfigHelper.getConfigInt("sys.hr.maxPageSize", DEFAULT_MAX_PAGE_SIZE);
+    }
 
     public <T> List<Map<String, Object>> list(Class<T> entityClass, Map<String, ?> query) {
         BaseMapper<T> mapper = mapper(entityClass);
@@ -106,7 +112,7 @@ public class HrTypedCrudService {
         BaseMapper<T> mapper = mapper(entityClass);
         QueryWrapper<T> wrapper = buildQueryWrapper(entityClass, query, false);
         int pageNum = Math.max(1, toInt(query.get("pageNum"), toInt(query.get("current"), 1)));
-        int pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, toInt(query.get("pageSize"), toInt(query.get("size"), 50))));
+        int pageSize = Math.min(maxPageSize(), Math.max(1, toInt(query.get("pageSize"), toInt(query.get("size"), 50))));
         IPage<T> page = mapper.selectPage(new Page<>(pageNum, pageSize), wrapper);
         boolean privileged = isPrivilegedUser();
         List<Map<String, Object>> records = page.getRecords().stream()

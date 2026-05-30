@@ -1,6 +1,7 @@
 package com.cloudflow.oa.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaSealApplication;
@@ -30,13 +31,21 @@ import java.util.List;
 @RequiredArgsConstructor
 public class OaRiskScanServiceImpl implements IOaRiskScanService {
 
-    private static final BigDecimal HIGH_AMOUNT_THRESHOLD = new BigDecimal("100000");
+    /** 兜底默认值：合同高额阈值（实际值从 sys.oa.contract.highAmountThreshold 读取） */
+    private static final BigDecimal DEFAULT_HIGH_AMOUNT_THRESHOLD = new BigDecimal("100000");
 
     private final OaContractMapper contractMapper;
     private final OaSealApplicationMapper sealApplicationMapper;
     private final IOaRiskAlertService oaRiskAlertService;
     private final ISysNoticeService sysNoticeService;
     private final RemoteBusinessRuleService remoteBusinessRuleService;
+    private final SysConfigHelper sysConfigHelper;
+
+    private BigDecimal highAmountThreshold() {
+        return new BigDecimal(sysConfigHelper.getConfigValue(
+                "sys.oa.contract.highAmountThreshold",
+                DEFAULT_HIGH_AMOUNT_THRESHOLD.toPlainString()));
+    }
 
     @Override
     public int scanContractRisks() {
@@ -105,7 +114,7 @@ public class OaRiskScanServiceImpl implements IOaRiskScanService {
 
     private int scanHighAmountMissingAttachment() {
         BusinessRuleDTO rule = resolveContractRiskRule();
-        BigDecimal threshold = rule == null || rule.getThresholdValue() == null ? HIGH_AMOUNT_THRESHOLD : rule.getThresholdValue();
+        BigDecimal threshold = rule == null || rule.getThresholdValue() == null ? highAmountThreshold() : rule.getThresholdValue();
         List<OaContract> contracts = contractMapper.selectList(new LambdaQueryWrapper<OaContract>()
                 .eq(OaContract::getDeleted, "0")
                 .ge(OaContract::getAmount, threshold)

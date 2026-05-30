@@ -71,6 +71,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     private final CrmRenewalMapper renewalMapper;
     private final CrmServiceTicketMapper serviceTicketMapper;
     private final RemoteOaService remoteOaService;
+    private final com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
 
     @Override
     public CrmCustomerWorkspaceVO getWorkspace(Long customerId) {
@@ -106,7 +107,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
                 .eq(CrmRenewal::getCustomerId, customerId)
                 .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmRenewal::getCurrentExpireDate));
-        renewals.forEach(CrmRenewalRiskEvaluator::enrich);
+        renewals.forEach(r -> CrmRenewalRiskEvaluator.enrich(r, sysDictHelper));
         workspace.setRenewals(renewals);
         workspace.setTickets(serviceTicketMapper.selectList(new LambdaQueryWrapper<CrmServiceTicket>()
                 .eq(CrmServiceTicket::getCustomerId, customerId)
@@ -141,7 +142,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
         List<CrmRenewal> renewals = renewalMapper.selectList(new LambdaQueryWrapper<CrmRenewal>()
                 .eq(CrmRenewal::getDeleted, CrmConstants.DelFlag.NORMAL)
                 .orderByAsc(CrmRenewal::getCurrentExpireDate));
-        renewals.forEach(CrmRenewalRiskEvaluator::enrich);
+        renewals.forEach(r -> CrmRenewalRiskEvaluator.enrich(r, sysDictHelper));
         LocalDate today = LocalDate.now();
         summary.setRenewalWindows(renewals.stream()
                 .filter(item -> item.getCurrentExpireDate() != null)
@@ -311,10 +312,23 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
     private List<CrmReceivableAgingBucketVO> buildAgingBuckets() {
         Map<String, CrmReceivableAgingBucketVO> buckets = new LinkedHashMap<>();
         buckets.put("CURRENT", createBucket("CURRENT", "未逾期"));
-        buckets.put("DUE_30", createBucket("DUE_30", "逾期1-30天"));
-        buckets.put("DUE_60", createBucket("DUE_60", "逾期31-60天"));
-        buckets.put("DUE_90", createBucket("DUE_90", "逾期61-90天"));
-        buckets.put("DUE_90_PLUS", createBucket("DUE_90_PLUS", "逾期90天以上"));
+        // A6 治理：按 crm_receivable_overdue_tier 字典 dict_sort 动态生成档位 buckets
+        List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> tiers =
+                sysDictHelper.getDictData("crm_receivable_overdue_tier");
+        if (tiers != null && !tiers.isEmpty()) {
+            List<com.cloudflow.common.redis.core.SysDictHelper.DictItem> sorted =
+                    CrmHealthCalculator.sortedTiers(tiers);
+            for (com.cloudflow.common.redis.core.SysDictHelper.DictItem item : sorted) {
+                String code = CrmHealthCalculator.tierCodeOf(item, sorted);
+                String name = item.getLabel() != null ? item.getLabel() : code;
+                buckets.put(code, createBucket(code, name));
+            }
+        } else {
+            buckets.put("DUE_30", createBucket("DUE_30", "逾期1-30天"));
+            buckets.put("DUE_60", createBucket("DUE_60", "逾期31-60天"));
+            buckets.put("DUE_90", createBucket("DUE_90", "逾期61-90天"));
+            buckets.put("DUE_90_PLUS", createBucket("DUE_90_PLUS", "逾期90天以上"));
+        }
 
         LocalDate today = LocalDate.now();
         List<CrmReceivable> receivables = receivableMapper.selectList(new LambdaQueryWrapper<CrmReceivable>()
@@ -328,7 +342,7 @@ public class CrmCustomerWorkspaceServiceImpl implements ICrmCustomerWorkspaceSer
             if (item.getOutstandingAmount() == null || item.getOutstandingAmount().signum() <= 0) {
                 continue;
             }
-            String bucketCode = CrmHealthCalculator.resolveAgingBucket(item.getDueDate(), today);
+            String bucketCode = CrmHealthCalculator.resolveAgingBucket(item.getDueDate(), today, sysDictHelper);
             CrmReceivableAgingBucketVO bucket = buckets.get(bucketCode);
             if (bucket == null) {
                 continue;

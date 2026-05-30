@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.datascope.DataScopeUtils;
+import com.cloudflow.common.redis.core.SysDictHelper;
 import com.cloudflow.crm.constant.CrmConstants;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmReceivable;
@@ -36,6 +37,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
 
     private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
+    private final SysDictHelper sysDictHelper;
 
     @Override
     public PageResult<CrmReceivable> queryPage(CrmReceivable query, PageQuery pageQuery) {
@@ -179,10 +181,21 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
     public List<CrmReceivableAgingBucketVO> getAgingBuckets() {
         Map<String, CrmReceivableAgingBucketVO> buckets = new LinkedHashMap<>();
         buckets.put("CURRENT", createBucket("CURRENT", "未逾期"));
-        buckets.put("DUE_30", createBucket("DUE_30", "逾期1-30天"));
-        buckets.put("DUE_60", createBucket("DUE_60", "逾期31-60天"));
-        buckets.put("DUE_90", createBucket("DUE_90", "逾期61-90天"));
-        buckets.put("DUE_90_PLUS", createBucket("DUE_90_PLUS", "逾期90天以上"));
+        // A6 治理：按字典动态生成档位桶
+        List<SysDictHelper.DictItem> tiers = sysDictHelper.getDictData("crm_receivable_overdue_tier");
+        if (tiers != null && !tiers.isEmpty()) {
+            List<SysDictHelper.DictItem> sorted = CrmHealthCalculator.sortedTiers(tiers);
+            for (SysDictHelper.DictItem item : sorted) {
+                String code = CrmHealthCalculator.tierCodeOf(item, sorted);
+                String name = item.getLabel() != null ? item.getLabel() : code;
+                buckets.put(code, createBucket(code, name));
+            }
+        } else {
+            buckets.put("DUE_30", createBucket("DUE_30", "逾期1-30天"));
+            buckets.put("DUE_60", createBucket("DUE_60", "逾期31-60天"));
+            buckets.put("DUE_90", createBucket("DUE_90", "逾期61-90天"));
+            buckets.put("DUE_90_PLUS", createBucket("DUE_90_PLUS", "逾期90天以上"));
+        }
 
         LocalDate today = LocalDate.now();
         List<CrmReceivable> receivables = baseMapper.selectPageByDataScope(
@@ -293,20 +306,7 @@ public class CrmReceivableServiceImpl extends CrmServiceSupport<CrmReceivableMap
     }
 
     private String resolveAgingBucket(LocalDate dueDate, LocalDate today) {
-        if (dueDate == null || !dueDate.isBefore(today)) {
-            return "CURRENT";
-        }
-        long overdueDays = ChronoUnit.DAYS.between(dueDate, today);
-        if (overdueDays <= 30) {
-            return "DUE_30";
-        }
-        if (overdueDays <= 60) {
-            return "DUE_60";
-        }
-        if (overdueDays <= 90) {
-            return "DUE_90";
-        }
-        return "DUE_90_PLUS";
+        return CrmHealthCalculator.resolveAgingBucket(dueDate, today, sysDictHelper);
     }
 
     private void fillBindingSnapshot(CrmReceivable receivable) {

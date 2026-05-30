@@ -35,6 +35,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
     private final RemoteWorkflowService remoteWorkflowService;
     private final ICrmCustomerService crmCustomerService;
     private final RemoteOaService remoteOaService;
+    private final com.cloudflow.common.redis.core.SysDictHelper sysDictHelper;
 
     @Override
     public PageResult<CrmRenewal> queryPage(CrmRenewal query, PageQuery pageQuery) {
@@ -43,7 +44,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
                 query,
                 DataScopeUtils.listScope(SCOPE_DEPT_COLUMN, SCOPE_OWNER_COLUMN)));
         if (result.getRows() != null) {
-            result.getRows().forEach(CrmRenewalRiskEvaluator::enrich);
+            result.getRows().forEach(r -> CrmRenewalRiskEvaluator.enrich(r, sysDictHelper));
         }
         return result;
     }
@@ -51,7 +52,7 @@ public class CrmRenewalServiceImpl extends CrmServiceSupport<CrmRenewalMapper, C
     @Override
     public CrmRenewal getRenewalInfo(Long renewalId) {
         CrmRenewal renewal = getAccessibleRenewal(renewalId);
-        CrmRenewalRiskEvaluator.enrich(renewal);
+        CrmRenewalRiskEvaluator.enrich(renewal, sysDictHelper);
         return renewal;
     }
 

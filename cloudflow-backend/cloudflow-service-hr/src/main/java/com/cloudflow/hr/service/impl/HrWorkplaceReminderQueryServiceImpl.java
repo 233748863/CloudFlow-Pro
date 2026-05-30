@@ -26,6 +26,7 @@ public class HrWorkplaceReminderQueryServiceImpl implements IHrWorkplaceReminder
 
     private final HrEmployeeContractMapper contractMapper;
     private final HrLifecycleTaskMapper lifecycleTaskMapper;
+    private final com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
 
     @Override
     public List<HrWorkplaceReminderVO> listReminders(Long userId, int expiringDays, int limit) {
@@ -117,10 +118,10 @@ public class HrWorkplaceReminderQueryServiceImpl implements IHrWorkplaceReminder
             return "LOW";
         }
         long days = today.until(dueDate).getDays();
-        if (days <= 7) {
+        if (days <= sysConfigHelper.getConfigInt("sys.hr.workplace.reminderDaysHigh", 7)) {
             return "HIGH";
         }
-        if (days <= 15) {
+        if (days <= sysConfigHelper.getConfigInt("sys.hr.workplace.reminderDays", 15)) {
             return "MEDIUM";
         }
         return "LOW";
