@@ -48,4 +48,9 @@ public interface ISysDictTypeService extends IService<SysDictType> {
      * 删除字典类型（同时删除关联的字典数据）
      */
     void deleteDictTypeByIds(Long[] dictIds);
+
+    /**
+     * 刷新指定字典类型在 Redis 中的缓存（增删改字典数据后调用）
+     */
+    void refreshDictCache(String dictType);
 }

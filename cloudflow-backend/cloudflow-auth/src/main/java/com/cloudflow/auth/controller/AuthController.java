@@ -95,6 +95,9 @@ public class AuthController {
     @Autowired
     private ForcePasswordChangeService forcePasswordChangeService;
 
+    @Autowired
+    private com.cloudflow.common.redis.core.SysConfigHelper sysConfigHelper;
+
     @PostMapping("/login")
     public R<DynamicMapVO> login(@RequestBody @Validated LoginBody form, HttpServletRequest request, HttpServletResponse response) {
         long startAt = System.currentTimeMillis();
@@ -133,7 +136,8 @@ public class AuthController {
                 "账号已锁定",
                 System.currentTimeMillis() - startAt
             );
-            return R.fail("登录失败次数过多，账号已锁定15分钟，请稍后再试");
+            int lockMinutes = sysConfigHelper.getConfigInt("sys.user.login.lockTime", 15);
+            return R.fail("登录失败次数过多，账号已锁定 " + lockMinutes + " 分钟，请稍后再试");
         }
 
         LambdaQueryWrapper<SysUser> queryWrapper = new LambdaQueryWrapper<>();
@@ -374,7 +378,9 @@ public class AuthController {
         user.setTenantName(resolveTenantName(userMap, tenantId));
 
         if (user.getAvatar() == null) {
-            user.setAvatar("https://api.dicebear.com/7.x/avataaars/svg?seed=" + user.getUserName());
+            String avatarApi = sysConfigHelper.getConfigValue("sys.auth.avatar.apiUrl",
+                    "https://api.dicebear.com/7.x/avataaars/svg");
+            user.setAvatar(avatarApi + "?seed=" + user.getUserName());
         }
 
         // 从缓存的角色集合中取第一个作为主角色

@@ -9,6 +9,7 @@ import com.cloudflow.auth.domain.dto.TenantStatisticsDTO;
 import com.cloudflow.auth.domain.dto.TenantStorageSummaryDTO;
 import com.cloudflow.auth.service.ISysTenantService;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.bind.annotation.*;
@@ -22,6 +23,14 @@ import java.util.List;
 public class SysTenantController {
 
     private final ISysTenantService sysTenantService;
+    private final SysConfigHelper sysConfigHelper;
+
+    /** 兜底默认值：默认租户ID（实际值从 sys.tenant.defaultId 读取） */
+    private static final long DEFAULT_TENANT_ID_FALLBACK = 100000L;
+
+    private long defaultTenantId() {
+        return sysConfigHelper.getConfigLong("sys.tenant.defaultId", DEFAULT_TENANT_ID_FALLBACK);
+    }
 
     @GetMapping("/list")
     @SaCheckPermission("system:tenant:list")
@@ -124,7 +133,7 @@ public class SysTenantController {
     @DeleteMapping("/{tenantId}")
     @SaCheckPermission("system:tenant:remove")
     public R<Void> remove(@PathVariable Long tenantId) {
-        if (tenantId == 100000L) {
+        if (tenantId == defaultTenantId()) {
             return R.fail("默认租户不能删除");
         }
 
@@ -145,7 +154,7 @@ public class SysTenantController {
     @PutMapping("/{tenantId}/status")
     @SaCheckPermission("system:tenant:edit")
     public R<Void> updateStatus(@PathVariable Long tenantId, @RequestParam String status) {
-        if (tenantId == 100000L) {
+        if (tenantId == defaultTenantId()) {
             return R.fail("默认租户状态不能修改");
         }
 

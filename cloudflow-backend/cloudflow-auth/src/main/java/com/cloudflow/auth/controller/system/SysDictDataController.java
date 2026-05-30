@@ -58,6 +58,7 @@ public class SysDictDataController {
     @SaCheckPermission("system:dict:add")
     public R<?> add(@RequestBody SysDictData dictData) {
         dictDataMapper.insert(dictData);
+        sysDictTypeService.refreshDictCache(dictData.getDictType());
         return R.ok();
     }
 
@@ -65,7 +66,13 @@ public class SysDictDataController {
     @PutMapping
     @SaCheckPermission("system:dict:edit")
     public R<?> edit(@RequestBody SysDictData dictData) {
+        SysDictData old = dictDataMapper.selectById(dictData.getDictCode());
         dictDataMapper.updateById(dictData);
+        // 旧 dictType 与新 dictType 都要刷新（dictType 可能被改）
+        if (old != null && old.getDictType() != null && !old.getDictType().equals(dictData.getDictType())) {
+            sysDictTypeService.refreshDictCache(old.getDictType());
+        }
+        sysDictTypeService.refreshDictCache(dictData.getDictType());
         return R.ok();
     }
 
@@ -73,7 +80,17 @@ public class SysDictDataController {
     @DeleteMapping("/{dictCodes}")
     @SaCheckPermission("system:dict:remove")
     public R<?> remove(@PathVariable("dictCodes") Long[] dictCodes) {
+        java.util.Set<String> affectedTypes = new java.util.HashSet<>();
+        for (Long code : dictCodes) {
+            SysDictData d = dictDataMapper.selectById(code);
+            if (d != null && d.getDictType() != null) {
+                affectedTypes.add(d.getDictType());
+            }
+        }
         dictDataMapper.deleteBatchIds(Arrays.asList(dictCodes));
+        for (String dictType : affectedTypes) {
+            sysDictTypeService.refreshDictCache(dictType);
+        }
         return R.ok();
     }
 }
