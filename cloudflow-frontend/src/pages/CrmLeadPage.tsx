@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { Eye, Plus, RefreshCcw, Target, Trash2, UserRound } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -25,13 +27,7 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { useNavigate } from 'react-router-dom';
 
-const statusLabelMap: Record<string, string> = {
-  NEW: '新线索',
-  FOLLOWING: '跟进中',
-  QUALIFIED: '已确认',
-  CONVERTED: '已转客户',
-  CLOSED: '已关闭',
-};
+import { getCrmLeadStatusLabel } from '@/utils/enumLabels';
 
 const statusOptions = ['NEW', 'FOLLOWING', 'QUALIFIED', 'CONVERTED', 'CLOSED'];
 
@@ -61,7 +57,7 @@ export default function CrmLeadPage() {
     try {
       const result = await crmApi.listLeads({
         pageNum,
-        pageSize: 10,
+        pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
         leadName: leadName || undefined,
         companyName: companyName || undefined,
         status: status === 'ALL' ? undefined : status,
@@ -145,7 +141,7 @@ export default function CrmLeadPage() {
                   <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item]}</SelectItem>)}
+                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmLeadStatusLabel(item)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -181,7 +177,7 @@ export default function CrmLeadPage() {
                       <td className="px-4 py-3 text-sm"><div>{row.contactName || '-'}</div><div className="text-xs text-slate-500">{row.mobile || row.phone || '-'}</div></td>
                       <td className="px-4 py-3 text-sm"><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500">{row.deptName || '-'}</div></td>
                       <td className="px-4 py-3 text-sm"><div>{row.source || '-'}</div><div className="text-xs text-slate-500">{row.industry || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm">{statusLabelMap[row.status || ''] || row.status || '-'}</td>
+                      <td className="px-4 py-3 text-sm">{getCrmLeadStatusLabel(row.status)}</td>
                       <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(row.nextFollowUpTime) || '-'}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
@@ -258,7 +254,7 @@ export default function CrmLeadPage() {
             <Select value={form.status || 'NEW'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger>
               <SelectContent>
-                {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item]}</SelectItem>)}
+                {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmLeadStatusLabel(item)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { Gauge, Goal, RefreshCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -25,11 +27,7 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import { CrmSalesTarget, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const statusLabelMap: Record<string, string> = {
-  ACTIVE: '启用',
-  INACTIVE: '停用',
-};
+import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
 
 const dimensionLabelMap: Record<string, string> = {
   OWNER: '个人',
@@ -83,7 +81,7 @@ export default function CrmSalesTargetPage() {
     try {
       const result = await crmApi.listSalesTargets({
         pageNum,
-        pageSize: 10,
+        pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
         targetName: targetName || undefined,
         dimensionType: dimensionType === 'ALL' ? undefined : dimensionType,
         periodType: periodType === 'ALL' ? undefined : periodType,
@@ -194,7 +192,7 @@ export default function CrmSalesTargetPage() {
                   {rows.map((row) => (
                     <tr key={row.salesTargetId}>
                       <td className="px-4 py-3 text-sm">{row.targetNo || '-'}</td>
-                      <td className="px-4 py-3 text-sm"><div>{row.targetName}</div><div className="text-xs text-slate-500">{statusLabelMap[row.status || ''] || row.status || '-'}</div></td>
+                      <td className="px-4 py-3 text-sm"><div>{row.targetName}</div><div className="text-xs text-slate-500">{getCrmGenericStatusLabel(row.status)}</div></td>
                       <td className="px-4 py-3 text-sm"><div>{dimensionLabelMap[row.dimensionType || ''] || row.dimensionType || '-'}</div><div className="text-xs text-slate-500">{row.ownerName || row.deptName || '-'}</div></td>
                       <td className="px-4 py-3 text-sm"><div>{periodTypeLabelMap[row.periodType || ''] || row.periodType || '-'}</div><div className="text-xs text-slate-500">{row.periodLabel || '-'}</div></td>
                       <td className="px-4 py-3 text-right text-sm tabular-nums">{formatCurrency(row.targetAmount)}</td>
@@ -299,7 +297,7 @@ export default function CrmSalesTargetPage() {
             <Select value={form.status || 'ACTIVE'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger>
               <SelectContent>
-                {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item]}</SelectItem>)}
+                {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

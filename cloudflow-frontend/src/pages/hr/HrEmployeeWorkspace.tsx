@@ -228,18 +228,13 @@ const AttachmentLinks = ({
 const canDeleteContract = (contract?: EmployeeContract | null) =>
   String(contract?.status || '').toUpperCase() === 'DRAFT';
 
-const contractStatusTone = (status?: string | null) => {
-  switch (status) {
-    case 'ACTIVE':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
-    case 'EXPIRED':
-      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
-    case 'TERMINATED':
-      return 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200';
-    default:
-      return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-  }
-};
+// 合同状态样式委托 enumLabels.ts 的 CONTRACT_STATUS_META；未命中保留页面历史 slate fallback
+import { CONTRACT_STATUS_META } from '@/utils/enumLabels';
+
+const CONTRACT_STATUS_FALLBACK_TONE = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+
+const contractStatusTone = (status?: string | null) =>
+  (status && CONTRACT_STATUS_META[status]?.fullClass) || CONTRACT_STATUS_FALLBACK_TONE;
 
 const InlineState = ({
   title,

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { CheckCircle2, Clock3, Plus, RotateCcw, Search, ShieldAlert, UserPlus, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, Input, Label, Pagination, SearchInput, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, Table, TableActionHead, TableBody, TableCell, TableHead, TableHeader, TableRow, Textarea, UserSelector } from '@/components/common';
@@ -161,7 +163,7 @@ export const RiskAlertPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [stats, setStats] = useState<RiskStats | null>(null);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, riskStatus: '', riskLevel: '', riskSource: '', riskName: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), riskStatus: '', riskLevel: '', riskSource: '', riskName: '' });
   const [filterInput, setFilterInput] = useState({ riskStatus: '', riskLevel: '', riskSource: '', riskName: '' });
   const [manualOpen, setManualOpen] = useState(false);
   const [manualForm, setManualForm] = useState<OaRiskAlert>(emptyManualForm);

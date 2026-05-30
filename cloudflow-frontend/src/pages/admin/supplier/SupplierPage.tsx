@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import { Edit, Plus, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { supplierApi, Supplier } from '@/services/api/purchase';
@@ -60,7 +62,7 @@ const SupplierPage: React.FC = () => {
     supplierName: '',
     status: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [showDialog, setShowDialog] = useState(false);
   const [currentSupplier, setCurrentSupplier] = useState<Supplier | null>(null);
@@ -93,7 +95,7 @@ const SupplierPage: React.FC = () => {
 
   const handleReset = () => {
     setSearchName('');
-    setSearchParams({ supplierName: '', status: '', pageNum: 1, pageSize: 10 });
+    setSearchParams({ supplierName: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   };
 
   const openAdd = () => {

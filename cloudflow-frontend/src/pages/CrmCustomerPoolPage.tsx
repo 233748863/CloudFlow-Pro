@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { Anchor, Gavel, HandCoins, RefreshCcw, Waves, History } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -46,7 +48,7 @@ export default function CrmCustomerPoolPage() {
     try {
       const result = await crmApi.listCustomerPool({
         pageNum,
-        pageSize: 10,
+        pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
         customerName: customerName || undefined,
         industry: industry || undefined,
         levelCode: levelCode || undefined,

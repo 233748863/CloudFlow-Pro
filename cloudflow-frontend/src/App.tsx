@@ -10,6 +10,8 @@ import { restoreUnlockedBodyScroll } from './utils/bodyScrollLock';
 import { queryClient } from './lib/queryClient';
 import { subscribeWsTopic, unsubscribeWsTopic } from './hooks/useWebSocket';
 import { setNavigator } from './utils/navigation';
+import { preloadConfigs } from './hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from './constants/sysConfig';
 
 setNavigator((to, opts) => {
   void router.navigate(to, { replace: opts?.replace });
@@ -18,6 +20,11 @@ setNavigator((to, opts) => {
 function AppInner() {
   useEffect(() => {
     restoreUnlockedBodyScroll();
+  }, []);
+
+  useEffect(() => {
+    // 预热常用系统配置，命中后 getConfigIntSync 可在 useState 初值场景同步返回真实值
+    void preloadConfigs([SYS_PAGE_DEFAULT_PAGE_SIZE]);
   }, []);
 
   useEffect(() => {

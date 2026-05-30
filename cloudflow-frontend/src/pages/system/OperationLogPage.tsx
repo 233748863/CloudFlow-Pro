@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import {
   Eye,
   RefreshCw,
@@ -258,7 +260,7 @@ const DetailDialog: React.FC<{ log: SysLog | null; onClose: () => void }> = ({
 };
 
 export const OperationLogPage: React.FC = () => {
-  const [query, setQuery] = useState<SysLogQuery>({ pageNum: 1, pageSize: 10 });
+  const [query, setQuery] = useState<SysLogQuery>({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   const [filters, setFilters] = useState<OperationLogFilters>({
     titleKeyword: '',
     logType: '',
@@ -336,7 +338,7 @@ export const OperationLogPage: React.FC = () => {
       startTime: '',
       endTime: '',
     });
-    setQuery({ pageNum: 1, pageSize: 10 });
+    setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   };
 
   const handleRefreshList = () => {

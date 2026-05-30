@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import {
   AlertCircle,
@@ -231,7 +233,7 @@ export const LeaveApplicationPage: React.FC = () => {
     status: '',
     leaveTypeId: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [total, setTotal] = useState(0);
   const {
@@ -652,7 +654,7 @@ export const LeaveApplicationPage: React.FC = () => {
                     status: '',
                     leaveTypeId: '',
                     pageNum: 1,
-                    pageSize: 10,
+                    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
                   });
                 }}
               >

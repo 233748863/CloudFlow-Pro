@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CalendarRange, Edit, Eye, FolderKanban, Plus, Send, Trash2, Users, AlertTriangle, ListTree, Target, Archive, Link2, RefreshCcw, ArrowRightLeft } from 'lucide-react';
@@ -308,7 +310,7 @@ export default function ProjectManagementPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const result = await projectApi.list({ pageNum, pageSize: 10, projectName: keyword, status: status || undefined });
+      const result = await projectApi.list({ pageNum, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), projectName: keyword, status: status || undefined });
       setRows(result.rows || []);
       setTotal(result.total || 0);
     } catch (error) {

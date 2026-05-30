@@ -71,31 +71,24 @@ const statusPill = (
   );
 };
 
-const employeeStatusTone = (status?: string) => {
-  switch (status) {
-    case 'REGULAR':
-      return 'emerald';
-    case 'PROBATION':
-      return 'amber';
-    case 'RESIGNED':
-      return 'slate';
-    default:
-      return 'teal';
+// 状态色委托 enumLabels.ts 的通用 EMPLOYEE_STATUS_META，未命中保持页面历史 teal fallback
+// 该页面 statusPill 仅支持 teal/emerald/slate/amber 4 色，META 返回的其他色降级到 teal
+import { EMPLOYEE_STATUS_META, REQUEST_STATUS_META } from '@/utils/enumLabels';
+
+type LocalPillTone = 'teal' | 'emerald' | 'slate' | 'amber';
+
+const narrowPillTone = (color?: string | null): LocalPillTone => {
+  if (color === 'emerald' || color === 'slate' || color === 'amber' || color === 'teal') {
+    return color;
   }
+  return 'teal';
 };
 
-const requestStatusTone = (status?: string) => {
-  switch (status) {
-    case 'RECRUITING':
-      return 'emerald';
-    case 'APPROVING':
-      return 'amber';
-    case 'COMPLETED':
-      return 'slate';
-    default:
-      return 'teal';
-  }
-};
+const employeeStatusTone = (status?: string): LocalPillTone =>
+  narrowPillTone(status ? EMPLOYEE_STATUS_META[status]?.colorName : undefined);
+
+const requestStatusTone = (status?: string): LocalPillTone =>
+  narrowPillTone(status ? REQUEST_STATUS_META[status]?.colorName : undefined);
 
 const onboardingStatusPriority = (status?: string | null) => {
   if (status === 'ONBOARDED') return 4;

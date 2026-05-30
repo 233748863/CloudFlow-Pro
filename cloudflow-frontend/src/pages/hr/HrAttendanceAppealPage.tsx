@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { Eye, LoaderCircle, Plus, RefreshCw, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -66,7 +68,7 @@ const HrAttendanceAppealPage: React.FC = () => {
   const [rows, setRows] = useState<HrAttendanceAppeal[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState({ employeeName: '', status: '', pageNum: 1, pageSize: 10 });
+  const [query, setQuery] = useState({ employeeName: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
 
   const [formOpen, setFormOpen] = useState(false);
   const [formData, setFormData] = useState<HrAttendanceAppeal>(emptyForm);

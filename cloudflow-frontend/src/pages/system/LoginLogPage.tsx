@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -114,7 +116,7 @@ const LoginDetailDialog: React.FC<{
 );
 
 export const LoginLogPage: React.FC = () => {
-  const [query, setQuery] = useState<LoginLogQuery>({ pageNum: 1, pageSize: 10 });
+  const [query, setQuery] = useState<LoginLogQuery>({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   const [filters, setFilters] = useState<LoginLogFilters>({
     createBy: '',
     remoteAddr: '',
@@ -181,7 +183,7 @@ export const LoginLogPage: React.FC = () => {
       startTime: '',
       endTime: '',
     });
-    setQuery({ pageNum: 1, pageSize: 10 });
+    setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   };
 
   const handleRefresh = () => {

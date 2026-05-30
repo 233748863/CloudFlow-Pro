@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import {
   ArrowLeftRight,
   Ban,
@@ -236,8 +238,8 @@ const VehicleUsageList: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [expenseLoading, setExpenseLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
-  const [usageQuery, setUsageQuery] = useState({ pageNum: 1, pageSize: 10, status: '' });
-  const [expenseQuery, setExpenseQuery] = useState({ pageNum: 1, pageSize: 10, expenseType: '', startDate: '', endDate: '', vehicleId: '', usageId: '' });
+  const [usageQuery, setUsageQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), status: '' });
+  const [expenseQuery, setExpenseQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), expenseType: '', startDate: '', endDate: '', vehicleId: '', usageId: '' });
   const [currentUsage, setCurrentUsage] = useState<VehicleUsage | null>(null);
   const [showDetailDialog, setShowDetailDialog] = useState(false);
   const [showApproveDialog, setShowApproveDialog] = useState(false);

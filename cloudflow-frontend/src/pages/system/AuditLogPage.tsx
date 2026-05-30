@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { ArrowLeftRight, Eye, RefreshCw, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -119,7 +121,7 @@ const AuditDetailDialog: React.FC<{ log: SysAuditLog | null; onClose: () => void
 );
 
 export const AuditLogPage: React.FC = () => {
-  const [query, setQuery] = useState<AuditLogQuery>({ pageNum: 1, pageSize: 10 });
+  const [query, setQuery] = useState<AuditLogQuery>({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   const [filters, setFilters] = useState<AuditLogFilters>({
     auditName: '',
     createBy: '',
@@ -178,7 +180,7 @@ export const AuditLogPage: React.FC = () => {
       startTime: '',
       endTime: '',
     });
-    setQuery({ pageNum: 1, pageSize: 10 });
+    setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   };
 
   const handleRefresh = () => {

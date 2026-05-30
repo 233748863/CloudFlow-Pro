@@ -32,8 +32,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/common';
-import { SYS_UPLOAD_MAX_FILE_SIZE } from '../../constants/sysConfig';
-import { useConfigInt } from '../../hooks/useSystemConfig';
+import { SYS_UPLOAD_MAX_FILE_SIZE, SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
+import { useConfigInt, getConfigIntSync } from '../../hooks/useSystemConfig';
 import {
   deleteFile,
   getFileList,
@@ -201,7 +201,7 @@ export const FileList = () => {
   const [pendingDeleteFile, setPendingDeleteFile] = useState<SysFile | null>(null);
   const [query, setQuery] = useState<QueryState>({
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     fileName: '',
     fileType: '',
   });

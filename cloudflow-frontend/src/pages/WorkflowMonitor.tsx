@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import {
   Activity,
   AlertTriangle,
@@ -171,8 +173,8 @@ const WorkflowMonitor: React.FC = () => {
       const [overviewData, trendData, timeoutData, anomalyData] = await Promise.all([
         getMonitorOverview(),
         getProcessTrend({ days: 7 }),
-        getTimeoutAlerts({ pageNum: 1, pageSize: 10, resolved: false }),
-        getAnomalyAlerts({ pageNum: 1, pageSize: 10, resolved: false }),
+        getTimeoutAlerts({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), resolved: false }),
+        getAnomalyAlerts({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), resolved: false }),
       ]);
 
       setOverview(overviewData);

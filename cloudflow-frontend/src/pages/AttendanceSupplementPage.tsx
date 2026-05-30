@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import {
   AlertCircle,
@@ -145,7 +147,7 @@ export const AttendanceSupplementPage: React.FC = () => {
     status: '',
     checkType: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
@@ -446,7 +448,7 @@ export const AttendanceSupplementPage: React.FC = () => {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setSearchParams({ status: '', checkType: '', pageNum: 1, pageSize: 10 })}
+                onClick={() => setSearchParams({ status: '', checkType: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })}
               >
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件

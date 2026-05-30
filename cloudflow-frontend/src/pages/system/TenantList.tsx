@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import {
   Building2,
   Calendar,
@@ -243,7 +245,7 @@ export const TenantList: React.FC = () => {
   const [query, setQuery] = useState<TenantQuery>({
     keyword: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTenant, setEditingTenant] = useState<TenantView | null>(null);

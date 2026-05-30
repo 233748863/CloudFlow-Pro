@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -95,7 +97,7 @@ export const ContractThresholdPage: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, keyword: '', businessUnit: '', amountTier: '', status: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), keyword: '', businessUnit: '', amountTier: '', status: '' });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<OaContractAmountThreshold | null>(null);

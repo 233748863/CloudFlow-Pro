@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import { Bell, Edit, Eye, FileClock, Plus, RotateCcw, Send, Stamp, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
@@ -148,7 +150,7 @@ export const SealListPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const [rows, setRows] = useState<OaSeal[]>([]);
   const [total, setTotal] = useState(0);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, sealName: '', status: '', expiry: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), sealName: '', status: '', expiry: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaSeal>(emptyForm);
   const [selectedKeeperIds, setSelectedKeeperIds] = useState<string[]>([]);
@@ -383,7 +385,7 @@ export const SealListPage: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, sealName: '', status: '', expiry: '' })}>
+              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), sealName: '', status: '', expiry: '' })}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>

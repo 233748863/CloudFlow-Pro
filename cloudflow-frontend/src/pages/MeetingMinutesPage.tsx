@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import {
   ClipboardList,
   Clock3,
@@ -122,7 +124,7 @@ const MeetingMinutesPage: React.FC = () => {
   const [rows, setRows] = useState<OaMeetingMinutes[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState({ keyword: '', status: '', pageNum: 1, pageSize: 10 });
+  const [query, setQuery] = useState({ keyword: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
 
   const [formOpen, setFormOpen] = useState(false);
   const [formData, setFormData] = useState<OaMeetingMinutes>(emptyForm);
@@ -373,7 +375,7 @@ const MeetingMinutesPage: React.FC = () => {
         </div>
       </div>
       <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-        <Button variant="outline" size="sm" onClick={() => setQuery({ keyword: '', status: '', pageNum: 1, pageSize: 10 })}>
+        <Button variant="outline" size="sm" onClick={() => setQuery({ keyword: '', status: '', pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) })}>
           <RefreshCw size={14} className="mr-1.5" />清空条件
         </Button>
         {canEdit ? (

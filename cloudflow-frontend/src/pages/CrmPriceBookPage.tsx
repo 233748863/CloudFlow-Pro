@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { BookOpenText, BookPlus, RefreshCcw, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -24,11 +26,7 @@ import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePage
 import { CrmPriceBook, crmApi } from '@/services/api/crm';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { getErrorMessage } from '@/utils/errorMessage';
-
-const statusLabelMap: Record<string, string> = {
-  ACTIVE: '启用',
-  INACTIVE: '停用',
-};
+import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
 
 const statusOptions = ['ACTIVE', 'INACTIVE'];
 
@@ -61,7 +59,7 @@ export default function CrmPriceBookPage() {
     try {
       const result = await crmApi.listPriceBooks({
         pageNum,
-        pageSize: 10,
+        pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
         priceBookName: priceBookName || undefined,
         status: status === 'ALL' ? undefined : status,
       });
@@ -120,7 +118,7 @@ export default function CrmPriceBookPage() {
                   <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item]}</SelectItem>)}
+                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -154,7 +152,7 @@ export default function CrmPriceBookPage() {
                       <td className="px-4 py-3 text-sm"><div>{row.priceBookName}</div><div className="text-xs text-slate-500">{row.currency || 'CNY'}</div></td>
                       <td className="px-4 py-3 text-sm"><div>{formatDateOnly(row.startDate)}</div><div className="text-xs text-slate-500">至 {formatDateOnly(row.endDate)}</div></td>
                       <td className="px-4 py-3 text-sm">{row.ownerName || '-'}</td>
-                      <td className="px-4 py-3 text-sm">{statusLabelMap[row.status || ''] || row.status || '-'}</td>
+                      <td className="px-4 py-3 text-sm">{getCrmGenericStatusLabel(row.status)}</td>
                       <td className="px-4 py-3 text-sm">{formatDateTimeDisplay((row as CrmPriceBook & { updateTime?: string }).updateTime) || '-'}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
@@ -217,7 +215,7 @@ export default function CrmPriceBookPage() {
             <Select value={form.status || 'ACTIVE'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger>
               <SelectContent>
-                {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item]}</SelectItem>)}
+                {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

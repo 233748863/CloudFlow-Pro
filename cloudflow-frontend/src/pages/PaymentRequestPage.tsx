@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { CheckCircle2, Clock3, Download, DollarSign, Edit, Eye, Paperclip, Plus, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { paymentRequestApi, PaymentRequest } from '@/services/api/expense';
@@ -160,7 +162,7 @@ export const PaymentRequestPage: React.FC = () => {
     status: '',
     paymentType: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [paymentTypeDraft, setPaymentTypeDraft] = useState('');
   const [total, setTotal] = useState(0);
@@ -251,7 +253,7 @@ export const PaymentRequestPage: React.FC = () => {
       status: '',
       paymentType: '',
       pageNum: 1,
-      pageSize: 10,
+      pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     });
   };
 

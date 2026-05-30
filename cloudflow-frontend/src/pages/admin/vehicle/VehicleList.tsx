@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import {
   AlertTriangle,
   Car,
@@ -255,7 +257,7 @@ const VehicleList: React.FC = () => {
   const [detailFuelLogs, setDetailFuelLogs] = useState<VehicleFuelLog[]>([]);
   const [query, setQuery] = useState({
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     licensePlate: '',
     status: '',
   });
@@ -296,7 +298,7 @@ const VehicleList: React.FC = () => {
     try {
       setDetailProfile(await getVehicleProfile(vehicleId));
       try {
-        const fuelPage = await getFuelLogList({ vehicleId, pageNum: 1, pageSize: 10 });
+        const fuelPage = await getFuelLogList({ vehicleId, pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
         setDetailFuelLogs(Array.isArray(fuelPage?.records) ? fuelPage.records : []);
       } catch {
         setDetailFuelLogs([]);
@@ -345,7 +347,7 @@ const VehicleList: React.FC = () => {
   const handleReset = () => {
     setSearchPlate('');
     setStatusInput('');
-    setQuery({ pageNum: 1, pageSize: 10, licensePlate: '', status: '' });
+    setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), licensePlate: '', status: '' });
   };
 
   const handleAdd = () => {

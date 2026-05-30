@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import { BadgeCheck, Bell, Edit, Eye, FileClock, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, ConfirmDialog, DatePicker, Input, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea, UserSelector } from '@/components/common';
@@ -146,7 +148,7 @@ export const LicenseListPage: React.FC = () => {
   const { hasPermission } = useAuth();
   const [rows, setRows] = useState<OaLicense[]>([]);
   const [total, setTotal] = useState(0);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, licenseName: '', status: '', expiry: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), licenseName: '', status: '', expiry: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaLicense>(emptyForm);
   const [selectedKeeperIds, setSelectedKeeperIds] = useState<string[]>([]);
@@ -381,7 +383,7 @@ export const LicenseListPage: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, licenseName: '', status: '', expiry: '' })}>
+              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), licenseName: '', status: '', expiry: '' })}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { LogOut, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -97,7 +99,7 @@ const TableStateRow: React.FC<{
 );
 
 export const OnlineUserPage: React.FC = () => {
-  const [query, setQuery] = useState<OnlineUserQuery>({ pageNum: 1, pageSize: 10 });
+  const [query, setQuery] = useState<OnlineUserQuery>({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   const [filters, setFilters] = useState<OnlineUserFilters>({
     username: '',
     nickName: '',
@@ -164,7 +166,7 @@ export const OnlineUserPage: React.FC = () => {
       deptName: '',
       tenantId: '',
     });
-    setQuery({ pageNum: 1, pageSize: 10 });
+    setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   };
 
   const handleRefresh = () => {

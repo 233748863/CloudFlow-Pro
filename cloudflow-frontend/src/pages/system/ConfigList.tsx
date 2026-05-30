@@ -9,7 +9,8 @@ import {
   updateConfig,
   type SysConfig,
 } from '../../services/api/system';
-import { clearConfigCache } from '../../hooks/useSystemConfig';
+import { clearConfigCache, getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { BaseDialog, ConfirmDialog, Pagination } from '@/components/common';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import {
@@ -37,6 +38,7 @@ type ConfigFilters = {
   configName: string;
   configKey: string;
   configType: string;
+  module: string;
 };
 
 type ConfigQuery = {
@@ -45,6 +47,7 @@ type ConfigQuery = {
   configName: string;
   configKey: string;
   configType: string;
+  module: string;
 };
 
 const DEFAULT_FORM_DATA: SysConfig = {
@@ -57,7 +60,44 @@ const DEFAULT_FORM_DATA: SysConfig = {
 };
 
 const DEFAULT_TYPE_VALUE = '__all__';
+const DEFAULT_MODULE_VALUE = '__all__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+
+/** 按 config_key 前缀分组的模块预设，下拉切换时把 prefix 拼到 configKey 查询里 */
+const MODULE_OPTIONS: { value: string; label: string; prefix: string }[] = [
+  { value: 'user', label: '用户管理', prefix: 'sys.user.' },
+  { value: 'captcha', label: '验证码', prefix: 'sys.captcha.' },
+  { value: 'security', label: '安全认证', prefix: 'sys.security.' },
+  { value: 'workflow', label: '工作流', prefix: 'sys.workflow.' },
+  { value: 'oa', label: 'OA 办公', prefix: 'sys.oa.' },
+  { value: 'hr', label: 'HR 人事', prefix: 'sys.hr.' },
+  { value: 'crm', label: 'CRM 客户', prefix: 'sys.crm.' },
+  { value: 'attendance', label: '考勤', prefix: 'sys.attendance.' },
+  { value: 'announcement', label: '公告', prefix: 'sys.announcement.' },
+  { value: 'vehicle', label: '车辆', prefix: 'sys.vehicle.' },
+  { value: 'meetingRoom', label: '会议室', prefix: 'sys.meetingRoom.' },
+  { value: 'asset', label: '资产', prefix: 'sys.asset.' },
+  { value: 'page', label: '分页', prefix: 'sys.page.' },
+  { value: 'tenant', label: '租户', prefix: 'sys.tenant.' },
+  { value: 'upload', label: '文件上传', prefix: 'sys.upload.' },
+  { value: 'oss', label: 'OSS 存储', prefix: 'sys.oss.' },
+  { value: 'log', label: '日志', prefix: 'sys.log.' },
+  { value: 'datascope', label: '数据权限', prefix: 'sys.datascope.' },
+  { value: 'gateway', label: '网关', prefix: 'sys.gateway.' },
+  { value: 'sse', label: 'SSE 推送', prefix: 'sys.sse.' },
+  { value: 'encrypt', label: '加密', prefix: 'sys.encrypt.' },
+  { value: 'sensitive', label: '脱敏', prefix: 'sys.sensitive.' },
+  { value: 'auth', label: '认证', prefix: 'sys.auth.' },
+  { value: 'common', label: '通用', prefix: 'sys.common.' },
+  { value: 'account', label: '账户', prefix: 'sys.account.' },
+];
+
+/** 改后需重启才生效的 key 列表（@Cacheable 注解级 TTL 受 Spring Cache 注解限制） */
+const RESTART_REQUIRED_KEYS = new Set<string>([
+  'sys.workflow.cache.definition.ttl',
+  'sys.workflow.cache.form.ttl',
+  'sys.workflow.cache.user.ttl',
+]);
 
 const getConfigTypeBadgeClassName = (configType: string) =>
   configType === 'Y'
@@ -99,13 +139,15 @@ export const ConfigList = () => {
     configName: '',
     configKey: '',
     configType: '',
+    module: '',
   });
   const [query, setQuery] = useState<ConfigQuery>({
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     configName: '',
     configKey: '',
     configType: '',
+    module: '',
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<SysConfig | null>(null);
@@ -134,11 +176,17 @@ export const ConfigList = () => {
     setError(null);
 
     try {
+      // 模块下拉非空时，把模块 prefix 作为 configKey 的模糊匹配条件传给后端；
+      // 用户在 configKey 输入框输入的内容优先（更精确）
+      const modulePrefix = nextQuery.module
+        ? MODULE_OPTIONS.find((opt) => opt.value === nextQuery.module)?.prefix
+        : undefined;
+      const effectiveConfigKey = nextQuery.configKey || modulePrefix;
       const response = await getConfigList({
         pageNum: nextQuery.pageNum,
         pageSize: nextQuery.pageSize,
         configName: nextQuery.configName || undefined,
-        configKey: nextQuery.configKey || undefined,
+        configKey: effectiveConfigKey || undefined,
         configType: nextQuery.configType || undefined,
       });
 
@@ -161,7 +209,7 @@ export const ConfigList = () => {
     void fetchConfigs();
   }, [query]);
 
-  const hasActiveFilters = Boolean(query.configName || query.configKey || query.configType);
+  const hasActiveFilters = Boolean(query.configName || query.configKey || query.configType || query.module);
   const isEdit = Boolean(editingConfig);
 
   const handleSearch = (event: React.FormEvent) => {
@@ -172,6 +220,7 @@ export const ConfigList = () => {
       configName: filters.configName.trim(),
       configKey: filters.configKey.trim(),
       configType: filters.configType,
+      module: filters.module,
     }));
   };
 
@@ -180,6 +229,7 @@ export const ConfigList = () => {
       configName: '',
       configKey: '',
       configType: '',
+      module: '',
     };
 
     setFilters(nextFilters);
@@ -189,6 +239,7 @@ export const ConfigList = () => {
       configName: '',
       configKey: '',
       configType: '',
+      module: '',
     }));
   };
 
@@ -348,6 +399,28 @@ export const ConfigList = () => {
                 </Select>
               </div>
 
+              <div className="w-full sm:w-44">
+                <Select
+                  value={filters.module || DEFAULT_MODULE_VALUE}
+                  onValueChange={(value) =>
+                    setFilters((current) => ({
+                      ...current,
+                      module: value === DEFAULT_MODULE_VALUE ? '' : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="全部模块" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={DEFAULT_MODULE_VALUE}>全部模块</SelectItem>
+                    {MODULE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button type="submit" size="sm">
                 查询
               </Button>
@@ -421,9 +494,19 @@ export const ConfigList = () => {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <code className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                            {config.configKey}
-                          </code>
+                          <div className="flex flex-col gap-1">
+                            <code className="rounded-md bg-slate-100 px-2 py-1 text-xs font-medium text-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                              {config.configKey}
+                            </code>
+                            {RESTART_REQUIRED_KEYS.has(config.configKey) ? (
+                              <span
+                                className="inline-flex w-fit items-center rounded-md border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-300"
+                                title="该参数由 Spring Cache 注解控制，修改后需重启服务才能生效"
+                              >
+                                ⚠ 重启生效
+                              </span>
+                            ) : null}
+                          </div>
                         </TableCell>
                         <TableCell className="max-w-[260px]">
                           <span

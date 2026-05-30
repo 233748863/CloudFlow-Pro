@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { Plus, RefreshCw, RotateCcw, Search, UserX } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -80,7 +82,7 @@ export const UserBlacklistPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ keyword: '', status: '' as '' | UserBlacklistStatus });
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, keyword: '', status: '' as '' | UserBlacklistStatus });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), keyword: '', status: '' as '' | UserBlacklistStatus });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<SysUserBlacklist | null>(null);

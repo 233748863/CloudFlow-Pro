@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import {
   Building2,
   CheckCircle,
@@ -115,7 +117,7 @@ export const VisitorPage: React.FC = () => {
     visitorName: '',
     visitDate: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [visitorNameInput, setVisitorNameInput] = useState('');
   const [visitDateInput, setVisitDateInput] = useState('');
@@ -282,7 +284,7 @@ export const VisitorPage: React.FC = () => {
       visitorName: '',
       visitDate: '',
       pageNum: 1,
-      pageSize: 10,
+      pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     });
   };
 

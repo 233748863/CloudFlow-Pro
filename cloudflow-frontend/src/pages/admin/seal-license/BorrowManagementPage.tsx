@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import { Bell, CalendarClock, CheckCircle2, Clock3, Eye, FileWarning, RotateCcw, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { BaseDialog, Button, Label, Pagination, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, StatCard, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
@@ -101,7 +103,7 @@ export const BorrowManagementPage: React.FC = () => {
   const [rows, setRows] = useState<UnifiedBorrow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, kind: 'ALL', status: 'APPROVED' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), kind: 'ALL', status: 'APPROVED' });
   const [actionTarget, setActionTarget] = useState<UnifiedBorrow | null>(null);
   const [actionType, setActionType] = useState<'borrow' | 'return' | 'remind'>('borrow');
   const [remark, setRemark] = useState('');
@@ -307,7 +309,7 @@ export const BorrowManagementPage: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, kind: 'ALL', status: 'APPROVED' })}>
+              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), kind: 'ALL', status: 'APPROVED' })}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>

@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import { Clock3, Edit, Eye, FileText, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -90,7 +92,7 @@ export const SealApplicationPage: React.FC = () => {
   const [seals, setSeals] = useState<OaSeal[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, status: '', documentName: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), status: '', documentName: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaSealApplication>(emptyForm);
   const [detailApplication, setDetailApplication] = useState<OaSealApplication | null>(null);
@@ -267,7 +269,7 @@ export const SealApplicationPage: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, status: '', documentName: '' })}>
+              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), status: '', documentName: '' })}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>

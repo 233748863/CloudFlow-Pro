@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import {
   Calendar,
   LogIn,
@@ -136,7 +138,7 @@ export const DutySchedulePage: React.FC = () => {
     status: '',
     scheduleType: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [filterDraft, setFilterDraft] = useState({ status: '', scheduleType: '' });
   const [total, setTotal] = useState(0);
@@ -182,7 +184,7 @@ export const DutySchedulePage: React.FC = () => {
       status: '',
       scheduleType: '',
       pageNum: 1,
-      pageSize: 10,
+      pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     });
   };
 

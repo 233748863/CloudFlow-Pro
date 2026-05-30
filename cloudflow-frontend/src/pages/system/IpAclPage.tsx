@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { Plus, RefreshCw, RotateCcw, Search, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { getErrorMessage } from '@/utils/errorMessage';
@@ -105,7 +107,7 @@ export const IpAclPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState({ keyword: '', status: '' as '' | IpAclStatus, mode: '' as '' | IpAclMode });
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, keyword: '', status: '' as '' | IpAclStatus, mode: '' as '' | IpAclMode });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), keyword: '', status: '' as '' | IpAclStatus, mode: '' as '' | IpAclMode });
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editing, setEditing] = useState<SysIpAcl | null>(null);

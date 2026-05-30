@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
 import {
   Clock3,
@@ -159,7 +161,7 @@ export const PurchaseRequestPage: React.FC = () => {
     status: '',
     supplierId: undefined as number | undefined,
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [total, setTotal] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
@@ -225,7 +227,7 @@ export const PurchaseRequestPage: React.FC = () => {
     ['APPROVED', 'PARTIAL_RECEIVED'].includes(status || '');
 
   const resetFilters = () => {
-    setSearchParams({ status: '', supplierId: undefined, pageNum: 1, pageSize: 10 });
+    setSearchParams({ status: '', supplierId: undefined, pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   };
 
   const handleAdd = () => {

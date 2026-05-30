@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../../constants/sysConfig';
 import {
   Ban,
   Edit,
@@ -202,7 +204,7 @@ const AssetList: React.FC = () => {
   const [total, setTotal] = useState(0);
   const [searchParams, setSearchParams] = useState<AssetQueryParams>({
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     name: '',
     assetCode: '',
     category: '',
@@ -348,7 +350,7 @@ const AssetList: React.FC = () => {
   const handleSearch = () => {
     setSearchParams({
       pageNum: 1,
-      pageSize: 10,
+      pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
       name: searchNameInput.trim(),
       assetCode: searchCodeInput.trim(),
       category: categoryInput,
@@ -363,7 +365,7 @@ const AssetList: React.FC = () => {
     setStatusInput('');
     setSearchParams({
       pageNum: 1,
-      pageSize: 10,
+      pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
       name: '',
       assetCode: '',
       category: '',

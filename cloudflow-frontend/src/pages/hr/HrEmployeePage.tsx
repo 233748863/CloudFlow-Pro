@@ -75,31 +75,17 @@ const typeLabel: Record<string, string> = {
   CONTRACTOR: '外包',
 };
 
-const statusTone = (status?: string | null) => {
-  switch (status) {
-    case 'REGULAR':
-      return 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200';
-    case 'PROBATION':
-      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
-    case 'RESIGNED':
-      return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-    default:
-      return 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
-  }
-};
+// 状态/类型样式委托 enumLabels.ts 的 EMPLOYEE_STATUS_META / EMPLOYEE_TYPE_META；未命中保留页面历史 fallback
+import { EMPLOYEE_STATUS_META, EMPLOYEE_TYPE_META } from '@/utils/enumLabels';
 
-const typeTone = (type?: string | null) => {
-  switch (type) {
-    case 'PART_TIME':
-      return 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200';
-    case 'INTERN':
-      return 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200';
-    case 'CONTRACTOR':
-      return 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200';
-    default:
-      return 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-  }
-};
+const STATUS_FALLBACK_TONE = 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200';
+const TYPE_FALLBACK_TONE = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
+
+const statusTone = (status?: string | null) =>
+  (status && EMPLOYEE_STATUS_META[status]?.fullClass) || STATUS_FALLBACK_TONE;
+
+const typeTone = (type?: string | null) =>
+  (type && EMPLOYEE_TYPE_META[type]?.fullClass) || TYPE_FALLBACK_TONE;
 
 const InlineState = ({
   title,

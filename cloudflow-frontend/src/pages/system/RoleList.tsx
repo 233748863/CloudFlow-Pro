@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import {
   Building2,
   ChevronDown,
@@ -234,7 +236,7 @@ export const RoleList = () => {
   });
   const [query, setQuery] = useState<RoleQuery>({
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     roleName: '',
     roleKey: '',
   });

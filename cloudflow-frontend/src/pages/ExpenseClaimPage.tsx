@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { Clock3, Download, Edit, Eye, Paperclip, Plus, Receipt, RotateCcw, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { expenseClaimApi, ExpenseClaim, ExpenseItem } from '@/services/api/expense';
@@ -194,7 +196,7 @@ export const ExpenseClaimPage: React.FC = () => {
     status: '',
     category: '',
     pageNum: 1,
-    pageSize: 10,
+    pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
   });
   const [categoryDraft, setCategoryDraft] = useState('');
   const [remoteTotal, setRemoteTotal] = useState(0);
@@ -286,7 +288,7 @@ export const ExpenseClaimPage: React.FC = () => {
       status: '',
       category: '',
       pageNum: 1,
-      pageSize: 10,
+      pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
     });
   };
 

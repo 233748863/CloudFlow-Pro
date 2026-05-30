@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { ListOrdered, RefreshCcw, Settings2, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -32,8 +34,9 @@ const ruleTypeLabelMap: Record<string, string> = {
   ASSIGN: '分配策略',
 };
 
+import { getCrmGenericStatusLabel } from '@/utils/enumLabels';
+
 const ruleTypeOptions: CrmAssignmentRule['ruleType'][] = ['AUTO_RELEASE', 'CLAIM_LIMIT', 'ASSIGN'];
-const statusLabelMap: Record<string, string> = { ACTIVE: '启用', INACTIVE: '停用' };
 const statusOptions = ['ACTIVE', 'INACTIVE'];
 
 const emptyRule: CrmAssignmentRule = {
@@ -63,7 +66,7 @@ export default function CrmAssignmentRulePage() {
     try {
       const result = await crmApi.listAssignmentRules({
         pageNum,
-        pageSize: 10,
+        pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10),
         ruleName: ruleName || undefined,
         ruleType: ruleType === 'ALL' ? undefined : ruleType,
         status: status === 'ALL' ? undefined : status,
@@ -132,7 +135,7 @@ export default function CrmAssignmentRulePage() {
                   <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item]}</SelectItem>)}
+                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -175,7 +178,7 @@ export default function CrmAssignmentRulePage() {
                         {row.ruleType === 'CLAIM_LIMIT' ? `单人持有上限 ${row.maxPerOwner || '-'}` : null}
                         {row.ruleType === 'ASSIGN' ? '按规则派单' : null}
                       </td>
-                      <td className="px-4 py-3 text-sm">{statusLabelMap[row.status || ''] || row.status || '-'}</td>
+                      <td className="px-4 py-3 text-sm">{getCrmGenericStatusLabel(row.status)}</td>
                       <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(row.updateTime) || '-'}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
@@ -273,7 +276,7 @@ export default function CrmAssignmentRulePage() {
             <Select value={form.status || 'ACTIVE'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger>
               <SelectContent>
-                {statusOptions.map((item) => <SelectItem key={item} value={item}>{statusLabelMap[item]}</SelectItem>)}
+                {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmGenericStatusLabel(item)}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { Download, Eye, FileClock, RefreshCw, RotateCcw, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -62,7 +64,7 @@ export const AuditEventPage = () => {
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [detail, setDetail] = useState<AuditEvent | null>(null);
-  const [query, setQuery] = useState<AuditEventQuery>({ pageNum: 1, pageSize: 10 });
+  const [query, setQuery] = useState<AuditEventQuery>({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10) });
   const [filters, setFilters] = useState({
     businessType: '',
     businessId: '',

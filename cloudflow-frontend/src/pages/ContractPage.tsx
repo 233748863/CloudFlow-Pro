@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { getConfigIntSync } from '../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../constants/sysConfig';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AlertTriangle, Clock3, Edit, Eye, FileSignature, Link2, Plus, RotateCcw, Send, Trash2, XCircle } from 'lucide-react';
 import { useWorkflowRefresh } from '@/hooks/useWorkflowRefresh';
@@ -116,7 +118,7 @@ export const ContractPage: React.FC = () => {
   const [rows, setRows] = useState<OaContract[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, status: '', contractName: '', contractNo: '', riskLevel: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), status: '', contractName: '', contractNo: '', riskLevel: '' });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState<OaContract>(emptyForm);
   const [templates, setTemplates] = useState<OaContractTemplate[]>([]);
@@ -382,7 +384,7 @@ export const ContractPage: React.FC = () => {
               </div>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: 10, status: '', contractName: '', contractNo: '', riskLevel: '' })}>
+              <Button variant="outline" size="sm" onClick={() => setQuery({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), status: '', contractName: '', contractNo: '', riskLevel: '' })}>
                 <RotateCcw size={14} className="mr-1.5" />
                 清空条件
               </Button>

@@ -1,4 +1,6 @@
 import React, { useEffect, useState } from 'react';
+import { getConfigIntSync } from '../../hooks/useSystemConfig';
+import { SYS_PAGE_DEFAULT_PAGE_SIZE } from '../../constants/sysConfig';
 import { CheckCircle2, Edit, History, ListChecks, Play, RefreshCw, RotateCcw, Search, Undo2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -122,7 +124,7 @@ export const BusinessRulePage = () => {
   const [rows, setRows] = useState<BusinessRule[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState({ pageNum: 1, pageSize: 10, module: '', ruleCode: '', enabled: '' });
+  const [query, setQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), module: '', ruleCode: '', enabled: '' });
   const [filters, setFilters] = useState({ module: '', ruleCode: '', enabled: '' });
   const [editingRule, setEditingRule] = useState<BusinessRule | null>(null);
   const [form, setForm] = useState<BusinessRule | null>(null);
@@ -130,13 +132,13 @@ export const BusinessRulePage = () => {
   const [versions, setVersions] = useState<BusinessRuleVersion[]>([]);
   const [versionTotal, setVersionTotal] = useState(0);
   const [versionLoading, setVersionLoading] = useState(false);
-  const [versionQuery, setVersionQuery] = useState({ pageNum: 1, pageSize: 10, ruleCode: '', status: '' });
+  const [versionQuery, setVersionQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), ruleCode: '', status: '' });
   const [versionFilters, setVersionFilters] = useState({ ruleCode: '', status: '' });
 
   const [hits, setHits] = useState<BusinessRuleHitRecord[]>([]);
   const [hitTotal, setHitTotal] = useState(0);
   const [hitLoading, setHitLoading] = useState(false);
-  const [hitQuery, setHitQuery] = useState({ pageNum: 1, pageSize: 10, ruleCode: '', businessType: '', hitResult: '' });
+  const [hitQuery, setHitQuery] = useState({ pageNum: 1, pageSize: getConfigIntSync(SYS_PAGE_DEFAULT_PAGE_SIZE, 10), ruleCode: '', businessType: '', hitResult: '' });
   const [hitFilters, setHitFilters] = useState({ ruleCode: '', businessType: '', hitResult: '' });
   const [confirmState, setConfirmState] = useState<ConfirmState | null>(null);
 
