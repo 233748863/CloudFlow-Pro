@@ -7,7 +7,6 @@ import {
   ChevronUp,
   Edit3,
   Eye,
-  Loader2,
   Plus,
   Search,
   Trash2,
@@ -35,6 +34,10 @@ import {
 import { TableRowActions } from '@/components/common/table-row-actions';
 import { addDept, deleteDept, getDeptTree, getUserList, updateDept, updateUser, deleteUser } from '../services/api/auth';
 import { cn } from '@/utils/cn';
+
+// ============================================================
+// 类型定义
+// ============================================================
 
 interface DeptItem {
   deptId: number;
@@ -92,7 +95,11 @@ interface OrgStructureProps {
   onStatsChange?: (stats: OrgStructureStats) => void;
 }
 
-const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
+// ============================================================
+// 工具函数
+// ============================================================
+
+const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-200';
 
 const createDeptForm = (defaultParentId = 0): DeptFormState => ({
   parentId: defaultParentId,
@@ -173,6 +180,43 @@ const filterDeptTree = (depts: DeptItem[], keyword: string): DeptItem[] => {
     });
 };
 
+// ============================================================
+// 内部组件
+// ============================================================
+
+const InlineState: React.FC<{
+  title: string;
+  description?: string;
+  icon?: React.ReactNode;
+  loading?: boolean;
+  className?: string;
+}> = ({ title, description, icon, loading = false, className }) => (
+  <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
+    {loading ? (
+      <div className="mb-3 h-4 w-4 animate-spin rounded-full border-2 border-gray-400 border-t-transparent dark:border-gray-500" />
+    ) : icon ? (
+      <div className="mb-3 text-gray-400 dark:text-gray-500">{icon}</div>
+    ) : null}
+    <div className="text-sm font-medium text-gray-900 dark:text-gray-100">{title}</div>
+    {description ? (
+      <div className="mt-2 text-xs leading-6 text-gray-500 dark:text-gray-400">{description}</div>
+    ) : null}
+  </div>
+);
+
+const TableStateRow: React.FC<{
+  colSpan: number;
+  title: string;
+  description?: string;
+  loading?: boolean;
+}> = ({ colSpan, title, description, loading = false }) => (
+  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
+    <TableCell colSpan={colSpan} className="px-4 py-16">
+      <InlineState title={title} description={description} loading={loading} className="py-0" />
+    </TableCell>
+  </TableRow>
+);
+
 const DepartmentSelect: React.FC<{
   value: number | undefined;
   onChange: (value: number) => void;
@@ -197,7 +241,7 @@ const DepartmentSelect: React.FC<{
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-11 w-full items-center justify-between rounded-2xl border border-slate-200 bg-white px-4 text-left text-sm text-slate-700 shadow-sm transition hover:border-slate-300 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-slate-600"
+        className="flex h-11 w-full items-center justify-between rounded-2xl border border-gray-200 bg-white px-4 text-left text-sm text-gray-700 shadow-sm transition hover:border-gray-300 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200 dark:hover:border-gray-600"
       >
         <span className="truncate">
           {selected?.dept.deptName || (value === 0 && showRoot ? '顶级部门' : placeholder)}
@@ -206,7 +250,7 @@ const DepartmentSelect: React.FC<{
       </button>
 
       {open ? (
-        <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-950 dark:shadow-[0_24px_48px_rgba(2,6,23,0.46)]">
+        <div className="absolute z-20 mt-2 max-h-60 w-full overflow-y-auto rounded-2xl border border-gray-200 bg-white p-1.5 shadow-[0_18px_36px_rgba(15,23,42,0.12)] dark:border-gray-800 dark:bg-gray-950 dark:shadow-[0_24px_48px_rgba(2,6,23,0.46)]">
           {showRoot ? (
             <SideNavItem
               size="sm"
@@ -264,7 +308,7 @@ const DepartmentPickerList: React.FC<{
   return (
     <div className="space-y-3">
       <div className="relative">
-        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
         <Input
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
@@ -273,7 +317,7 @@ const DepartmentPickerList: React.FC<{
         />
       </div>
 
-      <div className="max-h-[320px] overflow-y-auto rounded-xl border border-slate-200 bg-slate-50/60 p-2 dark:border-slate-800 dark:bg-slate-900/30">
+      <div className="max-h-[320px] overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/60 p-2 dark:border-gray-800 dark:bg-gray-900/30">
         {departments.length === 0 ? (
           <InlineState title="暂无匹配部门" description="请调整搜索条件后重试。" className="py-10" />
         ) : (
@@ -288,7 +332,7 @@ const DepartmentPickerList: React.FC<{
                   onClick={() => onChange(dept.deptId)}
                   style={{ paddingLeft: `${level * 18 + 12}px` }}
                 >
-                  <Building2 size={14} className="shrink-0 text-slate-400 dark:text-slate-500" />
+                  <Building2 size={14} className="shrink-0 text-gray-400 dark:text-gray-500" />
                   <span className="truncate">{dept.deptName}</span>
                   <span className={cn('ml-auto rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
                     {(dept.status || '0') === '0' ? '正常' : '停用'}
@@ -303,50 +347,164 @@ const DepartmentPickerList: React.FC<{
   );
 };
 
-const SectionCard: React.FC<{
-  title: string;
-  headerAside?: React.ReactNode;
-  children: React.ReactNode;
-}> = ({ title, headerAside, children }) => (
-  <section className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
-    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800">
-      <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-        {title}
+// ============================================================
+// 部门树节点组件
+// ============================================================
+
+const DeptNode: React.FC<{
+  dept: DeptItem;
+  level?: number;
+  selectedDeptId: number | null;
+  expandedDeptIds: Set<number>;
+  forceExpanded?: boolean;
+  onSelect: (dept: DeptItem) => void;
+  onToggle: (deptId: number) => void;
+  onAddChild: (dept: DeptItem) => void;
+  onEdit: (dept: DeptItem) => void;
+}> = ({
+  dept,
+  level = 0,
+  selectedDeptId,
+  expandedDeptIds,
+  forceExpanded = false,
+  onSelect,
+  onToggle,
+  onAddChild,
+  onEdit,
+}) => {
+  const hasChildren = Boolean(dept.children?.length);
+  const expanded = forceExpanded || expandedDeptIds.has(dept.deptId);
+  const isSelected = selectedDeptId === dept.deptId;
+  const directChildren = dept.children?.length || 0;
+  const childDepartments = countDeptChildren(dept);
+
+  return (
+    <div className="select-none">
+      <div className="group relative">
+        {level > 0 ? (
+          <span
+            className="pointer-events-none absolute bottom-0 top-0 w-px bg-gray-200/70 dark:bg-gray-800"
+            style={{ left: `${level * 18 + 15}px` }}
+          />
+        ) : null}
+
+        <div
+          className={cn(
+            'flex min-h-11 w-full items-center gap-2 rounded-xl border px-2 py-2 text-left transition',
+            isSelected
+              ? 'border-primary-200 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-900/70 dark:bg-primary-950/30 dark:text-primary-100'
+              : 'border-transparent text-gray-600 hover:border-gray-100 hover:bg-white hover:text-gray-900 dark:text-gray-300 dark:hover:border-dark-700/50 dark:hover:bg-dark-800/50 dark:hover:text-gray-100',
+          )}
+          style={{ paddingLeft: `${level * 18 + 8}px` }}
+        >
+          <button
+            type="button"
+            disabled={!hasChildren}
+            title={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
+            aria-label={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
+            onClick={(event) => {
+              event.stopPropagation();
+              onToggle(dept.deptId);
+            }}
+            className={cn(
+              'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-gray-400 transition',
+              hasChildren
+                ? 'hover:bg-gray-100 hover:text-gray-700 dark:hover:bg-dark-700 dark:hover:text-gray-200'
+                : 'cursor-default disabled:opacity-100',
+            )}
+          >
+            {hasChildren ? expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} /> : <span className="h-1.5 w-1.5 rounded-full bg-gray-300 dark:bg-gray-700" />}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelect(dept)}
+            title={dept.deptName}
+            className="flex min-w-0 flex-1 items-center gap-2 text-left"
+          >
+            <span className={cn(
+              'flex h-7 w-7 shrink-0 items-center justify-center rounded-xl border',
+              isSelected
+                ? 'border-primary-200 bg-white text-primary-700 dark:border-primary-900/70 dark:bg-primary-950/50 dark:text-primary-200'
+                : 'border-gray-100 bg-gray-50 text-gray-400 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-500',
+            )}>
+              <Building2 size={15} />
+            </span>
+
+            <span className="min-w-0 flex-1">
+              <span className="flex min-w-0 items-center gap-2">
+                <span className="truncate text-sm font-semibold">{dept.deptName}</span>
+                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
+                  {(dept.status || '0') === '0' ? '正常' : '停用'}
+                </span>
+              </span>
+              <span className="mt-0.5 block truncate text-xs text-gray-400 dark:text-gray-500">
+                {childDepartments > 0 ? `${directChildren} 个下级 / 共 ${childDepartments} 个` : dept.leader ? `负责人 ${dept.leader}` : `部门 ID ${dept.deptId}`}
+              </span>
+            </span>
+          </button>
+
+          <div
+            className={cn(
+              'ml-auto flex shrink-0 items-center gap-1 transition',
+              isSelected
+                ? 'opacity-100'
+                : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100',
+            )}
+          >
+            <button
+              type="button"
+              title="新增子部门"
+              aria-label="新增子部门"
+              onClick={(event) => {
+                event.stopPropagation();
+                onAddChild(dept);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-primary-50 hover:text-primary-700 dark:text-gray-400 dark:hover:bg-primary-950/30 dark:hover:text-primary-200"
+            >
+              <Plus size={14} />
+            </button>
+            <button
+              type="button"
+              title="编辑部门"
+              aria-label="编辑部门"
+              onClick={(event) => {
+                event.stopPropagation();
+                onEdit(dept);
+              }}
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 dark:text-gray-400 dark:hover:bg-dark-700 dark:hover:text-gray-100"
+            >
+              <Edit3 size={14} />
+            </button>
+          </div>
+        </div>
       </div>
-      {headerAside ? <div className="flex items-center gap-2">{headerAside}</div> : null}
+
+      {expanded && hasChildren ? (
+        <div className="mt-1 space-y-1">
+          {dept.children?.map((child) => (
+            <DeptNode
+              key={child.deptId}
+              dept={child}
+              level={level + 1}
+              selectedDeptId={selectedDeptId}
+              expandedDeptIds={expandedDeptIds}
+              forceExpanded={forceExpanded}
+              onSelect={onSelect}
+              onToggle={onToggle}
+              onAddChild={onAddChild}
+              onEdit={onEdit}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
-    <div className="p-4">{children}</div>
-  </section>
-);
+  );
+};
 
-const InlineState: React.FC<{
-  title: string;
-  description?: string;
-  icon?: React.ReactNode;
-  loading?: boolean;
-  className?: string;
-}> = ({ title, description, icon, loading = false, className }) => (
-  <div className={cn('flex flex-col items-center justify-center px-6 py-12 text-center', className)}>
-    {loading ? <Loader2 className="mb-3 h-4 w-4 animate-spin text-slate-400 dark:text-slate-500" /> : icon ? <div className="mb-3 text-slate-400 dark:text-slate-500">{icon}</div> : null}
-    <div className="text-sm font-medium text-slate-900 dark:text-slate-100">{title}</div>
-    {description ? (
-      <div className="mt-2 text-xs leading-6 text-slate-500 dark:text-slate-400">{description}</div>
-    ) : null}
-  </div>
-);
-
-const TableStateRow: React.FC<{
-  colSpan: number;
-  title: string;
-  description?: string;
-  loading?: boolean;
-}> = ({ colSpan, title, description, loading = false }) => (
-  <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
-    <TableCell colSpan={colSpan} className="px-4 py-16">
-      <InlineState title={title} description={description} loading={loading} className="py-0" />
-    </TableCell>
-  </TableRow>
-);
+// ============================================================
+// 弹窗组件
+// ============================================================
 
 const DeptFormDialog: React.FC<{
   open: boolean;
@@ -522,28 +680,28 @@ const UserDetailDialog: React.FC<{
     >
       {user ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/40">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-white text-lg font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+          <div className="flex items-center gap-4 rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-4 dark:border-dark-700/50 dark:bg-dark-800/50">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-gray-100 bg-white text-lg font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200">
                 {(user.nickName || user.userName || '?')[0]}
               </div>
               <div className="min-w-0">
-                <div className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <div className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                   {user.nickName || user.userName}
                 </div>
-                <div className="mt-1 text-sm text-slate-500 dark:text-slate-400">用户 ID {user.userId}</div>
+                <div className="mt-1 text-sm text-gray-500 dark:text-gray-400">用户 ID {user.userId}</div>
               </div>
             </div>
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-950/88">
+          <div className="overflow-hidden rounded-xl border border-gray-100 bg-white dark:border-dark-700/50 dark:bg-dark-800/50">
             <div className="grid gap-0 md:grid-cols-2">
               {fields.map((field) => (
-                <div key={field.label} className="border-b border-slate-100 px-4 py-3 even:md:border-l dark:border-slate-800 dark:even:md:border-slate-800">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+                <div key={field.label} className="border-b border-gray-100 px-4 py-3 even:md:border-l dark:border-dark-700/50 dark:even:md:border-dark-700/50">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
                     {field.label}
                   </div>
-                  <div className="mt-1.5 text-sm text-slate-900 dark:text-slate-100">
+                  <div className="mt-1.5 text-sm text-gray-900 dark:text-gray-100">
                     {field.type === 'role' && field.value !== '-' ? (
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
+                      <span className="rounded-full border border-gray-100 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-200">
                         {field.value}
                       </span>
                     ) : field.type === 'status' ? (
@@ -612,24 +770,24 @@ const ChangeDeptDialog: React.FC<{
       {user ? (
         <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
           <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/40">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200">
+            <div className="flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50/70 px-4 py-3 dark:border-dark-700/50 dark:bg-dark-800/50">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-100 bg-white text-sm font-semibold text-gray-700 dark:border-gray-700 dark:bg-gray-950 dark:text-gray-200">
                 {(user.nickName || user.userName || '?')[0]}
               </div>
               <div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{user.nickName || user.userName}</div>
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">当前部门 {user.deptName || '-'}</div>
+                <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">{user.nickName || user.userName}</div>
+                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">当前部门 {user.deptName || '-'}</div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-950/88">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 dark:text-slate-500">
+            <div className="rounded-xl border border-gray-100 bg-white px-4 py-3 dark:border-dark-700/50 dark:bg-dark-800/50">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-gray-400 dark:text-gray-500">
                 目标部门
               </div>
-              <div className="mt-2 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <div className="mt-2 text-sm font-semibold text-gray-900 dark:text-gray-100">
                 {targetDept?.deptName || '未选择'}
               </div>
-              <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                 {targetDept?.leader ? `负责人 ${targetDept.leader}` : '从右侧列表选择目标部门'}
               </div>
             </div>
@@ -649,156 +807,9 @@ const ChangeDeptDialog: React.FC<{
   );
 };
 
-const DeptNode: React.FC<{
-  dept: DeptItem;
-  level?: number;
-  selectedDeptId: number | null;
-  expandedDeptIds: Set<number>;
-  forceExpanded?: boolean;
-  onSelect: (dept: DeptItem) => void;
-  onToggle: (deptId: number) => void;
-  onAddChild: (dept: DeptItem) => void;
-  onEdit: (dept: DeptItem) => void;
-}> = ({
-  dept,
-  level = 0,
-  selectedDeptId,
-  expandedDeptIds,
-  forceExpanded = false,
-  onSelect,
-  onToggle,
-  onAddChild,
-  onEdit,
-}) => {
-  const hasChildren = Boolean(dept.children?.length);
-  const expanded = forceExpanded || expandedDeptIds.has(dept.deptId);
-  const isSelected = selectedDeptId === dept.deptId;
-  const directChildren = dept.children?.length || 0;
-  const childDepartments = countDeptChildren(dept);
-
-  return (
-    <div className="select-none">
-      <div className="group relative">
-        {level > 0 ? (
-          <span
-            className="pointer-events-none absolute bottom-0 top-0 w-px bg-slate-200/70 dark:bg-slate-800"
-            style={{ left: `${level * 18 + 15}px` }}
-          />
-        ) : null}
-
-        <div
-          className={cn(
-            'flex min-h-11 w-full items-center gap-2 rounded-lg border px-2 py-2 text-left transition',
-            isSelected
-              ? 'border-teal-200 bg-teal-50 text-teal-900 shadow-sm dark:border-teal-900/70 dark:bg-teal-950/30 dark:text-teal-100'
-              : 'border-transparent text-slate-600 hover:border-slate-200 hover:bg-white hover:text-slate-900 dark:text-slate-300 dark:hover:border-slate-800 dark:hover:bg-slate-950/80 dark:hover:text-slate-100',
-          )}
-          style={{ paddingLeft: `${level * 18 + 8}px` }}
-        >
-          <button
-            type="button"
-            disabled={!hasChildren}
-            title={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
-            aria-label={hasChildren ? (expanded ? '收起部门' : '展开部门') : undefined}
-            onClick={(event) => {
-              event.stopPropagation();
-              onToggle(dept.deptId);
-            }}
-            className={cn(
-              'flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition',
-              hasChildren
-                ? 'hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200'
-                : 'cursor-default disabled:opacity-100',
-            )}
-          >
-            {hasChildren ? expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} /> : <span className="h-1.5 w-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => onSelect(dept)}
-            title={dept.deptName}
-            className="flex min-w-0 flex-1 items-center gap-2 text-left"
-          >
-            <span className={cn(
-              'flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border',
-              isSelected
-                ? 'border-teal-200 bg-white text-teal-700 dark:border-teal-900/70 dark:bg-teal-950/50 dark:text-teal-200'
-                : 'border-slate-200 bg-slate-50 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500',
-            )}>
-              <Building2 size={15} />
-            </span>
-
-            <span className="min-w-0 flex-1">
-              <span className="flex min-w-0 items-center gap-2">
-                <span className="truncate text-sm font-semibold">{dept.deptName}</span>
-                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(dept.status || '0'))}>
-                  {(dept.status || '0') === '0' ? '正常' : '停用'}
-                </span>
-              </span>
-              <span className="mt-0.5 block truncate text-xs text-slate-400 dark:text-slate-500">
-                {childDepartments > 0 ? `${directChildren} 个下级 / 共 ${childDepartments} 个` : dept.leader ? `负责人 ${dept.leader}` : `部门 ID ${dept.deptId}`}
-              </span>
-            </span>
-          </button>
-
-          <div
-            className={cn(
-              'ml-auto flex shrink-0 items-center gap-1 transition',
-              isSelected
-                ? 'opacity-100'
-                : 'pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100',
-            )}
-          >
-            <button
-              type="button"
-              title="新增子部门"
-              aria-label="新增子部门"
-              onClick={(event) => {
-                event.stopPropagation();
-                onAddChild(dept);
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-teal-50 hover:text-teal-700 dark:text-slate-400 dark:hover:bg-teal-950/30 dark:hover:text-teal-200"
-            >
-              <Plus size={14} />
-            </button>
-            <button
-              type="button"
-              title="编辑部门"
-              aria-label="编辑部门"
-              onClick={(event) => {
-                event.stopPropagation();
-                onEdit(dept);
-              }}
-              className="flex h-7 w-7 items-center justify-center rounded-md text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-100"
-            >
-              <Edit3 size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {expanded && hasChildren ? (
-        <div className="mt-1 space-y-1">
-          {dept.children?.map((child) => (
-            <DeptNode
-              key={child.deptId}
-              dept={child}
-              level={level + 1}
-              selectedDeptId={selectedDeptId}
-              expandedDeptIds={expandedDeptIds}
-              forceExpanded={forceExpanded}
-              onSelect={onSelect}
-              onToggle={onToggle}
-              onAddChild={onAddChild}
-              onEdit={onEdit}
-            />
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-};
+// ============================================================
+// 主组件导出
+// ============================================================
 
 export const OrgStructure: React.FC<OrgStructureProps> = ({
   refreshSignal = 0,
@@ -965,9 +976,9 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
     setExpandedDeptIds(new Set());
   };
 
-  const openCreateDeptDialog = (parentId = 0) => {
+  const openCreateDeptDialog = (parentDept?: DeptItem | number) => {
     setEditingDept(null);
-    setDefaultParentId(parentId);
+    setDefaultParentId(typeof parentDept === 'number' ? parentDept : parentDept?.deptId ?? 0);
     setDeptFormOpen(true);
   };
 
@@ -1018,277 +1029,247 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
 
   return (
     <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-      <SectionCard
-        title="部门"
-        headerAside={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openCreateDeptDialog(0)}
-          >
+      {/* 左侧：部门树 */}
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-dark-700/50 dark:bg-dark-800/50">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700/50">
+          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">部门</div>
+          <Button variant="outline" size="sm" onClick={() => openCreateDeptDialog(0)}>
             <Plus size={14} />
             新增
           </Button>
-        }
-      >
-        <div className="space-y-3">
-          <div className="relative">
-            <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-            <Input
-              value={deptSearch}
-              onChange={(event) => setDeptSearch(event.target.value)}
-              className="pl-10"
-              placeholder="搜索部门名称或负责人"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setSelectedDeptId(null)}
-            className={cn(
-              'flex w-full items-center gap-3 rounded-lg border px-3 py-3 text-left transition',
-              selectedDeptId === null
-                ? 'border-teal-200 bg-teal-50 text-teal-900 shadow-sm dark:border-teal-900/70 dark:bg-teal-950/30 dark:text-teal-100'
-                : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950/70 dark:text-slate-200 dark:hover:border-slate-700 dark:hover:bg-slate-900/70',
-            )}
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-              <Building2 size={17} />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block text-sm font-semibold">全部部门</span>
-              <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                {totalDepartments} 个部门 / {activeDepartments} 个正常
-              </span>
-            </span>
-          </button>
-
-          {selectedDept ? (
-            <div className="rounded-lg border border-slate-200 bg-slate-50/80 px-3 py-3 dark:border-slate-800 dark:bg-slate-900/50">
-              <div className="flex min-w-0 items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                  {selectedDept.deptName}
-                  </div>
-                  <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                    {countDeptChildren(selectedDept)} 个下级部门
-                  </div>
-                </div>
-                <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(selectedDept.status || '0'))}>
-                  {(selectedDept.status || '0') === '0' ? '正常' : '停用'}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-3 gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="px-2"
-                  onClick={() => openCreateDeptDialog(selectedDept.deptId)}
-                >
-                  <Plus size={14} />
-                  子部门
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="px-2"
-                  onClick={() => openEditDeptDialog(selectedDept)}
-                >
-                  <Edit3 size={14} />
-                  编辑
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="px-2 text-rose-600 hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200"
-                  onClick={() => setPendingDeleteDept(selectedDept)}
-                >
-                  <Trash2 size={14} />
-                  删除
-                </Button>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-slate-50/50 dark:border-slate-800 dark:bg-slate-900/30">
-            <div className="flex items-center justify-between border-b border-slate-200 px-3 py-2 dark:border-slate-800">
-              <div className="text-xs font-medium text-slate-500 dark:text-slate-400">
-                {deptSearch ? `匹配 ${filteredDepartments} 个部门` : `组织树 ${totalDepartments} 个部门`}
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={expandAllDepartments}
-                  className="rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-100"
-                >
-                  展开
-                </button>
-                <button
-                  type="button"
-                  onClick={collapseAllDepartments}
-                  className="rounded-md px-2 py-1 text-xs text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-950 dark:hover:text-slate-100"
-                >
-                  收起
-                </button>
-              </div>
-            </div>
-
-            <div className="max-h-[62vh] overflow-y-auto p-2">
-              {deptLoading ? (
-                <InlineState title="正在加载部门树..." loading className="py-12" />
-              ) : deptError ? (
-                <InlineState
-                  icon={<Building2 className="h-5 w-5" />}
-                  title="部门树加载失败"
-                  description={deptError}
-                  className="py-12"
-                />
-              ) : filteredDeptTree.length === 0 ? (
-                <InlineState
-                  icon={<Building2 className="h-5 w-5" />}
-                  title="暂无匹配部门"
-                  description={deptSearch ? '请调整部门搜索条件后重试。' : '当前还没有部门数据。'}
-                  className="py-12"
-                />
-              ) : (
-                <div className="space-y-1">
-                  {filteredDeptTree.map((dept) => (
-                    <DeptNode
-                      key={dept.deptId}
-                      dept={dept}
-                      selectedDeptId={selectedDeptId}
-                      expandedDeptIds={expandedDeptIds}
-                      forceExpanded={forceExpandDeptTree}
-                      onSelect={(item) =>
-                        setSelectedDeptId((prev) => (prev === item.deptId ? null : item.deptId))
-                      }
-                      onToggle={toggleDeptExpand}
-                      onAddChild={(item) => openCreateDeptDialog(item.deptId)}
-                      onEdit={openEditDeptDialog}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
         </div>
-      </SectionCard>
-
-      <SectionCard
-        title={selectedDept ? `${selectedDept.deptName}` : '成员'}
-      >
-        <div className="rounded-lg border border-slate-200 dark:border-slate-800">
-          <div className="flex flex-col gap-3 border-b border-slate-200 px-4 py-3 dark:border-slate-800 xl:flex-row xl:items-center xl:justify-between">
-            <div className="relative min-w-0 flex-1">
-              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+        <div className="p-4">
+          <div className="space-y-3">
+            <div className="relative">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <Input
-                value={userSearch}
-                onChange={(event) => setUserSearch(event.target.value)}
+                value={deptSearch}
+                onChange={(event) => setDeptSearch(event.target.value)}
                 className="pl-10"
-                placeholder="搜索成员姓名、账号、邮箱或手机号"
+                placeholder="搜索部门名称或负责人"
               />
             </div>
-            {userSearch ? (
-              <Button variant="outline" onClick={() => setUserSearch('')}>
-                清空搜索
-              </Button>
-            ) : null}
-          </div>
 
-          <div className="overflow-x-auto">
-          <Table className="min-w-[1100px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>用户</TableHead>
-                <TableHead>账号</TableHead>
-                <TableHead>部门</TableHead>
-                <TableHead>手机</TableHead>
-                <TableHead>邮箱</TableHead>
-                <TableHead>角色</TableHead>
-                <TableHead>状态</TableHead>
-                <TableActionHead className="w-56">操作</TableActionHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {userLoading ? (
-                <TableStateRow colSpan={8} title="正在加载成员列表..." loading />
-              ) : userError ? (
-                <TableStateRow colSpan={8} title="成员列表加载失败" description={userError} />
-              ) : filteredUsers.length === 0 ? (
-                <TableStateRow
-                  colSpan={8}
-                  title="暂无成员数据"
-                  description={userSearch ? '请调整成员搜索条件后重试。' : selectedDept ? '当前部门暂无成员。' : '当前没有可展示的成员数据。'}
-                />
-              ) : (
-                filteredUsers.map((user) => (
-                  <TableRow key={user.userId}>
-                    <TableCell className="py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                          {(user.nickName || user.userName || '?')[0]}
-                        </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {user.nickName || '-'}
-                          </div>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-4 text-sm text-slate-700 dark:text-slate-200">{user.userName}</TableCell>
-                    <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">{user.deptName || '-'}</TableCell>
-                    <TableCell className="py-4 text-sm text-slate-600 dark:text-slate-300">{user.phonenumber || '-'}</TableCell>
-                    <TableCell className="max-w-[220px] truncate py-4 text-sm text-slate-500 dark:text-slate-400" title={user.email || '-'}>
-                      {user.email || '-'}
-                    </TableCell>
-                    <TableCell className="py-4">
-                      {user.role ? (
-                        <span className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs font-medium text-slate-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-                          {user.role}
-                        </span>
-                      ) : (
-                        <span className="text-sm text-slate-400 dark:text-slate-500">-</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="py-4">
-                      <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', getStatusBadgeClassName(user.status || '0'))}>
-                        {user.status === '0' ? '正常' : '停用'}
-                      </span>
-                    </TableCell>
-                    <TableCell className="py-4 text-right">
-                      <TableRowActions
-                        align="end"
-                        actions={[
-                          {
-                            label: '详情',
-                            icon: <Eye size={14} />,
-                            onClick: () => setDetailUser(user),
-                            tone: 'neutral',
-                          },
-                          {
-                            label: '调岗',
-                            icon: <ArrowRightLeft size={14} />,
-                            onClick: () => setChangeDeptUser(user),
-                            tone: 'neutral',
-                          },
-                          {
-                            label: '删除',
-                            icon: <Trash2 size={14} />,
-                            onClick: () => setPendingDeleteUser(user),
-                            tone: 'neutral',
-                          },
-                        ]}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))
+            <button
+              type="button"
+              onClick={() => setSelectedDeptId(null)}
+              className={cn(
+                'flex w-full items-center gap-3 rounded-xl border px-3 py-3 text-left transition',
+                selectedDeptId === null
+                  ? 'border-primary-200 bg-primary-50 text-primary-900 shadow-sm dark:border-primary-900/70 dark:bg-primary-950/30 dark:text-primary-100'
+                  : 'border-gray-100 bg-white text-gray-700 hover:border-gray-200 hover:bg-gray-50 dark:border-dark-700/50 dark:bg-dark-800/50 dark:text-gray-200 dark:hover:border-dark-600 dark:hover:bg-dark-700/50',
               )}
-            </TableBody>
-          </Table>
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-gray-100 bg-gray-50 text-gray-500 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-400">
+                <Building2 size={17} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">全部部门</span>
+                <span className="mt-0.5 block text-xs text-gray-500 dark:text-gray-400">
+                  {totalDepartments} 个部门 / {activeDepartments} 个正常
+                </span>
+              </span>
+            </button>
+
+            {selectedDept ? (
+              <div className="rounded-xl border border-gray-100 bg-gray-50/80 px-3 py-3 dark:border-dark-700/50 dark:bg-dark-800/50">
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                      {selectedDept.deptName}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      {countDeptChildren(selectedDept)} 个下级部门
+                    </div>
+                  </div>
+                  <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium', getStatusBadgeClassName(selectedDept.status || '0'))}>
+                    {(selectedDept.status || '0') === '0' ? '正常' : '停用'}
+                  </span>
+                </div>
+                <div className="mt-3 grid grid-cols-3 gap-2">
+                  <Button variant="outline" size="sm" className="px-2" onClick={() => openCreateDeptDialog(selectedDept.deptId)}>
+                    <Plus size={14} />
+                    子部门
+                  </Button>
+                  <Button variant="outline" size="sm" className="px-2" onClick={() => openEditDeptDialog(selectedDept)}>
+                    <Edit3 size={14} />
+                    编辑
+                  </Button>
+                  <Button variant="outline" size="sm" className="px-2 text-rose-600 hover:text-rose-700 dark:text-rose-300 dark:hover:text-rose-200" onClick={() => setPendingDeleteDept(selectedDept)}>
+                    <Trash2 size={14} />
+                    删除
+                  </Button>
+                </div>
+              </div>
+            ) : null}
+
+            <div className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50/50 dark:border-dark-700/50 dark:bg-dark-800/30">
+              <div className="flex items-center justify-between border-b border-gray-100 px-3 py-2 dark:border-dark-700/50">
+                <div className="text-xs font-medium text-gray-500 dark:text-gray-400">
+                  {deptSearch ? `匹配 ${filteredDepartments} 个部门` : `组织树 ${totalDepartments} 个部门`}
+                </div>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={expandAllDepartments} className="rounded-lg px-2 py-1 text-xs text-gray-500 transition hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-dark-800 dark:hover:text-gray-100">
+                    展开
+                  </button>
+                  <button type="button" onClick={collapseAllDepartments} className="rounded-lg px-2 py-1 text-xs text-gray-500 transition hover:bg-white hover:text-gray-900 dark:text-gray-400 dark:hover:bg-dark-800 dark:hover:text-gray-100">
+                    收起
+                  </button>
+                </div>
+              </div>
+
+              <div className="max-h-[62vh] overflow-y-auto p-2">
+                {deptLoading ? (
+                  <InlineState title="正在加载部门树..." loading className="py-12" />
+                ) : deptError ? (
+                  <InlineState icon={<Building2 className="h-5 w-5" />} title="部门树加载失败" description={deptError} className="py-12" />
+                ) : filteredDeptTree.length === 0 ? (
+                  <InlineState icon={<Building2 className="h-5 w-5" />} title="暂无匹配部门" description={deptSearch ? '请调整部门搜索条件后重试。' : '当前还没有部门数据。'} className="py-12" />
+                ) : (
+                  <div className="space-y-1">
+                    {filteredDeptTree.map((dept) => (
+                      <DeptNode
+                        key={dept.deptId}
+                        dept={dept}
+                        selectedDeptId={selectedDeptId}
+                        expandedDeptIds={expandedDeptIds}
+                        forceExpanded={forceExpandDeptTree}
+                        onSelect={(item) => setSelectedDeptId((prev) => (prev === item.deptId ? null : item.deptId))}
+                        onToggle={toggleDeptExpand}
+                        onAddChild={(item) => openCreateDeptDialog(item.deptId)}
+                        onEdit={openEditDeptDialog}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-      </SectionCard>
+      </div>
 
+      {/* 右侧：用户表格 */}
+      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-dark-700/50 dark:bg-dark-800/50">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700/50">
+          <div className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            {selectedDept ? `${selectedDept.deptName}` : '成员'}
+          </div>
+        </div>
+        <div className="p-4">
+          <div className="rounded-xl border border-gray-100 dark:border-dark-700/50">
+            <div className="flex flex-col gap-3 border-b border-gray-100 px-4 py-3 dark:border-dark-700/50 xl:flex-row xl:items-center xl:justify-between">
+              <div className="relative min-w-0 flex-1">
+                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
+                <Input
+                  value={userSearch}
+                  onChange={(event) => setUserSearch(event.target.value)}
+                  className="pl-10"
+                  placeholder="搜索成员姓名、账号、邮箱或手机号"
+                />
+              </div>
+              {userSearch ? (
+                <Button variant="outline" onClick={() => setUserSearch('')}>
+                  清空搜索
+                </Button>
+              ) : null}
+            </div>
+
+            <div className="overflow-x-auto">
+              <Table className="min-w-[1100px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>用户</TableHead>
+                    <TableHead>账号</TableHead>
+                    <TableHead>部门</TableHead>
+                    <TableHead>手机</TableHead>
+                    <TableHead>邮箱</TableHead>
+                    <TableHead>角色</TableHead>
+                    <TableHead>状态</TableHead>
+                    <TableActionHead className="w-56">操作</TableActionHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {userLoading ? (
+                    <TableStateRow colSpan={8} title="正在加载成员列表..." loading />
+                  ) : userError ? (
+                    <TableStateRow colSpan={8} title="成员列表加载失败" description={userError} />
+                  ) : filteredUsers.length === 0 ? (
+                    <TableStateRow
+                      colSpan={8}
+                      title="暂无成员数据"
+                      description={userSearch ? '请调整成员搜索条件后重试。' : selectedDept ? '当前部门暂无成员。' : '当前没有可展示的成员数据。'}
+                    />
+                  ) : (
+                    filteredUsers.map((user) => (
+                      <TableRow key={user.userId}>
+                        <TableCell className="py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full border border-gray-100 bg-gray-50 text-sm font-semibold text-gray-700 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-200">
+                              {(user.nickName || user.userName || '?')[0]}
+                            </div>
+                            <div className="min-w-0">
+                              <div className="truncate text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                {user.nickName || '-'}
+                              </div>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-4 text-sm text-gray-700 dark:text-gray-200">{user.userName}</TableCell>
+                        <TableCell className="py-4 text-sm text-gray-600 dark:text-gray-300">{user.deptName || '-'}</TableCell>
+                        <TableCell className="py-4 text-sm text-gray-600 dark:text-gray-300">{user.phonenumber || '-'}</TableCell>
+                        <TableCell className="max-w-[220px] truncate py-4 text-sm text-gray-500 dark:text-gray-400" title={user.email || '-'}>
+                          {user.email || '-'}
+                        </TableCell>
+                        <TableCell className="py-4">
+                          {user.role ? (
+                            <span className="rounded-full border border-gray-100 bg-gray-50 px-2.5 py-1 text-xs font-medium text-gray-700 dark:border-dark-700/50 dark:bg-dark-800 dark:text-gray-200">
+                              {user.role}
+                            </span>
+                          ) : (
+                            <span className="text-sm text-gray-400 dark:text-gray-500">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-4">
+                          <span className={cn('rounded-full px-2.5 py-1 text-xs font-medium', getStatusBadgeClassName(user.status || '0'))}>
+                            {user.status === '0' ? '正常' : '停用'}
+                          </span>
+                        </TableCell>
+                        <TableCell className="py-4 text-right">
+                          <TableRowActions
+                            align="end"
+                            actions={[
+                              {
+                                label: '详情',
+                                icon: <Eye size={14} />,
+                                onClick: () => setDetailUser(user),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '调岗',
+                                icon: <ArrowRightLeft size={14} />,
+                                onClick: () => setChangeDeptUser(user),
+                                tone: 'neutral',
+                              },
+                              {
+                                label: '删除',
+                                icon: <Trash2 size={14} />,
+                                onClick: () => setPendingDeleteUser(user),
+                                tone: 'neutral',
+                              },
+                            ]}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 弹窗 */}
       <DeptFormDialog
         open={deptFormOpen}
         onClose={() => {
@@ -1320,7 +1301,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
         title="确认删除部门"
         message={
           pendingDeleteDept
-            ? `确定要删除部门“${pendingDeleteDept.deptName}”吗？该操作不可恢复。`
+            ? `确定要删除部门"${pendingDeleteDept.deptName}"吗？该操作不可恢复。`
             : ''
         }
         confirmText="确认删除"
@@ -1335,7 +1316,7 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
         title="确认删除用户"
         message={
           pendingDeleteUser
-            ? `确定要删除用户“${pendingDeleteUser.nickName || pendingDeleteUser.userName}”吗？该操作不可恢复。`
+            ? `确定要删除用户"${pendingDeleteUser.nickName || pendingDeleteUser.userName}"吗？该操作不可恢复。`
             : ''
         }
         confirmText="确认删除"
@@ -1347,4 +1328,3 @@ export const OrgStructure: React.FC<OrgStructureProps> = ({
     </div>
   );
 };
-
