@@ -8,7 +8,7 @@ import { crmApi, CrmCustomerWorkspace, CrmRemoteProjectLink } from '@/services/a
 import { invoiceApi, Invoice } from '@/services/api/invoice';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
-import { getSeverityLabel, getThresholdStatusLabel } from '@/utils/enumLabels';
+import { getSeverityLabel, getThresholdStatusLabel, getInvoiceStatusLabel } from '@/utils/enumLabels';
 
 type WorkspaceTab = 'overview' | 'contact' | 'opportunity' | 'quote' | 'cashflow' | 'renewal' | 'ticket' | 'project';
 
@@ -62,14 +62,6 @@ const statusLabelMap: Record<string, string> = {
   ARCHIVED: '已归档',
 };
 
-const invoiceStatusLabelMap: Record<string, string> = {
-  NONE: '未关联合同发票',
-  REGISTERED: '已登记',
-  BOUND: '已绑定',
-  WRITEOFF_PARTIAL: '部分核销',
-  WRITEOFF_FULL: '全部核销',
-  VOID: '已作废',
-};
 
 const renderHealthBadge = (level?: string) => (
   <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${healthToneMap[level || 'GREEN'] || healthToneMap.GREEN}`}>
@@ -78,7 +70,7 @@ const renderHealthBadge = (level?: string) => (
 );
 
 const renderStatus = (status?: string) => statusLabelMap[status || ''] || status || '-';
-const renderInvoiceStatus = (status?: string) => invoiceStatusLabelMap[status || ''] || status || '-';
+const renderInvoiceStatus = (status?: string) => getInvoiceStatusLabel(status);
 const renderSeverity = (severity?: string) => getSeverityLabel(severity);
 const renderHealthLabel = (level?: string) => healthLabelMap[level || ''] || level || '-';
 

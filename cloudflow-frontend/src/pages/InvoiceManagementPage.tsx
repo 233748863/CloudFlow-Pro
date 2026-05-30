@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
+import { INVOICE_STATUS_META, getInvoiceStatusLabel, getInvoiceStatusMeta, getInvoiceDirectionLabel } from '@/utils/enumLabels';
 
 type InvoiceDialog =
   | { type: 'invoice'; item?: Invoice | null }
@@ -24,26 +25,6 @@ type BindTargetType = 'NONE' | 'EXPENSE' | 'PAYMENT';
 
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300';
 
-const statusLabelMap: Record<string, string> = {
-  REGISTERED: '已登记',
-  BOUND: '已绑定',
-  WRITEOFF_PARTIAL: '部分核销',
-  WRITEOFF_FULL: '全部核销',
-  VOID: '已作废',
-};
-
-const directionLabelMap: Record<string, string> = {
-  INPUT: '进项发票',
-  OUTPUT: '销项发票',
-};
-
-const statusToneMap: Record<string, string> = {
-  REGISTERED: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-  BOUND: 'border-cyan-200 bg-cyan-50 text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-200',
-  WRITEOFF_PARTIAL: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-  WRITEOFF_FULL: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  VOID: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-};
 
 const emptyInvoice: Invoice = {
   invoiceDirection: 'OUTPUT',
@@ -263,11 +244,14 @@ export default function InvoiceManagementPage() {
     }
   };
 
-  const statusBadge = (value?: string) => (
-    <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusToneMap[value || 'REGISTERED'] || statusToneMap.REGISTERED}`}>
-      {statusLabelMap[value || 'REGISTERED'] || value || '-'}
-    </span>
-  );
+  const statusBadge = (value?: string) => {
+    const meta = getInvoiceStatusMeta(value);
+    return (
+      <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.fullClass || meta.tone}`}>
+        {meta.label}
+      </span>
+    );
+  };
 
   const bindDescription = invoiceForm.invoiceDirection === 'OUTPUT'
     ? '销项发票 = 绑定 CRM 回款计划，自动带出客户和合同，并把核销状态回写到 CRM 回款和 OA 合同。'
@@ -296,7 +280,7 @@ export default function InvoiceManagementPage() {
                     <SelectTrigger><SelectValue placeholder="发票状态" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">全部状态</SelectItem>
-                      {Object.entries(statusLabelMap).map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}
+                      {Object.entries(INVOICE_STATUS_META).filter(([k]) => k !== 'NONE').map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -331,7 +315,7 @@ export default function InvoiceManagementPage() {
                       <div>{item.invoiceCode} / {item.invoiceNo}</div>
                       <div className="text-xs text-slate-500">{item.invoiceType || '未分类'} / {item.invoiceDate || '-'}</div>
                     </td>
-                    <td className="px-4 py-3 text-sm">{directionLabelMap[item.invoiceDirection || 'OUTPUT'] || item.invoiceDirection || '-'}</td>
+                    <td className="px-4 py-3 text-sm">{getInvoiceDirectionLabel(item.invoiceDirection || 'OUTPUT')}</td>
                     <td className="px-4 py-3 text-sm">
                       <div>{formatMoney(item.grossAmount)}</div>
                       <div className="text-xs text-slate-500">税额 {formatMoney(item.taxAmount)}</div>
@@ -460,7 +444,7 @@ export default function InvoiceManagementPage() {
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
               <div className="text-sm font-medium">发票方向</div>
-              <div className="mt-2 text-sm">{directionLabelMap[invoiceForm.invoiceDirection || 'OUTPUT'] || '-'}</div>
+              <div className="mt-2 text-sm">{getInvoiceDirectionLabel(invoiceForm.invoiceDirection || 'OUTPUT')}</div>
             </div>
             <div className="rounded-xl border border-slate-200 p-4 dark:border-slate-800">
               <div className="text-sm font-medium">发票状态</div>

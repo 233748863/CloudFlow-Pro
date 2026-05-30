@@ -12,14 +12,9 @@ import {
   generateSalarySlips,
 } from '@/services/api/hr';
 import { normalizeRows } from '../hrShared';
-import { formatMoneyValue, formatDateTimeValue, enumLabel } from '../hrShared';
+import { formatMoneyValue, formatDateTimeValue } from '../hrShared';
+import { getSalarySlipStatusLabel } from '@/utils/enumLabels';
 
-const statusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  CONFIRMED: '已确认',
-  PAID: '已发放',
-  RELEASED: '已下发',
-};
 
 export const HrEssSalarySlipPage: React.FC = () => {
   const [rows, setRows] = useState<HrSalarySlip[]>([]);
@@ -123,7 +118,7 @@ export const HrEssSalarySlipPage: React.FC = () => {
                       <TableCell className="font-semibold text-emerald-600 dark:text-emerald-300">
                         {formatMoneyValue(row.netTotal)}
                       </TableCell>
-                      <TableCell>{enumLabel(statusLabel, row.status)}</TableCell>
+                      <TableCell>{getSalarySlipStatusLabel(row.status)}</TableCell>
                       <TableCell>{row.employeeConfirmed ? '是' : '否'}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">

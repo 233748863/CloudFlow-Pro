@@ -45,6 +45,7 @@ import {
 } from '@/services/api/businessRule';
 import { cn } from '@/utils/cn';
 import { getErrorMessage } from '@/utils/errorMessage';
+import { WORKFLOW_DEFINITION_STATUS_META, getWorkflowDefinitionStatusMeta } from '@/utils/enumLabels';
 
 const ALL_VALUE = '__all__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
@@ -63,17 +64,6 @@ const effectLabelMap: Record<string, string> = {
   PASS: '放行',
 };
 
-const statusClassName: Record<string, string> = {
-  DRAFT: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-  PUBLISHED: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-  ARCHIVED: 'border-slate-200 bg-slate-50 text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-};
-
-const statusLabelMap: Record<string, string> = {
-  DRAFT: '草稿',
-  PUBLISHED: '已发布',
-  ARCHIVED: '已归档',
-};
 
 const hitResultLabelMap: Record<string, string> = {
   PASSED: '通过',
@@ -100,11 +90,17 @@ const normalizeListResponse = <T,>(response: any) => {
 
 const formatDateTime = (value?: string) => value ? value.replace('T', ' ').slice(0, 19) : '-';
 
-const Badge: React.FC<{ value?: string; classNameMap?: Record<string, string>; labelMap?: Record<string, string> }> = ({ value, classNameMap = effectClassName, labelMap = effectLabelMap }) => (
-  <span className={cn('rounded-full border px-2.5 py-1 text-xs font-medium', classNameMap[value || ''] || statusClassName.ARCHIVED)}>
-    {value ? labelMap[value] || value : '-'}
-  </span>
-);
+const Badge: React.FC<{ value?: string; classNameMap?: Record<string, string | { fullClass?: string; tone?: string; label?: string }>; labelMap?: Record<string, string | { label?: string }> }> = ({ value, classNameMap = effectClassName, labelMap = effectLabelMap }) => {
+  const classEntry = classNameMap[value || ''];
+  const labelEntry = labelMap[value || ''];
+  const resolvedClass = typeof classEntry === 'string' ? classEntry : classEntry?.fullClass || classEntry?.tone || effectClassName.ARCHIVED;
+  const resolvedLabel = typeof labelEntry === 'string' ? labelEntry : labelEntry?.label || value || '-';
+  return (
+    <span className={cn('rounded-full border px-2.5 py-1 text-xs font-medium', resolvedClass)}>
+      {value ? resolvedLabel : '-'}
+    </span>
+  );
+};
 
 const TableStateRow: React.FC<{ colSpan: number; title: string; loading?: boolean }> = ({ colSpan, title, loading }) => (
   <TableRow className="hover:bg-transparent dark:hover:bg-transparent">
@@ -401,9 +397,9 @@ export const BusinessRulePage = () => {
                     <SelectTrigger className="h-10 w-full sm:w-40"><SelectValue placeholder="版本状态" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-                      <SelectItem value="DRAFT">草稿</SelectItem>
-                      <SelectItem value="PUBLISHED">已发布</SelectItem>
-                      <SelectItem value="ARCHIVED">已归档</SelectItem>
+                      {Object.entries(WORKFLOW_DEFINITION_STATUS_META).map(([value, meta]) => (
+                        <SelectItem key={value} value={value}>{meta.label}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button type="submit" size="sm">查询</Button>
@@ -444,7 +440,7 @@ export const BusinessRulePage = () => {
                           <TableCell className="font-mono text-xs">{version.ruleCode}</TableCell>
                           <TableCell>{version.thresholdValue ?? '-'}</TableCell>
                           <TableCell><Badge value={version.effect} /></TableCell>
-                          <TableCell><Badge value={version.status} classNameMap={statusClassName} labelMap={statusLabelMap} /></TableCell>
+                          <TableCell><Badge value={version.status} classNameMap={WORKFLOW_DEFINITION_STATUS_META} labelMap={WORKFLOW_DEFINITION_STATUS_META} /></TableCell>
                           <TableCell>{version.publisherName || '-'}</TableCell>
                           <TableCell>{formatDateTime(version.publishedTime)}</TableCell>
                           <TableCell className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</TableCell>

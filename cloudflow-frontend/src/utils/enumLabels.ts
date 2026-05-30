@@ -8,9 +8,11 @@
  * 保证未来新增枚举不会渲染空白。
  */
 
-const labelOf = (map: Record<string, string>, key?: string | null): string => {
+const labelOf = (map: Record<string, string | { label?: string }>, key?: string | null): string => {
   if (!key) return '-';
-  return map[key] ?? key;
+  const entry = map[key];
+  if (entry == null) return key;
+  return typeof entry === 'string' ? entry : (entry.label ?? key);
 };
 
 // 工作流异常类型（wf_reconcile_alert.anomaly_type）
@@ -466,3 +468,146 @@ export const getWorkflowDefinitionStatusMeta = (status?: string | null): StatusM
   if (!status) return WORKFLOW_DEFINITION_STATUS_META.DRAFT;
   return WORKFLOW_DEFINITION_STATUS_META[status] ?? WORKFLOW_DEFINITION_STATUS_META.DRAFT;
 };
+
+// 发票状态（InvoiceManagementPage / CrmCustomerWorkspacePage 共用）
+// 与后端 OaInvoice.status 枚举一一对齐
+export const INVOICE_STATUS_META: Record<string, StatusMeta> = {
+  NONE: {
+    label: '未关联合同发票',
+    tone: 'bg-slate-50 text-slate-500',
+    fullClass: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+    colorName: 'slate',
+  },
+  REGISTERED: {
+    label: '已登记',
+    tone: 'bg-slate-50 text-slate-600',
+    fullClass: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
+    colorName: 'slate',
+  },
+  BOUND: {
+    label: '已绑定',
+    tone: 'bg-sky-50 text-sky-700',
+    fullClass: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
+    colorName: 'sky',
+  },
+  WRITEOFF_PARTIAL: {
+    label: '部分核销',
+    tone: 'bg-amber-50 text-amber-700',
+    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    colorName: 'amber',
+  },
+  WRITEOFF_FULL: {
+    label: '全部核销',
+    tone: 'bg-emerald-50 text-emerald-700',
+    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    colorName: 'emerald',
+  },
+  VOID: {
+    label: '已作废',
+    tone: 'bg-rose-50 text-rose-700',
+    fullClass: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+    colorName: 'rose',
+  },
+};
+
+export const getInvoiceStatusMeta = (status?: string | null): StatusMeta =>
+  buildStatusMeta(INVOICE_STATUS_META, status);
+
+export const getInvoiceStatusLabel = (status?: string | null): string =>
+  labelOf(INVOICE_STATUS_META, status);
+
+// 发票方向（InvoiceManagementPage 使用）
+export const INVOICE_DIRECTION_META: Record<string, StatusMeta> = {
+  INPUT: {
+    label: '进项发票',
+    tone: 'bg-sky-50 text-sky-700',
+  },
+  OUTPUT: {
+    label: '销项发票',
+    tone: 'bg-amber-50 text-amber-700',
+  },
+};
+
+export const getInvoiceDirectionLabel = (dir?: string | null): string =>
+  labelOf(INVOICE_DIRECTION_META, dir);
+
+// 薪资单状态（HrEssSalarySlipPage 使用）
+export const SALARY_SLIP_STATUS_META: Record<string, StatusMeta> = {
+  DRAFT: {
+    label: '草稿',
+    tone: 'bg-slate-50 text-slate-600',
+    fullClass: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+    colorName: 'slate',
+  },
+  CONFIRMED: {
+    label: '已确认',
+    tone: 'bg-sky-50 text-sky-700',
+    fullClass: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
+    colorName: 'sky',
+  },
+  PAID: {
+    label: '已发放',
+    tone: 'bg-emerald-50 text-emerald-700',
+    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    colorName: 'emerald',
+  },
+  RELEASED: {
+    label: '已下发',
+    tone: 'bg-violet-50 text-violet-700',
+    fullClass: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
+    colorName: 'violet',
+  },
+};
+
+export const getSalarySlipStatusLabel = (status?: string | null): string =>
+  labelOf(SALARY_SLIP_STATUS_META, status);
+
+// 证明申请状态（HrEssCertificatePage 使用）
+// 注意 CANCELLED = '已取消'（非 REQUEST_STATUS_META 的 '已撤销'），语义不同故独立建 META
+export const CERTIFICATE_STATUS_META: Record<string, StatusMeta> = {
+  DRAFT: {
+    label: '草稿',
+    tone: 'bg-slate-50 text-slate-600',
+    fullClass: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
+    colorName: 'slate',
+  },
+  PENDING: {
+    label: '待审批',
+    tone: 'bg-amber-50 text-amber-700',
+    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    colorName: 'amber',
+  },
+  APPROVING: {
+    label: '审批中',
+    tone: 'bg-amber-50 text-amber-700',
+    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
+    colorName: 'amber',
+  },
+  APPROVED: {
+    label: '已通过',
+    tone: 'bg-emerald-50 text-emerald-700',
+    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
+    colorName: 'emerald',
+  },
+  REJECTED: {
+    label: '已驳回',
+    tone: 'bg-rose-50 text-rose-700',
+    fullClass: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
+    colorName: 'rose',
+  },
+  ISSUED: {
+    label: '已开具',
+    tone: 'bg-sky-50 text-sky-700',
+    fullClass: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
+    colorName: 'sky',
+  },
+  CANCELLED: {
+    label: '已取消',
+    tone: 'bg-slate-100 text-slate-500',
+    fullClass: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
+    colorName: 'slate',
+  },
+};
+
+export const getCertificateStatusLabel = (status?: string | null): string =>
+  labelOf(CERTIFICATE_STATUS_META, status);

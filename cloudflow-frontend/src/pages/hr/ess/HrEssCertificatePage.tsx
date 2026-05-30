@@ -29,6 +29,7 @@ import {
   downloadCertificatePdf,
 } from '@/services/api/hr';
 import { normalizeRows, enumLabel, formatDateTimeValue, hasWorkflowStatus } from '../hrShared';
+import { getCertificateStatusLabel } from '@/utils/enumLabels';
 
 const certificateTypeLabel: Record<string, string> = {
   EMPLOYMENT: '在职证明',
@@ -37,15 +38,6 @@ const certificateTypeLabel: Record<string, string> = {
   CUSTOM: '其他',
 };
 
-const statusLabel: Record<string, string> = {
-  DRAFT: '草稿',
-  PENDING: '待审批',
-  APPROVING: '审批中',
-  APPROVED: '已通过',
-  REJECTED: '已驳回',
-  ISSUED: '已开具',
-  CANCELLED: '已取消',
-};
 
 const defaultForm: HrCertificateRequestPayload = {
   certificateType: 'EMPLOYMENT',
@@ -163,7 +155,7 @@ export const HrEssCertificatePage: React.FC = () => {
                       <TableCell>{row.purpose || '-'}</TableCell>
                       <TableCell>{row.recipientOrg || '-'}</TableCell>
                       <TableCell>{row.copies ?? 1}</TableCell>
-                      <TableCell>{enumLabel(statusLabel, row.status)}</TableCell>
+                      <TableCell>{getCertificateStatusLabel(row.status)}</TableCell>
                       <TableCell>{formatDateTimeValue(row.issuedAt)}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">
