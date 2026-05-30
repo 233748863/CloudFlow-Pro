@@ -31,7 +31,21 @@ import java.util.UUID;
  */
 public final class SensitiveUtils {
 
-    private static final int MAX_RECURSION_DEPTH = 8;
+    /**
+     * 敏感数据递归遍历最大深度，防止循环引用导致栈溢出。
+     * <p>默认 8 为内置兜底；运行时实际值由 {@code sys.sensitive.maxRecursionDepth} 参数控制，
+     * 通过 cloudflow-auth 模块的 SensitiveConfigBootstrap 在启动时调 {@link #setMaxRecursionDepth(int)} 注入。
+     * 修改后需重启服务才会生效。
+     */
+    private static volatile int maxRecursionDepth = 8;
+
+    /** 由配置加载器在启动时调用，运行时切换递归深度 */
+    public static void setMaxRecursionDepth(int n) {
+        if (n > 0) {
+            maxRecursionDepth = n;
+        }
+    }
+
     private static final String SECRET_MASK = "******";
     private static final String CIRCULAR_REFERENCE_PLACEHOLDER = "[Circular]";
 
@@ -301,7 +315,7 @@ public final class SensitiveUtils {
         if (isSimpleValueType(sourceClass)) {
             return source;
         }
-        if (depth >= MAX_RECURSION_DEPTH) {
+        if (depth >= maxRecursionDepth) {
             return String.valueOf(source);
         }
         if (visited.containsKey(source)) {

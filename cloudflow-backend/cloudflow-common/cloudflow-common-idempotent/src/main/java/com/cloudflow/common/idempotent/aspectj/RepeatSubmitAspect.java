@@ -3,6 +3,7 @@ package com.cloudflow.common.idempotent.aspectj;
 import cn.hutool.crypto.SecureUtil;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
@@ -53,12 +54,14 @@ public class RepeatSubmitAspect {
 
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
+    private final SysConfigHelper sysConfigHelper;
 
-    public RepeatSubmitAspect(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
+    public RepeatSubmitAspect(StringRedisTemplate redisTemplate, ObjectMapper objectMapper, SysConfigHelper sysConfigHelper) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper.copy();
         this.objectMapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, true);
         this.objectMapper.configure(SerializationFeature.ORDER_MAP_ENTRIES_BY_KEYS, true);
+        this.sysConfigHelper = sysConfigHelper;
     }
 
     /**
@@ -70,8 +73,9 @@ public class RepeatSubmitAspect {
     @Before("@annotation(repeatSubmit)")
     public void doBefore(JoinPoint joinPoint, RepeatSubmit repeatSubmit) {
         long intervalMillis = repeatSubmit.timeUnit().toMillis(repeatSubmit.interval());
-        if (intervalMillis < 1000) {
-            intervalMillis = 1000;
+        long minInterval = sysConfigHelper.getConfigLong("sys.common.repeatSubmit.intervalMillis", 1000L);
+        if (intervalMillis < minInterval) {
+            intervalMillis = minInterval;
         }
 
         String key = buildKey(joinPoint);

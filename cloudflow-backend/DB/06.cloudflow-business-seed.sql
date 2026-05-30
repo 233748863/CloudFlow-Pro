@@ -2711,6 +2711,85 @@ INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(89, 100000, '性能-批量查
 INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(90, 100000, '性能-慢查询阈值(毫秒)',         'sys.workflow.performance.slowQueryThreshold', '1000','Y', '0', 'admin', NOW(), '', null, '慢查询告警阈值');
 
 -- =========================================================
+-- 一-B. 硬编码收口新增参数（GOV-CONFIG-CLEANUP）
+-- 与项目"参数配置页 + sys_dict 字典"红线对齐，禁止业务/技术阈值在 Java 代码里硬编码
+-- =========================================================
+
+-- 工作流补充
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(101, 100000, '工作流-WS认证超时(毫秒)',      'sys.workflow.notification.authTimeoutMs',    '5000',      'Y', '0', 'admin', NOW(), '', null, 'WebSocket推送通道首次认证超时毫秒');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(102, 100000, '工作流-导入文件最大(MB)',       'sys.workflow.importExport.maxFileSizeMb',    '10',        'Y', '0', 'admin', NOW(), '', null, '工作流定义/表单导入单文件最大MB');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(103, 100000, '工作流-批量导入文件数上限',     'sys.workflow.importExport.maxBatchFileCount','100',       'Y', '0', 'admin', NOW(), '', null, '批量导入文件个数上限');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(104, 100000, '工作流-异常运行时长阈值(小时)', 'sys.workflow.anomaly.runningHoursThreshold', '24',        'Y', '0', 'admin', NOW(), '', null, '运行时长超过此值视为异常实例');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(105, 100000, '工作流-审计日志保留天数',       'sys.workflow.audit.daysToKeep',              '30',        'Y', '0', 'admin', NOW(), '', null, '审计日志清理保留最少天数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(106, 100000, '工作流-审计分页阈值',           'sys.workflow.audit.maxPageCount',            '1000',      'Y', '0', 'admin', NOW(), '', null, '审计查询单页最大条数,超过强制分页');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(107, 100000, '通用-重复提交间隔(毫秒)',       'sys.common.repeatSubmit.intervalMillis',     '1000',      'Y', '0', 'admin', NOW(), '', null, '@RepeatSubmit 默认时间间隔毫秒');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(108, 100000, '工作流-健康度成功率阈值(%)',     'sys.workflow.health.successRate',            '95.0',      'Y', '0', 'admin', NOW(), '', null, '工作流监控成功率告警阈值');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(109, 100000, '工作流-健康度超时率阈值(%)',     'sys.workflow.health.timeoutRate',            '5.0',       'Y', '0', 'admin', NOW(), '', null, '工作流监控超时率告警阈值');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(110, 100000, '工作流-健康度异常率阈值(%)',     'sys.workflow.health.exceptionRate',          '3.0',       'Y', '0', 'admin', NOW(), '', null, '工作流监控稳定档异常率告警阈值');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(120, 100000, '工作流-健康度可控档成功率(%)',   'sys.workflow.health.controllable.successRate', '85.0',     'Y', '0', 'admin', NOW(), '', null, '工作流监控可控档成功率下限');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(121, 100000, '工作流-健康度可控档超时率(%)',   'sys.workflow.health.controllable.timeoutRate', '12.0',     'Y', '0', 'admin', NOW(), '', null, '工作流监控可控档超时率上限');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(122, 100000, '工作流-健康度可控档异常率(%)',   'sys.workflow.health.controllable.exceptionRate', '8.0',    'Y', '0', 'admin', NOW(), '', null, '工作流监控可控档异常率上限');
+
+-- OA
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(111, 100000, 'OA-合同高额阈值(元)',           'sys.oa.contract.highAmountThreshold',        '100000',    'Y', '1', 'admin', NOW(), '', null, '合同金额超过此值视为高额,触发风险扫描');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(112, 100000, 'OA-审计导出上限',               'sys.oa.audit.exportLimit',                   '5000',      'Y', '0', 'admin', NOW(), '', null, '审计事件导出最大条数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(113, 100000, 'OA-联系人分页上限',             'sys.oa.contact.maxPageSize',                 '100',       'Y', '0', 'admin', NOW(), '', null, '联系人查询单页最大条数');
+
+-- HR
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(114, 100000, 'HR-个税起征点(月)',             'sys.hr.compensation.monthlyTaxThreshold',    '5000',      'Y', '1', 'admin', NOW(), '', null, '工资测算月度个税起征点');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(115, 100000, 'HR-社保个人合计费率',           'sys.hr.compensation.socialPersonalRate',     '0.105',     'Y', '1', 'admin', NOW(), '', null, '工资测算社保个人合计费率(养老+医疗+失业)');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(116, 100000, 'HR-分页上限',                   'sys.hr.maxPageSize',                         '500',       'Y', '0', 'admin', NOW(), '', null, 'HR模块通用查询单页最大条数');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(117, 100000, 'HR-工作地点预警天数',           'sys.hr.workplace.reminderDays',              '15',        'Y', '1', 'admin', NOW(), '', null, '工作地点合同到期 MEDIUM 档预警提前天数(应 >= reminderDaysHigh)');
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(123, 100000, 'HR-工作地点紧急预警天数',       'sys.hr.workplace.reminderDaysHigh',          '7',         'Y', '1', 'admin', NOW(), '', null, '工作地点合同到期 HIGH 档紧急预警提前天数(应 <= reminderDays)');
+
+-- 认证
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(118, 100000, '认证-默认头像API',              'sys.auth.avatar.apiUrl',                     'https://api.dicebear.com/7.x/avataaars/svg', 'Y', '0', 'admin', NOW(), '', null, '注册/无头像用户使用的默认头像API');
+
+-- 通用
+INSERT IGNORE INTO cloud_flow_db.sys_config VALUES(119, 100000, '通用-敏感数据递归深度',         'sys.sensitive.maxRecursionDepth',            '8',         'Y', '0', 'admin', NOW(), '', null, '敏感字段脱敏递归遍历最大深度,防止循环引用');
+
+-- =========================================================
+-- 一-C. 硬编码收口新增字典（档位映射,sys_dict_type + sys_dict_data）
+-- =========================================================
+
+INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remark`) VALUES
+('CRM应收逾期档位',     'crm_receivable_overdue_tier', '应收账款逾期分档；dict_value=本档天数上限(含)，按升序匹配；末档建议设为 99999=不限'),
+('CRM合同到期档位',     'crm_contract_expire_tier',    '合同距到期日分档；dict_value=本档天数上限(含)，按升序匹配；末档建议设为 99999=不限'),
+('HR月度个人所得税',    'hr_personal_income_tax',      '月度个税档位；dict_value=本档应税所得上限，list_class=税率(0~1)，css_class=速算扣除数；末档 dict_value>=99999999 视为不封顶'),
+('工作流效能改进档位',  'workflow_efficiency_tier',    '工作流效能改进档位；dict_value=本档百分比下限，按降序匹配（与上述档位语义相反）；最低档可设为 0');
+
+-- CRM 应收逾期 dict_label=展示文案 dict_value=本档天数上限(99999=不限)
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '30天内',     '30',    'crm_receivable_overdue_tier', 'success'),
+(2, '30-60天',    '60',    'crm_receivable_overdue_tier', 'warning'),
+(3, '60-90天',    '90',    'crm_receivable_overdue_tier', 'warning'),
+(4, '90天以上',   '99999', 'crm_receivable_overdue_tier', 'danger');
+
+-- CRM 合同到期 dict_label=展示文案 dict_value=本档天数上限
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '30天内到期', '30',    'crm_contract_expire_tier', 'danger'),
+(2, '90天内到期', '90',    'crm_contract_expire_tier', 'warning'),
+(3, '90天以上',   '99999', 'crm_contract_expire_tier', 'success');
+
+-- HR 个税档位 dict_value=本档累进应税所得上限(年/月按调用方约定) list_class=税率(0~1) css_class=速算扣除数
+-- 当前为月度档位,与 HrCompensationSimulationServiceImpl 的 BRACKETS 一致
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `css_class`) VALUES
+(1, '3000元以下',         '3000',     'hr_personal_income_tax', '0.03', '0'),
+(2, '3000-12000元',       '12000',    'hr_personal_income_tax', '0.10', '210'),
+(3, '12000-25000元',      '25000',    'hr_personal_income_tax', '0.20', '1410'),
+(4, '25000-35000元',      '35000',    'hr_personal_income_tax', '0.25', '2660'),
+(5, '35000-55000元',      '55000',    'hr_personal_income_tax', '0.30', '4410'),
+(6, '55000-80000元',      '80000',    'hr_personal_income_tax', '0.35', '7160'),
+(7, '80000元以上',        '99999999', 'hr_personal_income_tax', '0.45', '15160');
+
+-- 工作流效能改进 dict_value=本档改进百分比下限
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`) VALUES
+(1, '显著改善', '50', 'workflow_efficiency_tier', 'success'),
+(2, '明显改善', '30', 'workflow_efficiency_tier', 'warning'),
+(3, '轻微改善', '10', 'workflow_efficiency_tier', 'info'),
+(4, '无明显变化', '0', 'workflow_efficiency_tier', 'default');
+
+-- =========================================================
 -- 二、工作流与模板种子数据（迁移自 02.cloudflow-workflow.sql）
 -- =========================================================
 
