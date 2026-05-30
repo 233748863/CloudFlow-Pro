@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.service;
 
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.workflow.domain.WfNodeConfig;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -39,10 +40,18 @@ public class AsyncWorkflowService {
     private static final Logger log = LoggerFactory.getLogger(AsyncWorkflowService.class);
 
     private static final String ASYNC_STATUS_PREFIX = "sys:wf:async:status:";
-    private static final int STATUS_EXPIRE_MINUTES = 10;
+    /** 兜底默认值：异步流程状态在 Redis 中的过期分钟数（实际值从 sys.workflow.asyncStatusExpire 读取） */
+    private static final int DEFAULT_STATUS_EXPIRE_MINUTES = 10;
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
+
+    private int statusExpireMinutes() {
+        return sysConfigHelper.getConfigInt("sys.workflow.asyncStatusExpire", DEFAULT_STATUS_EXPIRE_MINUTES);
+    }
 
     @Autowired
     private WfProcessDefinitionMapper processDefinitionMapper;
@@ -155,9 +164,10 @@ public class AsyncWorkflowService {
     private void setAsyncStatus(String instanceId, String status, String error) {
         try {
             String statusKey = ASYNC_STATUS_PREFIX + instanceId;
-            redisCache.setCacheObject(statusKey + ":status", status, STATUS_EXPIRE_MINUTES, TimeUnit.MINUTES);
+            int expire = statusExpireMinutes();
+            redisCache.setCacheObject(statusKey + ":status", status, expire, TimeUnit.MINUTES);
             if (error != null) {
-                redisCache.setCacheObject(statusKey + ":error", error, STATUS_EXPIRE_MINUTES, TimeUnit.MINUTES);
+                redisCache.setCacheObject(statusKey + ":error", error, expire, TimeUnit.MINUTES);
             }
         } catch (Exception e) {
             log.warn("[setAsyncStatus] 设置异步状态失败: {}", e.getMessage());

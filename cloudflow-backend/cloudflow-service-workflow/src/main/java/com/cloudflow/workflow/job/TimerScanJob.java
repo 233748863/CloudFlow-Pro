@@ -2,6 +2,7 @@ package com.cloudflow.workflow.job;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.workflow.domain.WfProcessInstance;
@@ -47,8 +48,8 @@ public class TimerScanJob {
     /** 定时任务 ZSet Key，score 为触发时间戳 */
     private static final String TIMER_ZSET_KEY = "sys:wf:timers";
 
-    /** 失败重试次数上限 */
-    private static final int MAX_RETRY_COUNT = 3;
+    /** 兜底默认值：失败重试次数上限（实际值从 sys.workflow.timerMaxRetry 读取） */
+    private static final int DEFAULT_MAX_RETRY_COUNT = 3;
 
     @Autowired
     private RedisCache redisCache;
@@ -64,6 +65,17 @@ public class TimerScanJob {
 
     @Autowired
     private com.cloudflow.workflow.service.ISysNoticeService sysNoticeService;
+
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
+
+    private int maxRetryCount() {
+        return sysConfigHelper.getConfigInt("sys.workflow.timerMaxRetry", DEFAULT_MAX_RETRY_COUNT);
+    }
+
+    private int retryIntervalMinutes() {
+        return sysConfigHelper.getConfigInt("sys.workflow.timerRetryInterval", 2);
+    }
 
     /**
      * 每分钟扫描一次定时任务
@@ -229,9 +241,10 @@ public class TimerScanJob {
                 redisCache.expire(retryKey, 1, TimeUnit.HOURS);
             }
 
-            if (retryCount <= MAX_RETRY_COUNT) {
-                // 未超过重试上限，重新放回 ZSet，延迟2分钟后重试
-                long retryTime = System.currentTimeMillis() + 2 * 60 * 1000L;
+            int maxRetry = maxRetryCount();
+            if (retryCount <= maxRetry) {
+                // 未超过重试上限，重新放回 ZSet，按配置的重试间隔重试
+                long retryTime = System.currentTimeMillis() + retryIntervalMinutes() * 60 * 1000L;
                 String timerKey = "sys:wf:timer:" + instance.getInstanceId() + ":" + nodeKey;
 
                 // 重新注册定时任务数据（可能已被清理）
@@ -239,12 +252,12 @@ public class TimerScanJob {
                 redisCache.setCacheZSet(TIMER_ZSET_KEY, timerKey, (double) retryTime);
 
                 log.warn("[TimerScanJob] 定时任务处理失败，已安排重试 ({}/{}), instanceId={}, nodeKey={}, retryTime={}",
-                    retryCount, MAX_RETRY_COUNT, instance.getInstanceId(), nodeKey,
+                    retryCount, maxRetry, instance.getInstanceId(), nodeKey,
                     new java.util.Date(retryTime));
             } else {
                 // 超过重试上限，发送失败通知
                 log.error("[TimerScanJob] 定时任务处理失败且已超过重试上限 ({}/{}), instanceId={}, nodeKey={}",
-                    retryCount, MAX_RETRY_COUNT, instance.getInstanceId(), nodeKey);
+                    retryCount, maxRetry, instance.getInstanceId(), nodeKey);
 
                 // 清理重试计数器
                 redisCache.deleteObject(retryKey);
@@ -303,7 +316,7 @@ public class TimerScanJob {
             String errorMsg = error != null ? error.getMessage() : "未知错误";
             String content = String.format(
                 "流程「%s」(实例ID: %s) 的定时节点「%s」处理失败，已超过最大重试次数(%d次)。\n错误信息: %s\n请管理员手动处理。",
-                instance.getTitle(), instance.getInstanceId(), nodeKey, MAX_RETRY_COUNT, errorMsg);
+                instance.getTitle(), instance.getInstanceId(), nodeKey, maxRetryCount(), errorMsg);
 
             // 通知管理员（userId=1）
             sysNoticeService.sendNotice(

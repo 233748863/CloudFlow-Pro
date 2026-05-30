@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service.impl;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.WfFormDefinition;
 import com.cloudflow.workflow.domain.vo.UserBriefVO;
@@ -37,19 +38,32 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
     private final WfFormDefinitionMapper formMapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final RemoteUserService remoteUserService;
+    private final SysConfigHelper sysConfigHelper;
 
     // 缓存key前缀
     private static final String DEFINITION_CACHE = "workflow:definition";
     private static final String FORM_CACHE = "workflow:form";
     private static final String USER_CACHE = "workflow:user";
 
-    // 缓存TTL（秒）
-    private static final long DEFINITION_TTL = 3600; // 1小时
-    private static final long FORM_TTL = 3600; // 1小时
-    private static final long USER_TTL = 1800; // 30分钟
+    // 兜底默认 TTL（秒），实际值从 sys.workflow.cache.* 读取
+    private static final long DEFAULT_DEFINITION_TTL = 3600; // 1小时
+    private static final long DEFAULT_FORM_TTL = 3600; // 1小时
+    private static final long DEFAULT_USER_TTL = 1800; // 30分钟
 
     // P2-fix-4: TTL 随机抖动范围（秒），防止缓存雪崩
     private static final long TTL_JITTER_RANGE = 300; // ±5分钟
+
+    private long definitionTtl() {
+        return sysConfigHelper.getConfigLong("sys.workflow.cache.definition.ttl", DEFAULT_DEFINITION_TTL);
+    }
+
+    private long formTtl() {
+        return sysConfigHelper.getConfigLong("sys.workflow.cache.form.ttl", DEFAULT_FORM_TTL);
+    }
+
+    private long userTtl() {
+        return sysConfigHelper.getConfigLong("sys.workflow.cache.user.ttl", DEFAULT_USER_TTL);
+    }
 
     // P2-fix-2: 缓存命中率统计（原子计数器）
     private final AtomicLong definitionHitCount = new AtomicLong(0);
@@ -75,7 +89,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
             // P2-fix-4: 手动设置带随机抖动的TTL，防止缓存雪崩
             Long currentTenantId = UserContext.getTenantId();
             String cacheKey = DEFINITION_CACHE + "::" + currentTenantId + ":" + definitionId;
-            redisTemplate.expire(cacheKey, getJitteredTtl(DEFINITION_TTL), TimeUnit.SECONDS);
+            redisTemplate.expire(cacheKey, getJitteredTtl(definitionTtl()), TimeUnit.SECONDS);
         }
         
         return definition;
@@ -96,7 +110,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
             // P2-fix-4: 带随机抖动的TTL
             Long currentTenantId = UserContext.getTenantId();
             String cacheKey = FORM_CACHE + "::" + currentTenantId + ":" + formId;
-            redisTemplate.expire(cacheKey, getJitteredTtl(FORM_TTL), TimeUnit.SECONDS);
+            redisTemplate.expire(cacheKey, getJitteredTtl(formTtl()), TimeUnit.SECONDS);
         }
         
         return form;
@@ -126,7 +140,7 @@ public class WorkflowCacheServiceImpl implements IWorkflowCacheService {
                 // P2-fix-4: 带随机抖动的TTL
                 Long currentTenantId = UserContext.getTenantId();
                 String cacheKey = USER_CACHE + "::" + currentTenantId + ":" + userId;
-                redisTemplate.expire(cacheKey, getJitteredTtl(USER_TTL), TimeUnit.SECONDS);
+                redisTemplate.expire(cacheKey, getJitteredTtl(userTtl()), TimeUnit.SECONDS);
                 
                 return user;
             }

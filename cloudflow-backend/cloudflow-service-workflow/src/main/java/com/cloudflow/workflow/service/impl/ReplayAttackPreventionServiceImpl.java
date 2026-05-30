@@ -3,6 +3,7 @@ package com.cloudflow.workflow.service.impl;
 import com.cloudflow.workflow.service.IReplayAttackPreventionService;
 
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -19,10 +20,18 @@ public class ReplayAttackPreventionServiceImpl implements IReplayAttackPreventio
 
     private static final Logger log = LoggerFactory.getLogger(ReplayAttackPreventionServiceImpl.class);
     private static final String NONCE_PREFIX = "sys:wf:nonce:";
-    private static final int NONCE_EXPIRE_MINUTES = 5;
+    /** 兜底默认值：Nonce 过期分钟数（实际值从 sys.workflow.nonceExpireMinutes 读取） */
+    private static final int DEFAULT_NONCE_EXPIRE_MINUTES = 5;
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
+
+    private int nonceExpireMinutes() {
+        return sysConfigHelper.getConfigInt("sys.workflow.nonceExpireMinutes", DEFAULT_NONCE_EXPIRE_MINUTES);
+    }
 
     /**
      * 检查并注册 nonce，防止重放攻击
@@ -35,9 +44,9 @@ public class ReplayAttackPreventionServiceImpl implements IReplayAttackPreventio
         }
 
         String key = NONCE_PREFIX + nonce;
-        
+
         // 尝试设置 nonce，如果已存在则返回 false
-        Boolean success = redisCache.setCacheObjectIfAbsent(key, "1", NONCE_EXPIRE_MINUTES, TimeUnit.MINUTES);
+        Boolean success = redisCache.setCacheObjectIfAbsent(key, "1", nonceExpireMinutes(), TimeUnit.MINUTES);
         
         if (success == null || !success) {
             log.warn("[checkAndRegisterNonce] 检测到重放攻击, nonce={}", nonce);

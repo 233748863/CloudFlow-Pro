@@ -9,6 +9,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.annotation.JsonFormat;
@@ -26,6 +27,9 @@ public class WorkflowAuditService {
 
     @Autowired
     private RedisCache redisCache;
+
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
 
     /**
      * 审计事件类型枚举
@@ -116,9 +120,10 @@ public class WorkflowAuditService {
                     String.format("%s|%s|%s|%s|%s", action.name(), userId, targetId, detail, System.currentTimeMillis()),
                     (double) System.currentTimeMillis());
                 
-                // 保持最近1000条记录，清理旧数据
+                // 保持最近 N 条记录（默认 1000），清理旧数据
+                int maxPageCount = sysConfigHelper.getConfigInt("sys.workflow.audit.maxPageCount", 1000);
                 long totalCount = redisCache.getCacheZSetSize(redisKey);
-                if (totalCount > 1000) {
+                if (totalCount > maxPageCount) {
                     redisCache.removeRangeByScore(redisKey, 0, System.currentTimeMillis() - 7 * 24 * 3600 * 1000L);
                 }
             } catch (Exception e) {

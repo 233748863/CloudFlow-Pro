@@ -2,6 +2,7 @@ package com.cloudflow.workflow.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.workflow.domain.dto.AuditLogDTO;
 import com.cloudflow.workflow.service.IAuditLogService;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +26,9 @@ public class AuditLogController {
 
     @Autowired
     private IAuditLogService auditLogService;
+
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
 
     /**
      * 查询审计日志列表（管理员权限）
@@ -95,8 +99,9 @@ public class AuditLogController {
     public R<Integer> deleteExpiredLogs(@RequestParam(defaultValue = "90") int daysToKeep) {
         log.info("删除过期的审计日志: daysToKeep={}", daysToKeep);
 
-        if (daysToKeep < 30) {
-            return R.fail("保留天数不能少于 30 天");
+        int minDaysToKeep = sysConfigHelper.getConfigInt("sys.workflow.audit.daysToKeep", 30);
+        if (daysToKeep < minDaysToKeep) {
+            return R.fail("保留天数不能少于 " + minDaysToKeep + " 天");
         }
 
         int count = auditLogService.deleteExpiredLogs(daysToKeep);

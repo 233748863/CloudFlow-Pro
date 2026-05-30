@@ -2,6 +2,7 @@ package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.workflow.domain.WfProcessDefinition;
 import com.cloudflow.workflow.domain.dto.BatchExportRequest;
 import com.cloudflow.workflow.domain.dto.ImportResultDTO;
@@ -54,16 +55,15 @@ import java.util.Set;
 @RequestMapping("/import-export")
 public class ImportExportController {
     /**
-     * 导入文件大小上限：10MB。
-     * 示例：10.5MB 文件会被直接拒绝，避免一次性读入内存导致接口抖动。
+     * 兜底默认值：导入文件大小上限 10MB（实际值从 sys.workflow.importExport.maxFileSizeMb 读取）。
+     * 示例：超出大小的文件会被直接拒绝，避免一次性读入内存导致接口抖动。
      */
-    private static final long MAX_IMPORT_FILE_SIZE = 10L * 1024 * 1024;
+    private static final long DEFAULT_MAX_IMPORT_FILE_SIZE_MB = 10L;
 
     /**
-     * 批量导入文件数上限。
-     * 示例：一次上传 200 个文件会被拒绝，防止瞬时放大导入压力。
+     * 兜底默认值：批量导入文件数上限（实际值从 sys.workflow.importExport.maxBatchFileCount 读取）。
      */
-    private static final int MAX_BATCH_IMPORT_FILE_COUNT = 100;
+    private static final int DEFAULT_MAX_BATCH_IMPORT_FILE_COUNT = 100;
 
     @Autowired
     private IExportService exportService;
@@ -85,6 +85,22 @@ public class ImportExportController {
 
     @Autowired
     private WorkflowPermissionService permissionService;
+
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
+
+    private long maxImportFileSize() {
+        long mb = sysConfigHelper.getConfigLong(
+                "sys.workflow.importExport.maxFileSizeMb",
+                DEFAULT_MAX_IMPORT_FILE_SIZE_MB);
+        return mb * 1024L * 1024L;
+    }
+
+    private int maxBatchImportFileCount() {
+        return sysConfigHelper.getConfigInt(
+                "sys.workflow.importExport.maxBatchFileCount",
+                DEFAULT_MAX_BATCH_IMPORT_FILE_COUNT);
+    }
 
     @GetMapping("/export/{workflowId}")
     @SaCheckPermission("workflow:definition:view")
@@ -245,8 +261,9 @@ public class ImportExportController {
         if (files == null || files.isEmpty()) {
             return R.fail("导入文件不能为空");
         }
-        if (files.size() > MAX_BATCH_IMPORT_FILE_COUNT) {
-            return R.fail("单次批量导入文件数量不能超过 " + MAX_BATCH_IMPORT_FILE_COUNT + " 个");
+        int batchLimit = maxBatchImportFileCount();
+        if (files.size() > batchLimit) {
+            return R.fail("单次批量导入文件数量不能超过 " + batchLimit + " 个");
         }
 
         log.info("批量导入流程, count={}, conflictStrategy={}", files.size(), conflictStrategy);
@@ -466,8 +483,9 @@ public class ImportExportController {
         if (file == null || file.isEmpty()) {
             throw WorkflowException.validationError("上传文件不能为空");
         }
-        if (file.getSize() > MAX_IMPORT_FILE_SIZE) {
-            throw WorkflowException.validationError("上传文件不能超过 10MB");
+        long maxSize = maxImportFileSize();
+        if (file.getSize() > maxSize) {
+            throw WorkflowException.validationError("上传文件不能超过 " + (maxSize / 1024 / 1024) + "MB");
         }
         // 示例：workflow-demo.json 合法；workflow-demo.zip 会被拒绝
         String originalFilename = file.getOriginalFilename();

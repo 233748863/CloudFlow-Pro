@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.utils.SecurityUtils;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.workflow.domain.WfProcessInstance;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.*;
@@ -65,6 +66,7 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
     private final SysUserRoleMapper sysUserRoleMapper;
     private final INotificationService notificationService;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
+    private final SysConfigHelper sysConfigHelper;
 
     private static final String ACTION_NOTIFY = "notify";
     private static final String ACTION_ESCALATE = "escalate";
@@ -747,10 +749,16 @@ public class WorkflowMonitorServiceImpl implements IWorkflowMonitorService {
         if (totalCount <= 0) {
             return HEALTH_OBSERVING;
         }
-        if (successRate >= 95.0 && timeoutInstanceRate <= 5.0 && anomalyInstanceRate <= 3.0) {
+        double stableSuccess = sysConfigHelper.getConfigInt("sys.workflow.health.successRate", 95);
+        double stableTimeout = sysConfigHelper.getConfigInt("sys.workflow.health.timeoutRate", 5);
+        double stableAnomaly = sysConfigHelper.getConfigInt("sys.workflow.health.exceptionRate", 3);
+        if (successRate >= stableSuccess && timeoutInstanceRate <= stableTimeout && anomalyInstanceRate <= stableAnomaly) {
             return HEALTH_STABLE;
         }
-        if (successRate >= 85.0 && timeoutInstanceRate <= 12.0 && anomalyInstanceRate <= 8.0) {
+        double controllableSuccess = sysConfigHelper.getConfigInt("sys.workflow.health.controllable.successRate", 85);
+        double controllableTimeout = sysConfigHelper.getConfigInt("sys.workflow.health.controllable.timeoutRate", 12);
+        double controllableAnomaly = sysConfigHelper.getConfigInt("sys.workflow.health.controllable.exceptionRate", 8);
+        if (successRate >= controllableSuccess && timeoutInstanceRate <= controllableTimeout && anomalyInstanceRate <= controllableAnomaly) {
             return HEALTH_CONTROLLABLE;
         }
         return HEALTH_WARNING;

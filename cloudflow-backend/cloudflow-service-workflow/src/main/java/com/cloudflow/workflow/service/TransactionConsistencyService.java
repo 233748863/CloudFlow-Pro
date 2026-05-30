@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.redis.core.RedisCache;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.common.job.annotation.DistributedJob;
 import com.cloudflow.common.tenant.TenantBroker;
 import com.cloudflow.workflow.domain.WfTransactionMessage;
@@ -50,10 +51,10 @@ public class TransactionConsistencyService {
 
     private static final Logger log = LoggerFactory.getLogger(TransactionConsistencyService.class);
 
-    /** 默认最大重试次数 */
+    /** 兜底默认值：最大重试次数（实际值从 sys.workflow.maxRetryCount 读取） */
     private static final int DEFAULT_MAX_RETRY = 5;
 
-    /** 重试间隔基数（秒），采用指数退避 */
+    /** 兜底默认值：重试间隔基数秒（实际值从 sys.workflow.retryBaseInterval 读取，采用指数退避） */
     private static final int RETRY_BASE_INTERVAL = 30;
 
     @Autowired
@@ -64,6 +65,17 @@ public class TransactionConsistencyService {
 
     @Autowired
     private RedissonClient redissonClient;
+
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
+
+    private int maxRetry() {
+        return sysConfigHelper.getConfigInt("sys.workflow.maxRetryCount", DEFAULT_MAX_RETRY);
+    }
+
+    private int retryBaseInterval() {
+        return sysConfigHelper.getConfigInt("sys.workflow.retryBaseInterval", RETRY_BASE_INTERVAL);
+    }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -89,7 +101,7 @@ public class TransactionConsistencyService {
         msg.setContent(content);
         msg.setStatus("PENDING");
         msg.setRetryCount(0);
-        msg.setMaxRetryCount(DEFAULT_MAX_RETRY);
+        msg.setMaxRetryCount(maxRetry());
         msg.setNextRetryTime(LocalDateTime.now());
         msg.setCreateTime(LocalDateTime.now());
         msg.setUpdateTime(LocalDateTime.now());
@@ -224,7 +236,7 @@ public class TransactionConsistencyService {
                             new LambdaQueryWrapper<WfTransactionMessage>()
                                 .eq(WfTransactionMessage::getStatus, "PENDING")
                                 .le(WfTransactionMessage::getNextRetryTime, LocalDateTime.now())
-                                .lt(WfTransactionMessage::getRetryCount, DEFAULT_MAX_RETRY)
+                                .lt(WfTransactionMessage::getRetryCount, maxRetry())
                                 .orderByAsc(WfTransactionMessage::getCreateTime)
                                 .last("LIMIT 100")
                         )
@@ -292,7 +304,7 @@ public class TransactionConsistencyService {
                 log.info("[retryMessage] 重试成功, messageId={}", msg.getMessageId());
             } else {
                 // 计算下次重试时间（指数退避）
-                int delaySeconds = RETRY_BASE_INTERVAL * (int) Math.pow(2, msg.getRetryCount());
+                int delaySeconds = retryBaseInterval() * (int) Math.pow(2, msg.getRetryCount());
                 LocalDateTime nextRetryTime = LocalDateTime.now().plusSeconds(delaySeconds);
 
                 if (msg.getRetryCount() >= msg.getMaxRetryCount()) {
@@ -511,7 +523,7 @@ public class TransactionConsistencyService {
         msg.setRetryCount(0);
         msg.setStatus("PENDING");
         msg.setNextRetryTime(LocalDateTime.now());
-        msg.setMaxRetryCount(DEFAULT_MAX_RETRY);
+        msg.setMaxRetryCount(maxRetry());
         msg.setUpdateTime(LocalDateTime.now());
         messageMapper.updateById(msg);
         

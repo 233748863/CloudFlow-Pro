@@ -2,6 +2,7 @@ package com.cloudflow.workflow.service.monitor.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.cloudflow.common.job.annotation.DistributedJob;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.cloudflow.common.tenant.support.TenantIterator;
 import com.cloudflow.workflow.domain.WfTask;
 import com.cloudflow.workflow.domain.monitor.AnomalyAlert;
@@ -35,6 +36,14 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
     private final WfTaskMapper taskMapper;
     private final PerformanceStatsRefreshService performanceStatsRefreshService;
     private final TenantIterator tenantIterator;
+    private final SysConfigHelper sysConfigHelper;
+
+    /** 兜底默认值：异常运行时长阈值小时（实际值从 sys.workflow.anomaly.runningHoursThreshold 读取） */
+    private static final int DEFAULT_RUNNING_HOURS_THRESHOLD = 24;
+
+    private int runningHoursThreshold() {
+        return sysConfigHelper.getConfigInt("sys.workflow.anomaly.runningHoursThreshold", DEFAULT_RUNNING_HOURS_THRESHOLD);
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -106,7 +115,8 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
                 long runningHours = java.time.Duration.between(
                         process.getStartTime(), LocalDateTime.now()).toHours();
 
-                if (runningHours > 24) {
+                int threshold = runningHoursThreshold();
+                if (runningHours > threshold) {
                     // 查询该流程的活动任务
                     LambdaQueryWrapper<WfTask> taskWrapper = new LambdaQueryWrapper<>();
                     taskWrapper.eq(WfTask::getInstanceId, process.getInstanceId())
@@ -116,7 +126,7 @@ public class AnomalyDetectionServiceImpl implements IAnomalyDetectionService {
 
                     if (activeTaskCount == 0) {
                         // 可能死锁：流程运行中但没有活动任务
-                        createDeadlockAlert(process, "流程运行超过24小时且无活动任务");
+                        createDeadlockAlert(process, "流程运行超过" + threshold + "小时且无活动任务");
                         alertCount++;
                     }
                 }

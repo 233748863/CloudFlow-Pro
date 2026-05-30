@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.config;
 
 import com.cloudflow.common.security.core.TokenService;
+import com.cloudflow.common.redis.core.SysConfigHelper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
@@ -24,7 +25,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * WebSocket 通知通道
  *
- * P3-6 协议：握手阶段不再校验 token；连接建立后客户端必须在 {@link #AUTH_TIMEOUT_MS}ms 内发送
+ * P3-6 协议：握手阶段不再校验 token；连接建立后客户端必须在配置的认证超时时间内发送
  * 首帧 {"type":"AUTH","token":"xxx"}，服务端校验通过回 {"type":"AUTH_OK"} 并进入业务消息处理；
  * 校验失败回 {"type":"AUTH_FAIL"} 并立即关闭；超时未鉴权则服务端主动关闭（reason=AUTH_TIMEOUT）。
  */
@@ -33,7 +34,8 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(NotificationWebSocketHandler.class);
 
-    private static final long AUTH_TIMEOUT_MS = 5000L;
+    /** 兜底默认值：WS 首次认证超时毫秒（实际值从 sys.workflow.notification.authTimeoutMs 读取） */
+    private static final long DEFAULT_AUTH_TIMEOUT_MS = 5000L;
     private static final String MSG_AUTH_OK = "{\"type\":\"AUTH_OK\"}";
     private static final String MSG_AUTH_FAIL = "{\"type\":\"AUTH_FAIL\"}";
 
@@ -49,6 +51,13 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
     @Autowired
     private TokenService tokenService;
 
+    @Autowired
+    private SysConfigHelper sysConfigHelper;
+
+    private long authTimeoutMs() {
+        return sysConfigHelper.getConfigLong("sys.workflow.notification.authTimeoutMs", DEFAULT_AUTH_TIMEOUT_MS);
+    }
+
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
         String sid = session.getId();
@@ -57,7 +66,7 @@ public class NotificationWebSocketHandler extends TextWebSocketHandler {
             if (Boolean.FALSE.equals(authenticated.get(sid))) {
                 closeQuietly(session, CloseStatus.POLICY_VIOLATION.withReason("AUTH_TIMEOUT"));
             }
-        }, AUTH_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+        }, authTimeoutMs(), TimeUnit.MILLISECONDS);
     }
 
     @Override
