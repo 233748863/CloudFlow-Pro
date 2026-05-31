@@ -37,6 +37,12 @@
             <artifactId>redisson-spring-boot-starter</artifactId>
         </dependency>
 
+        <!-- Spring AOP（@DistributedLock 切面需要） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- Jackson JavaTime：RedisConfig 里直接注册了 JavaTimeModule -->
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
