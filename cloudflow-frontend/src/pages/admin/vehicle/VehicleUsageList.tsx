@@ -376,7 +376,7 @@ const VehicleUsageList: React.FC = () => {
         driverId: dispatchForm.driverMode === '1' ? dispatchForm.driverId : undefined,
         startMileage: dispatchForm.startMileage,
         dispatchRemark: dispatchForm.dispatchRemark,
-        actualStartTime: `${dispatchForm.actualStartTime}:00`,
+        actualStartTime: dispatchForm.actualStartTime.replace('T', ' ') + ':00',
       });
       toast.success('派车成功');
       setShowDispatchDialog(false);

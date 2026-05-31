@@ -1,5 +1,6 @@
 package com.cloudflow.oa.domain.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -16,5 +17,6 @@ public class VehicleDispatchDTO {
 
     private String dispatchRemark;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime actualStartTime;
 }
