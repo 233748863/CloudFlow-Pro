@@ -45,7 +45,8 @@ import {
 } from '@/services/api/businessRule';
 import { cn } from '@/utils/cn';
 import { getErrorMessage } from '@/utils/errorMessage';
-import { WORKFLOW_DEFINITION_STATUS_META, getWorkflowDefinitionStatusMeta } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 const ALL_VALUE = '__all__';
 const fieldLabelClassName = 'mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-200';
@@ -117,6 +118,7 @@ type ConfirmState =
 
 export const BusinessRulePage = () => {
   const [activeTab, setActiveTab] = useState('rules');
+  const workflowDefStatusDict = useDict('workflow_definition_status');
   const [rows, setRows] = useState<BusinessRule[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -397,8 +399,8 @@ export const BusinessRulePage = () => {
                     <SelectTrigger className="h-10 w-full sm:w-40"><SelectValue placeholder="版本状态" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value={ALL_VALUE}>全部状态</SelectItem>
-                      {Object.entries(WORKFLOW_DEFINITION_STATUS_META).map(([value, meta]) => (
-                        <SelectItem key={value} value={value}>{meta.label}</SelectItem>
+                      {(workflowDefStatusDict.data || []).map((item) => (
+                        <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -440,7 +442,7 @@ export const BusinessRulePage = () => {
                           <TableCell className="font-mono text-xs">{version.ruleCode}</TableCell>
                           <TableCell>{version.thresholdValue ?? '-'}</TableCell>
                           <TableCell><Badge value={version.effect} /></TableCell>
-                          <TableCell><Badge value={version.status} classNameMap={WORKFLOW_DEFINITION_STATUS_META} labelMap={WORKFLOW_DEFINITION_STATUS_META} /></TableCell>
+                          <TableCell><DictBadge dictType="workflow_definition_status" value={version.status || ''} /></TableCell>
                           <TableCell>{version.publisherName || '-'}</TableCell>
                           <TableCell>{formatDateTime(version.publishedTime)}</TableCell>
                           <TableCell className="max-w-[240px] truncate text-sm text-slate-500" title={version.remark}>{version.remark || '-'}</TableCell>

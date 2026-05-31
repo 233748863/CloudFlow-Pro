@@ -5,9 +5,9 @@ import { AnnouncementScope } from '@/types';
 import { TableActionHead, TableHead, TableHeader, TableRowActions } from '@/components/common';
 import { cn } from '@/utils/cn';
 import {
-  getAnnouncementPriorityMeta,
-  getAnnouncementStatusMeta,
-  getAnnouncementTypeMeta,
+  useAnnouncementPriorityMeta,
+  useAnnouncementStatusMeta,
+  useAnnouncementTypeMeta,
 } from '@/utils/announcementMeta';
 
 interface AnnouncementManageTableProps {
@@ -85,6 +85,9 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
   roleNameMap = new Map(),
   embedded = false,
 }) => {
+  const getTypeMeta = useAnnouncementTypeMeta();
+  const getStatusMeta = useAnnouncementStatusMeta();
+  const getPriorityMeta = useAnnouncementPriorityMeta();
   const table = (
     <div className="overflow-x-auto">
       <table className="min-w-[1180px] w-full">
@@ -100,9 +103,9 @@ export const AnnouncementManageTable: React.FC<AnnouncementManageTableProps> = (
         </TableHeader>
         <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
           {announcements.map((item) => {
-            const typeMeta = getAnnouncementTypeMeta(item.type);
-            const statusMeta = getAnnouncementStatusMeta(item.status);
-            const priorityMeta = getAnnouncementPriorityMeta(item.priority);
+            const typeMeta = getTypeMeta(item.type);
+            const statusMeta = getStatusMeta(item.status);
+            const priorityMeta = getPriorityMeta(item.priority);
 
             return (
               <tr key={item.announcementId} className="hover:bg-slate-50 dark:hover:bg-slate-900/60">

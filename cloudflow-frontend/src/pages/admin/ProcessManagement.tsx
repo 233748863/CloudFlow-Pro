@@ -98,10 +98,7 @@ const DialogMetaRow: React.FC<{
   </div>
 );
 
-import { getWorkflowDefinitionStatusMeta } from '@/utils/enumLabels';
-
-const getWorkflowStatusMeta = (status?: WorkflowDefinition['status']) =>
-  getWorkflowDefinitionStatusMeta(status);
+import { useDict } from '@/hooks/useDict';
 
 const formatWorkflowTags = (tags: string[]) => {
   if (tags.length === 0) {
@@ -131,6 +128,7 @@ const formatWorkflowPreview = (items: WorkflowDefinition[]) => {
  */
 export const ProcessManagement = () => {
   const navigate = useNavigate();
+  const workflowDefStatusDict = useDict('workflow_definition_status');
   
   // 权限控制
   const { 
@@ -954,7 +952,7 @@ export const ProcessManagement = () => {
                   ) : (
                     filteredWorkflows.map((workflow) => {
                       const selected = selectedIds.includes(workflow.id);
-                      const statusMeta = getWorkflowStatusMeta(workflow.status);
+                      const statusLabel = workflowDefStatusDict.getLabel(workflow.status || '') || workflow.status || '-';
 
                       return (
                         <TableRow key={workflow.id} data-state={selected ? 'selected' : undefined} className="align-top">
@@ -981,7 +979,7 @@ export const ProcessManagement = () => {
                               </div>
                               <div className="flex flex-wrap items-center gap-2">
                                 <span className="text-xs text-slate-500 dark:text-slate-400">
-                                  {statusMeta.label}
+                                  {statusLabel}
                                 </span>
                                 <span className="text-xs text-slate-400 dark:text-slate-500">
                                   ID {workflow.id}

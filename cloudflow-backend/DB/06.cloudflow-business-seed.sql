@@ -100,7 +100,18 @@ WHERE dict_type IN (
   'oa_trip_status',
   'oa_expense_type',
   'employee_status',
-  'employee_type'
+  'employee_type',
+  'request_status',
+  'contract_status',
+  'invoice_status',
+  'salary_slip_status',
+  'crm_lead_status',
+  'severity_level',
+  'announcement_status',
+  'announcement_type',
+  'announcement_priority',
+  'workflow_status',
+  'workflow_definition_status'
 );
 
 DELETE FROM cloud_flow_db.sys_dict_type
@@ -115,7 +126,18 @@ WHERE dict_type IN (
   'oa_trip_status',
   'oa_expense_type',
   'employee_status',
-  'employee_type'
+  'employee_type',
+  'request_status',
+  'contract_status',
+  'invoice_status',
+  'salary_slip_status',
+  'crm_lead_status',
+  'severity_level',
+  'announcement_status',
+  'announcement_type',
+  'announcement_priority',
+  'workflow_status',
+  'workflow_definition_status'
 );
 
 DELETE FROM cloud_flow_db.sys_config
@@ -2402,7 +2424,18 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_type (`dict_name`, `dict_type`, `remar
 ('出差状态', 'oa_trip_status', '出差状态列表'),
 ('费用类型', 'oa_expense_type', '费用报销类型'),
 ('员工状态', 'employee_status', 'HR员工状态枚举'),
-('员工类型', 'employee_type', 'HR员工类型枚举');
+('员工类型', 'employee_type', 'HR员工类型枚举'),
+('申请单状态', 'request_status', 'OA通用申请单状态（请假/报销/招聘等）'),
+('合同状态', 'contract_status', 'CRM/HR合同状态'),
+('发票状态', 'invoice_status', 'OA发票核销状态'),
+('薪资单状态', 'salary_slip_status', 'HR薪资单生命周期状态'),
+('CRM线索状态', 'crm_lead_status', 'CRM销售线索状态'),
+('严重度', 'severity_level', '风险/告警严重度等级'),
+('公告状态', 'announcement_status', '公告草稿/已发布/已撤销'),
+('公告类型', 'announcement_type', '通知/公告/紧急'),
+('公告优先级', 'announcement_priority', '高/中/低优先级'),
+('工作流实例状态', 'workflow_status', '工作流运行实例状态'),
+('工作流定义状态', 'workflow_definition_status', '工作流设计态状态（草稿/已发布/已归档）');
 
 -- 11. 初始化字典数据
 -- 用户性别
@@ -2481,6 +2514,104 @@ INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict
 (2, '兼职', 'PART_TIME',  'employee_type', 'info',    '兼职员工'),
 (3, '实习', 'INTERN',     'employee_type', 'info',    '实习生'),
 (4, '外包', 'CONTRACTOR', 'employee_type', 'warning', '外包人员');
+
+-- 通用申请单状态（请假/报销/招聘）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '草稿',   'DRAFT',      'request_status', 'default', '草稿状态'),
+(2, '审批中', 'PENDING',    'request_status', 'warning', '审批中'),
+(3, '审批中', 'APPROVING',  'request_status', 'warning', '审批中（兼容旧码）'),
+(4, '已通过', 'APPROVED',   'request_status', 'success', '已通过'),
+(5, '已驳回', 'REJECTED',   'request_status', 'danger',  '已驳回'),
+(6, '已撤销', 'CANCELLED',  'request_status', 'default', '已撤销'),
+(7, '已完成', 'COMPLETED',  'request_status', 'success', '已完成'),
+(8, '招聘中', 'RECRUITING', 'request_status', 'success', '招聘流程中');
+
+-- 合同状态
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '草稿',     'DRAFT',      'contract_status', 'default', '合同草稿'),
+(2, '待审批',   'PENDING',    'contract_status', 'warning', '合同待审批'),
+(3, '已批准',   'APPROVED',   'contract_status', 'success', '合同已批准'),
+(4, '执行中',   'ACTIVE',     'contract_status', 'info',    '合同执行中'),
+(5, '即将到期', 'EXPIRING',   'contract_status', 'warning', '合同即将到期'),
+(6, '已到期',   'EXPIRED',    'contract_status', 'warning', '合同已到期'),
+(7, '已终止',   'TERMINATED', 'contract_status', 'danger',  '合同已终止'),
+(8, '已归档',   'ARCHIVED',   'contract_status', 'info',    '合同已归档');
+
+-- 发票状态（OaInvoice.status 枚举对齐）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '未关联合同发票', 'NONE',             'invoice_status', 'default', '未关联合同'),
+(2, '已登记',         'REGISTERED',       'invoice_status', 'default', '发票已登记'),
+(3, '已绑定',         'BOUND',            'invoice_status', 'info',    '发票已绑定合同'),
+(4, '部分核销',       'WRITEOFF_PARTIAL', 'invoice_status', 'warning', '发票部分核销'),
+(5, '全部核销',       'WRITEOFF_FULL',    'invoice_status', 'success', '发票全部核销'),
+(6, '已作废',         'VOID',             'invoice_status', 'danger',  '发票已作废');
+
+-- 薪资单状态
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '草稿',   'DRAFT',     'salary_slip_status', 'default', '薪资单草稿'),
+(2, '已确认', 'CONFIRMED', 'salary_slip_status', 'info',    '薪资单已确认'),
+(3, '已发放', 'PAID',      'salary_slip_status', 'success', '薪资单已发放'),
+(4, '已下发', 'RELEASED',  'salary_slip_status', 'info',    '薪资单已下发');
+
+-- CRM 线索状态
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '新线索',   'NEW',          'crm_lead_status', 'info',    '新线索'),
+(2, '跟进中',   'FOLLOWING',    'crm_lead_status', 'warning', '跟进中'),
+(3, '已确认',   'QUALIFIED',    'crm_lead_status', 'success', '已确认'),
+(4, '已转客户', 'CONVERTED',    'crm_lead_status', 'success', '已转客户'),
+(5, '已关闭',   'CLOSED',       'crm_lead_status', 'default', '已关闭'),
+(6, '已淘汰',   'DISQUALIFIED', 'crm_lead_status', 'danger',  '已淘汰'),
+(7, '已失败',   'LOST',         'crm_lead_status', 'danger',  '已失败');
+
+-- 严重度（风险/告警等级）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '低',   'LOW',      'severity_level', 'info',    '低严重度'),
+(2, '中',   'MEDIUM',   'severity_level', 'warning', '中等严重度'),
+(3, '高',   'HIGH',     'severity_level', 'danger',  '高严重度'),
+(4, '严重', 'CRITICAL', 'severity_level', 'danger',  '严重等级'),
+(5, '提醒', 'REMIND',   'severity_level', 'info',    '提醒'),
+(6, '警告', 'WARNING',  'severity_level', 'warning', '警告');
+
+-- 公告状态（兼容数字 code 0/1/2 + 语义码 DRAFT/PUBLISHED/REVOKED/EXPIRED）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '草稿',   'DRAFT',     'announcement_status', 'default', '草稿'),
+(2, '已发布', 'PUBLISHED', 'announcement_status', 'success', '已发布'),
+(3, '已撤销', 'REVOKED',   'announcement_status', 'danger',  '已撤销'),
+(4, '已撤销', 'EXPIRED',   'announcement_status', 'danger',  '已撤销（过期同义）'),
+(5, '草稿',   '0',         'announcement_status', 'default', '数字码 0 = 草稿'),
+(6, '已发布', '1',         'announcement_status', 'success', '数字码 1 = 已发布'),
+(7, '已撤销', '2',         'announcement_status', 'danger',  '数字码 2 = 已撤销');
+
+-- 公告类型（NOTIFICATION='1', ANNOUNCEMENT='2', URGENT='3'）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '通知', 'NOTIFICATION', 'announcement_type', 'info',    '通知'),
+(2, '公告', 'ANNOUNCEMENT', 'announcement_type', 'info',    '公告'),
+(3, '紧急', 'URGENT',       'announcement_type', 'danger',  '紧急'),
+(4, '通知', '1',            'announcement_type', 'info',    '数字码 1 = 通知'),
+(5, '公告', '2',            'announcement_type', 'info',    '数字码 2 = 公告'),
+(6, '紧急', '3',            'announcement_type', 'danger',  '数字码 3 = 紧急');
+
+-- 公告优先级
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '高优先级', 'H', 'announcement_priority', 'danger',  '高优先级'),
+(2, '中优先级', 'M', 'announcement_priority', 'warning', '中优先级'),
+(3, '低优先级', 'L', 'announcement_priority', 'default', '低优先级');
+
+-- 工作流实例状态（运行时）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '草稿',   'DRAFT',      'workflow_status', 'default', '草稿'),
+(2, '审批中', 'RUNNING',    'workflow_status', 'info',    '审批中'),
+(3, '已暂停', 'PAUSED',     'workflow_status', 'warning', '已暂停'),
+(4, '已完成', 'COMPLETED',  'workflow_status', 'success', '已完成'),
+(5, '已驳回', 'REJECTED',   'workflow_status', 'danger',  '已驳回'),
+(6, '已撤销', 'CANCELLED',  'workflow_status', 'default', '已撤销'),
+(7, '已终止', 'TERMINATED', 'workflow_status', 'danger',  '已终止');
+
+-- 工作流定义状态（设计态）
+INSERT IGNORE INTO cloud_flow_db.sys_dict_data (`dict_sort`, `dict_label`, `dict_value`, `dict_type`, `list_class`, `remark`) VALUES
+(1, '草稿',   'DRAFT',     'workflow_definition_status', 'default', '草稿'),
+(2, '已发布', 'PUBLISHED', 'workflow_definition_status', 'success', '已发布'),
+(3, '已归档', 'ARCHIVED',  'workflow_definition_status', 'default', '已归档');
 
 -- 12. 初始化系统参数数据
 -- config_scope: 0=全局（所有租户共享） 1=租户（每个租户可独立配置）

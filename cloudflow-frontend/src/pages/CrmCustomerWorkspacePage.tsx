@@ -8,7 +8,8 @@ import { crmApi, CrmCustomerWorkspace, CrmRemoteProjectLink } from '@/services/a
 import { invoiceApi, Invoice } from '@/services/api/invoice';
 import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
-import { getSeverityLabel, getThresholdStatusLabel, getInvoiceStatusLabel } from '@/utils/enumLabels';
+import { getThresholdStatusLabel } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
 
 type WorkspaceTab = 'overview' | 'contact' | 'opportunity' | 'quote' | 'cashflow' | 'renewal' | 'ticket' | 'project';
 
@@ -70,18 +71,20 @@ const renderHealthBadge = (level?: string) => (
 );
 
 const renderStatus = (status?: string) => statusLabelMap[status || ''] || status || '-';
-const renderInvoiceStatus = (status?: string) => getInvoiceStatusLabel(status);
-const renderSeverity = (severity?: string) => getSeverityLabel(severity);
 const renderHealthLabel = (level?: string) => healthLabelMap[level || ''] || level || '-';
 
-const renderProjectCard = (item: CrmRemoteProjectLink, onOpen: (projectId: number) => void) => (
+const renderProjectCard = (
+  item: CrmRemoteProjectLink,
+  onOpen: (projectId: number) => void,
+  severityLabel: (value?: string) => string,
+) => (
   <Card key={item.projectId}>
     <CardHeader className="pb-3">
       <CardTitle className="text-base">{item.projectName || '-'}</CardTitle>
       <div className="text-xs text-slate-500">{item.projectNo || '-'} / {renderStatus(item.status)}</div>
     </CardHeader>
     <CardContent className="space-y-2 text-sm">
-      <div>风险等级：{getSeverityLabel(item.riskLevel)}</div>
+      <div>风险等级：{severityLabel(item.riskLevel)}</div>
       <div>预算 / 成本：{item.budgetAmount || 0} / {item.actualCostAmount || 0}</div>
       <div>来源：{item.sourceName || item.sourceType || '-'}</div>
       {item.projectId ? <Button size="sm" variant="outline" onClick={() => onOpen(item.projectId!)}>查看项目工作区</Button> : null}
@@ -105,6 +108,11 @@ export default function CrmCustomerWorkspacePage() {
   const [selectedBindReceivableId, setSelectedBindReceivableId] = useState('');
 
   const numericCustomerId = Number(customerId || 0);
+
+  const invoiceStatusDict = useDict('invoice_status');
+  const severityDict = useDict('severity_level');
+  const renderInvoiceStatus = (status?: string) => invoiceStatusDict.getLabel(status || '') || status || '-';
+  const renderSeverity = (severity?: string) => severityDict.getLabel(severity || '') || severity || '-';
 
   const load = async () => {
     if (!numericCustomerId) return;
@@ -638,7 +646,7 @@ export default function CrmCustomerWorkspacePage() {
               </div>
             </div>
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {workspace.projects.length ? workspace.projects.map((item) => renderProjectCard(item, (projectId) => navigate('/office/project', { state: { focusProjectId: projectId } }))) : <div className="text-sm text-slate-500">暂无关联项目</div>}
+              {workspace.projects.length ? workspace.projects.map((item) => renderProjectCard(item, (projectId) => navigate('/office/project', { state: { focusProjectId: projectId } }), renderSeverity)) : <div className="text-sm text-slate-500">暂无关联项目</div>}
             </div>
           </WorkspaceSectionCard>
           <WorkspaceSectionCard title="OA 预算摘要" description="关联项目预算执行与阈值概览。">

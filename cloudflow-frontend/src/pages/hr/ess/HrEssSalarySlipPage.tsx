@@ -13,7 +13,7 @@ import {
 } from '@/services/api/hr';
 import { normalizeRows } from '../hrShared';
 import { formatMoneyValue, formatDateTimeValue } from '../hrShared';
-import { getSalarySlipStatusLabel } from '@/utils/enumLabels';
+import { DictBadge } from '@/components/common/DictBadge';
 
 
 export const HrEssSalarySlipPage: React.FC = () => {
@@ -118,7 +118,7 @@ export const HrEssSalarySlipPage: React.FC = () => {
                       <TableCell className="font-semibold text-emerald-600 dark:text-emerald-300">
                         {formatMoneyValue(row.netTotal)}
                       </TableCell>
-                      <TableCell>{getSalarySlipStatusLabel(row.status)}</TableCell>
+                      <TableCell><DictBadge dictType="salary_slip_status" value={row.status || ''} /></TableCell>
                       <TableCell>{row.employeeConfirmed ? '是' : '否'}</TableCell>
                       <TableCell>
                         <div className="flex gap-2">

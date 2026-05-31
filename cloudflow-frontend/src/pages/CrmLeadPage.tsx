@@ -27,7 +27,8 @@ import { getErrorMessage } from '@/utils/errorMessage';
 import { formatDateTimeDisplay } from '@/utils/dateFormat';
 import { useNavigate } from 'react-router-dom';
 
-import { getCrmLeadStatusLabel } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 const statusOptions = ['NEW', 'FOLLOWING', 'QUALIFIED', 'CONVERTED', 'CLOSED'];
 
@@ -38,6 +39,7 @@ const emptyLead: CrmLead = {
 
 export default function CrmLeadPage() {
   const navigate = useNavigate();
+  const leadStatusDict = useDict('crm_lead_status');
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<CrmLead[]>([]);
   const [pageNum, setPageNum] = useState(1);
@@ -141,7 +143,7 @@ export default function CrmLeadPage() {
                   <SelectTrigger><SelectValue placeholder="状态" /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">全部状态</SelectItem>
-                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmLeadStatusLabel(item)}</SelectItem>)}
+                    {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || item}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -177,7 +179,7 @@ export default function CrmLeadPage() {
                       <td className="px-4 py-3 text-sm"><div>{row.contactName || '-'}</div><div className="text-xs text-slate-500">{row.mobile || row.phone || '-'}</div></td>
                       <td className="px-4 py-3 text-sm"><div>{row.ownerName || '-'}</div><div className="text-xs text-slate-500">{row.deptName || '-'}</div></td>
                       <td className="px-4 py-3 text-sm"><div>{row.source || '-'}</div><div className="text-xs text-slate-500">{row.industry || '-'}</div></td>
-                      <td className="px-4 py-3 text-sm">{getCrmLeadStatusLabel(row.status)}</td>
+                      <td className="px-4 py-3 text-sm"><DictBadge dictType="crm_lead_status" value={row.status || ''} /></td>
                       <td className="px-4 py-3 text-sm">{formatDateTimeDisplay(row.nextFollowUpTime) || '-'}</td>
                       <td className="px-4 py-3 text-right">
                         <TableRowActions
@@ -254,7 +256,7 @@ export default function CrmLeadPage() {
             <Select value={form.status || 'NEW'} onValueChange={(value) => setForm((prev) => ({ ...prev, status: value }))}>
               <SelectTrigger><SelectValue placeholder="选择状态" /></SelectTrigger>
               <SelectContent>
-                {statusOptions.map((item) => <SelectItem key={item} value={item}>{getCrmLeadStatusLabel(item)}</SelectItem>)}
+                {statusOptions.map((item) => <SelectItem key={item} value={item}>{leadStatusDict.getLabel(item) || item}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>

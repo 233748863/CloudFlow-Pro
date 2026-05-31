@@ -1,11 +1,21 @@
 /**
- * 集中收口「后端英文枚举 -> 前端中文 label」一类映射。
+ * 集中收口「后端英文枚举 -> 前端中文 label」一类映射（仅保留 P2 范围）。
  *
  * 与 src/utils/mappers.ts 分工：mappers.ts 处理表单字段/业务对象之间的结构转换，
- * 本文件专门承载离散枚举到展示文案的映射，所有跨模块复用的英文枚举字典都收口在此。
+ * 本文件专门承载离散枚举到展示文案的映射。
  *
- * 任意 getXxxLabel 未命中映射时 fallback 到原 key（与后端 getOrDefault 同语义），
- * 保证未来新增枚举不会渲染空白。
+ * 字典系统集成进度：P0 / P1 范围共 13 个枚举已迁移到后端字典系统，
+ * 业务页面通过 useDict / DictBadge / DictSelect 直接读取。
+ * 已迁移：
+ *   employee_status, employee_type, request_status, contract_status,
+ *   invoice_status, salary_slip_status, crm_lead_status,
+ *   severity_level, announcement_status, announcement_type,
+ *   announcement_priority, workflow_status, workflow_definition_status
+ *
+ * 本文件仅保留 P2 — 「不迁移到字典」的枚举：
+ *   - 与工作流引擎/算法强耦合
+ *   - 技术性枚举或固定流程
+ *   - 不需要运营动态配置
  */
 
 const labelOf = (map: Record<string, string | { label?: string }>, key?: string | null): string => {
@@ -32,19 +42,6 @@ export const ANOMALY_TYPE_LABELS: Record<string, string> = {
 
 export const getAnomalyTypeLabel = (type?: string | null): string =>
   labelOf(ANOMALY_TYPE_LABELS, type);
-
-// 严重度 / 风险等级（与后端 TIMEOUT_LEVEL_LABELS + CRM riskLevel 等共用一套维度）
-export const SEVERITY_LABELS: Record<string, string> = {
-  LOW: '低',
-  MEDIUM: '中',
-  HIGH: '高',
-  CRITICAL: '严重',
-  REMIND: '提醒',
-  WARNING: '警告',
-};
-
-export const getSeverityLabel = (level?: string | null): string =>
-  labelOf(SEVERITY_LABELS, level);
 
 // 预算/指标阈值状态
 export const THRESHOLD_STATUS_LABELS: Record<string, string> = {
@@ -117,30 +114,14 @@ export const CRM_GENERIC_STATUS_LABELS: Record<string, string> = {
 export const getCrmGenericStatusLabel = (status?: string | null): string =>
   labelOf(CRM_GENERIC_STATUS_LABELS, status);
 
-// CRM 线索状态
-export const CRM_LEAD_STATUS_LABELS: Record<string, string> = {
-  NEW: '新线索',
-  FOLLOWING: '跟进中',
-  QUALIFIED: '已确认',
-  CONVERTED: '已转客户',
-  CLOSED: '已关闭',
-  DISQUALIFIED: '已淘汰',
-  LOST: '已失败',
-};
-
-export const getCrmLeadStatusLabel = (status?: string | null): string =>
-  labelOf(CRM_LEAD_STATUS_LABELS, status);
-
-// 状态 + 颜色调色板（HR 等多页面共用）
-// tone 输出 Tailwind class string，可直接用于 <span className={meta.tone}>
-// colorName 输出简化色名（emerald / amber 等），用于 HR 的 statusPill(label, colorName) 组件签名
+// 状态 + 颜色调色板（仅保留类型与构造器，供 P2 枚举的 META 继续使用）
 export type StatusColorName = 'emerald' | 'amber' | 'rose' | 'sky' | 'slate' | 'violet' | 'orange' | 'teal';
 
 export interface StatusMeta {
   label: string;
   /** 浅色简化 class（无 dark mode），现有调用方兼容 */
   tone: string;
-  /** 完整 Tailwind class：light + dark mode + ring/border，下游页面直接 `<span className={meta.fullClass}>` */
+  /** 完整 Tailwind class：light + dark mode + ring/border */
   fullClass?: string;
   colorName?: StatusColorName;
 }
@@ -158,283 +139,7 @@ const buildStatusMeta = (
   return map[key] ?? { label: key, tone: STATUS_META_FALLBACK.tone };
 };
 
-// HR 员工状态（employee_status）和员工类型（employee_type）已迁移到后端字典系统
-// 使用 useDict('employee_status') / useDict('employee_type') 或 <DictBadge dictType="..." />
-
-// 通用申请单状态（请假、报销等）
-export const REQUEST_STATUS_META: Record<string, StatusMeta> = {
-  DRAFT: {
-    label: '草稿',
-    tone: 'bg-slate-50 text-slate-600',
-    fullClass: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-    colorName: 'slate',
-  },
-  PENDING: {
-    label: '审批中',
-    tone: 'bg-amber-50 text-amber-700',
-    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    colorName: 'amber',
-  },
-  APPROVING: {
-    label: '审批中',
-    tone: 'bg-amber-50 text-amber-700',
-    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    colorName: 'amber',
-  },
-  APPROVED: {
-    label: '已通过',
-    tone: 'bg-emerald-50 text-emerald-700',
-    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    colorName: 'emerald',
-  },
-  REJECTED: {
-    label: '已驳回',
-    tone: 'bg-rose-50 text-rose-700',
-    fullClass: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    colorName: 'rose',
-  },
-  CANCELLED: {
-    label: '已撤销',
-    tone: 'bg-slate-100 text-slate-500',
-    fullClass: 'border-slate-200 bg-slate-100 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400',
-    colorName: 'slate',
-  },
-  COMPLETED: {
-    label: '已完成',
-    tone: 'bg-emerald-50 text-emerald-700',
-    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    colorName: 'slate',
-  },
-  RECRUITING: {
-    label: '招聘中',
-    tone: 'bg-emerald-50 text-emerald-700',
-    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    colorName: 'emerald',
-  },
-};
-
-export const getRequestStatusColor = (status?: string | null): StatusColorName =>
-  REQUEST_STATUS_META[status ?? ''] ? (REQUEST_STATUS_META[status as string].colorName ?? 'teal') : 'teal';
-
-export const getRequestStatusMeta = (status?: string | null): StatusMeta =>
-  buildStatusMeta(REQUEST_STATUS_META, status);
-
-// 合同状态
-export const CONTRACT_STATUS_META: Record<string, StatusMeta> = {
-  DRAFT: {
-    label: '草稿',
-    tone: 'bg-slate-50 text-slate-600',
-    fullClass: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-    colorName: 'slate',
-  },
-  PENDING: {
-    label: '待审批',
-    tone: 'bg-amber-50 text-amber-700',
-    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    colorName: 'amber',
-  },
-  APPROVED: {
-    label: '已批准',
-    tone: 'bg-emerald-50 text-emerald-700',
-    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    colorName: 'emerald',
-  },
-  ACTIVE: {
-    label: '执行中',
-    tone: 'bg-sky-50 text-sky-700',
-    fullClass: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    colorName: 'sky',
-  },
-  EXPIRING: {
-    label: '即将到期',
-    tone: 'bg-orange-50 text-orange-700',
-    fullClass: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-900 dark:bg-orange-950/30 dark:text-orange-200',
-    colorName: 'orange',
-  },
-  EXPIRED: {
-    label: '已到期',
-    tone: 'bg-amber-50 text-amber-700',
-    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    colorName: 'amber',
-  },
-  TERMINATED: {
-    label: '已终止',
-    tone: 'bg-slate-100 text-slate-600',
-    fullClass: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    colorName: 'rose',
-  },
-  ARCHIVED: {
-    label: '已归档',
-    tone: 'bg-violet-50 text-violet-700',
-    fullClass: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
-    colorName: 'violet',
-  },
-};
-
-export const getContractStatusColor = (status?: string | null): StatusColorName =>
-  CONTRACT_STATUS_META[status ?? ''] ? (CONTRACT_STATUS_META[status as string].colorName ?? 'slate') : 'slate';
-
-export const getContractStatusMeta = (status?: string | null): StatusMeta =>
-  buildStatusMeta(CONTRACT_STATUS_META, status);
-
-// 公告状态（兼容数字 code 0/1/2 + 语义码 DRAFT/PUBLISHED/REVOKED）
-// fullClass 采用 ring 风格（与原 announcementMeta.tsx 视觉一致）
-const ANNOUNCEMENT_STATUS_DRAFT: StatusMeta = {
-  label: '草稿',
-  tone: 'bg-slate-100 text-slate-600',
-  fullClass: 'bg-slate-100 text-slate-600 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700',
-};
-const ANNOUNCEMENT_STATUS_PUBLISHED: StatusMeta = {
-  label: '已发布',
-  tone: 'bg-emerald-50 text-emerald-600',
-  fullClass: 'bg-emerald-50 text-emerald-600 ring-1 ring-emerald-100 dark:bg-emerald-950/30 dark:text-emerald-200 dark:ring-emerald-900/60',
-};
-const ANNOUNCEMENT_STATUS_REVOKED: StatusMeta = {
-  label: '已撤销',
-  tone: 'bg-rose-50 text-rose-600',
-  fullClass: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100 dark:bg-rose-950/30 dark:text-rose-200 dark:ring-rose-900/60',
-};
-export const ANNOUNCEMENT_STATUS_META: Record<string, StatusMeta> = {
-  '0': ANNOUNCEMENT_STATUS_DRAFT,
-  '1': ANNOUNCEMENT_STATUS_PUBLISHED,
-  '2': ANNOUNCEMENT_STATUS_REVOKED,
-  DRAFT: ANNOUNCEMENT_STATUS_DRAFT,
-  PUBLISHED: ANNOUNCEMENT_STATUS_PUBLISHED,
-  REVOKED: ANNOUNCEMENT_STATUS_REVOKED,
-  EXPIRED: ANNOUNCEMENT_STATUS_REVOKED,
-};
-
-export const getAnnouncementStatusMeta = (status?: string | number | null): StatusMeta =>
-  buildStatusMeta(ANNOUNCEMENT_STATUS_META, status == null ? null : String(status));
-
-// 公告类型（type 不带 icon——icon 由 announcementMeta.tsx 单独维护，避免 React 依赖污染 utils）
-const ANNOUNCEMENT_TYPE_ENTRY: StatusMeta = {
-  label: '公告',
-  tone: 'bg-sky-50 text-sky-600',
-  fullClass: 'bg-sky-50 text-sky-600 ring-1 ring-sky-100 dark:bg-sky-950/30 dark:text-sky-200 dark:ring-sky-900/60',
-};
-const URGENT_TYPE_ENTRY: StatusMeta = {
-  label: '紧急',
-  tone: 'bg-rose-50 text-rose-600',
-  fullClass: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100 dark:bg-rose-950/30 dark:text-rose-200 dark:ring-rose-900/60',
-};
-const NOTIFICATION_TYPE_ENTRY: StatusMeta = {
-  label: '通知',
-  tone: 'bg-cyan-50 text-cyan-600',
-  fullClass: 'bg-cyan-50 text-cyan-600 ring-1 ring-cyan-100 dark:bg-cyan-950/30 dark:text-cyan-200 dark:ring-cyan-900/60',
-};
-export const ANNOUNCEMENT_TYPE_META: Record<string, StatusMeta> = {
-  ANNOUNCEMENT: ANNOUNCEMENT_TYPE_ENTRY,
-  URGENT: URGENT_TYPE_ENTRY,
-  NOTIFICATION: NOTIFICATION_TYPE_ENTRY,
-  // 兼容 AnnouncementType 枚举数字字符串值（NOTIFICATION='1', ANNOUNCEMENT='2', URGENT='3'）
-  '1': NOTIFICATION_TYPE_ENTRY,
-  '2': ANNOUNCEMENT_TYPE_ENTRY,
-  '3': URGENT_TYPE_ENTRY,
-};
-
-export const getAnnouncementTypeMeta = (type?: string | null): StatusMeta =>
-  buildStatusMeta(ANNOUNCEMENT_TYPE_META, type);
-
-// 公告优先级（H 高 / 默认中 / L 低）
-const ANNOUNCEMENT_PRIORITY_DEFAULT: StatusMeta = {
-  label: '中优先级',
-  tone: 'bg-amber-50 text-amber-600',
-  fullClass: 'bg-amber-50 text-amber-600 ring-1 ring-amber-100 dark:bg-amber-950/30 dark:text-amber-200 dark:ring-amber-900/60',
-};
-export const ANNOUNCEMENT_PRIORITY_META: Record<string, StatusMeta> = {
-  H: {
-    label: '高优先级',
-    tone: 'bg-rose-50 text-rose-600',
-    fullClass: 'bg-rose-50 text-rose-600 ring-1 ring-rose-100 dark:bg-rose-950/30 dark:text-rose-200 dark:ring-rose-900/60',
-  },
-  M: ANNOUNCEMENT_PRIORITY_DEFAULT,
-  L: {
-    label: '低优先级',
-    tone: 'bg-slate-100 text-slate-500',
-    fullClass: 'bg-slate-100 text-slate-500 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:ring-slate-700',
-  },
-};
-
-export const getAnnouncementPriorityMeta = (priority?: string | null): StatusMeta => {
-  if (!priority) return ANNOUNCEMENT_PRIORITY_DEFAULT;
-  return ANNOUNCEMENT_PRIORITY_META[priority] ?? ANNOUNCEMENT_PRIORITY_DEFAULT;
-};
-
-// 工作流流程实例状态（运行时）
-export const WORKFLOW_STATUS_META: Record<string, StatusMeta> = {
-  DRAFT: { label: '草稿', tone: 'bg-slate-50 text-slate-600' },
-  RUNNING: { label: '审批中', tone: 'bg-sky-50 text-sky-700' },
-  PAUSED: { label: '已暂停', tone: 'bg-amber-50 text-amber-700' },
-  COMPLETED: { label: '已完成', tone: 'bg-emerald-50 text-emerald-700' },
-  REJECTED: { label: '已驳回', tone: 'bg-rose-50 text-rose-700' },
-  CANCELLED: { label: '已撤销', tone: 'bg-slate-100 text-slate-500' },
-  TERMINATED: { label: '已终止', tone: 'bg-rose-50 text-rose-700' },
-};
-
-export const getWorkflowStatusMeta = (status?: string | null): StatusMeta =>
-  buildStatusMeta(WORKFLOW_STATUS_META, status);
-
-// 工作流定义状态（设计态，与实例运行态分开）— ProcessManagement.tsx 使用
-export const WORKFLOW_DEFINITION_STATUS_META: Record<string, StatusMeta> = {
-  DRAFT: { label: '草稿', tone: 'bg-slate-50 text-slate-600' },
-  PUBLISHED: { label: '已发布', tone: 'bg-emerald-50 text-emerald-700' },
-  ARCHIVED: { label: '已归档', tone: 'bg-slate-100 text-slate-500' },
-};
-
-export const getWorkflowDefinitionStatusMeta = (status?: string | null): StatusMeta => {
-  if (!status) return WORKFLOW_DEFINITION_STATUS_META.DRAFT;
-  return WORKFLOW_DEFINITION_STATUS_META[status] ?? WORKFLOW_DEFINITION_STATUS_META.DRAFT;
-};
-
-// 发票状态（InvoiceManagementPage / CrmCustomerWorkspacePage 共用）
-// 与后端 OaInvoice.status 枚举一一对齐
-export const INVOICE_STATUS_META: Record<string, StatusMeta> = {
-  NONE: {
-    label: '未关联合同发票',
-    tone: 'bg-slate-50 text-slate-500',
-    fullClass: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-    colorName: 'slate',
-  },
-  REGISTERED: {
-    label: '已登记',
-    tone: 'bg-slate-50 text-slate-600',
-    fullClass: 'border-slate-200 bg-slate-50 text-slate-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300',
-    colorName: 'slate',
-  },
-  BOUND: {
-    label: '已绑定',
-    tone: 'bg-sky-50 text-sky-700',
-    fullClass: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    colorName: 'sky',
-  },
-  WRITEOFF_PARTIAL: {
-    label: '部分核销',
-    tone: 'bg-amber-50 text-amber-700',
-    fullClass: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-200',
-    colorName: 'amber',
-  },
-  WRITEOFF_FULL: {
-    label: '全部核销',
-    tone: 'bg-emerald-50 text-emerald-700',
-    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    colorName: 'emerald',
-  },
-  VOID: {
-    label: '已作废',
-    tone: 'bg-rose-50 text-rose-700',
-    fullClass: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-900 dark:bg-rose-950/30 dark:text-rose-200',
-    colorName: 'rose',
-  },
-};
-
-export const getInvoiceStatusMeta = (status?: string | null): StatusMeta =>
-  buildStatusMeta(INVOICE_STATUS_META, status);
-
-export const getInvoiceStatusLabel = (status?: string | null): string =>
-  labelOf(INVOICE_STATUS_META, status);
-
-// 发票方向（InvoiceManagementPage 使用）
+// 发票方向（InvoiceManagementPage 使用，保留为前端枚举：进项/销项固定不变）
 export const INVOICE_DIRECTION_META: Record<string, StatusMeta> = {
   INPUT: {
     label: '进项发票',
@@ -449,39 +154,8 @@ export const INVOICE_DIRECTION_META: Record<string, StatusMeta> = {
 export const getInvoiceDirectionLabel = (dir?: string | null): string =>
   labelOf(INVOICE_DIRECTION_META, dir);
 
-// 薪资单状态（HrEssSalarySlipPage 使用）
-export const SALARY_SLIP_STATUS_META: Record<string, StatusMeta> = {
-  DRAFT: {
-    label: '草稿',
-    tone: 'bg-slate-50 text-slate-600',
-    fullClass: 'border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300',
-    colorName: 'slate',
-  },
-  CONFIRMED: {
-    label: '已确认',
-    tone: 'bg-sky-50 text-sky-700',
-    fullClass: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200',
-    colorName: 'sky',
-  },
-  PAID: {
-    label: '已发放',
-    tone: 'bg-emerald-50 text-emerald-700',
-    fullClass: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200',
-    colorName: 'emerald',
-  },
-  RELEASED: {
-    label: '已下发',
-    tone: 'bg-violet-50 text-violet-700',
-    fullClass: 'border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200',
-    colorName: 'violet',
-  },
-};
-
-export const getSalarySlipStatusLabel = (status?: string | null): string =>
-  labelOf(SALARY_SLIP_STATUS_META, status);
-
-// 证明申请状态（HrEssCertificatePage 使用）
-// 注意 CANCELLED = '已取消'（非 REQUEST_STATUS_META 的 '已撤销'），语义不同故独立建 META
+// 证明申请状态（HrEssCertificatePage 使用，保留为前端枚举）
+// 注意 CANCELLED = '已取消'（非 REQUEST_STATUS 的 '已撤销'），语义不同故独立维护
 export const CERTIFICATE_STATUS_META: Record<string, StatusMeta> = {
   DRAFT: {
     label: '草稿',
@@ -529,3 +203,6 @@ export const CERTIFICATE_STATUS_META: Record<string, StatusMeta> = {
 
 export const getCertificateStatusLabel = (status?: string | null): string =>
   labelOf(CERTIFICATE_STATUS_META, status);
+
+// 为兼容个别构造器引用而保留（虽然当前未导出 META 中使用，但 buildStatusMeta 已私有）
+void buildStatusMeta;

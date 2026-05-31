@@ -4,7 +4,7 @@ import type { Announcement } from '@/types';
 import { cn } from '@/utils/cn';
 import { getAnnouncementExcerpt } from '@/utils/announcementContent';
 import { formatAnnouncementRelativeTime } from '@/utils/announcementFormat';
-import { getAnnouncementPriorityMeta, getAnnouncementTypeMeta } from '@/utils/announcementMeta';
+import { useAnnouncementPriorityMeta, useAnnouncementTypeMeta } from '@/utils/announcementMeta';
 
 interface AnnouncementListItemProps {
   announcement: Announcement;
@@ -20,8 +20,10 @@ export const AnnouncementListItem: React.FC<AnnouncementListItemProps> = ({
   className,
 }) => {
   const unread = !announcement.isRead;
-  const priorityMeta = getAnnouncementPriorityMeta(announcement.priority);
-  const typeMeta = getAnnouncementTypeMeta(announcement.type);
+  const getPriorityMeta = useAnnouncementPriorityMeta();
+  const getTypeMeta = useAnnouncementTypeMeta();
+  const priorityMeta = getPriorityMeta(announcement.priority);
+  const typeMeta = getTypeMeta(announcement.type);
   const timeText = formatAnnouncementRelativeTime(
     announcement.publishTime || announcement.createTime,
   );

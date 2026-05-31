@@ -73,7 +73,6 @@ const statusPill = (
 
 // 状态色委托后端字典 employee_status，未命中保持页面历史 teal fallback
 // 该页面 statusPill 仅支持 teal/emerald/slate/amber 4 色，字典返回的其他色降级到 teal
-import { REQUEST_STATUS_META } from '@/utils/enumLabels';
 import { useDict } from '@/hooks/useDict';
 
 type LocalPillTone = 'teal' | 'emerald' | 'slate' | 'amber';
@@ -84,9 +83,6 @@ const narrowPillTone = (color?: string | null): LocalPillTone => {
   }
   return 'teal';
 };
-
-const requestStatusTone = (status?: string): LocalPillTone =>
-  narrowPillTone(status ? REQUEST_STATUS_META[status]?.colorName : undefined);
 
 const onboardingStatusPriority = (status?: string | null) => {
   if (status === 'ONBOARDED') return 4;
@@ -268,6 +264,9 @@ const ActivityRow = ({
 
 export const HrDashboardPage: React.FC = () => {
   const navigate = useNavigate();
+  const requestStatusDict = useDict('request_status');
+  const requestStatusTone = (status?: string): LocalPillTone =>
+    narrowPillTone(status ? requestStatusDict.getItem(status)?.colorName : undefined);
   const [employees, setEmployees] = useState<HrEmployee[]>([]);
   const [requests, setRequests] = useState<RecruitmentRequest[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);

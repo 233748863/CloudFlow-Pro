@@ -13,7 +13,7 @@ import {
 } from '@/stores/announcementStore';
 import { AnnouncementScope, type Announcement } from '@/types';
 import { formatAnnouncementRelativeWithDateTime } from '@/utils/announcementFormat';
-import { getAnnouncementPriorityMeta } from '@/utils/announcementMeta';
+import { useAnnouncementPriorityMeta } from '@/utils/announcementMeta';
 
 type ViewMode = 'user' | 'manage';
 
@@ -43,6 +43,7 @@ const InlineState: React.FC<{
 export const AnnouncementPage = () => {
   const location = useLocation();
   const { hasPermission } = useAuth();
+  const getAnnouncementPriorityMeta = useAnnouncementPriorityMeta();
   const canManage = useMemo(
     () => hasPermission(['oa:announcement:manage', 'oa:announcement:publish', 'oa:announcement:edit']),
     [hasPermission],

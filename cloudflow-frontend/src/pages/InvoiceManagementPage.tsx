@@ -12,7 +12,9 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 import { TablePageLayout, TableSurfaceCard } from '@/components/layout/TablePageLayout';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue, TableActionHead, TableHead, TableHeader, Textarea } from '@/components/common';
 import { TableRowActions } from '@/components/common/table-row-actions';
-import { INVOICE_STATUS_META, getInvoiceStatusLabel, getInvoiceStatusMeta, getInvoiceDirectionLabel } from '@/utils/enumLabels';
+import { getInvoiceDirectionLabel } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
+import { DictBadge } from '@/components/common/DictBadge';
 
 type InvoiceDialog =
   | { type: 'invoice'; item?: Invoice | null }
@@ -68,6 +70,8 @@ export default function InvoiceManagementPage() {
   const [bindTargetType, setBindTargetType] = useState<BindTargetType>('NONE');
   const [saving, setSaving] = useState(false);
   const [voidTarget, setVoidTarget] = useState<Invoice | null>(null);
+
+  const invoiceStatusDict = useDict('invoice_status');
 
   const [expenseClaims, setExpenseClaims] = useState<ExpenseClaim[]>([]);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
@@ -244,14 +248,9 @@ export default function InvoiceManagementPage() {
     }
   };
 
-  const statusBadge = (value?: string) => {
-    const meta = getInvoiceStatusMeta(value);
-    return (
-      <span className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${meta.fullClass || meta.tone}`}>
-        {meta.label}
-      </span>
-    );
-  };
+  const statusBadge = (value?: string) => (
+    <DictBadge dictType="invoice_status" value={value || ''} className="rounded-full px-2.5 py-1 font-semibold" />
+  );
 
   const bindDescription = invoiceForm.invoiceDirection === 'OUTPUT'
     ? '销项发票 = 绑定 CRM 回款计划，自动带出客户和合同，并把核销状态回写到 CRM 回款和 OA 合同。'
@@ -280,7 +279,7 @@ export default function InvoiceManagementPage() {
                     <SelectTrigger><SelectValue placeholder="发票状态" /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="ALL">全部状态</SelectItem>
-                      {Object.entries(INVOICE_STATUS_META).filter(([k]) => k !== 'NONE').map(([value, meta]) => <SelectItem key={value} value={value}>{meta.label}</SelectItem>)}
+                      {(invoiceStatusDict.data || []).filter((item) => item.value !== 'NONE').map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

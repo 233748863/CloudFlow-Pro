@@ -1,7 +1,7 @@
 import React from 'react';
 import { ArrowRight, ShieldAlert } from 'lucide-react';
 import { EmptyState, LoadingSpinner } from '@/components/common';
-import { getSeverityLabel } from '@/utils/enumLabels';
+import { useDict } from '@/hooks/useDict';
 
 export interface UserDashboardRiskItem {
   id: string;
@@ -20,7 +20,9 @@ interface UserDashboardRiskPanelProps {
 export const UserDashboardRiskPanel: React.FC<UserDashboardRiskPanelProps> = ({
   items,
   loading,
-}) => (
+}) => {
+  const severityDict = useDict('severity_level');
+  return (
   <section className="card overflow-hidden">
     <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4 dark:border-slate-800">
       <div className="flex items-center gap-2">
@@ -47,7 +49,7 @@ export const UserDashboardRiskPanel: React.FC<UserDashboardRiskPanelProps> = ({
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="badge badge-rose">{item.sourceLabel || '联动风险'}</span>
-                  {item.level ? <span className="text-xs text-slate-500 dark:text-slate-400">{getSeverityLabel(item.level)}</span> : null}
+                  {item.level ? <span className="text-xs text-slate-500 dark:text-slate-400">{severityDict.getLabel(item.level) || item.level}</span> : null}
                 </div>
                 <p className="mt-2 truncate text-sm font-medium text-slate-900 dark:text-slate-100">{item.title}</p>
                 <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">{item.description || '需要尽快处理'}</p>
@@ -59,4 +61,5 @@ export const UserDashboardRiskPanel: React.FC<UserDashboardRiskPanelProps> = ({
       )}
     </div>
   </section>
-);
+  );
+};

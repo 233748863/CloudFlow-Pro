@@ -215,13 +215,9 @@ const AttachmentLinks = ({
 const canDeleteContract = (contract?: EmployeeContract | null) =>
   String(contract?.status || '').toUpperCase() === 'DRAFT';
 
-// 合同状态样式委托 enumLabels.ts 的 CONTRACT_STATUS_META；未命中保留页面历史 slate fallback
-import { CONTRACT_STATUS_META } from '@/utils/enumLabels';
+// 合同状态样式委托后端字典 contract_status；未命中保留页面历史 slate fallback
 
 const CONTRACT_STATUS_FALLBACK_TONE = 'border-slate-200 bg-slate-100 text-slate-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300';
-
-const contractStatusTone = (status?: string | null) =>
-  (status && CONTRACT_STATUS_META[status]?.fullClass) || CONTRACT_STATUS_FALLBACK_TONE;
 
 const InlineState = ({
   title,
@@ -391,6 +387,9 @@ const HrEmployeeWorkspace: React.FC<HrEmployeeWorkspaceProps> = ({
   onEditEmployee,
 }) => {
   const [tab, setTab] = useState<WorkspaceTab>('contracts');
+  const contractStatusDict = useDict('contract_status');
+  const contractStatusTone = (status?: string | null) =>
+    (status && contractStatusDict.getItem(status)?.fullClass) || CONTRACT_STATUS_FALLBACK_TONE;
   const [employeeDetail, setEmployeeDetail] = useState<HrEmployee | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [contractsLoading, setContractsLoading] = useState(false);
