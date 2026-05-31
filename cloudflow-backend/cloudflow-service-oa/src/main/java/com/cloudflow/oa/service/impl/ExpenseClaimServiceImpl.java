@@ -31,6 +31,10 @@ import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.cloudflow.common.statemachine.core.StateMachine;
+import com.cloudflow.common.statemachine.core.StateMachineRegistry;
+import com.cloudflow.oa.enums.ExpenseClaimStatus;
+import com.cloudflow.oa.enums.ExpenseClaimEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -50,7 +54,7 @@ import java.util.Map;
  */
 @Slf4j
 @Service
-public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, BizExpenseClaim> 
+public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, BizExpenseClaim>
         implements IExpenseClaimService {
 
     @Autowired
@@ -76,6 +80,9 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
 
     @Autowired
     private OaWorkflowFailureHelper workflowFailureHelper;
+
+    @Autowired
+    private StateMachineRegistry stateMachineRegistry;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -198,8 +205,11 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         OaExpenseExceedResultVO exceedResult = evaluateExpenseStandard(claim);
         reserveBudget(claim);
 
-        // 更新状态为审批中
-        claim.setStatus("PENDING");
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<ExpenseClaimStatus, ExpenseClaimEvent> stateMachine = stateMachineRegistry.require("ExpenseClaim");
+        ExpenseClaimStatus currentStatus = ExpenseClaimStatus.valueOf(claim.getStatus());
+        ExpenseClaimStatus newStatus = stateMachine.fire(currentStatus, ExpenseClaimEvent.SUBMIT);
+        claim.setStatus(newStatus.name());
         
         // 启动工作流
         try {
@@ -268,10 +278,13 @@ public class ExpenseClaimServiceImpl extends ServiceImpl<BizExpenseClaimMapper, 
         if (claim == null || !Integer.valueOf(0).equals(claim.getDeleted())) {
             throw new IllegalArgumentException("报销申请不存在");
         }
-        if (!"APPROVED".equals(claim.getStatus())) {
-            throw new IllegalArgumentException("只有审批通过的报销申请可以确认打款");
-        }
-        claim.setStatus("PAID");
+
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<ExpenseClaimStatus, ExpenseClaimEvent> stateMachine = stateMachineRegistry.require("ExpenseClaim");
+        ExpenseClaimStatus currentStatus = ExpenseClaimStatus.valueOf(claim.getStatus());
+        ExpenseClaimStatus newStatus = stateMachine.fire(currentStatus, ExpenseClaimEvent.PAY);
+        claim.setStatus(newStatus.name());
+
         claim.setUpdateBy(UserContext.getUserName());
         claim.setUpdateTime(LocalDateTime.now());
         boolean updated = updateById(claim);

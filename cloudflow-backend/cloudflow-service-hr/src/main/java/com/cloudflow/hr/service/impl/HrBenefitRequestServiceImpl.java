@@ -18,6 +18,10 @@ import com.cloudflow.hr.mapper.HrBenefitRequestMapper;
 import com.cloudflow.hr.service.IHrBenefitRequestService;
 import com.cloudflow.hr.service.HrTypedCrudService;
 import com.cloudflow.common.audit.annotation.Audit;
+import com.cloudflow.common.statemachine.core.StateMachine;
+import com.cloudflow.common.statemachine.core.StateMachineRegistry;
+import com.cloudflow.hr.enums.BenefitRequestStatus;
+import com.cloudflow.hr.enums.BenefitRequestEvent;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +45,7 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
     private final HrTypedCrudService crudService;
     private final WorkflowServiceClient workflowServiceClient;
     private final ObjectMapper objectMapper;
+    private final StateMachineRegistry stateMachineRegistry;
 
     @Value("${cloudflow.hr.benefit.request-process-key:wf_hr_benefit_request}")
     private String benefitProcessKey;
@@ -105,10 +110,12 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         if (request == null) {
             throw new HrBusinessException("BENEFIT_REQUEST_NOT_FOUND", "福利申领不存在：" + requestId);
         }
-        if (!"DRAFT".equals(request.getStatus()) && !"REJECTED".equals(request.getStatus())) {
-            throw new HrBusinessException("BENEFIT_REQUEST_STATUS_INVALID",
-                    "状态 " + request.getStatus() + " 不允许提交审批");
-        }
+
+        // M1-6: 使用状态机进行状态转换（提交前验证状态）
+        StateMachine<BenefitRequestStatus, BenefitRequestEvent> stateMachine = stateMachineRegistry.require("BenefitRequest");
+        BenefitRequestStatus currentStatus = BenefitRequestStatus.valueOf(request.getStatus());
+        BenefitRequestStatus newStatus = stateMachine.fire(currentStatus, BenefitRequestEvent.SUBMIT);
+
         ProcessStartDTO dto = new ProcessStartDTO();
         dto.setTenantId(currentTenantId());
         dto.setProcessDefinitionKey(benefitProcessKey);
@@ -131,7 +138,7 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         UpdateWrapper<HrBenefitRequest> uw = new UpdateWrapper<>();
         uw.eq("id", requestId).eq("tenant_id", currentTenantId())
                 .set("process_instance_id", response.getData())
-                .set("status", "APPROVING")
+                .set("status", newStatus.name())
                 .set("update_time", LocalDateTime.now());
         requestMapper.update(null, uw);
         return response.getData();
@@ -148,12 +155,15 @@ public class HrBenefitRequestServiceImpl implements IHrBenefitRequestService {
         if (request.getEmployeeId() != null) {
             DataScopeUtils.assertOwnership(request.getEmployeeId(), "福利申请");
         }
-        if ("APPROVED".equals(request.getStatus()) || "PAID".equals(request.getStatus())) {
-            throw new HrBusinessException("BENEFIT_REQUEST_STATUS_INVALID", "已审批或已发放的申领不允许撤销");
-        }
+
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<BenefitRequestStatus, BenefitRequestEvent> stateMachine = stateMachineRegistry.require("BenefitRequest");
+        BenefitRequestStatus currentStatus = BenefitRequestStatus.valueOf(request.getStatus());
+        BenefitRequestStatus newStatus = stateMachine.fire(currentStatus, BenefitRequestEvent.CANCEL);
+
         UpdateWrapper<HrBenefitRequest> uw = new UpdateWrapper<>();
         uw.eq("id", requestId).eq("tenant_id", currentTenantId())
-                .set("status", "CANCELLED")
+                .set("status", newStatus.name())
                 .set("update_time", LocalDateTime.now());
         requestMapper.update(null, uw);
     }

@@ -14,6 +14,10 @@ import com.cloudflow.crm.service.ICrmCustomerService;
 import com.cloudflow.crm.service.ICrmLeadService;
 import com.cloudflow.common.audit.annotation.Audit;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.cloudflow.common.statemachine.core.StateMachine;
+import com.cloudflow.common.statemachine.core.StateMachineRegistry;
+import com.cloudflow.crm.enums.CrmLeadStatus;
+import com.cloudflow.crm.enums.CrmLeadEvent;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +30,7 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
 
     private final ICrmCustomerService crmCustomerService;
     private final CrmCustomerMapper customerMapper;
+    private final StateMachineRegistry stateMachineRegistry;
 
     @Override
     public PageResult<CrmLead> queryPage(CrmLead query, PageQuery pageQuery) {
@@ -118,7 +123,13 @@ public class CrmLeadServiceImpl extends CrmServiceSupport<CrmLeadMapper, CrmLead
 
         lead.setConvertedCustomerId(persistedCustomer.getCustomerId());
         lead.setConvertedTime(now());
-        lead.setStatus(CrmConstants.LeadStatus.CONVERTED);
+
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<CrmLeadStatus, CrmLeadEvent> stateMachine = stateMachineRegistry.require("CrmLead");
+        CrmLeadStatus currentStatus = CrmLeadStatus.valueOf(lead.getStatus());
+        CrmLeadStatus newStatus = stateMachine.fire(currentStatus, CrmLeadEvent.CONVERT);
+        lead.setStatus(newStatus.name());
+
         lead.setUpdateBy(currentUserName());
         lead.setUpdateTime(now());
         updateById(lead);

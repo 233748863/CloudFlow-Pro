@@ -107,6 +107,11 @@
             <groupId>com.cloudflow</groupId>
             <artifactId>cloudflow-common-workflow-callback</artifactId>
         </dependency>
+        <!-- M1-6: 状态机框架 -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-common-statemachine</artifactId>
+        </dependency>
         <!-- 配置敏感信息密文化（yaml 中 ENC(...) 占位的启动期解密） -->
         <dependency>
             <groupId>com.cloudflow</groupId>

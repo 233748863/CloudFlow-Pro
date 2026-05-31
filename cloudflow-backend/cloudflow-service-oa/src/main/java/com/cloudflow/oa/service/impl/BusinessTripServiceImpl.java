@@ -14,6 +14,10 @@ import com.cloudflow.oa.domain.dto.WorkflowProcessStartDTO;
 import com.cloudflow.oa.mapper.BusinessTripMapper;
 import com.cloudflow.oa.service.IBusinessTripService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
+import com.cloudflow.common.statemachine.core.StateMachine;
+import com.cloudflow.common.statemachine.core.StateMachineRegistry;
+import com.cloudflow.oa.enums.BusinessTripStatus;
+import com.cloudflow.oa.enums.BusinessTripEvent;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -38,6 +42,9 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
 
     @Autowired
     private OaWorkflowFailureHelper workflowFailureHelper;
+
+    @Autowired
+    private StateMachineRegistry stateMachineRegistry;
 
     @Override
     public IPage<BusinessTrip> queryPage(BusinessTrip query, int pageNum, int pageSize) {
@@ -90,7 +97,12 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         if (trip.getUserId() == null) {
             trip.setUserId(UserContext.getUserId());
         }
-        trip.setStatus("PENDING");
+
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<BusinessTripStatus, BusinessTripEvent> stateMachine = stateMachineRegistry.require("BusinessTrip");
+        BusinessTripStatus currentStatus = BusinessTripStatus.valueOf(trip.getStatus());
+        BusinessTripStatus newStatus = stateMachine.fire(currentStatus, BusinessTripEvent.SUBMIT);
+        trip.setStatus(newStatus.name());
 
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
@@ -150,11 +162,13 @@ public class BusinessTripServiceImpl extends ServiceImpl<BusinessTripMapper, Bus
         }
         // M1-4: 所有权校验
         DataScopeUtils.assertOwnership(trip, BusinessTrip::getUserId, "出差申请");
-        if (!"DRAFT".equals(trip.getStatus()) && !"PENDING".equals(trip.getStatus())) {
-            log.warn("出差申请 {} 当前状态 {} 不允许取消", trip.getTripNo(), trip.getStatus());
-            return false;
-        }
-        trip.setStatus("CANCELLED");
+
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<BusinessTripStatus, BusinessTripEvent> stateMachine = stateMachineRegistry.require("BusinessTrip");
+        BusinessTripStatus currentStatus = BusinessTripStatus.valueOf(trip.getStatus());
+        BusinessTripStatus newStatus = stateMachine.fire(currentStatus, BusinessTripEvent.CANCEL);
+        trip.setStatus(newStatus.name());
+
         return updateById(trip);
     }
 

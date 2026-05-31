@@ -192,6 +192,12 @@
                 <artifactId>cloudflow-common-workflow-callback</artifactId>
                 <version>${project.version}</version>
             </dependency>
+            <!-- M1-6: 状态机框架 -->
+            <dependency>
+                <groupId>com.cloudflow</groupId>
+                <artifactId>cloudflow-common-statemachine</artifactId>
+                <version>${project.version}</version>
+            </dependency>
 
             <!-- ==================== 第三方依赖版本管理 ==================== -->
             <!-- Hutool 工具集 -->

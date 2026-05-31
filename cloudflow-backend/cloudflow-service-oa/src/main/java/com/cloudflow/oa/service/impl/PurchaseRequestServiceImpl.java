@@ -30,6 +30,10 @@ import com.cloudflow.oa.service.ISupplierService;
 import com.cloudflow.oa.service.remote.RemoteWorkflowService;
 import com.cloudflow.oa.util.OaAttachmentUrlUtils;
 import com.cloudflow.common.redis.lock.DistributedLock;
+import com.cloudflow.common.statemachine.core.StateMachine;
+import com.cloudflow.common.statemachine.core.StateMachineRegistry;
+import com.cloudflow.oa.enums.PurchaseRequestStatus;
+import com.cloudflow.oa.enums.PurchaseRequestEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -71,6 +75,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     private final RemoteWorkflowService remoteWorkflowService;
     private final IOaBudgetService oaBudgetService;
     private final OaWorkflowFailureHelper workflowFailureHelper;
+    private final StateMachineRegistry stateMachineRegistry;
 
     @Override
     public Page<BizPurchaseRequest> queryPage(Integer pageNum, Integer pageSize, String status, Long supplierId, Long userId) {
@@ -159,7 +164,12 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
         normalizeAndValidatePurchase(purchase);
         compensateUserSnapshot(purchase);
         reserveBudget(purchase);
-        purchase.setStatus(STATUS_PENDING);
+
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<PurchaseRequestStatus, PurchaseRequestEvent> stateMachine = stateMachineRegistry.require("PurchaseRequest");
+        PurchaseRequestStatus currentStatus = PurchaseRequestStatus.valueOf(purchase.getStatus());
+        PurchaseRequestStatus newStatus = stateMachine.fire(currentStatus, PurchaseRequestEvent.SUBMIT);
+        purchase.setStatus(newStatus.name());
 
         try {
             WorkflowProcessStartDTO req = new WorkflowProcessStartDTO();
@@ -269,7 +279,14 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
             purchaseReceiptMapper.insert(record);
         }
 
-        purchase.setStatus(isFullyReceived(purchase.getItems()) ? STATUS_RECEIVED : STATUS_PARTIAL_RECEIVED);
+        // M1-6: 使用状态机进行状态转换
+        StateMachine<PurchaseRequestStatus, PurchaseRequestEvent> stateMachine = stateMachineRegistry.require("PurchaseRequest");
+        PurchaseRequestStatus currentStatus = PurchaseRequestStatus.valueOf(purchase.getStatus());
+        boolean fullyReceived = isFullyReceived(purchase.getItems());
+        PurchaseRequestEvent event = fullyReceived ? PurchaseRequestEvent.FULL_RECEIVE : PurchaseRequestEvent.PARTIAL_RECEIVE;
+        PurchaseRequestStatus newStatus = stateMachine.fire(currentStatus, event);
+        purchase.setStatus(newStatus.name());
+
         purchase.setUpdateBy(UserContext.getUserName());
         purchase.setUpdateTime(now);
         return updateById(purchase);
