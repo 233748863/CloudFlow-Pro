@@ -6,6 +6,7 @@ import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.BizPurchaseRequest;
 import com.cloudflow.oa.domain.dto.PurchaseFromSuggestionDTO;
@@ -45,6 +46,8 @@ public class PurchaseRequestController {
     }
 
     @SysLog("新增采购申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:purchase:add")
     public R<Void> add(@RequestBody BizPurchaseRequest purchase) {
@@ -91,6 +94,8 @@ public class PurchaseRequestController {
     }
 
     @SysLog("提交采购申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("oa:purchase:submit")
     public R<Void> submit(@PathVariable Long id) {
@@ -113,6 +118,8 @@ public class PurchaseRequestController {
     }
 
     @SysLog("采购生成付款申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/create-payment")
     @SaCheckPermission("oa:purchase:create-payment")
     public R<BizPaymentRequest> createPayment(@PathVariable Long id) {

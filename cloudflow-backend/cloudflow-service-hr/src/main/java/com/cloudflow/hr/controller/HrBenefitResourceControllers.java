@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrBenefitRequestQueryDTO;
 import com.cloudflow.hr.domain.dto.benefit.HrMallItemDTO;
@@ -95,6 +96,8 @@ class HrBenefitRequestController {
     }
 
     @SysLog("提交福利申领审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/submit")
     @SaCheckPermission("hr:benefit:request:submit")
     public R<String> submit(@PathVariable Long id) {
@@ -102,6 +105,8 @@ class HrBenefitRequestController {
     }
 
     @SysLog("撤销福利申领")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:benefit:request:cancel")
     public R<Void> cancel(@PathVariable Long id,
@@ -240,6 +245,8 @@ class HrMallOrderController {
     }
 
     @SysLog("订单取消")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:benefit:order:cancel")
     public R<Void> cancel(@PathVariable Long id,

@@ -4,6 +4,7 @@ import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeDef;
 import com.cloudflow.common.workflow.callback.registry.BusinessTypeRegistry;
 import com.cloudflow.workflow.domain.WfFormDefinition;
@@ -294,6 +295,8 @@ public class WorkflowController {
     /**
      * 驳回任务到指定节点
      */
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/reject")
     @SaCheckPermission("workflow:task:reject")
     public R<?> rejectTask(@RequestBody ProcessRejectRequest dto) {
@@ -355,6 +358,8 @@ public class WorkflowController {
      *             - comment: 加签说明（必填）
      * @return 加签结果
      */
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/task/add-signature")
     @SaCheckPermission("workflow:task:add-sign")
     public R<?> addSignature(@RequestBody SignatureChangeRequest dto) {

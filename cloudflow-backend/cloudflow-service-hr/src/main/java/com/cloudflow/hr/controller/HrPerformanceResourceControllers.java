@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorInvitePayload;
 import com.cloudflow.hr.domain.dto.Hr360EvaluatorResponsePayload;
 import com.cloudflow.hr.domain.dto.HrPerfDistributionCheckPayload;
@@ -220,6 +221,8 @@ class HrPerformanceObjectiveController {
     }
 
     @SysLog("提交HR绩效计划")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/objective/{id}/submit-plan")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> submitPerformancePlan(@PathVariable Long id) {
@@ -228,6 +231,8 @@ class HrPerformanceObjectiveController {
     }
 
     @SysLog("提交HR绩效结果")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/objective/{id}/submit-result")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> submitPerformanceResultV2(@PathVariable Long id) {
@@ -254,6 +259,8 @@ class HrPerformance360Controller {
     }
 
     @SysLog("提交HR绩效360评估打分")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/response")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> submit360Response(@RequestBody Hr360EvaluatorResponsePayload payload) {
@@ -262,6 +269,8 @@ class HrPerformance360Controller {
     }
 
     @SysLog("取消HR绩效360评估邀请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/evaluator/{id}/cancel")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> cancel360Evaluator(@PathVariable Long id) {

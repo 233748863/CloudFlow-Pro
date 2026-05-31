@@ -1,6 +1,7 @@
 package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.security.annotation.Inner;
 import com.cloudflow.oa.domain.SysAnnouncement;
 import com.cloudflow.oa.service.ISysAnnouncementService;
@@ -27,6 +28,8 @@ public class InnerAnnouncementController {
     private final ISysAnnouncementService sysAnnouncementService;
 
     @Inner(allowedServices = {CRM_CALLERS})
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/publish")
     public R<Long> publish(@RequestBody InnerAnnouncementPublishRequest request) {
         if (request == null || !StringUtils.hasText(request.getTitle())) {

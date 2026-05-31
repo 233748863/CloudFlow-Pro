@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.config.properties.OaProperties;
 import com.cloudflow.oa.domain.SysAnnouncement;
@@ -57,6 +58,8 @@ public class SysAnnouncementController {
      * 发布公告 (仅管理员/HR)
      */
     @SysLog("发布公告")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/publish")
     @SaCheckPermission("oa:announcement:publish")
     public R<Boolean> publish(@RequestBody SysAnnouncement announcement) {

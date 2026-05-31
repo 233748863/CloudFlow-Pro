@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaInvoice;
 import com.cloudflow.oa.domain.OaInvoiceWriteoff;
@@ -45,6 +46,8 @@ public class InvoiceController {
     }
 
     @SysLog("新增发票")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:invoice:add")
     public R<Void> add(@RequestBody OaInvoice invoice) {
@@ -78,6 +81,8 @@ public class InvoiceController {
     }
 
     @SysLog("核销发票")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/writeoff")
     @SaCheckPermission("oa:invoice:writeoff")
     public R<Void> writeoff(@PathVariable("id") Long id, @RequestBody OaInvoiceWriteoff writeoff) {

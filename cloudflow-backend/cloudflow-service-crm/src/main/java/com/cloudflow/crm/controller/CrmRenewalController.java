@@ -3,6 +3,7 @@ package com.cloudflow.crm.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmRenewal;
 import com.cloudflow.crm.service.ICrmRenewalService;
@@ -39,6 +40,8 @@ public class CrmRenewalController {
     }
 
     @SysLog("新增CRM续约")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("crm:renewal:add")
     public R<Void> add(@RequestBody CrmRenewal renewal) {
@@ -61,6 +64,8 @@ public class CrmRenewalController {
     }
 
     @SysLog("提交CRM续约审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("crm:renewal:submit")
     public R<Void> submit(@PathVariable("id") Long id) {

@@ -4,6 +4,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.CrmCustomerPoolLog;
 import com.cloudflow.crm.domain.dto.CrmCustomerAssignDTO;

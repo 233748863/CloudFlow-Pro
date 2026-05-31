@@ -5,6 +5,7 @@ import cn.dev33.satoken.annotation.SaMode;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaSeal;
@@ -63,6 +64,8 @@ public class SealController {
     }
 
     @SysLog("新增印章")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:seal:add")
     public R<Void> add(@RequestBody OaSeal seal) {
@@ -147,6 +150,8 @@ public class SealController {
     }
 
     @SysLog("新增用印申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/application")
     @SaCheckPermission("oa:seal:add")
     public R<Void> addApplication(@RequestBody OaSealApplication application) {
@@ -180,6 +185,8 @@ public class SealController {
     }
 
     @SysLog("提交用印申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/application/submit/{id}")
     @SaCheckPermission("oa:seal:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
@@ -255,6 +262,8 @@ public class SealController {
     }
 
     @SysLog("新增印章续期申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/renewal")
     @SaCheckPermission("oa:seal-renewal:add")
     public R<Void> addRenewal(@RequestBody OaSealRenewal renewal) {
@@ -288,6 +297,8 @@ public class SealController {
     }
 
     @SysLog("提交印章续期申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/renewal/submit/{id}")
     @SaCheckPermission("oa:seal-renewal:submit")
     public R<Void> submitRenewal(@PathVariable("id") Long id) {

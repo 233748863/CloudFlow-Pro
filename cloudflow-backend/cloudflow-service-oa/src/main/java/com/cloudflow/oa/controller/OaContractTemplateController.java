@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaContractTemplate;
 import com.cloudflow.oa.service.IOaContractTemplateService;
@@ -45,6 +46,8 @@ public class OaContractTemplateController {
     }
 
     @SysLog("新增合同模板")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:contract:template:add")
     public R<Void> add(@RequestBody OaContractTemplate template) {

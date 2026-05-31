@@ -9,6 +9,7 @@ import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.mapper.SysAssetLogMapper;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.service.IAssetService;
 import org.springframework.beans.factory.annotation.Autowired;
 import cn.dev33.satoken.annotation.SaCheckPermission;
@@ -87,6 +88,8 @@ public class AssetController {
      * 新增资产 - 仅管理员
      */
     @SysLog("新增资产")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:asset:add")
     public R add(@RequestBody SysAsset asset) {

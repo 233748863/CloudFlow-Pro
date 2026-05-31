@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.BusinessTrip;
 import com.cloudflow.oa.domain.export.BusinessTripExportVo;
 import com.cloudflow.oa.service.IBusinessTripService;
@@ -61,6 +62,8 @@ public class BusinessTripController {
 
     /** 新增（草稿） */
     @SysLog("新增出差申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:trip:add")
     public R add(@RequestBody BusinessTrip trip) {
@@ -88,6 +91,8 @@ public class BusinessTripController {
 
     /** 提交审批 */
     @SysLog("提交出差申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("oa:trip:submit")
     public R submit(@PathVariable("id") Long id) {

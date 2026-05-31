@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.HrExamPaperPayload;
 import com.cloudflow.hr.domain.dto.HrExamQuestionBankPayload;
 import com.cloudflow.hr.domain.dto.training.HrExamAnswerDTO;
@@ -102,6 +103,8 @@ class HrTrainingEnrollmentController {
     }
 
     @SysLog("撤销HR培训报名")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:training:enroll:edit")
     public R<Void> cancel(@PathVariable Long id) {
@@ -251,6 +254,8 @@ class HrExamAttemptController {
     }
 
     @SysLog("HR考试提交答卷")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/submit")
     @SaCheckPermission("hr:training:exam:attempt")
     public R<HrExamAttemptSubmitVO> submit(@PathVariable Long id,

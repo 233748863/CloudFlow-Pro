@@ -3,6 +3,7 @@ package com.cloudflow.crm.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmQuote;
 import com.cloudflow.crm.service.ICrmQuoteService;
@@ -38,6 +39,8 @@ public class CrmQuoteController {
     }
 
     @SysLog("新增CRM报价")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("crm:quote:add")
     public R<Void> add(@RequestBody CrmQuote quote) {
@@ -60,6 +63,8 @@ public class CrmQuoteController {
     }
 
     @SysLog("提交CRM报价审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("crm:quote:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
@@ -82,6 +87,8 @@ public class CrmQuoteController {
     }
 
     @SysLog("接受CRM报价")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/accept")
     @SaCheckPermission("crm:quote:accept")
     public R<Void> accept(@PathVariable("id") Long id) {

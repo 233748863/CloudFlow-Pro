@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.BizExpenseClaim;
 import com.cloudflow.oa.domain.dto.VehicleExpenseConvertDTO;
 import com.cloudflow.oa.domain.export.ExpenseClaimExportVo;
@@ -72,6 +73,8 @@ public class ExpenseClaimController {
      * 新增报销申请
      */
     @SysLog("新增报销申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:expense:add")
     public R<Void> add(@RequestBody BizExpenseClaim claim) {
@@ -116,6 +119,8 @@ public class ExpenseClaimController {
      * 提交报销申请
      */
     @SysLog("提交报销申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("oa:expense:submit")
     public R<Void> submit(@PathVariable Long id) {
@@ -127,6 +132,8 @@ public class ExpenseClaimController {
     }
 
     @SysLog("确认报销打款")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/pay")
     @SaCheckPermission("oa:expense:pay")
     public R<Void> confirmPaid(@PathVariable Long id) {
@@ -141,6 +148,8 @@ public class ExpenseClaimController {
      * 车辆费用转报销单
      */
     @SysLog("车辆费用转报销单")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/convert")
     @SaCheckPermission("oa:expense:add")
     public R<Void> convertVehicleExpense(@RequestBody VehicleExpenseConvertDTO dto) {

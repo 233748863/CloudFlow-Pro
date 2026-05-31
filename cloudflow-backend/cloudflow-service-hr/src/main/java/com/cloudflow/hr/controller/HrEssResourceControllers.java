@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.HrBankCardPayload;
 import com.cloudflow.hr.domain.dto.HrFamilyMemberPayload;
 import com.cloudflow.hr.domain.dto.ess.HrEssCommonQueryDTO;
@@ -91,6 +92,8 @@ class HrSalarySlipController {
     }
 
     @SysLog("员工确认HR工资条")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/confirm")
     @SaCheckPermission("hr:ess:slip:confirm")
     public R<Void> confirm(@PathVariable Long id) {

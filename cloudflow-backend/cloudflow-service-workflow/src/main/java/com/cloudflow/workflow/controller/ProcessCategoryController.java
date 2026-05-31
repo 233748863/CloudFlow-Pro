@@ -1,6 +1,7 @@
 package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.workflow.domain.WfProcessCategory;
 import com.cloudflow.workflow.service.IProcessCategoryService;
 import lombok.RequiredArgsConstructor;
@@ -43,6 +44,8 @@ public class ProcessCategoryController {
     }
 
     /** 新增分类 */
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("workflow:category:manage")
     public R<Void> add(@RequestBody WfProcessCategory category) {

@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysScheduleEvent;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
@@ -52,6 +53,8 @@ public class SysScheduleController {
     }
 
     @SysLog("新增日程")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:schedule:add")
     public R<Boolean> add(@RequestBody SysScheduleEvent event) {

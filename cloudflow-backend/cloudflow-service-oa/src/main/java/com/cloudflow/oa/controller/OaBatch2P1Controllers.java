@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.OaContractMilestone;
 import com.cloudflow.oa.domain.OaContractPaymentSchedule;
 import com.cloudflow.oa.domain.OaKnowledgeTemplate;
@@ -53,6 +54,8 @@ class OaContractMilestoneController {
     }
 
     @SysLog("新增合同里程碑")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:contract:edit")
     public R<Void> add(@RequestBody OaContractMilestone milestone) {
@@ -109,6 +112,8 @@ class OaContractPaymentScheduleController {
     }
 
     @SysLog("新增合同付款节点")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:contract:edit")
     public R<Void> add(@RequestBody OaContractPaymentSchedule schedule) {
@@ -134,6 +139,8 @@ class OaContractPaymentScheduleController {
     }
 
     @SysLog("标记付款节点已付")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/pay")
     @SaCheckPermission("oa:contract:edit")
     public R<Void> pay(@PathVariable Long id,
@@ -170,6 +177,8 @@ class OaMeetingMinutesController {
     }
 
     @SysLog("新增会议纪要")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:meeting:edit")
     public R<Void> add(@RequestBody OaMeetingMinutes minutes) {
@@ -191,6 +200,8 @@ class OaMeetingMinutesController {
     }
 
     @SysLog("确认会议纪要")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/confirm")
     @SaCheckPermission("oa:meeting:edit")
     public R<Void> confirm(@PathVariable Long id) {
@@ -218,6 +229,8 @@ class OaMeetingMinutesController {
     }
 
     @SysLog("会议决议项一键派发为工作任务")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/dispatch-decisions")
     @SaCheckPermission("oa:meeting:edit")
     public R<List<Long>> dispatch(@PathVariable Long id,
@@ -259,6 +272,8 @@ class OaKnowledgeTemplateController {
     }
 
     @SysLog("新增知识库模板")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:knowledge:add")
     public R<Void> add(@RequestBody OaKnowledgeTemplate template) {

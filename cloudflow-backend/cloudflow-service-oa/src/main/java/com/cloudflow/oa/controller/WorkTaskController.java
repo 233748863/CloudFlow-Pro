@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.WorkTask;
 import com.cloudflow.oa.domain.dto.WorkTaskStatusDTO;
 import com.cloudflow.oa.service.IWorkTaskService;
@@ -46,6 +47,8 @@ public class WorkTaskController {
      * 创建任务
      */
     @SysLog("创建协作任务")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:work-task:add")
     public R<Boolean> add(@RequestBody WorkTask workTask) {

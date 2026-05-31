@@ -5,6 +5,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.Visitor;
 import com.cloudflow.oa.service.IVisitorService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -45,6 +46,8 @@ public class VisitorController {
 
     /** 新增访客预约 */
     @SysLog("新增访客预约")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:visitor:add")
     public R add(@RequestBody Visitor visitor) {

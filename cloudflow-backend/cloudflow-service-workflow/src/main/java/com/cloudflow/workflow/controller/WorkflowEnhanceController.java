@@ -2,6 +2,7 @@ package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.context.UserContext;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.workflow.domain.dto.AddSignReq;
 import com.cloudflow.workflow.domain.dto.RemoveSignReq;
 import com.cloudflow.workflow.domain.dto.DelegateTaskReq;
@@ -37,6 +38,8 @@ public class WorkflowEnhanceController {
      * 加签
      * 支持三种模式：BEFORE(前加签)、AFTER(后加签)、PARALLEL(并行加签)
      */
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/task/addSign")
     @SaCheckPermission("workflow:task:add-sign")
     public R<?> addSign(@RequestBody AddSignReq req) {

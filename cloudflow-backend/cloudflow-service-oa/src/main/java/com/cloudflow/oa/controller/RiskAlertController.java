@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.dto.OaRiskAssignDTO;
 import com.cloudflow.oa.domain.dto.OaRiskStatsDTO;

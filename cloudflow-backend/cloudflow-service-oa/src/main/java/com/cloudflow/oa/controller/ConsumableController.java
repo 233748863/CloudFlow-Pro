@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.oa.domain.SysAssetLog;
 import com.cloudflow.oa.domain.SysConsumable;
@@ -58,6 +59,8 @@ public class ConsumableController {
      * 新增耗材 - 管理员/经理
      */
     @SysLog("新增耗材")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:consumable:add")
     public R add(@RequestBody SysConsumable consumable) {
@@ -161,6 +164,8 @@ public class ConsumableController {
      * 入库操作 - 管理员/经理
      */
     @SysLog("耗材入库")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/add-stock")
     @SaCheckPermission("oa:consumable:add-stock")
     public R addStock(@PathVariable("id") Long id, @RequestBody ConsumableStockDTO dto) {

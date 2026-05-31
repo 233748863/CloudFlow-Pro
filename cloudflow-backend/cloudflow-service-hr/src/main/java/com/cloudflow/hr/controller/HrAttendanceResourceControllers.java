@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.HrAttendanceRecordPayload;
 import com.cloudflow.hr.domain.dto.HrAttendanceRulePayload;
 import com.cloudflow.hr.domain.dto.HrLeaveQuotaPayload;

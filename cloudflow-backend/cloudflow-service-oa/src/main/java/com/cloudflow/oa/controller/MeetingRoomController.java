@@ -2,6 +2,7 @@ package com.cloudflow.oa.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.MeetingRoom;
 import com.cloudflow.oa.service.IMeetingRoomService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,6 +32,8 @@ public class MeetingRoomController {
     }
 
     @SysLog("新增会议室")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:meeting-room:add")
     public R<Boolean> add(@RequestBody MeetingRoom meetingRoom) {

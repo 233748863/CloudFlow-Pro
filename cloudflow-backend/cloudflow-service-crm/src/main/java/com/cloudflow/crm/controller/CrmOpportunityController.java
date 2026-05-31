@@ -3,6 +3,7 @@ package com.cloudflow.crm.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmOpportunity;
 import com.cloudflow.crm.domain.dto.CrmOpportunityStageUpdateDTO;
@@ -46,6 +47,8 @@ public class CrmOpportunityController {
     }
 
     @SysLog("新增CRM商机")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("crm:opportunity:add")
     public R<Void> add(@RequestBody CrmOpportunity opportunity) {

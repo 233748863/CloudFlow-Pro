@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.SysSupplier;
 import com.cloudflow.oa.service.ISupplierService;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,8 @@ public class SupplierController {
     }
 
     @SysLog("新增供应商")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:supplier:add")
     public R<Void> add(@RequestBody SysSupplier supplier) {

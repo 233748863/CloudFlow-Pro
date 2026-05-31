@@ -5,6 +5,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.excel.utils.ExcelUtil;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.BizPaymentRequest;
 import com.cloudflow.oa.domain.export.PaymentRequestExportVo;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
@@ -73,6 +74,8 @@ public class PaymentRequestController {
      * 新增付款申请
      */
     @SysLog("新增付款申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:payment:add")
     public R<Void> add(@RequestBody BizPaymentRequest payment) {
@@ -127,6 +130,8 @@ public class PaymentRequestController {
      * 提交付款申请
      */
     @SysLog("提交付款申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("oa:payment:submit")
     public R<Void> submit(@PathVariable Long id) {
@@ -141,6 +146,8 @@ public class PaymentRequestController {
      * 确认付款
      */
     @SysLog("确认付款")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/pay")
     @SaCheckPermission("oa:payment:pay")
     public R<Void> confirmPaid(@PathVariable Long id) {

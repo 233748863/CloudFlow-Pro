@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.dispute.HrDisputeArbitrationDTO;
 import com.cloudflow.hr.domain.dto.dispute.HrDisputeEvidenceDTO;
 import com.cloudflow.hr.domain.dto.dispute.HrDisputeMediationDTO;
@@ -69,6 +70,8 @@ class HrLaborDisputeController {
     }
 
     @SysLog("提交劳动争议审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/submit")
     @SaCheckPermission("hr:dispute:register")
     public R<String> submit(@PathVariable Long id) {

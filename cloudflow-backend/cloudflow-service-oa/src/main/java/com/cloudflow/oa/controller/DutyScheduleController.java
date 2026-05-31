@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.DutySchedule;
 import com.cloudflow.oa.domain.dto.DutySwapDTO;
 import com.cloudflow.oa.service.IDutyScheduleService;
@@ -56,6 +57,8 @@ public class DutyScheduleController {
 
     /** 新增排班 - 仅管理员/经理 */
     @SysLog("新增值班排班")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:duty:add")
     public R add(@RequestBody DutySchedule schedule) {
@@ -67,6 +70,8 @@ public class DutyScheduleController {
 
     /** 批量新增排班 - 仅管理员/经理 */
     @SysLog("批量新增值班排班")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/batch")
     @SaCheckPermission("oa:duty:add")
     public R addBatch(@RequestBody List<DutySchedule> schedules) {

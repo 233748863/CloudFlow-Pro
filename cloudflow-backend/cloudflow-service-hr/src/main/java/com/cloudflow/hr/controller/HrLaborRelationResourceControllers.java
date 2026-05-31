@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryCompensationDTO;
 import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryDTO;
 import com.cloudflow.hr.domain.dto.labor.HrWorkInjuryInvestigationDTO;
@@ -82,6 +83,8 @@ class HrWorkInjuryController {
     }
 
     @SysLog("提交工伤认定审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/submit-determination")
     @SaCheckPermission("hr:injury:investigate")
     public R<String> submitDetermination(@PathVariable Long id) {

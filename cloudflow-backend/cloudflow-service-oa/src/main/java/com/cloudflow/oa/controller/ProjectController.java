@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaProject;
 import com.cloudflow.oa.domain.OaProjectDependency;
@@ -111,6 +112,8 @@ public class ProjectController {
     }
 
     @SysLog("新增项目")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:project:add")
     public R<Long> add(@RequestBody OaProject project) {
@@ -122,6 +125,8 @@ public class ProjectController {
     }
 
     @SysLog("新增项目成员")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/member")
     @SaCheckPermission("oa:project:edit")
     public R<Void> addMember(@RequestBody OaProjectMember member) {
@@ -155,6 +160,8 @@ public class ProjectController {
     }
 
     @SysLog("新增项目里程碑")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/milestone")
     @SaCheckPermission("oa:project:edit")
     public R<Void> addMilestone(@RequestBody OaProjectMilestone milestone) {
@@ -188,6 +195,8 @@ public class ProjectController {
     }
 
     @SysLog("新增项目风险")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/risk")
     @SaCheckPermission("oa:project:edit")
     public R<Void> addRisk(@RequestBody OaProjectRisk risk) {
@@ -221,6 +230,8 @@ public class ProjectController {
     }
 
     @SysLog("新增WBS任务")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/wbs")
     @SaCheckPermission("oa:project:wbs")
     public R<Void> addWbs(@RequestBody WorkTask task) {
@@ -266,6 +277,8 @@ public class ProjectController {
     }
 
     @SysLog("新增项目依赖")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/dependency")
     @SaCheckPermission("oa:project:wbs")
     public R<Void> addDependency(@RequestBody OaProjectDependency dependency) {
@@ -310,6 +323,8 @@ public class ProjectController {
     }
 
     @SysLog("提交项目立项")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("oa:project:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
@@ -321,6 +336,8 @@ public class ProjectController {
     }
 
     @SysLog("归档项目")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/archive/{id}")
     @SaCheckPermission("oa:project:archive")
     public R<Void> archive(@PathVariable("id") Long id) {

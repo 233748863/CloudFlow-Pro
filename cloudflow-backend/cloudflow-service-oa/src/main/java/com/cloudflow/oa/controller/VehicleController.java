@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.SysVehicle;
 import com.cloudflow.oa.domain.VehicleExpense;
@@ -86,6 +87,8 @@ public class VehicleController {
 
     /** 新增车辆 - 仅管理员 */
     @SysLog("新增车辆")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:vehicle:add")
     public R<Void> add(@RequestBody SysVehicle vehicle) {
@@ -126,6 +129,8 @@ public class VehicleController {
 
     /** 提交用车申请 */
     @SysLog("提交用车申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/usage")
     @SaCheckPermission("oa:vehicle:booking")
     public R<Void> submitUsage(@RequestBody VehicleUsage usage) {
@@ -187,6 +192,8 @@ public class VehicleController {
 
     /** 新增费用 */
     @SysLog("新增车辆费用")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/expense")
     @SaCheckPermission("oa:vehicle:expense:add")
     public R<Void> addExpense(@RequestBody VehicleExpense expense) {
@@ -210,6 +217,8 @@ public class VehicleController {
 
     /** 新增维保记录 */
     @SysLog("新增车辆维保")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/maintenance")
     @SaCheckPermission("oa:vehicle:maintenance:add")
     public R<Void> addMaintenance(@RequestBody VehicleMaintenance maintenance) {
@@ -225,6 +234,8 @@ public class VehicleController {
 
     /** 新增违章记录 */
     @SysLog("新增车辆违章")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/violation")
     @SaCheckPermission("oa:vehicle:violation:add")
     public R<Void> addViolation(@RequestBody VehicleViolation violation) {
@@ -247,6 +258,8 @@ public class VehicleController {
 
     /** 新增油耗记录 */
     @SysLog("新增车辆油耗记录")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/fuel")
     @SaCheckPermission("oa:vehicle:expense:add")
     public R<Void> addFuelLog(@RequestBody VehicleFuelLog log) {

@@ -6,6 +6,7 @@ import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.KnowledgeDocument;
 import com.cloudflow.oa.domain.vo.DynamicMapVO;
 import com.cloudflow.oa.service.IKnowledgeService;
@@ -62,6 +63,8 @@ public class KnowledgeController {
     }
 
     @SysLog("新增知识库文档")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:knowledge:add")
     public R<Void> add(@RequestBody KnowledgeDocument document) {
@@ -95,6 +98,8 @@ public class KnowledgeController {
     }
 
     @SysLog("提交知识库发布审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("oa:knowledge:submit")
     public R<Void> submit(@PathVariable("id") Long id) {

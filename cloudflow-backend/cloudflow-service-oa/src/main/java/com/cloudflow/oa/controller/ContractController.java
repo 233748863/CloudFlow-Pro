@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.OaContract;
 import com.cloudflow.oa.domain.OaRiskAlert;
 import com.cloudflow.oa.domain.OaTraceEvent;
@@ -41,6 +42,8 @@ public class ContractController {
     }
 
     @SysLog("新增合同")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:contract:add")
     public R<Long> add(@RequestBody OaContract contract) {
@@ -74,6 +77,8 @@ public class ContractController {
     }
 
     @SysLog("提交合同审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/submit/{id}")
     @SaCheckPermission("oa:contract:submit")
     public R<Void> submit(@PathVariable("id") Long id) {

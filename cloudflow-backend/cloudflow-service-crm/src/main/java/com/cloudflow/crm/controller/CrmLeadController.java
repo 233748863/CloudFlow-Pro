@@ -3,6 +3,7 @@ package com.cloudflow.crm.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmLead;
 import com.cloudflow.crm.domain.dto.CrmLeadConvertDTO;
@@ -36,6 +37,8 @@ public class CrmLeadController {
     }
 
     @SysLog("新增CRM线索")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("crm:lead:add")
     public R<Void> add(@RequestBody CrmLead lead) {
@@ -58,6 +61,8 @@ public class CrmLeadController {
     }
 
     @SysLog("CRM线索转客户")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/convert")
     @SaCheckPermission("crm:lead:convert")
     public R<Long> convert(@RequestBody CrmLeadConvertDTO request) {

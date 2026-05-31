@@ -1,6 +1,7 @@
 package com.cloudflow.crm.controller;
 
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.crm.domain.dto.approval.CrmCustomerClaimSubmitDTO;
 import com.cloudflow.crm.domain.dto.approval.CrmCustomerLevelChangeSubmitDTO;
 import com.cloudflow.crm.domain.dto.approval.CrmOpportunityDowngradeSubmitDTO;
@@ -31,6 +32,8 @@ public class CrmApprovalController {
     private final ICrmApprovalService crmApprovalService;
     private final ObjectMapper objectMapper;
 
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/customer-claim")
     @SaCheckPermission("crm:approval:customer-claim")
     public R<Long> submitCustomerClaim(@Validated @RequestBody CrmCustomerClaimSubmitDTO dto) {
@@ -41,6 +44,8 @@ public class CrmApprovalController {
         }
     }
 
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/customer-level")
     @SaCheckPermission("crm:approval:customer-level")
     public R<Long> submitCustomerLevelChange(@Validated @RequestBody CrmCustomerLevelChangeSubmitDTO dto) {
@@ -52,6 +57,8 @@ public class CrmApprovalController {
         }
     }
 
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/opportunity-downgrade")
     @SaCheckPermission("crm:approval:opportunity-downgrade")
     public R<Long> submitOpportunityDowngrade(@Validated @RequestBody CrmOpportunityDowngradeSubmitDTO dto) {
@@ -63,6 +70,8 @@ public class CrmApprovalController {
         }
     }
 
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/refund")
     @SaCheckPermission("crm:approval:refund")
     public R<Long> submitRefund(@Validated @RequestBody CrmRefundSubmitDTO dto) {

@@ -3,6 +3,7 @@ package com.cloudflow.oa.controller;
 import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaExpenseStandard;
 import com.cloudflow.oa.service.IOaExpenseStandardService;
@@ -46,6 +47,8 @@ public class OaExpenseStandardController {
     }
 
     @SysLog("新增费用标准")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:expense:standard:add")
     public R<Void> add(@RequestBody OaExpenseStandard standard) {

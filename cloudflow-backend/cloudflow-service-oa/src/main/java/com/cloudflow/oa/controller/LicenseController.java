@@ -5,6 +5,7 @@ import cn.dev33.satoken.annotation.SaMode;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.oa.domain.OaBorrowReminderLog;
 import com.cloudflow.oa.domain.OaLicense;
@@ -63,6 +64,8 @@ public class LicenseController {
     }
 
     @SysLog("新增证照")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("oa:license:add")
     public R<Void> add(@RequestBody OaLicense license) {
@@ -147,6 +150,8 @@ public class LicenseController {
     }
 
     @SysLog("新增证照借用申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/borrow")
     @SaCheckPermission("oa:license:add")
     public R<Void> addBorrow(@RequestBody OaLicenseBorrow borrow) {
@@ -180,6 +185,8 @@ public class LicenseController {
     }
 
     @SysLog("提交证照借用申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/borrow/submit/{id}")
     @SaCheckPermission("oa:license:submit")
     public R<Void> submit(@PathVariable("id") Long id) {
@@ -255,6 +262,8 @@ public class LicenseController {
     }
 
     @SysLog("新增证照续期申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/renewal")
     @SaCheckPermission("oa:license-renewal:add")
     public R<Void> addRenewal(@RequestBody OaLicenseRenewal renewal) {
@@ -288,6 +297,8 @@ public class LicenseController {
     }
 
     @SysLog("提交证照续期申请")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/renewal/submit/{id}")
     @SaCheckPermission("oa:license-renewal:submit")
     public R<Void> submitRenewal(@PathVariable("id") Long id) {

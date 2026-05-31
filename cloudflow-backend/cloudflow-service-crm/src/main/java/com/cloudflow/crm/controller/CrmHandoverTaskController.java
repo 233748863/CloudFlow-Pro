@@ -2,6 +2,7 @@ package com.cloudflow.crm.controller;
 
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.crm.domain.dto.handover.CrmHandoverCloseDTO;
 import com.cloudflow.crm.domain.dto.handover.CrmHandoverReassignDTO;
 import com.cloudflow.crm.domain.vo.CrmHandoverTaskVO;
@@ -40,6 +41,8 @@ public class CrmHandoverTaskController {
                 CrmHandoverTaskVO.class, objectMapper));
     }
 
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/reassign")
     @SaCheckPermission("crm:handover-task:reassign")
     public R<Void> reassign(@PathVariable("id") Long id, @Validated @RequestBody CrmHandoverReassignDTO dto) {

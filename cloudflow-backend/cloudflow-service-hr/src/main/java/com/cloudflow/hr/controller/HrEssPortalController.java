@@ -6,6 +6,7 @@ import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.entity.HrSelfServiceMessage;
 import com.cloudflow.hr.domain.vo.ess.HrEssPortalSummaryVO;
 import com.cloudflow.hr.mapper.HrSelfServiceMessageMapper;

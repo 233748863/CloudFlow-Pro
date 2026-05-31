@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.HrTrainingCategoryPayload;
 import com.cloudflow.hr.domain.dto.HrTrainingCoursePayload;
 import com.cloudflow.hr.domain.dto.HrTrainingInstructorPayload;

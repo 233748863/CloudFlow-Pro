@@ -4,6 +4,7 @@ import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.oa.domain.OaBudgetAdjustment;
 import com.cloudflow.oa.domain.OaBudgetLedger;
 import com.cloudflow.oa.domain.OaBudgetPlan;
@@ -50,6 +51,8 @@ public class BudgetController {
     }
 
     @SysLog("新增预算")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/plan")
     @SaCheckPermission("oa:budget:add")
     public R<Void> addPlan(@RequestBody OaBudgetPlan plan) {
@@ -72,6 +75,8 @@ public class BudgetController {
     }
 
     @SysLog("提交预算")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/plan/submit/{id}")
     @SaCheckPermission("oa:budget:submit")
     public R<Void> submitPlan(@PathVariable("id") Long id) {
@@ -83,6 +88,8 @@ public class BudgetController {
     }
 
     @SysLog("新增预算科目")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/subject")
     @SaCheckPermission("oa:budget:subject")
     public R<Void> addSubject(@RequestBody OaBudgetSubject subject) {
@@ -105,6 +112,8 @@ public class BudgetController {
     }
 
     @SysLog("新增预算调整")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/adjustment")
     @SaCheckPermission("oa:budget:adjustment")
     public R<Void> addAdjustment(@RequestBody OaBudgetAdjustment adjustment) {
@@ -116,6 +125,8 @@ public class BudgetController {
     }
 
     @SysLog("提交预算调整")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/adjustment/submit/{id}")
     @SaCheckPermission("oa:budget:adjustment")
     public R<Void> submitAdjustment(@PathVariable("id") Long id) {

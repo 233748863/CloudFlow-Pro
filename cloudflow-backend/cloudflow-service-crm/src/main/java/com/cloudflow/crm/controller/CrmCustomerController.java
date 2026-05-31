@@ -3,6 +3,7 @@ package com.cloudflow.crm.controller;
 import com.cloudflow.common.core.domain.PageQuery;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.common.log.annotation.SysLog;
 import com.cloudflow.crm.domain.CrmCustomer;
 import com.cloudflow.crm.domain.vo.CrmCustomerWorkspaceVO;
@@ -129,6 +130,8 @@ public class CrmCustomerController {
         }
     }
 
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/workspace/receivable/{receivableId}/confirm")
     @SaCheckPermission("crm:receivable:confirm")
     public R<Void> confirmWorkspaceReceivable(@PathVariable("id") Long id,
@@ -141,6 +144,8 @@ public class CrmCustomerController {
     }
 
     @SysLog("新增CRM客户")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("crm:customer:add")
     public R<Void> add(@RequestBody CrmCustomer customer) {

@@ -5,6 +5,7 @@ import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.HrCertificateRequestPayload;
 import com.cloudflow.hr.domain.dto.HrContractSignaturePayload;
 import com.cloudflow.hr.domain.dto.ess.HrEssCommonQueryDTO;
@@ -76,6 +77,8 @@ class HrCertificateRequestController {
     }
 
     @SysLog("发起HR证明开具")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:ess:cert:apply")
     public R<Long> submit(@RequestBody HrCertificateRequestPayload payload) {
@@ -83,6 +86,8 @@ class HrCertificateRequestController {
     }
 
     @SysLog("撤销HR证明开具")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:ess:cert:cancel")
     public R<Void> cancel(@PathVariable Long id) {
@@ -143,6 +148,8 @@ class HrEssContractController {
     }
 
     @SysLog("撤销HR电子合同签署")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/signatures/{id}/cancel")
     @SaCheckPermission("hr:ess:contract:sign")
     public R<Void> cancel(@PathVariable Long id) {

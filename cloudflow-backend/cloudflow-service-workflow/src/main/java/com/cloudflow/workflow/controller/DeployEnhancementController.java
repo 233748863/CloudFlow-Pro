@@ -2,6 +2,7 @@ package com.cloudflow.workflow.controller;
 
 import com.cloudflow.common.core.context.UserContext;
 import com.cloudflow.common.core.domain.R;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.workflow.domain.*;
 import com.cloudflow.workflow.domain.dto.*;
 import com.cloudflow.workflow.domain.vo.DynamicMapVO;
@@ -135,6 +136,8 @@ public class DeployEnhancementController {
     // ==================== 发布审批流 ====================
 
     @Operation(summary = "提交发布审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/approval/submit/{definitionId}")
     @SaCheckPermission("workflow:deploy:manage")
     public R<?> submitDeployApproval(@PathVariable("definitionId") String definitionId,
@@ -143,6 +146,8 @@ public class DeployEnhancementController {
     }
 
     @Operation(summary = "审批发布请求")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/approval/approve/{approvalId}/{stepId}")
     @SaCheckPermission("workflow:deploy:approve")
     public R<?> approveDeployRequest(@PathVariable("approvalId") Long approvalId,
@@ -168,6 +173,8 @@ public class DeployEnhancementController {
     }
 
     @Operation(summary = "取消发布审批")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/approval/cancel/{approvalId}")
     @SaCheckPermission("workflow:deploy:manage")
     public R<?> cancelDeployApproval(@PathVariable("approvalId") Long approvalId) {

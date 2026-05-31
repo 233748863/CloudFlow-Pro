@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.PageResult;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.talent.HrTalentCalibrationSessionDTO;
 import com.cloudflow.hr.domain.dto.talent.HrTalentDevelopmentActionDTO;
 import com.cloudflow.hr.domain.dto.talent.HrTalentDevelopmentActionQueryDTO;
@@ -132,6 +133,8 @@ class HrTalentReviewController {
     }
 
     @SysLog("发起人才盘点发布")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/reviews/{id}/publish")
     @SaCheckPermission("hr:talent:review:publish")
     public R<String> publish(@PathVariable Long id) {
@@ -206,6 +209,8 @@ class HrTalentSuccessionController {
     }
 
     @SysLog("提名继任人")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/succession-plans/{id}/successors")
     @SaCheckPermission("hr:talent:succession:nominate")
     public R<Long> addSuccessor(@PathVariable Long id, @Validated @RequestBody HrTalentSuccessorDTO dto) {
@@ -221,6 +226,8 @@ class HrTalentSuccessionController {
     }
 
     @SysLog("发起继任计划发布")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/succession-plans/{id}/publish")
     @SaCheckPermission("hr:talent:succession:publish")
     public R<String> publish(@PathVariable Long id) {

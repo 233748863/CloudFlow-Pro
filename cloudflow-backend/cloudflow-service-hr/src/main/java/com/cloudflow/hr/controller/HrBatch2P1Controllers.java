@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckPermission;
 import com.cloudflow.common.core.domain.R;
 import com.cloudflow.common.core.web.MapConverters;
 import com.cloudflow.common.log.annotation.SysLog;
+import com.cloudflow.common.idempotent.annotation.RepeatSubmit;
 import com.cloudflow.hr.domain.dto.HrAttendanceAppealPayload;
 import com.cloudflow.hr.domain.dto.HrCompensationSimulateRequest;
 import com.cloudflow.hr.domain.dto.HrPerformanceInterviewPayload;
@@ -72,6 +73,8 @@ class HrResumeParseController {
     }
 
     @SysLog("HR复核简历解析-确认")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/parsed/{id}/confirm")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Void> confirmParsed(@PathVariable Long id) {
@@ -80,6 +83,8 @@ class HrResumeParseController {
     }
 
     @SysLog("HR复核简历解析-驳回")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/parsed/{id}/reject")
     @SaCheckPermission("hr:recruitment:edit")
     public R<Void> rejectParsed(@PathVariable Long id, @RequestParam(required = false) String reason) {
@@ -149,6 +154,8 @@ class HrPerformanceInterviewController {
     }
 
     @SysLog("确认HR绩效面谈记录")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/confirm")
     @SaCheckPermission("hr:performance:edit")
     public R<Void> confirmInterview(@PathVariable Long id) {
@@ -184,6 +191,8 @@ class HrAttendanceAppealController {
     }
 
     @SysLog("提交HR考勤异常申诉")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping
     @SaCheckPermission("hr:attendance:add")
     public R<Long> submitAppeal(@RequestBody HrAttendanceAppealPayload payload) {
@@ -211,6 +220,8 @@ class HrAttendanceAppealController {
     }
 
     @SysLog("HR考勤申诉撤回")
+    // M0-8: 防重复提交
+    @RepeatSubmit
     @PostMapping("/{id}/cancel")
     @SaCheckPermission("hr:attendance:edit")
     public R<Void> cancelAppeal(@PathVariable Long id) {
