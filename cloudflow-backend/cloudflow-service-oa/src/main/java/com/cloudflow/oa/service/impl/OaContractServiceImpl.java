@@ -100,7 +100,7 @@ public class OaContractServiceImpl extends ServiceImpl<OaContractMapper, OaContr
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新合同")
+    @Audit(name = "更新合同", diff = true, highRisk = true)
     public boolean updateContract(OaContract contract) {
         if (contract == null || contract.getContractId() == null) {
             throw new IllegalArgumentException("合同ID不能为空");

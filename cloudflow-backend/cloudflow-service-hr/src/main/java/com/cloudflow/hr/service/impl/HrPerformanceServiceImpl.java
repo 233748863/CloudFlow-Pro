@@ -361,7 +361,7 @@ public class HrPerformanceServiceImpl implements IHrPerformanceService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新绩效结果")
+    @Audit(name = "更新绩效结果", diff = true, highRisk = true)
     public void updateResult(HrPerformanceResultUpdatePayload payload) {
         Long assignmentId = payload == null ? null : payload.getAssignmentId();
         BigDecimal actualAmount = payload == null ? BigDecimal.ZERO : payload.getActualAmount();

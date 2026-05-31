@@ -56,7 +56,7 @@ public class HrDisputeMediationServiceImpl implements IHrDisputeMediationService
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新争议调解")
+    @Audit(name = "更新争议调解", diff = true, highRisk = true)
     public void updateMediation(Long mediationId, HrDisputeMediationDTO dto) {
         crudService.updateProperties(HrDisputeMediation.class, mediationId,
                 MapConverters.toMap(dto, objectMapper));

@@ -249,7 +249,7 @@ public class KnowledgeServiceImpl extends ServiceImpl<KnowledgeDocumentMapper, K
     }
 
     @Override
-    @Audit(name = "删除知识库文档", spel = "#documentId")
+    @Audit(name = "删除知识库文档", spel = "#documentId", diff = true, highRisk = true)
     public boolean removeDocument(Long documentId) {
         KnowledgeDocument document = requireDocument(documentId);
         if (!isOwner(document) && !hasManageRole()) {

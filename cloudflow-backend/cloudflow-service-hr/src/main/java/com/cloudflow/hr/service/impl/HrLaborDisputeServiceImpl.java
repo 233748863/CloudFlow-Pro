@@ -76,7 +76,7 @@ public class HrLaborDisputeServiceImpl implements IHrLaborDisputeService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新劳动争议")
+    @Audit(name = "更新劳动争议", diff = true, highRisk = true)
     public void updateDispute(Long disputeId, HrLaborDisputeDTO dto) {
         crudService.updateProperties(HrLaborDispute.class, disputeId,
                 MapConverters.toMap(dto, objectMapper));

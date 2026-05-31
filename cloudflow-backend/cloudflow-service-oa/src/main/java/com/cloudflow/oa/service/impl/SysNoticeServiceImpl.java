@@ -92,7 +92,7 @@ public class SysNoticeServiceImpl implements ISysNoticeService {
     }
 
     @Override
-    @Audit(name = "删除通知")
+    @Audit(name = "删除通知", diff = true, highRisk = true)
     public void deleteNotice(Long noticeId) {
         noticeMapper.deleteById(noticeId);
     }

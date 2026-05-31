@@ -91,7 +91,7 @@ public class OaContractTemplateServiceImpl implements IOaContractTemplateService
 
     @Override
     @Transactional
-    @Audit(name = "更新合同模板")
+    @Audit(name = "更新合同模板", diff = true, highRisk = true)
     public boolean update(OaContractTemplate template) {
         if (template == null || template.getId() == null) {
             throw new IllegalArgumentException("模板 ID 必填");

@@ -189,7 +189,7 @@ public class TemplateCategoryServiceImpl implements ITemplateCategoryService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "删除模板分类")
+    @Audit(name = "删除模板分类", diff = true, highRisk = true)
     public void delete(String categoryId) {
         log.info("删除分类 - ID:{}", categoryId);
 

@@ -100,7 +100,7 @@ public class OaLicenseRenewalServiceImpl extends ServiceImpl<OaLicenseRenewalMap
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新证照续期")
+    @Audit(name = "更新证照续期", diff = true, highRisk = true)
     public boolean updateRenewal(OaLicenseRenewal renewal) {
         if (renewal == null || renewal.getId() == null) {
             throw new IllegalArgumentException("续期申请ID不能为空");

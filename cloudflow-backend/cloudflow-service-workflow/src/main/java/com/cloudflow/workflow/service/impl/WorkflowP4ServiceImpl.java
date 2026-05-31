@@ -527,7 +527,7 @@ public class WorkflowP4ServiceImpl implements IWorkflowP4Service {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "删除附件")
+    @Audit(name = "删除附件", diff = true, highRisk = true)
     public R<?> deleteAttachment(String attachmentId, Long operatorId) {
         Long effectiveOperatorId = resolveOperatorId(operatorId, "deleteAttachment");
         WfTaskAttachment a = attachmentMapper.selectById(attachmentId);

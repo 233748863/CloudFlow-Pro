@@ -100,7 +100,7 @@ public class OaSealRenewalServiceImpl extends ServiceImpl<OaSealRenewalMapper, O
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新印章续期")
+    @Audit(name = "更新印章续期", diff = true, highRisk = true)
     public boolean updateRenewal(OaSealRenewal renewal) {
         if (renewal == null || renewal.getId() == null) {
             throw new IllegalArgumentException("续期申请ID不能为空");

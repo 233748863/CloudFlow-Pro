@@ -158,7 +158,7 @@ public class OaLicenseServiceImpl extends ServiceImpl<OaLicenseMapper, OaLicense
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新证照")
+    @Audit(name = "更新证照", diff = true, highRisk = true)
     public boolean updateLicense(OaLicense license) {
         if (license == null || license.getLicenseId() == null) {
             throw new IllegalArgumentException("证照ID不能为空");

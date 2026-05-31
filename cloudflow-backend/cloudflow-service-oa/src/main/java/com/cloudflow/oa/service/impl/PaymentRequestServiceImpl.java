@@ -72,21 +72,21 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     @Override
-    @Audit(name = "创建付款申请", spel = "#payment")
+    @Audit(name = "创建付款申请", spel = "#payment", diff = true, highRisk = true)
     public boolean createPayment(BizPaymentRequest payment) {
         normalizePaymentAttachment(payment);
         return save(payment);
     }
 
     @Override
-    @Audit(name = "更新付款申请", spel = "#payment", oldVal = "@paymentRequestServiceImpl.getById(#payment.id)")
+    @Audit(name = "更新付款申请", spel = "#payment", oldVal = "@paymentRequestServiceImpl.getById(#payment.id)", diff = true, highRisk = true)
     public boolean updatePayment(BizPaymentRequest payment) {
         normalizePaymentAttachment(payment);
         return updateById(payment);
     }
 
     @Override
-    @Audit(name = "提交付款申请", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)")
+    @Audit(name = "提交付款申请", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean submitPayment(Long id) {
         BizPaymentRequest payment = getById(id);
@@ -165,7 +165,7 @@ public class PaymentRequestServiceImpl extends ServiceImpl<BizPaymentRequestMapp
     }
 
     @Override
-    @Audit(name = "确认付款", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)")
+    @Audit(name = "确认付款", spel = "#id", oldVal = "@paymentRequestServiceImpl.getById(#id)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public boolean confirmPaid(Long id) {
         BizPaymentRequest payment = getById(id);

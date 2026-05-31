@@ -79,7 +79,7 @@ public class OaInvoiceServiceImpl extends ServiceImpl<OaInvoiceMapper, OaInvoice
     }
 
     @Override
-    @Audit(name = "更新发票")
+    @Audit(name = "更新发票", diff = true, highRisk = true)
     public boolean updateInvoice(OaInvoice invoice) {
         if (invoice == null || invoice.getInvoiceId() == null) {
             throw new IllegalArgumentException("发票ID不能为空");

@@ -121,7 +121,7 @@ public class OaLicenseBorrowServiceImpl extends ServiceImpl<OaLicenseBorrowMappe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新证照借用")
+    @Audit(name = "更新证照借用", diff = true, highRisk = true)
     public boolean updateBorrow(OaLicenseBorrow borrow) {
         if (borrow == null || borrow.getId() == null) {
             throw new IllegalArgumentException("证照借用申请ID不能为空");

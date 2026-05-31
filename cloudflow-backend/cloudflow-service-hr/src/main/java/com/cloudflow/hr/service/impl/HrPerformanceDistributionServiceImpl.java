@@ -116,7 +116,7 @@ public class HrPerformanceDistributionServiceImpl implements IHrPerformanceDistr
 
     @Override
     @Transactional
-    @Audit(name = "删除分配规则")
+    @Audit(name = "删除分配规则", diff = true, highRisk = true)
     public void deleteRule(Long id) {
         HrPerfDistributionRule entity = distributionRuleMapper.selectOne(
                 new LambdaQueryWrapper<HrPerfDistributionRule>()

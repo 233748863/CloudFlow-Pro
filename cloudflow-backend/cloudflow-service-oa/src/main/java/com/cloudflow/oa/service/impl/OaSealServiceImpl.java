@@ -161,7 +161,7 @@ public class OaSealServiceImpl extends ServiceImpl<OaSealMapper, OaSeal> impleme
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新印章")
+    @Audit(name = "更新印章", diff = true, highRisk = true)
     public boolean updateSeal(OaSeal seal) {
         if (seal == null || seal.getSealId() == null) {
             throw new IllegalArgumentException("印章ID不能为空");

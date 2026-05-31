@@ -56,7 +56,7 @@ public class HrDisputeArbitrationServiceImpl implements IHrDisputeArbitrationSer
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新争议仲裁")
+    @Audit(name = "更新争议仲裁", diff = true, highRisk = true)
     public void updateArbitration(Long arbitrationId, HrDisputeArbitrationDTO dto) {
         crudService.updateProperties(HrDisputeArbitration.class, arbitrationId,
                 MapConverters.toMap(dto, objectMapper));

@@ -302,7 +302,7 @@ public class WfDefinitionServiceImpl implements IWfDefinitionService {
     }
 
     @Override
-    @Audit(name = "删除流程定义")
+    @Audit(name = "删除流程定义", diff = true, highRisk = true)
     public R<?> deleteProcessDefinition(String definitionId) {
         log.info("[deleteProcessDefinition] 开始删除流程定义, definitionId={}", definitionId);
 

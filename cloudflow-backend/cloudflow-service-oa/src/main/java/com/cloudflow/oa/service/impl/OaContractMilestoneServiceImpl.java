@@ -90,7 +90,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     @Override
     @Transactional
-    @Audit(name = "更新合同里程碑")
+    @Audit(name = "更新合同里程碑", diff = true, highRisk = true)
     public boolean updateMilestone(OaContractMilestone milestone) {
         if (milestone == null || milestone.getId() == null) {
             throw new IllegalArgumentException("ID 必填");
@@ -187,7 +187,7 @@ public class OaContractMilestoneServiceImpl implements IOaContractMilestoneServi
 
     @Override
     @Transactional
-    @Audit(name = "更新付款计划")
+    @Audit(name = "更新付款计划", diff = true, highRisk = true)
     public boolean updatePayment(OaContractPaymentSchedule schedule) {
         if (schedule == null || schedule.getId() == null) {
             throw new IllegalArgumentException("ID 必填");

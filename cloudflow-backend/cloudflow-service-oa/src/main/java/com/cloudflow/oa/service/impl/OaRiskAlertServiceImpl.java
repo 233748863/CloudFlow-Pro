@@ -99,7 +99,7 @@ public class OaRiskAlertServiceImpl extends ServiceImpl<OaRiskAlertMapper, OaRis
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新风险状态")
+    @Audit(name = "更新风险状态", diff = true, highRisk = true)
     public boolean updateRiskStatus(Long id, OaRiskStatusDTO dto) {
         OaRiskAlert risk = requireRisk(id);
         if (dto == null || !StringUtils.hasText(dto.getRiskStatus())) {

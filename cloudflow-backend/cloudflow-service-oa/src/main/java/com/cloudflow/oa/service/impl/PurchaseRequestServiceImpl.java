@@ -273,7 +273,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     }
 
     @Override
-    @Audit(name = "采购生成付款申请", spel = "#id", oldVal = "@purchaseRequestServiceImpl.getRequestWithItems(#id)")
+    @Audit(name = "采购生成付款申请", spel = "#id", oldVal = "@purchaseRequestServiceImpl.getRequestWithItems(#id)", diff = true, highRisk = true)
     @Transactional(rollbackFor = Exception.class)
     public BizPaymentRequest createPaymentRequest(Long id) {
         BizPurchaseRequest purchase = getRequestWithItems(id);
@@ -357,7 +357,7 @@ public class PurchaseRequestServiceImpl extends ServiceImpl<BizPurchaseRequestMa
     }
 
     @Override
-    @Audit(name = "更新付款状态")
+    @Audit(name = "更新付款状态", diff = true, highRisk = true)
     public void updatePaymentStatus(Long paymentRequestId, String paymentStatus) {
         if (paymentRequestId == null || !StringUtils.hasText(paymentStatus)) {
             return;

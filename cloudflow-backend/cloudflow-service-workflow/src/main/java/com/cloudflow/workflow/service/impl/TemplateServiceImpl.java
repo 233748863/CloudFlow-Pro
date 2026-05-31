@@ -243,7 +243,7 @@ public class TemplateServiceImpl implements ITemplateService {
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "删除模板")
+    @Audit(name = "删除模板", diff = true, highRisk = true)
     public void deleteTemplate(String id) {
         log.info("删除模板 - ID:{}", id);
 

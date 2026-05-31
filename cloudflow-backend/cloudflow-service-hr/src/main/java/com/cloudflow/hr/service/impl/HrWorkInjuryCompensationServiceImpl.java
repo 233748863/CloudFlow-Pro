@@ -59,7 +59,7 @@ public class HrWorkInjuryCompensationServiceImpl implements IHrWorkInjuryCompens
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    @Audit(name = "更新工伤赔偿")
+    @Audit(name = "更新工伤赔偿", diff = true, highRisk = true)
     public void updateCompensation(Long compensationId, HrWorkInjuryCompensationDTO dto) {
         crudService.updateProperties(HrWorkInjuryCompensation.class, compensationId,
                 MapConverters.toMap(dto, objectMapper));

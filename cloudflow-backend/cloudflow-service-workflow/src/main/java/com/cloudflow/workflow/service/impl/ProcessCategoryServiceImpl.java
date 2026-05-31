@@ -147,7 +147,7 @@ public class ProcessCategoryServiceImpl implements IProcessCategoryService {
     }
 
     @Override
-    @Audit(name = "删除流程分类")
+    @Audit(name = "删除流程分类", diff = true, highRisk = true)
     public void delete(Long categoryId) {
         WfProcessCategory category = categoryMapper.selectById(categoryId);
         if (category == null) {

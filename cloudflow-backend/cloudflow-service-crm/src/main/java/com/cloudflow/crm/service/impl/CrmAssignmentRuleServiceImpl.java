@@ -44,7 +44,7 @@ public class CrmAssignmentRuleServiceImpl extends CrmServiceSupport<CrmAssignmen
     }
 
     @Override
-    @Audit(name = "更新分配规则")
+    @Audit(name = "更新分配规则", diff = true, highRisk = true)
     public boolean updateRule(CrmAssignmentRule rule) {
         if (rule == null || rule.getRuleId() == null) {
             throw new IllegalArgumentException("规则ID不能为空");

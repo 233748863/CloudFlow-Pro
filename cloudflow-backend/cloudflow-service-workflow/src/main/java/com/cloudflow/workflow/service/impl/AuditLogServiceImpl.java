@@ -169,7 +169,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
      * 删除过期的审计日志
      */
     @Override
-    @Audit(name = "删除过期日志")
+    @Audit(name = "删除过期日志", diff = true, highRisk = true)
     public int deleteExpiredLogs(int daysToKeep) {
         log.info("删除过期的审计日志: daysToKeep={}", daysToKeep);
         
@@ -192,7 +192,7 @@ public class AuditLogServiceImpl implements IAuditLogService {
      * 按目标对象删除历史审计日志
      */
     @Override
-    @Audit(name = "删除审计日志")
+    @Audit(name = "删除审计日志", diff = true, highRisk = true)
     public int deleteByTarget(TargetType targetType, String targetId) {
         if (targetType == null || !StringUtils.hasText(targetId)) {
             return 0;

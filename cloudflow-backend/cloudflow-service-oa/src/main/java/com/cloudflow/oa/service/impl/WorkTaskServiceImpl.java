@@ -39,7 +39,7 @@ public class WorkTaskServiceImpl extends ServiceImpl<WorkTaskMapper, WorkTask> i
     }
 
     @Override
-    @Audit(name = "更新任务状态")
+    @Audit(name = "更新任务状态", diff = true, highRisk = true)
     public boolean updateStatus(Long taskId, String status) {
         WorkTask task = new WorkTask();
         task.setTaskId(taskId);

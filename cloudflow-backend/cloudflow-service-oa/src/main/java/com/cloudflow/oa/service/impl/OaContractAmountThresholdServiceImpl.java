@@ -82,7 +82,7 @@ public class OaContractAmountThresholdServiceImpl implements IOaContractAmountTh
 
     @Override
     @Transactional
-    @Audit(name = "更新合同金额阈值")
+    @Audit(name = "更新合同金额阈值", diff = true, highRisk = true)
     public boolean update(OaContractAmountThreshold threshold) {
         if (threshold == null || threshold.getId() == null) {
             throw new IllegalArgumentException("ID 必填");

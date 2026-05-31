@@ -143,7 +143,7 @@ public class DeployEnhancementServiceImpl implements IDeployEnhancementService {
     }
 
     @Override
-    @Audit(name = "删除发布窗口")
+    @Audit(name = "删除发布窗口", diff = true, highRisk = true)
     public R<?> deleteDeployWindow(Long windowId) {
         WfDeployWindow window = deployWindowMapper.selectById(windowId);
         if (window == null) {
