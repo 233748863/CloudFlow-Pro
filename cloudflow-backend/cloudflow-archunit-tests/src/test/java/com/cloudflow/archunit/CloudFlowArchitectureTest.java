@@ -10,10 +10,10 @@ import org.junit.jupiter.api.Test;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 
 /**
- * M0-7: ArchUnit 架构规则测试。
+ * M0-7: ArchUnit 架构规则测试
  * <p>
- * 规则 1：Controller 写接口必须 @RepeatSubmit 或显式豁免。
- * 规则 2：ServiceImpl update*/delete* 必须 @Auditable。
+ * 规则 1: Controller 写接口必须 @RepeatSubmit 或显式豁免
+ * 规则 2: ServiceImpl update 和 delete 方法必须 @Audit
  */
 class CloudFlowArchitectureTest {
 
@@ -47,7 +47,7 @@ class CloudFlowArchitectureTest {
                 .and().haveNameMatching("(update|delete).*")
                 .and().arePublic()
                 .should().beAnnotatedWith("com.cloudflow.common.audit.annotation.Audit")
-                .because("ServiceImpl update*/delete* 必须落审计（M0-7 规则 2）");
+                .because("ServiceImpl update 和 delete 方法必须落审计（M0-7 规则 2）");
 
         rule.check(classes);
     }

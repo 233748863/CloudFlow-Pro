@@ -40,6 +40,35 @@
             <artifactId>cloudflow-common-audit</artifactId>
             <scope>test</scope>
         </dependency>
+
+        <!-- Business modules for ArchUnit scanning -->
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-service-oa</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-service-crm</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-service-hr</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>com.cloudflow</groupId>
+            <artifactId>cloudflow-service-workflow</artifactId>
+            <version>${project.version}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>
