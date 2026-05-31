@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.cloudflow.common.event.outbox.OutboxEventMapper">
+
+    <select id="selectPendingEvents" resultType="com.cloudflow.common.event.outbox.OutboxEvent">
+        SELECT *
+        FROM outbox_event
+        WHERE status = 'PENDING'
+          AND next_retry_at &lt;= #{now}
+        ORDER BY created_at ASC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
