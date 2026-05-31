@@ -30,6 +30,8 @@
         <module>cloudflow-common-oss</module>
         <module>cloudflow-common-job</module>
         <module>cloudflow-common-workflow-callback</module>
+        <module>cloudflow-common-statemachine</module>
+        <module>cloudflow-common-event</module>
     </modules>
 
 </project>
