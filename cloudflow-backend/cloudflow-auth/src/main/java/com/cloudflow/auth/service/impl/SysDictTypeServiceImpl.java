@@ -109,11 +109,36 @@ public class SysDictTypeServiceImpl extends ServiceImpl<SysDictTypeMapper, SysDi
 
     @Override
     public List<SysDictData> selectDictDataByType(String dictType) {
-        // 根据字典类型查询正常状态的字典数据，按排序号升序
-        return dictDataMapper.selectList(new LambdaQueryWrapper<SysDictData>()
+        // Redis 优先：启动时已预热到 sys:dict:data:{dictType}
+        // 命中则直接拼回 SysDictData 形态（仅含前端依赖字段）返回，避免每次都打 MySQL
+        List<SysDictHelper.DictItem> cached = sysDictHelper.getDictData(dictType);
+        if (cached != null && !cached.isEmpty()) {
+            List<SysDictData> result = new ArrayList<>(cached.size());
+            for (SysDictHelper.DictItem item : cached) {
+                SysDictData d = new SysDictData();
+                d.setDictType(dictType);
+                d.setDictSort(item.getSort());
+                d.setDictLabel(item.getLabel());
+                d.setDictValue(item.getValue());
+                d.setListClass(item.getListClass());
+                d.setCssClass(item.getCssClass());
+                d.setStatus("0");
+                result.add(d);
+            }
+            return result;
+        }
+        // 降级：缓存未命中（启动顺序、字典刚被清空等）回查 DB，并补一次缓存
+        List<SysDictData> list = dictDataMapper.selectList(new LambdaQueryWrapper<SysDictData>()
                 .eq(SysDictData::getDictType, dictType)
                 .eq(SysDictData::getStatus, "0")
                 .orderByAsc(SysDictData::getDictSort));
+        if (!list.isEmpty()) {
+            List<SysDictHelper.DictItem> items = list.stream()
+                    .map(this::toDictItem)
+                    .collect(Collectors.toCollection(ArrayList::new));
+            sysDictHelper.setDictDataCache(dictType, items);
+        }
+        return list;
     }
 
     @Override
